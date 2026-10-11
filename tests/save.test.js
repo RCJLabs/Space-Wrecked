@@ -15,6 +15,9 @@ import {
 } from '../src/core/save.js';
 import { initialState, saveData } from '../src/sim/root.js';
 import { emptyBuilds, MAX_SLOTS } from '../src/sim/builds.js';
+import { indexDefs } from '../src/sim/defs.js';
+import { logFor, logMatches } from '../src/sim/replay.js';
+import { readData } from '../tools/data.js';
 
 const PREFIX = config.appId;
 const sample = () => makeSave(saveData(initialState(123456)));
@@ -196,14 +199,60 @@ test('a save from before M3 (v0) loads with no ships', () => {
   assert.equal(importSave(craftSave(old)).ok, true, 'an old export code imports too');
 });
 
+// tidy and its log after M5b's move to the fine grid: twice the
+// coordinates, 5 right and 3 down.
+const fine = {
+  ...tidy,
+  modules: [
+    { uid: 1, type: 'bridge', x: 15, y: 5, rot: 0 },
+    { uid: 2, type: 'corridor', x: 13, y: 5, rot: 0 },
+  ],
+};
+const fineLog = [
+  { op: 'place', uid: 1, type: 'bridge', x: 15, y: 5, rot: 0 },
+  { op: 'place', uid: 2, type: 'corridor', x: 13, y: 5, rot: 0 },
+];
+
 test("an M3 save's ship (v1) becomes slot 1, numbered in build order, with a log that builds it", () => {
   const v1 = { version: 1, data: { settings: { fpsCap: 60 }, rng: 5, ship } };
   const result = parseSave(JSON.stringify(v1));
   assert.equal(result.ok, true, result.error);
-  assert.deepEqual(result.save.data, { settings: { fpsCap: 60 }, rng: 5, builds: { active: 0, slots: [{ name: 'Ship 1', ship: tidy, log }] } });
+  assert.deepEqual(result.save.data, { settings: { fpsCap: 60 }, rng: 5, builds: { active: 0, slots: [{ name: 'Ship 1', ship: fine, log: fineLog }] } });
   const none = parseSave(JSON.stringify({ version: 1, data: { settings: { fpsCap: 60 }, rng: 5, ship: null } }));
   assert.deepEqual(none.save.data.builds, emptyBuilds(), 'no ship yet: no slots');
   assert.equal(importSave(craftSave(v1)).ok, true, 'an M3 export code imports too');
+});
+
+test("an M5 save (v2) moves every slot's ship and log to the fine grid", () => {
+  const slots = [
+    { name: 'Ship 1', ship: tidy, log },
+    { name: 'Rebuilt', ship: tidy, log: [...log, { op: 'move', uid: 2, x: 4, y: 2, rot: 1 }, { op: 'move', uid: 2, x: 4, y: 1, rot: 0 }, { op: 'remove', uid: 2 }] },
+  ];
+  const v2 = { version: 2, data: { settings: { fpsCap: 60 }, rng: 5, builds: { active: 1, slots } } };
+  const result = parseSave(JSON.stringify(v2));
+  assert.equal(result.ok, true, result.error);
+  const [first, second] = result.save.data.builds.slots;
+  assert.deepEqual(first, { name: 'Ship 1', ship: fine, log: fineLog });
+  assert.deepEqual(second.log.slice(2), [{ op: 'move', uid: 2, x: 13, y: 7, rot: 1 }, { op: 'move', uid: 2, x: 13, y: 5, rot: 0 }, { op: 'remove', uid: 2 }]);
+  assert.equal(result.save.data.builds.active, 1);
+  assert.equal(importSave(craftSave(v2)).ok, true, 'an M5 export code imports too');
+});
+
+test("an M5 ship's build log still replays to it on the fine grid", () => {
+  const defs = indexDefs(readData());
+  // M5's example ship on the old grid, built part by part.
+  const parts = [
+    ['bridge', 6, 1, 1], ['corridor', 5, 1, 0], ['corridor', 5, 2, 0], ['corridor', 4, 2, 0], ['corridor', 3, 2, 0],
+    ['corridor', 2, 2, 0], ['corridor', 2, 1, 0], ['reactor', 3, 0, 0], ['quarters', 1, 0, 0], ['engine', 0, 1, 0],
+    ['engine', 0, 2, 0], ['lifesupport', 2, 3, 0], ['airlock', 3, 3, 0], ['weapon', 4, 3, 2],
+  ];
+  const old = { frame: 'starter', nextUid: 15, modules: parts.map(([type, x, y, rot], i) => ({ uid: i + 1, type, x, y, rot })) };
+  const v2 = { version: 2, data: { settings: { fpsCap: 60 }, rng: 5, builds: { active: 0, slots: [{ name: 'Ship 1', ship: old, log: logFor(old) }] } } };
+  const result = parseSave(JSON.stringify(v2));
+  assert.equal(result.ok, true, result.error);
+  const [slot] = result.save.data.builds.slots;
+  assert.ok(logMatches(slot.log, slot.ship, defs), 'the log builds the moved ship');
+  assert.equal(slot.ship.modules.length, 14, 'every part kept');
 });
 
 test('saved ships round-trip, even one that fails its flight checks', () => {

@@ -40,9 +40,9 @@ test('every module type puts something on the roof', () => {
 test('engines glow at the stern, running lights show port and starboard', () => {
   const { faces, glows } = scene(example());
   const exhaust = glows.filter((g) => g.color === skins.yard.flame);
-  assert.equal(exhaust.length, 2);
-  assert.ok(exhaust.every((g) => g.at[0] < 0), 'behind the stern');
-  assert.equal(faces.filter((f) => f.emissive && f.color === skins.yard.flame).length, 2, 'a lit mouth on each nozzle');
+  assert.equal(exhaust.length, 4, "one per cell of each engine's exhaust");
+  assert.ok(exhaust.every((g) => g.at[0] < 7), 'behind the stern');
+  assert.equal(faces.filter((f) => f.emissive && f.color === skins.yard.flame).length, 4, 'a lit mouth on each nozzle');
   assert.deepEqual(glows.filter((g) => g.color === skins.yard.port || g.color === skins.yard.starboard).map((g) => g.color), [skins.yard.port, skins.yard.starboard]);
 });
 

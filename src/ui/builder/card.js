@@ -1,5 +1,6 @@
-// The details a long press shows for a part: size, doors, stats and cost,
-// and for a placed part, where it is and whether it reaches the bridge.
+// The details a long press shows for a part: size, what has to face space,
+// stats and cost, and for a placed part, where it is and whether it reaches
+// the bridge.
 import { footprint } from '../../sim/modules.js';
 
 const STATS = [
@@ -17,9 +18,9 @@ const ALWAYS = new Set(['mass', 'hp']);
 // false, or null when there is no bridge yet.
 export function cardFor(defs, def, placed = null) {
   const [w, h] = footprint(def, placed?.module.rot ?? 0);
-  const doors = def.doors.length;
+  const faces = def.facesSpace ? ` · ${def.facesSpace.what} must face space` : '';
   const lines = [
-    `${w}×${h} cells · ${doors} door${doors === 1 ? '' : 's'} · ${def.rotates ? 'turns' : "doesn't turn"}`,
+    `${w}×${h} squares · ${def.rotates ? 'turns' : "doesn't turn"}${faces}`,
     STATS.filter(([key]) => ALWAYS.has(key) || def.stats[key] !== 0)
       .map(([key, label]) => `${label} ${key === 'power' ? signed(def.stats[key]) : def.stats[key]}`)
       .join(' · '),

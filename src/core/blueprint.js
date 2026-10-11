@@ -7,11 +7,17 @@
 // builder's placement rules, so a code can only make a ship the builder
 // could have made. Whitespace is ignored, so codes survive chat apps.
 // Decoding never throws: every way a code can be wrong has a message.
+//
+// Versions:
+//   1  M5, on the old grid
+//   2  M5b's fine grid, four cells to each old one. A version 1 code still
+//      opens: its parts move to the fine grid (regrid.js).
 import { config } from '../config.js';
 import { buildShip } from '../sim/builder.js';
+import { regridPlacement } from '../sim/regrid.js';
 import { base64UrlToBytes, bytesToBase64Url, checksum } from './codec.js';
 
-export const BLUEPRINT_VERSION = 1;
+export const BLUEPRINT_VERSION = 2;
 const PREFIX = `${config.appId}b`;
 const SAVE_PREFIX = `${config.appId}.`;
 
@@ -62,14 +68,15 @@ export function decodeBlueprint(text, defs) {
   }
   const version = Number(versionText);
   if (version > BLUEPRINT_VERSION) return fail('This blueprint comes from a newer version of the game. Update the game, then try again.');
-  if (version !== BLUEPRINT_VERSION) return fail(`Blueprints of version ${version} can't be read.`);
+  if (version !== BLUEPRINT_VERSION && version !== 1) return fail(`Blueprints of version ${version} can't be read.`);
 
   const read = unpack(payload);
   if (!read) return fail("The code is damaged and can't be read.");
   if (!defs.frames.has(read.frame)) return fail(`This blueprint is for a hull this version of the game doesn't have ("${read.frame}").`);
   const unknown = [...new Set(read.placements.map((p) => p.type))].filter((type) => !defs.modules.has(type));
   if (unknown.length) return fail(`This blueprint uses parts this version of the game doesn't have: ${unknown.join(', ')}.`);
-  const { ship, rejected } = buildShip(defs, read.frame, read.placements);
+  const placements = version === 1 ? read.placements.map(regridPlacement) : read.placements;
+  const { ship, rejected } = buildShip(defs, read.frame, placements);
   if (rejected.length) return fail(`This blueprint doesn't fit together: ${rejected[0].message}`);
   return { ok: true, ship };
 }

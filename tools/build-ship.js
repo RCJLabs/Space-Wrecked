@@ -18,14 +18,22 @@ import { readData } from './data.js';
 
 export const EXAMPLE_SCRIPT = fileURLToPath(new URL('../tests/fixtures/example-ship.json', import.meta.url));
 
-// One glyph per cell, "." for empty, one row per line.
+// One glyph per cell, "." for empty, one row per line, over the ship's
+// bounding box (the yard around it is empty). An empty ship is "".
 export function renderShip(ship, defs) {
   const grid = occupancy(ship, defs);
   const glyphs = new Map(ship.modules.map((m) => [m.uid, defs.modules.get(m.type)?.glyph ?? '?']));
-  const rows = [];
+  const taken = [];
   for (let y = 0; y < grid.height; y++) {
+    for (let x = 0; x < grid.width; x++) if (cellAt(grid, x, y) !== null) taken.push([x, y]);
+  }
+  if (!taken.length) return '';
+  const [x0, x1] = [Math.min(...taken.map(([x]) => x)), Math.max(...taken.map(([x]) => x))];
+  const [y0, y1] = [Math.min(...taken.map(([, y]) => y)), Math.max(...taken.map(([, y]) => y))];
+  const rows = [];
+  for (let y = y0; y <= y1; y++) {
     let row = '';
-    for (let x = 0; x < grid.width; x++) {
+    for (let x = x0; x <= x1; x++) {
       const uid = cellAt(grid, x, y);
       row += uid === null ? '.' : glyphs.get(uid);
     }

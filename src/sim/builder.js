@@ -3,9 +3,14 @@
 //   { frame, modules: [{ uid, type, x, y, rot }], nextUid }
 // Every change is a command (see applyCommand), so a build can be replayed
 // step by step. Functions return new ships and never change their input.
+//
+// Rooms join where they share a wall: each wall two rooms share gets one
+// doorway in its middle, and corridors side by side open into each other,
+// so a run of corridor cells is one space. An engine's exhaust and a gun's
+// barrel (a part's facesSpace side) get no doorway and have to face space.
 import { inFrame } from './frame.js';
 import { cellAt, createGrid, exteriorOf, inBounds, OPPOSITE, SIDES, step, withCells } from './grid.js';
-import { footprint, hasTag, isRotation, placedCells, placedDoors } from './modules.js';
+import { facingSide, footprint, hasTag, isRotation, placedCells, sideCells } from './modules.js';
 
 export function newShip(frameId) {
   return { frame: frameId, modules: [], nextUid: 1 };
@@ -48,7 +53,7 @@ export function placementError(ship, defs, placement) {
   const grid = occupancy(ship, defs);
   for (const [x, y] of placedCells(def, placement)) {
     if (!inFrame(frame, x, y)) {
-      return { rule: 'bounds', message: `${def.name} doesn't fit inside the ${frame.name} there.` };
+      return { rule: 'bounds', message: `${def.name} would go past the edge of the build area.` };
     }
     const owner = cellAt(grid, x, y);
     if (owner !== null) {
@@ -166,59 +171,129 @@ export function occupancy(ship, defs) {
   return grid;
 }
 
-// Which modules are joined: a door socket on each side of the same cell
-// edge. Returns a Map from each uid to the Set of uids it links to.
-export function connections(ship, defs) {
-  const links = new Map(ship.modules.map((module) => [module.uid, new Set()]));
-  const doors = [];
-  const owners = new Map();
+// How the rooms join. Returns { links, openings }:
+//   links     Map from each uid to the Set of uids it opens into
+//   openings  every gap in the room walls, as { uid, x, y, side, kind }:
+//             the cell of module uid and the side of it the gap is on.
+//             kind is 'door' (a doorway into the next room), 'open' (no
+//             wall: corridors side by side) or 'hatch' (an airlock's outer
+//             door, onto space).
+// A wall is the run of cell edges one room shares with another along one
+// of its sides; its doorway goes on the middle edge (the left or upper one
+// of two). A run of corridors counts as one room, so a room beside a long
+// corridor gets one doorway per side, not one per corridor cell.
+export function joins(ship, defs) {
+  const grid = occupancy(ship, defs);
+  const placed = new Map();
   for (const module of ship.modules) {
     const def = defs.modules.get(module.type);
-    if (!def || !isRotation(module.rot)) continue;
-    for (const [x, y, side] of placedDoors(def, module)) {
-      doors.push([x, y, side, module.uid]);
-      owners.set(`${x},${y},${side}`, module.uid);
+    if (def && isRotation(module.rot)) placed.set(module.uid, { module, def, facing: facingSide(def, module.rot) });
+  }
+  const links = new Map(ship.modules.map((module) => [module.uid, new Set()]));
+  const openings = [];
+  const link = (a, b) => {
+    links.get(a).add(b);
+    links.get(b).add(a);
+  };
+  const corridor = (uid) => hasTag(placed.get(uid).def, 'corridor');
+  const space = corridorSpaces(placed, grid);
+
+  // Walls: per room and side, the edges it shares with each other room.
+  const walls = new Map();
+  for (const { module, def, facing } of placed.values()) {
+    for (const [x, y] of placedCells(def, module)) {
+      for (const side of SIDES) {
+        const other = cellAt(grid, ...step(x, y, side));
+        if (other === null || other === undefined || other === module.uid) continue;
+        if (corridor(module.uid) && corridor(other)) {
+          openings.push({ uid: module.uid, x, y, side, kind: 'open' });
+          link(module.uid, other);
+          continue;
+        }
+        if (side === facing || OPPOSITE[side] === placed.get(other).facing) continue;
+        // Each wall is collected once, from the room that isn't a corridor
+        // (the lower uid when neither is).
+        if (corridor(module.uid) || (!corridor(other) && other < module.uid)) continue;
+        const key = `${module.uid}|${space.get(other) ?? other}|${side}`;
+        if (!walls.has(key)) walls.set(key, []);
+        walls.get(key).push({ x, y, side, other });
+      }
     }
   }
-  for (const [x, y, side, uid] of doors) {
-    const [nx, ny] = step(x, y, side);
-    const other = owners.get(`${nx},${ny},${OPPOSITE[side]}`);
-    if (other !== undefined && other !== uid) {
-      links.get(uid).add(other);
-      links.get(other).add(uid);
+  for (const [key, edges] of walls) {
+    const uid = Number(key.split('|')[0]);
+    edges.sort((a, b) => a.x - b.x || a.y - b.y);
+    const { x, y, side, other } = edges[Math.floor((edges.length - 1) / 2)];
+    const [ox, oy] = step(x, y, side);
+    openings.push({ uid, x, y, side, kind: 'door' }, { uid: other, x: ox, y: oy, side: OPPOSITE[side], kind: 'door' });
+    link(uid, other);
+  }
+
+  // Each side of an airlock that faces space has a hatch in its middle.
+  const isSpace = spaceTest(ship, defs);
+  for (const { module, def } of placed.values()) {
+    if (!hasTag(def, 'airlock')) continue;
+    for (const side of SIDES) {
+      const out = sideCells(def, module, side).filter(([x, y]) => isSpace(...step(x, y, side)));
+      if (!out.length) continue;
+      const [x, y] = out[Math.floor((out.length - 1) / 2)];
+      openings.push({ uid: module.uid, x, y, side, kind: 'hatch' });
     }
   }
-  return links;
+  return { links, openings };
 }
 
-// Every door socket on the ship, as { uid, x, y, side, state }, where state
-// says what the door opens onto:
-//   linked   a matching socket across the edge: a real doorway
-//   open     an empty cell on the frame, where a part could join
-//   blocked  another module with no socket there
-//   outside  space: past the frame's edge or its shape
-export function doorStates(ship, defs) {
-  const frame = defs.frames.get(ship.frame);
-  const grid = occupancy(ship, defs);
-  const sockets = new Set();
-  const doors = [];
-  for (const module of ship.modules) {
-    const def = defs.modules.get(module.type);
-    if (!def || !isRotation(module.rot)) continue;
-    for (const [x, y, side] of placedDoors(def, module)) {
-      doors.push({ uid: module.uid, x, y, side });
-      sockets.add(`${x},${y},${side}`);
+// Which modules are joined: a Map from each uid to the Set of uids it opens
+// into (see joins).
+export function connections(ship, defs) {
+  return joins(ship, defs).links;
+}
+
+// Every gap in the room walls (see joins).
+export function openings(ship, defs) {
+  return joins(ship, defs).openings;
+}
+
+// Corridors side by side make one space: a Map from each corridor's uid to
+// the uid of the first corridor of its run in build order.
+function corridorSpaces(placed, grid) {
+  const space = new Map();
+  for (const [uid, { def }] of placed) {
+    if (!hasTag(def, 'corridor') || space.has(uid)) continue;
+    space.set(uid, uid);
+    const queue = [uid];
+    while (queue.length) {
+      const { module, def: here } = placed.get(queue.pop());
+      for (const [x, y] of placedCells(here, module)) {
+        for (const side of SIDES) {
+          const next = cellAt(grid, ...step(x, y, side));
+          if (next === null || next === undefined || space.has(next) || !hasTag(placed.get(next).def, 'corridor')) continue;
+          space.set(next, uid);
+          queue.push(next);
+        }
+      }
     }
   }
-  return doors.map((door) => {
-    const [nx, ny] = step(door.x, door.y, door.side);
-    const owner = cellAt(grid, nx, ny);
-    let state = 'blocked';
-    if (owner === undefined || (owner === null && !inFrame(frame, nx, ny))) state = 'outside';
-    else if (owner === null) state = 'open';
-    else if (sockets.has(`${nx},${ny},${OPPOSITE[door.side]}`)) state = 'linked';
-    return { ...door, state };
-  });
+  return space;
+}
+
+// A predicate for open space around the ship: an empty cell joined to the
+// outside through empty cells (or off the frame's shape), unless the hull
+// closes over it: an empty cell with parts on three or four sides is a
+// notch the hull fills (hull.js calls it a pocket).
+export function spaceTest(ship, defs) {
+  const frame = defs.frames.get(ship.frame);
+  const grid = occupancy(ship, defs);
+  const outside = exteriorOf(grid, (owner) => owner === null);
+  const taken = (x, y) => {
+    const owner = cellAt(grid, x, y);
+    return owner !== null && owner !== undefined;
+  };
+  return (x, y) => {
+    if (taken(x, y)) return false;
+    if (!outside(x, y) && inFrame(frame, x, y)) return false;
+    return SIDES.filter((side) => taken(...step(x, y, side))).length < 3;
+  };
 }
 
 // The first bridge's uid, and every module reachable from it through joined
@@ -243,22 +318,31 @@ export function reachableFromBridge(ship, defs) {
   return { bridge: bridge.uid, reachable };
 }
 
-// Uids of airlocks with at least one side facing open space outside the
-// hull: off the frame, off its shape, or an empty cell joined to either.
+// Uids of airlocks with at least one side facing open space (spaceTest).
 export function airlocksOnHullEdge(ship, defs) {
-  const frame = defs.frames.get(ship.frame);
-  const grid = occupancy(ship, defs);
-  const isOutside = exteriorOf(grid, (owner) => owner === null);
-  const space = (x, y) => isOutside(x, y) || (cellAt(grid, x, y) === null && !inFrame(frame, x, y));
+  const isSpace = spaceTest(ship, defs);
   return ship.modules
     .filter((module) => {
       const def = defs.modules.get(module.type);
       if (!def || !hasTag(def, 'airlock') || !isRotation(module.rot)) return false;
-      return placedCells(def, module).some(([x, y]) =>
-        SIDES.some((side) => space(...step(x, y, side))),
-      );
+      return SIDES.some((side) => sideCells(def, module, side).some(([x, y]) => isSpace(...step(x, y, side))));
     })
     .map((module) => module.uid);
+}
+
+// Parts whose facesSpace side doesn't face space all along it, as
+// { uid, what }: an engine's exhaust or a gun's barrel with the hull or
+// another part in front of it.
+export function blockedFacings(ship, defs) {
+  const isSpace = spaceTest(ship, defs);
+  const blocked = [];
+  for (const module of ship.modules) {
+    const def = defs.modules.get(module.type);
+    const side = def && isRotation(module.rot) ? facingSide(def, module.rot) : null;
+    if (!side) continue;
+    if (!sideCells(def, module, side).every(([x, y]) => isSpace(...step(x, y, side)))) blocked.push({ uid: module.uid, what: def.facesSpace.what });
+  }
+  return blocked;
 }
 
 // Everything wrong with a layout under the placement rules, as
@@ -283,7 +367,7 @@ export function layoutProblems(ship, defs) {
     }
     for (const [x, y] of placedCells(def, module)) {
       if (!inBounds(area, x, y) || !inFrame(frame, x, y)) {
-        add('bounds', `${describeModule(ship, defs, module.uid)} sticks out of the ${frame.name}.`, [module.uid]);
+        add('bounds', `${describeModule(ship, defs, module.uid)} sticks out of the build area.`, [module.uid]);
         break;
       }
       const first = owners.get(`${x},${y}`);
@@ -304,10 +388,13 @@ export function layoutProblems(ship, defs) {
   } else {
     const loose = ship.modules.filter((module) => !reachable.has(module.uid)).map((module) => module.uid);
     if (loose.length) {
-      add('connected', `Not joined to the bridge by matching doors: ${loose.map((uid) => describeModule(ship, defs, uid)).join(', ')}.`, loose);
+      add('connected', `Not joined to the bridge by a shared wall: ${loose.map((uid) => describeModule(ship, defs, uid)).join(', ')}.`, loose);
     }
   }
   if (airlocksOnHullEdge(ship, defs).length === 0) add('airlock', 'No airlock on the hull edge.');
+  for (const { uid, what } of blockedFacings(ship, defs)) {
+    add('faces', `${describeModule(ship, defs, uid)} has its ${what} blocked: it has to face space.`, [uid]);
+  }
   return problems;
 }
 

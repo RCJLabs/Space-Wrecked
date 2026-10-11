@@ -26,14 +26,33 @@ import { drawStars, makeStarfield } from './starfield.js';
 const deg = Math.PI / 180;
 
 // The camera the builder starts at and Fit returns to: a gentle angle with
-// mild perspective, so every cell stays a 48 px target on the Fold's cover
-// screen (tests/orbit.test.js holds it to that).
-export const BOARD_VIEW = { yaw: -11 * deg, pitch: 60 * deg, distance: 24 };
+// mild perspective. Cells are small (one per battle tile), so placing
+// always previews first; the view keeps every cell around a starter ship
+// at least 22 px on the Fold's cover screen (tests/orbit.test.js).
+export const BOARD_VIEW = { yaw: -11 * deg, pitch: 60 * deg, distance: 48 };
 
-// What the camera keeps in view: the frame, what sticks out of the hull,
-// and the height of the rooms.
-export function boardBox(frame) {
-  return { x0: -OVERHANG.left, y0: -OVERHANG.top, x1: frame.width + OVERHANG.right, y1: frame.height + OVERHANG.bottom, z1: 0.6 };
+// The least the fitted view shows, in cells: an empty yard or a small ship
+// still frames a starter ship's worth of grid, with room around it to build.
+export const MIN_VIEW = [14, 8];
+const TALL = 1.2; // the rooms and what stands on them
+
+// What the fitted camera keeps in view: the ship (its cells, as traced)
+// and what sticks out of its hull, at least MIN_VIEW, centred on the ship
+// (or the frame when it is empty).
+export function boardBox(frame, hull) {
+  const xs = hull.cells.map(([x]) => x);
+  const ys = hull.cells.map(([, y]) => y);
+  const [cx, cy] = xs.length ? [(Math.min(...xs) + Math.max(...xs) + 1) / 2, (Math.min(...ys) + Math.max(...ys) + 1) / 2] : [frame.width / 2, frame.height / 2];
+  const half = (lo, hi, min) => Math.max(min / 2, (hi - lo) / 2);
+  const [hw, hh] = xs.length
+    ? [half(Math.min(...xs), Math.max(...xs) + 1, MIN_VIEW[0]), half(Math.min(...ys), Math.max(...ys) + 1, MIN_VIEW[1])]
+    : [MIN_VIEW[0] / 2, MIN_VIEW[1] / 2];
+  return { x0: cx - hw - OVERHANG.left, y0: cy - hh - OVERHANG.top, x1: cx + hw + OVERHANG.right, y1: cy + hh + OVERHANG.bottom, z1: TALL };
+}
+
+// The whole frame: how far the camera may pan, and zoom out to.
+export function yardBox(frame) {
+  return { x0: -OVERHANG.left, y0: -OVERHANG.top, x1: frame.width + OVERHANG.right, y1: frame.height + OVERHANG.bottom, z1: TALL };
 }
 
 const GRID = ['gridMinor', 'gridMajor'];

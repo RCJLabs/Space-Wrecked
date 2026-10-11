@@ -94,9 +94,10 @@ function partsLine(ship, defs) {
   return failing('parts', `Missing ${list(names.map(lower))}`, `Add ${list(names)}`, missing[0].id);
 }
 
-// Every part joined to the bridge and an airlock on the hull edge (the
-// whole-layout rules from builder.js). A missing bridge or airlock is the
-// parts line's to report, so it isn't repeated here.
+// Every part joined to the bridge, an airlock on the hull edge, and every
+// exhaust and barrel facing space (the whole-layout rules from builder.js).
+// A missing bridge or airlock is the parts line's to report, so it isn't
+// repeated here.
 function layoutLine(ship, defs) {
   const problems = layoutProblems(ship, defs);
   if (problems.some((p) => p.rule === 'bridge')) return { id: 'layout', ok: null, text: 'Joins are checked once there is a bridge', fix: null, add: null };
@@ -114,20 +115,23 @@ function layoutLine(ship, defs) {
     const n = first.uids.length;
     const names = first.uids.slice(0, 2).map((uid) => describeModule(ship, defs, uid));
     if (n > 2) names.push(`${n - 2} more`);
-    return failing('layout', `${n} part${n === 1 ? '' : 's'} not joined to the bridge${more}`, `Join ${list(names)} to the bridge: each door has to meet a door`);
+    return failing('layout', `${n} part${n === 1 ? '' : 's'} not joined to the bridge${more}`, `Join ${list(names)} to the bridge: rooms join where they share a wall`);
+  }
+  if (first.rule === 'faces') {
+    const module = ship.modules.find((m) => m.uid === first.uids[0]);
+    const def = defs.modules.get(module.type);
+    return failing('layout', `${def.name} ${def.facesSpace.what} blocked${more}`, `Move ${describeModule(ship, defs, module.uid)} so its ${def.facesSpace.what} faces space`);
   }
   if (first.rule === 'airlock') {
     return failing('layout', `No airlock on the hull edge${more}`, 'Move an airlock to the edge of the hull, with a side open to space');
   }
-  // A ship saved before the frame took its shape can have parts where the
-  // hull no longer reaches; otherwise only a damaged or hand-edited save
-  // gets these.
+  // Only a damaged or hand-edited save gets these.
   const frame = defs.frames.get(ship.frame);
   const fix =
     first.rule === 'cap' ? `Remove ${ship.modules.length - frame.maxModules} parts`
     : first.rule === 'frame' ? 'Start a new ship'
     : first.rule === 'type' ? 'Remove it'
-    : first.rule === 'bounds' ? 'Move it inside the hull, or remove it'
+    : first.rule === 'bounds' ? 'Move it inside the build area, or remove it'
     : 'Move or remove it';
   return failing('layout', `${first.message.replace(/\.$/, '')}${more}`, fix);
 }

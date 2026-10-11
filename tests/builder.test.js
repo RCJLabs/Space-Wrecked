@@ -6,18 +6,20 @@ import { fileURLToPath } from 'node:url';
 import {
   airlocksOnHullEdge,
   applyCommand,
+  blockedFacings,
   buildShip,
   connections,
-  doorStates,
   layoutProblems,
   moduleAt,
   moveModule,
   newShip,
+  openings,
   placeModule,
   placementError,
   reachableFromBridge,
   removeModule,
   rotateModule,
+  spaceTest,
   turnedPlacement,
 } from '../src/sim/builder.js';
 import { indexDefs } from '../src/sim/defs.js';
@@ -25,27 +27,28 @@ import { EXAMPLE_SCRIPT, renderShip, runScript } from '../tools/build-ship.js';
 import { readData } from '../tools/data.js';
 
 // A tiny catalog for rule tests, so content changes don't break them.
-const ALL_SIDES = ['n', 'e', 's', 'w'].map((side) => ({ side, at: 0 }));
-const mod = (id, size, doors, tags = [], rotates = true) => ({
+const mod = (id, size, tags = [], rotates = true, facesSpace = undefined) => ({
   id,
   name: id[0].toUpperCase() + id.slice(1),
   size,
   rotates,
-  doors,
   tags,
+  ...(facesSpace && { facesSpace }),
 });
 const defs = indexDefs({
   modules: {
-    tilesPerCell: 2,
+    tilesPerCell: 1,
     tiles: { '.': 'floor' },
     modules: [
-      mod('bridge', [1, 1], ALL_SIDES, ['bridge']),
-      mod('hall', [1, 1], ALL_SIDES),
-      mod('lock', [1, 1], ALL_SIDES, ['airlock']),
-      mod('long', [2, 1], [{ side: 's', at: 1 }, { side: 'w', at: 0 }]),
-      mod('fixed', [1, 2], [{ side: 'n', at: 0 }], [], false),
-      mod('blind', [1, 1], [{ side: 'n', at: 0 }]),
-      mod('beam', [3, 1], [{ side: 'w', at: 0 }]),
+      mod('bridge', [1, 1], ['bridge']),
+      mod('hall', [1, 1]),
+      mod('duct', [1, 1], ['corridor']),
+      mod('lock', [1, 1], ['airlock']),
+      mod('long', [2, 1]),
+      mod('fixed', [1, 2], [], false),
+      mod('beam', [3, 1]),
+      mod('jet', [1, 1], [], false, { side: 'w', what: 'exhaust' }),
+      mod('gun', [1, 1], [], true, { side: 'n', what: 'barrel' }),
     ],
   },
   frames: {
@@ -55,6 +58,7 @@ const defs = indexDefs({
       { id: 'open', name: 'Open frame', width: 8, height: 8, maxModules: 20 },
       { id: 'shaped', name: 'Shaped frame', width: 4, height: 3, maxModules: 9, shape: ['.##.', '####', '.##.'] },
       { id: 'holed', name: 'Holed frame', width: 5, height: 4, maxModules: 20, shape: ['#####', '#####', '##.##', '#####'] },
+      { id: 'window', name: 'Window frame', width: 6, height: 6, maxModules: 20, shape: ['######', '######', '##..##', '##..##', '######', '######'] },
     ],
   },
   manufacturers: { manufacturers: [] },
@@ -197,41 +201,79 @@ test('applyCommand runs place, move and remove, and refuses anything else', () =
   assert.equal(moduleAt(ship, defs, -1, 0), null, 'off the frame');
 });
 
-test('connectivity: a door joins two modules only when both have a socket on that edge', () => {
-  // bridge - hall - blind - lock in a row. blind's only door faces north, so
-  // neither the hall's east door nor the airlock's west door has a partner.
-  const ship = build('small', [['bridge', 0, 0], ['hall', 1, 0], ['blind', 2, 0], ['lock', 3, 0]]);
-  const links = connections(ship, defs);
-  assert.deepEqual([...links.get(1)], [2]);
-  assert.deepEqual([...links.get(3)], []);
-  assert.deepEqual([...reachableFromBridge(ship, defs).reachable].sort(), [1, 2]);
-  const problem = layoutProblems(ship, defs).find((p) => p.rule === 'connected');
-  assert.deepEqual(problem.uids, [3, 4]);
-  assert.match(problem.message, /Blind at \(2, 0\), Lock at \(3, 0\)/);
-});
+// Openings as "uid@x,y side kind", sorted, for comparing.
+const gaps = (ship) => openings(ship, defs).map((o) => `${o.uid}@${o.x},${o.y}${o.side} ${o.kind}`).sort();
 
-test('connectivity: turning a module can join it, and a detour reaches the rest', () => {
-  const turned = build('small', [['bridge', 0, 0], ['hall', 1, 0], ['blind', 2, 0, 3], ['lock', 3, 0]]);
-  assert.deepEqual([...connections(turned, defs).get(3)], [2], 'turned to face west, blind joins the hall');
-  assert.deepEqual(rules(turned), ['connected'], 'the airlock is still cut off');
-  const routed = build('small', [
-    ['bridge', 0, 0], ['hall', 1, 0], ['blind', 2, 0, 3], ['lock', 3, 0],
-    ['hall', 1, 1], ['hall', 2, 1], ['hall', 3, 1],
+test('rooms that share a wall join, through one doorway in its middle', () => {
+  // A bridge and a long room side by side, and a beam under both.
+  const ship = build('small', [['bridge', 0, 0], ['long', 1, 0], ['beam', 0, 1]]);
+  assert.deepEqual([...connections(ship, defs).get(3)].sort(), [1, 2]);
+  assert.deepEqual(gaps(ship), [
+    '1@0,0e door', '1@0,0s door', // bridge: into the long room, and down into the beam
+    '2@1,0s door', '2@1,0w door', // long: the left of its two shared edges with the beam
+    '3@0,1n door', '3@1,1n door',
   ]);
-  assert.deepEqual(rules(routed), []);
+  assert.deepEqual(rules(ship), ['airlock']);
 });
 
-test('doorStates says what each door opens onto', () => {
-  // bridge (1) and hall (2) side by side, a north-only blind (3) under the
-  // bridge, and another blind (4) east of the hall, which shows it a wall.
-  const ship = build('small', [['bridge', 0, 0], ['hall', 1, 0], ['blind', 0, 1], ['blind', 2, 0]]);
-  const states = Object.fromEntries(doorStates(ship, defs).map((d) => [`${d.uid}${d.side}`, d.state]));
-  assert.deepEqual(states, {
-    '1n': 'outside', '1e': 'linked', '1s': 'linked', '1w': 'outside',
-    '2n': 'outside', '2e': 'blocked', '2s': 'open', '2w': 'linked',
-    '3n': 'linked',
-    '4n': 'outside',
-  });
+test('rooms that only touch at a corner, or not at all, are not joined', () => {
+  const ship = build('small', [['bridge', 0, 0], ['hall', 1, 1], ['hall', 3, 0]]);
+  assert.deepEqual([...reachableFromBridge(ship, defs).reachable], [1]);
+  const problem = layoutProblems(ship, defs).find((p) => p.rule === 'connected');
+  assert.deepEqual(problem.uids, [2, 3]);
+  assert.match(problem.message, /shared wall: Hall at \(1, 1\), Hall at \(3, 0\)/);
+});
+
+test('corridors side by side open into each other and count as one room', () => {
+  // Three ducts in a row under a beam: open between them, and one doorway
+  // into the beam, not three.
+  const ship = build('small', [['beam', 0, 0], ['duct', 0, 1], ['duct', 1, 1], ['duct', 2, 1]]);
+  assert.deepEqual(gaps(ship), [
+    '1@1,0s door',
+    '2@0,1e open',
+    '3@1,1e open', '3@1,1n door', '3@1,1w open',
+    '4@2,1w open',
+  ]);
+  assert.deepEqual([...connections(ship, defs).get(2)], [3], 'the far duct reaches the beam through the run');
+  const bent = build('open', [['bridge', 2, 2], ['duct', 3, 2], ['duct', 3, 3], ['duct', 2, 3]]);
+  assert.deepEqual(gaps(bent).filter((g) => g.startsWith('1@')), ['1@2,2e door', '1@2,2s door'], 'one doorway per side the run touches');
+});
+
+test("a part's side that has to face space gets no doorway, and is a problem when blocked", () => {
+  // The jet's exhaust faces west, onto the bridge: no way through, and blocked.
+  const blocked = build('small', [['bridge', 0, 0], ['jet', 1, 0]]);
+  assert.deepEqual([...connections(blocked, defs).get(1)], []);
+  assert.deepEqual(blockedFacings(blocked, defs), [{ uid: 2, what: 'exhaust' }]);
+  const problem = layoutProblems(blocked, defs).find((p) => p.rule === 'faces');
+  assert.deepEqual(problem.uids, [2]);
+  assert.equal(problem.message, 'Jet at (1, 0) has its exhaust blocked: it has to face space.');
+  // With the bridge on its east side instead, the jet joins and blows clear.
+  const clear = build('small', [['bridge', 1, 0], ['jet', 0, 0]]);
+  assert.deepEqual([...connections(clear, defs).get(1)], [2]);
+  assert.deepEqual(blockedFacings(clear, defs), []);
+  // A gun's barrel turns with it: turned to face east, a hall to its north joins it.
+  const gun = build('small', [['hall', 1, 0], ['gun', 1, 1, 1]]);
+  assert.deepEqual([...connections(gun, defs).get(2)], [1]);
+  assert.deepEqual(blockedFacings(gun, defs), []);
+  assert.deepEqual(blockedFacings(build('small', [['hall', 1, 0], ['gun', 1, 1]]), defs), [{ uid: 2, what: 'barrel' }]);
+});
+
+test('space is outside the ship, but not a notch the hull closes over', () => {
+  // A U of halls around (1, 1): parts on three sides, so the hull fills it.
+  const ship = build('open', [['hall', 0, 0], ['hall', 1, 0], ['hall', 2, 0], ['hall', 0, 1], ['hall', 2, 1]]);
+  const isSpace = spaceTest(ship, defs);
+  assert.equal(isSpace(1, 1), false, 'the notch');
+  assert.equal(isSpace(1, 2), true, 'below it');
+  assert.equal(isSpace(1, 0), false, 'a part');
+  assert.equal(isSpace(-1, 0), true, 'past the edge of the yard');
+  const sealed = build('open', [['hall', 1, 0], ['hall', 0, 1], ['hall', 2, 1], ['hall', 1, 2], ['hall', 3, 1], ['hall', 3, 0], ['hall', 3, 2]]);
+  assert.equal(spaceTest(sealed, defs)(1, 1), false, 'a hole closed in on all four sides');
+});
+
+test("each side of an airlock that faces space has a hatch in its middle", () => {
+  const ship = build('small', [['bridge', 0, 0], ['lock', 1, 0], ['hall', 2, 0]]);
+  assert.deepEqual(gaps(ship).filter((g) => g.endsWith('hatch')), ['2@1,0n hatch', '2@1,0s hatch']);
+  assert.deepEqual(airlocksOnHullEdge(ship, defs), [2]);
 });
 
 test('connectivity: without a bridge there is nothing to connect to', () => {
@@ -241,7 +283,7 @@ test('connectivity: without a bridge there is nothing to connect to', () => {
 });
 
 test('airlock: it must touch open space outside the hull', () => {
-  // Halls all around the airlock: it connects, but no side faces space.
+  // Halls all around the airlock: it joins, but no side faces space.
   const ring = build('ring', [
     ['bridge', 0, 0], ['hall', 1, 0], ['hall', 2, 0],
     ['hall', 0, 1], ['lock', 1, 1], ['hall', 2, 1],
@@ -249,7 +291,9 @@ test('airlock: it must touch open space outside the hull', () => {
   ]);
   assert.deepEqual(airlocksOnHullEdge(ring, defs), []);
   assert.deepEqual(rules(ring), ['airlock']);
-  const opened = removeModule(ring, 8); // the hall below the airlock
+  const notched = removeModule(ring, 8); // the hall below the airlock
+  assert.deepEqual(airlocksOnHullEdge(notched, defs), [], 'a one-cell notch is hull, not space');
+  const opened = removeModule(notched, 9); // and the one beside that
   assert.deepEqual(airlocksOnHullEdge(opened, defs), [5]);
   assert.deepEqual(rules(opened), []);
 });
@@ -278,9 +322,9 @@ test('a full starter ship builds from a script with the real data and passes eve
   assert.deepEqual(rejected, []);
   assert.deepEqual(problems, []);
   // Nose to the right: engines at the back (left), bridge at the front.
-  assert.equal(renderShip(ship, real), ['.QQRR..', 'EE+RR+B', 'EE++++B', '..LAW..'].join('\n'));
+  assert.equal(renderShip(ship, real), ['..QQQRRR..', 'EEQQQRRRBB', 'EE+++RRRBB', 'EELLAAW.BB', 'EE........'].join('\n'));
 
-  const extra = { ...script, placements: [...script.placements, { type: 'corridor', x: 5, y: 1, rot: 0 }] };
+  const extra = { ...script, placements: [...script.placements, { type: 'corridor', x: 10, y: 7, rot: 0 }] };
   const bad = runScript(extra, real);
   assert.equal(bad.rejected.length, 1);
   assert.equal(bad.rejected[0].index, script.placements.length);
@@ -291,7 +335,7 @@ test('the build-ship tool runs a script from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/build-ship.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /^\.QQRR\.\.$/m);
+  assert.match(run.stdout, /^\.\.QQQRRR\.\.$/m);
   assert.match(run.stdout, /All placement rules pass/);
   assert.match(run.stdout, /Flight check: all 6 lines pass/);
 });
@@ -310,19 +354,22 @@ test("a shaped frame's cut-away cells are space: nothing goes there", async () =
   assert.equal(place(ship, 'long', 0, 1), null);
 });
 
-test('doors onto cut-away cells open onto space, and an airlock there is on the hull edge', () => {
-  const ship = build('shaped', [['hall', 1, 0]]);
-  const states = Object.fromEntries(doorStates(ship, defs).map((d) => [d.side, d.state]));
-  assert.deepEqual(states, { n: 'outside', e: 'open', s: 'open', w: 'outside' });
+test('an airlock beside a cut-away cell opens onto space', () => {
+  const ship = build('shaped', [['lock', 1, 0], ['hall', 2, 0], ['hall', 1, 1]]);
+  assert.deepEqual(gaps(ship).filter((g) => g.endsWith('hatch')), ['1@1,0n hatch', '1@1,0w hatch']);
   // An airlock whose only open side faces a hole cut in the middle of the
-  // frame: walled in by parts, but still open to space.
+  // frame: walled in by parts, but still open to space...
+  const window = build('window', [['lock', 2, 1], ['hall', 2, 0], ['hall', 1, 1], ['hall', 3, 1], ['hall', 1, 2], ['hall', 1, 3], ['hall', 4, 2], ['hall', 4, 3], ['hall', 2, 4], ['hall', 3, 4]]);
+  assert.deepEqual(airlocksOnHullEdge(window, defs), [1]);
+  // ...unless the hole is one cell with parts on every side: the hull
+  // closes over that.
   const holed = build('holed', [['lock', 2, 1], ['hall', 2, 0], ['hall', 1, 1], ['hall', 3, 1], ['hall', 1, 2], ['hall', 3, 2], ['hall', 2, 3]]);
-  assert.deepEqual(airlocksOnHullEdge(holed, defs), [1]);
+  assert.deepEqual(airlocksOnHullEdge(holed, defs), []);
 });
 
 test('a part saved where the frame no longer reaches is reported, not moved', () => {
   const ship = { frame: 'shaped', nextUid: 3, modules: [{ uid: 1, type: 'bridge', x: 1, y: 1, rot: 0 }, { uid: 2, type: 'hall', x: 0, y: 0, rot: 0 }] };
   const problems = layoutProblems(ship, defs).filter((p) => p.rule === 'bounds');
-  assert.deepEqual(problems.map((p) => [p.uids, p.message]), [[[2], 'Hall at (0, 0) sticks out of the Shaped frame.']]);
+  assert.deepEqual(problems.map((p) => [p.uids, p.message]), [[[2], 'Hall at (0, 0) sticks out of the build area.']]);
   assert.deepEqual(ship.modules[1], { uid: 2, type: 'hall', x: 0, y: 0, rot: 0 });
 });

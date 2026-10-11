@@ -23,7 +23,7 @@ test('a code rebuilds the identical ship, in the same build order', () => {
   const ship = example();
   const code = encodeBlueprint(ship);
   assert.match(code, new RegExp(`^wtb\\.${BLUEPRINT_VERSION}\\.[A-Za-z0-9_-]+\\.[0-9a-f]{8}$`));
-  assert.ok(code.length < 200, `${code.length} characters for 14 parts`);
+  assert.ok(code.length < 200, `${code.length} characters for 11 parts`);
   const result = decodeBlueprint(code, defs);
   assert.equal(result.ok, true, result.error);
   assert.deepEqual(result.ship, ship);
@@ -71,7 +71,20 @@ test('every way a code can be wrong gets a message, not a crash', () => {
   assert.match(error(encodePlacements('starter', [{ type: 'warpcore', x: 1, y: 1, rot: 0 }, { type: 'galley', x: 2, y: 1, rot: 0 }])), /parts this version of the game doesn't have: warpcore, galley\./);
   const overlap = [{ type: 'reactor', x: 1, y: 0, rot: 0 }, { type: 'corridor', x: 2, y: 1, rot: 0 }];
   assert.equal(error(encodePlacements('starter', overlap)), "This blueprint doesn't fit together: Corridor would overlap Reactor at (1, 0).");
-  assert.match(error(encodePlacements('starter', [{ type: 'corridor', x: 0, y: 0, rot: 0 }])), /doesn't fit together: Corridor doesn't fit inside the Starter hull there/, 'a cut-away cell');
+  assert.match(error(encodePlacements('starter', [{ type: 'corridor', x: 30, y: 0, rot: 0 }])), /doesn't fit together: Corridor would go past the edge of the build area/, 'past the yard');
+});
+
+test('a version 1 code from before the fine grid opens with its parts moved onto it', () => {
+  // M5's example ship, laid out on the old grid.
+  const old = [
+    ['bridge', 6, 1, 1], ['corridor', 5, 1, 0], ['corridor', 5, 2, 0], ['corridor', 4, 2, 0], ['corridor', 3, 2, 0],
+    ['corridor', 2, 2, 0], ['corridor', 2, 1, 0], ['reactor', 3, 0, 0], ['quarters', 1, 0, 0], ['engine', 0, 1, 0],
+    ['engine', 0, 2, 0], ['lifesupport', 2, 3, 0], ['airlock', 3, 3, 0], ['weapon', 4, 3, 2],
+  ].map(([type, x, y, rot]) => ({ type, x, y, rot }));
+  const result = decodeBlueprint(encodePlacements('starter', old, 1), defs);
+  assert.equal(result.ok, true, result.error);
+  assert.deepEqual(layout(result.ship), old.map((p) => ({ ...p, x: p.x * 2 + 5, y: p.y * 2 + 3 })));
+  assert.equal(encodeBlueprint(result.ship).split('.')[1], String(BLUEPRINT_VERSION), 'and copies out as a new code');
 });
 
 test('no input makes decoding throw', () => {

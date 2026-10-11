@@ -8,14 +8,17 @@ import { checksum, fromBase64Url, toBase64Url } from './codec.js';
 import { isState } from './rng.js';
 import { isShipData } from '../sim/builder.js';
 import { emptyBuilds, isBuilds } from '../sim/builds.js';
-import { logFor, renumbered } from '../sim/replay.js';
+import { regridCommand, regridShip } from '../sim/regrid.js';
+import { isCommand, logFor, renumbered } from '../sim/replay.js';
 import { FPS_CAPS } from '../sim/settings.js';
 
 // History:
 //   0  settings and RNG state (M0)
 //   1  plus the builder's ship, or null before one is started (M3)
 //   2  the ship becomes saved slots with build logs (builds.js) (M5)
-export const SAVE_VERSION = 2;
+//   3  the builder's cells split in four: ships and logs move to the fine
+//      grid (regrid.js) (M5b)
+export const SAVE_VERSION = 3;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -32,6 +35,21 @@ export const MIGRATIONS = [
       if (ship === null || ship === undefined) return { ...rest, builds: emptyBuilds() };
       const tidy = isShipData(ship) ? renumbered(ship) : ship;
       return { ...rest, builds: { active: 0, slots: [{ name: 'Ship 1', ship: tidy, log: isShipData(ship) ? logFor(tidy) : [] }] } };
+    },
+  },
+  // Every slot's ship and build log move to the fine grid, part for part.
+  // Anything unreadable is left as it is for validate to report.
+  {
+    from: 2,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.builds) || !Array.isArray(data.builds.slots)) return data;
+      const slots = data.builds.slots.map((slot) => {
+        if (!isObject(slot)) return slot;
+        const ship = isShipData(slot.ship) ? regridShip(slot.ship) : slot.ship;
+        const log = Array.isArray(slot.log) ? slot.log.map((command) => (isCommand(command) ? regridCommand(command) : command)) : slot.log;
+        return { ...slot, ship, log };
+      });
+      return { ...data, builds: { ...data.builds, slots } };
     },
   },
 ];

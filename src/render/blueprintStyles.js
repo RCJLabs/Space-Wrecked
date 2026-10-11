@@ -5,12 +5,12 @@ import { palette, rgba } from './palette.js';
 
 const line = palette.bpLine;
 const glow = palette.bpGlow;
-const { good, bad, accent, ink, inkDim } = palette;
+const { good, bad, ink } = palette;
 
 export const BLUEPRINT_STYLES = {
-  gridMinor: { stroke: rgba(line, 0.06), width: 1 },
-  gridMajor: { stroke: rgba(line, 0.13), width: 1 },
-  slot: { stroke: rgba(line, 0.42), width: 1.2, dash: [5, 4] },
+  gridMinor: { stroke: rgba(line, 0.09), width: 1 },
+  gridMajor: { stroke: rgba(line, 0.17), width: 1 },
+  yardEdge: { stroke: rgba(line, 0.4), width: 1.2, dash: [6, 5] },
   deck: { fill: rgba(line, 0.05) },
   roomFloor: { fill: rgba(line, 0.05) },
   roomEdge: { stroke: rgba(line, 0.5), width: 1 },
@@ -26,9 +26,6 @@ export const BLUEPRINT_STYLES = {
   noseFace: { fill: rgba(line, 0.09) },
   wallFace: { fill: rgba(line, 0.07) },
   wallPost: { stroke: rgba(line, 0.45), width: 0.9 },
-  doorOpen: { fill: rgba(accent, 0.3), stroke: accent, width: 2.2 },
-  doorBlocked: { fill: rgba(bad, 0.28), stroke: bad, width: 2.2 },
-  doorSealed: { fill: rgba(inkDim, 0.16), stroke: rgba(inkDim, 0.75), width: 1.6 },
   propFace: { fill: rgba(line, 0.08) },
   nozzleFace: { fill: rgba(line, 0.16) },
   glass: { fill: rgba(line, 0.24) },

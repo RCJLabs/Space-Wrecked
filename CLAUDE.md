@@ -80,7 +80,7 @@ PROGRESS.md
 
 - Landscape only. Portrait shows a rotate prompt.
 - Touch targets are at least 48 CSS px. Tap to preview, tap again to confirm. Long-press for details. No hover-only UI.
-- In 3D views, every cell at the default camera is a 48 px target on the cover screen (`tests/orbit.test.js` checks it). Perspective shrinks far cells, so the default angle is gentle; zoom covers the rest.
+- In 3D views a cell is smaller than 48 px (about 24 px with a whole starter ship in view on the cover screen; Evan's call in M5b), so a single tap never places anything: the part shows as a ghost first, and a second tap on it, or the end of a drag, puts it down. The default camera fits the whole ship with every cell at least 22 px (`tests/orbit.test.js` checks it); zoom covers the rest.
 - Respect safe-area insets.
 - Test both screen shapes: about 2.4:1 (Galaxy Z Fold cover screen in landscape) and about 1.2:1 (unfolded). Panels anchor to the corners and the board takes the rest.
 - Target 60 fps on a mid-range Android phone. Cap `devicePixelRatio` at 2, offer a 30 fps battery setting, and redraw only what changed.

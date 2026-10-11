@@ -1,9 +1,13 @@
 // The palette, on the drawer's Parts tab: one tile per module type. Tap a
-// tile to pick the part for tap placement, drag it onto the hull to place it
+// tile to pick the part for tap placement, drag it onto the grid to place it
 // directly, long-press it for details. If the tiles don't fit, up and down
 // scrolls them, and a part has to be dragged out sideways.
 import { partIconSvg } from '../../render/parts/blueprint.js';
 import { attachGestures } from '../gestures.js';
+
+// The space for an icon on a tile, in CSS px (style.css .bld-part svg).
+const ICON_HEIGHT = 21;
+const ICON_WIDTH = 52;
 
 // handlers: tap(type), longPress(type), dragStart(type, x, y), dragMove(x, y),
 // dragEnd(x, y), dragCancel()
@@ -19,7 +23,10 @@ export function createPalette(defs, handlers) {
     tile.className = 'bld-part';
     tile.dataset.type = def.id;
     tile.setAttribute('aria-pressed', 'false');
-    tile.innerHTML = partIconSvg(def);
+    // Drawn at the size it shows (style.css caps its height), so its lines
+    // keep their weight whatever the part's shape.
+    const [w, h] = def.size;
+    tile.innerHTML = partIconSvg(def, Math.min(ICON_HEIGHT / h, ICON_WIDTH / w));
     const label = document.createElement('span');
     label.textContent = def.name;
     tile.append(label);

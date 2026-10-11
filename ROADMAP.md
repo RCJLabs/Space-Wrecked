@@ -78,19 +78,20 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 ### 4.1 Grid and builder
 
 - **One grid model** (`src/sim/grid.js`) serves the player's ship, enemy ships, battle maps and the colony.
-- **Cells and tiles:** modules snap to builder cells, and one cell becomes 2 × 2 battle tiles. Rooms get space for cover, and corridors are never one tile wide. (Starting value; revisit after M8.)
-- **Hull frames** set the maximum footprint and module cap. Size the starter frame so its battle map fits one phone screen at 48-pixel tiles: 7 × 4 cells, or 14 × 8 tiles, with the long side along the landscape screen and the nose to the right (turned from 4 × 7 in M2, so builder cells stay above 48 px on the folded screen). Bigger frames pan.
-- **Frame shapes:** a frame can cut cells out of its rectangle, so any layout on it traces to a ship. The starter frame keeps 22 of its 28 cells: the corners at the bow and stern are space.
+- **Cells and tiles:** one builder cell is one battle tile. Until M5b a cell was 2 × 2 tiles; Evan asked for finer building. Rooms that need cover are at least 2 cells across, and a corridor can be one tile wide, so where to put a chokepoint is the player's call. (Revisit after M8.)
+- **Hull frames** set the build area and the part cap. The starter frame is an open yard of 24 × 14 cells holding up to 40 parts, nose to the right. The ship can go anywhere in it, and the hull is traced from whatever is built. A typical starter ship is 10 × 5 to 14 × 8 cells, so its battle map fits one phone screen at 48-pixel tiles; bigger ships pan.
+- **Frame shapes:** a frame can still cut cells out of its rectangle, for a special hull. The starter frame had a ship-shaped outline from M4 to M5b; it is open now.
 - **Module definitions** (`data/modules.json`) hold:
   - id, name, manufacturer, size in cells, and whether it rotates
-  - door sockets on its edges
+  - the side that must face space, if any: an engine's exhaust, a gun's barrel
   - stats: power, mass, thrust, crew berths, life support, cargo, hit points
   - tags such as bridge, reactor, engine, airlock or weapon mount
   - an interior template at tile resolution: walls, floor, cover props, consoles
   - cost
 - **Placement rules:**
   - in bounds, with no overlap
-  - every module reachable from the bridge through matching door sockets
+  - every module reachable from the bridge through shared walls: two rooms that share a wall get one doorway in its middle, and corridors side by side open into each other
+  - every engine's exhaust and every gun's barrel facing space
   - at least one airlock on the hull edge
 - **Flight checklist** (the act 1 goal and the launch condition):
   - power balance of 0 or more
@@ -105,6 +106,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Build replay:** every placement is a command, and replaying the command list plays back a timelapse.
 - **Touch controls:**
   - drag from a palette drawer, with a ghost preview tinted valid or invalid
+  - nothing lands from a single tap: a tap shows the part as a ghost, and a second tap on it places it
   - tap to select; rotate and delete buttons; undo and redo
   - pinch to zoom and pan; twist two fingers to turn the ship
 
@@ -252,6 +254,14 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
   **Done when:** any layout looks like a ship from outside, and zooming stays smooth.
 - [x] **M5 Blueprints, saves and replays.** The blueprint codec, copy and paste, save slots (six ships kept in the builder, each with its build log), and the build replay timelapse.
   **Done when:** a code from one device rebuilds the identical ship on another, and a broken code shows a message.
+- [ ] **M5b Fine grid, smaller parts, build anywhere.** Evan's change after M5 (2026-10-11):
+  - The half squares under the old cells become the build grid, one square per battle tile.
+  - Every part shrinks to a size of its own.
+  - The fixed hull outline goes: a ship can be built anywhere on a 24 × 14 yard, up to 40 parts.
+  - Rooms that share a wall join through a doorway on their own. An engine's exhaust and a gun's barrel must face space.
+  - Saves (version 3) and blueprint codes (version 2) convert.
+
+  **Done when:** on the Fold's cover screen, a ship built from the smaller parts, off the old outline and joined only by shared walls, passes the flight checklist with no part placed by mistake; and ships and codes from M5 still open.
 
 **Gate 1:** Evan builds for 15 minutes on the Fold and wants to keep going. If not, fix the builder before Phase 2.
 
@@ -276,7 +286,7 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
 
 Pick the tone before M14.
 
-- [ ] **M12 Campaign state.** Acts, hub, credits, parts, crew, heat and flags; autosave points; `SAVE_VERSION` 3 (M3 took 1 for the builder's ship, M5 took 2 for its slots).
+- [ ] **M12 Campaign state.** Acts, hub, credits, parts, crew, heat and flags; autosave points; `SAVE_VERSION` 4 (M3 took 1 for the builder's ship, M5 took 2 for its slots, M5b took 3 for the finer grid).
   **Done when:** quitting anywhere and reopening resumes correctly.
 - [ ] **M13 Hangar hub.** The half-built starter hull, construction mode (owned parts only), the flight checklist as the act goal, and a crew panel.
   **Done when:** a new player is building within 60 seconds of starting.
@@ -364,5 +374,6 @@ These ideas wait until v0.4 or later:
 - named companions with loyalty quests
 - paint and decals
 - vibration on hits
+- dragging to lay a run of corridor in one go: since M5b a corridor is one cell, so a long one takes two taps a cell (raised in M5b; could come sooner if Gate 1 finds it tedious)
 
 Ideas that come up during a session go here, not into code.

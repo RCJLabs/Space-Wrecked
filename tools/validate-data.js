@@ -10,7 +10,7 @@ import { readData } from './data.js';
 
 const SIDES = ['n', 'e', 's', 'w'];
 const STATS = ['power', 'mass', 'thrust', 'berths', 'lifeSupport', 'cargo', 'hp'];
-const MODULE_KEYS = ['id', 'name', 'glyph', 'manufacturer', 'size', 'rotates', 'doors', 'stats', 'tags', 'interior', 'cost'];
+const MODULE_KEYS = ['id', 'name', 'glyph', 'manufacturer', 'size', 'rotates', 'facesSpace', 'stats', 'tags', 'interior', 'cost'];
 const FRAME_KEYS = ['id', 'name', 'width', 'height', 'shape', 'maxModules', 'minThrustToMass'];
 // balance.json: each number's allowed range.
 const BALANCE = { startingCrew: [1, 100] };
@@ -97,10 +97,10 @@ export function validateData({ modules: moduleFile, frames: frameFile, manufactu
     const sizeOk = Array.isArray(def.size) && def.size.length === 2 && def.size.every((n) => isIntIn(n, 1, MAX_MODULE_SIZE));
     if (!sizeOk) {
       fail(where, `size must be [width, height] in cells, each from 1 to ${MAX_MODULE_SIZE}`);
-    } else {
-      checkDoors(def, where, fail);
-      if (isIntIn(tilesPerCell, 1, 8) && tiles) checkInterior(def, tilesPerCell, tiles, where, fail);
+    } else if (isIntIn(tilesPerCell, 1, 8) && tiles) {
+      checkInterior(def, tilesPerCell, tiles, where, fail);
     }
+    if (def.facesSpace !== undefined) checkFacesSpace(def.facesSpace, where, fail);
     checkStats(def.stats, where, fail);
     if (!Array.isArray(def.tags)) {
       fail(where, 'tags must be a list');
@@ -119,27 +119,18 @@ export function validateData({ modules: moduleFile, frames: frameFile, manufactu
   return problems;
 }
 
-function checkDoors(def, where, fail) {
-  if (!Array.isArray(def.doors) || def.doors.length === 0) {
-    fail(where, 'doors must list at least one socket');
+// The side a part needs open to space (an engine's exhaust, a gun's
+// barrel): { side, what }, where `what` names it in messages.
+function checkFacesSpace(facesSpace, where, fail) {
+  if (!facesSpace || typeof facesSpace !== 'object' || Array.isArray(facesSpace)) {
+    fail(where, 'facesSpace must be { side, what }');
     return;
   }
-  const [w, h] = def.size;
-  const seen = new Set();
-  def.doors.forEach((door, i) => {
-    if (!SIDES.includes(door?.side)) {
-      fail(where, `door #${i}: side must be one of n, e, s, w`);
-      return;
-    }
-    const length = door.side === 'n' || door.side === 's' ? w : h;
-    if (!isIntIn(door.at, 0, length - 1)) {
-      fail(where, `door #${i}: "at" must be from 0 to ${length - 1} on side ${door.side}`);
-      return;
-    }
-    const key = `${door.side}${door.at}`;
-    if (seen.has(key)) fail(where, `door #${i}: duplicate socket ${door.side} ${door.at}`);
-    seen.add(key);
-  });
+  for (const key of Object.keys(facesSpace)) {
+    if (key !== 'side' && key !== 'what') fail(where, `facesSpace: unknown field "${key}"`);
+  }
+  if (!SIDES.includes(facesSpace.side)) fail(where, 'facesSpace.side must be one of n, e, s, w');
+  if (!isText(facesSpace.what)) fail(where, 'facesSpace.what must name what faces space, like "exhaust"');
 }
 
 function checkInterior(def, tilesPerCell, tiles, where, fail) {

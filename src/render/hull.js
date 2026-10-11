@@ -4,16 +4,17 @@
 // out: nozzles, barrels and docking collars. Pure geometry on the deck, in
 // cells (the board's world units); the 3D scenes raise it into walls. Ships
 // fly toward +x.
-import { OPPOSITE, SIDES, step } from '../sim/grid.js';
-import { hasTag, placedCells, placedDoors } from '../sim/modules.js';
+import { spaceTest } from '../sim/builder.js';
+import { SIDES, step } from '../sim/grid.js';
+import { facingSide, hasTag, placedCells, sideCells } from '../sim/modules.js';
 
-// Room the camera keeps around the frame, in cells, for what sticks out of
+// Room the camera keeps around the ship, in cells, for what sticks out of
 // the hull: nozzles at the stern, the nose at the front, barrels and collars
 // above and below.
-export const OVERHANG = { left: 0.55, right: 0.85, top: 0.32, bottom: 0.32 };
+export const OVERHANG = { left: 1.1, right: 1.7, top: 0.7, bottom: 0.7 };
 
 // The longest a nose gets, in cells.
-export const NOSE_MAX = 0.75;
+export const NOSE_MAX = 1.5;
 
 const NORMAL = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 
@@ -26,9 +27,10 @@ const NORMAL = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 //             with the outward normal, fairing slopes included
 //   noses     { x, y0, y1, length }: one per run of cells on the front
 //             column; x is the hull's front edge, y0 to y1 its span
-//   nozzles   { x, y, side } engine cells whose exhaust side is open
-//   barrels   { x, y, side } weapon cells whose muzzle side is open
-//   collars   { x, y, side } airlock cell sides open to space
+//   nozzles   { x, y, side } engine cells whose exhaust side faces space
+//   barrels   { x, y, side } weapon cells whose muzzle side faces space
+//   collars   { x, y, side } an airlock's hatches: one in the middle of each
+//             side that faces space (builder.js joins())
 //   lights    { x, y, side: 'port' | 'starboard' } at the stern corners
 export function traceHull(ship, defs) {
   const owners = new Map();
@@ -96,27 +98,25 @@ export function traceHull(ship, defs) {
     if (y <= maxY && occupied(maxX, y)) {
       if (start === null) start = y;
     } else if (start !== null) {
-      hull.noses.push({ x: maxX + 1, y0: start, y1: y, length: Math.min(NOSE_MAX, 0.3 + 0.25 * (y - start)) });
+      hull.noses.push({ x: maxX + 1, y0: start, y1: y, length: Math.min(NOSE_MAX, 0.6 + 0.25 * (y - start)) });
       start = null;
     }
   }
 
-  const open = (x, y) => !solid(x, y);
+  // Engines blow and guns point out of their facesSpace side, where it
+  // faces space, which is the rule the checklist holds them to.
+  const isSpace = spaceTest(ship, defs);
   for (const module of ship.modules) {
     const def = defs.modules.get(module.type);
     if (!def) continue;
-    const cells = placedCells(def, module);
-    // Engines blow and guns point away from their first door.
-    const away = OPPOSITE[placedDoors(def, module)[0]?.[2]];
-    if (away && hasTag(def, 'engine')) {
-      for (const [x, y] of cells) if (open(...step(x, y, away))) hull.nozzles.push({ x, y, side: away });
-    }
-    if (away && hasTag(def, 'weapon')) {
-      for (const [x, y] of cells) if (open(...step(x, y, away))) hull.barrels.push({ x, y, side: away });
-    }
+    const away = facingSide(def, module.rot);
+    const out = away ? sideCells(def, module, away).filter(([x, y]) => isSpace(...step(x, y, away))) : [];
+    if (hasTag(def, 'engine')) for (const [x, y] of out) hull.nozzles.push({ x, y, side: away });
+    if (hasTag(def, 'weapon')) for (const [x, y] of out) hull.barrels.push({ x, y, side: away });
     if (hasTag(def, 'airlock')) {
-      for (const [x, y] of cells) {
-        for (const side of SIDES) if (open(...step(x, y, side))) hull.collars.push({ x, y, side });
+      for (const side of SIDES) {
+        const open = sideCells(def, module, side).filter(([x, y]) => isSpace(...step(x, y, side)));
+        if (open.length) hull.collars.push({ ...pointOf(open[Math.floor((open.length - 1) / 2)]), side });
       }
     }
   }
@@ -128,6 +128,10 @@ export function traceHull(ship, defs) {
     { x: minX + 0.08, y: Math.max(...stern) + 0.88, side: 'starboard' },
   );
   return hull;
+}
+
+function pointOf([x, y]) {
+  return { x, y };
 }
 
 // The two ends of a cell's side, in order around the cell clockwise.

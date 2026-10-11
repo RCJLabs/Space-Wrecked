@@ -63,8 +63,8 @@ test('a session opened from a slot carries on its log; loading another replaces 
 test('replay shows every step from the empty frame, and stops at a step that no longer works', () => {
   const log = [
     { op: 'place', uid: 1, type: 'reactor', x: 1, y: 0, rot: 0 },
-    { op: 'place', uid: 2, type: 'corridor', x: 3, y: 1, rot: 0 },
-    { op: 'move', uid: 2, x: 3, y: 2, rot: 0 },
+    { op: 'place', uid: 2, type: 'corridor', x: 4, y: 1, rot: 0 },
+    { op: 'move', uid: 2, x: 4, y: 2, rot: 0 },
     { op: 'remove', uid: 1 },
   ];
   const { ships, error } = replay(log, defs, 'starter');

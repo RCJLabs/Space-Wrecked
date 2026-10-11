@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import { NOSE_MAX, OVERHANG, traceHull } from '../src/render/hull.js';
 import { buildShip, newShip } from '../src/sim/builder.js';
 import { indexDefs } from '../src/sim/defs.js';
+import { readFileSync } from 'node:fs';
+import { EXAMPLE_SCRIPT } from '../tools/build-ship.js';
 import { readData } from '../tools/data.js';
 
 const defs = indexDefs(readData());
@@ -15,17 +17,13 @@ const at = (type, x, y, rot = 0) => ({ type, x, y, rot });
 // Coordinates to three places, so 0.1 steps compare cleanly.
 const round = (value) => JSON.parse(JSON.stringify(value), (k, v) => (typeof v === 'number' ? Math.round(v * 1000) / 1000 : v));
 
-// The ship-shaped layout from the M4 mockups:
-//   .QQRR..
-//   EE+RR+B
-//   EE++++B
-//   ..LAW..
-const MOCKUP = [
-  at('bridge', 6, 1, 1),
-  at('corridor', 5, 1), at('corridor', 5, 2), at('corridor', 4, 2), at('corridor', 3, 2), at('corridor', 2, 2), at('corridor', 2, 1),
-  at('reactor', 3, 0), at('quarters', 1, 0), at('engine', 0, 1), at('engine', 0, 2),
-  at('lifesupport', 2, 3), at('airlock', 3, 3), at('weapon', 4, 3, 2),
-];
+// The example ship (tests/fixtures/example-ship.json), from x 7, y 5:
+//   ..QQQRRR..
+//   EEQQQRRRBB
+//   EE+++RRRBB
+//   EELLAAW.BB
+//   EE........
+const MOCKUP = JSON.parse(readFileSync(EXAMPLE_SCRIPT, 'utf8')).placements;
 
 test('an empty ship has no hull', () => {
   assert.deepEqual(traceHull(newShip('starter'), defs), {
@@ -35,19 +33,18 @@ test('an empty ship has no hull', () => {
 
 test('the body covers every occupied cell, row by row', () => {
   const { cells } = traceHull(ship(MOCKUP), defs);
-  assert.equal(cells.length, 4 + 7 + 7 + 3);
-  assert.deepEqual(cells.slice(0, 5), [[1, 0], [2, 0], [3, 0], [4, 0], [0, 1]]);
-  assert.deepEqual(cells.at(-1), [4, 3]);
+  assert.equal(cells.length, 6 + 10 + 10 + 9 + 2);
+  assert.deepEqual(cells.slice(0, 7), [[9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [14, 5], [7, 6]]);
+  assert.deepEqual(cells.at(-1), [8, 9]);
 });
 
 test('an empty corner between two parts gets a slope from wall to wall', () => {
   const hull = traceHull(ship(MOCKUP), defs);
-  assert.deepEqual(hull.pockets, []);
+  assert.deepEqual(hull.pockets, [[14, 8]], 'reactor, weapon and bridge round three sides');
   assert.deepEqual(hull.fairings, [
-    [[1, 0], [1, 1], [0, 1]], // (0, 0): quarters east, engine south
-    [[5, 0], [5, 1], [6, 1]], // (5, 0): reactor west, corridor south
-    [[2, 4], [2, 3], [1, 3]], // (1, 3): engine north, life support east
-    [[5, 4], [5, 3], [6, 3]], // (5, 3): corridor north, weapon west
+    [[9, 5], [9, 6], [8, 6]], // (8, 5): quarters east, engine south
+    [[15, 5], [15, 6], [16, 6]], // (15, 5): reactor west, bridge south
+    [[9, 10], [9, 9], [10, 9]], // (9, 9): life support north, engine west
   ]);
 });
 
@@ -57,16 +54,16 @@ test('the outline is closed, slopes replace the corners they cross, and normals 
   for (const { a, b } of hull.edges) for (const p of [a, b]) ends.set(`${p}`, (ends.get(`${p}`) ?? 0) + 1);
   assert.ok([...ends.values()].every((n) => n === 2), 'every corner of the outline joins two edges');
   const diagonals = hull.edges.filter(({ a, b }) => a[0] !== b[0] && a[1] !== b[1]);
-  assert.equal(diagonals.length, 4);
-  assert.ok(!hull.edges.some(({ a, b }) => `${a}${b}` === '5,05,1' || `${a}${b}` === '5,15,0'), "the reactor's east wall is behind a slope");
-  const cells = new Set(hull.cells.map((c) => `${c}`));
+  assert.equal(diagonals.length, 3);
+  assert.ok(!hull.edges.some(({ a, b }) => `${a}${b}` === '15,515,6' || `${a}${b}` === '15,615,5'), "the reactor's east wall is behind a slope");
+  const cells = new Set([...hull.cells, ...hull.pockets].map((c) => `${c}`));
   for (const { a, b, normal } of hull.edges) {
     if (a[0] !== b[0] && a[1] !== b[1]) continue;
     const [mx, my] = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
     const cell = (d) => `${Math.floor(mx + normal[0] * d)},${Math.floor(my + normal[1] * d)}`;
     assert.ok(cells.has(cell(-0.5)) && !cells.has(cell(0.5)), `edge ${a} ${b}`);
   }
-  const [shoulder] = diagonals.filter(({ a }) => a[0] === 5 && a[1] === 0);
+  const [shoulder] = diagonals.filter(({ a }) => a[0] === 15 && a[1] === 5);
   assert.deepEqual(shoulder.normal.map((n) => Math.sign(n)), [1, -1], 'the front shoulder faces up and forward');
 });
 
@@ -79,38 +76,40 @@ test('a gap closed on three sides is filled with hull, not sloped', () => {
 });
 
 test('a nose caps each run of cells on the front column, longer for longer runs', () => {
-  assert.deepEqual(traceHull(ship(MOCKUP), defs).noses, [{ x: 7, y0: 1, y1: 3, length: NOSE_MAX }]);
+  assert.deepEqual(round(traceHull(ship(MOCKUP), defs).noses), [{ x: 17, y0: 6, y1: 9, length: 1.35 }]);
+  const long = traceHull(ship([0, 1, 2, 3, 4, 5].map((y) => at('corridor', 3, y))), defs);
+  assert.equal(long.noses[0].length, NOSE_MAX, 'a long bow reaches the longest nose');
   // Two separate cells at the front: a forked bow with two short noses.
   const forked = traceHull(ship([at('corridor', 0, 1), at('corridor', 1, 1), at('corridor', 1, 0), at('corridor', 1, 2), at('corridor', 2, 0), at('corridor', 2, 2)]), defs);
   assert.deepEqual(round(forked.noses), [
-    { x: 3, y0: 0, y1: 1, length: 0.55 },
-    { x: 3, y0: 2, y1: 3, length: 0.55 },
+    { x: 3, y0: 0, y1: 1, length: 0.85 },
+    { x: 3, y0: 2, y1: 3, length: 0.85 },
   ]);
 });
 
-test('engines get nozzles and guns get barrels only where the way out is open', () => {
+test('engines get nozzles and guns get barrels only where the way out faces space', () => {
   const hull = traceHull(ship(MOCKUP), defs);
-  assert.deepEqual(hull.nozzles, [{ x: 0, y: 1, side: 'w' }, { x: 0, y: 2, side: 'w' }]);
-  assert.deepEqual(hull.barrels, [{ x: 4, y: 3, side: 's' }], 'turned twice, the gun points south');
-  const blocked = traceHull(ship([at('corridor', 0, 1), at('engine', 1, 1), at('corridor', 4, 0), at('weapon', 4, 1)]), defs);
-  assert.deepEqual(blocked.nozzles, [], 'a part behind the engine');
-  assert.deepEqual(blocked.barrels, [], 'a part in front of the gun');
+  assert.deepEqual(hull.nozzles, [7, 7, 7, 7].map((x, i) => ({ x, y: 6 + i, side: 'w' })), 'two per engine, one per cell of its exhaust');
+  assert.deepEqual(hull.barrels, [{ x: 13, y: 8, side: 's' }], 'turned twice, the gun points south');
+  const half = traceHull(ship([at('corridor', 0, 1), at('engine', 1, 1), at('corridor', 4, 0), at('weapon', 4, 1)]), defs);
+  assert.deepEqual(half.nozzles, [{ x: 1, y: 2, side: 'w' }], 'a part behind half the exhaust');
+  assert.deepEqual(half.barrels, [], 'a part in front of the gun');
 });
 
-test('airlocks get a docking collar on each side open to space', () => {
-  assert.deepEqual(traceHull(ship(MOCKUP), defs).collars, [{ x: 3, y: 3, side: 's' }]);
+test('airlocks get a docking collar at the hatch on each side open to space', () => {
+  assert.deepEqual(traceHull(ship(MOCKUP), defs).collars, [{ x: 11, y: 8, side: 's' }]);
   const lone = traceHull(ship([at('airlock', 3, 1)]), defs);
-  assert.deepEqual(lone.collars.map((c) => c.side), ['n', 'e', 's', 'w']);
+  assert.deepEqual(lone.collars, [{ x: 3, y: 1, side: 'n' }, { x: 4, y: 1, side: 'e' }, { x: 3, y: 1, side: 's' }, { x: 3, y: 1, side: 'w' }]);
 });
 
 test('running lights sit at the stern corners, red to port', () => {
   const lights = round(traceHull(ship(MOCKUP), defs).lights);
-  assert.deepEqual(lights, [{ x: 0.08, y: 1.12, side: 'port' }, { x: 0.08, y: 2.88, side: 'starboard' }]);
+  assert.deepEqual(lights, [{ x: 7.08, y: 6.12, side: 'port' }, { x: 7.08, y: 9.88, side: 'starboard' }]);
 });
 
-test('everything stays inside the room the camera keeps around the frame', () => {
+test('everything stays inside the room the camera keeps around the ship', () => {
   const hull = traceHull(ship(MOCKUP), defs);
-  for (const nose of hull.noses) assert.ok(nose.x + nose.length <= 7 + OVERHANG.right);
+  for (const nose of hull.noses) assert.ok(nose.x + nose.length <= 17 + OVERHANG.right);
 });
 
 test('tracing is pure', () => {
