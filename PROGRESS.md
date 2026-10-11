@@ -4,7 +4,7 @@ Newest entry first.
 
 ## M2 Touch builder (2026-10-11)
 
-**Status:** built and deployed. It passes every check I can run without a phone (headless Chromium at the Fold's screen sizes, below). Done when needs Evan's phone run: a full starter ship built folded and unfolded, without mis-taps, at 60 fps while dragging. The ROADMAP.md box stays unticked until that passes. M2 ran in the same session as M0 and M1 because Evan asked for it.
+**Status:** done. Evan ran it on the Fold and reported "All works", so Done when is met: a full starter ship built folded and unfolded, without mis-taps, at 60 fps while dragging. The ROADMAP.md box is ticked. M2 ran in the same session as M0 and M1 because Evan asked for it.
 
 ### Shipped
 
@@ -111,8 +111,14 @@ Newest entry first.
   - The FPS overlay read 60 fps during a two-second drag on a 60 Hz headless display, at under 0.1 ms of drawing per frame.
   - Headless timing says little about the phone.
 
+### On the phone (Galaxy Z Fold 6, 2026-10-11)
+
+- Evan: "All works." No FPS figures were written down.
+- Evan's note: the parts don't look like a ship. That's expected for now: M2 draws placeholder boxes, and M4 draws the parts and traces the hull.
+
 ### Known issues
 
+- The parts are boxes, and the starter frame is a plain rectangle. M4's hull tracer follows the placed parts, so a fully packed 7×4 frame would trace to a rounded rectangle. Open question for Evan before M4: give the starter frame a ship shape (a cell mask in `frames.json`)?
 - The sandbox ship isn't saved. Reloading or closing the app clears it.
 - A drag that starts on the outer edge of the drawer's left column may be taken by Android's back gesture. The drawer keeps 16 px of padding on that side, so start drags from the middle of a part. Not checked on the Fold yet.
 - On the folded screen, the layout chip and status line overlap the frame's top and bottom edges. They don't take touches.
@@ -134,7 +140,7 @@ Open the installed app and tap "Update ready, tap to reload" if it shows; DEV �
 
 ### Next session
 
-First, fix whatever the phone run turns up and tick M2 once it passes. Then M3, flight checklist and stats. Its first task: `src/sim/constraints.js`, with the five checklist lines from ROADMAP §4.1 and the fix each one names, tested, before any UI. That needs a minimum thrust-to-mass on frames and a crew count (a `data/balance.json` number until there's a crew).
+M3, flight checklist and stats, unless Evan swaps it with M4 (neither depends on the other). M3's first task: `src/sim/constraints.js`, with the five checklist lines from ROADMAP §4.1 and the fix each one names, tested, before any UI. That needs a minimum thrust-to-mass on frames and a crew count (a `data/balance.json` number until there's a crew).
 
 ## M1 Grid and module data (2026-10-11)
 
