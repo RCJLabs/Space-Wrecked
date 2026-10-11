@@ -134,9 +134,9 @@ export function twist(a, b, slop) {
   return turn - Math.sign(turn) * slop;
 }
 
-// Keeps the box in view. Along an axis where it fits (with the margin), it
-// stays centred; along one where it doesn't, its edges can't come further
-// inside the rect than the margin.
+// Keeps the box in view. Along an axis where it fits (with the margin), all
+// of it stays on screen, wherever it sits; along one where it doesn't, its
+// edges can't come further inside the rect than the margin.
 export function clampOrbit(cam, rect, box, margin = 0) {
   const b = screenBounds(cam, box);
   return {
@@ -147,10 +147,16 @@ export function clampOrbit(cam, rect, box, margin = 0) {
 }
 
 function clampShift(lo, hi, start, size, margin) {
-  const length = hi - lo;
-  if (length <= size - 2 * margin) return start + (size - length) / 2 - lo;
-  if (lo > start + margin) return start + margin - lo;
-  if (hi < start + size - margin) return start + size - margin - hi;
+  const [min, max] = [start + margin, start + size - margin];
+  if (hi - lo <= max - min) {
+    // The box fits: keep all of it on screen, wherever it is.
+    if (lo < min) return min - lo;
+    if (hi > max) return max - hi;
+    return 0;
+  }
+  // Bigger than the view: keep the view on the box.
+  if (lo > min) return min - lo;
+  if (hi < max) return max - hi;
   return 0;
 }
 

@@ -6,21 +6,21 @@ import { placementError } from '../../sim/builder.js';
 export function hintFor(session, defs, drag) {
   const name = (type) => defs.modules.get(type)?.name ?? type;
   if (drag && drag.kind !== 'pan') {
-    if (!drag.placement) return { tone: 'info', text: 'Let go off the hull to cancel.' };
+    if (!drag.placement) return { tone: 'info', text: 'Let go off the grid to cancel.' };
     if (drag.error) return { tone: 'bad', text: drag.error };
     const verb = drag.kind === 'module' ? 'move' : 'place';
     return { tone: 'good', text: `Let go to ${verb} the ${name(drag.type)} here.` };
   }
   if (session.armed) {
     const part = name(session.armed.type);
-    if (!session.ghost) return { tone: 'info', text: `Tap the hull where the ${part} goes.` };
+    if (!session.ghost) return { tone: 'info', text: `Tap the grid where the ${part} goes.` };
     const error = placementError(session.ship, defs, session.ghost);
     if (error) return { tone: 'bad', text: error.message };
     return { tone: 'good', text: `Tap the ${part} again to place it.` };
   }
   const selected = session.ship.modules.find((m) => m.uid === session.selected);
   if (selected) return { tone: 'info', text: `${name(selected.type)}: drag to move it, or Turn or Delete.` };
-  return { tone: 'info', text: 'Drag a part onto the hull, or tap a part and then the hull.' };
+  return { tone: 'info', text: 'Drag a part onto the grid, or tap a part and then the grid.' };
 }
 
 // The part count and either "Ready to launch" or how many flight checks

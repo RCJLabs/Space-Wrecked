@@ -3,10 +3,9 @@
     {
       "id": "starter",
       "name": "Starter hull",
-      "width": 7,
-      "height": 4,
-      "shape": [".####..", "#######", "#######", ".####.."],
-      "maxModules": 20,
+      "width": 24,
+      "height": 14,
+      "maxModules": 40,
       "minThrustToMass": 0.5
     }
   ]

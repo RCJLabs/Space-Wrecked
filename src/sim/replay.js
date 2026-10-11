@@ -32,10 +32,20 @@ export function renumbered(ship) {
   return { ...ship, modules, nextUid };
 }
 
-// True if replaying the log makes exactly this ship.
+// True if replaying the log makes exactly this ship: the same parts, ids,
+// places and turns in the same order (however a save wrote its keys).
 export function logMatches(log, ship, defs) {
   const { ships, error } = replay(log, defs, ship.frame);
-  return !error && JSON.stringify(ships.at(-1)) === JSON.stringify(ship);
+  if (error) return false;
+  const built = ships.at(-1);
+  return (
+    built.nextUid === ship.nextUid &&
+    built.modules.length === ship.modules.length &&
+    built.modules.every((m, i) => {
+      const n = ship.modules[i];
+      return m.uid === n.uid && m.type === n.type && m.x === n.x && m.y === n.y && m.rot === n.rot;
+    })
+  );
 }
 
 // Logs longer than this are shortened when a ship is opened: to a part-by-

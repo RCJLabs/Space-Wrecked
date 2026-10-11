@@ -2,6 +2,123 @@
 
 Newest entry first.
 
+## M5b Fine grid, smaller parts, build anywhere (2026-10-11)
+
+**Status:** built and checked in headless Chromium; not yet on the Fold, so the ROADMAP.md box stays unticked until Evan has built on the phone (as with M4). Evan asked for it after testing M5: "The modules are a bit too big. The grid shows smaller boxes. I want those to be active." Gate 1 waits for it.
+
+Done when: "on the Fold's cover screen, a ship built from the smaller parts, off the old outline and joined only by shared walls, passes the flight checklist with no part placed by mistake; and ships and codes from M5 still open."
+- **Met here, at the cover screen's size and both others:** a 12-part ship built by touch (11 parts tap-tap, one dragged from the drawer), with its cargo hold reaching past M5's outline and joined only by shared walls, passed every flight check.
+  - Every placement added exactly one part.
+  - A stray tap only moved the preview.
+- **M5 saves and codes open, converted,** but the parts come apart (see Known issues).
+- **Open on the phone:** whether 24 px cells are easy to hit with a real finger. Headless taps land exactly where they're aimed.
+
+### Evan's calls (asked before building)
+
+- **Part sizes:** smaller, a size per part.
+- **Build area:** anywhere; no fixed hull outline.
+- **Doors:** automatic, wherever two rooms share a wall.
+- **Touch:** the whole ship stays in view, and every placement previews first.
+
+### Shipped
+
+- **The grid:** one builder cell is one battle tile (`tilesPerCell` 1). The half squares under M5's cells are now the cells. ROADMAP §4.1 is rewritten to match.
+- **Smaller parts.** Sizes in cells:
+
+  | Part | M5 (in today's cells) | Now |
+  | --- | --- | --- |
+  | Bridge | 4×2 | 3×2 |
+  | Reactor | 4×4 | 3×3 |
+  | Engine | 4×2 | 2×2 |
+  | Corridor | 2×2 | 1×1 |
+  | Airlock | 2×2 | 2×1 |
+  | Crew quarters | 4×2 | 3×2 |
+  | Life support | 2×2 | 2×1 |
+  | Cargo hold | 4×4 | 3×3 |
+  | Med bay | 4×2 | 3×2 |
+  | Armory | 2×2 | 2×1 |
+  | Weapon mount | 2×2 | 1×1 |
+  | Shield generator | 2×2 | 2×1 |
+
+  Interiors are redone at the new sizes. Stats are unchanged.
+- **Build anywhere:**
+  - The starter frame is an open yard of 24 × 14 cells, and the part cap goes from 20 to 40.
+  - The hull is traced from whatever is built.
+  - The camera fits the ship (at least a 14 × 8 view) and never moves on its own while you build. Fit reframes the ship as it grows.
+  - You can pan anywhere in the yard and zoom out to all of it. Its edge is dashed.
+- **Automatic doors** (`joins()` in `src/sim/builder.js`):
+  - Two rooms that share a wall get one doorway in its middle (the left or upper of two middle cells).
+  - Corridors side by side open into each other and count as one room, so a room beside a run of corridor gets one doorway per side.
+  - An airlock gets a hatch in the middle of each side that faces space.
+  - Door sockets are gone from the data.
+- **Facing space** (`facesSpace` in `data/modules.json`): an engine's exhaust and a gun's barrel get no doorway and must face space.
+  - Otherwise the layout line fails ("Engine exhaust blocked", "Move Engine at (7, 6) so its exhaust faces space"). The ship still saves.
+  - Space is outside the ship, but a one-cell notch with parts on three sides is hull. The checklist and the hull drawing use the same test, so a blocked nozzle is never drawn firing.
+- **Touch:** cells are about 24 px with a starter ship in view on the cover screen. CLAUDE.md's 3D rule now reads: nothing lands from one tap, and cells are at least 22 px at the default view (tested).
+- **Art at the new scale:**
+  - Walls, rim, hover height, nozzles, barrels, collars, hull height and nose are rescaled.
+  - All 12 parts' 3D fittings, roofs and drawer icons are redrawn.
+  - The grid has a line every cell and a heavier one every 4. Drawer icons are drawn at the size they show.
+- **Saves:** `SAVE_VERSION` 3. Every slot's ship and build log move to the fine grid, part for part: twice the coordinates, 5 right and 3 down (`src/sim/regrid.js`). Converted logs still replay.
+- **Codes:** `BLUEPRINT_VERSION` 2. Version 1 codes (M5) open through the same conversion.
+- **Fixed on the way:**
+  - **Fit on the unfolded screen.** The yard clamp centred the yard whenever it fitted the view, so Fit never hid. Now a yard smaller than the view only has to stay on screen.
+  - **Fit after the ship grows.** Fit didn't reappear because the off-fit test compared screen offsets. It now compares where the fit's middle lands.
+  - **Fit near the yard's edge.** A ship by the edge had a fitted view hanging past it, so Fit could never be reached. The fit is now kept inside the yard too.
+  - **Comparing a build log with its ship.** It compared JSON text, so key order mattered. It now compares the parts.
+- **Tests:** 201 in all, up from 194. New ones cover:
+  - joins, merged corridors and hatches
+  - the facing rule and the space test
+  - the 2-to-3 save migration, and old logs replaying
+  - version 1 codes
+  - the ship-fitted camera, the clamp and the 22 px floor
+
+### Decisions made this session
+
+- **Yard size and part cap (24 × 14, 40 parts):** my numbers, not Evan's.
+- **Old ships convert part for part, not repacked.** Refilling the gaps with corridors would rejoin most of a ship, but it means rewriting build logs with new part ids. That is risky in a migration that can never change once shipped.
+- **A blocked exhaust or barrel is a checklist problem, not a refused placement,** like a part not joined.
+- **The view never moves by itself while building.** Fit is one tap away.
+- **A corridor can be one tile wide,** so a chokepoint is the player's call (ROADMAP §4.1).
+
+### Verified here (headless Chromium with scripted touch, not a phone)
+
+- **At all three sizes (821×283, 905×370 and 960×825):**
+  - The touch build, 14 checks: stray taps, undo and redo, the card's "exhaust must face space", Fit after building, pinch, twist, the Hull view, and a ship in the yard's corner opening fitted.
+  - M5's checks on the fine grid, 34: two-device code copy, bad codes, replay through Hull, slots, two-tap delete, reload. Also an M3 save, an M5 save (its replay included) and an M5 code, all coming forward.
+- **Offline:** with the server stopped after one visit, an M5 save converts, and copy, new ship, paste, replay and reload all work from the cache.
+- **Frame times** at 4× CPU throttle (headless draws canvas on the CPU, so these are floors):
+  - Cover screen: dragging a part 60 fps, pinching and turning 32 fps (M4: 33).
+  - Unfolded: 51 and 19 fps.
+- **Console:** no errors or warnings.
+- **Cell size:** 29.8 px at the middle of the view on the cover screen, about 24 at the edges; 22.2 px at the 821×283 browser-tab size.
+
+### Known issues
+
+- **M5 ships come apart when they convert.** Every part keeps its place and build order, but the smaller parts leave gaps, so most are no longer joined: in M5's example ship, 13 of 14. Rebuild them, or delete them.
+- **Small cells with a real finger are untested.** A miss never places anything (it moves the preview), but it may take extra taps. The 821×283 browser-tab size is smaller still.
+- **A corridor is one cell,** so a long corridor takes two taps a cell. A drag-to-lay-corridor idea is in ROADMAP §9.
+- **Balance:** parts kept their stats while shrinking, and the cap doubled, so a ship can carry more of everything. Nothing is tuned; there is no balance sim yet.
+- **The nose goes on whatever reaches furthest forward,** so a cargo hold past the bridge gets it.
+- **Rooms are smaller in battle maps now** (one tile per cell): to revisit after M8, as ROADMAP §4.1 already says.
+- **Carried over:** the Saves tab scrolls on the cover screen, and two open copies of the game share one save.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Update:** tap "Update ready, tap to reload". Your M5 ships are in Saves with every part, but mostly flagged red: they came apart. Delete them or rebuild.
+2. **Build anywhere:** on the cover screen, build a ship with the smaller parts somewhere new on the grid. Use both ways: tap a part, then tap the grid twice; and drag from the drawer. Check that nothing lands where you didn't mean it to. Note how often a cell takes a second try.
+3. **Corridors and doors:** lay a run of corridor beside a room. The corridors should open into each other, and the room should get one doorway on that side.
+4. **Facing space:** put a part right behind an engine. The chip should say the exhaust is blocked; move the part away.
+5. **Fit:** after the ship grows, Fit appears. Tap it. Pinch out to see the whole yard and its dashed edge.
+6. **Unfolded:** repeat steps 2 and 5 on the big screen.
+7. **Hull view and replay** on the new ship.
+
+### Next session
+
+**Evan's call:** build on the Fold with M5b.
+- If it's good, tick M5b in ROADMAP.md, and Gate 1 is next: does building make him want to keep going?
+- If small cells are fiddly, the levers are a closer default view, a part held above the finger while dragging, or laying corridors by dragging (ROADMAP §9).
+
 ## M5 Blueprints, saves and replays (2026-10-11)
 
 **Status:** done. Done when is met: a code from one device rebuilds the identical ship on another, and a broken code shows a message. In headless Chromium, two browser profiles with separate storage stood in for two devices:

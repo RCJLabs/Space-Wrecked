@@ -1,5 +1,5 @@
 {
-  "tilesPerCell": 2,
+  "tilesPerCell": 1,
   "tiles": {
     ".": "floor",
     "h": "half cover",
@@ -14,17 +14,11 @@
       "name": "Bridge",
       "glyph": "B",
       "manufacturer": "yard",
-      "size": [2, 1],
+      "size": [3, 2],
       "rotates": true,
-      "doors": [
-        { "side": "s", "at": 0 },
-        { "side": "s", "at": 1 },
-        { "side": "w", "at": 0 },
-        { "side": "e", "at": 0 }
-      ],
       "stats": { "power": -1, "mass": 4, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 20 },
       "tags": ["bridge"],
-      "interior": ["c..c", "...."],
+      "interior": ["c.c", "..."],
       "cost": 120
     },
     {
@@ -32,15 +26,11 @@
       "name": "Reactor",
       "glyph": "R",
       "manufacturer": "yard",
-      "size": [2, 2],
+      "size": [3, 3],
       "rotates": true,
-      "doors": [
-        { "side": "n", "at": 0 },
-        { "side": "s", "at": 1 }
-      ],
       "stats": { "power": 8, "mass": 6, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 30 },
       "tags": ["reactor"],
-      "interior": ["....", ".##.", ".##.", "...."],
+      "interior": ["...", ".#.", "..."],
       "cost": 200
     },
     {
@@ -48,12 +38,12 @@
       "name": "Engine",
       "glyph": "E",
       "manufacturer": "yard",
-      "size": [2, 1],
+      "size": [2, 2],
       "rotates": false,
-      "doors": [{ "side": "e", "at": 0 }],
+      "facesSpace": { "side": "w", "what": "exhaust" },
       "stats": { "power": -1, "mass": 3, "thrust": 12, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 15 },
       "tags": ["engine"],
-      "interior": ["##..", "##.."],
+      "interior": ["#.", "#."],
       "cost": 150
     },
     {
@@ -63,15 +53,9 @@
       "manufacturer": "yard",
       "size": [1, 1],
       "rotates": true,
-      "doors": [
-        { "side": "n", "at": 0 },
-        { "side": "e", "at": 0 },
-        { "side": "s", "at": 0 },
-        { "side": "w", "at": 0 }
-      ],
       "stats": { "power": 0, "mass": 1, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 10 },
       "tags": ["corridor"],
-      "interior": ["..", ".."],
+      "interior": ["."],
       "cost": 10
     },
     {
@@ -79,17 +63,11 @@
       "name": "Airlock",
       "glyph": "A",
       "manufacturer": "yard",
-      "size": [1, 1],
+      "size": [2, 1],
       "rotates": true,
-      "doors": [
-        { "side": "n", "at": 0 },
-        { "side": "e", "at": 0 },
-        { "side": "s", "at": 0 },
-        { "side": "w", "at": 0 }
-      ],
       "stats": { "power": 0, "mass": 1, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 12 },
       "tags": ["airlock"],
-      "interior": ["aa", "aa"],
+      "interior": ["aa"],
       "cost": 40
     },
     {
@@ -97,17 +75,11 @@
       "name": "Crew quarters",
       "glyph": "Q",
       "manufacturer": "yard",
-      "size": [2, 1],
+      "size": [3, 2],
       "rotates": true,
-      "doors": [
-        { "side": "n", "at": 0 },
-        { "side": "s", "at": 1 },
-        { "side": "w", "at": 0 },
-        { "side": "e", "at": 0 }
-      ],
       "stats": { "power": -1, "mass": 3, "thrust": 0, "berths": 4, "lifeSupport": 0, "cargo": 0, "hp": 15 },
       "tags": ["quarters"],
-      "interior": ["hh..", "...."],
+      "interior": ["hh.", "..."],
       "cost": 80
     },
     {
@@ -115,15 +87,11 @@
       "name": "Life support",
       "glyph": "L",
       "manufacturer": "yard",
-      "size": [1, 1],
+      "size": [2, 1],
       "rotates": true,
-      "doors": [
-        { "side": "n", "at": 0 },
-        { "side": "s", "at": 0 }
-      ],
       "stats": { "power": -1, "mass": 2, "thrust": 0, "berths": 0, "lifeSupport": 4, "cargo": 0, "hp": 12 },
       "tags": ["lifesupport"],
-      "interior": ["H.", ".."],
+      "interior": ["H."],
       "cost": 90
     },
     {
@@ -131,17 +99,11 @@
       "name": "Cargo hold",
       "glyph": "C",
       "manufacturer": "yard",
-      "size": [2, 2],
+      "size": [3, 3],
       "rotates": true,
-      "doors": [
-        { "side": "n", "at": 0 },
-        { "side": "s", "at": 1 },
-        { "side": "w", "at": 1 },
-        { "side": "e", "at": 0 }
-      ],
       "stats": { "power": 0, "mass": 3, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 20, "hp": 25 },
       "tags": ["cargo"],
-      "interior": ["h..h", "....", "....", "h..h"],
+      "interior": ["h.h", "...", "h.h"],
       "cost": 60
     },
     {
@@ -149,15 +111,11 @@
       "name": "Med bay",
       "glyph": "M",
       "manufacturer": "yard",
-      "size": [2, 1],
+      "size": [3, 2],
       "rotates": true,
-      "doors": [
-        { "side": "w", "at": 0 },
-        { "side": "e", "at": 0 }
-      ],
       "stats": { "power": -1, "mass": 3, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 15 },
       "tags": ["medbay"],
-      "interior": ["h.c.", "...."],
+      "interior": ["h.c", "..."],
       "cost": 110
     },
     {
@@ -165,15 +123,11 @@
       "name": "Armory",
       "glyph": "X",
       "manufacturer": "yard",
-      "size": [1, 1],
+      "size": [2, 1],
       "rotates": true,
-      "doors": [
-        { "side": "n", "at": 0 },
-        { "side": "s", "at": 0 }
-      ],
       "stats": { "power": 0, "mass": 2, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 15 },
       "tags": ["armory"],
-      "interior": ["H.", ".."],
+      "interior": ["H."],
       "cost": 90
     },
     {
@@ -183,10 +137,10 @@
       "manufacturer": "yard",
       "size": [1, 1],
       "rotates": true,
-      "doors": [{ "side": "s", "at": 0 }],
+      "facesSpace": { "side": "n", "what": "barrel" },
       "stats": { "power": -1, "mass": 2, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 15 },
       "tags": ["weapon"],
-      "interior": ["##", "c."],
+      "interior": ["c"],
       "cost": 130
     },
     {
@@ -194,15 +148,11 @@
       "name": "Shield generator",
       "glyph": "S",
       "manufacturer": "yard",
-      "size": [1, 1],
+      "size": [2, 1],
       "rotates": true,
-      "doors": [
-        { "side": "e", "at": 0 },
-        { "side": "w", "at": 0 }
-      ],
       "stats": { "power": -2, "mass": 2, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 12 },
       "tags": ["shield"],
-      "interior": [".#", ".."],
+      "interior": [".#"],
       "cost": 140
     }
   ]

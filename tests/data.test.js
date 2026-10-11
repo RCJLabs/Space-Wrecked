@@ -18,17 +18,20 @@ test('the shipped data has the 12 v0.1 module types', () => {
 });
 
 // Each case breaks one thing in a copy of the real data and expects the
-// validator to name it.
+// validator to name it. The starter frame is an open yard, so the shape
+// cases cut a small frame of their own.
+const engine = (d) => d.modules.modules.find((m) => m.id === 'engine');
+const small = (d) => Object.assign(d.frames.frames[0], { width: 4, height: 4 });
 const cases = [
   ['duplicate id', (d) => d.modules.modules.push(structuredClone(d.modules.modules[0])), /duplicate id "bridge"/],
   ['unknown manufacturer', (d) => (d.modules.modules[0].manufacturer = 'acme'), /unknown manufacturer "acme"/],
-  ['door past the end of its side', (d) => (d.modules.modules[0].doors[0] = { side: 's', at: 2 }), /"at" must be from 0 to 1 on side s/],
-  ['bad door side', (d) => (d.modules.modules[0].doors[0] = { side: 'x', at: 0 }), /side must be one of n, e, s, w/],
-  ['duplicate door', (d) => d.modules.modules[0].doors.push({ side: 's', at: 0 }), /duplicate socket s 0/],
-  ['no doors', (d) => (d.modules.modules[0].doors = []), /doors must list at least one socket/],
+  ['side facing space that is no side', (d) => (engine(d).facesSpace.side = 'x'), /facesSpace\.side must be one of n, e, s, w/],
+  ['side facing space with no name', (d) => (engine(d).facesSpace.what = ''), /facesSpace\.what must name what faces space/],
+  ['side facing space as a bare string', (d) => (engine(d).facesSpace = 'w'), /facesSpace must be \{ side, what \}/],
+  ['door sockets, which parts no longer have', (d) => (d.modules.modules[0].doors = [{ side: 's', at: 0 }]), /unknown field "doors"/],
   ['interior too short', (d) => d.modules.modules[0].interior.pop(), /interior must have 2 rows/],
-  ['interior too narrow', (d) => (d.modules.modules[0].interior[0] = 'c.c'), /row 0 must be 4 tiles wide/],
-  ['tile not in the legend', (d) => (d.modules.modules[0].interior[0] = 'c..Z'), /"Z" is not in the tiles legend/],
+  ['interior too narrow', (d) => (d.modules.modules[0].interior[0] = 'c.'), /row 0 must be 3 tiles wide/],
+  ['tile not in the legend', (d) => (d.modules.modules[0].interior[0] = 'c.Z'), /"Z" is not in the tiles legend/],
   ['unknown tag', (d) => d.modules.modules[0].tags.push('airlok'), /unknown tag "airlok"/],
   ['missing stat', (d) => delete d.modules.modules[0].stats.hp, /stats\.hp must be a whole number, 1 or more/],
   ['negative mass', (d) => (d.modules.modules[0].stats.mass = -1), /stats\.mass must be a whole number, 0 or more/],
@@ -42,10 +45,10 @@ const cases = [
   ['manufacturers not a list', (d) => (d.manufacturers.manufacturers = {}), /"manufacturers" must be a list/],
   ['frame without a thrust minimum', (d) => delete d.frames.frames[0].minThrustToMass, /minThrustToMass must be a number/],
   ['misspelled frame field', (d) => (d.frames.frames[0].maxModule = 20), /unknown field "maxModule"/],
-  ['frame shape with a row missing', (d) => d.frames.frames[0].shape.pop(), /shape must be a list of 4 rows/],
-  ['frame shape with a stray character', (d) => (d.frames.frames[0].shape[1] = '###x###'), /shape row 1 must be 7 characters/],
-  ['frame shape in two pieces', (d) => (d.frames.frames[0].shape = ['##.....', '##.....', '.....##', '.....##']), /shape must be one piece/],
-  ['frame shape with no hull', (d) => (d.frames.frames[0].shape = ['.......', '.......', '.......', '.......']), /shape has no hull cells/],
+  ['frame shape with a row missing', (d) => (small(d).shape = ['.##.', '####', '####']), /shape must be a list of 4 rows/],
+  ['frame shape with a stray character', (d) => (small(d).shape = ['.##.', '##x#', '####', '.##.']), /shape row 1 must be 4 characters/],
+  ['frame shape in two pieces', (d) => (small(d).shape = ['##..', '##..', '..##', '..##']), /shape must be one piece/],
+  ['frame shape with no hull', (d) => (small(d).shape = ['....', '....', '....', '....']), /shape has no hull cells/],
   ['crew of zero', (d) => (d.balance.startingCrew = 0), /startingCrew must be a whole number from 1/],
   ['unknown balance number', (d) => (d.balance.crewSize = 4), /unknown number "crewSize"/],
   ['balance not an object', (d) => (d.balance = [4]), /balance\.json: must be an object/],

@@ -2,18 +2,16 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { traceHull } from '../src/render/hull.js';
 import { DRAWN, placeModel, propsModel } from '../src/render/props.js';
-import { blueprintScene, ghostScene } from '../src/render/shipScene.js';
-import { buildShip, doorStates, newShip } from '../src/sim/builder.js';
+import { blueprintScene, ghostScene, gridModel, MAJOR } from '../src/render/shipScene.js';
+import { buildShip, newShip, openings } from '../src/sim/builder.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { footprint } from '../src/sim/modules.js';
 import { readData } from '../tools/data.js';
 
 const defs = indexDefs(readData());
 const at = (type, x, y, rot = 0) => ({ type, x, y, rot });
-const SHAPED = { id: 'shaped', name: 'Shaped hull', width: 7, height: 4, maxModules: 20, minThrustToMass: 0.5, shape: ['.####..', '#######', '#######', '.####..'] };
-
 function scene(ship, extra = {}, frame = defs.frames.get(ship.frame)) {
-  return blueprintScene({ ship, defs, frame, doors: doorStates(ship, defs), hull: traceHull(ship, defs), selected: null, lifted: null, flagged: new Set(), ...extra });
+  return blueprintScene({ ship, defs, frame, doors: openings(ship, defs), hull: traceHull(ship, defs), selected: null, lifted: null, flagged: new Set(), ...extra });
 }
 const count = (model, kind, style) => model[kind].filter((p) => p.style === style).length;
 
@@ -45,30 +43,39 @@ test('four quarter turns bring a fitting back where it started', () => {
   const def = defs.modules.get('quarters');
   let model = propsModel(def);
   const first = JSON.stringify(model.faces[0].pts);
-  for (let i = 0; i < 4; i++) model = placeModel(model, i % 2 ? { ...def, size: [1, 2] } : def, { x: 0, y: 0, rot: 1 });
+  for (let i = 0; i < 4; i++) model = placeModel(model, i % 2 ? { ...def, size: [def.size[1], def.size[0]] } : def, { x: 0, y: 0, rot: 1 });
   assert.equal(JSON.stringify(model.faces[0].pts.map((p) => p.map((n) => Math.round(n * 1e9) / 1e9))), first);
 });
 
-test('joined doors are doorways; the rest are coloured panels that say why not', () => {
-  const { ship } = buildShip(defs, 'starter', [at('corridor', 1, 0), at('corridor', 2, 0)]);
-  const { model } = scene(ship);
-  // Each corridor: a doorway splits the shared wall in two; three solid walls.
-  assert.equal(count(model, 'lines', 'wallTop'), 10);
-  assert.equal(count(model, 'faces', 'doorSealed'), 3, 'the north doors and the west one face space');
-  assert.equal(count(model, 'faces', 'doorOpen'), 3, 'sockets facing free cells');
-  assert.equal(count(model, 'faces', 'doorBlocked'), 0);
+test('rooms that share a wall have a doorway; corridors side by side are open', () => {
+  // Two corridors: no wall between them, three walls each, no doorways.
+  const run = scene(buildShip(defs, 'starter', [at('corridor', 1, 0), at('corridor', 2, 0)]).ship).model;
+  assert.equal(count(run, 'lines', 'wallTop'), 6);
+  assert.equal(count(run, 'lines', 'wallPost'), 0);
+  // A corridor beside the quarters: one doorway, a post either side of it in
+  // each room's wall.
+  const room = scene(buildShip(defs, 'starter', [at('corridor', 1, 0), at('quarters', 2, 0)]).ship).model;
+  assert.equal(count(room, 'lines', 'wallPost'), 4);
+  assert.equal(count(room, 'lines', 'wallTop'), 3 + 2 + 3 + 2, 'the shared walls are split by the doorway');
+  // An airlock's hatch to space is a doorway in its outside wall.
+  const lock = scene(buildShip(defs, 'starter', [at('airlock', 1, 1)]).ship).model;
+  assert.equal(count(lock, 'lines', 'wallPost'), 4 * 2, 'four hatches, two posts each');
 });
 
-test('every free cell of the frame shows a slot', () => {
-  const empty = scene(newShip('starter'), {}, SHAPED);
-  assert.equal(count(empty.model, 'lines', 'slot'), 22);
-  assert.equal(empty.model.faces.length, 0);
-  const { ship } = buildShip(defs, 'starter', [at('reactor', 1, 0)]);
-  assert.equal(count(scene(ship, {}, SHAPED).model, 'lines', 'slot'), 18);
+test('the grid has a line every cell, heavier every few, and the edge of the build area', () => {
+  const frame = defs.frames.get('starter');
+  const grid = gridModel(frame, 2);
+  const across = frame.width + 5;
+  const down = frame.height + 5;
+  assert.equal(count(grid, 'lines', 'gridMinor') + count(grid, 'lines', 'gridMajor'), across + down);
+  assert.equal(count(grid, 'lines', 'gridMajor'), [...Array(across)].filter((_, i) => (i - 2) % MAJOR === 0).length + [...Array(down)].filter((_, i) => (i - 2) % MAJOR === 0).length);
+  assert.equal(count(grid, 'lines', 'yardEdge'), 1);
+  const empty = scene(newShip('starter'));
+  assert.equal(empty.model.faces.length + empty.model.lines.length, 0, 'an empty yard has no ship to draw');
 });
 
 test('the selection is outlined and named; a lifted part leaves only its outline', () => {
-  const { ship } = buildShip(defs, 'starter', [at('reactor', 1, 0), at('corridor', 3, 0)]);
+  const { ship } = buildShip(defs, 'starter', [at('reactor', 1, 0), at('corridor', 4, 0)]);
   const picked = scene(ship, { selected: 1 });
   assert.deepEqual(picked.labels.map((l) => [l.text, l.tone]), [['Reactor', 'info']]);
   assert.ok(count(picked.model, 'lines', 'selectEdge') >= 2);
@@ -92,7 +99,7 @@ test('a part being placed floats in green, or red with what blocks it', () => {
 });
 
 test('building a scene changes nothing it was given', () => {
-  const { ship } = buildShip(defs, 'starter', [at('bridge', 5, 1, 1), at('engine', 0, 1), at('airlock', 4, 1)]);
+  const { ship } = buildShip(defs, 'starter', [at('bridge', 5, 1, 1), at('engine', 0, 1), at('airlock', 3, 1)]);
   const copy = structuredClone(ship);
   scene(ship, { selected: 1 });
   assert.deepEqual(ship, copy);

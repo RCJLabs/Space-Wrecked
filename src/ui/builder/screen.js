@@ -1,5 +1,5 @@
-// The builder sandbox: build a ship on the starter frame by touch, and check
-// it against the flight checklist.
+// The builder sandbox: build a ship by touch anywhere on the starter yard,
+// and check it against the flight checklist.
 // Input -> session action (src/sim/session.js) -> new session -> redraw.
 // A drag or pinch in progress is input, so it lives here until it ends in
 // an action; the session itself only changes through its store. The ship
@@ -10,12 +10,12 @@ import { decodeBlueprint, encodeBlueprint } from '../../core/blueprint.js';
 import { createStore } from '../../core/store.js';
 import { loadContent } from '../../platform/content.js';
 import { traceHull } from '../../render/hull.js';
-import { clampOrbit, fitOrbit, panOrbit, pinchOrbit, turnOrbit, unproject, zoomOrbit } from '../../render/orbit.js';
+import { clampOrbit, fitOrbit, panOrbit, pinchOrbit, project, turnOrbit, unproject, zoomOrbit } from '../../render/orbit.js';
 import { palette, skinFor } from '../../render/palette.js';
 import { partIconSvg } from '../../render/parts/blueprint.js';
 import { hitsGhost, pickModule } from '../../render/pick.js';
-import { BOARD_VIEW, boardBox, createBoard } from '../../render/shipView.js';
-import { doorStates, layoutProblems, newShip, placementError, removeModule } from '../../sim/builder.js';
+import { BOARD_VIEW, boardBox, createBoard, yardBox } from '../../render/shipView.js';
+import { layoutProblems, newShip, openings, placementError, removeModule } from '../../sim/builder.js';
 import { activeSlot, MAX_SLOTS, nextSlotName } from '../../sim/builds.js';
 import { canLaunch, flightChecklist, shipStats } from '../../sim/constraints.js';
 import { footprint } from '../../sim/modules.js';
@@ -28,9 +28,9 @@ import { createDrawer } from './drawer.js';
 import { flightSummary, hintFor } from './hints.js';
 
 const FRAME = 'starter';
-const MARGIN = 14; // pixels around the frame when it is fitted
+const MARGIN = 14; // pixels around the ship when it is fitted
 const MAX_ZOOM = 3; // times the fitted scale
-const MIN_ZOOM = 0.7; // room to see a turned ship whole
+const MIN_ZOOM = 0.7; // room to see a turned ship whole (or the whole yard, if that is further out)
 const TURN_SLOP = 0.17; // radians of twist before a pinch turns the ship
 const KEY_TURN = Math.PI / 12; // Q and E on a keyboard
 const NOTICE_MS = 2600;
@@ -77,8 +77,9 @@ export const builderScreen = {
     let plans = null; // the 3D board's scenes
     let shown = { ship: null, ghost: null, hull: null, saves: null }; // what the board and Saves tab were last given
     let rect = null;
-    let box = null;
-    let fit = null;
+    let yard = null; // the whole frame: how far the camera pans
+    let yardFit = null;
+    let fit = null; // the view Fit returns to: the ship, refitted as it changes
     let limits = null;
     let camera = null;
     let drag = null; // { kind: 'part' | 'ghost' | 'module' | 'pan', ... }
@@ -99,7 +100,7 @@ export const builderScreen = {
         defs = content;
         frame = defs.frames.get(FRAME);
         plans = createBoard(frame);
-        box = boardBox(frame);
+        yard = yardBox(frame);
         // With no saved ships yet, start one. Keep this page's session (and
         // its undo history) if it still holds the open ship; otherwise start
         // from the save.
@@ -128,6 +129,7 @@ export const builderScreen = {
             const next = openSlot();
             store.dispatch({ type: 'build/load', ship: next.ship, log: next.log });
             drawer.saves.reset();
+            if (rect) refit(true); // another ship, maybe elsewhere in the yard
             sync();
           }),
         );
@@ -277,6 +279,7 @@ export const builderScreen = {
         derived = derive(session.ship);
         becameReady = derived.ready && !wasReady;
         drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules });
+        if (rect) refit(false);
       }
       if (session.ship !== prev.ship || session.log !== prev.log) {
         game.dispatch({ type: 'builds/save', ship: session.ship, log: session.log });
@@ -300,7 +303,7 @@ export const builderScreen = {
       const loose = problems.find((p) => p.rule === 'connected')?.uids ?? [];
       const lines = flightChecklist(ship, defs, crew());
       return {
-        doors: doorStates(ship, defs),
+        doors: openings(ship, defs),
         hull: traceHull(ship, defs),
         loose: new Set(loose),
         flagged: new Set(problems.flatMap((p) => p.uids)),
@@ -420,7 +423,7 @@ export const builderScreen = {
     function showReplayStep() {
       const ship = replaying.ships[replaying.index];
       const hull = traceHull(ship, defs);
-      plans.setShip({ ship, defs, frame, doors: doorStates(ship, defs), hull, selected: null, lifted: null, flagged: new Set() });
+      plans.setShip({ ship, defs, frame, doors: openings(ship, defs), hull, selected: null, lifted: null, flagged: new Set() });
       plans.setGhost(null);
       if (look === 'hull') plans.setHull({ ship, defs, hull, skin: skinFor('yard') });
     }
@@ -508,15 +511,29 @@ export const builderScreen = {
       if (r.width < 48 || r.height < 48) return; // hidden, e.g. behind the rotate prompt
       if (rect && r.left === rect.x && r.top === rect.y && r.width === rect.w && r.height === rect.h) return;
       rect = { x: r.left, y: r.top, w: r.width, h: r.height };
-      fit = fitOrbit({ ...BOARD_VIEW, pivot: [frame.width / 2, frame.height / 2] }, rect, box, MARGIN);
-      limits = { min: fit.scale * MIN_ZOOM, max: fit.scale * MAX_ZOOM };
-      setCamera(fit);
+      yardFit = fitOrbit({ ...BOARD_VIEW, pivot: middle(yard) }, rect, yard, MARGIN);
+      refit(true);
+    }
+
+    // Works out the fitted view of the ship as it is now (boardBox), kept
+    // inside the yard like any other view, and moves the camera there only
+    // if `move`: building never moves the view by itself, but the Fit button
+    // shows once the view is off the fit.
+    function refit(move) {
+      const box = boardBox(frame, derived.hull);
+      fit = clampOrbit(fitOrbit({ ...BOARD_VIEW, pivot: middle(box) }, rect, box, MARGIN), rect, yard, MARGIN);
+      limits = { min: Math.min(fit.scale * MIN_ZOOM, yardFit.scale), max: fit.scale * MAX_ZOOM };
+      setCamera(move || !camera ? fit : camera);
     }
 
     function setCamera(next) {
-      camera = clampOrbit(next, rect, box, MARGIN);
+      camera = clampOrbit(next, rect, yard, MARGIN);
       const turned = Math.abs(Math.atan2(Math.sin(camera.yaw - fit.yaw), Math.cos(camera.yaw - fit.yaw))) > 0.01;
-      const moved = Math.hypot(camera.x - fit.x, camera.y - fit.y) > 2;
+      // Off the fit if its middle isn't where the fit puts it (the fit's
+      // middle moves as the ship grows, not just the camera).
+      const [ax, ay] = project(camera, ...fit.pivot, 0);
+      const [bx, by] = project(fit, ...fit.pivot, 0);
+      const moved = Math.hypot(ax - bx, ay - by) > 2;
       fitButton.hidden = !turned && !moved && Math.abs(camera.scale - fit.scale) <= fit.scale * 0.01;
       dirty = true;
     }
@@ -658,6 +675,10 @@ export const builderScreen = {
     };
   },
 };
+
+function middle(box) {
+  return [(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2];
+}
 
 // Writes { tone, text } into a line only when it changed, so a drag doesn't
 // restyle the page on every move.

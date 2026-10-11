@@ -1,19 +1,16 @@
 {
   "frame": "starter",
   "placements": [
-    { "type": "bridge", "x": 6, "y": 1, "rot": 1 },
-    { "type": "corridor", "x": 5, "y": 1, "rot": 0 },
-    { "type": "corridor", "x": 5, "y": 2, "rot": 0 },
-    { "type": "corridor", "x": 4, "y": 2, "rot": 0 },
-    { "type": "corridor", "x": 3, "y": 2, "rot": 0 },
-    { "type": "corridor", "x": 2, "y": 2, "rot": 0 },
-    { "type": "corridor", "x": 2, "y": 1, "rot": 0 },
-    { "type": "reactor", "x": 3, "y": 0, "rot": 0 },
-    { "type": "quarters", "x": 1, "y": 0, "rot": 0 },
-    { "type": "engine", "x": 0, "y": 1, "rot": 0 },
-    { "type": "engine", "x": 0, "y": 2, "rot": 0 },
-    { "type": "lifesupport", "x": 2, "y": 3, "rot": 0 },
-    { "type": "airlock", "x": 3, "y": 3, "rot": 0 },
-    { "type": "weapon", "x": 4, "y": 3, "rot": 2 }
+    { "type": "bridge", "x": 15, "y": 6, "rot": 1 },
+    { "type": "reactor", "x": 12, "y": 5, "rot": 0 },
+    { "type": "quarters", "x": 9, "y": 5, "rot": 0 },
+    { "type": "corridor", "x": 9, "y": 7, "rot": 0 },
+    { "type": "corridor", "x": 10, "y": 7, "rot": 0 },
+    { "type": "corridor", "x": 11, "y": 7, "rot": 0 },
+    { "type": "engine", "x": 7, "y": 6, "rot": 0 },
+    { "type": "lifesupport", "x": 9, "y": 8, "rot": 0 },
+    { "type": "engine", "x": 7, "y": 8, "rot": 0 },
+    { "type": "airlock", "x": 11, "y": 8, "rot": 0 },
+    { "type": "weapon", "x": 13, "y": 8, "rot": 2 }
   ]
 }

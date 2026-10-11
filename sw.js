@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "0dc003f3d1f3";
+const VERSION = "69081f542655";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/balance.json",
@@ -53,6 +53,7 @@ const FILES = [
   "src/sim/frame.js",
   "src/sim/grid.js",
   "src/sim/modules.js",
+  "src/sim/regrid.js",
   "src/sim/replay.js",
   "src/sim/root.js",
   "src/sim/session.js",

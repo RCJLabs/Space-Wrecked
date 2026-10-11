@@ -6,11 +6,10 @@ import { footprint } from '../src/sim/modules.js';
 import { commandsOf, covers, createSession, HISTORY_LIMIT, reduceSession, snapPlacement } from '../src/sim/session.js';
 
 // A small catalog, so content changes don't break these interaction rules.
-const ALL_SIDES = ['n', 'e', 's', 'w'].map((side) => ({ side, at: 0 }));
-const mod = (id, size, rotates = true) => ({ id, name: id[0].toUpperCase() + id.slice(1), size, rotates, doors: ALL_SIDES, tags: [] });
+const mod = (id, size, rotates = true) => ({ id, name: id[0].toUpperCase() + id.slice(1), size, rotates, tags: [] });
 const defs = indexDefs({
   modules: {
-    tilesPerCell: 2,
+    tilesPerCell: 1,
     tiles: { '.': 'floor' },
     modules: [mod('hall', [1, 1]), mod('long', [2, 1]), mod('big', [2, 2]), mod('fixed', [2, 1], false)],
   },
