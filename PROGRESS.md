@@ -2,10 +2,120 @@
 
 Newest entry first.
 
+## M6 Ship to battle map (2026-10-11)
+
+**Status:** done, and the ROADMAP.md box is ticked. It's the first Phase 2 milestone, started after Gate 1 passed (below).
+
+Done when: "the same ship always converts to the identical map (tested), and the map renders."
+- **Identical map, tested.** The example ship converts to a golden map, and the same ship converts the same twice, from a copy, and with freshly loaded data. Moved to another spot in the yard, it converts the same apart from the origin. In the browser, the page's map matches Node's, byte for byte.
+- **The map renders,** in a new Battle map sandbox, at all three screen sizes. Two loads draw it identically, pixel for pixel.
+
+### Shipped
+
+- **`src/sim/mapFromShip.js`** (pure): `mapFromShip(ship, defs, { wrecked })` turns a ship into a battle map of plain data on grid.js grids.
+  - **Tiles:** each cell becomes `tilesPerCell` × `tilesPerCell` tiles, from its room's interior template (floor, half cover, full cover, machinery, console, airlock). Around the rooms a tile is space, or hull where the hull closes over a notch (the builder's space test).
+  - **Edges:** walls stand between tiles, since a room can be one tile across. An edge is a wall between rooms, the hull, a door where the builder joins two rooms, or a hatch where an airlock meets space. Corridors side by side stay open. An engine's exhaust and a gun's barrel get no door.
+  - **The rest:** which room each tile is in; the rooms in build order with their boxes; the hatches (where boarders come in); and one tile of space around the ship.
+  - **Wrecked rooms:** `{ uid: 'fire' | 'vacuum' | 'rubble' }` puts that hazard on every tile of the room. An unknown room or wreck is left out. What each hazard does is M7's.
+  - An empty ship has no map (`null`). `wallAt(map, x, y, side)` reads any edge; `nextWreck` cycles the wrecks.
+- **`tools/battle-map.js`** prints a map as text (`npm run map`, wrecks as `uid=fire`), and `--golden` rewrites the golden file. This is the example ship, with doors as `/` and the hatch as `o`:
+
+  ```
+        +=+=+=+=+=+=+
+        Ih h ./. . .I
+    +=+=+     +     +=+=+
+    I# ./. . .|. # ./. cI
+    +   +-+/+-+     +   +
+    I# ./. . ./. . .|. .I
+    +/+-+/+-+/+/+/+=+   +
+    I# ./H ./a a/cI%I. cI
+    +   +=+=+o+=+=+ +=+=+
+    I# .I
+    +=+=+
+  ```
+- **Golden file, new on purpose:** `tests/golden/example-ship.map.txt`, the example ship's map. CLAUDE.md's Testing section now covers golden maps.
+- **The map in 3D** (`src/render/battleScene.js`, `battleView.js`): solid faces through the existing painter, cut away so a crew can be seen over the walls.
+  - **Rooms:** floors tinted per room with a seam on every tile. Walls stand at 0.55 tiles and the hull at 0.7, with posts only where runs turn or meet a door.
+  - **Doors and hatches:** doors are amber with a lit top. Hatches are blue, with a docking collar and its light outside.
+  - **Fittings:** crates for half cover, tall lockers for full cover, machinery with a glow, consoles with lit screens, and a hazard ring on airlock floors.
+  - **Wrecks:** flames and an orange glow for fire; frost and a cold glow for vacuum; rocks on dusty floor for rubble. The look is fixed per tile, with no random numbers.
+  - **Colors:** new palette tokens for interiors (`floors`, `wall`, `door`, `doorLight`, `screen` in the yard skin) and for wrecks (`fire`, `fireCore`, `scorch`, `vacuum`, `frost`, `rubble`, `dust`).
+- **Battle map sandbox** (dev menu → Battle map): the builder's open ship as its boarding map.
+  - Tap a room to wreck it: fire, vacuum, rubble, then whole again. Clear puts every room right.
+  - Long-press a tile for a card: its room, what's on it, its edges and any wreck.
+  - Drag to pan, pinch to zoom, twist to turn. Fit returns to the opening view. The view opens on the ship and pans over the whole map.
+  - Nothing here is saved. Wrecks last until reload, for the ship they were made on.
+- **Speed:** while the camera moves, frames are drawn at one pixel per CSS pixel without outlines, then sharpen once it stops (as the builder's plans do). `paintSolid` gained an `edges` option for this. Space behind the map is painted once per size.
+- **Tests:** 230 in all, up from 204. There are 18 for the map: golden, determinism, moving the ship, the margin of space, tiles, notches, rooms, doors, corridors, hatches, exhaust, sealed rooms, doors matching the builder's joins, both sides of every edge, wrecks, the wreck cycle, an empty ship, and two tiles a cell. There are 8 for the scene: face data, determinism, floors, walls and their heights, posts, door lights and collars, wrecks, and the camera boxes.
+
+### Decisions made this session
+
+- **Walls on edges, not tiles.** One tile per cell means many rooms are one or two tiles across; wall tiles would leave them no floor. ROADMAP §4.3 now says so.
+- **Doors have no state in the map yet.** Open, closed and locked are battle state, so they're M7's. Every door starts as a door.
+- **A wreck covers the whole room,** and the conversion uses no random numbers. Variety, like fire spreading or where rubble piles up, belongs to the approach phase and M7, from the battle's seed.
+- **The battle camera uses the builder's angle,** a little nearer. It opens on the ship, with the margin of space left to pan to.
+- **The sandbox writes nothing to the save,** so `SAVE_VERSION` stays 3.
+
+### Verified here (headless Chromium with scripted touch, not a phone)
+
+- **At 821×283, 905×370 and 960×825:** 24 checks each, with no console errors or warnings.
+  - The page's map is Node's, twice. The info line reads "12 × 7 tiles · 11 rooms · 1 hatch". The map draws over space, and identically on a second load.
+  - The bridge cycles fire, vacuum, rubble and whole, and its floor color comes back exactly. Three rooms wrecked at once.
+  - A long press reads "Crew quarters · Tile (5, 1): floor · Edges: hull to the north, door to the east · Wrecked: full of rubble". The next touch closes the card.
+  - Clear works. Pan, pinch, a rough frame mid-drag and the full one after, and Fit back to the exact opening frame.
+  - An empty ship gets a hint, and a tap there does nothing.
+- **Offline:** with the server stopped after one visit, the four new files are in the cache. The battle map opens, a tap sets the reactor on fire, and the builder still opens the ship.
+- **Regression:** M5b's touch build, M5's saves and codes, and M5c's tap to move all still pass at all three sizes, with no console errors.
+- **Frame times** at 4× CPU throttle (headless draws canvas on the CPU, so these are floors; the builder pinches at 32 fps the same way):
+
+  | Ship | Faces | Panning | Pinching and turning |
+  | --- | --- | --- | --- |
+  | Example, 11 parts | 445 | 39 fps | 34 fps |
+  | 26 parts, 16 × 10 tiles | 1,034 | 32 fps | 29 fps |
+
+  The first cut drew 1,877 faces for the 26-part ship at 12 fps. Fewer faces, rough frames while moving and a cached backdrop brought it to the numbers above.
+- **Tile size on screen at the opening view:**
+
+  | Screen | Smallest tile | At the middle |
+  | --- | --- | --- |
+  | 905×370 (cover) | 38.5 px | 46.6 px |
+  | 821×283 (browser tab) | 28.7 px | 34.8 px |
+  | 960×825 (unfolded) | 63.8 px | 77.2 px |
+
+### Known issues
+
+- **Tiles are under 48 px on the cover screen** (38–47 px for the example ship). It doesn't matter for M6, whose taps only wreck whole rooms, but M8 needs 48 px targets. Turning the camera square to the ship (yaw 0) would give about 50–60 px for the example ship. That's a call for M8, and for Evan's eye.
+- **No outside on a battle map:** the cutaway shows rooms, walls and docking collars, but not the nose, nozzles or gun barrels.
+- **The painter has no depth buffer.** Faces are small and none looked wrong in screenshots, default or turned and zoomed, but an odd angle could still draw one in the wrong order.
+- **Taps pick the deck,** so a tap on top of a tall locker picks the tile behind it.
+- **Vacuum stays in its room:** a wrecked corridor is in vacuum alone, even when the corridors beside it are open to it. Whether vacuum spreads is M7's call.
+- **Two tiles a cell** is tested in Node only: the data has one, and nothing draws two yet.
+- **Carried over:** small builder cells with a real finger, corridors two taps a cell, balance untuned.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Update,** then open a ship in the Builder.
+2. **Dev menu → Battle map.** Does it look like the inside of your ship: rooms where you built them, a doorway on each shared wall, the hatch on the airlock's outer side?
+3. **Wrecks:** tap a room several times (fire, vacuum, rubble, whole), then tap Clear.
+4. **Read a tile:** long-press a tile. Its card should name the room, its tiles and its doors.
+5. **Move around:** pan, pinch and twist, then Fit, on the cover screen and unfolded. Is it smooth? Try your biggest ship too.
+6. **Offline:** turn the network off and open it again.
+7. **Tell me:** whether the tiles look big enough to tap units on, and whether the camera angle suits a battle. Both feed M8.
+
+### Next session
+
+**M7 Tactical rules, headless.** First task: units and actions on the M6 map. Decide in data what each tile and edge does: which tiles block movement and sight, what cover they give from each side, and how doors open. Then movement and line of sight, with tests.
+
+## Gate 1 (2026-10-11)
+
+**Passed.** After trying M5c on the Fold, Evan said: "All good. Continue the work".
+- I read that as M5c passing and Gate 1 passing. Gate 1 asks whether building on the Fold makes him want to keep going, and he said continue.
+- Phase 2 starts with M6 (ship to battle map). If I've misread him, the gate reopens and the builder gets fixed first.
+
 ## M5c Tap to move (2026-10-11)
 
-**Status:** built and checked in headless Chromium; not yet on the Fold, so the ROADMAP.md box stays unticked until Evan has tried it on the phone. Evan, after M5b: "add the ability to tap and move pieces that were already placed."
-- **Filed in Phase 1, before Gate 1.** It's builder work, and the gate is still Evan's to record.
+**Status:** done. Evan tried it on the Fold and said "All good", so the ROADMAP.md box is ticked. Evan, after M5b: "add the ability to tap and move pieces that were already placed."
+- **Filed in Phase 1, before Gate 1.** It's builder work.
 
 Done when: "on the Fold, a placed part moves and turns by taps alone, the move can be undone, and a stray tap never moves anything."
 - **Met here, at all three sizes:** an airlock in the example ship moved and turned with taps alone, and undo put it back.

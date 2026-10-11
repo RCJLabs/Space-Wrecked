@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "446ef5835c3a";
+const VERSION = "8277acd62f86";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/balance.json",
@@ -28,6 +28,8 @@ const FILES = [
   "src/platform/orientation.js",
   "src/platform/serviceWorker.js",
   "src/platform/storage.js",
+  "src/render/battleScene.js",
+  "src/render/battleView.js",
   "src/render/blueprintStyles.js",
   "src/render/canvas.js",
   "src/render/exterior.js",
@@ -52,12 +54,14 @@ const FILES = [
   "src/sim/defs.js",
   "src/sim/frame.js",
   "src/sim/grid.js",
+  "src/sim/mapFromShip.js",
   "src/sim/modules.js",
   "src/sim/regrid.js",
   "src/sim/replay.js",
   "src/sim/root.js",
   "src/sim/session.js",
   "src/sim/settings.js",
+  "src/ui/battle/screen.js",
   "src/ui/builder/card.js",
   "src/ui/builder/drawer.js",
   "src/ui/builder/hints.js",

@@ -61,8 +61,8 @@ assets/
   img/          WebP only
   LOG.md        prompt, date, model and hand edits for every image
   LICENSES.md   every third-party file and its license
-tools/       sim.js, blueprint.js, precache.js, icons.js, serve.js, validate-data.js, build-ship.js, data.js
-tests/       node --test files and golden replays
+tools/       sim.js, blueprint.js, precache.js, icons.js, serve.js, validate-data.js, build-ship.js, battle-map.js, data.js
+tests/       node --test files; golden/ holds golden maps and replays
 ROADMAP.md
 PROGRESS.md
 ```
@@ -97,7 +97,7 @@ PROGRESS.md
 ## Testing
 
 - `node --test` covers `src/sim/` and `tools/`.
-- Golden replays: fixed-seed battles and generators must reproduce identical results. Update a golden file only on purpose, and say so in PROGRESS.md.
+- Golden files in `tests/golden/`: a ship always converts to the identical battle map (`tools/battle-map.js --golden` writes the example ship's), and fixed-seed battles and generators must reproduce identical results. Update a golden file only on purpose, and say so in PROGRESS.md.
 - Every rules change ships with a test.
 
 ## Deploy

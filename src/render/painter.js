@@ -152,8 +152,9 @@ export function prepareSolid(faces, shadeFace) {
 // Draws solid faces back to front, leaving out those that face away from
 // the camera, then glows. Without a depth buffer this is the painter's
 // algorithm: right for the ship's simple shapes, which don't pass through
-// each other.
-export function paintSolid(ctx, faces, glows, cam) {
+// each other. With edges false, outlines are left out: a quicker frame,
+// for while the camera moves.
+export function paintSolid(ctx, faces, glows, cam, { edges = true } = {}) {
   const project = projector(cam);
   const eye = eyeOf(cam);
   const shown = [];
@@ -177,7 +178,7 @@ export function paintSolid(ctx, faces, glows, cam) {
     ctx.closePath();
     ctx.fillStyle = face.fill;
     ctx.fill();
-    if (face.edge) {
+    if (edges && face.edge) {
       ctx.strokeStyle = face.edge;
       ctx.stroke();
     }
