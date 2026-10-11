@@ -2,8 +2,8 @@
 // saves outgrow it. Every access is wrapped, because storage can throw
 // (private windows, full quota, blocked site data).
 //
-// Keys are namespaced with config.appId: rcjlabs.github.io is one origin shared
-// by every RCJLabs Pages project, so their storage is shared too.
+// Keys are namespaced with config.appId, so they never collide with anything
+// else stored on the same origin.
 import { config } from '../config.js';
 import { checksum } from '../core/codec.js';
 
