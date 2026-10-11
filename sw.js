@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "26a559701f0c";
+const VERSION = "3100609eafe6";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "icon.svg",
