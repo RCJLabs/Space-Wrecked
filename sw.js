@@ -4,9 +4,12 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "ea9e1c701d18";
+const VERSION = "beb63510369c";
 const CACHE_PREFIX = "wt-";
 const FILES = [
+  "data/frames.json",
+  "data/manufacturers.json",
+  "data/modules.json",
   "icon.svg",
   "icons/icon-192.png",
   "icons/icon-512.png",
@@ -26,6 +29,10 @@ const FILES = [
   "src/render/loop.js",
   "src/render/palette.js",
   "src/render/starfield.js",
+  "src/sim/builder.js",
+  "src/sim/defs.js",
+  "src/sim/grid.js",
+  "src/sim/modules.js",
   "src/sim/root.js",
   "src/sim/settings.js",
   "src/ui/dev/fps.js",

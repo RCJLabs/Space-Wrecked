@@ -1,0 +1,11 @@
+{
+  "frames": [
+    {
+      "id": "starter",
+      "name": "Starter hull",
+      "width": 4,
+      "height": 7,
+      "maxModules": 20
+    }
+  ]
+}
