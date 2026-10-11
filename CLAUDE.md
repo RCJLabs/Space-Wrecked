@@ -1,10 +1,10 @@
-# CLAUDE.md: [working title TBD]
+# CLAUDE.md: Space Wrecked
 
 Working agreement for Claude Code sessions on this repo. Read ROADMAP.md before writing any code.
 
 ## Project
 
-A 2D ship-first sandbox RPG: build a ship on a grid, run from a pursuer, and settle a world, fighting XCOM-style squad battles inside ship layouts. It is a browser game, landscape only and offline-first. It ships on GitHub Pages now (`RCJLabs/<repo>`, name TBD), as a TWA on Google Play, and as a Capacitor build later. Solo developer (Evan), evening sessions.
+A 2D ship-first sandbox RPG: build a ship on a grid, run from a pursuer, and settle a world, fighting XCOM-style squad battles inside ship layouts. It is a browser game, landscape only and offline-first. It ships on GitHub Pages now (`RCJLabs/Space-Wrecked`, served at `spacewrecked.rcjlabs.com`), as a TWA on Google Play, and as a Capacitor build later. Solo developer (Evan), evening sessions.
 
 ## Session protocol
 
@@ -46,6 +46,8 @@ sw.js                       # file list and version written by tools/precache.js
 icon.svg                    # source for the PNG app icons
 icons/                      # PNG icons from tools/icons.js
 .nojekyll                   # lets Pages serve /.well-known/
+CNAME                       # spacewrecked.rcjlabs.com
+.github/workflows/pages.yml # tests, checks sw.js, deploys main to Pages
 .githooks/pre-commit        # runs tools/precache.js
 .well-known/assetlinks.json # TWA verification, added with the TWA
 src/
@@ -99,9 +101,9 @@ PROGRESS.md
 
 ## Deploy
 
-- GitHub Pages serves `main` directly.
-- Use relative URLs everywhere (`./`), so the game runs at the Pages project URL now and at a custom subdomain later.
-- A custom subdomain under rcjlabs.com via a `CNAME` file, as with Dirtbag.
+- GitHub Pages serves `main`, published by `.github/workflows/pages.yml` (Pages source: GitHub Actions).
+- Use relative URLs everywhere (`./`), so the game runs at any address.
+- The game lives at `spacewrecked.rcjlabs.com`, set under Settings → Pages. With the Actions deploy GitHub ignores the `CNAME` file; it stays in the repo as a record. Never move the domain once players have saves: storage belongs to the origin.
 - The TWA setup follows Dirtbag. Stay on the TWA until feature-complete; the Capacitor conversion is Phase 9.
 
 ## Licensing hygiene

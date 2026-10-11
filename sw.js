@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "3100609eafe6";
+const VERSION = "ea9e1c701d18";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "icon.svg",
@@ -50,8 +50,8 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  // Delete this game's old versions only: other RCJLabs projects share the
-  // rcjlabs.github.io origin and its cache storage.
+  // Delete this game's old versions only, never caches that belong to anything
+  // else on the same origin.
   event.waitUntil(
     caches
       .keys()

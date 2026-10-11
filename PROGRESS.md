@@ -22,7 +22,8 @@ Newest entry first.
 - `src/core/store.js`, with reducers in `src/sim/`. `src/platform/storage.js` wraps localStorage in try/catch and requests persistent storage.
 - Render loop: requestAnimationFrame, devicePixelRatio capped at 2, resize handling, and a 60 or 30 fps cap that holds on 60, 90 and 120 Hz screens. The title screen has a seeded starfield.
 - `?dev=1`: a dev menu (sandbox list, still empty; frame cap; save export and import; a status readout) and an FPS and frame-time overlay.
-- `tools/serve.js`, package.json scripts, and 54 tests under `node --test`.
+- `tools/serve.js`, package.json scripts, and tests under `node --test`.
+- The name is **Space Wrecked**, and the address is https://spacewrecked.rcjlabs.com/. The name lives only in `src/config.js` and the manifest, and a test keeps them in sync.
 
 ### Decisions made this session
 
@@ -34,7 +35,9 @@ Newest entry first.
 - Importing a save takes two taps: tap to check, tap again to replace.
 - The pre-commit hook runs `precache --staged`, which hashes what git will commit, not what is on disk. A file on disk but not committed would 404 on Pages and fail the whole service worker install. Unstaged edits would stamp a version that the later commit doesn't change, so phones would never update.
 - Offline, a navigation to an uncached path redirects to the start page. index.html served at a deeper path would point its relative URLs at files that aren't cached.
-- The manifest `id` is `/?app=wt`. Chrome resolves it against the domain root, so it reads as `https://rcjlabs.github.io/?app=wt`. It is the installed app's identity: never change it once anyone has installed (`tests/manifest.test.js` pins it).
+- The manifest `id` is `/?app=wt`. Chrome resolves it against the domain root, so it reads as `https://spacewrecked.rcjlabs.com/?app=wt`. It is the installed app's identity: never change it once anyone has installed (`tests/manifest.test.js` pins it).
+- The game has its own domain, `spacewrecked.rcjlabs.com`, so its storage, caches and install records aren't shared with the other RCJLabs projects on `rcjlabs.github.io`. Never move it again once players have saves.
+- `appId` stays `wt` through the rename, and save codes keep the `wt.` prefix. Changing it would orphan saves.
 
 ### Verified here (headless Chromium with Playwright, not a phone)
 
@@ -51,15 +54,15 @@ Newest entry first.
 - On the phone so far:
   - The page loads in Chrome, and portrait shows the rotate prompt.
   - Folded, in a Chrome tab, the overlay reads 59 to 61 fps with a worst frame of 17 to 25 ms, at 821×283 (2.90:1) on a 60 Hz screen.
-  - Install fails (next item). The rest of the checklist is still to run.
-- **Install fails on the Fold (open).**
-  - What happens: Chrome's install sheet says "This app is already installed", and "open the app instead" gives "Could not open app". No app exists, and nothing in `chrome://webapks` covers this page.
-  - It's specific to this app: other web apps install fine on the same phone (Squoosh, and all of Evan's other projects).
-  - Tried: a fresh manifest `id`, which changed nothing.
-  - Testing now: the manifest without `orientation`. It's the one field none of the phone's 23 working installs use. If that turns out to be the cause, landscape stays enforced by the rotate prompt and the JS lock.
-  - Next if that fails: `adb logcat` during the install.
-- **Origin change later.** Saves, the install and the cache all belong to `rcjlabs.github.io`. Adding the custom subdomain (`CNAME`) moves the game to a new origin, and existing installs and saves don't follow; players would need export and import. Set the subdomain before anyone but Evan has a save.
-- **Shared origin.** Every RCJLabs Pages project without a custom domain shares `rcjlabs.github.io`, including its localStorage and cache storage. This game namespaces both. But if another project there has a service worker that deletes every cache but its own, or calls `localStorage.clear()`, it would hit this game too. I couldn't check the other repos.
+  - It installs and runs from Samsung Internet.
+  - Chrome install failed at the old address (next item). The rest of the checklist is still to run.
+- **Chrome install failed at the old address, `rcjlabs.github.io/Space-Wrecked/` (open until checked at the new domain).**
+  - What happened: Chrome's install sheet said "This app is already installed", and "open the app instead" gave "Could not open app". No app existed, and nothing in `chrome://webapks` covered the page.
+  - Samsung Internet installed the same build, and Chrome installs other web apps fine on the same phone.
+  - Neither a fresh manifest `id` nor dropping `orientation` changed Chrome's answer. `orientation` is restored.
+  - Likeliest cause, unconfirmed: a stuck install record inside Chrome tied to that address.
+  - Fix: the move to `spacewrecked.rcjlabs.com`, an address Chrome has no record of. If Chrome fails there too, every Chrome user may be affected: capture `adb logcat` during the install.
+- **The move to `spacewrecked.rcjlabs.com`.** The old address redirects there once the custom domain is set. Anything installed or saved at the old address stays behind, including the Samsung Internet test install: remove it and reinstall from the new domain.
 - `screen.orientation.lock` only works in fullscreen, which means the installed app. In a Chrome tab it fails silently and the overlay covers it. Unverified: on the unfolded inner screen, Android may ignore orientation requests on large screens. The overlay is the fallback either way.
 - The hook needs `npm run hooks` (sets `core.hooksPath`) once per clone. Without it, `sw.js` won't change on commit and phones won't update.
 - `user-scalable=no` turns off browser pinch zoom; M2's own pinch zoom replaces it.
@@ -69,7 +72,7 @@ Newest entry first.
 
 Record pass or fail for each line here, plus the FPS numbers.
 
-1. In Chrome on the folded phone, open https://rcjlabs.github.io/Space-Wrecked/?dev=1. Expect the title over a starfield, the FPS overlay at top left and DEV at top right.
+1. In Chrome on the folded phone, open https://spacewrecked.rcjlabs.com/?dev=1. Expect the title over a starfield, the FPS overlay at top left and DEV at top right.
 2. Rotate prompt: hold the phone upright in the Chrome tab. Expect "Turn your phone sideways". Turn it back and the game returns.
 3. Install: Chrome menu (⋮), then Add to home screen, then Install. Expect the ship icon on the home screen, not cropped by the launcher's mask.
 4. Launch from the home screen. Expect fullscreen, landscape and no browser bar. DEV, then Status: expect "Running as: installed app" and "Service worker: controlling this page". Note the "Persistent storage" line: granted is likely once installed, but Chrome decides.
@@ -87,6 +90,7 @@ Record pass or fail for each line here, plus the FPS numbers.
   3. publishes the repo root as committed, with no build step
 
   If any step fails, the live site stays as it was.
+- The custom domain `spacewrecked.rcjlabs.com` is set under Settings → Pages, with Enforce HTTPS on. DNS is a CNAME record `spacewrecked` → `rcjlabs.github.io`. With the Actions deploy, GitHub ignores the `CNAME` file; it stays in the repo as a record, and in case the deploy ever goes back to publishing from a branch.
 - The `sw.js` check fails when a commit skipped the pre-commit hook, for example an edit in GitHub's web editor or a clone without `npm run hooks`. Fix: `npm run precache`, commit `sw.js`, push. This fails the deploy on purpose: without a new `sw.js`, installed phones would never pick up the change.
 
 ### Local testing
