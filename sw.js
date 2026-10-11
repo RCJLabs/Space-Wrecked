@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "8277acd62f86";
+const VERSION = "1d9622b11ae2";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/balance.json",
@@ -33,7 +33,9 @@ const FILES = [
   "src/render/blueprintStyles.js",
   "src/render/canvas.js",
   "src/render/exterior.js",
+  "src/render/frameBudget.js",
   "src/render/hull.js",
+  "src/render/layer.js",
   "src/render/loop.js",
   "src/render/mesh.js",
   "src/render/orbit.js",

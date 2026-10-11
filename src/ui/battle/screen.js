@@ -270,6 +270,8 @@ export const battleScreen = {
         layout();
         dirty = true;
       },
+      // For the dev overlay: how the map's frames were drawn.
+      frameStats: () => mapView.frameStats(),
       draw(ctx, view) {
         if (!dirty) return;
         dirty = false;

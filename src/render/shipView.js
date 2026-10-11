@@ -11,12 +11,16 @@
 //   board.setHull(input)    the ship seen from outside (see exteriorScene)
 //   board.draw(ctx, cam, rect, view)   view is 'plans' or 'hull'; true
 //                                      means this frame was a rough one
-//                                      (the camera moved): draw again once
-//                                      it has settled
+//                                      (the camera moved, on a phone too
+//                                      slow for full frames): draw again
+//                                      once it has settled
+//   board.frameStats()                 for the dev overlay (frameBudget.js)
 import { seedFrom } from '../core/rng.js';
 import { BLUEPRINT_ORDER, BLUEPRINT_STYLES, LABEL_TONES } from './blueprintStyles.js';
 import { exteriorScene } from './exterior.js';
+import { createFrameBudget } from './frameBudget.js';
 import { OVERHANG } from './hull.js';
+import { paintLayer } from './layer.js';
 import { batchModel, paintBatches, paintLabels, paintSolid, prepareSolid } from './painter.js';
 import { palette, rgba } from './palette.js';
 import { blueprintScene, ghostScene, gridModel } from './shipScene.js';
@@ -59,8 +63,8 @@ const GRID = ['gridMinor', 'gridMajor'];
 const BACKDROP = rgba(palette.bpDeep, 0.85);
 const SKY = makeStarfield(seedFrom('hull view'), 220);
 
-// Styles for frames while the camera moves: no halos, which cost the most
-// to rasterize and matter least in motion.
+// Styles for rough frames while the camera moves: no halos, which cost the
+// most to rasterize and matter least in motion.
 const MOVING_STYLES = Object.fromEntries(Object.entries(BLUEPRINT_STYLES).map(([name, { halo, ...style }]) => [name, style]));
 
 export function createBoard(frame) {
@@ -68,11 +72,12 @@ export function createBoard(frame) {
   let ship = null;
   let ghost = null;
   let hull = null;
-  // The grid and ship as last drawn with a still camera, reused while only
-  // a part being placed moves over them; and a half-resolution canvas for
-  // frames while the camera moves.
+  // The grid and ship as last drawn in full, reused while only a part being
+  // placed moves over them; a half-resolution canvas for rough frames; and
+  // the budget that picks between them while the camera moves.
   const still = { canvas: null, cam: null, ship: null, rect: null, ratio: 0 };
-  const rough = { canvas: null };
+  const lowRes = { canvas: null };
+  const budget = createFrameBudget();
   let lastCam = null;
   return {
     setShip(input) {
@@ -100,41 +105,31 @@ export function createBoard(frame) {
       }
       const moving = cam !== lastCam;
       lastCam = cam;
-      if (moving) {
-        // The camera moved since the last frame: draw at one pixel per CSS
-        // pixel, in the cheaper styles, and scale it up. A quarter of the
-        // pixels on a 2x screen, and nobody looks closely mid-gesture.
-        layer(rough, rect, 1, (g) => plans(g, cam, rect, MOVING_STYLES));
-        ctx.drawImage(rough.canvas, rect.x, rect.y, rect.w, rect.h);
+      const rough = !budget.full(moving);
+      if (rough) {
+        // The camera moved, and full frames take too long on this phone:
+        // draw at one pixel per CSS pixel, in the cheaper styles, and scale
+        // it up. A quarter of the pixels on a 2x screen.
+        ctx.drawImage(paintLayer(lowRes, rect, 1, (g) => plans(g, cam, rect, MOVING_STYLES)), rect.x, rect.y, rect.w, rect.h);
         still.cam = null;
       } else {
         const ratio = ctx.getTransform().a;
         if (still.cam !== cam || still.ship !== ship || still.rect !== rect || still.ratio !== ratio) {
-          layer(still, rect, ratio, (g) => plans(g, cam, rect, BLUEPRINT_STYLES));
+          // Timed with the copy to the screen, which is where a phone that
+          // draws canvas without its GPU fills the pixels.
+          budget.measure(() => ctx.drawImage(paintLayer(still, rect, ratio, (g) => plans(g, cam, rect, BLUEPRINT_STYLES)), rect.x, rect.y, rect.w, rect.h));
           Object.assign(still, { cam, ship, rect, ratio });
+        } else {
+          ctx.drawImage(still.canvas, rect.x, rect.y, rect.w, rect.h);
         }
-        ctx.drawImage(still.canvas, rect.x, rect.y, rect.w, rect.h);
       }
-      if (ghost) paintBatches(ctx, ghost.batches, cam, moving ? MOVING_STYLES : BLUEPRINT_STYLES, BLUEPRINT_ORDER);
+      if (ghost) paintBatches(ctx, ghost.batches, cam, rough ? MOVING_STYLES : BLUEPRINT_STYLES, BLUEPRINT_ORDER);
       const labels = ghost ? ghost.labels : ship?.labels ?? [];
       paintLabels(ctx, labels, cam, rect, LABEL_TONES, BACKDROP);
-      return moving;
+      return rough;
     },
+    frameStats: () => budget.stats(),
   };
-
-  // Draws into an offscreen canvas covering rect at `ratio` device pixels
-  // per CSS pixel, resizing it only when that changes.
-  function layer(target, rect, ratio, paint) {
-    target.canvas ??= document.createElement('canvas');
-    const [w, h] = [Math.round(rect.w * ratio), Math.round(rect.h * ratio)];
-    if (target.canvas.width !== w || target.canvas.height !== h) {
-      target.canvas.width = w;
-      target.canvas.height = h;
-    }
-    const g = target.canvas.getContext('2d', { alpha: false });
-    g.setTransform(ratio, 0, 0, ratio, -rect.x * ratio, -rect.y * ratio);
-    paint(g);
-  }
 
   // The blueprint paper, its grid and the ship.
   function plans(g, cam, rect, styles) {
