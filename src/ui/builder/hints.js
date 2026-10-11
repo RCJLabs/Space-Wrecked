@@ -1,5 +1,5 @@
 // Text for the builder's status line and layout chip, as { tone, text }.
-import { placementError } from '../../sim/builder.js';
+import { placementError, removeModule } from '../../sim/builder.js';
 
 // What the player can do next. `drag` is the drag in progress, if any:
 // { kind: 'part' | 'ghost' | 'module' | 'pan', type, placement, error }.
@@ -19,7 +19,12 @@ export function hintFor(session, defs, drag) {
     return { tone: 'good', text: `Tap the ${part} again to place it.` };
   }
   const selected = session.ship.modules.find((m) => m.uid === session.selected);
-  if (selected) return { tone: 'info', text: `${name(selected.type)}: drag to move it, or Turn or Delete.` };
+  if (selected && session.ghost) {
+    const error = placementError(removeModule(session.ship, selected.uid), defs, session.ghost);
+    if (error) return { tone: 'bad', text: error.message };
+    return { tone: 'good', text: `Tap the ${name(selected.type)} again to move it here.` };
+  }
+  if (selected) return { tone: 'info', text: `${name(selected.type)}: tap where to move it, or Turn or Delete.` };
   return { tone: 'info', text: 'Drag a part onto the grid, or tap a part and then the grid.' };
 }
 

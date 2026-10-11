@@ -2,9 +2,56 @@
 
 Newest entry first.
 
+## M5c Tap to move (2026-10-11)
+
+**Status:** built and checked in headless Chromium; not yet on the Fold, so the ROADMAP.md box stays unticked until Evan has tried it on the phone. Evan, after M5b: "add the ability to tap and move pieces that were already placed."
+- **Filed in Phase 1, before Gate 1.** It's builder work, and the gate is still Evan's to record.
+
+Done when: "on the Fold, a placed part moves and turns by taps alone, the move can be undone, and a stray tap never moves anything."
+- **Met here, at all three sizes:** an airlock in the example ship moved and turned with taps alone, and undo put it back.
+- **Stray taps:** a tap off the preview only moved the preview. Tapping the selected part let go of it.
+
+### Shipped
+
+- **Tap to move** (`src/sim/session.js`): a placed part now moves the way a new part is placed.
+  - Tap it to select it. Tap where it should go, and a ghost of it shows there; its old place is drawn dashed.
+  - Tap the ghost to move it. That's one move command in the history and the build log; the part keeps its id and its place in the build order.
+  - Turn turns the ghost, so a move can turn the part too.
+  - Tapping another part selects that one instead. Tapping the selected part drops the ghost, and a second tap lets go of it.
+  - Dragging still works, the ghost included: a turned ghost dragged elsewhere keeps its turn.
+- **One rule changed:** a tap on empty grid with a part selected used to clear the selection. Now it shows the part there, ready to move.
+- **Undo, redo and delete** drop a move ghost, since the part may have gone. A ghost of a part being placed survives undo, as before.
+- **Hint text:** "Airlock: tap where to move it, or Turn or Delete." and "Tap the Airlock again to move it here.", or why it can't go there.
+- **Tests:** 204 in all, up from 201. They cover the move by taps, turning the ghost, a blocked move, letting go, a move carrying a turn, and the move hints.
+
+### Verified here (headless Chromium with scripted touch, not a phone)
+
+- **At 821×283, 905×370 and 960×825:** 12 checks each. Select; let go; preview where aimed; a stray tap moves only the preview; Turn turns only the preview; the tap moves and turns the part; part count unchanged; undo; redo; undo selects the part; dragging a turned ghost keeps its turn.
+- **Regression:** M5b's touch build and M5's save and code checks still pass at all three sizes, and so does the offline check.
+- **Console:** no errors or warnings.
+
+### Known issues
+
+- **A tap right on a cell edge** can show the ghost a cell either side, since snapping rounds there. Tapping the ghost where it shows always works.
+- **Carried over from M5b:** small cells with a real finger; corridors take two taps a cell; balance untuned.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Move by taps:** tap a placed part, tap somewhere else on the grid, then tap its ghost. It should move.
+2. **Move and turn:** do the same, but tap Turn before tapping the ghost.
+3. **Undo:** undo after a move puts the part back.
+4. **No accidents:** tap around the grid while a part is selected. Nothing should move until you tap the ghost.
+5. **Letting go:** tap the selected part twice to let go of it.
+
+### Next session
+
+**Evan's call:** try tap to move on the Fold.
+- If it's good, tick M5c in ROADMAP.md.
+- Then Gate 1: building on the Fold for 15 minutes, does he want to keep going? If he records that it passed, Phase 2 starts with M6 (ship to battle map).
+
 ## M5b Fine grid, smaller parts, build anywhere (2026-10-11)
 
-**Status:** built and checked in headless Chromium; not yet on the Fold, so the ROADMAP.md box stays unticked until Evan has built on the phone (as with M4). Evan asked for it after testing M5: "The modules are a bit too big. The grid shows smaller boxes. I want those to be active." Gate 1 waits for it.
+**Status:** done. Evan built with it on the Fold and said "Good", so the ROADMAP.md box is ticked. He asked for M5b after testing M5: "The modules are a bit too big. The grid shows smaller boxes. I want those to be active." In the same reply he asked for tap to move, which is M5c.
 
 Done when: "on the Fold's cover screen, a ship built from the smaller parts, off the old outline and joined only by shared walls, passes the flight checklist with no part placed by mistake; and ships and codes from M5 still open."
 - **Met here, at the cover screen's size and both others:** a 12-part ship built by touch (11 parts tap-tap, one dragged from the drawer), with its cargo hold reaching past M5's outline and joined only by shared walls, passed every flight check.

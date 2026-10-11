@@ -107,7 +107,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Touch controls:**
   - drag from a palette drawer, with a ghost preview tinted valid or invalid
   - nothing lands from a single tap: a tap shows the part as a ghost, and a second tap on it places it
-  - tap to select; rotate and delete buttons; undo and redo
+  - tap to select; a placed part moves the same way, a tap where it goes and a tap on its ghost; rotate and delete buttons; undo and redo
   - pinch to zoom and pan; twist two fingers to turn the ship
 
 ### 4.2 Approach phase (ship against ship)
@@ -254,7 +254,7 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
   **Done when:** any layout looks like a ship from outside, and zooming stays smooth.
 - [x] **M5 Blueprints, saves and replays.** The blueprint codec, copy and paste, save slots (six ships kept in the builder, each with its build log), and the build replay timelapse.
   **Done when:** a code from one device rebuilds the identical ship on another, and a broken code shows a message.
-- [ ] **M5b Fine grid, smaller parts, build anywhere.** Evan's change after M5 (2026-10-11):
+- [x] **M5b Fine grid, smaller parts, build anywhere.** Evan's change after M5 (2026-10-11):
   - The half squares under the old cells become the build grid, one square per battle tile.
   - Every part shrinks to a size of its own.
   - The fixed hull outline goes: a ship can be built anywhere on a 24 × 14 yard, up to 40 parts.
@@ -262,6 +262,8 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
   - Saves (version 3) and blueprint codes (version 2) convert.
 
   **Done when:** on the Fold's cover screen, a ship built from the smaller parts, off the old outline and joined only by shared walls, passes the flight checklist with no part placed by mistake; and ships and codes from M5 still open.
+- [ ] **M5c Tap to move.** Evan's ask after M5b (2026-10-11): a placed part moves by taps, the way a new one is placed. Tap it, tap where it goes to see it there, and tap that preview to move it; Turn turns the preview. Dragging still works.
+  **Done when:** on the Fold, a placed part moves and turns by taps alone, the move can be undone, and a stray tap never moves anything.
 
 **Gate 1:** Evan builds for 15 minutes on the Fold and wants to keep going. If not, fix the builder before Phase 2.
 

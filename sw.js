@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "69081f542655";
+const VERSION = "446ef5835c3a";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/balance.json",
