@@ -154,8 +154,9 @@ function edgeTile(cx, cy, side, t) {
   return [cx * t + t - 1, cy * t + mid];
 }
 
-// One key per tile edge, whichever of its two tiles names it.
-function edgeKey(x, y, side) {
+// One key per tile edge, whichever of its two tiles names it: "x,y,n" or
+// "x,y,w". Battles keep their open doors by it.
+export function edgeKey(x, y, side) {
   if (side === 's') return `${x},${y + 1},n`;
   if (side === 'e') return `${x + 1},${y},w`;
   return `${x},${y},${side}`;

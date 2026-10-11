@@ -4,13 +4,17 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "1d9622b11ae2";
+const VERSION = "67a0103b8ec4";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/balance.json",
+  "data/enemies.json",
   "data/frames.json",
+  "data/jobs.json",
   "data/manufacturers.json",
   "data/modules.json",
+  "data/tiles.json",
+  "data/weapons.json",
   "icon.svg",
   "icons/icon-192.png",
   "icons/icon-512.png",
@@ -50,19 +54,26 @@ const FILES = [
   "src/render/solid.js",
   "src/render/starfield.js",
   "src/render/svg.js",
+  "src/sim/battle.js",
+  "src/sim/battleLog.js",
   "src/sim/builder.js",
   "src/sim/builds.js",
   "src/sim/constraints.js",
+  "src/sim/cover.js",
   "src/sim/defs.js",
   "src/sim/frame.js",
   "src/sim/grid.js",
   "src/sim/mapFromShip.js",
   "src/sim/modules.js",
+  "src/sim/moves.js",
+  "src/sim/odds.js",
   "src/sim/regrid.js",
   "src/sim/replay.js",
   "src/sim/root.js",
   "src/sim/session.js",
   "src/sim/settings.js",
+  "src/sim/sight.js",
+  "src/sim/terrain.js",
   "src/ui/battle/screen.js",
   "src/ui/builder/card.js",
   "src/ui/builder/drawer.js",

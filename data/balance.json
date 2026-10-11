@@ -1,3 +1,18 @@
 {
-  "startingCrew": 4
+  "startingCrew": 4,
+  "actionPoints": 2,
+  "halfCover": 20,
+  "fullCover": 40,
+  "overwatchPenalty": 15,
+  "flankCrit": 30,
+  "closeRange": 3,
+  "midRange": 7,
+  "sightRange": 20,
+  "bleedOutTurns": 3,
+  "fireDamage": 2,
+  "rubbleMoveCost": 2,
+  "suitAir": 3,
+  "airlessDamage": 2,
+  "forgivingStep": 10,
+  "forgivingMax": 30
 }
