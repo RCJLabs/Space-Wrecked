@@ -148,8 +148,9 @@ export function createBoard(frame) {
   }
 }
 
-// Deep space behind the ship seen from outside: a faint nebula and stars.
-function drawSpace(ctx, rect, color) {
+// Deep space behind the ship seen from outside (and behind a battle map):
+// a faint nebula and stars.
+export function drawSpace(ctx, rect, color) {
   ctx.fillStyle = color;
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   const [cx, cy] = [rect.x + rect.w * 0.6, rect.y + rect.h * 0.4];

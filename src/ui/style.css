@@ -629,6 +629,111 @@ textarea {
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
 }
 
+/* Battle map sandbox: the map fills the screen; what it is sits top left
+   (the DEV button has the top right), the hint along the bottom, and Clear
+   and Fit in the bottom right corner. */
+.battle {
+  position: absolute;
+  inset: 0;
+}
+
+.bat-board {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+
+.bat-info,
+.bat-status {
+  position: absolute;
+  margin: 0;
+  padding: 5px 10px;
+  border-radius: 12px;
+  background: rgba(7, 10, 20, 0.82);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.bat-info {
+  top: 4px;
+  left: 8px;
+  max-width: calc(100% - 96px);
+  font-size: 12px;
+}
+
+.bat-status {
+  left: 8px;
+  bottom: 4px;
+  max-width: calc(100% - 152px);
+  font-size: 13px;
+}
+
+.bat-status[data-tone='bad'] {
+  color: var(--c-bad);
+}
+
+.bat-status[data-tone='good'] {
+  color: var(--c-good);
+}
+
+.bat-tools {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+#ui .bat-tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 56px;
+  height: 52px;
+  padding: 0;
+  background: var(--c-panel);
+  font-size: 10.5px;
+}
+
+.bat-card {
+  position: absolute;
+  top: 36px;
+  left: 8px;
+  max-width: min(340px, calc(100% - 16px));
+  padding: 10px 12px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-panel);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: auto;
+}
+
+/* On the right it sits above Clear and Fit, clear of the DEV button. */
+.bat-card[data-side='right'] {
+  top: auto;
+  right: 8px;
+  bottom: 68px;
+  left: auto;
+}
+
+.bat-card h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.bat-card p {
+  margin: 0;
+  color: var(--c-ink-dim);
+}
+
 /* Update prompt */
 .update-prompt {
   position: absolute;

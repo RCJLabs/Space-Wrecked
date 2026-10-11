@@ -24,6 +24,15 @@ export const palette = {
   bpDeep: '#081530',
   bpLine: '#8cd7ff',
   bpGlow: '#ffd36b',
+  // Wrecked rooms on a battle map: fire, vacuum and rubble, each with the
+  // floor color it leaves.
+  fire: '#ff7a2f',
+  fireCore: '#ffd36b',
+  scorch: '#2b2126',
+  vacuum: '#9fe3ff',
+  frost: '#3d5f80',
+  rubble: '#80746a',
+  dust: '#3f3b3c',
 };
 
 // Manufacturers are skins over the same part shapes: the colors a built ship
@@ -54,6 +63,13 @@ export const skins = {
     medical: '#ff6b6b',
     port: '#ff5a5a',
     starboard: '#5fd38d',
+    // Inside, on a battle map.
+    floors: ['#28344e', '#2c3955', '#253048', '#2f3c59'],
+    floorSeam: '#18202f',
+    wall: '#6a7da3',
+    door: '#e3b341',
+    doorLight: '#ffe39a',
+    screen: '#7fe0ff',
   },
 };
 

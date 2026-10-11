@@ -123,8 +123,10 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 
 ### 4.3 Squad battles
 
-- **Maps:** a ship layout converted by `src/sim/mapFromShip.js`, or a planet map built from templates.
-- **Tiles:** floor, wall, door (open, closed or locked), half cover, full cover, hazard (fire, vacuum), airlock (entry and exit), console (objective).
+- **Maps:** a ship layout converted by `src/sim/mapFromShip.js`, or a planet map built from templates. A ship's map is one tile per builder cell (`tilesPerCell`), with a tile of space around it; the same ship always converts to the identical map (M6, tested against a golden map).
+- **Tiles** come from each room's interior template: floor, half cover, full cover, machinery, console (objective), airlock floor. Outside the rooms a tile is space, or hull where the hull closes over a notch.
+- **Edges:** walls stand between tiles, not on them, since rooms can be one tile across. An edge is a wall between rooms, the hull, a door (open, closed or locked) where the builder joins two rooms, or a hatch where an airlock opens onto space (entry and exit).
+- **Wrecked rooms** from the approach phase put their hazard on every tile of the room: fire, vacuum or rubble. What each does is M7's rules.
 - **Squad size:** 3 at the start, up to 5 with drop bay modules later. Enemies number 4 to 8.
 - **Turns:** each unit gets 2 actions:
   - move, or dash using both actions
@@ -262,14 +264,14 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
   - Saves (version 3) and blueprint codes (version 2) convert.
 
   **Done when:** on the Fold's cover screen, a ship built from the smaller parts, off the old outline and joined only by shared walls, passes the flight checklist with no part placed by mistake; and ships and codes from M5 still open.
-- [ ] **M5c Tap to move.** Evan's ask after M5b (2026-10-11): a placed part moves by taps, the way a new one is placed. Tap it, tap where it goes to see it there, and tap that preview to move it; Turn turns the preview. Dragging still works.
+- [x] **M5c Tap to move.** Evan's ask after M5b (2026-10-11): a placed part moves by taps, the way a new one is placed. Tap it, tap where it goes to see it there, and tap that preview to move it; Turn turns the preview. Dragging still works.
   **Done when:** on the Fold, a placed part moves and turns by taps alone, the move can be undone, and a stray tap never moves anything.
 
-**Gate 1:** Evan builds for 15 minutes on the Fold and wants to keep going. If not, fix the builder before Phase 2.
+**Gate 1:** Evan builds for 15 minutes on the Fold and wants to keep going. If not, fix the builder before Phase 2. **Passed 2026-10-11** ("All good. Continue the work").
 
 ### Phase 2: Prove the boarding fight
 
-- [ ] **M6 Ship to battle map.** Interior templates become tiles: doors, walls, cover, airlocks, wrecked-room flags.
+- [x] **M6 Ship to battle map.** Interior templates become tiles: doors, walls, cover, airlocks, wrecked-room flags.
   **Done when:** the same ship always converts to the identical map (tested), and the map renders.
 - [ ] **M7 Tactical rules, headless.** Units, actions, movement, line of sight, directional cover, flanking, hit chance, crits, armor, overwatch, reload, bleed-out, an event log.
   **Done when:** hit-chance math is tested and a fixed-seed battle replays identically.
