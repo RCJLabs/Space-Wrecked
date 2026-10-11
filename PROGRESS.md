@@ -34,6 +34,7 @@ Newest entry first.
 - Importing a save takes two taps: tap to check, tap again to replace.
 - The pre-commit hook runs `precache --staged`, which hashes what git will commit, not what is on disk. A file on disk but not committed would 404 on Pages and fail the whole service worker install. Unstaged edits would stamp a version that the later commit doesn't change, so phones would never update.
 - Offline, a navigation to an uncached path redirects to the start page. index.html served at a deeper path would point its relative URLs at files that aren't cached.
+- The manifest `id` is `/?app=wt`. Chrome resolves it against the domain root, so it reads as `https://rcjlabs.github.io/?app=wt`. It is the installed app's identity: never change it once anyone has installed (`tests/manifest.test.js` pins it).
 
 ### Verified here (headless Chromium with Playwright, not a phone)
 
@@ -47,7 +48,8 @@ Newest entry first.
 
 ### Known issues
 
-- Nothing has been tested on a real phone yet.
+- On the phone so far, the page loads in Chrome and portrait shows the rotate prompt. Install failed (next item). The rest of the checklist is still to run.
+- **First install attempt failed.** Chrome's install sheet said "This app is already installed", but no app was on the phone, and nothing in `chrome://webapks` covered this page. The likeliest cause is an install that started and never finished, which Chrome counts as installed; this is unconfirmed. The fix was an explicit manifest `id`, giving the app a fresh identity. If it happens again, the install itself is failing on the phone: check Chrome's notifications during the install.
 - **Origin change later.** Saves, the install and the cache all belong to `rcjlabs.github.io`. Adding the custom subdomain (`CNAME`) moves the game to a new origin, and existing installs and saves don't follow; players would need export and import. Set the subdomain before anyone but Evan has a save.
 - **Shared origin.** Every RCJLabs Pages project without a custom domain shares `rcjlabs.github.io`, including its localStorage and cache storage. This game namespaces both. But if another project there has a service worker that deletes every cache but its own, or calls `localStorage.clear()`, it would hit this game too. I couldn't check the other repos.
 - `screen.orientation.lock` only works in fullscreen, which means the installed app. In a Chrome tab it fails silently and the overlay covers it. Unverified: on the unfolded inner screen, Android may ignore orientation requests on large screens. The overlay is the fallback either way.
