@@ -359,7 +359,7 @@ A Capacitor build; a paid version with a web demo; optional cloud saves on Base4
 | Two deep systems overrun scope | Phase 2 runs past about 8 sessions | Keep the shared grid; cut base building to slots first |
 | Players build chokepoint fortresses | Balance runs show defenders always win | Enemies breach walls and choose entry points; corridors stay two tiles wide |
 | Percentage misses feel unfair | Testers complain about high-odds misses | Clearer cover display, the forgiving-odds setting, the math always shown |
-| 3D on canvas runs slowly on mid-range phones | Dropped frames turning or zooming the board (M4), or in battles (M8) | Rough half-resolution frames while the camera moves, cache the still board, fewer lines, cap the pixel ratio. Past that: three.js (MIT, one vendored file, no build step), with Evan's approval |
+| 3D on canvas runs slowly on mid-range phones | Dropped frames turning or zooming the board (M4), or in battles (M8) | Rough half-resolution frames while the camera moves, only on a phone too slow for full ones (the frame budget, after M6: they blurred zooming on the Fold); cache the still board, fewer lines, cap the pixel ratio. Past that: three.js (MIT, one vendored file, no build step), with Evan's approval |
 | Lost saves | Reports after Chrome data is cleared | Persistent storage request, export and import, migrations |
 | Act 1 drags | Test runs pass an hour | Fewer jobs to launch; the builder from the first minute |
 | Generated images look mismatched | The image pass looks patchy | Palette pass, reference images, fewer images |

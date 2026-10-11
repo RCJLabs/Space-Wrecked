@@ -651,6 +651,8 @@ export const builderScreen = {
         layout();
         dirty = true;
       },
+      // For the dev overlay: how the board's frames were drawn.
+      frameStats: () => plans?.frameStats(),
       draw(ctx, view) {
         if (!dirty) return;
         dirty = false;

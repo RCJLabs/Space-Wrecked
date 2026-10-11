@@ -2,6 +2,40 @@
 
 Newest entry first.
 
+## Fix after M6: sharp frames while zooming (2026-10-11)
+
+Evan, on the Fold: "Zooming and unzooming causes the ship to go blurry. Is that intended? Could we fix it?"
+- **It was intended:** a speed trick from M4. While the camera moved, the builder's plans drew at one pixel per CSS pixel without the glow halos, scaled up, and sharpened 150 ms after the camera stopped. M6 copied it into the battle map.
+- **The trick was tuned on the wrong machine.** It was measured in headless Chromium, which fills canvas pixels on the CPU, where pixels are what cost. A phone fills them on its GPU. The JS that records a full frame takes 0.7 to 1.4 ms here (3 to 9 ms at 4× CPU), so on the Fold the blur bought little.
+
+### Shipped
+
+- **A frame budget** (`src/render/frameBudget.js`, 10 ms). While the camera moves, frames are drawn in full, as sharp as still ones, as long as a full frame fits the budget.
+  - On a phone that can't keep up, moving frames are rough as before, then sharpen when the camera stops.
+  - The cost is the middle of the last three full frames, and it counts only from the second. One slow frame (a garbage collection, or a screen's first) doesn't blur a whole gesture.
+  - Each full frame is timed with its copy to the screen. On a phone that draws canvas without its GPU, that copy is where the pixels get filled, so the budget sees the real cost there too.
+- **Both 3D boards use it:** the builder's plans and the battle map. The Hull view never had rough frames.
+- **The battle map keeps its last full frame** and reuses it when nothing has changed, as the builder's plans already did. Both boards draw frames into offscreen canvases through one helper (`src/render/layer.js`).
+- **The dev overlay** has a new line on the builder and battle map, such as "moving 28 full 0 rough  full 2.1/10 ms". That's how the frames drawn while the camera moved came out in the last half second, and what a full frame costs against the budget.
+- **Tests:** 237 in all, up from 230. Seven cover the budget on a fake clock: still frames are always full, the switch to rough and back, a slow first frame and one slow frame ignored, the counts.
+
+### Verified here (headless Chromium, which fills canvas on the CPU)
+
+- **Cheap frames** (600×260 at 1×; a full frame about 4 ms in the builder, 5 on the battle map): while zooming, the frame on screen is already the final one in both boards, and the overlay reads "moving 10 full 0 rough".
+- **Expensive frames** (905×370 at 2× with 4× CPU; a full frame 50 to 130 ms): moving frames are rough and sharpen after the camera stops, as before.
+- **Headless at 905×370 and 2×, unthrottled,** fills pixels on the CPU, so a full frame costs 16 to 19 ms and moving frames stay rough there. That's the case the fallback is for.
+- **Regression:** at all three sizes, the battle map (24 checks), M5b's touch build (14), M5's saves (34) and M5c's moves (12) all pass, and so does the offline check (4). No console errors.
+
+### Known issues
+
+- **Not measured on the Fold.** The overlay line says which kind of frame it drew. A full frame is expected at a few ms; over 10 ms, the blur comes back while moving.
+- **The canvas is drawn at 2× on a 2.625× screen.** CLAUDE.md caps the pixel ratio at 2, so the board is slightly soft even when still. A cap of 3 would be crisper and cost about 1.7 times the pixels. That's Evan's call.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Update,** then pinch to zoom in and out in the Builder and on the Battle map. The ship should stay sharp the whole time.
+2. **In dev mode,** read the last line of the frame-rate overlay (top right) while pinching. "0 rough" means every frame was full. If it says rough, send the line: it has the cost.
+
 ## M6 Ship to battle map (2026-10-11)
 
 **Status:** done, and the ROADMAP.md box is ticked. It's the first Phase 2 milestone, started after Gate 1 passed (below).

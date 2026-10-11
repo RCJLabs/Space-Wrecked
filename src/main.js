@@ -57,7 +57,7 @@ const loop = createLoop({
     view.ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
     active.draw(view.ctx, view, timeMs);
   },
-  onStats: fps ? (stats) => fps.update(stats, view) : undefined,
+  onStats: fps ? (stats) => fps.update(stats, view, active.frameStats?.()) : undefined,
 });
 loop.start();
 
