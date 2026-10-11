@@ -5,7 +5,9 @@ import { deploy } from '../src/sim/deploy.js';
 import { createFight, ordersFor, reduceFight } from '../src/sim/fight.js';
 import { edgeKey } from '../src/sim/mapFromShip.js';
 import { shotOdds } from '../src/sim/odds.js';
-import { playScripted, scriptedAction } from '../src/sim/scripted.js';
+import { aiAction } from '../src/sim/ai.js';
+import { autoplay } from '../src/sim/autoplay.js';
+import { scriptedAction } from '../src/sim/scripted.js';
 import { exampleMap, openMap, rules } from './battleKit.js';
 
 const boarders = rules.encounters.get('boarders').enemies;
@@ -191,13 +193,25 @@ function ordersOf(action) {
   }
 }
 
+// The crew given the scripted player's orders by taps, against the AI's
+// boarders, plays out exactly as the battle rules play the same two
+// players.
 test('a fight given orders by taps plays exactly as the battle rules do', () => {
   for (const seed of [1, 2, 3, 7]) {
     const setup = boarding(seed);
     let fight = start(setup);
     while (!fight.battle.winner && fight.battle.round <= 12) fight = send(fight, ...ordersOf(scriptedAction(fight.battle, rules)));
-    const scripted = playScripted(setup, rules, { maxRounds: 12 });
-    assert.deepEqual(fight.battle, scripted.battle, `seed ${seed}`);
-    assert.deepEqual(fight.log, scripted.events, `seed ${seed}`);
+    const played = autoplay(setup, rules, { crew: scriptedAction, enemy: aiAction }, { maxRounds: 12 });
+    assert.deepEqual(fight.battle, played.battle, `seed ${seed}`);
+    assert.deepEqual(fight.log, played.events, `seed ${seed}`);
+  }
+});
+
+test("the enemy's turn is the AI's", () => {
+  const fight = send(start(), { type: 'fight/end' });
+  let battle = fight.played[0].battle;
+  for (const step of fight.played.slice(1)) {
+    assert.deepEqual(step.action, aiAction(battle, rules));
+    battle = step.battle;
   }
 });

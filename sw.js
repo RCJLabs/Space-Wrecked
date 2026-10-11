@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "9d20e0895311";
+const VERSION = "c58a07184c88";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/balance.json",
@@ -58,6 +58,8 @@ const FILES = [
   "src/render/starfield.js",
   "src/render/svg.js",
   "src/render/units.js",
+  "src/sim/ai.js",
+  "src/sim/autoplay.js",
   "src/sim/battle.js",
   "src/sim/battleLog.js",
   "src/sim/builder.js",

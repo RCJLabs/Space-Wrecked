@@ -1,7 +1,7 @@
 // The fight sandbox: the squad against a boarding party on the builder's
 // open ship, as its battle map (with any wrecks made on the Battle map
-// sandbox). The player gives the crew orders; the scripted player
-// (src/sim/scripted.js) plays the boarders until the enemy AI (M9).
+// sandbox). The player gives the crew orders; the enemy AI (src/sim/ai.js)
+// plays the boarders.
 // Input -> fight action (src/sim/fight.js) -> new fight -> playback -> redraw.
 // What an order set off is shown happening (src/render/playback.js) before
 // the board takes the next; Skip goes to the end at once. Nothing here is
