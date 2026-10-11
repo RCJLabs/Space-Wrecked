@@ -111,6 +111,17 @@ test('doors are lit, and each hatch has a docking collar and its light', () => {
   assert.ok(lights[0].at[1] > 5, 'outside, below the airlock');
 });
 
+test("an open door slides down into the deck; the battle's other doors stand", () => {
+  const map = exampleMap();
+  const doors = [];
+  for (let y = 0; y < map.height; y++) {
+    for (let x = 0; x < map.width; x++) for (const side of ['n', 'w']) if (wallAt(map, x, y, side) === 'door') doors.push(`${x},${y},${side}`);
+  }
+  const lights = (open) => battleScene({ map, skin, open }).faces.filter((f) => f.emissive && f.color === skin.doorLight).map((f) => f.pts[0][2]);
+  assert.deepEqual(lights([]), doors.map(() => 0.46));
+  assert.deepEqual(lights([doors[1]]), doors.map((key, i) => (i === 1 ? 0.025 : 0.46)));
+});
+
 test('wrecks show: flames and a glow on fire, frost and a cold glow in vacuum, rocks in rubble', () => {
   const map = exampleMap({ 1: 'fire', 2: 'rubble', 4: 'vacuum' });
   const { faces, glows } = battleScene({ map, skin });

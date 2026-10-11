@@ -1,0 +1,6 @@
+{
+  "squad": ["marine", "engineer", "medic"],
+  "encounters": [
+    { "id": "boarders", "name": "Boarding party", "enemies": ["pirate", "pirate", "brute", "pirate"] }
+  ]
+}

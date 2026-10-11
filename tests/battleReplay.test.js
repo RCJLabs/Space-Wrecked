@@ -3,8 +3,9 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { act, createBattle, playBattle } from '../src/sim/battle.js';
 import { wallAt } from '../src/sim/mapFromShip.js';
+import { playScripted } from '../src/sim/scripted.js';
 import { walkable } from '../src/sim/terrain.js';
-import { BATTLE_FIXTURE, EXAMPLE_BATTLE, GOLDEN_BATTLE, logText, playScripted } from '../tools/battle-log.js';
+import { BATTLE_FIXTURE, EXAMPLE_BATTLE, GOLDEN_BATTLE, logText } from '../tools/battle-log.js';
 import { exampleMap, rules } from './battleKit.js';
 
 const fixture = JSON.parse(readFileSync(BATTLE_FIXTURE, 'utf8'));

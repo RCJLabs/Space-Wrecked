@@ -33,6 +33,29 @@ export const palette = {
   frost: '#3d5f80',
   rubble: '#80746a',
   dust: '#3f3b3c',
+  // Units on a battle map: the crew in pale suits, each trimmed in a color
+  // of their own (the same as on their button), and boarders in rust.
+  crewSuit: '#c9d4e6',
+  crewA: '#5fd3e8',
+  crewB: '#8fe36b',
+  crewC: '#b99bff',
+  crewD: '#ff8fc8',
+  crewE: '#f2f5fa',
+  enemySuit: '#a4473d',
+  enemyTrim: '#ff6b4a',
+  visor: '#bff0ff',
+  enemyVisor: '#ffb36b',
+  gunmetal: '#262f42',
+  fallen: '#4a5160',
+  // Orders on a battle map: the tiles a unit can move to in one action or
+  // in a dash, the path it would take, the cover where it would stop, the
+  // enemies it can shoot, and shots in flight.
+  reach: '#8cd7ff',
+  dash: '#ffc857',
+  path: '#ffe39a',
+  cover: '#bff0ff',
+  target: '#ff6b6b',
+  tracer: '#fff1b8',
 };
 
 // Manufacturers are skins over the same part shapes: the colors a built ship

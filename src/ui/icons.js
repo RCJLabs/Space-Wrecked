@@ -11,4 +11,14 @@ export const icons = {
   done: icon('<path d="m5 12 5 5 9-10"/>'),
   fit: icon('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
   hull: icon('<path d="M5 8h8l7 4-7 4H5z"/><path d="M5 10.5H2M5 13.5H2"/><path d="M9.5 8v8"/>'),
+  // Fight orders.
+  shoot: icon('<circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/>'),
+  overwatch: icon('<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/>'),
+  reload: icon('<rect x="8" y="3" width="8" height="18" rx="2"/><path d="M8 8h8M8 13h8"/>'),
+  stabilize: icon('<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/>'),
+  door: icon('<path d="M3 21h18"/><path d="M6 21V3h12v18"/><path d="M14 12h.01"/>'),
+  endTurn: icon('<path d="M4 12h12"/><path d="m11 6 6 6-6 6"/><path d="M20 5v14"/>'),
+  skip: icon('<path d="m4 6 8 6-8 6z"/><path d="m12 6 8 6-8 6z"/>'),
+  log: icon('<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>'),
+  again: icon('<path d="M3 12a9 9 0 0 1 15.3-6.4L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.3 6.4L3 16"/><path d="M3 21v-5h5"/>'),
 };

@@ -36,6 +36,11 @@ const RANGE_BANDS = ['close', 'mid', 'long'];
 // Crew jobs and enemies are both fighters, with the same fields.
 const FIGHTER_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'weapon'];
 const TILE_RULE_KEYS = ['walk', 'cover', 'blocksSight'];
+const ENCOUNTER_KEYS = ['id', 'name', 'enemies'];
+// Squads of 3 to start, up to 5 later; 4 to 8 enemies (ROADMAP §4.3). Fewer
+// are allowed, for small tests.
+const MAX_SQUAD = 5;
+const MAX_ENEMIES = 8;
 // Tiles every battle map has, besides the interior templates' (mapFromShip.js).
 const MAP_TILES = ['space', 'hull'];
 const MAX_MODULE_SIZE = 4;
@@ -48,7 +53,7 @@ export const KNOWN_TAGS = [
 ];
 
 // Returns a list of problems as "where: what" strings. Empty means valid.
-export function validateData({ modules: moduleFile, frames: frameFile, manufacturers: makerFile, balance, weapons: weaponFile, jobs: jobFile, enemies: enemyFile, tiles: tileFile }) {
+export function validateData({ modules: moduleFile, frames: frameFile, manufacturers: makerFile, balance, weapons: weaponFile, jobs: jobFile, enemies: enemyFile, tiles: tileFile, encounters: encounterFile }) {
   const problems = [];
   const fail = (where, message) => problems.push(`${where}: ${message}`);
 
@@ -102,6 +107,23 @@ export function validateData({ modules: moduleFile, frames: frameFile, manufactu
   }
   jobs.forEach((job, i) => checkFighter(job, `jobs.json ${job.id ?? `#${i}`}`, weaponIds, fail));
   enemies.forEach((enemy, i) => checkFighter(enemy, `enemies.json ${enemy.id ?? `#${i}`}`, weaponIds, fail));
+  const enemyIds = new Set(enemies.map((enemy) => enemy.id));
+
+  // Who fights: the squad by job, and each encounter's enemies.
+  const squad = encounterFile?.squad;
+  if (!isListIn(squad, 1, MAX_SQUAD)) fail('encounters.json', `squad must be a list of 1 to ${MAX_SQUAD} crew jobs`);
+  else for (const id of squad) if (!jobIds.has(id)) fail('encounters.json squad', `unknown job "${id}"`);
+  const encounters = listOf(encounterFile, 'encounters', 'encounters.json', fail);
+  uniqueIds(encounters, 'encounters.json', fail);
+  encounters.forEach((encounter, i) => {
+    const where = `encounters.json ${encounter.id ?? `#${i}`}`;
+    for (const key of Object.keys(encounter)) {
+      if (!ENCOUNTER_KEYS.includes(key)) fail(where, `unknown field "${key}"`);
+    }
+    if (!isText(encounter.name)) fail(where, 'name must be a non-empty string');
+    if (!isListIn(encounter.enemies, 1, MAX_ENEMIES)) fail(where, `enemies must be a list of 1 to ${MAX_ENEMIES} enemies`);
+    else for (const id of encounter.enemies) if (!enemyIds.has(id)) fail(where, `unknown enemy "${id}"`);
+  });
 
   const tileRules = tileFile?.tiles;
   if (!tileRules || typeof tileRules !== 'object' || Array.isArray(tileRules)) {
@@ -346,6 +368,10 @@ function isIntIn(value, min, max) {
   return Number.isInteger(value) && value >= min && value <= max;
 }
 
+function isListIn(value, min, max) {
+  return Array.isArray(value) && value.length >= min && value.length <= max;
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   let data;
   try {
@@ -364,6 +390,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   console.log(
     `validate-data: OK (${count(data.modules.modules.length, 'module')}, ${count(data.frames.frames.length, 'frame')}, ` +
       `${count(data.manufacturers.manufacturers.length, 'manufacturer')}, ${count(data.weapons.weapons.length, 'weapon')}, ` +
-      `${count(data.jobs.jobs.length, 'job')}, ${data.enemies.enemies.length} enem${data.enemies.enemies.length === 1 ? 'y' : 'ies'})`,
+      `${count(data.jobs.jobs.length, 'job')}, ${data.enemies.enemies.length} enem${data.enemies.enemies.length === 1 ? 'y' : 'ies'}, ` +
+      `${count(data.encounters.encounters.length, 'encounter')})`,
   );
 }

@@ -28,7 +28,7 @@ A ship-first sandbox RPG in 3D: build a ship on a grid, run from a pursuer, and 
 - **`SAVE_VERSION` gates all saves.** Never change the save schema without bumping `SAVE_VERSION` and writing a migration. Never reset player saves. (This is the Ascent rule.)
 - **Seeded RNG everywhere**, using `mulberry32` in `src/core/rng.js`. This covers battles, the approach phase, generators, loot and events. No bare `Math.random()` in game logic. RNG state is part of the save, so reloading never rerolls.
 - **All content is data** in `data/*.json`:
-  - modules, hull frames, manufacturers, weapons, enemies
+  - modules, hull frames, manufacturers, weapons, enemies, encounters
   - jobs, traits, backgrounds, pursuers
   - mission and job templates, events, balance numbers
 
@@ -81,6 +81,7 @@ PROGRESS.md
 - Landscape only. Portrait shows a rotate prompt.
 - Touch targets are at least 48 CSS px. Tap to preview, tap again to confirm. Long-press for details. No hover-only UI.
 - In 3D views a cell is smaller than 48 px (about 24 px with a whole starter ship in view on the cover screen; Evan's call in M5b), so a single tap never places anything: the part shows as a ghost first, and a second tap on it, or the end of a drag, puts it down. The default camera fits the whole ship with every cell at least 22 px (`tests/orbit.test.js` checks it); zoom covers the rest.
+- In a fight, likewise, a tap on the board never spends an action: it shows the move or the shot, and a second tap makes it. The fight camera opens square to the ship, where tiles are biggest (48 px and up for the example ship on the cover screen in the app). Choosing a unit, Fire and every other order are buttons of 48 px or more.
 - Respect safe-area insets.
 - Test both screen shapes: about 2.4:1 (Galaxy Z Fold cover screen in landscape) and about 1.2:1 (unfolded). Panels anchor to the corners and the board takes the rest.
 - Target 60 fps on a mid-range Android phone. Cap `devicePixelRatio` at 2, offer a 30 fps battery setting, and redraw only what changed.

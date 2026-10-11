@@ -3,9 +3,9 @@
 // seam around every tile; walls, the hull, doors and hatches stand on the
 // tile edges; each tile's fitting stands on it (crates for half cover,
 // lockers for full cover, machinery, consoles, the airlock's pad). Wrecked
-// rooms burn, frost over or fill with rubble. Pure: map in, { faces, glows }
-// out (solid.js faces, mesh.js glows), in the manufacturer's skin. Units are
-// tiles, z up.
+// rooms burn, frost over or fill with rubble. An open door has slid down
+// into the deck. Pure: map in, { faces, glows } out (solid.js faces, mesh.js
+// glows), in the manufacturer's skin. Units are tiles, z up.
 import { cellAt } from '../sim/grid.js';
 import { MARGIN, wallAt } from '../sim/mapFromShip.js';
 import { palette } from './palette.js';
@@ -16,14 +16,16 @@ export const HULL_H = 0.7; // the hull
 const TALL = 0.9; // the tallest fitting, a locker
 const COLLAR = 0.45; // how far a docking collar sticks out of the hull
 const DOOR_H = 0.46;
+const OPEN_DOOR_H = 0.025; // an open door: its top, flush with the deck
 const THICK = { wall: 0.1, hull: 0.16, door: 0.06, hatch: 0.1 };
 const POST = { wall: 0.07, hull: 0.1 }; // half the width of a post where walls meet
 const SOLID = new Set(['wall', 'hull']); // runs that go straight on without a post
 const STEP = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 const FLOOR_UNDER = { fire: 'scorch', vacuum: 'frost', rubble: 'dust' };
 
-// input: { map, skin }
-export function battleScene({ map, skin }) {
+// input: { map, skin, open }: open is a battle's open doors, by edge key
+// (battle.doors).
+export function battleScene({ map, skin, open = [] }) {
   const faces = [];
   const glows = [];
   const edge = { edge: skin.edge };
@@ -46,7 +48,7 @@ export function battleScene({ map, skin }) {
     }
   }
 
-  walls(faces, map, skin);
+  walls(faces, map, skin, new Set(open));
   for (const { x, y, side } of map.hatches) collar(faces, glows, x, y, side, skin);
   // A room open to space glows cold, once for the whole room.
   for (const room of map.rooms) {
@@ -70,8 +72,9 @@ export function battleBoxes(map) {
 // Walls, the hull, doors and hatches on the tile edges. A post stands where
 // runs turn, meet or end, and either side of a door or hatch; a straight run
 // of wall or hull goes on through. Each piece is its top and its two long
-// sides: its ends are always against a post or the next piece.
-function walls(faces, map, skin) {
+// sides: its ends are always against a post or the next piece. A north or
+// west edge's key is "x,y,side" (mapFromShip.js edgeKey).
+function walls(faces, map, skin, open) {
   const posts = new Map();
   for (let vy = 0; vy <= map.height; vy++) {
     for (let vx = 0; vx <= map.width; vx++) {
@@ -109,7 +112,7 @@ function walls(faces, map, skin) {
         };
         if (kind === 'wall') piece(THICK.wall, WALL_H, skin.wall);
         else if (kind === 'hull') piece(THICK.hull, HULL_H, skin.hull);
-        else if (kind === 'door') piece(THICK.door, DOOR_H, skin.door, skin.doorLight, true);
+        else if (kind === 'door') piece(THICK.door, open.has(`${x},${y},${side}`) ? OPEN_DOOR_H : DOOR_H, skin.door, skin.doorLight, true);
         else piece(THICK.hatch, HULL_H - 0.1, skin.livery, skin.glassHi, true);
       }
     }
@@ -150,9 +153,10 @@ const FITTINGS = {
     plate(f, [x + 0.25, y + 0.25], [x + 0.75, y + 0.75], 0.302, k.screen, { emissive: true });
     g.push({ at: [x + 0.5, y + 0.5, 0.34], r: 0.34, color: k.screen });
   },
+  // A square pad, not a ring: in a fight, rings mark units.
   airlock(f, g, x, y, k) {
-    disc(f, x + 0.5, y + 0.5, 0.34, 0.003, k.hazard, 12);
-    disc(f, x + 0.5, y + 0.5, 0.25, 0.006, k.dark, 12);
+    plate(f, [x + 0.15, y + 0.15], [x + 0.85, y + 0.85], 0.003, k.hazard);
+    plate(f, [x + 0.23, y + 0.23], [x + 0.77, y + 0.77], 0.006, k.dark);
   },
 };
 

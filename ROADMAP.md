@@ -128,7 +128,8 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Edges:** walls stand between tiles, not on them, since rooms can be one tile across. An edge is a wall between rooms, the hull, a door (open, closed or locked) where the builder joins two rooms, or a hatch where an airlock opens onto space (entry and exit).
 - **Wrecked rooms** from the approach phase put their hazard on every tile of the room: fire, vacuum or rubble.
 - **What tiles do** is data (`data/tiles.json`): units stand on floor and airlock floor; crates and consoles are half cover, lockers and machinery full cover; lockers, machinery and the hull block sight.
-- **Squad size:** 3 at the start, up to 5 with drop bay modules later. Enemies number 4 to 8. Crew fight as their job (`data/jobs.json`: hit points, aim, defense, mobility, armor, a weapon), and enemies by type (`data/enemies.json`). The attributes in §4.5 feed these numbers later.
+- **Squad size:** 3 at the start, up to 5 with drop bay modules later. Enemies number 4 to 8. Crew fight as their job (`data/jobs.json`: hit points, aim, defense, mobility, armor, a weapon), and enemies by type (`data/enemies.json`). The attributes in §4.5 feed these numbers later. Until a campaign has a crew, the squad and each encounter's enemies are data (`data/encounters.json`).
+- **Where they start** (M8): on a boarding, the squad on the bridge and the boarders at the hatches they come in by, each taking the tiles nearest by walking distance (`src/sim/deploy.js`). The crew moves first.
 - **Turns:** sides take turns; each unit gets 2 actions (`balance.actionPoints`):
   - move: one action within its mobility, both for a dash within twice it
   - shoot, which ends the unit's turn
@@ -148,6 +149,8 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Objectives:** eliminate, extract, hack, rescue, hold, salvage. M7 has eliminate: a side wins when the other has no one standing.
 - **Forgiving odds:** an optional menu setting adds 10 to the crew's next shot for each miss in a row, up to 30. The bonus is included in the number shown, so Law 4 still holds.
 - **The log:** every action returns the events it caused, and the same setup, seed and actions always give the same events (`src/sim/battle.js`; the example battle in `tests/golden/` is replayed by the tests).
+- **Giving orders** (M8, `src/sim/fight.js`): a tap never spends an action. A tap on a tile shows the move (its path, one action or a dash, and the cover where it stops), and a second tap on it makes it. A tap on an enemy, or Shoot, shows the shot with its odds part by part, and Fire or a second tap takes it. Overwatch, Reload, Stabilize and Open door are buttons; End turn takes a second tap while anyone can still act. The board opens square to the ship, where tiles are biggest, and every enemy is shown (no fog of war); those the selected unit can see show the hit chance.
+- **The enemy's turn** is worked out at once by the rules and then played out on the board, event by event: walks, shots that land or fly wide with the damage over the unit hit, doors opening, whose turn it is. Skip goes to the end. Until the enemy AI (M9), a plain scripted player takes the enemy's turns (`src/sim/scripted.js`).
 
 ### 4.4 Heat
 
@@ -283,7 +286,7 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
   **Done when:** the same ship always converts to the identical map (tested), and the map renders.
 - [x] **M7 Tactical rules, headless.** Units, actions, movement, line of sight, directional cover, flanking, hit chance, crits, armor, overwatch, reload, bleed-out, an event log.
   **Done when:** hit-chance math is tested and a fixed-seed battle replays identically.
-- [ ] **M8 Tactical UI.** Selection, movement ranges, target preview with exact odds, tap to preview and tap to confirm, enemy turn playback with skip, hit and miss feedback.
+- [x] **M8 Tactical UI.** Selection, movement ranges, target preview with exact odds, tap to preview and tap to confirm, enemy turn playback with skip, hit and miss feedback.
   **Done when:** a full 3-against-4 fight plays on the Fold.
 - [ ] **M9 Enemy AI v1.** Scored positions (cover, flank, distance, threat), target choice, an overwatch fallback, breaching from airlocks.
   **Done when:** in test scenarios the AI takes cover and flanks, and never stands in the open without a reason.
@@ -367,7 +370,7 @@ A Capacitor build; a paid version with a web demo; optional cloud saves on Base4
 | Two deep systems overrun scope | Phase 2 runs past about 8 sessions | Keep the shared grid; cut base building to slots first |
 | Players build chokepoint fortresses | Balance runs show defenders always win | Enemies breach walls and choose entry points; corridors stay two tiles wide |
 | Percentage misses feel unfair | Testers complain about high-odds misses | Clearer cover display, the forgiving-odds setting, the math always shown |
-| 3D on canvas runs slowly on mid-range phones | Dropped frames turning or zooming the board (M4), or in battles (M8) | Rough half-resolution frames while the camera moves, only on a phone too slow for full ones (the frame budget, after M6: they blurred zooming on the Fold); cache the still board, fewer lines, cap the pixel ratio. Past that: three.js (MIT, one vendored file, no build step), with Evan's approval |
+| 3D on canvas runs slowly on mid-range phones | Dropped frames turning or zooming the board (M4), or in battles (M8) | Rough half-resolution frames while the camera moves or units walk, only on a phone too slow for full ones (the frame budget, after M6: they blurred zooming on the Fold); cache the still board, and in a fight redraw it only when something on it changed (M8); fewer lines, cap the pixel ratio. Past that: three.js (MIT, one vendored file, no build step), with Evan's approval |
 | Lost saves | Reports after Chrome data is cleared | Persistent storage request, export and import, migrations |
 | Act 1 drags | Test runs pass an hour | Fewer jobs to launch; the builder from the first minute |
 | Generated images look mismatched | The image pass looks patchy | Palette pass, reference images, fewer images |
@@ -387,6 +390,8 @@ These ideas wait until v0.4 or later:
 - paint and decals
 - vibration on hits
 - closing doors in battle, and locked doors: since M7 a unit can open a door beside it, but not shut one (raised in M7: defenders sealing a breach)
+- fog of war: since M8 every enemy is always shown; hiding those no one in the crew can see would make scouting matter (raised in M7, decided against for now in M8)
+- the camera following the action in an enemy turn: on a ship too big for the screen, part of a turn can play out of view (raised in M8)
 - dragging to lay a run of corridor in one go: since M5b a corridor is one cell, so a long one takes two taps a cell (raised in M5b; could come sooner if Gate 1 finds it tedious)
 
 Ideas that come up during a session go here, not into code.

@@ -2,6 +2,140 @@
 
 Newest entry first.
 
+## M8 Tactical UI (2026-10-11)
+
+**Status:** done here, and the ROADMAP.md box is ticked. Evan said "Start the next milestone" after M7.
+
+Done when: "a full 3-against-4 fight plays on the Fold."
+- **Not yet on the Fold:** that part is Evan's test (below).
+- **Whole fights played by touch** at the Fold's three sizes, in headless Chromium with scripted touch. Three crew against four boarders on the example ship, played to the end.
+  - The crew's orders were given by tapping tiles, units and buttons.
+  - A copy of each fight ran in Node from the page's seed. After every order the page matched it exactly: 0 differences.
+  - Both outcomes came up: the crew won most runs, and the boarders took one (table below).
+
+### Shipped
+
+- **Fight sandbox** (dev menu → Fight): the squad against a boarding party on the builder's open ship.
+  - **Who fights:** `data/encounters.json` has the squad (marine, engineer, medic) and the boarding party (three pirates and a brute). Both are validated.
+  - **Where they start:** the squad on the bridge, the boarders at the airlock's hatch, each on the nearest tiles (`src/sim/deploy.js`). A ship with no airlock on its hull, or too small for seven, says what it needs.
+  - **Wrecks carry over:** set the bridge on fire in the Battle map sandbox, then fight, and the crew start burning.
+  - **Each fight rolls a new seed.** The Log button shows it, with the last 16 events.
+- **Giving orders** (`src/sim/fight.js`, pure and tested). A tap on the board never spends an action:
+  - The crew member giving orders has a ring and a marker over them, and their button in the left column is lit. Tap another crew member, or their button, to switch.
+  - **Movement ranges:** blue tiles take one action, amber ones a dash (both actions).
+  - **A tap on a tile** shows the path, where it stops, and the cover there: a low pane for half cover, a tall one for full. A second tap on the same tile makes the move.
+  - **A tap on an enemy, or Shoot,** opens the odds card: the hit chance part by part (aim, weapon at its range, cover, defense), then the crit chance and the damage. Fire, or a second tap on the enemy, takes the shot. Next shows the next target.
+  - Every enemy in sight has its hit chance over its head.
+  - **Other orders:** Overwatch and Reload, plus Stabilize (an ally down beside you) and Open door (a door beside you), which show only when they apply.
+  - **End turn** takes a second tap while anyone can still act.
+  - After an order, the same crew member keeps giving orders while they can, then the next in line takes over.
+- **Enemy turns** are played by M7's scripted player, moved into `src/sim/scripted.js`. It is still the plain one, not the M9 AI. The rules work out the whole turn at once, then the board plays it out.
+- **Playback with Skip** (`src/render/playback.js`, pure and tested):
+  - Units walk step by step, and doors slide down as they pass.
+  - "ENEMY TURN" and "YOUR TURN" banners.
+  - The status line tells each event, rolls included: "Pirate e2 shoots Marine c1: 70%, rolled 22, hit for 2."
+  - Skip jumps to the end. The board takes no orders until the turn has played out.
+- **Hit and miss feedback:**
+  - A tracer that lands on a hit, or flies wide and past on a miss.
+  - A flash on the unit hit.
+  - Words rising over it: −5, CRIT −7, MISS, DOWN, DEAD, OVERWATCH, STABLE, BURN.
+- **Units in 3D** (`src/render/units.js`):
+  - Figures in suits: the crew pale, each trimmed in their own colour (the same as their button), and boarders in rust.
+  - Standing figures face the nearest enemy. Down crew lie on the deck, and the dead or out lie grey.
+  - Pips over each unit show its hit points, with DOWN · turns, STABLE or OVERWATCH.
+- **Cards:** long-press a unit or a tile to read it.
+- **Changes elsewhere:**
+  - Battle maps draw open doors slid into the deck.
+  - Airlock floors are a square pad, no longer a ring, since rings now mark units.
+  - The Battle map sandbox shares its tile card and its wrecks with the Fight (`tileText.js`, `wrecks.js`).
+  - On the Fight screen, the dev overlay sits bottom right on the board.
+  - In a fight the battle board redraws its 3D only when something in it changed. While units walk, a phone too slow for full frames gets rough ones, as it does while the camera moves.
+- **Tests:** 330 in all, up from 297:
+  - fight 12, deploy 5, units 7, playback 5, odds text 3, plus open doors and the encounter data;
+  - one plays fights by taps through the reducer and gets exactly the rules' own battle and log;
+  - another applies the playback's events one by one over four whole fights and gets the rules' battle after every action.
+
+### Decisions made this session
+
+- **The fight camera is square to the ship,** not the builder's 11° turn. M6 left this to M8. Tiles for the example ship at the opening view:
+
+  | Screen | Square to the ship | Builder's angle |
+  | --- | --- | --- |
+  | 905×370 (cover, app) | 48–53 px | 39–43 px |
+  | 821×283 (cover, browser tab) | 38–41 px | 29–32 px |
+  | 960×825 (unfolded) | 52–57 px | 50–55 px |
+
+  A twist still turns it.
+- **No fog of war.** Every boarder is always shown: it's the crew's own ship. Only those the selected unit can see get a hit chance. Fog is in ROADMAP §9.
+- **Buttons act on one tap,** except End turn with actions left. Moves and shots on the board always take two.
+- **The crew starts on the bridge and moves first.**
+- **The fight isn't saved:** a reload starts a new one. Battle saves are M12's (autosave at the start of each player turn), so `SAVE_VERSION` stays 3.
+- **The seed comes from the browser's random numbers** when a fight starts, outside `src/sim/`, as a new game's does in `main.js`. Everything after it is seeded.
+
+### Verified here (headless Chromium with scripted touch, not a phone)
+
+- **Whole fights by touch,** final runs, each with 0 differences from Node and no console errors:
+
+  | Screen | Orders | Rounds | Winner |
+  | --- | --- | --- | --- |
+  | 905×370 | 81 | 32 | crew |
+  | 821×283 | 32 | 13 | crew |
+  | 960×825 | 34 | 14 | crew |
+  | 905×370 (earlier run) | 7 | 4 | boarders |
+
+  Each run also checked:
+  - reading the seed in the Log;
+  - a long press on a boarder;
+  - End turn asking again;
+  - the odds card's rows matching the chance shown;
+  - Skip in some enemy turns;
+  - the end panel, and Fight again.
+- **Smallest tile at the opening view:** 48.3 px (905×370), 38.0 (821×283), 52.3 (960×825).
+- **Offline:** the fight files are cached. With the server stopped, the Fight opens, a move plays, and the Builder still opens the ship.
+- **Wrecks:** the bridge set on fire on the Battle map gives a fight that starts with all three crew burning for 2.
+- **Cards and view:** a long press on a tile gives its card. A pan then Fit gives back the identical frame.
+- **Five orders at once** (Stabilize and Open door both showing) stay clear of the DEV button at every size. On the 283 px browser tab the column scrolls.
+- **Frame rate at 4× CPU throttle.** These are floors: headless fills canvas on the CPU, and the Fold uses its GPU.
+  - An enemy turn playing out: 15 to 46 fps, about 30 typical. It was 10 to 16 before the board stopped redrawing unchanged 3D.
+  - Panning: 37 to 41 fps.
+- **Regression:**
+  - Battle map: 24 checks at each of the three sizes.
+  - Builder: the touch build (14) and tap to move (12).
+  - All pass, with no console errors.
+
+### Known issues
+
+- **Not played on the Fold yet.**
+- **The boarders are plain:** they rush, shoot whatever they see and never take cover. That is the scripted player, and M9 replaces it. A browser fight between two plain sides once ran to 32 rounds. Gate 2 asks for 5 to 8 minutes, which is M9's and M11's work.
+- **Tiles in the cover screen's browser tab are 38–41 px,** under 48. A stray tap only moves the preview; zoom in for bigger tiles.
+- **Five orders at once scroll** in that browser tab. Rare: it needs a downed ally and a door both beside you.
+- **The dev overlay can cover the lower right of a big ship** on the Fight screen (dev mode only).
+- **The camera doesn't follow the action:** on a ship too big for the screen, part of an enemy turn can play out of view (ROADMAP §9).
+- **Pirates and the brute look alike** apart from their pips (the brute has 11) and their names on the cards.
+- **The painter has no depth buffer:** units and walls are sorted by their middles. Nothing looked wrong in screenshots.
+- **Carried over:** doors only open; balance untuned; ROADMAP §4.1 says to revisit cell size after M8, which is Evan's call now that fights play.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Update,** then open a ship with an airlock on its hull. Your Gate 1 ship works, as does any ship that passes the flight checklist.
+2. **Dev menu → Fight.** Play a whole fight on the cover screen:
+   - Tap a crew member, tap a tile, then tap it again.
+   - Tap a boarder, read the card, then Fire.
+   - Try Overwatch, and Skip during an enemy turn.
+3. **Unfold** and play another.
+4. **Wrecks:** Battle map → set a room on fire → Fight. Anyone standing in it burns at the start of their turn.
+5. **Offline:** with the network off, open the Fight again.
+6. **Tell me:**
+   - whether the tiles are big enough to tap;
+   - the square camera against the builder's angle;
+   - whether enemy turns play too slowly;
+   - whether the odds card is clear;
+   - what the dev overlay's last line says during an enemy turn ("full N/10 ms").
+
+### Next session
+
+**M9 Enemy AI v1.** First task: in `src/sim/ai.js`, score the tiles a boarder can reach (cover against the crew, flanks, distance, threat) as a pure function. Test it on small maps where it should take cover and flank. Then swap it in for the scripted player in the Fight's enemy turns.
+
 ## M7 Tactical rules, headless (2026-10-11)
 
 **Status:** done, and the ROADMAP.md box is ticked. Evan said "Good. Move to the next phase" after the zoom fix. I read that as the next milestone, since Phase 2 runs to M11 and Gate 2 comes before Phase 3.
