@@ -1,0 +1,57 @@
+# Publishes main to GitHub Pages (Settings > Pages > Source: GitHub Actions).
+# No build step: it runs the tests, checks that sw.js matches the committed
+# files, then uploads the repo as committed. A failed run leaves the live
+# site unchanged.
+name: Deploy to Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time. A queued run waits rather than cancelling a live one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test
+        run: |
+          node --version
+          node --test
+
+      # Browsers only update the service worker when sw.js changes, so a
+      # commit made without the pre-commit hook would never reach installed
+      # phones. Fail here instead of shipping it.
+      - name: Check sw.js matches the committed files
+        run: |
+          node tools/precache.js
+          if ! git diff --quiet -- sw.js; then
+            echo "::error file=sw.js::sw.js is out of date. Run 'npm run hooks' once in your clone, then 'npm run precache' and commit sw.js."
+            git diff -- sw.js
+            exit 1
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      # v3 keeps dotfiles such as .well-known/ (needed for the TWA) and
+      # leaves out only .git and .github.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

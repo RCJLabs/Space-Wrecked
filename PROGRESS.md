@@ -48,7 +48,6 @@ Newest entry first.
 ### Known issues
 
 - Nothing has been tested on a real phone yet.
-- GitHub Pages had to be switched on by hand (`gh` wasn't signed in); steps below.
 - **Origin change later.** Saves, the install and the cache all belong to `rcjlabs.github.io`. Adding the custom subdomain (`CNAME`) moves the game to a new origin, and existing installs and saves don't follow; players would need export and import. Set the subdomain before anyone but Evan has a save.
 - **Shared origin.** Every RCJLabs Pages project without a custom domain shares `rcjlabs.github.io`, including its localStorage and cache storage. This game namespaces both. But if another project there has a service worker that deletes every cache but its own, or calls `localStorage.clear()`, it would hit this game too. I couldn't check the other repos.
 - `screen.orientation.lock` only works in fullscreen, which means the installed app. In a Chrome tab it fails silently and the overlay covers it. Unverified: on the unfolded inner screen, Android may ignore orientation requests on large screens. The overlay is the fallback either way.
@@ -69,9 +68,16 @@ Record pass or fail for each line here, plus the FPS numbers.
 7. Save: DEV, Export, Copy, then paste into a notes app. Paste "hello" into Import: expect a clear error. Paste the real code, tap Import, then Replace save: expect "Imported."
 8. Update (after the next push): with the installed app open, wait for Pages to deploy, switch away from the app and back. Expect "Update ready, tap to reload"; tap it.
 
-### Turning on GitHub Pages
+### Deploy
 
-github.com/RCJLabs/Space-Wrecked, then **Settings**, then **Pages** (left sidebar, under "Code and automation"). Under **Build and deployment**, set **Source** to "Deploy from a branch", **Branch** to `main` and the folder to `/ (root)`, then **Save**. The first deploy takes a minute or two; the URL appears at the top of that page.
+- Pages source is **GitHub Actions** (Settings, then Pages). `.github/workflows/pages.yml` runs on every push to `main`, and by hand from the Actions tab ("Deploy to Pages", then "Run workflow").
+- Each run does three things in order:
+  1. runs `node --test`
+  2. checks that `sw.js` matches the committed files
+  3. publishes the repo root as committed, with no build step
+
+  If any step fails, the live site stays as it was.
+- The `sw.js` check fails when a commit skipped the pre-commit hook, for example an edit in GitHub's web editor or a clone without `npm run hooks`. Fix: `npm run precache`, commit `sw.js`, push. This fails the deploy on purpose: without a new `sw.js`, installed phones would never pick up the change.
 
 ### Local testing
 
