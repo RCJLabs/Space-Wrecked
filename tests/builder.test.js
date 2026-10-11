@@ -291,4 +291,5 @@ test('the build-ship tool runs a script from the command line', () => {
   assert.equal(run.status, 0, run.stdout + run.stderr);
   assert.match(run.stdout, /^\.\.RRQLW$/m);
   assert.match(run.stdout, /All placement rules pass/);
+  assert.match(run.stdout, /Flight check: all 6 lines pass/);
 });

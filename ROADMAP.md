@@ -244,7 +244,7 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
   **Done when:** tests cover overlap, bounds, rotation and connectivity, and a ship can be built from a script.
 - [x] **M2 Touch builder.** Canvas grid, palette drawer, drag ghost, select, rotate, delete, undo and redo, pinch zoom and pan. Placeholder shapes are fine.
   **Done when:** a full starter ship builds on the Fold, folded and unfolded, without mis-taps, at 60 fps while dragging.
-- [ ] **M3 Flight checklist and stats.** constraints.js, a stat panel, and the checklist with fixes.
+- [x] **M3 Flight checklist and stats.** constraints.js, a stat panel, and the checklist with fixes.
   **Done when:** every failing line names its fix, and a failing ship saves but cannot launch.
 - [ ] **M4 Parts art and auto-hull.** SVG parts for all 12 module types in one manufacturer style; palette tokens; rasterize and cache per zoom level; the hull tracer with plating.
   **Done when:** any layout looks like a ship from outside, and zooming stays smooth.
@@ -274,7 +274,7 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
 
 Pick the tone before M14.
 
-- [ ] **M12 Campaign state.** Acts, hub, credits, parts, crew, heat and flags; autosave points; `SAVE_VERSION` 1.
+- [ ] **M12 Campaign state.** Acts, hub, credits, parts, crew, heat and flags; autosave points; `SAVE_VERSION` 2 (M3 took 1 for the builder's ship).
   **Done when:** quitting anywhere and reopening resumes correctly.
 - [ ] **M13 Hangar hub.** The half-built starter hull, construction mode (owned parts only), the flight checklist as the act goal, and a crew panel.
   **Done when:** a new player is building within 60 seconds of starting.

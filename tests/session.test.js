@@ -141,6 +141,8 @@ test('delete removes the selected part; Done stops placing', () => {
   assert.equal(s.armed, null);
   assert.equal(s.ghost, null);
   assert.equal(arm(arm(s, 'hall'), 'hall').armed, null, 'picking the armed part again also stops');
+  const kept = act(arm(s, 'hall'), { type: 'build/arm', moduleType: 'hall', toggle: false });
+  assert.deepEqual(kept.armed, { type: 'hall', rot: 0 }, 'unless the pick asks not to toggle');
 });
 
 test('undo and redo walk the history and select what changed; a new change clears redo', () => {

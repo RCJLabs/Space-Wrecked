@@ -40,6 +40,11 @@ const cases = [
   ['frame too narrow', (d) => (d.frames.frames[0].width = 0), /width must be an integer from 1/],
   ['bad tilesPerCell', (d) => (d.modules.tilesPerCell = 0), /tilesPerCell must be an integer/],
   ['manufacturers not a list', (d) => (d.manufacturers.manufacturers = {}), /"manufacturers" must be a list/],
+  ['frame without a thrust minimum', (d) => delete d.frames.frames[0].minThrustToMass, /minThrustToMass must be a number/],
+  ['misspelled frame field', (d) => (d.frames.frames[0].maxModule = 20), /unknown field "maxModule"/],
+  ['crew of zero', (d) => (d.balance.startingCrew = 0), /startingCrew must be a whole number from 1/],
+  ['unknown balance number', (d) => (d.balance.crewSize = 4), /unknown number "crewSize"/],
+  ['balance not an object', (d) => (d.balance = [4]), /balance\.json: must be an object/],
 ];
 
 test('the validator names each kind of mistake', () => {

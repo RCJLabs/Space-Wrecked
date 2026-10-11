@@ -44,7 +44,7 @@ test('import ignores whitespace and line breaks added by chat apps', () => {
 });
 
 test('non-ASCII text survives the code', () => {
-  const save = { version: 0, data: { name: 'Zoë 船 🚀' } };
+  const save = { version: SAVE_VERSION, data: { name: 'Zoë 船 🚀' } };
   const result = importSave(exportSave(save), { validate: () => [] });
   assert.equal(result.ok, true, result.error);
   assert.deepEqual(result.save, save);
@@ -160,7 +160,49 @@ test('the shipped migrations line up with SAVE_VERSION', () => {
 
 test('validate accepts a fresh save and names what is wrong with a bad one', () => {
   assert.deepEqual(validate(sample()), []);
-  const problems = validate({ version: SAVE_VERSION, data: { settings: { fpsCap: 45 }, rng: 1 } });
+  const problems = validate({ version: SAVE_VERSION, data: { settings: { fpsCap: 45 }, rng: 1, ship: null } });
   assert.equal(problems.length, 1);
   assert.match(problems[0], /frame cap/);
+});
+
+const ship = {
+  frame: 'starter',
+  modules: [
+    { uid: 1, type: 'bridge', x: 5, y: 1, rot: 0 },
+    { uid: 3, type: 'corridor', x: 4, y: 1, rot: 0 },
+  ],
+  nextUid: 4,
+};
+
+test('a save from before M3 (v0) loads with no ship', () => {
+  const old = { version: 0, data: { settings: { fpsCap: 30 }, rng: 77 } };
+  const result = parseSave(JSON.stringify(old));
+  assert.equal(result.ok, true, result.error);
+  assert.deepEqual(result.save, { version: SAVE_VERSION, data: { settings: { fpsCap: 30 }, rng: 77, ship: null } });
+  assert.equal(importSave(craftSave(old)).ok, true, 'an old export code imports too');
+});
+
+test('a save with a ship round-trips, even a ship that fails its flight checks', () => {
+  // Two parts, no engine: it can't launch, but it saves.
+  const save = makeSave({ ...saveData(initialState(9)), ship });
+  const result = importSave(exportSave(save));
+  assert.equal(result.ok, true, result.error);
+  assert.deepEqual(result.save.data.ship, ship);
+});
+
+test('validate refuses a ship it can\'t read', () => {
+  const withShip = (s) => validate(makeSave({ ...saveData(initialState(9)), ship: s }));
+  assert.deepEqual(withShip(ship), []);
+  const broken = [
+    undefined,
+    'a ship',
+    { ...ship, frame: '' },
+    { ...ship, modules: {} },
+    { ...ship, nextUid: 3 }, // uid 3 must be below nextUid
+    { ...ship, modules: [...ship.modules, { ...ship.modules[0] }] }, // uid used twice
+    { ...ship, modules: [{ uid: 1, type: 'bridge', x: 0.5, y: 0, rot: 0 }] },
+    { ...ship, modules: [{ uid: 1, type: 'bridge', x: 0, y: 0, rot: 4 }] },
+    { ...ship, modules: [{ uid: 1, type: '', x: 0, y: 0, rot: 0 }] },
+  ];
+  for (const s of broken) assert.match(withShip(s).join(' '), /ship is missing or unreadable/, JSON.stringify(s));
 });

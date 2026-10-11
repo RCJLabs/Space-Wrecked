@@ -11,8 +11,10 @@
 // - A drag released on the hull places or moves at once. A part that can't
 //   go there stays as a ghost, and the notice says why.
 // Every change to the ship is a build command (applyCommand in builder.js),
-// kept in the history.
+// kept in the history. Launch only goes ahead when every line of the flight
+// checklist passes (constraints.js).
 import { applyCommand, moduleAt, rotateModule, turnedPlacement } from './builder.js';
+import { flightChecklist } from './constraints.js';
 import { footprint } from './modules.js';
 
 // Undo steps kept; older ones are dropped.
@@ -33,7 +35,7 @@ export function commandsOf(session) {
 export function reduceSession(session, action, defs) {
   switch (action.type) {
     case 'build/arm':
-      return arm(session, defs, action.moduleType);
+      return arm(session, defs, action.moduleType, action.toggle ?? true);
     case 'build/cancel':
       return cancel(session);
     case 'build/tap':
@@ -50,6 +52,12 @@ export function reduceSession(session, action, defs) {
       return undo(session);
     case 'build/redo':
       return redo(session);
+    case 'build/launch':
+      return launch(session, defs, action.crew);
+    // A ship from elsewhere (a loaded or imported save) replaces this one,
+    // and the history starts over.
+    case 'build/load':
+      return action.ship === session.ship ? session : createSession(action.ship);
     default:
       return session;
   }
@@ -80,9 +88,11 @@ export function covers(defs, placement, x, y) {
   return x >= placement.x && y >= placement.y && x < placement.x + w && y < placement.y + h;
 }
 
-function arm(session, defs, type) {
+// Picking the armed part again stops placing, unless toggle is false (a
+// checklist fix that picks the part for you).
+function arm(session, defs, type, toggle) {
   if (!defs.modules.has(type)) return session;
-  if (session.armed?.type === type) return { ...session, armed: null, ghost: null };
+  if (session.armed?.type === type) return toggle ? { ...session, armed: null, ghost: null } : session;
   return { ...session, armed: { type, rot: 0 }, ghost: null, selected: null };
 }
 
@@ -180,6 +190,15 @@ function redo(session) {
   if (!entry) return session;
   const next = { ...session, ship: entry.after, past: [...session.past, entry], future: session.future.slice(0, -1) };
   return withNotice(focus(next, entry), 'info', `Redone: ${entry.label}.`);
+}
+
+// The launch itself is act 1's (M17); for now the check is the point: a
+// ship that fails any line can't go, and the notice names the first fix.
+function launch(session, defs, crew) {
+  const open = flightChecklist(session.ship, defs, crew).filter((line) => line.ok !== true);
+  if (!open.length) return withNotice(session, 'good', 'Every flight check passes: cleared for launch.');
+  const count = `${open.length} flight check${open.length === 1 ? '' : 's'}`;
+  return withNotice(session, 'bad', `Can't launch: ${count} to fix. ${open.find((line) => line.fix).fix}.`);
 }
 
 // After an undo or redo, select the module it changed so the player can see

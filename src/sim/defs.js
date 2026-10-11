@@ -3,10 +3,11 @@
 // simulation never does I/O.
 
 // The content files, by name: data/<name>.json.
-export const CONTENT_FILES = ['modules', 'frames', 'manufacturers'];
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'balance'];
 
-export function indexDefs({ modules, frames, manufacturers }) {
+export function indexDefs({ modules, frames, manufacturers, balance }) {
   return {
+    balance,
     tilesPerCell: modules.tilesPerCell,
     tiles: modules.tiles,
     modules: new Map(modules.modules.map((def) => [def.id, def])),

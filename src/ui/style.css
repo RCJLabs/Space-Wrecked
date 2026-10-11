@@ -133,22 +133,205 @@ textarea {
   display: flex;
 }
 
-.bld-palette {
+/* The drawer: Parts and Ship tabs over the palette or the ship panel. Extra
+   room on the left keeps a drag off Android's back-gesture edge. */
+.bld-drawer {
   flex: none;
+  display: flex;
+  flex-direction: column;
+  width: calc(3 * var(--tile) + 2 * var(--gap) + 24px);
+  border-right: 1px solid var(--c-line);
+  background: var(--c-panel);
+  pointer-events: auto;
+}
+
+.bld-tabs {
+  flex: none;
+  display: flex;
+  gap: var(--gap);
+  padding: 8px 8px 0 16px;
+}
+
+#ui .bld-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 6px;
+  font-size: 13px;
+}
+
+#ui .bld-tab[aria-selected='true'] {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+
+.bld-badge {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--c-space);
+}
+
+.bld-badge[data-tone='bad'] {
+  background: var(--c-bad);
+}
+
+.bld-badge[data-tone='good'] {
+  background: var(--c-good);
+}
+
+.bld-palette {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(3, var(--tile));
   grid-auto-rows: var(--tile);
   gap: var(--gap);
   align-content: end;
-  /* Extra room on the left keeps a drag off Android's back-gesture edge. */
   padding: 8px 8px 8px 16px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
-  border-right: 1px solid var(--c-line);
-  background: var(--c-panel);
-  pointer-events: auto;
   touch-action: none;
+}
+
+/* The Ship tab: flight check, Launch and totals. It scrolls when long. */
+.bld-ship {
+  flex: 1;
+  min-height: 0;
+  padding: 4px 8px 12px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.bld-ship h3 {
+  margin: 8px 0 6px;
+  color: var(--c-ink-dim);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bld-checks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bld-checks li {
+  display: flex;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--c-line);
+}
+
+.bld-mark {
+  flex: none;
+  padding-top: 1px;
+}
+
+.bld-checks li[data-state='ok'] .bld-mark {
+  color: var(--c-good);
+}
+
+.bld-checks li[data-state='fail'] .bld-mark {
+  color: var(--c-bad);
+}
+
+.bld-checks li[data-state='wait'] .bld-mark,
+.bld-checks li[data-state='wait'] .bld-check-text {
+  color: var(--c-ink-dim);
+}
+
+.bld-check {
+  min-width: 0;
+  flex: 1;
+}
+
+.bld-check p {
+  margin: 0;
+}
+
+.bld-check-fix {
+  color: var(--c-accent);
+}
+
+#ui .bld-fix {
+  width: 100%;
+  margin: 4px 0 2px;
+  padding: 4px 8px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-accent);
+}
+
+/* Launch stays in view at the bottom of the tab while a long checklist
+   scrolls under it. */
+#ui .bld-launch {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 10px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  box-shadow: 0 -10px 12px var(--c-panel);
+}
+
+#ui .bld-launch small {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Dim text on a solid face: the list scrolls under it. */
+#ui .bld-launch[data-state='locked'] {
+  color: var(--c-ink-dim);
+}
+
+#ui .bld-launch[data-state='ready'] {
+  border-color: var(--c-good);
+  color: var(--c-good);
+}
+
+#ui .bld-launch[data-state='armed'] {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
+.bld-stats {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  margin: 0;
+}
+
+.bld-stats div {
+  display: contents;
+}
+
+.bld-stats dt {
+  color: var(--c-ink-dim);
+}
+
+.bld-stats dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 #ui .bld-part {
@@ -158,15 +341,17 @@ textarea {
   justify-content: center;
   gap: 3px;
   min-width: 0;
-  padding: 3px 2px;
+  padding: 3px 1px;
   border: 1px solid var(--c-line);
   border-radius: 10px;
   background: var(--c-space-hi);
-  font-size: 10.5px;
+  /* Shrinks with the tile so "generator" fits a 48 px tile. */
+  font-size: min(10.5px, calc(var(--tile) * 0.18));
   font-weight: 600;
   line-height: 1.1;
   text-align: center;
   overflow: hidden;
+  overflow-wrap: anywhere;
   touch-action: none;
   -webkit-touch-callout: none;
 }
@@ -181,7 +366,9 @@ textarea {
 .bld-part svg {
   flex: none;
   max-width: 100%;
+  width: auto;
   height: auto;
+  max-height: calc(var(--tile) * 0.36);
 }
 
 .bld-part[aria-pressed='true'] {
@@ -401,10 +588,11 @@ textarea {
 }
 
 /* Dev overlay and menu (?dev=1) */
+/* Top right, beside DEV: the left side holds the builder's drawer tabs. */
 .fps {
   position: absolute;
   top: 4px;
-  left: 4px;
+  right: 72px;
   z-index: 2;
   padding: 4px 6px;
   border-radius: 4px;

@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { layoutProblems, newShip } from '../src/sim/builder.js';
+import { newShip } from '../src/sim/builder.js';
+import { flightChecklist } from '../src/sim/constraints.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { createSession, reduceSession } from '../src/sim/session.js';
 import { cardFor } from '../src/ui/builder/card.js';
-import { hintFor, layoutSummary } from '../src/ui/builder/hints.js';
+import { flightSummary, hintFor } from '../src/ui/builder/hints.js';
+import { EXAMPLE_SCRIPT, runScript } from '../tools/build-ship.js';
 import { readData } from '../tools/data.js';
+import { readFileSync } from 'node:fs';
 
 const defs = indexDefs(readData());
 const act = (session, action) => reduceSession(session, action, defs);
@@ -29,17 +32,14 @@ test('the hint follows what the player is doing', () => {
   assert.equal(hintFor(s, defs, { ...drag, kind: 'module', placement: { x: 3, y: 0 } }).text, 'Let go to move the Corridor here.');
 });
 
-test('the layout chip counts parts and names the first problem', () => {
-  const empty = newShip('starter');
-  assert.equal(layoutSummary(empty, defs, layoutProblems(empty, defs)), null);
-  let s = act(start(), { type: 'build/drop', placement: { type: 'corridor', x: 0, y: 0, rot: 0 } });
-  assert.deepEqual(layoutSummary(s.ship, defs, layoutProblems(s.ship, defs)), {
-    tone: 'bad',
-    text: '1/20 parts · No bridge yet (+1 more)',
-  });
-  s = act(s, { type: 'build/drop', placement: { type: 'bridge', x: 1, y: 0, rot: 0 } });
-  s = act(s, { type: 'build/drop', placement: { type: 'airlock', x: 3, y: 0, rot: 0 } });
-  assert.deepEqual(layoutSummary(s.ship, defs, layoutProblems(s.ship, defs)), { tone: 'good', text: '3/20 parts · Layout OK' });
+test('the chip counts parts and gives the first fix, or says the ship is ready', () => {
+  const summary = (ship) => flightSummary(ship, defs, flightChecklist(ship, defs, 4));
+  assert.equal(summary(newShip('starter')), null);
+  const s = act(start(), { type: 'build/drop', placement: { type: 'corridor', x: 0, y: 0, rot: 0 } });
+  assert.deepEqual(summary(s.ship), { tone: 'bad', text: '1/20 parts · 5 to fix: Add Engine (+12 thrust)' });
+  const script = JSON.parse(readFileSync(EXAMPLE_SCRIPT, 'utf8'));
+  const { ship } = runScript(script, defs);
+  assert.deepEqual(summary(ship), { tone: 'good', text: '14/20 parts · Ready to launch' });
 });
 
 test('the details card lists size, doors, stats and where a placed part sits', () => {

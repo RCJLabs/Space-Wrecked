@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Builds a ship from a script: a JSON file listing placements in order, the
-// same commands the builder issues. Prints the layout and every placement
-// rule it breaks. Exits 1 if a placement is rejected or the layout has
-// problems.
+// same commands the builder issues. Prints the layout, every placement rule
+// it breaks and the flight checklist for the starting crew. Exits 1 if a
+// placement is rejected, the layout has problems or a checklist line fails.
 //
 //   node tools/build-ship.js [script.json]
 //
@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { cellAt } from '../src/sim/grid.js';
 import { buildShip, layoutProblems, occupancy } from '../src/sim/builder.js';
+import { canLaunch, flightChecklist } from '../src/sim/constraints.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { readData } from './data.js';
 
@@ -50,5 +51,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   console.log(`${ship.modules.length} modules on the ${defs.frames.get(ship.frame).name}`);
   for (const p of problems) console.log(`problem (${p.rule}): ${p.message}`);
   if (!rejected.length && !problems.length) console.log('All placement rules pass.');
-  process.exit(rejected.length || problems.length ? 1 : 0);
+  const checklist = flightChecklist(ship, defs, defs.balance.startingCrew);
+  for (const line of checklist) {
+    const mark = line.ok === true ? 'ok  ' : line.ok === false ? 'FAIL' : 'wait';
+    console.log(`  ${mark} ${line.text}${line.fix ? `  ->  ${line.fix}` : ''}`);
+  }
+  const ready = canLaunch(checklist);
+  console.log(ready ? `Flight check: all ${checklist.length} lines pass.` : 'Flight check: not ready to launch.');
+  process.exit(rejected.length || problems.length || !ready ? 1 : 0);
 }

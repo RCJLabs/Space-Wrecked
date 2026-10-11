@@ -2,6 +2,99 @@
 
 Newest entry first.
 
+## M3 Flight checklist and stats (2026-10-11)
+
+**Status:** done. Done when is met:
+- **Every failing line names its fix.** A test checks this at every stage of building the example ship, with each part removed, for crews of 1, 4 and 9.
+- **A failing ship saves but can't launch.** In headless Chromium, a two-part ship survived a reload and an offline relaunch, and Launch stayed locked.
+
+The ROADMAP.md box is ticked. M3 ran in the same session as M0 to M2 because Evan asked for it.
+
+### Shipped
+
+- **Flight checklist** (`src/sim/constraints.js`, pure and tested): six lines. Each one passes, fails with a fix, or waits on another line.
+  1. Power: what parts make against what they use.
+  2. Thrust against mass, at least the frame's minimum.
+  3. Berths for the crew.
+  4. Life support for the crew.
+  5. Bridge, reactor, engine and airlock on board.
+  6. Every part joined to the bridge, and an airlock on the hull edge.
+- **Fixes come from the data**, for example "Add Engine (+12 thrust)" or "Add 2 × Crew quarters (+4 berths each)":
+  - The fix suggests the part that gives the most of what's missing, the cheapest on a tie.
+  - It says how many are needed.
+  - The engine count allows for each engine's own mass.
+  - The ROADMAP's example works as written: "Life support 2 of 4 crew", fix "Add Life support (+4 crew)".
+- **Ship stats** (`shipStats`): power made, used and net, thrust, mass, berths, life support, cargo and hull points.
+- **Ship tab in the builder:** the drawer now has Parts and Ship tabs.
+  - The Ship tab lists the checklist, each failing line with its fix, then Launch, then the totals.
+  - A fix that adds a part is a button. It switches to Parts with that part already picked.
+  - The tab's badge counts open checks, or shows a tick when the ship is ready.
+- **Launch:**
+  - While any line is open it's locked, and a tap says what to fix: "Can't launch: 3 flight checks to fix. Add Reactor (+8 power)."
+  - When every line passes, the first tap arms it ("Tap again to launch") and the second launches.
+  - It stays pinned to the bottom of the tab when the list scrolls.
+- **Chip on the board:** shows the part count and the first fix, or "Ready to launch". The status line announces the moment a ship first passes.
+- **The ship is saved after every change.**
+  - `SAVE_VERSION` is now 1, with a migration that gives older saves an empty ship slot.
+  - A save's ship must be readable (whole numbers, quarter turns, unique ids), or the save is refused as damaged.
+  - Importing a save in the dev menu while building replaces the ship on screen.
+- **Data:**
+  - `data/balance.json` holds `startingCrew: 4`.
+  - The starter frame has `minThrustToMass: 0.5`.
+  - The validator checks both, and now requires a part for every checklist tag.
+- **`npm run ship`** prints the checklist and fails if the ship can't launch.
+- **Dev:** the FPS overlay moved to the top right, beside DEV, so it doesn't cover the drawer's tabs.
+- **Tests:** 137 in all, 18 new.
+
+### Decisions made this session
+
+- **Six lines instead of the roadmap's five:** berths and life support are separate, so each failing line has exactly one fix.
+- **Unchecked lines:** a line that can't be checked yet is "waiting", not failing. Without a bridge, joins can't be checked; the parts line already says "Add Bridge". A waiting line still blocks launch.
+- **Crew:** until the campaign has crew (M12 onward), the builder checks against `startingCrew` (4). There's no `tools/sim.js` yet (M11), so there's no sim summary for this first balance number.
+- **Thrust minimum of 0.5:**
+  - The example ship has 0.80.
+  - Take one engine off it and it drops to 0.44, so the fix asks for a second engine.
+  - A minimal one-engine ship (about 21 mass) still flies.
+
+  This is a starting value.
+- **Launch has nothing to launch into yet.** That's M17. For now it confirms "cleared for launch", and the point is the gate.
+- **The ship lives in the game state** and saves with every change. The builder's undo history stays in memory only. M12's save bump becomes 2; ROADMAP.md is updated.
+
+### Verified here (headless Chromium with scripted touch, not a phone)
+
+- **At all three sizes** (821×283, 905×370 and 960×825):
+  - An empty ship shows 5 open checks, a locked Launch, and a refusal that names a fix.
+  - The "Add Engine" button picks the engine.
+  - A two-part ship survives a reload and is stored in a v1 save.
+  - Finishing the example ship announces "Every flight check passes", the badge turns to a tick, and Launch takes two taps.
+  - Offline, the saved ship loads.
+  - Export codes start with `wt.1.`.
+  - Importing a v0 code empties the hull.
+- **Regressions:** the M2 touch build and the 27 M0 checks still pass.
+- **Console:** no errors or warnings.
+
+### Known issues
+
+- **Two open copies of the game share one save.** That means the app and a Chrome tab, or two tabs. The last one to change anything overwrites the other's ship. Keep one open.
+- **One ship only:** save slots are M5.
+- **Cramped in a folded Chrome tab:** the drawer is 176 px wide there. The checklist wraps and scrolls, while Launch stays pinned. The installed app has more room.
+- **Ships built before this update weren't saved**, so the builder starts empty after it.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Update:** open the installed app and tap "Update ready, tap to reload". DEV → Status should show a new cache.
+2. **Locked Launch:** DEV → Builder, then the Ship tab. Expect a badge of 5 and a locked Launch. Tap Launch: the status line should name a fix.
+3. **Fix buttons:** tap a fix button, for example "Add Engine (+12 thrust)". Expect the Parts tab with that part picked.
+4. **Failing ship saves:** build part of a ship, swipe the app away in recents, reopen it, and go back to the builder. The ship should still be there, with Launch still locked.
+5. **Full ship:** finish a full ship. Expect "Every flight check passes" and a tick on the badge. Then Launch: one tap shows "Tap again to launch", a second shows "cleared for launch".
+6. **Offline:** turn on airplane mode and relaunch. The ship should load.
+7. **Export:** DEV → Export. The code should start with `wt.1.`.
+8. **Readability:** check the Ship tab folded and unfolded.
+
+### Next session
+
+M4, parts art and auto-hull. First, Evan decides the open question: give the starter frame a ship shape (a cell mask, so a packed hull doesn't trace to a rounded brick)? Then the first task: SVG functions for the 12 parts in one manufacturer style, rasterized once per zoom level and cached.
+
 ## M2 Touch builder (2026-10-11)
 
 **Status:** done. Evan ran it on the Fold and reported "All works", so Done when is met: a full starter ship built folded and unfolded, without mis-taps, at 60 fps while dragging. The ROADMAP.md box is ticked. M2 ran in the same session as M0 and M1 because Evan asked for it.
