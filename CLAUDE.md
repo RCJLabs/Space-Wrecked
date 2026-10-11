@@ -51,7 +51,7 @@ CNAME                       # spacewrecked.rcjlabs.com
 .githooks/pre-commit        # runs tools/precache.js
 .well-known/assetlinks.json # TWA verification, added with the TWA
 src/
-  core/      rng, save, store, events
+  core/      rng, save, blueprint codes, store, events
   sim/       grid, builder rules, constraints, mapFromShip, battle, ai, approach, heat, campaign, economy, gen/
   render/    3D camera, scenes and painters, part models, hull tracer, SVG icons, tweens, particles
   ui/        screens, panels, gestures

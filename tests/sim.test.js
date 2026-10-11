@@ -11,7 +11,7 @@ function deepFreeze(value) {
 }
 
 test('initial state starts on the title with default settings and the given seed', () => {
-  assert.deepEqual(initialState(42), { screen: 'title', settings: { fpsCap: 60 }, rng: 42, ship: null });
+  assert.deepEqual(initialState(42), { screen: 'title', settings: { fpsCap: 60 }, rng: 42, builds: { active: 0, slots: [] } });
   assert.equal(initialState(-1).rng, 0xffffffff);
 });
 
@@ -23,22 +23,22 @@ test('the frame cap accepts 60 and 30 only', () => {
   assert.equal(reduce(state, { type: 'settings/fpsCap', value: 60 }), state);
 });
 
-test('restoring a save replaces settings, RNG state and ship but not the screen', () => {
+test('restoring a save replaces settings, RNG state and saved ships but not the screen', () => {
   const state = deepFreeze(reduce(initialState(1), { type: 'screen/show', screen: 'sandbox' }));
-  const ship = { frame: 'starter', modules: [], nextUid: 1 };
-  const data = { settings: { fpsCap: 30 }, rng: 999, ship };
+  const builds = { active: 0, slots: [{ name: 'Ship 1', ship: { frame: 'starter', modules: [], nextUid: 1 }, log: [] }] };
+  const data = { settings: { fpsCap: 30 }, rng: 999, builds };
   const restored = reduce(state, { type: 'save/restore', data });
-  assert.deepEqual(restored, { screen: 'sandbox', settings: { fpsCap: 30 }, rng: 999, ship });
+  assert.deepEqual(restored, { screen: 'sandbox', settings: { fpsCap: 30 }, rng: 999, builds });
   assert.notEqual(restored.settings, data.settings);
-  assert.equal(reduce(restored, { type: 'save/restore', data: { ...data, ship: null } }).ship, null);
 });
 
-test('ship/set stores the builder\'s ship; the same ship changes nothing', () => {
+test("builds/ actions reach the saved ships; the same ship changes nothing", () => {
   const state = deepFreeze(initialState(1));
   const ship = deepFreeze({ frame: 'starter', modules: [], nextUid: 1 });
-  const next = reduce(state, { type: 'ship/set', ship });
-  assert.equal(next.ship, ship);
-  assert.equal(reduce(next, { type: 'ship/set', ship }), next);
+  const log = deepFreeze([]);
+  const next = reduce(state, { type: 'builds/save', ship, log });
+  assert.equal(next.builds.slots[0].ship, ship);
+  assert.equal(reduce(next, { type: 'builds/save', ship, log }), next);
 });
 
 test('unknown actions return the same state object', () => {
@@ -49,5 +49,5 @@ test('unknown actions return the same state object', () => {
 
 test('saveData holds what a save needs and nothing else', () => {
   const state = initialState(5);
-  assert.deepEqual(saveData(state), { settings: { fpsCap: 60 }, rng: 5, ship: null });
+  assert.deepEqual(saveData(state), { settings: { fpsCap: 60 }, rng: 5, builds: { active: 0, slots: [] } });
 });

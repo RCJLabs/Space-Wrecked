@@ -11,8 +11,10 @@
 // - A drag released on the hull places or moves at once. A part that can't
 //   go there stays as a ghost, and the notice says why.
 // Every change to the ship is a build command (applyCommand in builder.js),
-// kept in the history. Launch only goes ahead when every line of the flight
-// checklist passes (constraints.js).
+// kept in the history. The session also keeps the build log: every command
+// that made the ship from an empty frame, in order, which undo and redo keep
+// exact and the replay plays back (replay.js). Launch only goes ahead when
+// every line of the flight checklist passes (constraints.js).
 import { applyCommand, moduleAt, rotateModule, turnedPlacement } from './builder.js';
 import { flightChecklist } from './constraints.js';
 import { footprint } from './modules.js';
@@ -22,8 +24,9 @@ export const HISTORY_LIMIT = 500;
 // How far off the frame, in cells, a tap or drag still lands on it.
 export const EDGE_GRACE = 1;
 
-export function createSession(ship) {
-  return { ship, past: [], future: [], selected: null, armed: null, ghost: null, notice: null };
+// log: the commands that built `ship` from an empty frame (see replay.js).
+export function createSession(ship, log = []) {
+  return { ship, log, past: [], future: [], selected: null, armed: null, ghost: null, notice: null };
 }
 
 // The commands that built the current ship, oldest first (while the history
@@ -54,10 +57,10 @@ export function reduceSession(session, action, defs) {
       return redo(session);
     case 'build/launch':
       return launch(session, defs, action.crew);
-    // A ship from elsewhere (a loaded or imported save) replaces this one,
-    // and the history starts over.
+    // A ship from elsewhere (another slot, a pasted blueprint, an imported
+    // save) replaces this one with its log, and the history starts over.
     case 'build/load':
-      return action.ship === session.ship ? session : createSession(action.ship);
+      return action.ship === session.ship ? session : createSession(action.ship, action.log ?? []);
     default:
       return session;
   }
@@ -181,14 +184,14 @@ function remove(session, defs) {
 function undo(session) {
   const entry = session.past.at(-1);
   if (!entry) return session;
-  const next = { ...session, ship: entry.before, past: session.past.slice(0, -1), future: [...session.future, entry] };
+  const next = { ...session, ship: entry.before, log: session.log.slice(0, -1), past: session.past.slice(0, -1), future: [...session.future, entry] };
   return withNotice(focus(next, entry), 'info', `Undone: ${entry.label}.`);
 }
 
 function redo(session) {
   const entry = session.future.at(-1);
   if (!entry) return session;
-  const next = { ...session, ship: entry.after, past: [...session.past, entry], future: session.future.slice(0, -1) };
+  const next = { ...session, ship: entry.after, log: [...session.log, entry.command], past: [...session.past, entry], future: session.future.slice(0, -1) };
   return withNotice(focus(next, entry), 'info', `Redone: ${entry.label}.`);
 }
 
@@ -214,7 +217,7 @@ function focus(session, entry) {
 function record(session, ship, command, label) {
   const past = [...session.past, { before: session.ship, after: ship, command, label }];
   if (past.length > HISTORY_LIMIT) past.splice(0, past.length - HISTORY_LIMIT);
-  return { ...session, ship, past, future: [] };
+  return { ...session, ship, log: [...session.log, command], past, future: [] };
 }
 
 function withNotice(session, tone, text) {

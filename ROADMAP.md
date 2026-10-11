@@ -181,6 +181,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - Autosave at the hub, before and after each battle, and at the start of each player turn in battle.
 - The RNG state is part of the save.
 - Settings can export and import a save as text. A TWA shares Chrome's storage, so clearing Chrome's data wipes saves; the export is the player's backup.
+- The builder keeps up to six ships in slots, each with the build log its replay plays back. A single ship travels between devices as a blueprint code.
 
 ---
 
@@ -249,7 +250,7 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
   **Done when:** every failing line names its fix, and a failing ship saves but cannot launch.
 - [x] **M4 Parts art and auto-hull, in 3D.** The 3D blueprint builder on our own canvas renderer: 3D fittings for all 12 module types, the hull tracer (rim, fairings, nose, nozzles, barrels, collars), the ship-shaped starter frame, twist to turn, and a Hull view of the solid ship in one manufacturer's skin. (Planned as 2D SVG parts; changed to 3D mid-milestone.)
   **Done when:** any layout looks like a ship from outside, and zooming stays smooth.
-- [ ] **M5 Blueprints, saves and replays.** The blueprint codec, copy and paste, save slots, and the build replay timelapse.
+- [x] **M5 Blueprints, saves and replays.** The blueprint codec, copy and paste, save slots (six ships kept in the builder, each with its build log), and the build replay timelapse.
   **Done when:** a code from one device rebuilds the identical ship on another, and a broken code shows a message.
 
 **Gate 1:** Evan builds for 15 minutes on the Fold and wants to keep going. If not, fix the builder before Phase 2.
@@ -275,7 +276,7 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
 
 Pick the tone before M14.
 
-- [ ] **M12 Campaign state.** Acts, hub, credits, parts, crew, heat and flags; autosave points; `SAVE_VERSION` 2 (M3 took 1 for the builder's ship).
+- [ ] **M12 Campaign state.** Acts, hub, credits, parts, crew, heat and flags; autosave points; `SAVE_VERSION` 3 (M3 took 1 for the builder's ship, M5 took 2 for its slots).
   **Done when:** quitting anywhere and reopening resumes correctly.
 - [ ] **M13 Hangar hub.** The half-built starter hull, construction mode (owned parts only), the flight checklist as the act goal, and a crew panel.
   **Done when:** a new player is building within 60 seconds of starting.

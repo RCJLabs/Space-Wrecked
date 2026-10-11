@@ -14,6 +14,7 @@ import {
   validate,
 } from '../src/core/save.js';
 import { initialState, saveData } from '../src/sim/root.js';
+import { emptyBuilds, MAX_SLOTS } from '../src/sim/builds.js';
 
 const PREFIX = config.appId;
 const sample = () => makeSave(saveData(initialState(123456)));
@@ -160,7 +161,7 @@ test('the shipped migrations line up with SAVE_VERSION', () => {
 
 test('validate accepts a fresh save and names what is wrong with a bad one', () => {
   assert.deepEqual(validate(sample()), []);
-  const problems = validate({ version: SAVE_VERSION, data: { settings: { fpsCap: 45 }, rng: 1, ship: null } });
+  const problems = validate({ version: SAVE_VERSION, data: { settings: { fpsCap: 45 }, rng: 1, builds: emptyBuilds() } });
   assert.equal(problems.length, 1);
   assert.match(problems[0], /frame cap/);
 });
@@ -173,36 +174,63 @@ const ship = {
   ],
   nextUid: 4,
 };
+const tidy = {
+  frame: 'starter',
+  modules: [
+    { uid: 1, type: 'bridge', x: 5, y: 1, rot: 0 },
+    { uid: 2, type: 'corridor', x: 4, y: 1, rot: 0 },
+  ],
+  nextUid: 3,
+};
+const log = [
+  { op: 'place', uid: 1, type: 'bridge', x: 5, y: 1, rot: 0 },
+  { op: 'place', uid: 2, type: 'corridor', x: 4, y: 1, rot: 0 },
+];
+const withBuilds = (builds) => makeSave({ ...saveData(initialState(9)), builds });
 
-test('a save from before M3 (v0) loads with no ship', () => {
+test('a save from before M3 (v0) loads with no ships', () => {
   const old = { version: 0, data: { settings: { fpsCap: 30 }, rng: 77 } };
   const result = parseSave(JSON.stringify(old));
   assert.equal(result.ok, true, result.error);
-  assert.deepEqual(result.save, { version: SAVE_VERSION, data: { settings: { fpsCap: 30 }, rng: 77, ship: null } });
+  assert.deepEqual(result.save, { version: SAVE_VERSION, data: { settings: { fpsCap: 30 }, rng: 77, builds: emptyBuilds() } });
   assert.equal(importSave(craftSave(old)).ok, true, 'an old export code imports too');
 });
 
-test('a save with a ship round-trips, even a ship that fails its flight checks', () => {
-  // Two parts, no engine: it can't launch, but it saves.
-  const save = makeSave({ ...saveData(initialState(9)), ship });
-  const result = importSave(exportSave(save));
+test("an M3 save's ship (v1) becomes slot 1, numbered in build order, with a log that builds it", () => {
+  const v1 = { version: 1, data: { settings: { fpsCap: 60 }, rng: 5, ship } };
+  const result = parseSave(JSON.stringify(v1));
   assert.equal(result.ok, true, result.error);
-  assert.deepEqual(result.save.data.ship, ship);
+  assert.deepEqual(result.save.data, { settings: { fpsCap: 60 }, rng: 5, builds: { active: 0, slots: [{ name: 'Ship 1', ship: tidy, log }] } });
+  const none = parseSave(JSON.stringify({ version: 1, data: { settings: { fpsCap: 60 }, rng: 5, ship: null } }));
+  assert.deepEqual(none.save.data.builds, emptyBuilds(), 'no ship yet: no slots');
+  assert.equal(importSave(craftSave(v1)).ok, true, 'an M3 export code imports too');
 });
 
-test('validate refuses a ship it can\'t read', () => {
-  const withShip = (s) => validate(makeSave({ ...saveData(initialState(9)), ship: s }));
-  assert.deepEqual(withShip(ship), []);
+test('saved ships round-trip, even one that fails its flight checks', () => {
+  // Two parts, no engine: it can't launch, but it saves.
+  const save = withBuilds({ active: 1, slots: [{ name: 'Ship 1', ship: tidy, log }, { name: 'Ship 2', ship: tidy, log: [] }] });
+  const result = importSave(exportSave(save));
+  assert.equal(result.ok, true, result.error);
+  assert.deepEqual(result.save.data.builds, save.data.builds);
+});
+
+test("validate refuses saved ships it can't read", () => {
+  const slot = { name: 'Ship 1', ship: tidy, log };
+  assert.deepEqual(validate(withBuilds({ active: 0, slots: [slot] })), []);
+  assert.deepEqual(validate(withBuilds(emptyBuilds())), []);
   const broken = [
     undefined,
-    'a ship',
-    { ...ship, frame: '' },
-    { ...ship, modules: {} },
-    { ...ship, nextUid: 3 }, // uid 3 must be below nextUid
-    { ...ship, modules: [...ship.modules, { ...ship.modules[0] }] }, // uid used twice
-    { ...ship, modules: [{ uid: 1, type: 'bridge', x: 0.5, y: 0, rot: 0 }] },
-    { ...ship, modules: [{ uid: 1, type: 'bridge', x: 0, y: 0, rot: 4 }] },
-    { ...ship, modules: [{ uid: 1, type: '', x: 0, y: 0, rot: 0 }] },
+    { slots: [slot] },
+    { active: 1, slots: [slot] },
+    { active: 1, slots: [] },
+    { active: 0, slots: Array.from({ length: MAX_SLOTS + 1 }, () => slot) },
+    { active: 0, slots: [{ ...slot, name: '' }] },
+    { active: 0, slots: [{ ...slot, name: 'x'.repeat(25) }] },
+    { active: 0, slots: [{ ...slot, log: undefined }] },
+    { active: 0, slots: [{ ...slot, log: [{ op: 'teleport' }] }] },
+    { active: 0, slots: [{ ...slot, ship: { ...tidy, frame: '' } }] },
+    { active: 0, slots: [{ ...slot, ship: { ...tidy, nextUid: 2 } }] },
+    { active: 0, slots: [{ ...slot, ship: { ...tidy, modules: [{ uid: 1, type: 'bridge', x: 0.5, y: 0, rot: 0 }] } }] },
   ];
-  for (const s of broken) assert.match(withShip(s).join(' '), /ship is missing or unreadable/, JSON.stringify(s));
+  for (const builds of broken) assert.match(validate(withBuilds(builds)).join(' '), /saved ships are missing or unreadable/, JSON.stringify(builds));
 });

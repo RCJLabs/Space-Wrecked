@@ -1,5 +1,6 @@
 // Root reducer for the store. Pure: no DOM, window, timers, Date.now() or
 // Math.random(). The starting seed comes in from outside.
+import { emptyBuilds, reduceBuilds } from './builds.js';
 import { defaultSettings, reduceSettings } from './settings.js';
 
 export function initialState(seed) {
@@ -7,20 +8,22 @@ export function initialState(seed) {
     screen: 'title',
     settings: defaultSettings(),
     rng: seed >>> 0,
-    // The builder's ship, saved after every change; null until one is started.
-    ship: null,
+    // The builder's saved ships (builds.js), saved after every change.
+    builds: emptyBuilds(),
   };
 }
 
 export function reduce(state, action) {
   switch (action.type) {
     case 'save/restore':
-      return { ...state, settings: { ...action.data.settings }, rng: action.data.rng, ship: action.data.ship ?? null };
-    case 'ship/set':
-      return action.ship === state.ship ? state : { ...state, ship: action.ship };
+      return { ...state, settings: { ...action.data.settings }, rng: action.data.rng, builds: action.data.builds ?? emptyBuilds() };
     case 'screen/show':
       return action.screen === state.screen ? state : { ...state, screen: action.screen };
     default: {
+      if (action.type.startsWith('builds/')) {
+        const builds = reduceBuilds(state.builds, action);
+        return builds === state.builds ? state : { ...state, builds };
+      }
       const settings = reduceSettings(state.settings, action);
       return settings === state.settings ? state : { ...state, settings };
     }
@@ -29,5 +32,5 @@ export function reduce(state, action) {
 
 // The part of the state that goes into a save. The screen is not saved.
 export function saveData(state) {
-  return { settings: state.settings, rng: state.rng, ship: state.ship };
+  return { settings: state.settings, rng: state.rng, builds: state.builds };
 }

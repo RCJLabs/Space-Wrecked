@@ -1,9 +1,17 @@
-// Text codecs for codes players copy and paste: save codes now, blueprint
-// codes from M5. Works in browsers and in Node (TextEncoder, btoa and atob are
+// Text codecs for codes players copy and paste: save codes and blueprint
+// codes. Works in browsers and in Node (TextEncoder, btoa and atob are
 // globals in both).
 
 export function toBase64Url(text) {
-  const bytes = new TextEncoder().encode(text);
+  return bytesToBase64Url(new TextEncoder().encode(text));
+}
+
+// Throws on anything that isn't valid base64url-encoded UTF-8.
+export function fromBase64Url(code) {
+  return new TextDecoder('utf-8', { fatal: true }).decode(base64UrlToBytes(code));
+}
+
+export function bytesToBase64Url(bytes) {
   let binary = '';
   for (let i = 0; i < bytes.length; i += 0x8000) {
     binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
@@ -11,15 +19,13 @@ export function toBase64Url(text) {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-// Throws on anything that isn't valid base64url-encoded UTF-8.
-export function fromBase64Url(code) {
+// Throws on anything that isn't base64url.
+export function base64UrlToBytes(code) {
   if (!/^[A-Za-z0-9_-]*$/.test(code) || code.length % 4 === 1) {
     throw new SyntaxError('not base64url');
   }
   const base64 = code.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((code.length + 3) % 4);
-  const binary = atob(base64);
-  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-  return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 }
 
 // FNV-1a over UTF-16 code units, as 8 hex digits. It catches copy and paste
