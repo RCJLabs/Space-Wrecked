@@ -48,8 +48,16 @@ Newest entry first.
 
 ### Known issues
 
-- On the phone so far, the page loads in Chrome and portrait shows the rotate prompt. Install failed (next item). The rest of the checklist is still to run.
-- **First install attempt failed.** Chrome's install sheet said "This app is already installed", but no app was on the phone, and nothing in `chrome://webapks` covered this page. The likeliest cause is an install that started and never finished, which Chrome counts as installed; this is unconfirmed. The fix was an explicit manifest `id`, giving the app a fresh identity. If it happens again, the install itself is failing on the phone: check Chrome's notifications during the install.
+- On the phone so far:
+  - The page loads in Chrome, and portrait shows the rotate prompt.
+  - Folded, in a Chrome tab, the overlay reads 59 to 61 fps with a worst frame of 17 to 25 ms, at 821×283 (2.90:1) on a 60 Hz screen.
+  - Install fails (next item). The rest of the checklist is still to run.
+- **Install fails on the Fold (open).**
+  - What happens: Chrome's install sheet says "This app is already installed", and "open the app instead" gives "Could not open app". No app exists, and nothing in `chrome://webapks` covers this page.
+  - It's specific to this app: other web apps install fine on the same phone (Squoosh, and all of Evan's other projects).
+  - Tried: a fresh manifest `id`, which changed nothing.
+  - Testing now: the manifest without `orientation`. It's the one field none of the phone's 23 working installs use. If that turns out to be the cause, landscape stays enforced by the rotate prompt and the JS lock.
+  - Next if that fails: `adb logcat` during the install.
 - **Origin change later.** Saves, the install and the cache all belong to `rcjlabs.github.io`. Adding the custom subdomain (`CNAME`) moves the game to a new origin, and existing installs and saves don't follow; players would need export and import. Set the subdomain before anyone but Evan has a save.
 - **Shared origin.** Every RCJLabs Pages project without a custom domain shares `rcjlabs.github.io`, including its localStorage and cache storage. This game namespaces both. But if another project there has a service worker that deletes every cache but its own, or calls `localStorage.clear()`, it would hit this game too. I couldn't check the other repos.
 - `screen.orientation.lock` only works in fullscreen, which means the installed app. In a Chrome tab it fails silently and the overlay covers it. Unverified: on the unfolded inner screen, Android may ignore orientation requests on large screens. The overlay is the fallback either way.
