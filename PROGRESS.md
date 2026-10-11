@@ -4,7 +4,7 @@ Newest entry first.
 
 ## M0 Scaffold (2026-10-11)
 
-**Status:** built, and checked in headless Chromium at Fold-sized viewports. The phone half of Done when (installs on the Fold, reloads offline on the Fold) is still to run: see the checklist below. The ROADMAP.md box is ticked.
+**Status:** built, and checked in headless Chromium at Fold-sized viewports. On the Fold it installs from Chrome at spacewrecked.rcjlabs.com. The offline relaunch, the rest of Done when, is still to run (checklist below). The ROADMAP.md box is ticked.
 
 ### Shipped
 
@@ -54,15 +54,13 @@ Newest entry first.
 - On the phone so far:
   - The page loads in Chrome, and portrait shows the rotate prompt.
   - Folded, in a Chrome tab, the overlay reads 59 to 61 fps with a worst frame of 17 to 25 ms, at 821×283 (2.90:1) on a 60 Hz screen.
-  - It installs and runs from Samsung Internet.
-  - Chrome install failed at the old address (next item). The rest of the checklist is still to run.
-- **Chrome install failed at the old address, `rcjlabs.github.io/Space-Wrecked/` (open until checked at the new domain).**
-  - What happened: Chrome's install sheet said "This app is already installed", and "open the app instead" gave "Could not open app". No app existed, and nothing in `chrome://webapks` covered the page.
-  - Samsung Internet installed the same build, and Chrome installs other web apps fine on the same phone.
-  - Neither a fresh manifest `id` nor dropping `orientation` changed Chrome's answer. `orientation` is restored.
-  - Likeliest cause, unconfirmed: a stuck install record inside Chrome tied to that address.
-  - Fix: the move to `spacewrecked.rcjlabs.com`, an address Chrome has no record of. If Chrome fails there too, every Chrome user may be affected: capture `adb logcat` during the install.
-- **The move to `spacewrecked.rcjlabs.com`.** The old address redirects there once the custom domain is set. Anything installed or saved at the old address stays behind, including the Samsung Internet test install: remove it and reinstall from the new domain.
+  - Chrome installs it from https://spacewrecked.rcjlabs.com/.
+  - Still to run: the offline relaunch (the last part of Done when) and checklist lines 4 to 8.
+- **Resolved: Chrome wouldn't install at the old address, `rcjlabs.github.io/Space-Wrecked/`.**
+  - Chrome's install sheet said "This app is already installed", but no app existed, and opening it gave "Could not open app".
+  - A fresh manifest `id` and dropping `orientation` changed nothing, while Samsung Internet installed the same build.
+  - At the new domain, Chrome installed it on the first try. That fits a stuck install record inside Chrome tied to the old address, though it was never confirmed.
+- The old address redirects to `spacewrecked.rcjlabs.com`. Anything installed or saved at the old address stays behind, so remove the Samsung Internet test install if it's still there.
 - `screen.orientation.lock` only works in fullscreen, which means the installed app. In a Chrome tab it fails silently and the overlay covers it. Unverified: on the unfolded inner screen, Android may ignore orientation requests on large screens. The overlay is the fallback either way.
 - The hook needs `npm run hooks` (sets `core.hooksPath`) once per clone. Without it, `sw.js` won't change on commit and phones won't update.
 - `user-scalable=no` turns off browser pinch zoom; M2's own pinch zoom replaces it.
