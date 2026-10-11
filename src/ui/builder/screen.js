@@ -446,7 +446,9 @@ export const builderScreen = {
     // Gives the board what changed: the ship scene when the ship or what is
     // picked out on it changes, the ghost when the part being placed moves.
     function showOnBoard(session) {
-      const lifted = drag?.kind === 'module' ? drag.uid : null;
+      // A part being moved (dragged, or shown where a tap would put it) is
+      // drawn as its dashed outline where it stands.
+      const lifted = drag?.kind === 'module' ? drag.uid : session.ghost?.uid ?? null;
       const ship = { ship: session.ship, derived, selected: session.selected, lifted };
       const before = shown.ship;
       if (!before || before.ship !== ship.ship || before.derived !== derived || before.selected !== ship.selected || before.lifted !== lifted) {
@@ -465,14 +467,16 @@ export const builderScreen = {
       }
     }
 
-    // The part being placed: the drag's, or the session's tap-placed ghost.
+    // The part being placed or moved: the drag's, or the session's ghost (a
+    // part being moved doesn't block itself).
     function ghostOf(session) {
       if (drag && drag.kind !== 'pan') {
         return drag.placement ? { placement: drag.placement, ok: !drag.error, blockers: drag.blockers } : null;
       }
-      if (!session.ghost) return null;
-      const error = placementError(session.ship, defs, session.ghost);
-      return { placement: session.ghost, ok: !error, blockers: error?.uids ?? [] };
+      const { ghost } = session;
+      if (!ghost) return null;
+      const error = placementError(ghost.uid === undefined ? session.ship : removeModule(session.ship, ghost.uid), defs, ghost);
+      return { placement: ghost, ok: !error, blockers: error?.uids ?? [] };
     }
 
     // The deck point a finger at (x, y) means. A part being placed or a room
@@ -545,7 +549,10 @@ export const builderScreen = {
       const deck = unproject(camera, x0, y0);
       const { ghost } = session;
       if (deck && ghost && hitsGhost(camera, defs, ghost, x0, y0)) {
-        return { kind: 'ghost', type: ghost.type, rot: ghost.rot, grab: [deck[0] - ghost.x, deck[1] - ghost.y], placement: null };
+        const grab = [deck[0] - ghost.x, deck[1] - ghost.y];
+        // A part being moved: dragging its ghost moves the part, turned as the ghost is.
+        if (ghost.uid !== undefined) return { kind: 'module', uid: ghost.uid, type: ghost.type, rot: ghost.rot, grab, placement: null };
+        return { kind: 'ghost', type: ghost.type, rot: ghost.rot, grab, placement: null };
       }
       const module = session.ship.modules.find((m) => m.uid === session.selected);
       if (deck && module && pickModule(camera, defs, [module], x0, y0) !== null) {
@@ -600,7 +607,7 @@ export const builderScreen = {
       sync();
       if (ended.kind === 'pan' || !ended.placement) return;
       const { x: px, y: py } = ended.placement;
-      if (ended.kind === 'module') act({ type: 'build/move', uid: ended.uid, x: px, y: py });
+      if (ended.kind === 'module') act({ type: 'build/move', uid: ended.uid, x: px, y: py, rot: ended.rot });
       else act({ type: 'build/drop', placement: ended.placement });
     }
 

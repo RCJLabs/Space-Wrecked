@@ -25,7 +25,11 @@ test('the hint follows what the player is doing', () => {
   assert.equal(hintFor(s, defs).tone, 'bad', 'a preview over the placed reactor says why it is blocked');
   assert.match(hintFor(s, defs).text, /would overlap Reactor at \(1, 0\)/);
   s = act(act(s, { type: 'build/cancel' }), { type: 'build/tap', x: 1.5, y: 0.5 });
-  assert.equal(hintFor(s, defs).text, 'Reactor: drag to move it, or Turn or Delete.');
+  assert.equal(hintFor(s, defs).text, 'Reactor: tap where to move it, or Turn or Delete.');
+  const moving = act(s, { type: 'build/tap', x: 7.5, y: 4.5 });
+  assert.deepEqual(hintFor(moving, defs), { tone: 'good', text: 'Tap the Reactor again to move it here.' });
+  const blocked = act(act(act(s, { type: 'build/cancel' }), { type: 'build/drop', placement: { type: 'corridor', x: 7, y: 4, rot: 0 } }), { type: 'build/tap', x: 1.5, y: 0.5 });
+  assert.match(hintFor(act(blocked, { type: 'build/tap', x: 6.5, y: 4.5 }), defs).text, /would overlap Corridor at \(7, 4\)/, 'a move onto another part says why not');
   const drag = { kind: 'part', type: 'corridor', placement: null };
   assert.equal(hintFor(s, defs, drag).text, 'Let go off the grid to cancel.');
   assert.equal(hintFor(s, defs, { ...drag, placement: { x: 3, y: 0 } }).text, 'Let go to place the Corridor here.');

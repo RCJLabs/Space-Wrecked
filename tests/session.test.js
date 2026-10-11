@@ -65,13 +65,12 @@ test('a tap within a cell of the hull slides the preview inside; farther out it 
   assert.equal(tap(s, 9, 9), s, 'a far tap with no preview changes nothing');
 });
 
-test('taps select placed parts; while armed, taps only move the preview', () => {
-  let s = drop(start(), 'hall', 0, 0);
-  s = tap(s, 3.5, 3.5);
-  assert.equal(s.selected, null, 'empty hull clears the selection');
+test('taps select placed parts and let go of them; while armed, taps only move the preview', () => {
+  let s = act(drop(start(), 'hall', 0, 0), { type: 'build/cancel' });
+  assert.equal(tap(s, 3.5, 3.5), s, 'with nothing selected, a tap on empty grid changes nothing');
   s = tap(s, 0.5, 0.5);
   assert.equal(s.selected, 1);
-  assert.equal(tap(s, 0.2, 0.7), s, 'tapping the selected part again changes nothing');
+  assert.equal(tap(s, 0.2, 0.7).selected, null, 'tapping the selected part again lets go of it');
   s = arm(s, 'hall');
   assert.equal(s.selected, null, 'arming clears the selection');
   s = tap(s, 0.5, 0.5);
@@ -81,6 +80,57 @@ test('taps select placed parts; while armed, taps only move the preview', () => 
   assert.deepEqual(modules(s), [[1, 'hall', 0, 0, 0]], 'a blocked preview places nothing');
   assert.equal(s.notice.tone, 'bad');
   assert.match(s.notice.text, /overlap Hall at \(0, 0\)/);
+});
+
+test('a selected part moves by a tap where it goes and a tap on its preview', () => {
+  let s = act(drop(drop(start(), 'hall', 0, 0), 'long', 2, 0), { type: 'build/cancel' });
+  s = tap(s, 0.5, 0.5); // select the hall
+  const before = s.ship;
+  s = tap(s, 4.5, 2.5);
+  assert.deepEqual(s.ghost, { type: 'hall', x: 4, y: 2, rot: 0, uid: 1 }, 'the first tap only shows it there');
+  assert.equal(s.ship, before);
+  s = tap(s, 3.5, 3.5);
+  assert.deepEqual(s.ghost, { type: 'hall', x: 3, y: 3, rot: 0, uid: 1 }, 'a tap elsewhere moves the preview');
+  assert.equal(s.ship, before);
+  s = tap(s, 3.2, 3.8);
+  assert.deepEqual(modules(s), [[1, 'hall', 3, 3, 0], [2, 'long', 2, 0, 0]], 'a tap on the preview moves it, uid and build order kept');
+  assert.deepEqual([s.ghost, s.selected], [null, 1], 'and it stays selected');
+  assert.deepEqual([s.notice.tone, s.notice.text], ['good', 'Moved Hall.']);
+  assert.deepEqual(s.log.at(-1), { op: 'move', uid: 1, x: 3, y: 3, rot: 0 }, 'one move in the build log');
+  s = act(s, { type: 'build/undo' });
+  assert.deepEqual(modules(s), [[1, 'hall', 0, 0, 0], [2, 'long', 2, 0, 0]], 'undo puts it back');
+});
+
+test('moving: Turn turns the preview, a blocked preview moves nothing, and a tap on the part drops it', () => {
+  let s = act(drop(drop(start(), 'long', 0, 0), 'hall', 3, 2), { type: 'build/cancel' });
+  s = tap(tap(s, 0.5, 0.5), 4.6, 0.5); // select the long, preview it at (4, 0)
+  s = act(s, { type: 'build/rotate' });
+  assert.deepEqual(s.ghost, { type: 'long', x: 4, y: 0, rot: 1, uid: 1 }, 'turned in place, upright');
+  assert.deepEqual(modules(s)[0], [1, 'long', 0, 0, 0], 'the part itself has not moved or turned');
+  s = tap(s, 4.5, 1.5);
+  assert.deepEqual(modules(s)[0], [1, 'long', 4, 0, 1], 'it moves and turns in one step');
+  assert.equal(s.past.at(-1).label, 'move Long');
+  // A preview reaching over another part says why, and the part stays put.
+  s = tap(tap(s, 3.5, 1.6), 3.5, 1.6); // the upright long, centred there, covers (3, 1) and (3, 2)
+  assert.deepEqual(modules(s), [[1, 'long', 4, 0, 1], [2, 'hall', 3, 2, 0]], 'blocked by the hall: nothing moves');
+  assert.equal(s.notice.tone, 'bad');
+  assert.match(s.notice.text, /overlap Hall at \(3, 2\)/);
+  assert.deepEqual(s.ghost, { type: 'long', x: 3, y: 1, rot: 1, uid: 1 }, 'the preview stays, to be moved on');
+  s = tap(s, 4.5, 0.5);
+  assert.deepEqual([s.ghost, s.selected], [null, 1], 'a tap on the part drops the preview');
+  assert.equal(tap(s, 4.5, 0.5).selected, null, 'and a second one lets go');
+  assert.equal(tap(s, 3.5, 2.5).selected, 2, 'a tap on another part selects it instead');
+});
+
+test('a part that can\'t turn keeps its preview as it is; delete and undo drop the preview', () => {
+  let s = act(drop(start(), 'fixed', 0, 0), { type: 'build/cancel' });
+  s = tap(tap(s, 0.5, 0.5), 3.5, 2.5);
+  const turned = act(s, { type: 'build/rotate' });
+  assert.deepEqual(turned.ghost, s.ghost);
+  assert.match(turned.notice.text, /can't be rotated/);
+  assert.equal(act(s, { type: 'build/delete' }).ghost, null);
+  const moved = tap(s, s.ghost.x + 0.5, s.ghost.y + 0.5);
+  assert.equal(act(tap(tap(moved, moved.ship.modules[0].x + 0.5, moved.ship.modules[0].y + 0.5), 0.5, 0.5), { type: 'build/undo' }).ghost, null);
 });
 
 test('a drop places at once and selects the part; a drop that can\'t fit stays as a preview', () => {
@@ -129,6 +179,8 @@ test('moving keeps the uid and build order; a blocked move changes nothing', () 
   assert.equal(blocked.past.length, s.past.length);
   assert.equal(blocked.notice.tone, 'bad');
   assert.equal(act(s, { type: 'build/move', uid: 1, x: 5, y: 3 }), s, 'moving onto itself changes nothing');
+  const turned = act(s, { type: 'build/move', uid: 2, x: 0, y: 1, rot: 1 });
+  assert.deepEqual(modules(turned)[1], [2, 'long', 0, 1, 1], 'a move can carry a turn (a dragged, turned ghost)');
 });
 
 test('delete removes the selected part; Done stops placing', () => {
