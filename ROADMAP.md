@@ -242,7 +242,7 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
 
 - [x] **M1 Grid and module data.** grid.js placement rules, rotation and door-socket connectivity; the 12 module types in data/modules.json; a data validator.
   **Done when:** tests cover overlap, bounds, rotation and connectivity, and a ship can be built from a script.
-- [ ] **M2 Touch builder.** Canvas grid, palette drawer, drag ghost, select, rotate, delete, undo and redo, pinch zoom and pan. Placeholder shapes are fine.
+- [x] **M2 Touch builder.** Canvas grid, palette drawer, drag ghost, select, rotate, delete, undo and redo, pinch zoom and pan. Placeholder shapes are fine.
   **Done when:** a full starter ship builds on the Fold, folded and unfolded, without mis-taps, at 60 fps while dragging.
 - [ ] **M3 Flight checklist and stats.** constraints.js, a stat panel, and the checklist with fixes.
   **Done when:** every failing line names its fix, and a failing ship saves but cannot launch.
