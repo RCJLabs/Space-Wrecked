@@ -1,7 +1,7 @@
-// The palette drawer: one tile per module type. Tap a tile to pick the part
-// for tap placement, drag it onto the hull to place it directly, long-press
-// it for details. If the drawer is taller than the screen, up and down
-// scrolls it, and a part has to be dragged out sideways.
+// The palette, on the drawer's Parts tab: one tile per module type. Tap a
+// tile to pick the part for tap placement, drag it onto the hull to place it
+// directly, long-press it for details. If the tiles don't fit, up and down
+// scrolls them, and a part has to be dragged out sideways.
 import { partIconSvg } from '../../render/parts.js';
 import { attachGestures } from '../gestures.js';
 

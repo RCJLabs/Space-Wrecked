@@ -23,20 +23,14 @@ export function hintFor(session, defs, drag) {
   return { tone: 'info', text: 'Drag a part onto the hull, or tap a part and then the hull.' };
 }
 
-// The part count and the first layout problem (connected to the bridge,
-// airlock on the hull edge), or null for an empty hull.
-export function layoutSummary(ship, defs, problems) {
+// The part count and either "Ready to launch" or how many flight checks
+// are open with the first fix, for the chip on the board. Null for an empty
+// hull.
+export function flightSummary(ship, defs, lines) {
   if (!ship.modules.length) return null;
   const frame = defs.frames.get(ship.frame);
-  const count = `${ship.modules.length}/${frame.maxModules} parts`;
-  if (!problems.length) return { tone: 'good', text: `${count} · Layout OK` };
-  const more = problems.length > 1 ? ` (+${problems.length - 1} more)` : '';
-  return { tone: 'bad', text: `${count} · ${shortProblem(problems[0])}${more}` };
-}
-
-function shortProblem(problem) {
-  if (problem.rule === 'bridge') return 'No bridge yet';
-  if (problem.rule === 'connected') return `${problem.uids.length} not joined to the bridge`;
-  if (problem.rule === 'airlock') return 'No airlock on the hull edge';
-  return problem.message;
+  const count = `${ship.modules.length}/${frame?.maxModules ?? '?'} parts`;
+  const open = lines.filter((line) => line.ok !== true);
+  if (!open.length) return { tone: 'good', text: `${count} · Ready to launch` };
+  return { tone: 'bad', text: `${count} · ${open.length} to fix: ${open.find((line) => line.fix).fix}` };
 }

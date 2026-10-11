@@ -10,6 +10,25 @@ export function newShip(frameId) {
   return { frame: frameId, modules: [], nextUid: 1 };
 }
 
+// True if value has a ship's shape: whole-number positions, quarter-turn
+// rotations, and unique uids below nextUid. Whether the parts exist and fit
+// is the layout rules' business, not this; a save only has to be readable.
+export function isShipData(value) {
+  if (!isRecord(value) || typeof value.frame !== 'string' || !value.frame || !Array.isArray(value.modules)) return false;
+  if (!Number.isInteger(value.nextUid) || value.nextUid < 1) return false;
+  const uids = new Set();
+  for (const m of value.modules) {
+    if (!isRecord(m) || !Number.isInteger(m.uid) || m.uid < 1 || m.uid >= value.nextUid || uids.has(m.uid)) return false;
+    if (typeof m.type !== 'string' || !m.type || !Number.isInteger(m.x) || !Number.isInteger(m.y) || !isRotation(m.rot)) return false;
+    uids.add(m.uid);
+  }
+  return true;
+}
+
+function isRecord(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 // Why a placement can't be made, as { rule, message, uids? }, or null if it
 // can. Connectivity and the airlock rule are not checked here: a ship is
 // allowed to be unfinished while it is being built.
@@ -32,7 +51,7 @@ export function placementError(ship, defs, placement) {
     }
     const owner = cellAt(grid, x, y);
     if (owner !== null) {
-      return { rule: 'overlap', message: `${def.name} would overlap ${describe(ship, defs, owner)}.`, uids: [owner] };
+      return { rule: 'overlap', message: `${def.name} would overlap ${describeModule(ship, defs, owner)}.`, uids: [owner] };
     }
   }
   return null;
@@ -254,17 +273,17 @@ export function layoutProblems(ship, defs) {
       continue;
     }
     if (!isRotation(module.rot) || (module.rot !== 0 && !def.rotates)) {
-      add('rotation', `${describe(ship, defs, module.uid)} has a rotation it can't have.`, [module.uid]);
+      add('rotation', `${describeModule(ship, defs, module.uid)} has a rotation it can't have.`, [module.uid]);
       if (!isRotation(module.rot)) continue;
     }
     for (const [x, y] of placedCells(def, module)) {
       if (!inBounds(area, x, y)) {
-        add('bounds', `${describe(ship, defs, module.uid)} sticks out of the ${frame.name}.`, [module.uid]);
+        add('bounds', `${describeModule(ship, defs, module.uid)} sticks out of the ${frame.name}.`, [module.uid]);
         break;
       }
       const first = owners.get(`${x},${y}`);
       if (first !== undefined) {
-        add('overlap', `${describe(ship, defs, module.uid)} overlaps ${describe(ship, defs, first)}.`, [first, module.uid]);
+        add('overlap', `${describeModule(ship, defs, module.uid)} overlaps ${describeModule(ship, defs, first)}.`, [first, module.uid]);
         break;
       }
       owners.set(`${x},${y}`, module.uid);
@@ -280,7 +299,7 @@ export function layoutProblems(ship, defs) {
   } else {
     const loose = ship.modules.filter((module) => !reachable.has(module.uid)).map((module) => module.uid);
     if (loose.length) {
-      add('connected', `Not joined to the bridge by matching doors: ${loose.map((uid) => describe(ship, defs, uid)).join(', ')}.`, loose);
+      add('connected', `Not joined to the bridge by matching doors: ${loose.map((uid) => describeModule(ship, defs, uid)).join(', ')}.`, loose);
     }
   }
   if (airlocksOnHullEdge(ship, defs).length === 0) add('airlock', 'No airlock on the hull edge.');
@@ -288,7 +307,7 @@ export function layoutProblems(ship, defs) {
 }
 
 // "Reactor at (0, 3)", for messages.
-function describe(ship, defs, uid) {
+export function describeModule(ship, defs, uid) {
   const module = ship.modules.find((m) => m.uid === uid);
   if (!module) return `module ${uid}`;
   const name = defs.modules.get(module.type)?.name ?? module.type;

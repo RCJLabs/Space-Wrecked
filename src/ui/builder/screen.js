@@ -1,7 +1,9 @@
-// The builder sandbox: build a ship on the starter frame by touch.
+// The builder sandbox: build a ship on the starter frame by touch, and check
+// it against the flight checklist.
 // Input -> session action (src/sim/session.js) -> new session -> redraw.
 // A drag or pinch in progress is input, so it lives here until it ends in
-// an action; the session itself only changes through the store.
+// an action; the session itself only changes through its store. Every new
+// ship goes to the game store (ship/set), which saves it.
 import { createStore } from '../../core/store.js';
 import { loadContent } from '../../platform/content.js';
 import { clampCamera, fitCamera, panCamera, pinchCamera, toWorld, zoomCamera } from '../../render/camera.js';
@@ -9,25 +11,28 @@ import { palette } from '../../render/palette.js';
 import { partIconSvg } from '../../render/parts.js';
 import { drawBoard } from '../../render/shipView.js';
 import { doorStates, layoutProblems, moduleAt, newShip, placementError, removeModule } from '../../sim/builder.js';
+import { canLaunch, flightChecklist, shipStats } from '../../sim/constraints.js';
 import { covers, createSession, reduceSession, snapPlacement } from '../../sim/session.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { cardFor } from './card.js';
-import { hintFor, layoutSummary } from './hints.js';
-import { createPalette } from './palette.js';
+import { createDrawer } from './drawer.js';
+import { flightSummary, hintFor } from './hints.js';
 
 const FRAME = 'starter';
 const MARGIN = 14; // pixels around the frame when it is fitted
 const MAX_ZOOM = 3; // times the fitted scale
 const NOTICE_MS = 2600;
 const TILE_GAP = 6;
+const TABS = 56; // the drawer's tab row and the space under it
 
 // The session outlives the screen until the page reloads, so leaving the
-// sandbox and coming back keeps the ship. (Saving ships comes later.)
+// sandbox and coming back keeps the undo history. The ship itself is saved.
 let kept = null;
 
 export const builderScreen = {
-  mount(root) {
+  // game: the game's store, which holds (and saves) the ship.
+  mount(root, { store: game }) {
     const el = node('section', 'builder');
     const board = node('div', 'bld-board');
     const layoutChip = node('p', 'bld-layout');
@@ -51,8 +56,8 @@ export const builderScreen = {
     let defs = null;
     let frame = null;
     let store = null;
-    let parts = null; // the palette drawer
-    let derived = null; // per ship: { doors, loose, problems }
+    let drawer = null;
+    let derived = null; // per ship: { doors, loose, problems, lines, totals, ready }
     let rect = null;
     let fit = null;
     let limits = null;
@@ -62,9 +67,8 @@ export const builderScreen = {
     let dirty = true;
     let alive = true;
     let deleteMode = 'delete';
-    let noticeId = kept?.notice?.id ?? 0;
-    let noticeUntil = 0;
-    let noticeTimer = 0;
+    let flash = null; // a notice shown until NOTICE_MS passes or the session changes
+    let flashTimer = 0;
     const cleanups = [];
 
     loadContent()
@@ -72,19 +76,41 @@ export const builderScreen = {
         if (!alive) return;
         defs = content;
         frame = defs.frames.get(FRAME);
-        store = createStore((session, action) => reduceSession(session, action, defs), kept ?? createSession(newShip(FRAME)));
+        // Keep this page's session (and its undo history) if it still holds
+        // the saved ship; otherwise start from the save.
+        const saved = usable(game.getState().ship);
+        store = createStore((session, action) => reduceSession(session, action, defs), kept?.ship === saved ? kept : createSession(saved));
         derived = derive(store.getState().ship);
         store.subscribe(onSession);
-        parts = createPalette(defs, {
-          tap: (type) => act({ type: 'build/arm', moduleType: type }),
-          longPress: (type) => openCard(cardFor(defs, defs.modules.get(type)), 'left'),
-          dragStart: startPartDrag,
-          dragMove: moveDrag,
-          dragEnd: endDrag,
-          dragCancel: cancelDrag,
+        // A ship that arrives from outside (a save imported from the dev menu)
+        // replaces the one being built. Only a change to the saved ship
+        // counts, not every change to the game state.
+        let gameShip = game.getState().ship;
+        cleanups.push(
+          game.subscribe((state) => {
+            if (!alive || state.ship === gameShip) return;
+            gameShip = state.ship;
+            if (state.ship !== store.getState().ship) store.dispatch({ type: 'build/load', ship: usable(state.ship) });
+          }),
+        );
+        drawer = createDrawer(defs, {
+          palette: {
+            tap: (type) => act({ type: 'build/arm', moduleType: type }),
+            longPress: (type) => openCard(cardFor(defs, defs.modules.get(type)), 'left'),
+            dragStart: startPartDrag,
+            dragMove: moveDrag,
+            dragEnd: endDrag,
+            dragCancel: cancelDrag,
+          },
+          onLaunch: () => act({ type: 'build/launch', crew: crew() }),
+          onFix: (type) => {
+            drawer.show('parts');
+            act({ type: 'build/arm', moduleType: type, toggle: false });
+          },
         });
-        el.prepend(parts.el);
-        cleanups.push(() => parts.dispose());
+        el.prepend(drawer.el);
+        cleanups.push(() => drawer.dispose());
+        drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules });
         layout();
         sync();
       })
@@ -179,31 +205,51 @@ export const builderScreen = {
 
     function onSession(session, prev) {
       kept = session;
-      if (session.ship !== prev.ship) derived = derive(session.ship);
+      let becameReady = false;
+      if (session.ship !== prev.ship) {
+        const wasReady = derived.ready;
+        derived = derive(session.ship);
+        becameReady = derived.ready && !wasReady;
+        drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules });
+        game.dispatch({ type: 'ship/set', ship: session.ship });
+      }
       // A new notice shows for a while; any other change replaces it with
       // the hint for what is on screen now.
-      clearTimeout(noticeTimer);
-      if (session.notice && session.notice.id !== noticeId) {
-        noticeId = session.notice.id;
-        noticeUntil = performance.now() + NOTICE_MS;
-        noticeTimer = setTimeout(sync, NOTICE_MS + 20);
-      } else {
-        noticeUntil = 0;
+      clearTimeout(flashTimer);
+      flash = null;
+      const ready = 'Every flight check passes: ready to launch.';
+      if (session.notice && session.notice !== prev.notice) {
+        flash = becameReady ? { tone: 'good', text: `${session.notice.text} ${ready}` } : session.notice;
+      } else if (becameReady) {
+        flash = { tone: 'good', text: ready };
       }
+      if (flash) flashTimer = setTimeout(() => ((flash = null), sync()), NOTICE_MS);
       sync();
     }
 
     function derive(ship) {
       const problems = layoutProblems(ship, defs);
       const loose = problems.find((p) => p.rule === 'connected')?.uids ?? [];
-      return { doors: doorStates(ship, defs), loose: new Set(loose), problems };
+      const lines = flightChecklist(ship, defs, crew());
+      return { doors: doorStates(ship, defs), loose: new Set(loose), problems, lines, totals: shipStats(ship, defs), ready: canLaunch(lines) };
+    }
+
+    // Until there is a campaign with real crew, the ship carries the starting crew.
+    function crew() {
+      return defs.balance.startingCrew;
+    }
+
+    // A saved ship on a frame this build doesn't know can't be drawn; build a
+    // new one instead (the saved one stays until the first change).
+    function usable(ship) {
+      return ship && defs.frames.has(ship.frame) ? ship : newShip(FRAME);
     }
 
     // Brings the DOM in line with the session and asks for a redraw.
     function sync() {
       if (!store) return;
       const session = store.getState();
-      parts.setArmed(session.armed?.type ?? null);
+      drawer.setArmed(session.armed?.type ?? null);
       undoButton.disabled = !session.past.length;
       redoButton.disabled = !session.future.length;
       const target = session.armed?.type ?? session.ship.modules.find((m) => m.uid === session.selected)?.type;
@@ -214,11 +260,10 @@ export const builderScreen = {
         setToolFace(deleteButton, mode === 'done' ? icons.done : icons.remove, mode === 'done' ? 'Done' : 'Delete');
       }
       deleteButton.disabled = mode === 'delete' && session.selected === null;
-      const summary = layoutSummary(session.ship, defs, derived.problems);
+      const summary = flightSummary(session.ship, defs, derived.lines);
       layoutChip.hidden = !summary;
       if (summary) setText(layoutChip, summary);
-      const showNotice = session.notice && !drag && performance.now() < noticeUntil;
-      setStatus(showNotice ? session.notice : hintFor(session, defs, drag));
+      setStatus(flash && !drag ? flash : hintFor(session, defs, drag));
       dirty = true;
     }
 
@@ -231,7 +276,7 @@ export const builderScreen = {
     function layout() {
       if (!alive) return;
       const height = el.clientHeight;
-      const tile = Math.max(48, Math.min(64, Math.floor((height - 16 - 3 * TILE_GAP) / 4)));
+      const tile = Math.max(48, Math.min(64, Math.floor((height - TABS - 16 - 3 * TILE_GAP) / 4)));
       el.style.setProperty('--tile', `${tile}px`);
       if (!frame) return;
       const r = board.getBoundingClientRect();
@@ -375,7 +420,7 @@ export const builderScreen = {
       },
       unmount() {
         alive = false;
-        clearTimeout(noticeTimer);
+        clearTimeout(flashTimer);
         for (const cleanup of cleanups) cleanup();
         el.removeEventListener('pointerdown', closeOnTouch, true);
         el.remove();

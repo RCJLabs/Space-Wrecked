@@ -4,9 +4,10 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "08662a1477c7";
+const VERSION = "c0fb6c330ae8";
 const CACHE_PREFIX = "wt-";
 const FILES = [
+  "data/balance.json",
   "data/frames.json",
   "data/manufacturers.json",
   "data/modules.json",
@@ -34,6 +35,7 @@ const FILES = [
   "src/render/shipView.js",
   "src/render/starfield.js",
   "src/sim/builder.js",
+  "src/sim/constraints.js",
   "src/sim/defs.js",
   "src/sim/grid.js",
   "src/sim/modules.js",
@@ -41,9 +43,11 @@ const FILES = [
   "src/sim/session.js",
   "src/sim/settings.js",
   "src/ui/builder/card.js",
+  "src/ui/builder/drawer.js",
   "src/ui/builder/hints.js",
   "src/ui/builder/palette.js",
   "src/ui/builder/screen.js",
+  "src/ui/builder/shipPanel.js",
   "src/ui/dev/fps.js",
   "src/ui/dev/menu.js",
   "src/ui/dev/sandboxes.js",

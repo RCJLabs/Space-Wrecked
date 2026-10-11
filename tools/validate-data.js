@@ -5,11 +5,15 @@
 //
 //   node tools/validate-data.js
 import { pathToFileURL } from 'node:url';
+import { REQUIRED_TAGS } from '../src/sim/constraints.js';
 import { readData } from './data.js';
 
 const SIDES = ['n', 'e', 's', 'w'];
 const STATS = ['power', 'mass', 'thrust', 'berths', 'lifeSupport', 'cargo', 'hp'];
 const MODULE_KEYS = ['id', 'name', 'glyph', 'manufacturer', 'size', 'rotates', 'doors', 'stats', 'tags', 'interior', 'cost'];
+const FRAME_KEYS = ['id', 'name', 'width', 'height', 'maxModules', 'minThrustToMass'];
+// balance.json: each number's allowed range.
+const BALANCE = { startingCrew: [1, 100] };
 const MAX_MODULE_SIZE = 4;
 const MAX_FRAME_SIZE = 32;
 
@@ -20,7 +24,7 @@ export const KNOWN_TAGS = [
 ];
 
 // Returns a list of problems as "where: what" strings. Empty means valid.
-export function validateData({ modules: moduleFile, frames: frameFile, manufacturers: makerFile }) {
+export function validateData({ modules: moduleFile, frames: frameFile, manufacturers: makerFile, balance }) {
   const problems = [];
   const fail = (where, message) => problems.push(`${where}: ${message}`);
 
@@ -34,12 +38,29 @@ export function validateData({ modules: moduleFile, frames: frameFile, manufactu
   uniqueIds(frames, 'frames.json', fail);
   frames.forEach((frame, i) => {
     const where = `frames.json ${frame.id ?? `#${i}`}`;
+    for (const key of Object.keys(frame)) {
+      if (!FRAME_KEYS.includes(key)) fail(where, `unknown field "${key}"`);
+    }
     if (!isText(frame.name)) fail(where, 'name must be a non-empty string');
+    if (!(Number.isFinite(frame.minThrustToMass) && frame.minThrustToMass >= 0 && frame.minThrustToMass <= 10)) {
+      fail(where, 'minThrustToMass must be a number from 0 to 10');
+    }
     for (const key of ['width', 'height']) {
       if (!isIntIn(frame[key], 1, MAX_FRAME_SIZE)) fail(where, `${key} must be an integer from 1 to ${MAX_FRAME_SIZE}`);
     }
     if (!isIntIn(frame.maxModules, 1, Infinity)) fail(where, 'maxModules must be a positive integer');
   });
+
+  if (!balance || typeof balance !== 'object' || Array.isArray(balance)) {
+    fail('balance.json', 'must be an object of named numbers');
+  } else {
+    for (const key of Object.keys(balance)) {
+      if (!(key in BALANCE)) fail('balance.json', `unknown number "${key}"`);
+    }
+    for (const [key, [min, max]] of Object.entries(BALANCE)) {
+      if (!isIntIn(balance[key], min, max)) fail('balance.json', `${key} must be a whole number from ${min} to ${max}`);
+    }
+  }
 
   const tilesPerCell = moduleFile?.tilesPerCell;
   if (!isIntIn(tilesPerCell, 1, 8)) fail('modules.json', 'tilesPerCell must be an integer from 1 to 8');
@@ -89,9 +110,9 @@ export function validateData({ modules: moduleFile, frames: frameFile, manufactu
       if (new Set(def.tags).size !== def.tags.length) fail(where, 'tags has duplicates');
     }
   });
-  for (const tag of ['bridge', 'airlock']) {
+  for (const tag of REQUIRED_TAGS) {
     if (!modules.some((def) => Array.isArray(def.tags) && def.tags.includes(tag))) {
-      fail('modules.json', `no module is tagged "${tag}", which the placement rules need`);
+      fail('modules.json', `no module is tagged "${tag}", which the flight checklist needs`);
     }
   }
   return problems;

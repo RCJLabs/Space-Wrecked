@@ -29,7 +29,7 @@ let saved = saveData(store.getState());
 persist(saved); // the first launch writes its seed right away
 store.subscribe((state) => {
   const data = saveData(state);
-  if (data.settings !== saved.settings || data.rng !== saved.rng) {
+  if (Object.keys(data).some((key) => data[key] !== saved[key])) {
     saved = data;
     persist(data);
   }
@@ -91,7 +91,7 @@ function syncScreen(state) {
   if (state.screen === activeId) return;
   active?.unmount();
   activeId = state.screen;
-  active = screenFor(activeId).mount(screenRoot);
+  active = screenFor(activeId).mount(screenRoot, { store });
   active.resize?.(view);
 }
 

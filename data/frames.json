@@ -5,7 +5,8 @@
       "name": "Starter hull",
       "width": 7,
       "height": 4,
-      "maxModules": 20
+      "maxModules": 20,
+      "minThrustToMass": 0.5
     }
   ]
 }
