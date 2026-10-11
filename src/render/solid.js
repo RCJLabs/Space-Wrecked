@@ -1,9 +1,10 @@
 // Solid 3D shapes for the ship seen from outside: faces with outward
 // normals, so the painter can drop the ones facing away, light the rest and
 // draw them back to front. A face is
-//   { pts: [[x, y, z], ...], normal: [x, y, z], color, edge?, emissive?, bias? }
+//   { pts: [[x, y, z], ...], normal: [x, y, z], color, edge?, emissive?, alpha?, bias? }
 // color is '#rrggbb'; edge is a stroke color for its outline; an emissive
-// face isn't shaded; bias nudges its place in the draw order (negative is
+// face isn't shaded; alpha (0 to 1) lets what is behind it show through;
+// bias nudges its place in the draw order (negative is
 // nearer), and sortAt, a point, sorts it as if it were there (paint on a
 // wall sorts with the wall). Coordinates are cells, z up.
 
@@ -113,13 +114,15 @@ export const LIGHT = (() => {
   return v.map((k) => k / len);
 })();
 
-// A face's fill: its color lit by LIGHT, as an rgb() string.
+// A face's fill: its color lit by LIGHT, as an rgb() string, or rgba() for
+// a face with an alpha (marks on the deck that the floor shows through).
 export function shade(face, light = LIGHT) {
   const n = parseInt(face.color.slice(1), 16);
-  const [r, g, b] = [n >> 16, (n >> 8) & 255, n & 255];
-  if (face.emissive) return `rgb(${r}, ${g}, ${b})`;
-  const lit = face.normal[0] * light[0] + face.normal[1] * light[1] + face.normal[2] * light[2];
-  const k = 0.45 + 0.6 * Math.max(0, lit);
-  const c = (v) => Math.min(255, Math.round(v * k));
-  return `rgb(${c(r)}, ${c(g)}, ${c(b)})`;
+  let [r, g, b] = [n >> 16, (n >> 8) & 255, n & 255];
+  if (!face.emissive) {
+    const lit = face.normal[0] * light[0] + face.normal[1] * light[1] + face.normal[2] * light[2];
+    const k = 0.45 + 0.6 * Math.max(0, lit);
+    [r, g, b] = [r, g, b].map((v) => Math.min(255, Math.round(v * k)));
+  }
+  return face.alpha === undefined ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${face.alpha})`;
 }

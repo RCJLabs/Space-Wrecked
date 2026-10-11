@@ -45,6 +45,24 @@ export function reachable(battle, unit, budget, rules) {
 // What a unit can walk through: anything but these (doors open).
 const BLOCKS = new Set(['wall', 'hull', 'hatch']);
 
+// Steps from the nearest of `from` ([x, y] tiles) to every tile units can
+// get to, walking through doors and past anyone: a Map from "x,y" to steps.
+export function stepsFrom(battle, from, rules) {
+  const away = new Map(from.map(([x, y]) => [`${x},${y}`, 0]));
+  const queue = from.map(([x, y]) => [x, y]);
+  for (let i = 0; i < queue.length; i++) {
+    const [x, y] = queue[i];
+    for (const side of SIDES) {
+      if (BLOCKS.has(wallAt(battle.map, x, y, side))) continue;
+      const [nx, ny] = step(x, y, side);
+      if (!walkable(battle, nx, ny, rules) || away.has(`${nx},${ny}`)) continue;
+      away.set(`${nx},${ny}`, away.get(`${x},${y}`) + 1);
+      queue.push([nx, ny]);
+    }
+  }
+  return away;
+}
+
 // The side of `from` that `to`, one step away, is across.
 export function sideToward([fx, fy], [tx, ty]) {
   if (ty < fy) return 'n';

@@ -4,9 +4,9 @@
 // empty tables.
 
 // The content files, by name: data/<name>.json.
-export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'balance', 'weapons', 'jobs', 'enemies', 'tiles'];
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'balance', 'weapons', 'jobs', 'enemies', 'tiles', 'encounters'];
 
-export function indexDefs({ modules, frames, manufacturers, balance, weapons, jobs, enemies, tiles }) {
+export function indexDefs({ modules, frames, manufacturers, balance, weapons, jobs, enemies, tiles, encounters }) {
   return {
     balance,
     tilesPerCell: modules.tilesPerCell,
@@ -20,6 +20,10 @@ export function indexDefs({ modules, frames, manufacturers, balance, weapons, jo
     weapons: byId(weapons?.weapons),
     jobs: byId(jobs?.jobs),
     enemies: byId(enemies?.enemies),
+    // Who fights a battle: the squad (crew jobs, until a campaign has a
+    // crew) and the enemies an encounter brings.
+    squad: encounters?.squad ?? [],
+    encounters: byId(encounters?.encounters),
   };
 }
 

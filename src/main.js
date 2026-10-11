@@ -91,6 +91,7 @@ function syncScreen(state) {
   if (state.screen === activeId) return;
   active?.unmount();
   activeId = state.screen;
+  ui.dataset.screen = activeId; // where the dev overlay sits depends on the screen
   active = screenFor(activeId).mount(screenRoot, { store });
   active.resize?.(view);
 }

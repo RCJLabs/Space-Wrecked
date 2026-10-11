@@ -4,8 +4,10 @@
 // and a screen with a 3D board adds frameStats() for the dev overlay.
 import { battleScreen } from '../battle/screen.js';
 import { builderScreen } from '../builder/screen.js';
+import { fightScreen } from '../fight/screen.js';
 
 export const sandboxes = [
   { id: 'builder', name: 'Builder', screen: builderScreen },
   { id: 'battle', name: 'Battle map', screen: battleScreen },
+  { id: 'fight', name: 'Fight', screen: fightScreen },
 ];

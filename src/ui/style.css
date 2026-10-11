@@ -734,6 +734,360 @@ textarea {
   color: var(--c-ink-dim);
 }
 
+/* Fight sandbox: the crew down the left with End turn under them, the
+   board in the middle, and the selected unit's orders down the right
+   (bottom up, clear of the DEV button). */
+.fight {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+
+.fgt-crew {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  width: 128px;
+  padding: 8px 8px 8px 14px;
+  border-right: 1px solid var(--c-line);
+  background: var(--c-panel);
+  pointer-events: auto;
+}
+
+.fgt-units {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+#ui .fgt-unit {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 3px;
+  min-height: 54px;
+  padding: 4px 8px 4px 10px;
+  border-left: 4px solid var(--trim);
+  text-align: left;
+}
+
+#ui .fgt-unit[aria-pressed='true'] {
+  border-color: var(--c-accent);
+  border-left-color: var(--trim);
+  box-shadow: inset 0 0 0 1px var(--c-accent);
+}
+
+#ui .fgt-unit[data-state='out'],
+#ui .fgt-unit[data-state='dead'] {
+  opacity: 0.5;
+}
+
+.fgt-name {
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.fgt-hp {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(232, 236, 245, 0.16);
+  overflow: hidden;
+}
+
+.fgt-hp span {
+  display: block;
+  height: 100%;
+  background: var(--trim);
+}
+
+.fgt-state {
+  color: var(--c-ink-dim);
+  font-size: 10.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+#ui .fgt-unit[data-state='down'] .fgt-state {
+  color: var(--c-bad);
+}
+
+#ui .fgt-unit[data-state='stable'] .fgt-state {
+  color: var(--c-good);
+}
+
+#ui .fgt-end {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 52px;
+  padding: 0 8px;
+  font-size: 12.5px;
+}
+
+#ui .fgt-end[data-state='armed'] {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
+.fgt-board {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+
+.fgt-actions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 58px 8px 8px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+/* Bottom up, but a column too tall for the screen still starts below the
+   DEV button and scrolls (flex-end would push it up out of reach). */
+.fgt-actions::before {
+  content: '';
+  flex: 1 0 0;
+}
+
+#ui .fgt-act,
+#ui .fgt-tool {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 64px;
+  height: 52px;
+  padding: 0;
+  background: var(--c-panel);
+  font-size: 10px;
+}
+
+#ui .fgt-skip {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+
+/* The board's own: the round top left, Log and Fit top right, the hint
+   along the bottom. */
+.fgt-chip,
+.fgt-status {
+  position: absolute;
+  margin: 0;
+  padding: 5px 10px;
+  border-radius: 12px;
+  background: rgba(7, 10, 20, 0.82);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.fgt-chip {
+  top: 4px;
+  left: 8px;
+  max-width: calc(100% - 132px);
+  font-size: 12px;
+}
+
+.fgt-status {
+  left: 50%;
+  bottom: 4px;
+  max-width: calc(100% - 16px);
+  transform: translateX(-50%);
+  font-size: 13px;
+}
+
+.fgt-chip[data-tone='good'],
+.fgt-status[data-tone='good'] {
+  color: var(--c-good);
+}
+
+.fgt-chip[data-tone='bad'],
+.fgt-status[data-tone='bad'] {
+  color: var(--c-bad);
+}
+
+.fgt-status[data-tone='warn'] {
+  color: var(--c-dash);
+}
+
+.fgt-tools {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 6px;
+}
+
+#ui .fgt-tool {
+  width: 52px;
+  height: 48px;
+}
+
+/* Cards and the end panel sit over the dev overlay (z-index 2), under the
+   dev menu (3, later in the page). */
+.fgt-card,
+.fgt-over {
+  z-index: 3;
+}
+
+.fgt-card {
+  position: absolute;
+  top: 36px;
+  left: 8px;
+  width: max-content;
+  max-width: min(320px, calc(100% - 16px));
+  max-height: calc(100% - 76px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 12px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-panel);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: auto;
+  touch-action: pan-y;
+}
+
+/* On the right it sits under Log and Fit. */
+.fgt-card[data-side='right'] {
+  top: 60px;
+  right: 8px;
+  left: auto;
+}
+
+.fgt-card h3 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.fgt-card p {
+  margin: 0;
+  color: var(--c-ink-dim);
+}
+
+.fgt-hit {
+  color: var(--c-target);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fgt-odds {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1px 16px;
+  margin: 2px 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fgt-odds div {
+  display: contents;
+}
+
+.fgt-odds dt {
+  color: var(--c-ink-dim);
+}
+
+.fgt-odds dd {
+  margin: 0;
+  text-align: right;
+}
+
+.fgt-card-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+#ui .fgt-fire,
+#ui .fgt-next,
+#ui .fgt-again {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+}
+
+#ui .fgt-fire {
+  flex: 1;
+  border-color: var(--c-target);
+  background: var(--c-target);
+  color: var(--c-space);
+}
+
+/* Short screens (the Fold's cover screen in a browser tab): buttons at the
+   48 px minimum. Five orders at once still scroll there. */
+@media (max-height: 320px) {
+  .fgt-crew,
+  .fgt-actions {
+    gap: 4px;
+  }
+
+  #ui .fgt-act,
+  #ui .fgt-end {
+    height: 48px;
+    min-height: 48px;
+  }
+
+  #ui .fgt-unit {
+    min-height: 50px;
+  }
+}
+
+/* The end of a fight, in the middle of the board. */
+.fgt-over {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border: 1px solid var(--c-line);
+  border-radius: 14px;
+  background: var(--c-panel);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
+.fgt-over p {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
 /* Update prompt */
 .update-prompt {
   position: absolute;
@@ -820,6 +1174,14 @@ textarea {
   font: 11px/1.35 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
   white-space: pre;
   pointer-events: none;
+}
+
+/* In a fight the crew stand where it would be: bottom right of the board,
+   by the orders, instead. */
+#ui[data-screen='fight'] .fps {
+  top: auto;
+  right: 88px;
+  bottom: 40px;
 }
 
 .dev-toggle {

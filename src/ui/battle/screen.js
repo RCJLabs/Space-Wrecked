@@ -2,7 +2,8 @@
 // converts to (src/sim/mapFromShip.js), in 3D. Tap a room to wreck it (on
 // fire, then open to vacuum, then full of rubble, then whole again);
 // long-press a tile to read it. Drag to pan, pinch to zoom, twist to turn.
-// Wrecks are only for looking: nothing here is saved.
+// Wrecks are only for trying things: nothing here is saved, and a fight on
+// the same ship (the Fight sandbox) starts with them (wrecks.js).
 // Input -> mapFromShip -> new map -> redraw.
 import { loadContent } from '../../platform/content.js';
 import { battleBoxes } from '../../render/battleScene.js';
@@ -11,9 +12,11 @@ import { clampOrbit, fitOrbit, panOrbit, pinchOrbit, turnOrbit, unproject, zoomO
 import { palette, skinFor } from '../../render/palette.js';
 import { activeSlot } from '../../sim/builds.js';
 import { cellAt } from '../../sim/grid.js';
-import { mapFromShip, nextWreck, wallAt } from '../../sim/mapFromShip.js';
+import { mapFromShip, nextWreck } from '../../sim/mapFromShip.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { roomName, tileText, WRECK_TEXT } from './tileText.js';
+import { keepWrecks, wrecksOf } from './wrecks.js';
 
 const MARGIN = 14; // pixels around the ship when the view is fitted
 const MAX_ZOOM = 3; // times the fitted scale
@@ -21,13 +24,6 @@ const MIN_ZOOM = 0.6; // times the fitted scale, or of the whole map's if that i
 const TURN_SLOP = 0.17; // radians of twist before a pinch turns the map
 const KEY_TURN = Math.PI / 12; // Q and E on a keyboard
 const SETTLE_MS = 150; // still this long after a camera move, the map sharpens
-const WRECK_TEXT = { fire: 'on fire', vacuum: 'open to vacuum', rubble: 'full of rubble' };
-const SIDE_NAMES = { n: 'north', e: 'east', s: 'south', w: 'west' };
-const EDGE_TEXT = { wall: 'wall', hull: 'hull', door: 'door', hatch: 'hatch' };
-
-// Wrecks outlive the screen until the page reloads, for the ship they were
-// made on.
-let kept = { ship: null, wrecked: {} };
 
 export const battleScreen = {
   // game: the game's store; the ship is its builder's open slot.
@@ -89,13 +85,13 @@ export const battleScreen = {
             setStatus({ tone: 'info', text: `${cellAt(map.tiles, ...at) === 'hull' ? 'Hull' : 'Space'}: tap a room to wreck it.` });
             return;
           }
-          const wreck = nextWreck(kept.wrecked[uid] ?? null);
-          const wrecked = { ...kept.wrecked };
+          const wrecked = { ...wrecksOf(ship) };
+          const wreck = nextWreck(wrecked[uid] ?? null);
           if (wreck) wrecked[uid] = wreck;
           else delete wrecked[uid];
-          kept.wrecked = wrecked;
+          keepWrecks(ship, wrecked);
           rebuild();
-          const name = roomName(uid);
+          const name = roomName(map, uid, defs);
           const then = nextWreck(wreck);
           setStatus({ tone: wreck ? 'bad' : 'good', text: `${name}: ${wreck ? WRECK_TEXT[wreck] : 'whole again'}. Tap it again ${then ? `and it's ${WRECK_TEXT[then]}` : 'to put it right'}.` });
         },
@@ -149,8 +145,8 @@ export const battleScreen = {
 
     cleanups.push(
       onTap(clearButton, () => {
-        if (!map || !Object.keys(kept.wrecked).length) return;
-        kept.wrecked = {};
+        if (!map || !Object.keys(wrecksOf(ship)).length) return;
+        keepWrecks(ship, {});
         rebuild();
         setStatus({ tone: 'good', text: 'Every room is whole again.' });
       }),
@@ -166,7 +162,6 @@ export const battleScreen = {
     // Shows another ship (or none). Its wrecks start over.
     function open(next) {
       ship = next;
-      if (kept.ship !== ship) kept = { ship, wrecked: {} };
       rebuild();
       if (!map) {
         info.hidden = true;
@@ -184,7 +179,7 @@ export const battleScreen = {
     // Converts the ship with the wrecks as they are now.
     function rebuild() {
       const known = ship && defs.frames.has(ship.frame);
-      map = known ? mapFromShip(ship, defs, { wrecked: kept.wrecked }) : null;
+      map = known ? mapFromShip(ship, defs, { wrecked: wrecksOf(ship) }) : null;
       mapView.setMap(map && { map, skin: skinFor('yard') });
       if (map) {
         const wrecks = map.rooms.filter((room) => room.wreck).length;
@@ -196,11 +191,6 @@ export const battleScreen = {
         info.hidden = false;
       }
       dirty = true;
-    }
-
-    function roomName(uid) {
-      const type = map.rooms.find((room) => room.uid === uid)?.type;
-      return defs.modules.get(type)?.name ?? type;
     }
 
     // The tile under a finger at (x, y), as [x, y], or null off the map.
@@ -215,16 +205,7 @@ export const battleScreen = {
     // A card saying what is on a tile: its room and fitting, its walls and
     // any wreck. It opens on the half of the board away from the finger.
     function openCard([x, y], fingerX) {
-      const uid = cellAt(map.roomAt, x, y);
-      const kind = cellAt(map.tiles, x, y);
-      const title = uid === null ? (kind === 'hull' ? 'Hull' : 'Space') : roomName(uid);
-      const lines = [`Tile (${x}, ${y}): ${kind}.`];
-      if (uid !== null) {
-        const edges = Object.entries(SIDE_NAMES).map(([side, name]) => [name, wallAt(map, x, y, side)]).filter(([, edge]) => edge);
-        lines.push(edges.length ? `Edges: ${edges.map(([name, edge]) => `${EDGE_TEXT[edge]} to the ${name}`).join(', ')}.` : 'Open on every side.');
-        const wreck = cellAt(map.hazards, x, y);
-        if (wreck) lines.push(`Wrecked: ${WRECK_TEXT[wreck]}.`);
-      }
+      const { title, lines } = tileText(map, x, y, defs);
       card.replaceChildren(node('h3', null, title), ...lines.map((line) => node('p', null, line)));
       card.dataset.side = fingerX < rect.x + rect.w / 2 ? 'right' : 'left';
       card.hidden = false;
