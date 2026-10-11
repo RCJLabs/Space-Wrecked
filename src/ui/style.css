@@ -396,7 +396,8 @@ textarea {
 }
 
 #ui .bld-tool,
-#ui .bld-fit {
+#ui .bld-fit,
+#ui .bld-hull {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -408,13 +409,30 @@ textarea {
   font-size: 10.5px;
 }
 
-#ui .bld-fit {
+/* The board's own buttons, top right: Hull (the ship from outside), and
+   Fit to its left when the view has moved. */
+#ui .bld-fit,
+#ui .bld-hull {
   position: absolute;
   top: 8px;
   right: 8px;
   width: 48px;
   height: 48px;
   background: var(--c-panel);
+}
+
+#ui .bld-hull {
+  width: 56px;
+}
+
+#ui .bld-fit {
+  right: 72px;
+}
+
+#ui .bld-hull[aria-pressed='true'] {
+  border-color: var(--c-accent);
+  box-shadow: inset 0 0 0 1px var(--c-accent);
+  color: var(--c-accent);
 }
 
 .btn:disabled {
@@ -458,7 +476,7 @@ textarea {
 .bld-layout {
   top: 4px;
   left: 8px;
-  max-width: calc(100% - 72px);
+  max-width: calc(100% - 136px);
   font-size: 12px;
 }
 
@@ -588,10 +606,11 @@ textarea {
 }
 
 /* Dev overlay and menu (?dev=1) */
-/* Top right, beside DEV: the left side holds the builder's drawer tabs. */
+/* Top right, beside DEV and under the board's Hull button: the left side
+   holds the builder's drawer tabs. */
 .fps {
   position: absolute;
-  top: 4px;
+  top: 60px;
   right: 72px;
   z-index: 2;
   padding: 4px 6px;

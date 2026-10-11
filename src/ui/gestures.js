@@ -14,7 +14,9 @@
 // Handlers (all optional): tap(x, y), longPress(x, y), dragStart(x0, y0, x, y)
 // (return false to refuse the drag), dragMove(x, y), dragEnd(x, y),
 // dragCancel(), pinchStart(p), pinchMove(p), pinchEnd(), where p is the
-// fingers' midpoint and spread, { x, y, spread }.
+// fingers' midpoint, spread and twist, { x, y, spread, angle }: angle is the
+// direction from the first finger to the second, in radians, growing
+// clockwise on screen.
 
 export const SLOP = 10;
 export const LONG_PRESS = 450;
@@ -30,7 +32,7 @@ export function createRecognizer(handlers) {
   function midpoint() {
     const a = pointers.get(pair[0]);
     const b = pointers.get(pair[1]);
-    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, spread: Math.hypot(a.x - b.x, a.y - b.y) };
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, spread: Math.hypot(a.x - b.x, a.y - b.y), angle: Math.atan2(b.y - a.y, b.x - a.x) };
   }
 
   function settle() {

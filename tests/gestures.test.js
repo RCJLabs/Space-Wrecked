@@ -74,14 +74,25 @@ test('a second finger cancels a drag and pinches; nothing else happens until all
     ['dragStart', 100, 100, 130, 100],
     ['dragMove', 130, 100],
     ['dragCancel'],
-    ['pinchStart', { x: 180, y: 100, spread: 100 }],
-    ['pinchMove', { x: 190, y: 100, spread: 120 }],
+    ['pinchStart', { x: 180, y: 100, spread: 100, angle: 0 }],
+    ['pinchMove', { x: 190, y: 100, spread: 120, angle: 0 }],
     ['pinchEnd'],
   ]);
   assert.equal(r.mode, 'idle');
   r.down(3, 10, 10, 900);
   r.up(3, 10, 10);
   assert.deepEqual(calls.at(-1), ['tap', 10, 10], 'the next gesture works normally');
+});
+
+test('a pinch reports the twist of the line between the fingers', () => {
+  const { r, calls } = recorder();
+  r.down(1, 100, 100, 0);
+  r.down(2, 200, 100, 5);
+  r.move(2, 100, 200); // a quarter turn clockwise about the first finger
+  const [, start] = calls.find(([name]) => name === 'pinchStart');
+  const [, moved] = calls.find(([name]) => name === 'pinchMove');
+  assert.equal(start.angle, 0);
+  assert.ok(Math.abs(moved.angle - Math.PI / 2) < 1e-9);
 });
 
 test('two fingers landing together are a pinch, never a tap', () => {

@@ -119,12 +119,15 @@ function layoutLine(ship, defs) {
   if (first.rule === 'airlock') {
     return failing('layout', `No airlock on the hull edge${more}`, 'Move an airlock to the edge of the hull, with a side open to space');
   }
-  // Only a damaged or hand-edited save gets these.
+  // A ship saved before the frame took its shape can have parts where the
+  // hull no longer reaches; otherwise only a damaged or hand-edited save
+  // gets these.
   const frame = defs.frames.get(ship.frame);
   const fix =
     first.rule === 'cap' ? `Remove ${ship.modules.length - frame.maxModules} parts`
     : first.rule === 'frame' ? 'Start a new ship'
     : first.rule === 'type' ? 'Remove it'
+    : first.rule === 'bounds' ? 'Move it inside the hull, or remove it'
     : 'Move or remove it';
   return failing('layout', `${first.message.replace(/\.$/, '')}${more}`, fix);
 }

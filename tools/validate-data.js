@@ -11,7 +11,7 @@ import { readData } from './data.js';
 const SIDES = ['n', 'e', 's', 'w'];
 const STATS = ['power', 'mass', 'thrust', 'berths', 'lifeSupport', 'cargo', 'hp'];
 const MODULE_KEYS = ['id', 'name', 'glyph', 'manufacturer', 'size', 'rotates', 'doors', 'stats', 'tags', 'interior', 'cost'];
-const FRAME_KEYS = ['id', 'name', 'width', 'height', 'maxModules', 'minThrustToMass'];
+const FRAME_KEYS = ['id', 'name', 'width', 'height', 'shape', 'maxModules', 'minThrustToMass'];
 // balance.json: each number's allowed range.
 const BALANCE = { startingCrew: [1, 100] };
 const MAX_MODULE_SIZE = 4;
@@ -49,6 +49,7 @@ export function validateData({ modules: moduleFile, frames: frameFile, manufactu
       if (!isIntIn(frame[key], 1, MAX_FRAME_SIZE)) fail(where, `${key} must be an integer from 1 to ${MAX_FRAME_SIZE}`);
     }
     if (!isIntIn(frame.maxModules, 1, Infinity)) fail(where, 'maxModules must be a positive integer');
+    if (frame.shape !== undefined) checkShape(frame, where, fail);
   });
 
   if (!balance || typeof balance !== 'object' || Array.isArray(balance)) {
@@ -158,6 +159,42 @@ function checkInterior(def, tilesPerCell, tiles, where, fail) {
       if (!(char in tiles)) fail(where, `interior row ${y}: "${char}" is not in the tiles legend`);
     }
   });
+}
+
+// A frame's shape: one row per cell row, '#' for hull and '.' for space,
+// and every hull cell reachable from every other through hull cells (a ship
+// in two pieces can't be joined to its bridge).
+function checkShape(frame, where, fail) {
+  const { shape, width, height } = frame;
+  if (!Array.isArray(shape) || shape.length !== height) {
+    fail(where, `shape must be a list of ${height} rows`);
+    return;
+  }
+  const cells = [];
+  for (const [y, row] of shape.entries()) {
+    if (typeof row !== 'string' || row.length !== width || /[^#.]/.test(row)) {
+      fail(where, `shape row ${y} must be ${width} characters of "#" (hull) and "." (space)`);
+      return;
+    }
+    for (let x = 0; x < width; x++) if (row[x] === '#') cells.push(`${x},${y}`);
+  }
+  if (!cells.length) {
+    fail(where, 'shape has no hull cells');
+    return;
+  }
+  const hull = new Set(cells);
+  const seen = new Set([cells[0]]);
+  const queue = [cells[0]];
+  while (queue.length) {
+    const [x, y] = queue.pop().split(',').map(Number);
+    for (const next of [`${x + 1},${y}`, `${x - 1},${y}`, `${x},${y + 1}`, `${x},${y - 1}`]) {
+      if (hull.has(next) && !seen.has(next)) {
+        seen.add(next);
+        queue.push(next);
+      }
+    }
+  }
+  if (seen.size !== hull.size) fail(where, 'shape must be one piece: every "#" joined to the rest by its sides');
 }
 
 function checkStats(stats, where, fail) {

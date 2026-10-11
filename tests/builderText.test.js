@@ -19,12 +19,12 @@ test('the hint follows what the player is doing', () => {
   assert.match(hintFor(s, defs).text, /Drag a part onto the hull/);
   s = act(s, { type: 'build/arm', moduleType: 'reactor' });
   assert.equal(hintFor(s, defs).text, 'Tap the hull where the Reactor goes.');
-  s = act(s, { type: 'build/tap', x: 1, y: 1 });
+  s = act(s, { type: 'build/tap', x: 2, y: 1 });
   assert.deepEqual(hintFor(s, defs), { tone: 'good', text: 'Tap the Reactor again to place it.' });
-  s = act(act(s, { type: 'build/tap', x: 1, y: 1 }), { type: 'build/tap', x: 1.5, y: 1.5 });
+  s = act(act(s, { type: 'build/tap', x: 2, y: 1 }), { type: 'build/tap', x: 2.5, y: 1.5 });
   assert.equal(hintFor(s, defs).tone, 'bad', 'a preview over the placed reactor says why it is blocked');
-  assert.match(hintFor(s, defs).text, /would overlap Reactor at \(0, 0\)/);
-  s = act(act(s, { type: 'build/cancel' }), { type: 'build/tap', x: 0.5, y: 0.5 });
+  assert.match(hintFor(s, defs).text, /would overlap Reactor at \(1, 0\)/);
+  s = act(act(s, { type: 'build/cancel' }), { type: 'build/tap', x: 1.5, y: 0.5 });
   assert.equal(hintFor(s, defs).text, 'Reactor: drag to move it, or Turn or Delete.');
   const drag = { kind: 'part', type: 'corridor', placement: null };
   assert.equal(hintFor(s, defs, drag).text, 'Let go off the hull to cancel.');
@@ -35,7 +35,7 @@ test('the hint follows what the player is doing', () => {
 test('the chip counts parts and gives the first fix, or says the ship is ready', () => {
   const summary = (ship) => flightSummary(ship, defs, flightChecklist(ship, defs, 4));
   assert.equal(summary(newShip('starter')), null);
-  const s = act(start(), { type: 'build/drop', placement: { type: 'corridor', x: 0, y: 0, rot: 0 } });
+  const s = act(start(), { type: 'build/drop', placement: { type: 'corridor', x: 1, y: 0, rot: 0 } });
   assert.deepEqual(summary(s.ship), { tone: 'bad', text: '1/20 parts · 5 to fix: Add Engine (+12 thrust)' });
   const script = JSON.parse(readFileSync(EXAMPLE_SCRIPT, 'utf8'));
   const { ship } = runScript(script, defs);

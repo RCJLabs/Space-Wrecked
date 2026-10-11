@@ -10,4 +10,5 @@ export const icons = {
   remove: icon('<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="m6 7 1 13h10l1-13"/><path d="M10 11v5M14 11v5"/>'),
   done: icon('<path d="m5 12 5 5 9-10"/>'),
   fit: icon('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
+  hull: icon('<path d="M5 8h8l7 4-7 4H5z"/><path d="M5 10.5H2M5 13.5H2"/><path d="M9.5 8v8"/>'),
 };

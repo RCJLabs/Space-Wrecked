@@ -2,7 +2,7 @@
 // tile to pick the part for tap placement, drag it onto the hull to place it
 // directly, long-press it for details. If the tiles don't fit, up and down
 // scrolls them, and a part has to be dragged out sideways.
-import { partIconSvg } from '../../render/parts.js';
+import { partIconSvg } from '../../render/parts/blueprint.js';
 import { attachGestures } from '../gestures.js';
 
 // handlers: tap(type), longPress(type), dragStart(type, x, y), dragMove(x, y),

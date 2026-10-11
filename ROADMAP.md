@@ -6,7 +6,7 @@
 
 **Platform:** Browser game on GitHub Pages, installable as a PWA, published as a TWA on Google Play (RCJ Labs convention). Landscape only. Offline-first: no backend and no network calls. Android and web; iPhone is not a target. A Capacitor build comes later, for a possible paid version.
 
-**Art:** Procedural SVG for everything in the game world and interface. The only image files are WebP portraits, scene illustrations and store art. They are generated in Base44 during development, edited by hand, and logged in `assets/LOG.md`.
+**Art:** Procedural, drawn in code. The game world is 3D, drawn by the game's own small renderer on canvas: a glowing blueprint in the builder, solid ships everywhere else. Menus, panels and icons are SVG. The only image files are WebP portraits, scene illustrations and store art. They are generated in Base44 during development, edited by hand, and logged in `assets/LOG.md`.
 
 **Design history:** the "Space tactics RPG: brainstorm plan" doc. Where the two differ, this file wins.
 
@@ -57,7 +57,7 @@ Act length targets (proposed, to check in play): act 1 under an hour, act 2 the 
 | Structure | Expeditions from a persistent home; the home moves from hangar to ship to colony |
 | Story | Start on a homeworld set by your background, earn parts for a starter ship, flee, search, settle |
 | Act 1 | Half-built hull in the hangar from the first minute; jobs pay in parts; launching ends the act |
-| Graphics | 2D top-down cutaway; the ship layout is the boarding map |
+| Graphics | 3D: a blueprint hologram in the builder and solid ships outside it, drawn by our own renderer on canvas; the rules stay on the 2D grid, and the ship layout is the boarding map (was "2D top-down cutaway" until M4; Evan changed it, 2026-10-11) |
 | Ship combat | A short approach phase decided by ship stats, then boarding as a squad battle |
 | Hit model | XCOM-style percentage rolls, exact odds shown, seeded |
 | Pressure | Heat from the pursuer in all three acts |
@@ -80,6 +80,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **One grid model** (`src/sim/grid.js`) serves the player's ship, enemy ships, battle maps and the colony.
 - **Cells and tiles:** modules snap to builder cells, and one cell becomes 2 × 2 battle tiles. Rooms get space for cover, and corridors are never one tile wide. (Starting value; revisit after M8.)
 - **Hull frames** set the maximum footprint and module cap. Size the starter frame so its battle map fits one phone screen at 48-pixel tiles: 7 × 4 cells, or 14 × 8 tiles, with the long side along the landscape screen and the nose to the right (turned from 4 × 7 in M2, so builder cells stay above 48 px on the folded screen). Bigger frames pan.
+- **Frame shapes:** a frame can cut cells out of its rectangle, so any layout on it traces to a ship. The starter frame keeps 22 of its 28 cells: the corners at the bow and stern are space.
 - **Module definitions** (`data/modules.json`) hold:
   - id, name, manufacturer, size in cells, and whether it rotates
   - door sockets on its edges
@@ -99,13 +100,13 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - everything connected
 
   Each failing line names its fix, for example "Life support 2 of 4 crew".
-- **Auto-hull:** trace the outer boundary of occupied cells, offset it outward, round the corners, and draw plating in the manufacturer's style.
+- **Auto-hull:** trace the outline of the occupied cells, slope the corners between parts (fairings), cap the front with a nose, and add nozzles, gun barrels and docking collars where engines, guns and airlocks face space. The builder shows it as the blueprint's rim; outside the builder it is raised into a solid hull, plated in the manufacturer's skin.
 - **Blueprint codes** are versioned, compact (base64url) and carry a checksum. A bad code fails with a message, never a crash.
 - **Build replay:** every placement is a command, and replaying the command list plays back a timelapse.
 - **Touch controls:**
   - drag from a palette drawer, with a ghost preview tinted valid or invalid
   - tap to select; rotate and delete buttons; undo and redo
-  - pinch to zoom and pan
+  - pinch to zoom and pan; twist two fingers to turn the ship
 
 ### 4.2 Approach phase (ship against ship)
 
@@ -246,7 +247,7 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
   **Done when:** a full starter ship builds on the Fold, folded and unfolded, without mis-taps, at 60 fps while dragging.
 - [x] **M3 Flight checklist and stats.** constraints.js, a stat panel, and the checklist with fixes.
   **Done when:** every failing line names its fix, and a failing ship saves but cannot launch.
-- [ ] **M4 Parts art and auto-hull.** SVG parts for all 12 module types in one manufacturer style; palette tokens; rasterize and cache per zoom level; the hull tracer with plating.
+- [ ] **M4 Parts art and auto-hull, in 3D.** The 3D blueprint builder on our own canvas renderer: 3D fittings for all 12 module types, the hull tracer (rim, fairings, nose, nozzles, barrels, collars), the ship-shaped starter frame, twist to turn, and a Hull view of the solid ship in one manufacturer's skin. (Planned as 2D SVG parts; changed to 3D mid-milestone.)
   **Done when:** any layout looks like a ship from outside, and zooming stays smooth.
 - [ ] **M5 Blueprints, saves and replays.** The blueprint codec, copy and paste, save slots, and the build replay timelapse.
   **Done when:** a code from one device rebuilds the identical ship on another, and a broken code shows a message.
@@ -343,7 +344,7 @@ A Capacitor build; a paid version with a web demo; optional cloud saves on Base4
 | Two deep systems overrun scope | Phase 2 runs past about 8 sessions | Keep the shared grid; cut base building to slots first |
 | Players build chokepoint fortresses | Balance runs show defenders always win | Enemies breach walls and choose entry points; corridors stay two tiles wide |
 | Percentage misses feel unfair | Testers complain about high-odds misses | Clearer cover display, the forgiving-odds setting, the math always shown |
-| Canvas runs slowly on mid-range phones | Dropped frames in M2 or M8 | Cache rasterized parts, redraw only what changed, cap the pixel ratio |
+| 3D on canvas runs slowly on mid-range phones | Dropped frames turning or zooming the board (M4), or in battles (M8) | Rough half-resolution frames while the camera moves, cache the still board, fewer lines, cap the pixel ratio. Past that: three.js (MIT, one vendored file, no build step), with Evan's approval |
 | Lost saves | Reports after Chrome data is cleared | Persistent storage request, export and import, migrations |
 | Act 1 drags | Test runs pass an hour | Fewer jobs to launch; the builder from the first minute |
 | Generated images look mismatched | The image pass looks patchy | Palette pass, reference images, fewer images |

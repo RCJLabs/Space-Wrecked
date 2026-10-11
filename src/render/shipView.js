@@ -1,232 +1,143 @@
-// Draws the builder board on the canvas: the hull frame, placed parts with
-// their doors, the selection and the ghost. Placeholder shapes until M4's
-// SVG parts. Works in CSS pixels; the caller sets the device-pixel
-// transform. Never changes the scene.
+// Draws the builder board: the ship as a 3D blueprint over a navy grid, and
+// whatever the player is doing on it, or, with the hull on, the ship as it
+// looks from outside. Works in CSS pixels; the caller sets the device-pixel
+// transform and clips to the board. Never changes the scene.
 //
-// scene: {
-//   camera, frame, defs, ship,
-//   doors     doorStates(ship, defs)
-//   loose     Set of uids not joined to the bridge
-//   selected  uid or null
-//   lifted    uid of a part being dragged (drawn faint) or null
-//   ghost     { placement, ok, blockers: [uid] } or null
-// }
-import { footprint, hasTag, interiorRows, placedDoors } from '../sim/modules.js';
-import { toScreen } from './camera.js';
+// Scenes are built once per change (shipScene.js, exterior.js) and drawn
+// every frame the camera moves:
+//   board = createBoard(frame)
+//   board.setShip(input)    the ship and its overlays (see blueprintScene)
+//   board.setGhost(input)   a part being placed (see ghostScene), or null
+//   board.setHull(input)    the ship seen from outside (see exteriorScene)
+//   board.draw(ctx, cam, rect, view)   view is 'plans' or 'hull'; true
+//                                      means this frame was a rough one
+//                                      (the camera moved): draw again once
+//                                      it has settled
+import { seedFrom } from '../core/rng.js';
+import { BLUEPRINT_ORDER, BLUEPRINT_STYLES, LABEL_TONES } from './blueprintStyles.js';
+import { exteriorScene } from './exterior.js';
+import { OVERHANG } from './hull.js';
+import { batchModel, paintBatches, paintLabels, paintSolid, prepareSolid } from './painter.js';
 import { palette, rgba } from './palette.js';
-import { partColor } from './parts.js';
+import { blueprintScene, ghostScene, gridModel } from './shipScene.js';
+import { shade } from './solid.js';
+import { drawStars, makeStarfield } from './starfield.js';
 
-const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+const deg = Math.PI / 180;
 
-export function drawBoard(ctx, scene) {
-  const { camera, defs, ship } = scene;
-  drawFrame(ctx, camera, scene.frame);
-  const byUid = new Map();
-  for (const module of ship.modules) {
-    const def = defs.modules.get(module.type);
-    if (!def) continue;
-    byUid.set(module.uid, def);
-    drawPart(ctx, camera, defs, def, module, module.uid === scene.lifted ? 0.3 : 1);
-  }
-  for (const door of scene.doors) {
-    if (door.uid === scene.lifted) continue;
-    const isAirlock = hasTag(byUid.get(door.uid), 'airlock');
-    drawDoor(ctx, camera, door.x, door.y, door.side, doorColor(door.state, isAirlock));
-  }
-  const blockers = new Set(scene.ghost?.blockers ?? []);
-  for (const module of ship.modules) {
-    const def = byUid.get(module.uid);
-    if (!def || module.uid === scene.lifted) continue;
-    if (scene.loose.has(module.uid)) outline(ctx, camera, def, module, palette.bad, 2, 0, [6, 5]);
-    if (blockers.has(module.uid)) outline(ctx, camera, def, module, palette.bad, 3, 1);
-    if (module.uid === scene.selected) {
-      outline(ctx, camera, def, module, palette.space, 6, 3);
-      outline(ctx, camera, def, module, palette.ink, 3, 3);
+// The camera the builder starts at and Fit returns to: a gentle angle with
+// mild perspective, so every cell stays a 48 px target on the Fold's cover
+// screen (tests/orbit.test.js holds it to that).
+export const BOARD_VIEW = { yaw: -11 * deg, pitch: 60 * deg, distance: 24 };
+
+// What the camera keeps in view: the frame, what sticks out of the hull,
+// and the height of the rooms.
+export function boardBox(frame) {
+  return { x0: -OVERHANG.left, y0: -OVERHANG.top, x1: frame.width + OVERHANG.right, y1: frame.height + OVERHANG.bottom, z1: 0.6 };
+}
+
+const GRID = ['gridMinor', 'gridMajor'];
+const BACKDROP = rgba(palette.bpDeep, 0.85);
+const SKY = makeStarfield(seedFrom('hull view'), 220);
+
+// Styles for frames while the camera moves: no halos, which cost the most
+// to rasterize and matter least in motion.
+const MOVING_STYLES = Object.fromEntries(Object.entries(BLUEPRINT_STYLES).map(([name, { halo, ...style }]) => [name, style]));
+
+export function createBoard(frame) {
+  const grid = batchModel(gridModel(frame));
+  let ship = null;
+  let ghost = null;
+  let hull = null;
+  // The grid and ship as last drawn with a still camera, reused while only
+  // a part being placed moves over them; and a half-resolution canvas for
+  // frames while the camera moves.
+  const still = { canvas: null, cam: null, ship: null, rect: null, ratio: 0 };
+  const rough = { canvas: null };
+  let lastCam = null;
+  return {
+    setShip(input) {
+      const { model, labels } = blueprintScene(input);
+      ship = { batches: batchModel(model), labels };
+    },
+    setGhost(input) {
+      if (!input) {
+        ghost = null;
+        return;
+      }
+      const { model, label } = ghostScene(input);
+      ghost = { batches: batchModel(model), labels: [label] };
+    },
+    setHull(input) {
+      const { faces, glows } = exteriorScene(input);
+      hull = { faces: prepareSolid(faces, shade), glows, space: input.skin.space };
+    },
+    draw(ctx, cam, rect, view = 'plans') {
+      if (view === 'hull') {
+        drawSpace(ctx, rect, hull?.space ?? palette.space);
+        if (hull) paintSolid(ctx, hull.faces, hull.glows, cam);
+        lastCam = null;
+        return false;
+      }
+      const moving = cam !== lastCam;
+      lastCam = cam;
+      if (moving) {
+        // The camera moved since the last frame: draw at one pixel per CSS
+        // pixel, in the cheaper styles, and scale it up. A quarter of the
+        // pixels on a 2x screen, and nobody looks closely mid-gesture.
+        layer(rough, rect, 1, (g) => plans(g, cam, rect, MOVING_STYLES));
+        ctx.drawImage(rough.canvas, rect.x, rect.y, rect.w, rect.h);
+        still.cam = null;
+      } else {
+        const ratio = ctx.getTransform().a;
+        if (still.cam !== cam || still.ship !== ship || still.rect !== rect || still.ratio !== ratio) {
+          layer(still, rect, ratio, (g) => plans(g, cam, rect, BLUEPRINT_STYLES));
+          Object.assign(still, { cam, ship, rect, ratio });
+        }
+        ctx.drawImage(still.canvas, rect.x, rect.y, rect.w, rect.h);
+      }
+      if (ghost) paintBatches(ctx, ghost.batches, cam, moving ? MOVING_STYLES : BLUEPRINT_STYLES, BLUEPRINT_ORDER);
+      const labels = ghost ? ghost.labels : ship?.labels ?? [];
+      paintLabels(ctx, labels, cam, rect, LABEL_TONES, BACKDROP);
+      return moving;
+    },
+  };
+
+  // Draws into an offscreen canvas covering rect at `ratio` device pixels
+  // per CSS pixel, resizing it only when that changes.
+  function layer(target, rect, ratio, paint) {
+    target.canvas ??= document.createElement('canvas');
+    const [w, h] = [Math.round(rect.w * ratio), Math.round(rect.h * ratio)];
+    if (target.canvas.width !== w || target.canvas.height !== h) {
+      target.canvas.width = w;
+      target.canvas.height = h;
     }
+    const g = target.canvas.getContext('2d', { alpha: false });
+    g.setTransform(ratio, 0, 0, ratio, -rect.x * ratio, -rect.y * ratio);
+    paint(g);
   }
-  if (scene.ghost) drawGhost(ctx, camera, defs, scene.ghost);
-}
 
-function drawFrame(ctx, camera, frame) {
-  const s = camera.scale;
-  const [x, y] = toScreen(camera, 0, 0);
-  const w = frame.width * s;
-  const h = frame.height * s;
-  const pad = Math.max(3, s * 0.06);
-  ctx.beginPath();
-  ctx.roundRect(x - pad, y - pad, w + 2 * pad, h + 2 * pad, pad * 2);
-  ctx.fillStyle = palette.hull;
-  ctx.fill();
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = palette.hullEdge;
-  ctx.stroke();
-  ctx.beginPath();
-  for (let i = 1; i < frame.width; i++) {
-    const gx = Math.round(x + i * s) + 0.5;
-    ctx.moveTo(gx, y);
-    ctx.lineTo(gx, y + h);
-  }
-  for (let j = 1; j < frame.height; j++) {
-    const gy = Math.round(y + j * s) + 0.5;
-    ctx.moveTo(x, gy);
-    ctx.lineTo(x + w, gy);
-  }
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = palette.hullGrid;
-  ctx.stroke();
-}
-
-function drawPart(ctx, camera, defs, def, placement, alpha) {
-  const s = camera.scale;
-  const [w, h] = footprint(def, placement.rot);
-  const [x0, y0] = toScreen(camera, placement.x, placement.y);
-  const inset = insetFor(s);
-  const color = partColor(def);
-  ctx.globalAlpha = alpha;
-  ctx.beginPath();
-  ctx.roundRect(x0 + inset, y0 + inset, w * s - 2 * inset, h * s - 2 * inset, Math.min(8, s * 0.1));
-  ctx.fillStyle = tint(color, 0.2);
-  ctx.fill();
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = color;
-  ctx.stroke();
-  drawInterior(ctx, defs, def, placement.rot, x0, y0, s, color);
-  drawLabel(ctx, def, x0 + inset, y0 + inset, w * s - 2 * inset, h * s - 2 * inset, s);
-  ctx.globalAlpha = 1;
-}
-
-// Interior tiles as simple marks: machinery blocks, cover bars, consoles.
-function drawInterior(ctx, defs, def, rot, x0, y0, s, color) {
-  const rows = rotatedInterior(def, rot);
-  const t = s / defs.tilesPerCell;
-  for (let ty = 0; ty < rows.length; ty++) {
-    for (let tx = 0; tx < rows[ty].length; tx++) {
-      const mark = TILE_MARKS[rows[ty][tx]];
-      if (!mark) continue;
-      const [fx, fy, fw, fh, alpha, ink] = mark;
-      ctx.fillStyle = tint(ink ? palette.ink : color, alpha);
-      ctx.fillRect(x0 + (tx + fx) * t, y0 + (ty + fy) * t, fw * t, fh * t);
-    }
+  // The blueprint paper, its grid and the ship.
+  function plans(g, cam, rect, styles) {
+    const sky = g.createRadialGradient(rect.x + rect.w * 0.55, rect.y + rect.h * 0.35, 0, rect.x + rect.w * 0.55, rect.y + rect.h * 0.35, Math.max(rect.w, rect.h) * 0.85);
+    sky.addColorStop(0, palette.bpSky);
+    sky.addColorStop(1, palette.bpDeep);
+    g.fillStyle = sky;
+    g.fillRect(rect.x, rect.y, rect.w, rect.h);
+    paintBatches(g, grid, cam, styles, GRID);
+    if (ship) paintBatches(g, ship.batches, cam, styles, BLUEPRINT_ORDER);
   }
 }
 
-// Tile character -> [x, y, w, h] within the tile, alpha, and whether it is
-// drawn in ink (otherwise the part's color).
-const TILE_MARKS = {
-  '#': [0.14, 0.14, 0.72, 0.72, 0.45, false],
-  H: [0.2, 0.2, 0.6, 0.6, 0.2, true],
-  h: [0.2, 0.4, 0.6, 0.2, 0.22, true],
-  c: [0.3, 0.3, 0.4, 0.4, 0.6, true],
-  a: [0.1, 0.1, 0.8, 0.8, 0.22, false],
-};
-
-const interiors = new Map();
-function rotatedInterior(def, rot) {
-  const key = `${def.id}/${rot}`;
-  let rows = interiors.get(key);
-  if (!rows) interiors.set(key, (rows = interiorRows(def, rot)));
-  return rows;
-}
-
-// The part's name if it fits, otherwise its glyph.
-function drawLabel(ctx, def, x, y, w, h, s) {
-  const nameSize = clamp(s * 0.17, 10, 15);
-  ctx.font = `600 ${nameSize}px ${FONT}`;
-  let text = def.name;
-  if (ctx.measureText(text).width > w - 8 || h < nameSize * 1.8) {
-    text = def.glyph;
-    ctx.font = `700 ${clamp(s * 0.36, 12, 28)}px ${FONT}`;
-  }
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = tint(palette.space, 0.8);
-  ctx.strokeText(text, x + w / 2, y + h / 2);
-  ctx.fillStyle = palette.ink;
-  ctx.fillText(text, x + w / 2, y + h / 2);
-}
-
-function doorColor(state, isAirlock) {
-  if (state === 'linked') return palette.good;
-  if (state === 'open') return palette.accent;
-  if (state === 'blocked') return tint(palette.bad, 0.85);
-  return isAirlock ? palette.partAirlock : tint(palette.inkDim, 0.6);
-}
-
-// A short bar just inside the cell edge the door is on.
-function drawDoor(ctx, camera, x, y, side, color) {
-  const s = camera.scale;
-  const [cx, cy] = toScreen(camera, x, y);
-  const length = s * 0.4;
-  const thick = Math.max(3, s * 0.07);
-  const inset = insetFor(s) + thick / 2 + 1;
-  const along = (s - length) / 2;
-  ctx.beginPath();
-  if (side === 'n' || side === 's') {
-    const ly = side === 'n' ? cy + inset : cy + s - inset;
-    ctx.moveTo(cx + along, ly);
-    ctx.lineTo(cx + along + length, ly);
-  } else {
-    const lx = side === 'w' ? cx + inset : cx + s - inset;
-    ctx.moveTo(lx, cy + along);
-    ctx.lineTo(lx, cy + along + length);
-  }
-  ctx.lineCap = 'round';
-  ctx.lineWidth = thick;
-  ctx.strokeStyle = color;
-  ctx.stroke();
-}
-
-function outline(ctx, camera, def, placement, color, width, grow, dash) {
-  const s = camera.scale;
-  const [w, h] = footprint(def, placement.rot);
-  const [x0, y0] = toScreen(camera, placement.x, placement.y);
-  const inset = insetFor(s) - grow;
-  ctx.beginPath();
-  ctx.roundRect(x0 + inset, y0 + inset, w * s - 2 * inset, h * s - 2 * inset, Math.min(10, s * 0.12));
-  if (dash) ctx.setLineDash(dash);
-  ctx.lineWidth = width;
-  ctx.strokeStyle = color;
-  ctx.stroke();
-  if (dash) ctx.setLineDash([]);
-}
-
-// A part being placed: drawn faint, tinted green where it fits and red where
-// it doesn't, with its doors.
-function drawGhost(ctx, camera, defs, ghost) {
-  const { placement, ok } = ghost;
-  const def = defs.modules.get(placement.type);
-  const s = camera.scale;
-  const [w, h] = footprint(def, placement.rot);
-  const [x0, y0] = toScreen(camera, placement.x, placement.y);
-  const color = ok ? palette.good : palette.bad;
-  drawPart(ctx, camera, defs, def, placement, 0.75);
-  for (const [x, y, side] of placedDoors(def, placement)) drawDoor(ctx, camera, x, y, side, palette.ink);
-  ctx.beginPath();
-  ctx.roundRect(x0 + 1, y0 + 1, w * s - 2, h * s - 2, Math.min(10, s * 0.12));
-  ctx.fillStyle = tint(color, 0.18);
-  ctx.fill();
-  ctx.setLineDash([8, 5]);
-  ctx.lineWidth = 2.5;
-  ctx.strokeStyle = color;
-  ctx.stroke();
-  ctx.setLineDash([]);
-}
-
-function insetFor(scale) {
-  return Math.max(2, scale * 0.05);
-}
-
-// rgba() strings, made once per color and alpha.
-const tints = new Map();
-function tint(hex, alpha) {
-  const key = `${hex}/${alpha}`;
-  let value = tints.get(key);
-  if (!value) tints.set(key, (value = rgba(hex, alpha)));
-  return value;
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(value, max));
+// Deep space behind the ship seen from outside: a faint nebula and stars.
+function drawSpace(ctx, rect, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  const [cx, cy] = [rect.x + rect.w * 0.6, rect.y + rect.h * 0.4];
+  const haze = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rect.w, rect.h) * 0.7);
+  haze.addColorStop(0, rgba(palette.nebulaB, 0.4));
+  haze.addColorStop(1, rgba(palette.nebulaB, 0));
+  ctx.fillStyle = haze;
+  ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  drawStars(ctx, SKY, { width: rect.x + rect.w, height: rect.y + rect.h }, 0);
 }

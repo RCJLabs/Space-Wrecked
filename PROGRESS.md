@@ -2,6 +2,113 @@
 
 Newest entry first.
 
+## M4 Parts art and auto-hull, in 3D (2026-10-11)
+
+**Status:** built and verified here, but the ROADMAP.md box is **not ticked yet**. Done when has two halves:
+- **"Any layout looks like a ship from outside":** met here. The Hull view shows any layout as a solid ship, and the builder shows it as a blueprint with a hull rim, nose and engines.
+- **"Zooming stays smooth":** needs the Fold. Headless Chromium draws canvas on the CPU, so it can't say how the phone's GPU copes (numbers below). As with M2, the box gets ticked after the phone run.
+
+**Direction change.** Mid-milestone, Evan chose 3D: the 3D blueprint look in the builder, and 3D in general. That changes a locked decision. ROADMAP.md §3 records it ("Graphics" was "2D top-down cutaway"). The design-history doc ("Space tactics RPG: brainstorm plan") isn't in the repo, so Evan should note the change there. The rules stay on the 2D grid, and the ship layout is still the boarding map. Only the drawing went 3D.
+
+### Shipped
+
+- **A 3D renderer of our own on canvas, no library** (`src/render/`):
+  - `orbit.js`, the camera: project, unproject a finger onto the deck, fit, zoom, pan, twist to turn, clamp.
+    - The default view is gentler than the mockup: yaw −11°, pitch 60°, mild perspective.
+    - That keeps every cell at least 48 px at the default view on the cover screen (48.8 px). `tests/orbit.test.js` enforces it.
+  - `painter.js`:
+    - The blueprint is see-through, so it's batched by style: a few dozen canvas calls a frame, plus additive glows and callout labels.
+    - Solid views drop back faces and draw back to front.
+  - `pick.js`: a tap picks the front-most room under the finger, since rooms stand up from the deck and their front walls cover the deck behind. It checks for the floating part first and falls back to the deck.
+- **The blueprint builder** (`shipScene.js`, `props.js`, `blueprintStyles.js`):
+  - **Hull:** a rim and nose.
+  - **Rooms:** walls with doorways where doors join. Door markers explain the rest: orange for a socket facing a free cell, red for one facing a wall, grey for one facing space.
+  - **3D fittings for all 12 parts:** the reactor core, turbines, bunks, tanks, the turret and so on. Any new module type gets fittings drawn from its interior template, with no engine edit.
+  - **Building aids:**
+    - Free cells show as dashed slots, and the selection is outlined and named.
+    - Loose parts and parts off the frame get red dashes.
+    - The part being placed floats above its spot, green or red, with drop lines.
+- **Hull tracer** (`hull.js`): it works out the outline:
+  - slopes (fairings) across corners
+  - filled pockets
+  - a nose on each run of cells at the front
+  - nozzles, barrels and docking collars wherever engines, guns and airlocks face space
+  - running lights
+- **Hull view** (the Hull button, top right of the board): the ship as a solid, lit model in the yard skin.
+  - **Hull:** roof plates tinted per part, a livery stripe, the nose with a window, glowing nozzles, barrels, collars and red and green running lights.
+  - **Roof fittings:** the canopy, the reactor dome glow, engine vents, the turret, cargo doors, the med cross, the armory hatch and the shield emitter.
+  - **Behind it:** a starfield.
+  - **Look only:** taps change nothing, and picking a part goes back to the plans.
+- **Ship-shaped starter frame:**
+  - `data/frames.json` gains `shape`: 22 of the 28 cells, with the bow and stern corners cut away.
+  - Parts can't go in the cut cells.
+  - Doors facing them open onto space, and an airlock facing one counts as on the hull edge.
+  - The validator checks shapes: row count, characters, and one connected piece.
+- **Old saves:** a ship saved with parts in the cut corners loads whole. Those parts get red dashes, and the checklist says "Weapon mount at (6, 0) sticks out of the Starter hull", fix "Move it inside the hull, or remove it". The save format didn't change, so there's no `SAVE_VERSION` bump.
+- **The example ship was relaid on purpose for the shape.** `tests/fixtures/example-ship.json` now builds `.QQRR.. / EE+RR+B / EE++++B / ..LAW..`. Tests that pinned the old layout changed with it.
+- **Twist to turn:** the gesture recognizer reports the twist between two fingers. Past 10° of twist, the ship turns with the fingers. Fit resets zoom, pan and turn. On a desktop, Q and E turn the view.
+- **Frame cost:**
+  - While the camera is still, the board is drawn once and reused, so dragging a part redraws only the part.
+  - While the camera moves, frames draw at half resolution without the glow halos.
+  - 150 ms after the camera stops, the board sharpens.
+- **Drawer icons:** 2D blueprint drawings of each part (`parts/blueprint.js`). The part under a finger off the board uses the same drawing at board scale.
+- **Removed:** the 2D camera and the placeholder part colors. The palette gained the blueprint tokens and the yard skin (manufacturers are skins).
+- **Docs:** ROADMAP.md §3 (the Graphics row), the Art line, §4.1 (frame shapes, auto-hull, twist), the M4 entry and the §8 canvas risk. CLAUDE.md's art and code rules now describe 3D models drawn by our own painters.
+- **Tests:** 174 in all, 37 new: hull geometry, the camera (including the 48 px rule), picking, the blueprint scene, the exterior, frame shapes, and the drawer icons.
+
+### Decisions made this session
+
+- **Our own renderer, not a library.** This follows the no-dependency rule, and see-through blueprint lines suit Canvas 2D. The cost: there's no depth buffer, so solid views use the painter's algorithm. If battles outgrow it, three.js (MIT, one vendored file, no build step) is the fallback, with Evan's approval. ROADMAP §8 has it.
+- **A gentle default angle** (yaw −11°, pitch 60°) instead of the mockup's −24° and 52°, to keep 48 px cells. A twist reaches any angle.
+- **The Hull view is look-only.** Going there puts down the part in hand.
+- **One skin for the whole exterior** (yard). Per-manufacturer skins can come with the second manufacturer.
+- **Old saves aren't migrated.** Stray parts are flagged, not moved or deleted.
+- **The filled interior (the boarding map) waits for M6.**
+
+### Verified here (headless Chromium with scripted touch, not a phone)
+
+- **At all three sizes** (821×283, 905×370 and 960×825), 19 checks each, all passing:
+  - The example ship builds by touch with taps and drags.
+  - Preview then confirm; stray taps place nothing; undo and redo.
+  - A tap on a room's front wall selects that room.
+  - Long press opens the card, and the next tap closes it.
+  - Pinch zooms, a twist turns, and Fit resets.
+  - The Hull view is look-only, and picking a part goes back to the plans.
+  - A drag released on other parts places nothing.
+- **Old save:** M3's layout loads whole with four parts flagged, and moving one clears its flag.
+- **Offline:** the service worker caches the new files (62). With the server stopped, the saved ship loads on the 3D board and the Hull view draws.
+- **Console:** no errors or warnings.
+- **Frame times with the CPU slowed 4×, in software rendering:**
+  - Dragging a part: 60 fps at every size.
+  - Pinching and turning: 34 fps on the cover screen, 35 in a folded tab, 17 unfolded (the biggest board).
+  - These are a floor, not a forecast: the phone draws on its GPU.
+
+### Known issues
+
+- **Cramped in a folded Chrome tab:** cells at the default view are about 36 px there, under the 48 px rule, because the tab's board is 283 px tall. Zoom in, or use the installed app (49 px).
+- **Pinch and turn smoothness on the Fold is unknown** until Evan runs it. If it stutters, the next steps are lower-resolution rough frames and fewer lines. Past that, three.js, with approval.
+- **No depth buffer:** at some angles, overlapping solid shapes could draw in the wrong order. I saw none in the views checked.
+- **Only the selected part and the part being placed are named.** Long-press any part for its card.
+- **Red door markers on a valid ship:** a socket facing a wall shows red even when the ship passes every check, as the red ticks did in M3.
+- **Carried over:** two open copies of the game share one save.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Update:** open the installed app and tap "Update ready, tap to reload".
+2. **Your saved ship:** DEV → Builder. If it had parts in the cut corners (bow and stern corners), they show red dashes and the Ship tab asks you to move them. Nothing should be missing.
+3. **Empty frame:** remove parts or start over. The free cells are 22 dashed slots in a ship shape.
+4. **Build, folded and unfolded:** build a full ship by dragging and by tap-tap. Watch for mis-taps, especially on far cells and on cells behind a room's front wall.
+5. **Camera:**
+   - Pinch to zoom, twist two fingers to turn the ship, and pan; then Fit.
+   - Turn DEV's FPS overlay on while pinching and turning, and note the fps and ms.
+   - This is the "zooming stays smooth" check.
+6. **Hull:** tap Hull and turn the ship around: it should read as a solid ship. Then pick a part in the drawer; you should be back on the plans.
+7. **Offline:** turn on airplane mode, relaunch, and open the builder.
+
+### Next session
+
+If the phone run is smooth and free of mis-taps, tick M4 and start M5 (blueprints, saves and replays). If pinching or turning stutters, tune the rough frames first.
+
 ## M3 Flight checklist and stats (2026-10-11)
 
 **Status:** done. Done when is met:

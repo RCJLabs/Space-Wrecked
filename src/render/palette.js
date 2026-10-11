@@ -17,24 +17,50 @@ export const palette = {
   line: '#2a3552',
   good: '#5fd38d',
   bad: '#ff6b6b',
-  // The builder's hull frame.
-  hull: '#0f1730',
-  hullEdge: '#3b4c7d',
-  hullGrid: '#1d2848',
-  // Placeholder part colors, one per module tag, until M4 draws real parts.
-  partBridge: '#5b95f7',
-  partReactor: '#f2c14e',
-  partEngine: '#f08a3c',
-  partCorridor: '#8592b0',
-  partAirlock: '#3ec7d9',
-  partQuarters: '#62c97d',
-  partLifesupport: '#45c2a6',
-  partCargo: '#b98f5e',
-  partMedbay: '#ef7aa8',
-  partArmory: '#d9605a',
-  partWeapon: '#ff7a52',
-  partShield: '#a886f2',
+  // The builder shows the ship as a 3D blueprint: glowing lines over a
+  // navy grid.
+  bpPaper: '#0b1e3d',
+  bpSky: '#14305c',
+  bpDeep: '#081530',
+  bpLine: '#8cd7ff',
+  bpGlow: '#ffd36b',
 };
+
+// Manufacturers are skins over the same part shapes: the colors a built ship
+// is painted in outside the builder, keyed by manufacturer id.
+export const skins = {
+  yard: {
+    space: '#071226',
+    edge: '#08101f',
+    hull: '#3c4b68',
+    plates: ['#3c4b68', '#425275', '#38465f', '#455679'],
+    seam: '#222d45',
+    rivet: '#6f83a8',
+    livery: '#8cd7ff',
+    metal: '#5d6f94',
+    metalHi: '#7488ad',
+    dark: '#1d273d',
+    darker: '#141b2c',
+    soft: '#c3d0e4',
+    glassHi: '#bff0ff',
+    glassLo: '#3f8fc4',
+    domeHi: '#8fa3c8',
+    domeLo: '#3a4867',
+    glow: '#ffd36b',
+    glowCore: '#fff1b8',
+    hazard: '#e3b341',
+    flame: '#a8e8ff',
+    shield: '#b49cff',
+    medical: '#ff6b6b',
+    port: '#ff5a5a',
+    starboard: '#5fd38d',
+  },
+};
+
+// The skin for a manufacturer, or the yard's for one without a skin yet.
+export function skinFor(manufacturer) {
+  return skins[manufacturer] ?? skins.yard;
+}
 
 export function applyCssVars(root = document.documentElement) {
   for (const [name, value] of Object.entries(palette)) {

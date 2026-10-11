@@ -53,6 +53,8 @@ const defs = indexDefs({
       { id: 'small', name: 'Small frame', width: 4, height: 3, maxModules: 8 },
       { id: 'ring', name: 'Ring frame', width: 3, height: 3, maxModules: 9 },
       { id: 'open', name: 'Open frame', width: 8, height: 8, maxModules: 20 },
+      { id: 'shaped', name: 'Shaped frame', width: 4, height: 3, maxModules: 9, shape: ['.##.', '####', '.##.'] },
+      { id: 'holed', name: 'Holed frame', width: 5, height: 4, maxModules: 20, shape: ['#####', '#####', '##.##', '#####'] },
     ],
   },
   manufacturers: { manufacturers: [] },
@@ -276,7 +278,7 @@ test('a full starter ship builds from a script with the real data and passes eve
   assert.deepEqual(rejected, []);
   assert.deepEqual(problems, []);
   // Nose to the right: engines at the back (left), bridge at the front.
-  assert.equal(renderShip(ship, real), ['..RRQLW', '..RRQ+B', 'EE++++B', 'EE+..A.'].join('\n'));
+  assert.equal(renderShip(ship, real), ['.QQRR..', 'EE+RR+B', 'EE++++B', '..LAW..'].join('\n'));
 
   const extra = { ...script, placements: [...script.placements, { type: 'corridor', x: 5, y: 1, rot: 0 }] };
   const bad = runScript(extra, real);
@@ -289,7 +291,38 @@ test('the build-ship tool runs a script from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/build-ship.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /^\.\.RRQLW$/m);
+  assert.match(run.stdout, /^\.QQRR\.\.$/m);
   assert.match(run.stdout, /All placement rules pass/);
   assert.match(run.stdout, /Flight check: all 6 lines pass/);
+});
+
+test("a shaped frame's cut-away cells are space: nothing goes there", async () => {
+  const { frameCells, inFrame } = await import('../src/sim/frame.js');
+  const shaped = defs.frames.get('shaped');
+  assert.equal(frameCells(shaped).length, 8);
+  assert.equal(inFrame(shaped, 0, 0), false);
+  assert.equal(inFrame(shaped, 1, 0), true);
+  assert.equal(frameCells(defs.frames.get('small')).length, 12, 'a frame without a shape is all hull');
+  const ship = newShip('shaped');
+  assert.equal(place(ship, 'hall', 0, 0)?.rule, 'bounds');
+  assert.equal(place(ship, 'hall', 1, 0), null);
+  assert.equal(place(ship, 'long', 2, 0)?.rule, 'bounds', 'half on the hull is not enough');
+  assert.equal(place(ship, 'long', 0, 1), null);
+});
+
+test('doors onto cut-away cells open onto space, and an airlock there is on the hull edge', () => {
+  const ship = build('shaped', [['hall', 1, 0]]);
+  const states = Object.fromEntries(doorStates(ship, defs).map((d) => [d.side, d.state]));
+  assert.deepEqual(states, { n: 'outside', e: 'open', s: 'open', w: 'outside' });
+  // An airlock whose only open side faces a hole cut in the middle of the
+  // frame: walled in by parts, but still open to space.
+  const holed = build('holed', [['lock', 2, 1], ['hall', 2, 0], ['hall', 1, 1], ['hall', 3, 1], ['hall', 1, 2], ['hall', 3, 2], ['hall', 2, 3]]);
+  assert.deepEqual(airlocksOnHullEdge(holed, defs), [1]);
+});
+
+test('a part saved where the frame no longer reaches is reported, not moved', () => {
+  const ship = { frame: 'shaped', nextUid: 3, modules: [{ uid: 1, type: 'bridge', x: 1, y: 1, rot: 0 }, { uid: 2, type: 'hall', x: 0, y: 0, rot: 0 }] };
+  const problems = layoutProblems(ship, defs).filter((p) => p.rule === 'bounds');
+  assert.deepEqual(problems.map((p) => [p.uids, p.message]), [[[2], 'Hall at (0, 0) sticks out of the Shaped frame.']]);
+  assert.deepEqual(ship.modules[1], { uid: 2, type: 'hall', x: 0, y: 0, rot: 0 });
 });
