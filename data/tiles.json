@@ -1,0 +1,12 @@
+{
+  "tiles": {
+    "floor": { "walk": true },
+    "airlock": { "walk": true },
+    "half cover": { "cover": "half" },
+    "full cover": { "cover": "full", "blocksSight": true },
+    "machinery": { "cover": "full", "blocksSight": true },
+    "console": { "cover": "half" },
+    "space": {},
+    "hull": { "cover": "full", "blocksSight": true }
+  }
+}

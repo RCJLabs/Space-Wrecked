@@ -1,0 +1,6 @@
+{
+  "enemies": [
+    { "id": "pirate", "name": "Pirate", "hp": 7, "aim": 60, "defense": 0, "mobility": 4, "armor": 0, "weapon": "carbine" },
+    { "id": "brute", "name": "Pirate brute", "hp": 11, "aim": 55, "defense": 0, "mobility": 3, "armor": 1, "weapon": "shotgun" }
+  ]
+}

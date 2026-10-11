@@ -126,20 +126,28 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Maps:** a ship layout converted by `src/sim/mapFromShip.js`, or a planet map built from templates. A ship's map is one tile per builder cell (`tilesPerCell`), with a tile of space around it; the same ship always converts to the identical map (M6, tested against a golden map).
 - **Tiles** come from each room's interior template: floor, half cover, full cover, machinery, console (objective), airlock floor. Outside the rooms a tile is space, or hull where the hull closes over a notch.
 - **Edges:** walls stand between tiles, not on them, since rooms can be one tile across. An edge is a wall between rooms, the hull, a door (open, closed or locked) where the builder joins two rooms, or a hatch where an airlock opens onto space (entry and exit).
-- **Wrecked rooms** from the approach phase put their hazard on every tile of the room: fire, vacuum or rubble. What each does is M7's rules.
-- **Squad size:** 3 at the start, up to 5 with drop bay modules later. Enemies number 4 to 8.
-- **Turns:** each unit gets 2 actions:
-  - move, or dash using both actions
+- **Wrecked rooms** from the approach phase put their hazard on every tile of the room: fire, vacuum or rubble.
+- **What tiles do** is data (`data/tiles.json`): units stand on floor and airlock floor; crates and consoles are half cover, lockers and machinery full cover; lockers, machinery and the hull block sight.
+- **Squad size:** 3 at the start, up to 5 with drop bay modules later. Enemies number 4 to 8. Crew fight as their job (`data/jobs.json`: hit points, aim, defense, mobility, armor, a weapon), and enemies by type (`data/enemies.json`). The attributes in §4.5 feed these numbers later.
+- **Turns:** sides take turns; each unit gets 2 actions (`balance.actionPoints`):
+  - move: one action within its mobility, both for a dash within twice it
   - shoot, which ends the unit's turn
-  - overwatch, reload, use an ability, or interact
-- **Line of sight** is a grid ray cast. **Cover** is directional, half or full, from the side facing the shooter. **Flanking** removes cover.
-- **Hit chance** = shooter aim + weapon accuracy at range band − target cover − target defense + modifiers. Overwatch shots take a penalty. Starting values: half cover 20, full cover 40, overwatch 15.
-- **Crits:** the weapon's crit chance, plus a bonus when flanking.
-- **Damage:** the weapon's damage range minus armor, with a minimum of 1.
-- **Down, not dead:** a unit at 0 HP bleeds out over a few turns unless stabilized. Permanent death applies on harder settings only.
-- **Oxygen clock:** on vacuum maps, suit air runs down each turn.
-- **Objectives:** eliminate, extract, hack, rescue, hold, salvage.
-- **Forgiving odds:** an optional menu setting adds a small bonus after consecutive misses. The bonus is included in the number shown, so Law 4 still holds.
+  - overwatch, which ends it too
+  - reload, open a door beside it, or stabilize a downed ally beside it: one action each
+
+  A side's turn ends when it says so, or when none of its units has an action left.
+- **Movement** (M7): four-way steps between tiles units stand on. Walls, the hull and hatches are in the way; walking through a closed door opens it. Rubble costs 2 a step. A unit passes its own side's units but not the other's, and stops on no one.
+- **Line of sight** (M7): a straight line between tile middles. Walls, the hull, hatches and closed doors on the edges it crosses block it, and so do tiles that block sight; through an exact corner it gets by if either way round is clear. Units don't block it. It is the same from either end, and reaches 20 tiles (`balance.sightRange`).
+- **Cover** (M7) is directional. Each side of a unit's tile gives cover from what is there: a wall, the hull, a hatch or a closed door is full cover, otherwise the next tile gives its own. Cover on a side counts against attackers on that side of the unit: the north side's against anyone north of it, at any angle. The best that counts is the unit's cover; with none, it is **flanked**.
+- **Hit chance** = shooter aim + weapon accuracy at range band − target cover − target defense − overwatch + forgiving odds, kept within 0 to 100. Range bands are straight-line distances: close up to 3 tiles, mid up to 7, long beyond; each weapon gains or loses accuracy by band (`data/weapons.json`). Starting values: half cover 20, full cover 40, overwatch 15. `src/sim/odds.js` returns every part, for the target preview.
+- **Crits:** the weapon's crit chance, plus 30 when flanking (`balance.flankCrit`). A crit adds the weapon's crit damage.
+- **Damage:** the weapon's damage range, plus crit damage, minus armor, with a minimum of 1. The hit, crit and damage are rolled in that order from the battle's seeded RNG.
+- **Overwatch:** the unit fires once, at the first enemy that steps into its sight during the other side's turn, with the overwatch penalty; not while that enemy is passing through an ally's tile, so two units never share one. It ends at the start of the unit's own next turn.
+- **Down, not dead:** crew at 0 HP go down and bleed out over 3 of their own turns (`balance.bleedOutTurns`) unless an ally beside them stabilizes them. Bleeding out puts them out of the fight, badly hurt, or kills them where permanent death is on (harder settings only). Enemies at 0 HP die.
+- **Hazards** (M7): fire burns 2 at the start of each of a unit's turns there. In vacuum, suit air lasts 3 turns, then the unit takes 2 a turn (the oxygen clock).
+- **Objectives:** eliminate, extract, hack, rescue, hold, salvage. M7 has eliminate: a side wins when the other has no one standing.
+- **Forgiving odds:** an optional menu setting adds 10 to the crew's next shot for each miss in a row, up to 30. The bonus is included in the number shown, so Law 4 still holds.
+- **The log:** every action returns the events it caused, and the same setup, seed and actions always give the same events (`src/sim/battle.js`; the example battle in `tests/golden/` is replayed by the tests).
 
 ### 4.4 Heat
 
@@ -273,7 +281,7 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
 
 - [x] **M6 Ship to battle map.** Interior templates become tiles: doors, walls, cover, airlocks, wrecked-room flags.
   **Done when:** the same ship always converts to the identical map (tested), and the map renders.
-- [ ] **M7 Tactical rules, headless.** Units, actions, movement, line of sight, directional cover, flanking, hit chance, crits, armor, overwatch, reload, bleed-out, an event log.
+- [x] **M7 Tactical rules, headless.** Units, actions, movement, line of sight, directional cover, flanking, hit chance, crits, armor, overwatch, reload, bleed-out, an event log.
   **Done when:** hit-chance math is tested and a fixed-seed battle replays identically.
 - [ ] **M8 Tactical UI.** Selection, movement ranges, target preview with exact odds, tap to preview and tap to confirm, enemy turn playback with skip, hit and miss feedback.
   **Done when:** a full 3-against-4 fight plays on the Fold.
@@ -378,6 +386,7 @@ These ideas wait until v0.4 or later:
 - named companions with loyalty quests
 - paint and decals
 - vibration on hits
+- closing doors in battle, and locked doors: since M7 a unit can open a door beside it, but not shut one (raised in M7: defenders sealing a breach)
 - dragging to lay a run of corridor in one go: since M5b a corridor is one cell, so a long one takes two taps a cell (raised in M5b; could come sooner if Gate 1 finds it tedious)
 
 Ideas that come up during a session go here, not into code.

@@ -2,7 +2,117 @@
 
 Newest entry first.
 
+## M7 Tactical rules, headless (2026-10-11)
+
+**Status:** done, and the ROADMAP.md box is ticked. Evan said "Good. Move to the next phase" after the zoom fix. I read that as the next milestone, since Phase 2 runs to M11 and Gate 2 comes before Phase 3.
+
+Done when: "hit-chance math is tested and a fixed-seed battle replays identically."
+- **Hit-chance math, tested.** Every part has a test: aim, the weapon at each range band, half and full cover, defense, overwatch, forgiving odds, the 0 to 100 limits and the flanking crit bonus. Each shot is rolled at exactly the chance shown, checked against the RNG.
+- **A fixed-seed battle replays identically.** The example battle (below) replays from its setup and actions to the same log, word for word (`tests/golden/example-battle.txt`). It does so twice, and through JSON. Battles from 40 more seeds replay to the identical battle and events too.
+
+### Shipped
+
+- **Battle content as data:**
+  - `data/weapons.json`: rifle, shotgun, pistol and carbine. Each has damage, accuracy at close, mid and long range, a crit chance and crit damage, and a clip.
+  - `data/jobs.json`: marine, engineer and medic.
+  - `data/enemies.json`: pirate and pirate brute. Jobs and enemies both give hit points, aim, defense, mobility, armor and a weapon.
+  - `data/tiles.json`: what each kind of tile does (stand on it, its cover, whether it blocks sight).
+  - `balance.json`: 15 battle numbers.
+
+  The validator checks all of it, with 15 new cases.
+- **The rules,** in `src/sim/` and pure:
+  - `terrain.js`: tiles and edges, and the doors as they are now.
+  - `sight.js`: exact, whole-number line of sight, the same from either end.
+  - `cover.js`: directional cover and flanking.
+  - `odds.js`: hit and crit chance, part by part, for the target preview.
+  - `moves.js`: paths and reach.
+  - `battle.js`: units, actions, turns, overwatch, hazards, bleeding out, the winner and the event log.
+  - `battleLog.js`: events in words.
+
+  ROADMAP §4.3 now states each rule as built.
+- **Actions:** move or dash, shoot, overwatch, reload, stabilize, open a door, and end the turn.
+  - **Open a door** wasn't in the plan. The first example battle stalemated: boarders stood on the airlock tiles right behind closed doors, so nobody could walk through, and nobody could see through. Now a unit can open a door beside it for one action.
+- **Tools:**
+  - `tools/battle-log.js` (`npm run battle`) plays the example battle and prints its log; `--seed` picks another seed and `--golden` rewrites the golden files.
+  - The scripted player that plays both sides there is deliberately plain, for tests: it shoots what it sees, else walks closer, else opens a door or overwatches. It isn't the enemy AI (M9).
+  - `parseMap` in `tools/battle-map.js` reads the text map format back, so tests can draw small maps.
+- **Golden files, new on purpose:** `tests/fixtures/example-battle.json` (setup and actions) and `tests/golden/example-battle.txt` (its log).
+- **Tests:** 297 in all, up from 237. Line of sight has 10, including symmetry for every pair of tiles on the example ship. Cover has 7, odds 6, movement 8, the battle 24, and replay 4, plus a parser round trip.
+
+The example battle: three crew on the example ship's bridge, and two pirates and a brute come in through the airlock.
+
+```
+Round 1: the crew's turn.
+Marine c1 opens the door on the west side of (9, 2).
+Marine c1 moves (9, 2) to (8, 2) to (8, 3) to (7, 3) to (6, 3).
+Marine c1 opens the door on the south side of (6, 3).
+Engineer c2 moves (9, 3) to (9, 2) to (8, 2) to (8, 3) to (7, 3).
+Engineer c2 shoots Pirate e1: 45%, rolled 14, hit for 5.
+Medic c3 moves (10, 3) to (9, 3) to (9, 2) to (8, 2) to (8, 3).
+Medic c3 shoots Pirate e1: 20%, rolled 19, hit for 2.
+Pirate e1 is dead.
+End of the crew's turn.
+Round 1: the enemy's turn.
+Pirate e2 shoots Marine c1: 70%, rolled 61, hit for 2.
+Pirate brute e3 opens the door on the east side of (4, 4).
+Pirate brute e3 moves (4, 4) to (5, 4).
+Pirate brute e3 opens the door on the north side of (5, 4).
+Pirate brute e3 moves (5, 4) to (5, 3).
+Pirate brute e3 opens the door on the east side of (5, 3).
+End of the enemy's turn.
+Round 2: the crew's turn.
+Marine c1 shoots Pirate e2: 70%, rolled 7, hit, crit (40%, rolled 6) for 7.
+Pirate e2 is dead.
+Engineer c2 shoots Pirate brute e3: 85%, rolled 93, missed.
+Medic c3 shoots Pirate brute e3: 75%, rolled 57, hit, crit (40%, rolled 14) for 2.
+End of the crew's turn.
+Round 2: the enemy's turn.
+Pirate brute e3 shoots Marine c1: 75%, rolled 58, hit, crit (50%, rolled 28) for 6.
+End of the enemy's turn.
+Round 3: the crew's turn.
+Marine c1 shoots Pirate brute e3: 70%, rolled 90, missed.
+Engineer c2 shoots Pirate brute e3: 85%, rolled 27, hit, crit (50%, rolled 26) for 7.
+Medic c3 shoots Pirate brute e3: 75%, rolled 22, hit, crit (40%, rolled 36) for 3.
+Pirate brute e3 is dead.
+The crew wins.
+```
+
+### Decisions made this session
+
+- **Movement is four-way,** square by square. Diagonals across thin walls need corner-cutting rules, and rooms are one to three tiles. Easy to change after M8, if four-way feels stiff.
+- **Cover counts against anyone on its side,** at any angle. North cover protects from everyone north of the unit; level with it is flanking. It's simple to show and explain, and corners are strong.
+- **Line of sight runs from tile middle to tile middle.** There's no stepping out around corners as in XCOM, so corners are harsher. Units don't block it.
+- **Doors:** walking through one opens it, and so does the new action. They can't be closed yet (ROADMAP §9).
+- **Crew go down, enemies die.** Downed crew bleed out over 3 of their own turns. Bleeding out leaves them out of the fight unless permanent death is on. They can't be shot while down. Dead bodies don't block.
+- **Hazards:** fire hurts at the start of a unit's turn, so walking through fire is free. Suit air never refills during a battle.
+- **Units use direct stats** from their job or enemy type. The attributes in §4.5 (Grit, Aim, Wits, Nerve) will feed these when crew are generated (M12 and M23). Abilities come later too (M32).
+- **The numbers are starting values.** There is no balance sim until M11, so `tools/sim.js` couldn't be run for them.
+
+### Verified here
+
+- **Tests:** all 297 pass in Node, and the data validates.
+- **A bug found re-reading the code:** a unit downed by overwatch while passing through an ally's tile would have stopped there, two to a tile. Overwatch now holds fire until the unit is on a free tile (tested). The 40-seed run never hit it.
+- **Browser** (nothing on screen changed in M7, but every screen now loads the four new data files): the battle map checks pass at all three sizes (24 each), the builder's touch build at the cover size (14), and offline (4: the new files are cached, and the battle map and builder open with the server stopped). No console errors.
+
+### Known issues
+
+- **The crew wins most example battles:** 32 of 40 seeds, 6 for the boarders, 2 undecided after 20 rounds. That's with the scripted player, which plays both sides badly and lets the crew move first, so it isn't a balance measure. M11 is.
+- **The scripted player can stall:** two units trading long shots forever, which is why 2 of 40 didn't finish.
+- **No fog of war:** a unit sees whatever is in line of sight, up to 20 tiles. It's M8's call how much the player is shown.
+- **Not yet in the rules:** hunkering down, abilities, objectives other than eliminate, and closing or locking doors.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Nothing new on screen:** M7 is rules only. Update, then check the Builder and the Battle map still open, online and with the network off.
+2. **Read the example battle above.** Does it read like the fight you want? The rules to push back on are four-way movement, cover on a side counting against anyone on that side, and no stepping out around corners. They're cheap to change now, before M8 puts them on screen.
+
+### Next session
+
+**M8 Tactical UI.** First task: units on the battle map in 3D, from a battle (M7). Tap a unit to select it, and show where it can move (`reachable`), one action and dash, at 48 px targets. Then the target preview with the odds broken down (`shotOdds`).
+
 ## Fix after M6: sharp frames while zooming (2026-10-11)
+
+**Status:** done. After it went out Evan said "Good. Move to the next phase", which I read as M7, the next milestone in Phase 2. Phase 3 waits for Gate 2.
 
 Evan, on the Fold: "Zooming and unzooming causes the ship to go blurry. Is that intended? Could we fix it?"
 - **It was intended:** a speed trick from M4. While the camera moved, the builder's plans drew at one pixel per CSS pixel without the glow halos, scaled up, and sharpened 150 ms after the camera stopped. M6 copied it into the battle map.

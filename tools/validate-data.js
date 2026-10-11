@@ -13,7 +13,31 @@ const STATS = ['power', 'mass', 'thrust', 'berths', 'lifeSupport', 'cargo', 'hp'
 const MODULE_KEYS = ['id', 'name', 'glyph', 'manufacturer', 'size', 'rotates', 'facesSpace', 'stats', 'tags', 'interior', 'cost'];
 const FRAME_KEYS = ['id', 'name', 'width', 'height', 'shape', 'maxModules', 'minThrustToMass'];
 // balance.json: each number's allowed range.
-const BALANCE = { startingCrew: [1, 100] };
+const BALANCE = {
+  startingCrew: [1, 100],
+  actionPoints: [1, 4],
+  halfCover: [0, 100],
+  fullCover: [0, 100],
+  overwatchPenalty: [0, 100],
+  flankCrit: [0, 100],
+  closeRange: [1, 30],
+  midRange: [1, 30],
+  sightRange: [1, 60],
+  bleedOutTurns: [1, 10],
+  fireDamage: [0, 20],
+  rubbleMoveCost: [1, 5],
+  suitAir: [0, 20],
+  airlessDamage: [0, 20],
+  forgivingStep: [0, 50],
+  forgivingMax: [0, 100],
+};
+const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', 'clip'];
+const RANGE_BANDS = ['close', 'mid', 'long'];
+// Crew jobs and enemies are both fighters, with the same fields.
+const FIGHTER_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'weapon'];
+const TILE_RULE_KEYS = ['walk', 'cover', 'blocksSight'];
+// Tiles every battle map has, besides the interior templates' (mapFromShip.js).
+const MAP_TILES = ['space', 'hull'];
 const MAX_MODULE_SIZE = 4;
 const MAX_FRAME_SIZE = 32;
 
@@ -24,7 +48,7 @@ export const KNOWN_TAGS = [
 ];
 
 // Returns a list of problems as "where: what" strings. Empty means valid.
-export function validateData({ modules: moduleFile, frames: frameFile, manufacturers: makerFile, balance }) {
+export function validateData({ modules: moduleFile, frames: frameFile, manufacturers: makerFile, balance, weapons: weaponFile, jobs: jobFile, enemies: enemyFile, tiles: tileFile }) {
   const problems = [];
   const fail = (where, message) => problems.push(`${where}: ${message}`);
 
@@ -60,6 +84,33 @@ export function validateData({ modules: moduleFile, frames: frameFile, manufactu
     }
     for (const [key, [min, max]] of Object.entries(BALANCE)) {
       if (!isIntIn(balance[key], min, max)) fail('balance.json', `${key} must be a whole number from ${min} to ${max}`);
+    }
+    if (balance.midRange < balance.closeRange) fail('balance.json', 'midRange must be at least closeRange');
+  }
+
+  const weapons = listOf(weaponFile, 'weapons', 'weapons.json', fail);
+  const weaponIds = uniqueIds(weapons, 'weapons.json', fail);
+  weapons.forEach((weapon, i) => checkWeapon(weapon, `weapons.json ${weapon.id ?? `#${i}`}`, fail));
+
+  // Jobs and enemies share one set of ids: a battle names a fighter by it.
+  const jobs = listOf(jobFile, 'jobs', 'jobs.json', fail);
+  const enemies = listOf(enemyFile, 'enemies', 'enemies.json', fail);
+  const jobIds = uniqueIds(jobs, 'jobs.json', fail);
+  uniqueIds(enemies, 'enemies.json', fail);
+  for (const enemy of enemies) {
+    if (jobIds.has(enemy.id)) fail('enemies.json', `id "${enemy.id}" is also a job's`);
+  }
+  jobs.forEach((job, i) => checkFighter(job, `jobs.json ${job.id ?? `#${i}`}`, weaponIds, fail));
+  enemies.forEach((enemy, i) => checkFighter(enemy, `enemies.json ${enemy.id ?? `#${i}`}`, weaponIds, fail));
+
+  const tileRules = tileFile?.tiles;
+  if (!tileRules || typeof tileRules !== 'object' || Array.isArray(tileRules)) {
+    fail('tiles.json', '"tiles" must be an object of tile names');
+  } else {
+    for (const [name, rule] of Object.entries(tileRules)) checkTileRule(rule, `tiles.json "${name}"`, fail);
+    const names = [...MAP_TILES, ...Object.values(moduleFile?.tiles ?? {})];
+    for (const name of names) {
+      if (!(name in tileRules)) fail('tiles.json', `no rules for the tile "${name}"`);
     }
   }
 
@@ -117,6 +168,62 @@ export function validateData({ modules: moduleFile, frames: frameFile, manufactu
     }
   }
   return problems;
+}
+
+// A weapon: damage [least, most], an accuracy change at each range band, a
+// crit chance and extra damage on a crit, and the shots in a clip.
+function checkWeapon(weapon, where, fail) {
+  for (const key of Object.keys(weapon)) {
+    if (!WEAPON_KEYS.includes(key)) fail(where, `unknown field "${key}"`);
+  }
+  if (!isText(weapon.name)) fail(where, 'name must be a non-empty string');
+  const { damage, accuracy } = weapon;
+  if (!Array.isArray(damage) || damage.length !== 2 || !damage.every((n) => isIntIn(n, 1, 99)) || damage[0] > damage[1]) {
+    fail(where, 'damage must be [least, most], whole numbers from 1 to 99');
+  }
+  if (!accuracy || typeof accuracy !== 'object' || Array.isArray(accuracy)) {
+    fail(where, `accuracy must be { ${RANGE_BANDS.join(', ')} }`);
+  } else {
+    for (const key of Object.keys(accuracy)) {
+      if (!RANGE_BANDS.includes(key)) fail(where, `accuracy: unknown range band "${key}"`);
+    }
+    for (const band of RANGE_BANDS) {
+      if (!isIntIn(accuracy[band], -100, 100)) fail(where, `accuracy.${band} must be a whole number from -100 to 100`);
+    }
+  }
+  if (!isIntIn(weapon.crit, 0, 100)) fail(where, 'crit must be a whole number from 0 to 100');
+  if (!isIntIn(weapon.critDamage, 0, 99)) fail(where, 'critDamage must be a whole number from 0 to 99');
+  if (!isIntIn(weapon.clip, 1, 99)) fail(where, 'clip must be a whole number from 1 to 99');
+}
+
+// A crew job or an enemy: what it brings to a battle.
+function checkFighter(fighter, where, weaponIds, fail) {
+  for (const key of Object.keys(fighter)) {
+    if (!FIGHTER_KEYS.includes(key)) fail(where, `unknown field "${key}"`);
+  }
+  if (!isText(fighter.name)) fail(where, 'name must be a non-empty string');
+  const ranges = { hp: [1, 99], aim: [0, 100], defense: [0, 100], mobility: [1, 20], armor: [0, 20] };
+  for (const [key, [min, max]] of Object.entries(ranges)) {
+    if (!isIntIn(fighter[key], min, max)) fail(where, `${key} must be a whole number from ${min} to ${max}`);
+  }
+  if (!weaponIds.has(fighter.weapon)) fail(where, `unknown weapon "${fighter.weapon}"`);
+}
+
+// What a kind of tile does in a battle: whether units can stand on it, the
+// cover it gives a unit beside it, and whether it blocks the line of sight.
+function checkTileRule(rule, where, fail) {
+  if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
+    fail(where, 'must be an object');
+    return;
+  }
+  for (const key of Object.keys(rule)) {
+    if (!TILE_RULE_KEYS.includes(key)) fail(where, `unknown field "${key}"`);
+  }
+  for (const key of ['walk', 'blocksSight']) {
+    if (rule[key] !== undefined && typeof rule[key] !== 'boolean') fail(where, `${key} must be true or false`);
+  }
+  if (rule.cover !== undefined && rule.cover !== 'half' && rule.cover !== 'full') fail(where, 'cover must be "half" or "full"');
+  if (rule.walk && rule.cover) fail(where, 'a tile units stand on gives no cover');
 }
 
 // The side a part needs open to space (an engine's exhaust, a gun's
@@ -256,6 +363,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const count = (n, noun) => `${n} ${noun}${n === 1 ? '' : 's'}`;
   console.log(
     `validate-data: OK (${count(data.modules.modules.length, 'module')}, ${count(data.frames.frames.length, 'frame')}, ` +
-      `${count(data.manufacturers.manufacturers.length, 'manufacturer')})`,
+      `${count(data.manufacturers.manufacturers.length, 'manufacturer')}, ${count(data.weapons.weapons.length, 'weapon')}, ` +
+      `${count(data.jobs.jobs.length, 'job')}, ${data.enemies.enemies.length} enem${data.enemies.enemies.length === 1 ? 'y' : 'ies'})`,
   );
 }

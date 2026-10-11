@@ -52,6 +52,20 @@ const cases = [
   ['crew of zero', (d) => (d.balance.startingCrew = 0), /startingCrew must be a whole number from 1/],
   ['unknown balance number', (d) => (d.balance.crewSize = 4), /unknown number "crewSize"/],
   ['balance not an object', (d) => (d.balance = [4]), /balance\.json: must be an object/],
+  ['middle range nearer than close', (d) => (d.balance.midRange = 2), /midRange must be at least closeRange/],
+  ['weapon damage back to front', (d) => (d.weapons.weapons[0].damage = [5, 3]), /damage must be \[least, most\]/],
+  ['weapon missing a range band', (d) => delete d.weapons.weapons[0].accuracy.long, /accuracy\.long must be a whole number/],
+  ['weapon with an unknown range band', (d) => (d.weapons.weapons[0].accuracy.far = 0), /unknown range band "far"/],
+  ['weapon with an empty clip', (d) => (d.weapons.weapons[0].clip = 0), /clip must be a whole number from 1/],
+  ['job with an unknown weapon', (d) => (d.jobs.jobs[0].weapon = 'laser'), /unknown weapon "laser"/],
+  ['job aiming past 100', (d) => (d.jobs.jobs[0].aim = 120), /aim must be a whole number from 0 to 100/],
+  ['enemy with a job\'s id', (d) => (d.enemies.enemies[0].id = 'marine'), /id "marine" is also a job's/],
+  ['misspelled enemy field', (d) => (d.enemies.enemies[0].hitpoints = 5), /unknown field "hitpoints"/],
+  ['jobs not a list', (d) => (d.jobs.jobs = {}), /"jobs" must be a list/],
+  ['tile with no rules', (d) => delete d.tiles.tiles.console, /no rules for the tile "console"/],
+  ['map tile with no rules', (d) => delete d.tiles.tiles.space, /no rules for the tile "space"/],
+  ['tile with a quarter of cover', (d) => (d.tiles.tiles['half cover'].cover = 'quarter'), /cover must be "half" or "full"/],
+  ['cover you can stand on', (d) => (d.tiles.tiles.floor.cover = 'half'), /a tile units stand on gives no cover/],
 ];
 
 test('the validator names each kind of mistake', () => {
@@ -80,5 +94,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer\)/);
+  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 jobs, 2 enemies\)/);
 });

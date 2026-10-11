@@ -10,7 +10,7 @@
 // purpose, and say so in PROGRESS.md.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { cellAt } from '../src/sim/grid.js';
+import { cellAt, createGrid } from '../src/sim/grid.js';
 import { mapFromShip, wallAt } from '../src/sim/mapFromShip.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { EXAMPLE_SCRIPT, runScript } from './build-ship.js';
@@ -57,6 +57,47 @@ export function renderMap(map, legend) {
     }
   }
   return `${lines.join('\n')}\n`;
+}
+
+const EDGE_NAMES = { '-': 'wall', '|': 'wall', '=': 'hull', I: 'hull', '/': 'door', o: 'hatch' };
+
+// A map from text in renderMap's format, so tests can draw their own: tiles
+// and edges only. The text starts with the first row of edges and ends with
+// the last, and a final newline is ignored. Every tile that isn't space or
+// hull is room 1, nothing is wrecked, and each hatch opens from its room's
+// side. Trailing spaces can be left off, so give the width when the last
+// column is bare space.
+export function parseMap(text, legend, { width } = {}) {
+  const lines = text.split('\n');
+  if (lines.at(-1) === '') lines.pop();
+  const height = (lines.length - 1) / 2;
+  if (!Number.isInteger(height) || height < 1) throw new Error(`parseMap: expected 2 × height + 1 lines, got ${lines.length}`);
+  width ??= Math.max(...lines.map((line) => Math.floor(line.length / 2)));
+  const names = { ' ': 'space', '%': 'hull', ...legend };
+  const at = (row, col) => lines[row][col] ?? ' ';
+  const grid = (fill) => createGrid(width, height, fill);
+  const [tiles, roomAt, hazards] = [grid('space'), grid(null), grid(null)];
+  const walls = { n: grid(null), w: grid(null) };
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const k = y * width + x;
+      const char = at(2 * y + 1, 2 * x + 1);
+      if (!(char in names)) throw new Error(`parseMap: no tile for "${char}" at (${x}, ${y})`);
+      tiles.cells[k] = names[char];
+      if (names[char] !== 'space' && names[char] !== 'hull') roomAt.cells[k] = 1;
+      walls.n.cells[k] = EDGE_NAMES[at(2 * y, 2 * x + 1)] ?? null;
+      walls.w.cells[k] = EDGE_NAMES[at(2 * y + 1, 2 * x)] ?? null;
+    }
+  }
+  const map = { width, height, tilesPerCell: 1, origin: [0, 0], tiles, roomAt, hazards, walls, rooms: [], hatches: [] };
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      for (const side of ['n', 'e', 's', 'w']) {
+        if (wallAt(map, x, y, side) === 'hatch' && cellAt(roomAt, x, y) !== null) map.hatches.push({ uid: 1, x, y, side });
+      }
+    }
+  }
+  return map;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

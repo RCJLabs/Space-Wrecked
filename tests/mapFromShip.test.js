@@ -5,7 +5,7 @@ import { buildShip, connections, newShip } from '../src/sim/builder.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { cellAt, OPPOSITE, SIDES, step } from '../src/sim/grid.js';
 import { mapFromShip, nextWreck, wallAt } from '../src/sim/mapFromShip.js';
-import { GOLDEN_MAP, renderMap } from '../tools/battle-map.js';
+import { GOLDEN_MAP, parseMap, renderMap } from '../tools/battle-map.js';
 import { EXAMPLE_SCRIPT } from '../tools/build-ship.js';
 import { readData } from '../tools/data.js';
 
@@ -34,6 +34,17 @@ test('the example ship converts to its golden map', () => {
   // To change the map on purpose: node tools/battle-map.js --golden, and
   // say so in PROGRESS.md.
   assert.equal(renderMap(example(), defs.tiles), readFileSync(GOLDEN_MAP, 'utf8'));
+});
+
+test('parseMap reads back what renderMap writes: tiles, walls and hatches', () => {
+  const map = example();
+  const back = parseMap(renderMap(map, defs.tiles), defs.tiles, { width: map.width });
+  assert.deepEqual([back.width, back.height], [map.width, map.height]);
+  assert.deepEqual(back.tiles, map.tiles);
+  assert.deepEqual(back.walls, map.walls);
+  assert.deepEqual(back.hatches.map(({ x, y, side }) => [x, y, side]), map.hatches.map(({ x, y, side }) => [x, y, side]));
+  assert.throws(() => parseMap('+-+\n|Z\n+-+\n', defs.tiles), /no tile for "Z"/);
+  assert.throws(() => parseMap('+-+\n|.\n', defs.tiles), /expected 2 × height \+ 1 lines/);
 });
 
 test('the same ship always converts to the identical map', () => {
