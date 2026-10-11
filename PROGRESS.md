@@ -2,6 +2,60 @@
 
 Newest entry first.
 
+## M1 Grid and module data (2026-10-11)
+
+**Status:** done. Done when is met: tests cover overlap, bounds, rotation and connectivity, and `npm run ship` builds the example starter ship from a script with every placement rule passing. The ROADMAP.md box is ticked. M1 ran in the same session as M0 because Evan asked for it.
+
+### Shipped
+
+- `src/sim/grid.js`, the one grid model: create, bounds, cell lookup, copy-on-write updates, neighbours, and `exteriorOf`, a flood fill that tells open space outside the hull from enclosed holes.
+- `src/sim/modules.js`: footprints and door sockets under quarter-turn rotation (clockwise; `rot` is 0 to 3).
+- `src/sim/builder.js`, the placement rules:
+  - checked when placing: in bounds, no overlap, the frame's module cap, and rotation only for modules that rotate
+  - checked on the whole layout: every module reachable from the bridge through matching doors, and at least one airlock on the hull edge
+  - `layoutProblems` returns structured problems (`rule`, `message`, `uids`) for M3's checklist to build on
+- `src/sim/defs.js`: lookup tables over the parsed data files. The simulation never does I/O.
+- `data/modules.json`, with the 12 v0.1 types: bridge, reactor, engine, corridor, airlock, crew quarters, life support, cargo hold, med bay, armory, weapon mount, shield generator. Each has a size, sockets, stats, tags, an interior at tile resolution, a cost and an ASCII glyph. The tile legend and `tilesPerCell` (2) live in the same file.
+- `data/frames.json` (the 4×7 starter hull, cap 20) and `data/manufacturers.json` (one manufacturer).
+- `tools/validate-data.js` (`npm run validate`): checks fields, types, ranges, socket positions, interior size and characters, tags and cross-references. It reports problems and never throws.
+- `tools/build-ship.js` (`npm run ship [script.json]`): applies a script of placements in order, prints the layout and every broken rule, and exits 1 on any. `tests/fixtures/example-ship.json` is the example:
+
+  ```
+  WBB.
+  L++A
+  QQ+.
+  RR+.
+  RR++
+  ..EE
+  ..EE
+  ```
+
+- 28 new tests, 85 in all.
+
+### Decisions made this session
+
+- A placement is `{ type, x, y, rot }`, with (x, y) the top-left cell of the rotated footprint. Ships are plain data, `{ frame, modules: [{ uid, type, x, y, rot }], nextUid }`, and every change is a command. That gives M5's replay something to build on. Uids never repeat.
+- Two doors join only when both modules have a socket on the same cell edge. A socket facing a wall or space is just a wall.
+- Connectivity and the airlock rule are checked on the whole layout, not on each placement, so a ship can be half-built in any order. Placement itself checks bounds, overlap, the cap and rotation.
+- "On the hull edge" means an airlock cell borders open space connected to the outside. An enclosed empty pocket inside the ship doesn't count.
+- Interiors are 2×2 tiles per cell and hold floor, cover, machinery, consoles and airlock tiles. Walls aren't drawn in them: M6 puts walls on module boundaries and doors at sockets, so a one-cell corridor is still two tiles wide.
+- Placement rules live in `builder.js` rather than `grid.js`. The grid stays a generic model for battle maps and the colony, matching CLAUDE.md's "grid, builder rules".
+- Stats, costs, sockets and names are placeholders until the tone is picked (before M14) and M3 or M16 tune them. They are content, not `balance.json` numbers.
+
+### Known issues
+
+- Nothing in the game uses the module data yet; M2's builder is the first consumer. The page now precaches `data/*.json`, so the next visit shows "Update ready".
+- The frame is a plain rectangle. Shaped frames (a tapered nose) would need a mask field and a rule.
+- Stats aren't checked for sense: power balance, thrust-to-mass and crew are M3's flight checklist.
+
+### What to test on the phone
+
+Nothing new to see; M1 has no UI. One useful check (M0 checklist line 8): open the installed app after this deploys, tap "Update ready, tap to reload", and confirm DEV → Status shows the new cache version.
+
+### Next session
+
+M2 Touch builder. First task: render the starter frame's grid on the canvas with placeholder module shapes from `data/modules.json`, loaded through the service worker cache, in a "Builder" sandbox in the `?dev=1` menu.
+
 ## M0 Scaffold (2026-10-11)
 
 **Status:** done. Done when is met: the game installs from Chrome on the Fold at https://spacewrecked.rcjlabs.com/, relaunches in airplane mode, and the tests pass. The ROADMAP.md box is ticked.
@@ -109,4 +163,4 @@ Record pass or fail for each line here, plus the FPS numbers.
 
 ### Next session
 
-M1 Grid and module data. First task: write the bounds and overlap rules in `src/sim/grid.js`, with tests, before any module data (ROADMAP.md §4.1).
+M1 Grid and module data, done in the same session (entry above).

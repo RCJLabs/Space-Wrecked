@@ -61,7 +61,7 @@ assets/
   img/          WebP only
   LOG.md        prompt, date, model and hand edits for every image
   LICENSES.md   every third-party file and its license
-tools/       sim.js, blueprint.js, precache.js, icons.js, serve.js, validate-data.js
+tools/       sim.js, blueprint.js, precache.js, icons.js, serve.js, validate-data.js, build-ship.js, data.js
 tests/       node --test files and golden replays
 ROADMAP.md
 PROGRESS.md

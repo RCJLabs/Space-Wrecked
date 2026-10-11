@@ -10,6 +10,8 @@
     "serve": "node tools/serve.js",
     "precache": "node tools/precache.js",
     "icons": "node tools/icons.js",
+    "validate": "node tools/validate-data.js",
+    "ship": "node tools/build-ship.js",
     "hooks": "git config core.hooksPath .githooks"
   }
 }
