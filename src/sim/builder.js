@@ -3,6 +3,7 @@
 //   { frame, modules: [{ uid, type, x, y, rot }], nextUid }
 // Every change is a command (see applyCommand), so a build can be replayed
 // step by step. Functions return new ships and never change their input.
+import { inFrame } from './frame.js';
 import { cellAt, createGrid, exteriorOf, inBounds, OPPOSITE, SIDES, step, withCells } from './grid.js';
 import { footprint, hasTag, isRotation, placedCells, placedDoors } from './modules.js';
 
@@ -46,7 +47,7 @@ export function placementError(ship, defs, placement) {
   }
   const grid = occupancy(ship, defs);
   for (const [x, y] of placedCells(def, placement)) {
-    if (!inBounds(grid, x, y)) {
+    if (!inFrame(frame, x, y)) {
       return { rule: 'bounds', message: `${def.name} doesn't fit inside the ${frame.name} there.` };
     }
     const owner = cellAt(grid, x, y);
@@ -195,8 +196,9 @@ export function connections(ship, defs) {
 //   linked   a matching socket across the edge: a real doorway
 //   open     an empty cell on the frame, where a part could join
 //   blocked  another module with no socket there
-//   outside  past the frame's edge
+//   outside  space: past the frame's edge or its shape
 export function doorStates(ship, defs) {
+  const frame = defs.frames.get(ship.frame);
   const grid = occupancy(ship, defs);
   const sockets = new Set();
   const doors = [];
@@ -212,7 +214,7 @@ export function doorStates(ship, defs) {
     const [nx, ny] = step(door.x, door.y, door.side);
     const owner = cellAt(grid, nx, ny);
     let state = 'blocked';
-    if (owner === undefined) state = 'outside';
+    if (owner === undefined || (owner === null && !inFrame(frame, nx, ny))) state = 'outside';
     else if (owner === null) state = 'open';
     else if (sockets.has(`${nx},${ny},${OPPOSITE[door.side]}`)) state = 'linked';
     return { ...door, state };
@@ -241,16 +243,19 @@ export function reachableFromBridge(ship, defs) {
   return { bridge: bridge.uid, reachable };
 }
 
-// Uids of airlocks with at least one side facing open space outside the hull.
+// Uids of airlocks with at least one side facing open space outside the
+// hull: off the frame, off its shape, or an empty cell joined to either.
 export function airlocksOnHullEdge(ship, defs) {
+  const frame = defs.frames.get(ship.frame);
   const grid = occupancy(ship, defs);
   const isOutside = exteriorOf(grid, (owner) => owner === null);
+  const space = (x, y) => isOutside(x, y) || (cellAt(grid, x, y) === null && !inFrame(frame, x, y));
   return ship.modules
     .filter((module) => {
       const def = defs.modules.get(module.type);
       if (!def || !hasTag(def, 'airlock') || !isRotation(module.rot)) return false;
       return placedCells(def, module).some(([x, y]) =>
-        SIDES.some((side) => isOutside(...step(x, y, side))),
+        SIDES.some((side) => space(...step(x, y, side))),
       );
     })
     .map((module) => module.uid);
@@ -277,7 +282,7 @@ export function layoutProblems(ship, defs) {
       if (!isRotation(module.rot)) continue;
     }
     for (const [x, y] of placedCells(def, module)) {
-      if (!inBounds(area, x, y)) {
+      if (!inBounds(area, x, y) || !inFrame(frame, x, y)) {
         add('bounds', `${describeModule(ship, defs, module.uid)} sticks out of the ${frame.name}.`, [module.uid]);
         break;
       }

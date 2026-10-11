@@ -4,7 +4,7 @@ Working agreement for Claude Code sessions on this repo. Read ROADMAP.md before 
 
 ## Project
 
-A 2D ship-first sandbox RPG: build a ship on a grid, run from a pursuer, and settle a world, fighting XCOM-style squad battles inside ship layouts. It is a browser game, landscape only and offline-first. It ships on GitHub Pages now (`RCJLabs/Space-Wrecked`, served at `spacewrecked.rcjlabs.com`), as a TWA on Google Play, and as a Capacitor build later. Solo developer (Evan), evening sessions.
+A ship-first sandbox RPG in 3D: build a ship on a grid, run from a pursuer, and settle a world, fighting XCOM-style squad battles inside ship layouts. It is a browser game, landscape only and offline-first. It ships on GitHub Pages now (`RCJLabs/Space-Wrecked`, served at `spacewrecked.rcjlabs.com`), as a TWA on Google Play, and as a Capacitor build later. Solo developer (Evan), evening sessions.
 
 ## Session protocol
 
@@ -24,7 +24,7 @@ A 2D ship-first sandbox RPG: build a ship on a grid, run from a pursuer, and set
 ## Hard conventions
 
 - **Vanilla ES modules. No framework. No build step. No dependencies** without explicit approval. ZzFX (audio) is pre-approved for M35. `package.json` exists only for `"type": "module"` and scripts.
-- **Procedural SVG for all game art and UI.** The only image files allowed are WebP portraits, scenes and store art in `assets/img/`, each logged in `assets/LOG.md`, and PNG app icons generated from `icon.svg` by `tools/icons.js`. No sprite sheets, no emoji as art.
+- **Procedural art, drawn in code.** The game world is 3D, drawn by our own renderer on canvas (`src/render/`, no library); menus, panels and icons are SVG and DOM. The only image files allowed are WebP portraits, scenes and store art in `assets/img/`, each logged in `assets/LOG.md`, and PNG app icons generated from `icon.svg` by `tools/icons.js`. No sprite sheets, no emoji as art.
 - **`SAVE_VERSION` gates all saves.** Never change the save schema without bumping `SAVE_VERSION` and writing a migration. Never reset player saves. (This is the Ascent rule.)
 - **Seeded RNG everywhere**, using `mulberry32` in `src/core/rng.js`. This covers battles, the approach phase, generators, loot and events. No bare `Math.random()` in game logic. RNG state is part of the save, so reloading never rerolls.
 - **All content is data** in `data/*.json`:
@@ -53,7 +53,7 @@ CNAME                       # spacewrecked.rcjlabs.com
 src/
   core/      rng, save, store, events
   sim/       grid, builder rules, constraints, mapFromShip, battle, ai, approach, heat, campaign, economy, gen/
-  render/    canvas renderers, SVG parts, hull tracer, raster cache, tweens, particles
+  render/    3D camera, scenes and painters, part models, hull tracer, SVG icons, tweens, particles
   ui/        screens, panels, gestures
   platform/  storage, service worker registration, haptics, orientation
 data/        JSON content, including balance.json
@@ -72,7 +72,7 @@ PROGRESS.md
 - State flows one way: input, then action, then a sim function, then new state, then render. Renderers never mutate state.
 - Hit chance is computed in `src/sim/` and shown exactly. The number on screen is the number rolled against, including any forgiving-odds bonus.
 - Balance numbers live in `data/balance.json`. Before changing any, run `node tools/sim.js` and paste the summary into PROGRESS.md.
-- SVG parts are functions that return SVG strings. They are rasterized once per zoom level and cached, and the builder and battle boards draw on `<canvas>`. Menus and panels are DOM with CSS.
+- Parts and hulls are pure functions from ship data to 3D models: plain data (faces, lines, glows) in cells, z up. The painters project them through the orbit camera (`src/render/orbit.js`) onto `<canvas>`: the see-through blueprint is batched by style, solid views are depth-sorted with back faces dropped. Menus, panels and icons are DOM and SVG with CSS.
 - Colors come from palette tokens in one file. Manufacturers are skins over the same part shapes.
 - Keep files small and named for what they do; no god modules.
 
@@ -80,6 +80,7 @@ PROGRESS.md
 
 - Landscape only. Portrait shows a rotate prompt.
 - Touch targets are at least 48 CSS px. Tap to preview, tap again to confirm. Long-press for details. No hover-only UI.
+- In 3D views, every cell at the default camera is a 48 px target on the cover screen (`tests/orbit.test.js` checks it). Perspective shrinks far cells, so the default angle is gentle; zoom covers the rest.
 - Respect safe-area insets.
 - Test both screen shapes: about 2.4:1 (Galaxy Z Fold cover screen in landscape) and about 1.2:1 (unfolded). Panels anchor to the corners and the board takes the rest.
 - Target 60 fps on a mid-range Android phone. Cap `devicePixelRatio` at 2, offer a 30 fps battery setting, and redraw only what changed.

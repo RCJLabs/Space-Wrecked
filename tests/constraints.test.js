@@ -76,23 +76,36 @@ test('the engine count in a thrust fix allows for each engine\'s own mass', () =
 test('the layout line names parts not joined to the bridge', () => {
   const ship = example();
   const weapon = ship.modules.find((m) => m.type === 'weapon');
-  const turned = { ...ship, modules: ship.modules.map((m) => (m === weapon ? { ...m, rot: 2 } : m)) };
+  const turned = { ...ship, modules: ship.modules.map((m) => (m === weapon ? { ...m, rot: 0 } : m)) };
   assert.deepEqual(line(lines(turned).layout), [
     false,
     '1 part not joined to the bridge',
-    'Join Weapon mount at (6, 0) to the bridge: each door has to meet a door',
+    'Join Weapon mount at (4, 3) to the bridge: each door has to meet a door',
   ]);
 });
 
 test('an airlock with no side open to space fails the layout line', () => {
-  // Corridors all around the airlock at (1, 1); the bridge joins on the east.
-  const ring = [[0, 0], [1, 0], [2, 0], [0, 1], [2, 1], [0, 2], [1, 2], [2, 2]];
+  // Corridors all around the airlock at (2, 1); the bridge joins on the east.
+  const ring = [[1, 0], [2, 0], [3, 0], [1, 1], [3, 1], [1, 2], [2, 2], [3, 2]];
   const ship = build([
     ...ring.map(([x, y]) => ({ type: 'corridor', x, y, rot: 0 })),
-    { type: 'airlock', x: 1, y: 1, rot: 0 },
-    { type: 'bridge', x: 3, y: 1, rot: 0 },
+    { type: 'airlock', x: 2, y: 1, rot: 0 },
+    { type: 'bridge', x: 4, y: 1, rot: 0 },
   ]);
   assert.deepEqual(line(lines(ship).layout), [false, 'No airlock on the hull edge', 'Move an airlock to the edge of the hull, with a side open to space']);
+});
+
+test('a ship saved before the frame took its shape keeps its parts but cannot launch', () => {
+  // The example ship as M3 laid it out, on the full 7 × 4 rectangle.
+  const old = [
+    ['bridge', 6, 1, 1], ['weapon', 6, 0, 0], ['corridor', 5, 1, 0], ['corridor', 5, 2, 0], ['lifesupport', 5, 0, 0],
+    ['airlock', 5, 3, 0], ['quarters', 4, 0, 1], ['corridor', 4, 2, 0], ['reactor', 2, 0, 2], ['corridor', 3, 2, 0],
+    ['corridor', 2, 2, 0], ['corridor', 2, 3, 0], ['engine', 0, 2, 0], ['engine', 0, 3, 0],
+  ];
+  const ship = { frame: 'starter', nextUid: 15, modules: old.map(([type, x, y, rot], i) => ({ uid: i + 1, type, x, y, rot })) };
+  const layout = lines(ship).layout;
+  assert.deepEqual(line(layout), [false, 'Weapon mount at (6, 0) sticks out of the Starter hull (+3 more)', 'Move it inside the hull, or remove it']);
+  assert.equal(ship.modules.length, 14);
 });
 
 test('an empty ship fails what it lacks, and the layout waits for a bridge', () => {

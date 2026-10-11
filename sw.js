@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "c0fb6c330ae8";
+const VERSION = "8e06406f69f6";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/balance.json",
@@ -27,16 +27,28 @@ const FILES = [
   "src/platform/orientation.js",
   "src/platform/serviceWorker.js",
   "src/platform/storage.js",
-  "src/render/camera.js",
+  "src/render/blueprintStyles.js",
   "src/render/canvas.js",
+  "src/render/exterior.js",
+  "src/render/hull.js",
   "src/render/loop.js",
+  "src/render/mesh.js",
+  "src/render/orbit.js",
+  "src/render/painter.js",
   "src/render/palette.js",
-  "src/render/parts.js",
+  "src/render/parts/art.js",
+  "src/render/parts/blueprint.js",
+  "src/render/pick.js",
+  "src/render/props.js",
+  "src/render/shipScene.js",
   "src/render/shipView.js",
+  "src/render/solid.js",
   "src/render/starfield.js",
+  "src/render/svg.js",
   "src/sim/builder.js",
   "src/sim/constraints.js",
   "src/sim/defs.js",
+  "src/sim/frame.js",
   "src/sim/grid.js",
   "src/sim/modules.js",
   "src/sim/root.js",
