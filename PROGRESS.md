@@ -21,10 +21,10 @@ Evan, on the Fold: "Zooming and unzooming causes the ship to go blurry. Is that 
 
 ### Verified here (headless Chromium, which fills canvas on the CPU)
 
-- **Cheap frames** (600×260 at 1×; a full frame 3.8 ms in the builder, 5.2 on the battle map): while zooming, the frame on screen is already the final one in both boards, and the overlay reads "moving 10 full 0 rough".
-- **Expensive frames** (905×370 at 2× with 4× CPU; a full frame 92 and 128 ms): moving frames are rough and sharpen after the camera stops, as before.
+- **Cheap frames** (600×260 at 1×; a full frame about 4 ms in the builder, 5 on the battle map): while zooming, the frame on screen is already the final one in both boards, and the overlay reads "moving 10 full 0 rough".
+- **Expensive frames** (905×370 at 2× with 4× CPU; a full frame 50 to 130 ms): moving frames are rough and sharpen after the camera stops, as before.
 - **Headless at 905×370 and 2×, unthrottled,** fills pixels on the CPU, so a full frame costs 16 to 19 ms and moving frames stay rough there. That's the case the fallback is for.
-- **Regression:** the battle map checks, M5b's touch build, M5's saves and M5c's moves at all three sizes, and the offline check: see the PR.
+- **Regression:** at all three sizes, the battle map (24 checks), M5b's touch build (14), M5's saves (34) and M5c's moves (12) all pass, and so does the offline check (4). No console errors.
 
 ### Known issues
 
