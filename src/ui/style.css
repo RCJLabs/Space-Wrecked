@@ -153,13 +153,13 @@ textarea {
 }
 
 #ui .bld-tab {
+  position: relative;
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   min-width: 0;
-  padding: 0 6px;
+  padding: 0 4px;
   font-size: 13px;
 }
 
@@ -168,12 +168,16 @@ textarea {
   color: var(--c-accent);
 }
 
+/* On the tab's corner, so three tabs fit the narrowest drawer. */
 .bld-badge {
-  min-width: 20px;
-  padding: 1px 6px;
-  border-radius: 10px;
-  font-size: 11px;
-  line-height: 16px;
+  position: absolute;
+  top: -5px;
+  right: -4px;
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 9px;
+  font-size: 10.5px;
+  line-height: 15px;
   color: var(--c-space);
 }
 
@@ -200,8 +204,9 @@ textarea {
   touch-action: none;
 }
 
-/* The Ship tab: flight check, Launch and totals. It scrolls when long. */
-.bld-ship {
+/* The Ship and Saves tabs: they scroll when long. */
+.bld-ship,
+.bld-saves {
   flex: 1;
   min-height: 0;
   padding: 4px 8px 12px 16px;
@@ -212,7 +217,8 @@ textarea {
   line-height: 1.35;
 }
 
-.bld-ship h3 {
+.bld-ship h3,
+.bld-saves h3 {
   margin: 8px 0 6px;
   color: var(--c-ink-dim);
   font-size: 11px;
@@ -332,6 +338,96 @@ textarea {
   margin: 0;
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* The Saves tab. */
+.bld-current {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.bld-row {
+  display: flex;
+  gap: var(--gap);
+}
+
+#ui .bld-wide {
+  flex: 1;
+  width: 100%;
+  min-height: 48px;
+  margin: 0 0 6px;
+  padding: 4px 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.bld-code,
+.bld-paste {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 6px;
+  padding: 6px;
+  border: 1px solid var(--c-line);
+  border-radius: 8px;
+  background: var(--c-space);
+  color: var(--c-ink);
+  font: 11px/1.35 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
+  word-break: break-all;
+  resize: none;
+}
+
+.bld-message {
+  min-height: 0;
+  margin: 0 0 4px;
+  color: var(--c-ink-dim);
+}
+
+.bld-message:empty {
+  display: none;
+}
+
+.bld-message[data-tone='good'] {
+  color: var(--c-good);
+}
+
+.bld-message[data-tone='bad'] {
+  color: var(--c-bad);
+}
+
+.bld-slots {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#ui .bld-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: left;
+}
+
+#ui .bld-slot small {
+  color: var(--c-ink-dim);
+  font-weight: 500;
+}
+
+#ui .bld-slot[aria-current='true'] {
+  border-color: var(--c-accent);
+  box-shadow: inset 0 0 0 1px var(--c-accent);
+  color: var(--c-accent);
+}
+
+#ui .bld-danger {
+  margin-top: 10px;
+  color: var(--c-bad);
+}
+
+#ui .bld-danger[data-state='armed'] {
+  border-color: var(--c-bad);
+  background: var(--c-bad);
+  color: var(--c-space);
 }
 
 #ui .bld-part {

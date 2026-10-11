@@ -2,6 +2,93 @@
 
 Newest entry first.
 
+## M5 Blueprints, saves and replays (2026-10-11)
+
+**Status:** done. Done when is met: a code from one device rebuilds the identical ship on another, and a broken code shows a message. In headless Chromium, two browser profiles with separate storage stood in for two devices:
+- A code copied on the first rebuilt the same ship on the second: same parts, places, turns and build order.
+- Damaged codes, random text and a save code each got their own message, and added nothing.
+
+The ROADMAP.md box is ticked. Evan asked to keep building after M4.
+
+### Shipped
+
+- **Blueprint codes** (`src/core/blueprint.js`, pure and tested):
+  - A code looks like `wtb.1.<payload>.<checksum>`.
+  - The payload is base64url bytes: the frame, the part types used, and then each part in build order as three bytes.
+  - Decoding rebuilds the ship through the placement rules, so a code can only make a ship the builder could make.
+  - Spaces and line breaks from chat apps are ignored.
+  - Every way a code can be wrong has its own message:
+    - empty, or not a blueprint
+    - a save code pasted by mistake
+    - incomplete
+    - damaged (checksum)
+    - from a newer version
+    - unreadable
+    - an unknown hull, or unknown parts (named)
+    - parts that don't fit together (the first reason)
+  - A full starter ship is about 174 characters.
+- **Build log:**
+  - The session keeps every command that built the ship from an empty frame.
+  - Undo takes the last command off and redo puts it back. A randomized 400-step test checks that the log always replays to the ship, ids included.
+  - `src/sim/replay.js` replays a log step by step, and repairs a log that doesn't match its ship. Logs over 600 commands are shortened when a ship opens.
+- **Ship slots** (`src/sim/builds.js`): up to six ships, each with its name and build log, and one open at a time.
+- **`SAVE_VERSION` is now 2.** The migration from 1 moves the old ship into slot 1, numbered in build order, with a log that builds it part by part. A save from before M3 gets no slots. M12's bump becomes 3; ROADMAP.md is updated.
+- **Saves tab** (the drawer's third tab):
+  - **This ship:** its name, part count and readiness, with Copy code and Replay build.
+    - Copy puts the code on the clipboard and also shows it, selected, in case the browser refuses.
+  - **Saved ships:** tap one to open it. New ship adds an empty one.
+  - **From a code:** paste a code and open it as a new ship. Its messages show right under the box.
+  - **Delete this ship:** takes two taps.
+- **Replay:**
+  - The open ship rebuilds itself on the board, one step at a time. Each step takes 0.06 to 0.32 seconds: about 5 seconds for the 14-part starter ship, about 9 for 30 to 150 steps, and up to 36 at the 600-step cap.
+  - It works in the plans or the Hull view, and switching between them doesn't stop it.
+  - A tap on the board, or Stop replay, ends it.
+  - A replay only shows; it changes nothing.
+- **Tabs:** the Ship tab's badge moved to the tab's corner so three tabs fit the narrowest drawer.
+- **Tests:** 194 in all, 20 new: the codec (with a 2,000-mutation fuzz), the build log and replay, the slots and the v1 to v2 migration.
+
+### Decisions made this session
+
+- **"Save slots" means ships kept in the builder,** not campaign saves. There is no campaign until M12.
+- **Codes spell out part ids** ("reactor", not an index or glyph), so a code still reads after content is added or reordered. That's why a code is about 174 characters, not 100.
+- **A pasted code opens as a new ship,** so it never overwrites the one being built.
+- **Undo history doesn't survive switching slots.** The build log does, and so does the replay.
+- **The replay keeps the camera still,** so every step draws sharp; moving frames are drawn at half resolution.
+- **Slot names are fixed** ("Ship 1", "Ship 2"...). There's no renaming yet.
+
+### Verified here (headless Chromium with scripted touch, not a phone)
+
+- **At all three sizes** (821×283, 905×370 and 960×825), 30 checks:
+  - Copy shows and copies a code.
+  - The second "device" rebuilds the identical ship.
+  - Bad codes get messages and add nothing.
+  - The replay plays, carries on through Hull and back, and stops on a tap.
+  - New ship, switching and two-tap delete work.
+  - All six slots full: New ship is disabled and pasting is refused.
+  - Reload keeps the slots.
+  - An M3 save (version 1) migrates in the app.
+- **Offline:** with the server stopped after one visit, an M3 save migrates, and copy, new ship, paste, replay and reload all work from the cache.
+- **Regression:** the M4 touch build and the 3D board checks still pass.
+- **Console:** no errors or warnings.
+
+### Known issues
+
+- **Some old ships can't replay fully.** An M3-era ship with parts in the cut corners stops its replay at the first such part, with a message, because that placement isn't allowed any more.
+- **The Saves tab scrolls on the cover screen:** paste and delete sit below the fold.
+- **Carried over:** two open copies of the game share one save.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Update:** tap "Update ready, tap to reload". Your current ship should be slot 1 in the Saves tab.
+2. **Two devices:** in Saves, tap Copy code. Paste it into Space Wrecked on another device (a computer's browser works) with Open the code. Expect the same ship, ready to launch.
+3. **Broken code:** paste half a code. Expect a message, and no new ship.
+4. **Replay:** tap Replay build, and try it with Hull on too. A tap on the board stops it.
+5. **Slots:** make a new ship, switch between ships, and delete one (two taps). Then swipe the app away, reopen it, and check they're all still there.
+
+### Next session
+
+**Gate 1 is next, and it's Evan's call:** build on the Fold for 15 minutes and decide whether to keep going. If yes, record that here and start Phase 2 with M6 (ship to battle map). If not, fix the builder first.
+
 ## M4 Parts art and auto-hull, in 3D (2026-10-11)
 
 **Status:** done. Evan ran it on the Fold and reported "It's good", so Done when is met and the ROADMAP.md box is ticked. Done when has two halves:

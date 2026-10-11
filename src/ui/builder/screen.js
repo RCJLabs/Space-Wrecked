@@ -2,8 +2,11 @@
 // it against the flight checklist.
 // Input -> session action (src/sim/session.js) -> new session -> redraw.
 // A drag or pinch in progress is input, so it lives here until it ends in
-// an action; the session itself only changes through its store. Every new
-// ship goes to the game store (ship/set), which saves it.
+// an action; the session itself only changes through its store. The ship
+// being built is the open one of the game's saved slots (builds.js): every
+// change goes to the game store (builds/save) with its build log, which
+// saves it.
+import { decodeBlueprint, encodeBlueprint } from '../../core/blueprint.js';
 import { createStore } from '../../core/store.js';
 import { loadContent } from '../../platform/content.js';
 import { traceHull } from '../../render/hull.js';
@@ -13,8 +16,10 @@ import { partIconSvg } from '../../render/parts/blueprint.js';
 import { hitsGhost, pickModule } from '../../render/pick.js';
 import { BOARD_VIEW, boardBox, createBoard } from '../../render/shipView.js';
 import { doorStates, layoutProblems, newShip, placementError, removeModule } from '../../sim/builder.js';
+import { activeSlot, MAX_SLOTS, nextSlotName } from '../../sim/builds.js';
 import { canLaunch, flightChecklist, shipStats } from '../../sim/constraints.js';
 import { footprint } from '../../sim/modules.js';
+import { logFor, openBuild, replay } from '../../sim/replay.js';
 import { createSession, reduceSession, snapPlacement } from '../../sim/session.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
@@ -30,6 +35,8 @@ const TURN_SLOP = 0.17; // radians of twist before a pinch turns the ship
 const KEY_TURN = Math.PI / 12; // Q and E on a keyboard
 const NOTICE_MS = 2600;
 const SETTLE_MS = 150; // still this long after a camera move, the board sharpens
+const REPLAY_MS = 9000; // a replay's steps share this long, each kept to 60-320 ms
+const REPLAY_HOLD_MS = 900; // the finished ship stays this long before the replay ends
 const TILE_GAP = 6;
 const TABS = 56; // the drawer's tab row and the space under it
 
@@ -38,7 +45,7 @@ const TABS = 56; // the drawer's tab row and the space under it
 let kept = null;
 
 export const builderScreen = {
-  // game: the game's store, which holds (and saves) the ship.
+  // game: the game's store, which holds (and saves) the builder's ships.
   mount(root, { store: game }) {
     const el = node('section', 'builder');
     const board = node('div', 'bld-board');
@@ -68,7 +75,7 @@ export const builderScreen = {
     let drawer = null;
     let derived = null; // per ship: { doors, hull, loose, flagged, problems, lines, totals, ready }
     let plans = null; // the 3D board's scenes
-    let shown = { ship: null, ghost: null, hull: null }; // what the board was last given
+    let shown = { ship: null, ghost: null, hull: null, saves: null }; // what the board and Saves tab were last given
     let rect = null;
     let box = null;
     let fit = null;
@@ -83,6 +90,7 @@ export const builderScreen = {
     let flash = null; // a notice shown until NOTICE_MS passes or the session changes
     let flashTimer = 0;
     let settleTimer = 0;
+    let replaying = null; // { ships, index, error, timer } while a replay plays
     const cleanups = [];
 
     loadContent()
@@ -92,26 +100,41 @@ export const builderScreen = {
         frame = defs.frames.get(FRAME);
         plans = createBoard(frame);
         box = boardBox(frame);
-        // Keep this page's session (and its undo history) if it still holds
-        // the saved ship; otherwise start from the save.
-        const saved = usable(game.getState().ship);
-        store = createStore((session, action) => reduceSession(session, action, defs), kept?.ship === saved ? kept : createSession(saved));
+        // With no saved ships yet, start one. Keep this page's session (and
+        // its undo history) if it still holds the open ship; otherwise start
+        // from the save.
+        if (!activeSlot(game.getState().builds)) addSlot(newShip(FRAME), []);
+        const opened = openSlot();
+        store = createStore((session, action) => reduceSession(session, action, defs), kept?.ship === opened.ship ? kept : createSession(opened.ship, opened.log));
         derived = derive(store.getState().ship);
         store.subscribe(onSession);
-        // A ship that arrives from outside (a save imported from the dev menu)
-        // replaces the one being built. Only a change to the saved ship
-        // counts, not every change to the game state.
-        let gameShip = game.getState().ship;
+        // A ship that arrives from outside (another slot opened, a pasted
+        // code, a save imported from the dev menu) replaces the one being
+        // built. Only a change to the open slot counts.
+        let gameSlot = activeSlot(game.getState().builds);
         cleanups.push(
           game.subscribe((state) => {
-            if (!alive || state.ship === gameShip) return;
-            gameShip = state.ship;
-            if (state.ship !== store.getState().ship) store.dispatch({ type: 'build/load', ship: usable(state.ship) });
+            if (!alive) return;
+            const slot = activeSlot(state.builds);
+            if (slot === gameSlot) return;
+            gameSlot = slot;
+            if (!slot) {
+              addSlot(newShip(FRAME), []);
+              return;
+            }
+            const session = store.getState();
+            if (slot.ship === session.ship && slot.log === session.log) return; // our own save
+            stopReplay();
+            const next = openSlot();
+            store.dispatch({ type: 'build/load', ship: next.ship, log: next.log });
+            drawer.saves.reset();
+            sync();
           }),
         );
         drawer = createDrawer(defs, {
           palette: {
             tap: (type) => {
+              stopReplay();
               setLook('plans');
               act({ type: 'build/arm', moduleType: type });
             },
@@ -126,6 +149,22 @@ export const builderScreen = {
             drawer.show('parts');
             setLook('plans');
             act({ type: 'build/arm', moduleType: type, toggle: false });
+          },
+          saves: {
+            onOpen: (index) => game.dispatch({ type: 'builds/open', index }),
+            onNew: () => addSlot(newShip(FRAME), []),
+            onCopy: () => encodeBlueprint(store.getState().ship),
+            onPaste: (text) => {
+              const result = decodeBlueprint(text, defs);
+              if (!result.ok) return result;
+              if (game.getState().builds.slots.length >= MAX_SLOTS) {
+                return { ok: false, error: `Delete a ship first: there's room for ${MAX_SLOTS}.` };
+              }
+              const name = addSlot(result.ship, logFor(result.ship));
+              return { ok: true, name };
+            },
+            onReplay: () => (replaying ? stopReplay() : startReplay()),
+            onDelete: () => game.dispatch({ type: 'builds/delete', index: game.getState().builds.active }),
           },
         });
         el.prepend(drawer.el);
@@ -142,15 +181,15 @@ export const builderScreen = {
     cleanups.push(
       attachGestures(board, {
         tap(x, y) {
-          if (!ready() || look === 'hull') return;
+          if (stopReplay() || !ready() || look === 'hull') return;
           const point = pointAt(x, y);
           if (point) act({ type: 'build/tap', x: point[0], y: point[1] });
         },
         longPress(x, y) {
-          if (ready() && look === 'plans') openCardAt(x, y);
+          if (!stopReplay() && ready() && look === 'plans') openCardAt(x, y);
         },
         dragStart(x0, y0) {
-          if (!ready()) return false;
+          if (stopReplay() || !ready()) return false;
           closeCard();
           drag = look === 'hull' ? { kind: 'pan', x: x0, y: y0 } : startBoardDrag(x0, y0);
           return true;
@@ -159,7 +198,7 @@ export const builderScreen = {
         dragEnd: endDrag,
         dragCancel: cancelDrag,
         pinchStart(p) {
-          if (!ready()) return;
+          if (stopReplay() || !ready()) return;
           closeCard();
           pinch = { start: camera, from: p };
         },
@@ -226,6 +265,7 @@ export const builderScreen = {
 
     function act(action) {
       closeCard();
+      stopReplay();
       store?.dispatch(action);
     }
 
@@ -237,7 +277,9 @@ export const builderScreen = {
         derived = derive(session.ship);
         becameReady = derived.ready && !wasReady;
         drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules });
-        game.dispatch({ type: 'ship/set', ship: session.ship });
+      }
+      if (session.ship !== prev.ship || session.log !== prev.log) {
+        game.dispatch({ type: 'builds/save', ship: session.ship, log: session.log });
       }
       // A new notice shows for a while; any other change replaces it with
       // the hint for what is on screen now.
@@ -274,10 +316,32 @@ export const builderScreen = {
       return defs.balance.startingCrew;
     }
 
-    // A saved ship on a frame this build doesn't know can't be drawn; build a
-    // new one instead (the saved one stays until the first change).
-    function usable(ship) {
-      return ship && defs.frames.has(ship.frame) ? ship : newShip(FRAME);
+    // The open slot's ship and a log that replays to it (openBuild repairs a
+    // damaged or overlong log). A ship on a frame this build doesn't know
+    // can't be drawn; a new one stands in (the saved one stays until the
+    // first change).
+    function openSlot() {
+      const slot = activeSlot(game.getState().builds);
+      if (!defs.frames.has(slot.ship.frame)) return { ship: newShip(FRAME), log: [] };
+      return openBuild(slot.ship, slot.log, defs);
+    }
+
+    // Adds a slot holding ship and log, opens it, and returns its name.
+    function addSlot(ship, log) {
+      const name = nextSlotName(game.getState().builds);
+      game.dispatch({ type: 'builds/add', slot: { name, ship, log } });
+      return name;
+    }
+
+    // What the Saves tab shows: every slot, and whether the replay runs.
+    function savesView() {
+      const builds = game.getState().builds;
+      const slots = builds.slots.map((slot) => {
+        const ship = slot === activeSlot(builds) ? store.getState().ship : slot.ship;
+        const known = ship.modules.every((m) => defs.modules.has(m.type)) && defs.frames.has(ship.frame);
+        return { name: slot.name, parts: ship.modules.length, ready: known && canLaunch(flightChecklist(ship, defs, crew())) };
+      });
+      return { slots, active: builds.active, replaying: Boolean(replaying), canReplay: store.getState().log.length > 0 };
     }
 
     // Brings the DOM in line with the session and asks for a redraw.
@@ -298,10 +362,67 @@ export const builderScreen = {
       const summary = flightSummary(session.ship, defs, derived.lines);
       layoutChip.hidden = !summary;
       if (summary) setText(layoutChip, summary);
+      // The Saves tab only changes with the slots, the ship or the replay;
+      // a drag's many syncs leave it alone.
+      const savesKey = [game.getState().builds, session.ship, Boolean(replaying)];
+      if (!shown.saves || savesKey.some((v, i) => v !== shown.saves[i])) {
+        drawer.saves.update(savesView());
+        shown.saves = savesKey;
+      }
+      if (replaying) {
+        setStatus({ tone: 'info', text: `Replaying the build: step ${replaying.index} of ${replaying.ships.length - 1}. Tap the board to stop.` });
+        dirty = true;
+        return;
+      }
       const hint = look === 'hull' ? { tone: 'info', text: 'The ship from outside. Tap Hull to go back to the plans.' } : hintFor(session, defs, drag);
       setStatus(flash && !drag ? flash : hint);
       showOnBoard(session);
       dirty = true;
+    }
+
+    // The build replayed on the board, a step at a time, from the empty
+    // frame to the ship as it is. It only shows: the session doesn't change.
+    function startReplay() {
+      const session = store.getState();
+      const { ships, error } = replay(session.log, defs, session.ship.frame);
+      if (ships.length < 2) return;
+      closeCard();
+      store.dispatch({ type: 'build/cancel' });
+      replaying = { ships, error, index: 0, timer: 0 };
+      const stepMs = Math.max(60, Math.min(320, REPLAY_MS / (ships.length - 1)));
+      const finish = () => {
+        const failed = replaying?.error;
+        stopReplay();
+        if (failed) setStatus({ tone: 'bad', text: `The replay stops at step ${failed.index + 1}: ${failed.message}` });
+      };
+      // index is always the step on the board.
+      const advance = (step) => {
+        if (!replaying) return;
+        replaying.index = step;
+        showReplayStep();
+        sync();
+        replaying.timer = step < ships.length - 1 ? setTimeout(() => advance(step + 1), stepMs) : setTimeout(finish, REPLAY_HOLD_MS);
+      };
+      advance(0);
+    }
+
+    // Ends a replay, if one is playing, and shows the ship being built
+    // again. True if it was playing.
+    function stopReplay() {
+      if (!replaying) return false;
+      clearTimeout(replaying.timer);
+      replaying = null;
+      shown = { ship: null, ghost: undefined, hull: null, saves: null };
+      sync();
+      return true;
+    }
+
+    function showReplayStep() {
+      const ship = replaying.ships[replaying.index];
+      const hull = traceHull(ship, defs);
+      plans.setShip({ ship, defs, frame, doors: doorStates(ship, defs), hull, selected: null, lifted: null, flagged: new Set() });
+      plans.setGhost(null);
+      if (look === 'hull') plans.setHull({ ship, defs, hull, skin: skinFor('yard') });
     }
 
     // Shows the plans (where the ship is built) or the hull from outside.
@@ -315,6 +436,7 @@ export const builderScreen = {
         closeCard();
         store.dispatch({ type: 'build/cancel' });
       }
+      if (replaying) showReplayStep(); // a replay carries on in either look
       sync();
     }
 
@@ -528,6 +650,7 @@ export const builderScreen = {
         alive = false;
         clearTimeout(flashTimer);
         clearTimeout(settleTimer);
+        if (replaying) clearTimeout(replaying.timer);
         for (const cleanup of cleanups) cleanup();
         el.removeEventListener('pointerdown', closeOnTouch, true);
         el.remove();
