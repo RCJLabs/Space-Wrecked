@@ -1,8 +1,9 @@
 // The scripted player: a plain player for either side of a battle. Tests
-// and tools/battle-log.js play both sides with it, and the Fight screen
-// plays the enemy's turns with it until the enemy AI (M9) takes over. It is
-// plain on purpose: it doesn't weigh cover, flanks or odds.
-import { act, createBattle, targetsFor } from './battle.js';
+// and tools/battle-log.js play both sides with it (the golden battle), and
+// tests play the crew with it against the enemy AI (ai.js). It is plain on
+// purpose: it doesn't weigh cover, flanks or odds.
+import { autoplay } from './autoplay.js';
+import { targetsFor } from './battle.js';
 import { SIDES } from './grid.js';
 import { edgeKey, wallAt } from './mapFromShip.js';
 import { reachable, stepsFrom } from './moves.js';
@@ -38,17 +39,6 @@ export function scriptedAction(battle, rules) {
 
 // Plays a battle with the scripted player on both sides until it ends, or
 // until maxRounds have passed. Returns { battle, actions, events }.
-export function playScripted(setup, rules, { maxRounds = 30 } = {}) {
-  let { battle, events } = createBattle(setup, rules);
-  events = [...events];
-  const actions = [];
-  while (!battle.winner && battle.round <= maxRounds) {
-    const action = scriptedAction(battle, rules);
-    const result = act(battle, action, rules);
-    if (!result.ok) throw new Error(`The scripted player tried ${JSON.stringify(action)}: ${result.error}`);
-    actions.push(action);
-    events.push(...result.events);
-    battle = result.battle;
-  }
-  return { battle, actions, events };
+export function playScripted(setup, rules, options) {
+  return autoplay(setup, rules, { crew: scriptedAction, enemy: scriptedAction }, options);
 }

@@ -2,12 +2,125 @@
 
 Newest entry first.
 
+## M9 Enemy AI v1 (2026-10-11)
+
+**Status:** done, and the ROADMAP.md box is ticked. Evan played M8 on the Fold ("it works") and asked for the next milestone.
+
+Done when: "in test scenarios the AI takes cover and flanks, and never stands in the open without a reason."
+- **Takes cover:** with a marine across an open room, the pirate shoots from beside the one crate, in half cover, not from the open. Offered a crate and a locker, it shoots from the locker's full cover.
+- **Flanks:** a marine in half cover behind a crate gets flanked. The pirate goes round to the one spot where the marine has no cover and it has its own, and the shot goes in with no cover and the flanking crit bonus.
+- **Never stands in the open without a reason.** The AI may only end up where an enemy sees it with no cover between for one of two reasons:
+  - no covered tile is in reach;
+  - a shot from there is worth at least 1 hit point and beats every covered tile's shot.
+
+  A test checks every AI decision in 60 whole fights on the example ship, against the scripted crew and against the AI crew. It works the exposure out from the rules, not from the AI's own notes. Every case had its reason.
+
+### Shipped
+
+- **`src/sim/ai.js`** (pure, deterministic, no random numbers). `aiAction(battle, rules)` gives the next action for the side whose turn it is, so it plays either side.
+  - **Plans:** for the first unit with an action left, every plan it could make this turn: stay, move or dash, then shoot an enemy in sight, go on overwatch, or nothing after a dash.
+  - **Breach plans:** open a closed door beside it, then shoot or watch through it. Opening a door draws no overwatch fire, because nobody moves.
+  - **Each plan is scored in expected hit points:**
+    - plus the harm its shot should do: the chance to hit times the damage, with a kill worth 4 more;
+    - minus the harm every enemy who can see that tile could do to it there, so cover and range count;
+    - minus the overwatch fire it would walk through;
+    - plus something for overwatch, more when an enemy is close enough to step into sight next turn;
+    - minus a little for each step from the enemy, when it won't shoot.
+  - **Target choice falls out of the score:** an enemy in the open, or one a hit would kill, is worth more.
+  - **Shots go first:** a shot worth taking beats holding back, unless it is reckless (it scores more than 3 hit points worse than the best plan without a shot). Without this, two AI sides sat on overwatch either side of a door forever.
+  - **Doors on the way:** each tile is judged with the doors its path would open.
+- **The Fight's enemy turns are the AI's.** The M7 scripted player still plays both sides of the golden battle, unchanged.
+- **`src/sim/autoplay.js`** plays a battle out with a player for each side. The tests use it, and so will the M11 balance harness.
+- **`node tools/battle-log.js --ai`** prints a boarding fight, the scripted crew against the AI's boarders. `--seed` picks another.
+- **Tests:** 344 in all, up from 330. The AI has 13:
+  - the scenarios above;
+  - target choice, and a kill's worth;
+  - the overwatch fallback, and pushing on when the enemy is far;
+  - breaching through a watched door;
+  - reloading;
+  - determinism;
+  - fights ending, and boarders firing within two rounds;
+  - the never-in-the-open check.
+
+  The Fight's tests now play the scripted crew by taps against the AI.
+
+Seed 7, the scripted crew against the AI's boarders (`node tools/battle-log.js --ai --seed 7`), the boarders' second turn:
+
+```
+Pirate e2 opens the door on the south side of (5, 3).
+Pirate e2 shoots Medic c3: 60%, rolled 25, hit, crit (35%, rolled 15) for 6.
+Pirate brute e3 moves (5, 4) to (5, 3) to (4, 3).
+Pirate brute e3 shoots Medic c3: 65%, rolled 51, hit, crit (50%, rolled 19) for 8.
+Medic c3 is down, bleeding out in 3 turns.
+```
+
+### Decisions made this session
+
+- **Shots go first, but not recklessly,** with breaching to open doors. Scores alone kept both sides hidden behind closed doors on overwatch. AI against AI, 38 of 40 fights stalled at the 30-round limit. With these, none of 40 does.
+- **No randomness in the AI.** The same battle always gets the same move, so fights replay from their seed and a fight on the phone can be replayed in Node.
+- **The AI knows where everyone is,** as there's no fog of war (M8).
+- **The weights are starting values,** in `WEIGHTS` in `ai.js`. M11's harness is where they get tuned, with the battle numbers.
+
+### Verified here
+
+- **Tests:** all 344 pass in Node, and the data validates.
+- **The example ship, 3 crew against 4 boarders, 100 seeds for each pairing:**
+
+  | Crew played by | Boarders played by | Crew wins | Boarders win | No winner |
+  | --- | --- | --- | --- | --- |
+  | scripted | scripted | 34 | 64 | 2 |
+  | scripted | AI | 41 | 58 | 1 |
+  | AI | scripted | 75 | 22 | 3 |
+  | AI | AI | 70 | 30 | 0 |
+
+  The AI makes the outnumbered crew win 75 where the scripted player wins 34.
+- **Where turns end** (40 seeds, against the scripted crew):
+  - The AI's boarders end a turn in the open 22% of the time, against 59% for the scripted ones.
+  - Of the AI's decisions, 677 ended in cover and 7 in the open with no cover in reach.
+  - 208 ended in the open where the only shots were from open tiles (median expected harm 3.5 hit points).
+  - 86 ended in the open for a better shot than any covered tile offered (median 3.8).
+- **Speed:** 1,000 AI-against-AI fights in about 6 s in Node; M11 needs them in under a minute.
+- **In the browser** (headless Chromium, scripted touch), at 905×370, 821×283 and 960×825:
+  - whole fights played by touch against the AI, with the page matching Node after every order (0 differences) and no console errors;
+  - both outcomes came up;
+  - offline still works, wrecks still carry into a fight, and the cards and Fit still work.
+
+### Known issues
+
+- **The defenders win most AI-against-AI fights** on the example ship: 70 of 100 for 3 crew against 4 boarders. The boarders come in through one airlock and its doors into the crew's overwatch. That's balance, for M11, unless Evan feels it now.
+- **Against the plain scripted crew, fights can drag:** one browser check ran to 26 rounds. The scripted crew trades long shots while the boarders hold cover. A player who closes in won't see that.
+- **The AI judges threat by where enemies stand now.** It doesn't foresee the crew moving to flank it.
+- **The AI sees everyone** (no fog of war). A real scout or surprise needs fog first (ROADMAP §9).
+- **The boarders can't choose their way in** beyond the airlock they board by, and can't cut through walls (ROADMAP §8's chokepoint risk).
+- **Carried over from M8:**
+  - the fight isn't saved;
+  - tiles are 38–41 px in the cover screen's browser tab;
+  - the camera doesn't follow the action.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Update,** then dev menu → Fight. Play two or three fights.
+2. **Watch the boarders.** They should:
+   - stop beside crates and lockers rather than in the open;
+   - go round your cover to flank;
+   - open doors and shoot through them, rather than walking into your overwatch;
+   - go on overwatch when they can't reach a shot.
+3. **Try to bait them:** put someone on overwatch facing a door, then end the turn.
+4. **Tell me:**
+   - whether they feel smart or cheap;
+   - whether fights are too easy, too hard or about right (the numbers above say the crew should win most);
+   - how long a fight takes. Gate 2 asks for 5 to 8 minutes.
+
+### Next session
+
+**M10 Enemy ship generator.** First task: in `src/sim/gen/`, build enemy ships with the builder's own rules from presets (pirate cutter, patrol corvette, derelict hauler) and a seed. Then the test: 100 generated ships all pass the flight checklist.
+
 ## M8 Tactical UI (2026-10-11)
 
-**Status:** done here, and the ROADMAP.md box is ticked. Evan said "Start the next milestone" after M7.
+**Status:** done, and the ROADMAP.md box is ticked. Evan said "Start the next milestone" after M7. After playing it on the Fold he said: "Start the next milestone it works".
 
 Done when: "a full 3-against-4 fight plays on the Fold."
-- **Not yet on the Fold:** that part is Evan's test (below).
+- **On the Fold:** Evan played it: "it works". He gave no word yet on tile size, the square camera or the pace of enemy turns.
 - **Whole fights played by touch** at the Fold's three sizes, in headless Chromium with scripted touch. Three crew against four boarders on the example ship, played to the end.
   - The crew's orders were given by tapping tiles, units and buttons.
   - A copy of each fight ran in Node from the page's seed. After every order the page matched it exactly: 0 differences.

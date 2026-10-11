@@ -150,7 +150,14 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Forgiving odds:** an optional menu setting adds 10 to the crew's next shot for each miss in a row, up to 30. The bonus is included in the number shown, so Law 4 still holds.
 - **The log:** every action returns the events it caused, and the same setup, seed and actions always give the same events (`src/sim/battle.js`; the example battle in `tests/golden/` is replayed by the tests).
 - **Giving orders** (M8, `src/sim/fight.js`): a tap never spends an action. A tap on a tile shows the move (its path, one action or a dash, and the cover where it stops), and a second tap on it makes it. A tap on an enemy, or Shoot, shows the shot with its odds part by part, and Fire or a second tap takes it. Overwatch, Reload, Stabilize and Open door are buttons; End turn takes a second tap while anyone can still act. The board opens square to the ship, where tiles are biggest, and every enemy is shown (no fog of war); those the selected unit can see show the hit chance.
-- **The enemy's turn** is worked out at once by the rules and then played out on the board, event by event: walks, shots that land or fly wide with the damage over the unit hit, doors opening, whose turn it is. Skip goes to the end. Until the enemy AI (M9), a plain scripted player takes the enemy's turns (`src/sim/scripted.js`).
+- **The enemy's turn** is worked out at once by the rules and then played out on the board, event by event: walks, shots that land or fly wide with the damage over the unit hit, doors opening, whose turn it is. Skip goes to the end.
+- **The enemy AI** (M9, `src/sim/ai.js`, pure and with no random numbers) plays the enemy's turns. It plays a unit at a time and scores every plan the unit could make:
+  - stay, move or dash, then shoot, overwatch or nothing;
+  - or breach: open a door beside it and shoot or watch through, which draws no overwatch fire.
+
+  A plan's score is in expected hit points. It is the harm its shot should do (kills count 4 more), minus the harm every enemy who can see where it ends up could do to it there, and minus the overwatch fire on the way. Overwatch adds something, more with an enemy close enough to step into sight. When it won't shoot, each step from the enemy costs a little. Doors its path opens count.
+
+  A shot worth taking goes before holding back, unless it is reckless. The AI never ends up in the open (seen by an enemy with no cover between) unless no cover is in reach, or the shot from there beats every covered tile's. The weights are starting values for M11 to tune.
 
 ### 4.4 Heat
 
@@ -288,7 +295,7 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
   **Done when:** hit-chance math is tested and a fixed-seed battle replays identically.
 - [x] **M8 Tactical UI.** Selection, movement ranges, target preview with exact odds, tap to preview and tap to confirm, enemy turn playback with skip, hit and miss feedback.
   **Done when:** a full 3-against-4 fight plays on the Fold.
-- [ ] **M9 Enemy AI v1.** Scored positions (cover, flank, distance, threat), target choice, an overwatch fallback, breaching from airlocks.
+- [x] **M9 Enemy AI v1.** Scored positions (cover, flank, distance, threat), target choice, an overwatch fallback, breaching from airlocks.
   **Done when:** in test scenarios the AI takes cover and flanks, and never stands in the open without a reason.
 - [ ] **M10 Enemy ship generator.** Presets built with the builder's rules.
   **Done when:** 100 generated ships all pass the flight checklist (tested).
@@ -368,7 +375,7 @@ A Capacitor build; a paid version with a web demo; optional cloud saves on Base4
 | --- | --- | --- |
 | The builder feels fiddly on a phone | Gate 1 fails | Fix it before Phase 2; fall back to bigger modules or a slot hull |
 | Two deep systems overrun scope | Phase 2 runs past about 8 sessions | Keep the shared grid; cut base building to slots first |
-| Players build chokepoint fortresses | Balance runs show defenders always win | Enemies breach walls and choose entry points; corridors stay two tiles wide |
+| Players build chokepoint fortresses | Balance runs show defenders always win (AI against AI on the example ship, M9: the crew of 3 wins 70 of 100 against 4 boarders) | Enemies breach walls and choose entry points; corridors stay two tiles wide. Since M9 the AI breaches doors: it opens one and shoots through, which overwatch can't punish |
 | Percentage misses feel unfair | Testers complain about high-odds misses | Clearer cover display, the forgiving-odds setting, the math always shown |
 | 3D on canvas runs slowly on mid-range phones | Dropped frames turning or zooming the board (M4), or in battles (M8) | Rough half-resolution frames while the camera moves or units walk, only on a phone too slow for full ones (the frame budget, after M6: they blurred zooming on the Fold); cache the still board, and in a fight redraw it only when something on it changed (M8); fewer lines, cap the pixel ratio. Past that: three.js (MIT, one vendored file, no build step), with Evan's approval |
 | Lost saves | Reports after Chrome data is cleared | Persistent storage request, export and import, migrations |

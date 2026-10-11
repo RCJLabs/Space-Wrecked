@@ -8,17 +8,23 @@
 //   node tools/battle-log.js --golden   rewrites tests/fixtures/example-battle.json
 //                                       (setup and actions) and
 //                                       tests/golden/example-battle.txt (its log)
+//   node tools/battle-log.js --ai       the boarding party against the squad
+//                                       (data/encounters.json), the boarders
+//                                       played by the enemy AI (src/sim/ai.js)
 //
-// The scripted player (src/sim/scripted.js) is plain on purpose: it is not
-// the enemy AI (M9). The golden battle pins the rules: only rewrite it on
+// The scripted player (src/sim/scripted.js) is plain on purpose: it plays
+// both sides of the golden battle, which pins the rules: only rewrite it on
 // purpose, and say so in PROGRESS.md.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { aiAction } from '../src/sim/ai.js';
+import { autoplay } from '../src/sim/autoplay.js';
 import { describeEvent } from '../src/sim/battleLog.js';
 import { buildShip } from '../src/sim/builder.js';
 import { indexDefs } from '../src/sim/defs.js';
+import { deploy } from '../src/sim/deploy.js';
 import { mapFromShip } from '../src/sim/mapFromShip.js';
-import { playScripted } from '../src/sim/scripted.js';
+import { playScripted, scriptedAction } from '../src/sim/scripted.js';
 import { EXAMPLE_SCRIPT } from './build-ship.js';
 import { readData } from './data.js';
 
@@ -58,12 +64,19 @@ export function logText(events, battle) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const args = process.argv.slice(2);
+  if (args.includes('--golden') && args.includes('--ai')) {
+    console.error('battle-log: --golden writes the scripted example battle; leave out --ai.');
+    process.exit(1);
+  }
   const rules = indexDefs(readData());
   // A seed of digits is a number, as the tests pass it; anything else is a string.
   const seedAt = args.indexOf('--seed');
   const raw = seedAt >= 0 ? args[seedAt + 1] : null;
-  const setup = { ...EXAMPLE_BATTLE, ...(raw !== null && { seed: /^\d+$/.test(raw) ? Number(raw) : raw }) };
-  const { battle, actions, events } = playScripted({ ...setup, map: exampleShipMap(rules) }, rules);
+  const seed = raw === null ? EXAMPLE_BATTLE.seed : /^\d+$/.test(raw) ? Number(raw) : raw;
+  const map = exampleShipMap(rules);
+  const { battle, actions, events } = args.includes('--ai')
+    ? autoplay({ map, units: deploy(map, rules.squad, rules.encounters.get('boarders').enemies, rules).units, seed }, rules, { crew: scriptedAction, enemy: aiAction })
+    : playScripted({ ...EXAMPLE_BATTLE, seed, map }, rules);
   if (args.includes('--golden')) {
     writeFileSync(BATTLE_FIXTURE, fixtureText({ ...EXAMPLE_BATTLE, actions }));
     writeFileSync(GOLDEN_BATTLE, logText(events, battle));
