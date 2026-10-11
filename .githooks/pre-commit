@@ -1,0 +1,7 @@
+#!/bin/sh
+# Rewrites the precache list and version in sw.js from the staged files, then
+# stages sw.js, so every commit that changes a cached file also changes sw.js
+# (browsers only update a service worker when sw.js changes).
+# Enable once per clone with: npm run hooks
+node tools/precache.js --staged || exit 1
+git add sw.js

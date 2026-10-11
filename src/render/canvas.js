@@ -1,0 +1,35 @@
+// Full-screen canvas sized to its CSS box, with devicePixelRatio capped at 2.
+// Drawing code works in CSS pixels; the frame sets the dpr transform.
+
+export const MAX_DPR = 2;
+
+export function createView(canvas, onResize) {
+  const view = {
+    canvas,
+    ctx: canvas.getContext('2d', { alpha: false }),
+    width: 0,
+    height: 0,
+    dpr: 1,
+  };
+
+  function measure() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+    const width = Math.round(rect.width * dpr);
+    const height = Math.round(rect.height * dpr);
+    if (width === canvas.width && height === canvas.height && dpr === view.dpr) return;
+    canvas.width = width;
+    canvas.height = height;
+    view.width = rect.width;
+    view.height = rect.height;
+    view.dpr = dpr;
+    onResize?.(view);
+  }
+
+  // Folding or unfolding the phone resizes the viewport and can change the
+  // pixel ratio, so watch both.
+  new ResizeObserver(measure).observe(canvas);
+  window.addEventListener('resize', measure);
+  measure();
+  return view;
+}

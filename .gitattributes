@@ -1,0 +1,4 @@
+# LF everywhere, so tools/precache.js hashes the same bytes on every OS.
+* text=auto eol=lf
+*.png binary
+*.webp binary

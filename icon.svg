@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Source for the PNG app icons: run `npm run icons` after editing.
+       tools/icons.js reads only rect, circle and polygon with fill,
+       fill-opacity and opacity. Keep the ship inside the central circle
+       (radius 204) so the maskable icon never crops it. -->
+
+  <!-- Backdrop -->
+  <rect x="0" y="0" width="512" height="512" fill="#0e1530"/>
+  <circle cx="430" cy="450" r="172" fill="#2b3f86" fill-opacity="0.35"/>
+  <circle cx="430" cy="450" r="152" fill="#1a2550"/>
+  <circle cx="80" cy="92" r="4" fill="#ffffff" fill-opacity="0.9"/>
+  <circle cx="150" cy="48" r="2.5" fill="#ffffff" fill-opacity="0.6"/>
+  <circle cx="430" cy="84" r="3.5" fill="#ffffff" fill-opacity="0.8"/>
+  <circle cx="470" cy="190" r="2.5" fill="#ffffff" fill-opacity="0.6"/>
+  <circle cx="60" cy="250" r="3" fill="#ffffff" fill-opacity="0.7"/>
+  <circle cx="92" cy="420" r="4" fill="#ffffff" fill-opacity="0.8"/>
+  <circle cx="150" cy="482" r="2.5" fill="#ffffff" fill-opacity="0.6"/>
+  <circle cx="352" cy="40" r="2" fill="#ffffff" fill-opacity="0.5"/>
+
+  <!-- Engine flames -->
+  <polygon points="182,370 234,370 208,446" fill="#ff9b3d"/>
+  <polygon points="194,370 222,370 208,420" fill="#ffd36b"/>
+  <polygon points="278,370 330,370 304,446" fill="#ff9b3d"/>
+  <polygon points="290,370 318,370 304,420" fill="#ffd36b"/>
+
+  <!-- Ship, built from grid modules -->
+  <rect x="176" y="318" width="64" height="56" rx="6" fill="#8b97b2"/>
+  <rect x="272" y="318" width="64" height="56" rx="6" fill="#8b97b2"/>
+  <rect x="126" y="204" width="20" height="56" rx="4" fill="#8b97b2"/>
+  <rect x="366" y="204" width="20" height="56" rx="4" fill="#8b97b2"/>
+  <rect x="104" y="250" width="64" height="72" rx="10" fill="#a9b5cc"/>
+  <rect x="344" y="250" width="64" height="72" rx="10" fill="#a9b5cc"/>
+  <polygon points="216,142 256,72 296,142" fill="#d3dbea"/>
+  <rect x="216" y="124" width="80" height="84" rx="12" fill="#d3dbea"/>
+  <rect x="160" y="194" width="192" height="136" rx="12" fill="#d3dbea"/>
+  <rect x="222" y="206" width="4" height="112" fill="#2a3552"/>
+  <rect x="286" y="206" width="4" height="112" fill="#2a3552"/>
+  <rect x="172" y="260" width="168" height="4" fill="#2a3552"/>
+
+  <!-- Details -->
+  <circle cx="256" cy="160" r="17" fill="#5ad1ff"/>
+  <circle cx="250" cy="154" r="5" fill="#ffffff" fill-opacity="0.75"/>
+  <circle cx="256" cy="233" r="12" fill="#5fd38d"/>
+  <rect x="236" y="284" width="40" height="10" rx="3" fill="#ff9b3d"/>
+  <circle cx="136" cy="300" r="7" fill="#ff9b3d"/>
+  <circle cx="376" cy="300" r="7" fill="#ff9b3d"/>
+</svg>

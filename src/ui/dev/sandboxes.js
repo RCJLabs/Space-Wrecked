@@ -1,0 +1,5 @@
+// Sandboxes the ?dev=1 menu can jump to. Each entry is { id, name, screen },
+// where screen has the same shape as titleScreen in ../title.js:
+// mount(root) returns { resize(view), draw(ctx, view, timeMs), unmount() }.
+// Empty until M2 adds the builder sandbox.
+export const sandboxes = [];
