@@ -4,7 +4,7 @@ Newest entry first.
 
 ## M0 Scaffold (2026-10-11)
 
-**Status:** built, and checked in headless Chromium at Fold-sized viewports. On the Fold it installs from Chrome at spacewrecked.rcjlabs.com. The offline relaunch, the rest of Done when, is still to run (checklist below). The ROADMAP.md box is ticked.
+**Status:** done. Done when is met: the game installs from Chrome on the Fold at https://spacewrecked.rcjlabs.com/, relaunches in airplane mode, and the tests pass. The ROADMAP.md box is ticked.
 
 ### Shipped
 
@@ -49,13 +49,23 @@ Newest entry first.
 - 60 fps at the 60 cap and 30 at the 30 cap on a 60 Hz headless display. Drawing costs about 0.2 ms a frame.
 - Save export and import round-trip, bad and damaged codes show clear messages, and there are no console errors or warnings.
 
+### On the phone (Galaxy Z Fold 6, 2026-10-11)
+
+- Passed:
+  - The page loads in Chrome, and portrait shows the rotate prompt (checklist lines 1 and 2).
+  - Chrome installs it from https://spacewrecked.rcjlabs.com/ (line 3).
+  - The installed app relaunches in airplane mode (line 5).
+- Folded, in a Chrome tab, the overlay reads 59 to 61 fps with a worst frame of 17 to 25 ms, at 821×283 (2.90:1) on a 60 Hz screen.
+- Not run yet, and not part of Done when:
+  - line 4: the Status readout in the installed app
+  - line 6: FPS in the installed app, folded and unfolded
+  - line 7: save export and import on the phone
+  - line 8: the update prompt in the installed app
+
 ### Known issues
 
-- On the phone so far:
-  - The page loads in Chrome, and portrait shows the rotate prompt.
-  - Folded, in a Chrome tab, the overlay reads 59 to 61 fps with a worst frame of 17 to 25 ms, at 821×283 (2.90:1) on a 60 Hz screen.
-  - Chrome installs it from https://spacewrecked.rcjlabs.com/.
-  - Still to run: the offline relaunch (the last part of Done when) and checklist lines 4 to 8.
+- When M0 closed, GitHub's Pages settings said the certificate for `spacewrecked.rcjlabs.com` hadn't been issued, though Enforce HTTPS was on and the https site installed and worked offline. If the message is still there after a day: remove the custom domain under Settings → Pages, save, add it back, and save again. That restarts the certificate request.
+- Deploy logs warn that `actions/checkout@v4`, `configure-pages@v5` and `deploy-pages@v4` target Node 20, which GitHub now forces onto Node 24. They work. Bump them to newer major versions when convenient.
 - **Resolved: Chrome wouldn't install at the old address, `rcjlabs.github.io/Space-Wrecked/`.**
   - Chrome's install sheet said "This app is already installed", but no app existed, and opening it gave "Could not open app".
   - A fresh manifest `id` and dropping `orientation` changed nothing, while Samsung Internet installed the same build.
