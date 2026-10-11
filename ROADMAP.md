@@ -247,7 +247,7 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
   **Done when:** a full starter ship builds on the Fold, folded and unfolded, without mis-taps, at 60 fps while dragging.
 - [x] **M3 Flight checklist and stats.** constraints.js, a stat panel, and the checklist with fixes.
   **Done when:** every failing line names its fix, and a failing ship saves but cannot launch.
-- [ ] **M4 Parts art and auto-hull, in 3D.** The 3D blueprint builder on our own canvas renderer: 3D fittings for all 12 module types, the hull tracer (rim, fairings, nose, nozzles, barrels, collars), the ship-shaped starter frame, twist to turn, and a Hull view of the solid ship in one manufacturer's skin. (Planned as 2D SVG parts; changed to 3D mid-milestone.)
+- [x] **M4 Parts art and auto-hull, in 3D.** The 3D blueprint builder on our own canvas renderer: 3D fittings for all 12 module types, the hull tracer (rim, fairings, nose, nozzles, barrels, collars), the ship-shaped starter frame, twist to turn, and a Hull view of the solid ship in one manufacturer's skin. (Planned as 2D SVG parts; changed to 3D mid-milestone.)
   **Done when:** any layout looks like a ship from outside, and zooming stays smooth.
 - [ ] **M5 Blueprints, saves and replays.** The blueprint codec, copy and paste, save slots, and the build replay timelapse.
   **Done when:** a code from one device rebuilds the identical ship on another, and a broken code shows a message.

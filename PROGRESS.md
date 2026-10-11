@@ -4,9 +4,9 @@ Newest entry first.
 
 ## M4 Parts art and auto-hull, in 3D (2026-10-11)
 
-**Status:** built and verified here, but the ROADMAP.md box is **not ticked yet**. Done when has two halves:
+**Status:** done. Evan ran it on the Fold and reported "It's good", so Done when is met and the ROADMAP.md box is ticked. Done when has two halves:
 - **"Any layout looks like a ship from outside":** met here. The Hull view shows any layout as a solid ship, and the builder shows it as a blueprint with a hull rim, nose and engines.
-- **"Zooming stays smooth":** needs the Fold. Headless Chromium draws canvas on the CPU, so it can't say how the phone's GPU copes (numbers below). As with M2, the box gets ticked after the phone run.
+- **"Zooming stays smooth":** met on the Fold, per Evan. Headless Chromium draws canvas on the CPU, so the numbers below are only a floor. Evan reported no FPS numbers.
 
 **Direction change.** Mid-milestone, Evan chose 3D: the 3D blueprint look in the builder, and 3D in general. That changes a locked decision. ROADMAP.md §3 records it ("Graphics" was "2D top-down cutaway"). The design-history doc ("Space tactics RPG: brainstorm plan") isn't in the repo, so Evan should note the change there. The rules stay on the 2D grid, and the ship layout is still the boarding map. Only the drawing went 3D.
 
@@ -107,7 +107,7 @@ Newest entry first.
 
 ### Next session
 
-If the phone run is smooth and free of mis-taps, tick M4 and start M5 (blueprints, saves and replays). If pinching or turning stutters, tune the rough frames first.
+M5, blueprints, saves and replays. First task: the blueprint codec, a versioned base64url code with a checksum that rebuilds the identical ship, and a message (never a crash) for a broken code.
 
 ## M3 Flight checklist and stats (2026-10-11)
 
