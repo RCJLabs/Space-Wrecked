@@ -5,14 +5,20 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   airlocksOnHullEdge,
+  applyCommand,
   buildShip,
   connections,
+  doorStates,
   layoutProblems,
+  moduleAt,
+  moveModule,
   newShip,
   placeModule,
   placementError,
   reachableFromBridge,
   removeModule,
+  rotateModule,
+  turnedPlacement,
 } from '../src/sim/builder.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { EXAMPLE_SCRIPT, renderShip, runScript } from '../tools/build-ship.js';
@@ -39,12 +45,14 @@ const defs = indexDefs({
       mod('long', [2, 1], [{ side: 's', at: 1 }, { side: 'w', at: 0 }]),
       mod('fixed', [1, 2], [{ side: 'n', at: 0 }], [], false),
       mod('blind', [1, 1], [{ side: 'n', at: 0 }]),
+      mod('beam', [3, 1], [{ side: 'w', at: 0 }]),
     ],
   },
   frames: {
     frames: [
       { id: 'small', name: 'Small frame', width: 4, height: 3, maxModules: 8 },
       { id: 'ring', name: 'Ring frame', width: 3, height: 3, maxModules: 9 },
+      { id: 'open', name: 'Open frame', width: 8, height: 8, maxModules: 20 },
     ],
   },
   manufacturers: { manufacturers: [] },
@@ -121,6 +129,72 @@ test('removing frees the cells, and uids never repeat', () => {
   assert.equal(again.uid, 3);
 });
 
+test('moving keeps the uid and build order, and a module never blocks itself', () => {
+  const ship = build('small', [['long', 0, 0], ['hall', 3, 0]]);
+  const moved = moveModule(ship, defs, 1, { x: 1, y: 0, rot: 0 }); // overlaps its own old cell
+  assert.equal(moved.ok, true);
+  assert.deepEqual(moved.ship.modules.map((m) => [m.uid, m.x, m.y]), [[1, 1, 0], [2, 3, 0]]);
+  assert.equal(moveModule(ship, defs, 1, { x: 2, y: 0, rot: 0 }).rule, 'overlap');
+  assert.equal(moveModule(ship, defs, 1, { x: 0, y: 2, rot: 1 }).rule, 'bounds');
+  assert.equal(moveModule(ship, defs, 9, { x: 0, y: 0, rot: 0 }).rule, 'missing');
+  assert.equal(moveModule(ship, defs, 1, { x: 0, y: 0, rot: 0 }).ship, ship, 'staying put changes nothing');
+  assert.equal(ship.modules[0].x, 0, 'the input is unchanged');
+});
+
+test('turning happens about the middle, slides back inside at an edge, and four turns come back', () => {
+  const open = defs.frames.get('open');
+  const beam = defs.modules.get('beam');
+  assert.deepEqual(
+    turnedPlacement(beam, { type: 'beam', x: 2, y: 3, rot: 0 }, open),
+    { type: 'beam', x: 3, y: 2, rot: 1 },
+    'the middle cell stays put',
+  );
+  for (const id of ['hall', 'long', 'beam']) {
+    const def = defs.modules.get(id);
+    let placement = { type: id, x: 3, y: 3, rot: 0 };
+    for (let i = 0; i < 4; i++) placement = turnedPlacement(def, placement, open);
+    assert.deepEqual(placement, { type: id, x: 3, y: 3, rot: 0 }, id);
+  }
+  const small = defs.frames.get('small'); // 3 tall: standing up at the bottom, it slides up a cell
+  assert.deepEqual(turnedPlacement(defs.modules.get('long'), { type: 'long', x: 0, y: 2, rot: 0 }, small), {
+    type: 'long',
+    x: 0,
+    y: 1,
+    rot: 1,
+  });
+});
+
+test('rotateModule turns a placed module in place, or says why not', () => {
+  const free = build('small', [['long', 1, 0]]);
+  const turned = rotateModule(free, defs, 1);
+  assert.equal(turned.ok, true);
+  assert.deepEqual(turned.placement, { uid: 1, type: 'long', x: 1, y: 0, rot: 1 });
+  assert.deepEqual(turned.ship.modules, [{ uid: 1, type: 'long', x: 1, y: 0, rot: 1 }]);
+  assert.equal(rotateModule(build('small', [['long', 0, 0], ['hall', 0, 1]]), defs, 1).rule, 'overlap');
+  assert.equal(rotateModule(build('small', [['fixed', 0, 0]]), defs, 1).rule, 'rotation');
+  assert.equal(rotateModule(free, defs, 7).rule, 'missing');
+});
+
+test('applyCommand runs place, move and remove, and refuses anything else', () => {
+  let ship = newShip('small');
+  for (const command of [
+    { op: 'place', type: 'long', x: 0, y: 0, rot: 0 },
+    { op: 'place', type: 'hall', x: 3, y: 2, rot: 0 },
+    { op: 'move', uid: 1, x: 1, y: 1, rot: 1 },
+    { op: 'remove', uid: 2 },
+  ]) {
+    const result = applyCommand(ship, defs, command);
+    assert.equal(result.ok, true, JSON.stringify(command));
+    ship = result.ship;
+  }
+  assert.deepEqual(ship.modules, [{ uid: 1, type: 'long', x: 1, y: 1, rot: 1 }]);
+  assert.equal(applyCommand(ship, defs, { op: 'remove', uid: 2 }).rule, 'missing');
+  assert.equal(applyCommand(ship, defs, { op: 'paint' }).rule, 'command');
+  assert.equal(moduleAt(ship, defs, 1, 2), 1);
+  assert.equal(moduleAt(ship, defs, 0, 0), null);
+  assert.equal(moduleAt(ship, defs, -1, 0), null, 'off the frame');
+});
+
 test('connectivity: a door joins two modules only when both have a socket on that edge', () => {
   // bridge - hall - blind - lock in a row. blind's only door faces north, so
   // neither the hall's east door nor the airlock's west door has a partner.
@@ -143,6 +217,19 @@ test('connectivity: turning a module can join it, and a detour reaches the rest'
     ['hall', 1, 1], ['hall', 2, 1], ['hall', 3, 1],
   ]);
   assert.deepEqual(rules(routed), []);
+});
+
+test('doorStates says what each door opens onto', () => {
+  // bridge (1) and hall (2) side by side, a north-only blind (3) under the
+  // bridge, and another blind (4) east of the hall, which shows it a wall.
+  const ship = build('small', [['bridge', 0, 0], ['hall', 1, 0], ['blind', 0, 1], ['blind', 2, 0]]);
+  const states = Object.fromEntries(doorStates(ship, defs).map((d) => [`${d.uid}${d.side}`, d.state]));
+  assert.deepEqual(states, {
+    '1n': 'outside', '1e': 'linked', '1s': 'linked', '1w': 'outside',
+    '2n': 'outside', '2e': 'blocked', '2s': 'open', '2w': 'linked',
+    '3n': 'linked',
+    '4n': 'outside',
+  });
 });
 
 test('connectivity: without a bridge there is nothing to connect to', () => {
@@ -188,9 +275,10 @@ test('a full starter ship builds from a script with the real data and passes eve
   const { ship, rejected, problems } = runScript(script, real);
   assert.deepEqual(rejected, []);
   assert.deepEqual(problems, []);
-  assert.equal(renderShip(ship, real), ['WBB.', 'L++A', 'QQ+.', 'RR+.', 'RR++', '..EE', '..EE'].join('\n'));
+  // Nose to the right: engines at the back (left), bridge at the front.
+  assert.equal(renderShip(ship, real), ['..RRQLW', '..RRQ+B', 'EE++++B', 'EE+..A.'].join('\n'));
 
-  const extra = { ...script, placements: [...script.placements, { type: 'corridor', x: 1, y: 1, rot: 0 }] };
+  const extra = { ...script, placements: [...script.placements, { type: 'corridor', x: 5, y: 1, rot: 0 }] };
   const bad = runScript(extra, real);
   assert.equal(bad.rejected.length, 1);
   assert.equal(bad.rejected[0].index, script.placements.length);
@@ -201,6 +289,6 @@ test('the build-ship tool runs a script from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/build-ship.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /^WBB\.$/m);
+  assert.match(run.stdout, /^\.\.RRQLW$/m);
   assert.match(run.stdout, /All placement rules pass/);
 });

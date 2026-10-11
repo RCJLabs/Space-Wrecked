@@ -79,7 +79,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 
 - **One grid model** (`src/sim/grid.js`) serves the player's ship, enemy ships, battle maps and the colony.
 - **Cells and tiles:** modules snap to builder cells, and one cell becomes 2 × 2 battle tiles. Rooms get space for cover, and corridors are never one tile wide. (Starting value; revisit after M8.)
-- **Hull frames** set the maximum footprint and module cap. Size the starter frame so its battle map fits one phone screen at 48-pixel tiles: about 4 × 7 cells, or 8 × 14 tiles. Bigger frames pan.
+- **Hull frames** set the maximum footprint and module cap. Size the starter frame so its battle map fits one phone screen at 48-pixel tiles: 7 × 4 cells, or 14 × 8 tiles, with the long side along the landscape screen and the nose to the right (turned from 4 × 7 in M2, so builder cells stay above 48 px on the folded screen). Bigger frames pan.
 - **Module definitions** (`data/modules.json`) hold:
   - id, name, manufacturer, size in cells, and whether it rotates
   - door sockets on its edges

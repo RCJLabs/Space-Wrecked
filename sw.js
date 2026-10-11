@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "beb63510369c";
+const VERSION = "08662a1477c7";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/frames.json",
@@ -22,22 +22,33 @@ const FILES = [
   "src/core/save.js",
   "src/core/store.js",
   "src/main.js",
+  "src/platform/content.js",
   "src/platform/orientation.js",
   "src/platform/serviceWorker.js",
   "src/platform/storage.js",
+  "src/render/camera.js",
   "src/render/canvas.js",
   "src/render/loop.js",
   "src/render/palette.js",
+  "src/render/parts.js",
+  "src/render/shipView.js",
   "src/render/starfield.js",
   "src/sim/builder.js",
   "src/sim/defs.js",
   "src/sim/grid.js",
   "src/sim/modules.js",
   "src/sim/root.js",
+  "src/sim/session.js",
   "src/sim/settings.js",
+  "src/ui/builder/card.js",
+  "src/ui/builder/hints.js",
+  "src/ui/builder/palette.js",
+  "src/ui/builder/screen.js",
   "src/ui/dev/fps.js",
   "src/ui/dev/menu.js",
   "src/ui/dev/sandboxes.js",
+  "src/ui/gestures.js",
+  "src/ui/icons.js",
   "src/ui/screens.js",
   "src/ui/style.css",
   "src/ui/title.js",

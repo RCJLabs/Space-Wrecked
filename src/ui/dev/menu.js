@@ -28,12 +28,7 @@ export function createDevMenu(root, { store, getStatus }) {
   panel.append(el('div', { className: 'dev-head' }, [el('h2', { text: 'Dev menu' }), button('Close', () => setOpen(false))]));
 
   // Sandboxes
-  panel.append(
-    section('Sandboxes', [
-      row([button('Title', () => go('title')), ...sandboxes.map((s) => button(s.name, () => go(s.id)))]),
-      sandboxes.length ? null : note('None yet. M2 adds the builder sandbox.'),
-    ]),
-  );
+  panel.append(section('Sandboxes', [row([button('Title', () => go('title')), ...sandboxes.map((s) => button(s.name, () => go(s.id)))])]));
 
   // Frame cap
   const capButtons = FPS_CAPS.map((cap) => {

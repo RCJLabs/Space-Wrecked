@@ -2,9 +2,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CONTENT_FILES } from '../src/sim/defs.js';
 
 export const DATA_DIR = fileURLToPath(new URL('../data/', import.meta.url));
-export const DATA_FILES = ['modules', 'frames', 'manufacturers'];
+export const DATA_FILES = CONTENT_FILES;
 
 export function readData(dir = DATA_DIR) {
   const data = {};
