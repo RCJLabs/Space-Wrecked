@@ -48,12 +48,12 @@
       "name": "Engine",
       "glyph": "E",
       "manufacturer": "yard",
-      "size": [1, 2],
+      "size": [2, 1],
       "rotates": false,
-      "doors": [{ "side": "n", "at": 0 }],
+      "doors": [{ "side": "e", "at": 0 }],
       "stats": { "power": -1, "mass": 3, "thrust": 12, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 15 },
       "tags": ["engine"],
-      "interior": ["..", "..", "##", "##"],
+      "interior": ["##..", "##.."],
       "cost": 150
     },
     {

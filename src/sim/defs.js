@@ -2,6 +2,9 @@
 // (fetch in the browser, fs in Node) and pass the parsed files in, so the
 // simulation never does I/O.
 
+// The content files, by name: data/<name>.json.
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers'];
+
 export function indexDefs({ modules, frames, manufacturers }) {
   return {
     tilesPerCell: modules.tilesPerCell,

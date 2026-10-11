@@ -6,6 +6,11 @@
   box-sizing: border-box;
 }
 
+/* `hidden` wins over any display rule below. */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
@@ -118,6 +123,211 @@ textarea {
   font-size: clamp(13px, 3.4vh, 18px);
 }
 
+/* Builder: the palette drawer on the left, tools on the right, and the
+   board (drawn on the canvas underneath) takes the rest. */
+.builder {
+  --tile: 56px;
+  --gap: 6px;
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+
+.bld-palette {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(3, var(--tile));
+  grid-auto-rows: var(--tile);
+  gap: var(--gap);
+  align-content: end;
+  /* Extra room on the left keeps a drag off Android's back-gesture edge. */
+  padding: 8px 8px 8px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  border-right: 1px solid var(--c-line);
+  background: var(--c-panel);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+#ui .bld-part {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 3px 2px;
+  border: 1px solid var(--c-line);
+  border-radius: 10px;
+  background: var(--c-space-hi);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+
+/* Only a drawer taller than the screen scrolls; then a part has to be
+   dragged out sideways. */
+.bld-palette[data-scrolls],
+#ui .bld-palette[data-scrolls] .bld-part {
+  touch-action: pan-y;
+}
+
+.bld-part svg {
+  flex: none;
+  max-width: 100%;
+  height: auto;
+}
+
+.bld-part[aria-pressed='true'] {
+  border-color: var(--c-accent);
+  box-shadow: inset 0 0 0 1px var(--c-accent);
+  color: var(--c-accent);
+}
+
+.bld-board {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+
+.bld-tools {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--gap);
+  padding: 8px;
+}
+
+#ui .bld-tool,
+#ui .bld-fit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 56px;
+  height: 54px;
+  padding: 0;
+  font-size: 10.5px;
+}
+
+#ui .bld-fit {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 48px;
+  height: 48px;
+  background: var(--c-panel);
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  filter: none;
+}
+
+/* Short screens (the Fold's cover screen in a browser tab): tools shrink to
+   the 48px minimum so all four fit under the dev button. */
+@media (max-height: 320px) {
+  .builder {
+    --gap: 4px;
+  }
+
+  #ui .bld-tool {
+    height: 48px;
+  }
+}
+
+.bld-status,
+.bld-layout {
+  position: absolute;
+  max-width: calc(100% - 16px);
+  margin: 0;
+  padding: 5px 10px;
+  border-radius: 12px;
+  background: rgba(7, 10, 20, 0.82);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.bld-status {
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  font-size: 13px;
+}
+
+.bld-layout {
+  top: 4px;
+  left: 8px;
+  max-width: calc(100% - 72px);
+  font-size: 12px;
+}
+
+.bld-status[data-tone='bad'],
+.bld-layout[data-tone='bad'] {
+  color: var(--c-bad);
+}
+
+.bld-status[data-tone='good'],
+.bld-layout[data-tone='good'] {
+  color: var(--c-good);
+}
+
+.bld-card {
+  position: absolute;
+  top: 36px;
+  left: 8px;
+  max-width: min(340px, calc(100% - 16px));
+  padding: 10px 12px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-panel);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: auto;
+}
+
+/* Opened on the side away from the finger, below the Fit button. */
+.bld-card[data-side='right'] {
+  top: 64px;
+  right: 8px;
+  left: auto;
+}
+
+.bld-card h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.bld-card p {
+  margin: 0;
+  color: var(--c-ink-dim);
+}
+
+/* The part under the finger while it is dragged off the hull. */
+.bld-drag {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  opacity: 0.9;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
+}
+
 /* Update prompt */
 .update-prompt {
   position: absolute;
@@ -195,6 +405,7 @@ textarea {
   position: absolute;
   top: 4px;
   left: 4px;
+  z-index: 2;
   padding: 4px 6px;
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.6);
@@ -205,6 +416,7 @@ textarea {
 
 .dev-toggle {
   position: absolute;
+  z-index: 2;
   top: 4px;
   right: 4px;
   font-size: 12px;
@@ -214,6 +426,7 @@ textarea {
 
 .dev-panel {
   position: absolute;
+  z-index: 3;
   top: 0;
   right: 0;
   bottom: 0;

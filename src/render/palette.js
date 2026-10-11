@@ -17,6 +17,23 @@ export const palette = {
   line: '#2a3552',
   good: '#5fd38d',
   bad: '#ff6b6b',
+  // The builder's hull frame.
+  hull: '#0f1730',
+  hullEdge: '#3b4c7d',
+  hullGrid: '#1d2848',
+  // Placeholder part colors, one per module tag, until M4 draws real parts.
+  partBridge: '#5b95f7',
+  partReactor: '#f2c14e',
+  partEngine: '#f08a3c',
+  partCorridor: '#8592b0',
+  partAirlock: '#3ec7d9',
+  partQuarters: '#62c97d',
+  partLifesupport: '#45c2a6',
+  partCargo: '#b98f5e',
+  partMedbay: '#ef7aa8',
+  partArmory: '#d9605a',
+  partWeapon: '#ff7a52',
+  partShield: '#a886f2',
 };
 
 export function applyCssVars(root = document.documentElement) {

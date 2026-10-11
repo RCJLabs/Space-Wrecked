@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { footprint, localDoors, placedCells, placedDoors } from '../src/sim/modules.js';
+import { footprint, interiorRows, localDoors, placedCells, placedDoors } from '../src/sim/modules.js';
 
 // A 2×1 module with a door on every side: the two south cells, west, east.
 const long = {
@@ -67,4 +67,12 @@ test('placed cells and doors are offset to the placement', () => {
   const placement = { x: 3, y: 4, rot: 1 };
   assert.deepEqual(placedCells(long, placement), [[3, 4], [3, 5]]);
   assert.deepEqual(sorted(placedDoors(long, placement)), sorted([[3, 4, 'w'], [3, 5, 'w'], [3, 4, 'n'], [3, 5, 's']]));
+});
+
+test('interiors turn with their footprint', () => {
+  const def = { size: [2, 1], interior: ['c..#', '....'] };
+  assert.deepEqual(interiorRows(def, 0), ['c..#', '....']);
+  assert.deepEqual(interiorRows(def, 1), ['.c', '..', '..', '.#']);
+  assert.deepEqual(interiorRows(def, 2), ['....', '#..c']);
+  assert.deepEqual(interiorRows(def, 3), ['#.', '..', '..', 'c.']);
 });

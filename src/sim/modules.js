@@ -55,3 +55,19 @@ export function placedDoors(def, { x, y, rot }) {
 export function hasTag(def, tag) {
   return def.tags.includes(tag);
 }
+
+// The interior template (rows of tile characters) after rot quarter turns
+// clockwise, the same way the footprint turns.
+export function interiorRows(def, rot) {
+  let rows = def.interior.map((row) => [...row]);
+  for (let i = 0; i < rot; i++) {
+    const h = rows.length;
+    const w = rows[0].length;
+    const turned = Array.from({ length: w }, () => new Array(h));
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) turned[x][h - 1 - y] = rows[y][x];
+    }
+    rows = turned;
+  }
+  return rows.map((row) => row.join(''));
+}

@@ -1,11 +1,10 @@
-// Ship layout rules on the shared grid: placing and removing modules, and
-// checking a whole layout. A ship is plain data:
+// Ship layout rules on the shared grid: placing, moving and removing modules,
+// and checking a whole layout. A ship is plain data:
 //   { frame, modules: [{ uid, type, x, y, rot }], nextUid }
-// Every change is a command (a placement to add, a uid to remove), so a build
-// can be replayed step by step. Functions return new ships and never change
-// their input.
+// Every change is a command (see applyCommand), so a build can be replayed
+// step by step. Functions return new ships and never change their input.
 import { cellAt, createGrid, exteriorOf, inBounds, OPPOSITE, SIDES, step, withCells } from './grid.js';
-import { hasTag, isRotation, placedCells, placedDoors } from './modules.js';
+import { footprint, hasTag, isRotation, placedCells, placedDoors } from './modules.js';
 
 export function newShip(frameId) {
   return { frame: frameId, modules: [], nextUid: 1 };
@@ -51,6 +50,71 @@ export function placeModule(ship, defs, placement) {
 export function removeModule(ship, uid) {
   const modules = ship.modules.filter((module) => module.uid !== uid);
   return modules.length === ship.modules.length ? ship : { ...ship, modules };
+}
+
+// Moves a placed module to { x, y, rot }, keeping its uid and its place in
+// the build order. The module doesn't block itself. Returns { ok: true, ship }
+// or { ok: false, rule, message }.
+export function moveModule(ship, defs, uid, { x, y, rot }) {
+  const module = ship.modules.find((m) => m.uid === uid);
+  if (!module) return { ok: false, rule: 'missing', message: `There is no module ${uid}.` };
+  const next = { uid, type: module.type, x, y, rot };
+  const error = placementError(removeModule(ship, uid), defs, next);
+  if (error) return { ok: false, ...error };
+  if (module.x === x && module.y === y && module.rot === rot) return { ok: true, ship };
+  return { ok: true, ship: { ...ship, modules: ship.modules.map((m) => (m.uid === uid ? next : m)) } };
+}
+
+// Where a placement lands after one quarter turn clockwise. It turns about
+// its middle: the top-left moves by half the difference between width and
+// height, rounded toward zero so four turns bring it back exactly. If the
+// turn pushes it past the frame's edge, it slides back inside.
+export function turnedPlacement(def, placement, frame) {
+  const [w, h] = footprint(def, placement.rot);
+  const x = placement.x + Math.trunc((w - h) / 2);
+  const y = placement.y + Math.trunc((h - w) / 2);
+  return {
+    ...placement,
+    x: Math.max(0, Math.min(x, frame.width - h)),
+    y: Math.max(0, Math.min(y, frame.height - w)),
+    rot: (placement.rot + 1) % 4,
+  };
+}
+
+// Turns a placed module a quarter clockwise, in place (see turnedPlacement).
+// Returns what moveModule returns, plus the new placement when it worked.
+export function rotateModule(ship, defs, uid) {
+  const module = ship.modules.find((m) => m.uid === uid);
+  if (!module) return { ok: false, rule: 'missing', message: `There is no module ${uid}.` };
+  const def = defs.modules.get(module.type);
+  if (!def) return { ok: false, rule: 'type', message: `Unknown module type "${module.type}".` };
+  if (!def.rotates) return { ok: false, rule: 'rotation', message: `${def.name} can't be rotated.` };
+  const frame = defs.frames.get(ship.frame);
+  if (!frame) return { ok: false, rule: 'frame', message: `Unknown hull frame "${ship.frame}".` };
+  const turned = turnedPlacement(def, module, frame);
+  const result = moveModule(ship, defs, uid, turned);
+  return result.ok ? { ...result, placement: turned } : result;
+}
+
+// Applies one build command:
+//   { op: 'place', type, x, y, rot }   adds a module with the next uid
+//   { op: 'move', uid, x, y, rot }     moves or turns one
+//   { op: 'remove', uid }              takes one out
+// Returns { ok: true, ship, uid? } or { ok: false, rule, message }.
+export function applyCommand(ship, defs, command) {
+  if (command.op === 'place') return placeModule(ship, defs, command);
+  if (command.op === 'move') return moveModule(ship, defs, command.uid, command);
+  if (command.op === 'remove') {
+    const next = removeModule(ship, command.uid);
+    if (next === ship) return { ok: false, rule: 'missing', message: `There is no module ${command.uid}.` };
+    return { ok: true, ship: next };
+  }
+  return { ok: false, rule: 'command', message: `Unknown build command "${command.op}".` };
+}
+
+// The uid of the module covering cell (x, y), or null.
+export function moduleAt(ship, defs, x, y) {
+  return cellAt(occupancy(ship, defs), x, y) ?? null;
 }
 
 // Applies placements in order, as a script or a replay does. A rejected
@@ -105,6 +169,35 @@ export function connections(ship, defs) {
     }
   }
   return links;
+}
+
+// Every door socket on the ship, as { uid, x, y, side, state }, where state
+// says what the door opens onto:
+//   linked   a matching socket across the edge: a real doorway
+//   open     an empty cell on the frame, where a part could join
+//   blocked  another module with no socket there
+//   outside  past the frame's edge
+export function doorStates(ship, defs) {
+  const grid = occupancy(ship, defs);
+  const sockets = new Set();
+  const doors = [];
+  for (const module of ship.modules) {
+    const def = defs.modules.get(module.type);
+    if (!def || !isRotation(module.rot)) continue;
+    for (const [x, y, side] of placedDoors(def, module)) {
+      doors.push({ uid: module.uid, x, y, side });
+      sockets.add(`${x},${y},${side}`);
+    }
+  }
+  return doors.map((door) => {
+    const [nx, ny] = step(door.x, door.y, door.side);
+    const owner = cellAt(grid, nx, ny);
+    let state = 'blocked';
+    if (owner === undefined) state = 'outside';
+    else if (owner === null) state = 'open';
+    else if (sockets.has(`${nx},${ny},${OPPOSITE[door.side]}`)) state = 'linked';
+    return { ...door, state };
+  });
 }
 
 // The first bridge's uid, and every module reachable from it through joined
