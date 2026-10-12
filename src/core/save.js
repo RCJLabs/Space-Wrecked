@@ -32,7 +32,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      tips; the campaign's captain, and every crew member's traits (M18)
 //  10  the run: the campaign's supplies, and its run (act 2's sector map
 //      and where the ship is on it), null until the run begins (M19)
-export const SAVE_VERSION = 10;
+//  11  events and scans: the run's events settled, its scans and the last
+//      event's result; sector nodes may carry an event (M20)
+export const SAVE_VERSION = 11;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -119,6 +121,15 @@ export const MIGRATIONS = [
   {
     from: 9,
     up: (data) => (isObject(data) && isObject(data.campaign) ? { ...data, campaign: { ...data.campaign, supplies: 0, run: null } } : data),
+  },
+  // Events and scans. A run under way keeps its sector as it was, with
+  // nothing settled and nothing scanned; its next sectors have events.
+  {
+    from: 10,
+    up: (data) =>
+      isObject(data) && isObject(data.campaign) && isObject(data.campaign.run)
+        ? { ...data, campaign: { ...data.campaign, run: { ...data.campaign.run, done: [], scans: [], result: null } } }
+        : data,
   },
 ];
 

@@ -1,29 +1,45 @@
 // The sector map: act 2's home, on the run (src/sim/travel.js). The
 // sector's nodes stand on a chart in the middle, linked column to column
-// from the way in to the jump point. The ship's node is marked, and the
-// nodes a jump reaches are ringed: solid for a jump, dashed for a long one.
-// A tap on a node shows on the left what the jump there takes, and a
-// second tap, or Jump, makes it: one tap never moves the ship. At a
-// station Buy sells supplies, and at the jump point Jump on leads into the
+// from the way in to the jump point, each marked with what it holds once
+// that is known (stations, derelicts, distress calls, traders, hazards),
+// and with a ? until then. The ship's node is marked, and the nodes a jump
+// reaches are ringed: solid for a jump, dashed for a long one. A tap on a
+// node shows on the left what the jump there takes, and a second tap, or
+// Jump, makes it: one tap never moves the ship. An event where the ship
+// arrives opens its card (eventCard.js) over the chart, and nothing moves
+// until a choice is made. At a station Buy sells supplies, Scan shows what
+// nodes within reach hold, and at the jump point Jump on leads into the
 // next sector, each two taps, the first saying what it costs; past the
-// act's last jump point the charts end, for now. The crew
-// and the holds are on the right, heat by the act. The run begins, its
-// first sector rolled, the first time the map opens.
+// act's last jump point the charts end, for now. The crew and the holds
+// are on the right, heat by the act. The run begins, its first sector
+// rolled, the first time the map opens.
 //
 // Each node's button is its share of its column, so no two overlap and
 // each stays 48 px or more on the screens the game is for; its mark sits
-// where the sector puts the node. The words are sectorText.js's.
+// where the sector puts the node. The words are sectorText.js's and
+// eventText.js's.
 import { loadContent } from '../../platform/content.js';
 import { palette } from '../../render/palette.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { createEventCard } from './eventCard.js';
+import { eventText, resultText } from './eventText.js';
 import { crewRows, heatChip, listRows, panel } from './hubParts.js';
 import { jumpText, sectorText } from './sectorText.js';
 
-const ARM_MS = 3000; // Jump on and Buy wait this long for a second tap
+const ARM_MS = 3000; // Jump on, Buy and Scan wait this long for a second tap
 const SVG = 'http://www.w3.org/2000/svg';
-const MARKS = { start: icons.wayIn, exit: icons.jumpPoint, station: icons.station };
+const MARKS = {
+  start: icons.wayIn,
+  exit: icons.jumpPoint,
+  station: icons.station,
+  derelict: icons.derelict,
+  distress: icons.distress,
+  trader: icons.tag,
+  hazard: icons.hazard,
+  unknown: icons.unknown,
+};
 
 export const sectorScreen = {
   mount(root, { store: game }) {
@@ -57,17 +73,26 @@ export const sectorScreen = {
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const hint = node('p', 'hgr-hint', 'Loading…');
     const buys = node('div', 'sct-buys');
+    const scanButton = toolButton('sct-scan', icons.scan, 'Scan');
     const jumpButton = toolButton('sct-jump', icons.jump, 'Jump');
     const onButton = toolButton('sct-on', icons.jumpPoint, 'Jump on');
-    jumpButton.hidden = onButton.hidden = true;
-    foot.append(titleButton, hint, buys, jumpButton, onButton);
-    el.append(head, info, map, side, foot);
+    scanButton.hidden = jumpButton.hidden = onButton.hidden = true;
+    foot.append(titleButton, hint, buys, scanButton, jumpButton, onButton);
+    const card = createEventCard({
+      choose: (choice) => game.dispatch({ type: 'campaign/event/choose', choice, rules: defs }),
+      close: () => {
+        closed = resultKey(game.getState().campaign);
+        render(true);
+      },
+    });
+    el.append(head, info, map, side, card.el, foot);
     root.append(el);
 
     let defs = null;
     let alive = true;
     let picked = null; // the node picked on the map: its jump shows
-    let armed = null; // 'on', or the supplies a Buy is for, after its first tap
+    let armed = null; // 'on', 'scan', or the supplies a Buy is for, after its first tap
+    let closed = null; // the result put away with Carry on (resultKey)
     let armTimer = 0;
     let shown = null; // the campaign last drawn
     let sectorShown = null; // the sector the map's buttons are for
@@ -77,7 +102,9 @@ export const sectorScreen = {
       onTap(titleButton, () => game.dispatch({ type: 'screen/show', screen: 'title' })),
       onTap(jumpButton, makeJump),
       onTap(onButton, () => twoTaps('on', () => game.dispatch({ type: 'campaign/sector/leave', rules: defs }))),
+      onTap(scanButton, () => twoTaps('scan', () => game.dispatch({ type: 'campaign/scan', rules: defs }))),
       () => clearTimeout(armTimer),
+      () => card.detach(),
       () => nodeButtons.forEach((entry) => entry.detach()),
       () => buyButtons.forEach((entry) => entry.detach()),
       game.subscribe(() => alive && render()),
@@ -116,8 +143,27 @@ export const sectorScreen = {
       drawMap(run, text, plan);
       showInfo(text, plan);
 
+      // An event open here takes the card, and holds everything else; once
+      // settled, the card shows what happened until Carry on.
+      const event = eventText(campaign, defs);
+      const result = event || resultKey(campaign) === closed ? null : resultText(campaign, defs);
+      card.show(event, result);
+      const carded = Boolean(event || result);
+      el.dataset.card = String(carded);
+      // Under the card, the panel and the chart take no taps or focus.
+      info.inert = carded;
+      map.inert = carded;
+      if (carded) disarm();
+
+      // Scan, while it would show something.
+      const { scan } = text;
+      if (!scan && armed === 'scan') disarm();
+      scanButton.hidden = !scan || carded;
+      setText(scanButton.querySelector('span'), armed === 'scan' ? scan.ask : 'Scan');
+      scanButton.dataset.armed = String(armed === 'scan');
+
       // Jump, for the node picked; Jump on, at the jump point.
-      jumpButton.hidden = !plan;
+      jumpButton.hidden = !plan || carded;
       if (plan) {
         jumpButton.disabled = !plan.ok;
         const mode = plan.long ? 'long' : 'jump';
@@ -130,7 +176,8 @@ export const sectorScreen = {
       }
       const { leave } = text;
       if (!leave?.ok && armed === 'on') disarm();
-      onButton.hidden = !leave || leave.last;
+      onButton.hidden = !leave || leave.last || carded;
+      if (carded) buys.hidden = true;
       onButton.disabled = !leave?.ok;
       setText(onButton.querySelector('span'), armed === 'on' ? leave.ask : 'Jump on');
       onButton.dataset.armed = String(armed === 'on');
@@ -138,8 +185,10 @@ export const sectorScreen = {
       const buy = typeof armed === 'number' ? text.offer?.buys.find((entry) => entry.count === armed) : null;
       if (typeof armed === 'number' && !buy) disarm();
       const said = armed === 'on' ? { tone: leave.tone === 'bad' ? 'bad' : 'warn', text: `${leave.lines.join(' ')} Tap Jump on again.` }
+        : armed === 'scan' ? { tone: 'warn', text: scan.text }
         : buy ? { tone: 'warn', text: buy.text }
         : plan ? planHint(plan)
+        : result ? { tone: 'info', text: 'Carry on to the chart.' }
         : text.hint;
       setText(hint, said.text);
       hint.dataset.tone = said.tone;
@@ -175,7 +224,6 @@ export const sectorScreen = {
         nodeButtons = text.nodes.map((n) => {
           const button = node('button', 'sct-node');
           button.type = 'button';
-          button.dataset.type = n.type;
           Object.assign(button.style, {
             left: `${(100 * n.col) / columns}%`,
             top: `${(100 * n.row) / n.rows}%`,
@@ -183,11 +231,10 @@ export const sectorScreen = {
             height: `${100 / n.rows}%`,
           });
           const dot = node('span', 'sct-dot');
-          dot.innerHTML = MARKS[n.type] ?? '';
           dot.style.left = `${(n.x * columns - n.col) * 100}%`;
           dot.style.top = `${(n.y * n.rows - n.row) * 100}%`;
           button.append(dot);
-          return { id: n.id, button, detach: onTap(button, () => tapNode(n.id)) };
+          return { id: n.id, button, dot, detach: onTap(button, () => tapNode(n.id)) };
         });
         map.replaceChildren(links, ...nodeButtons.map((entry) => entry.button), ship);
       }
@@ -198,14 +245,21 @@ export const sectorScreen = {
         line.dataset.near = String(near);
         line.dataset.way = String(way.has(`${a}-${b}`));
       });
-      for (const { id, button } of nodeButtons) {
+      for (const { id, button, dot } of nodeButtons) {
         const n = text.nodes[id];
+        // What it holds, as known: its mark changes as it is made out.
+        if (button.dataset.type !== n.type) {
+          button.dataset.type = n.type;
+          dot.innerHTML = MARKS[n.type] ?? '';
+        }
         button.dataset.here = String(n.here);
         button.dataset.seen = String(n.seen);
+        button.dataset.done = String(n.done);
         button.dataset.reach = String(n.links);
         button.setAttribute('aria-pressed', String(id === picked));
         const where = n.here ? 'the ship is here' : n.links === 1 ? 'a jump away' : n.links === 2 ? 'a long jump away' : 'out of reach';
-        button.setAttribute('aria-label', `${n.name}, ${where}`);
+        const kind = n.known ? (defs.nodeTypes.get(n.type)?.name ?? n.type) : 'unknown';
+        button.setAttribute('aria-label', [n.name, kind === n.name ? null : kind, where].filter(Boolean).join(', '));
       }
       const here = sector.nodes[run.at];
       ship.style.left = `${here.x * 100}%`;
@@ -243,6 +297,12 @@ export const sectorScreen = {
       buys.replaceChildren(...buyButtons.map((entry) => entry.button));
       buys.hidden = !buyButtons.length;
       setText(infoText, here.text);
+    }
+
+    // Which result Carry on put away: the sector and the node.
+    function resultKey(campaign) {
+      const result = campaign?.run?.result;
+      return result ? `${campaign.run.sector.index}:${campaign.run.sector.name}:${result.node}` : null;
     }
 
     function lineItem(text, tone) {

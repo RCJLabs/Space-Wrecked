@@ -6,10 +6,15 @@
 // campaign.run, from the act's first visit home (beginRun) on:
 //   sector   the sector the ship is in, saved whole, so an update to the
 //            game can't move a node under it: { index, name, nodes, links,
-//            start, exit }
+//            start, exit }. A node of a kind that holds events has one
+//            (node.event, an id in data/events.json)
 //   at       the node the ship is at
 //   seen     the nodes it has been to in this sector, in order
 //   past     the names of the sectors crossed before, oldest first
+//   done     the nodes whose events are settled (events.js)
+//   scans    the nodes the ship has scanned from
+//   result   the last event settled, until the next jump: { node, event,
+//            choice, outcome, roll, changes } (events.js)
 // campaign.supplies: what the ship carries, up to supplyCapacity.
 //
 // A jump goes to a linked node: each crew member eats jumpSupplies, and heat
@@ -20,7 +25,13 @@
 // points, never the last. Stations sell supplies at supplyPrice each. From
 // the jump point, leaving the sector is a jump into the next one's way in,
 // rolled from the campaign's RNG as it is left. The flags count the jumps,
-// the long ones, the hungry ones and the supplies bought.
+// the long ones, the hungry ones, the supplies bought and the scans.
+//
+// An event open at the ship's node holds every jump and scan until it is
+// settled. What a node holds is known for the way in, the jump point and
+// stations, which are on the charts, and for any node the ship has been at
+// or next to; a scan shows every node within scanRange links of the ship,
+// for scanHeat.
 import { int } from '../core/rng.js';
 import { actOf } from './acts.js';
 import { shipStats } from './constraints.js';
@@ -28,6 +39,8 @@ import { generateSector } from './gen/sector.js';
 import { withHeat } from './heat.js';
 
 const MAX_SEED = 0xffffffff;
+// The kinds of node on the charts: known before the ship gets near.
+const CHARTED = ['start', 'exit', 'station'];
 
 // What the ship can carry: its lockers (baseSupplies) and its cargo holds.
 export function supplyCapacity(ship, rules) {
@@ -60,7 +73,70 @@ export function beginRun(campaign, rules) {
   if (campaign.run) return { ok: false, error: 'The run is under way.' };
   const { value: seed, state: rng } = int(campaign.rng, 0, MAX_SEED);
   const sector = generateSector(rules, seed, 1);
-  return { ok: true, campaign: { ...campaign, rng, supplies: supplyCapacity(campaign.ship, rules), run: { sector, at: sector.start, seen: [sector.start], past: [] } } };
+  return { ok: true, campaign: { ...campaign, rng, supplies: supplyCapacity(campaign.ship, rules), run: freshRun(sector, []) } };
+}
+
+// A run entering `sector`, with the sectors behind it.
+function freshRun(sector, past) {
+  return { sector, at: sector.start, seen: [sector.start], past, done: [], scans: [], result: null };
+}
+
+// The event open at the ship's node: { node, event } (the event from
+// data/events.json), or null when there is none or it is settled. An event
+// the data no longer has is passed by.
+export function openEvent(campaign, rules) {
+  const { run } = campaign;
+  const node = run?.sector.nodes[run.at];
+  if (!node?.event || run.done.includes(run.at)) return null;
+  const event = rules.events.get(node.event);
+  return event ? { node, event } : null;
+}
+
+// The nodes within `links` links of node `id`: Map id -> links away (0 for
+// `id`).
+export function within(sector, id, links) {
+  const away = new Map([[id, 0]]);
+  let ring = [id];
+  for (let step = 1; step <= links && ring.length; step++) {
+    ring = ring.flatMap((at) => linked(sector, at)).filter((next) => !away.has(next));
+    for (const next of ring) away.set(next, step);
+    ring = [...new Set(ring)];
+  }
+  return away;
+}
+
+// The nodes whose kind is known on the map (see the top of the file).
+export function knownNodes(run, rules) {
+  const { sector } = run;
+  const known = new Set(sector.nodes.filter((node) => CHARTED.includes(node.type)).map((node) => node.id));
+  for (const id of run.seen) {
+    known.add(id);
+    for (const next of linked(sector, id)) known.add(next);
+  }
+  for (const id of run.scans) for (const near of within(sector, id, rules.balance.scanRange).keys()) known.add(near);
+  return known;
+}
+
+// What a scan from the ship's node would show: { ok: true, heat (its
+// change), reveals (the nodes it makes known) }, or { ok: false, error }.
+export function scanPlan(campaign, rules) {
+  const { run } = campaign;
+  if (!run || !onTheRun(campaign, rules)) return { ok: false, error: 'Scans are made from the ship, on the run.' };
+  const open = openEvent(campaign, rules);
+  if (open) return { ok: false, error: `Decide first: ${open.event.title}.` };
+  const known = knownNodes(run, rules);
+  const reveals = [...within(run.sector, run.at, rules.balance.scanRange).keys()].filter((id) => !known.has(id));
+  if (!reveals.length) return { ok: false, error: 'Everything a scan would reach is known.' };
+  return { ok: true, heat: rules.balance.scanHeat, reveals };
+}
+
+// Scans from the ship's node. Returns { ok: true, campaign, plan } or
+// { ok: false, error }.
+export function scan(campaign, rules) {
+  const plan = scanPlan(campaign, rules);
+  if (!plan.ok) return plan;
+  const { run } = campaign;
+  return { ok: true, plan, campaign: { ...campaign, heat: withHeat(campaign.heat, plan.heat), flags: tally(campaign.flags, { scans: 1 }), run: { ...run, scans: [...run.scans, run.at] } } };
 }
 
 // The nodes linked to a node.
@@ -85,6 +161,8 @@ export function reach(sector, id) {
 export function jumpPlan(campaign, rules, to) {
   const { run } = campaign;
   if (!run || !onTheRun(campaign, rules)) return { ok: false, error: 'Jumps are made from the ship, on the run.' };
+  const open = openEvent(campaign, rules);
+  if (open) return { ok: false, error: `Decide first: ${open.event.title}.` };
   const node = run.sector.nodes[to];
   if (!node) return { ok: false, error: 'There is no such place on the map.' };
   if (to === run.at) return { ok: false, error: `The ship is at ${node.name}.` };
@@ -103,7 +181,7 @@ export function jump(campaign, rules, to) {
   if (!plan.ok) return plan;
   const moved = spend(campaign, rules, plan);
   const { run } = moved;
-  return { ok: true, plan, campaign: { ...moved, run: { ...run, at: to, seen: run.seen.includes(to) ? run.seen : [...run.seen, to] } } };
+  return { ok: true, plan, campaign: { ...moved, run: { ...run, at: to, seen: run.seen.includes(to) ? run.seen : [...run.seen, to], result: null } } };
 }
 
 // What the station the ship is at sells: { ok: true, price (a supply),
@@ -135,6 +213,8 @@ export function buySupplies(campaign, rules, count) {
 export function leavePlan(campaign, rules) {
   const { run } = campaign;
   if (!run || !onTheRun(campaign, rules)) return { ok: false, error: 'Jumps are made from the ship, on the run.' };
+  const open = openEvent(campaign, rules);
+  if (open) return { ok: false, error: `Decide first: ${open.event.title}.` };
   if (run.at !== run.sector.exit) return { ok: false, error: 'The sector is left from its jump point.' };
   if (run.sector.index >= (actOf(campaign, rules)?.sectors ?? 0)) return { ok: false, last: true, error: 'The charts end at this jump point.' };
   const supplies = jumpSupplies(campaign, rules);
@@ -150,7 +230,7 @@ export function leaveSector(campaign, rules) {
   const { value: seed, state: rng } = int(moved.rng, 0, MAX_SEED);
   const past = [...campaign.run.past, campaign.run.sector.name];
   const sector = generateSector(rules, seed, campaign.run.sector.index + 1, { avoid: past });
-  return { ok: true, plan, campaign: { ...moved, rng, run: { sector, at: sector.start, seen: [sector.start], past } } };
+  return { ok: true, plan, campaign: { ...moved, rng, run: freshRun(sector, past) } };
 }
 
 // A jump's cost: supplies (and, short of them, hunger), heat, and the
@@ -162,7 +242,7 @@ function spend(campaign, rules, plan) {
 }
 
 // Flags with counts added (those above 0).
-function tally(flags, counts) {
+export function tally(flags, counts) {
   const next = { ...flags };
   for (const [name, count] of Object.entries(counts)) if (count > 0) next[name] = (next[name] ?? 0) + count;
   return next;

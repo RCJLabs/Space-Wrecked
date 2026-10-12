@@ -1,14 +1,18 @@
 #!/usr/bin/env node
-// A test voyage through act 2 (M19's Done when): from launch, across the
-// act's sectors to where the charts end. The ship launches from a test run
-// of act 1 at the same seed (tools/run.js), so it sets out with what such a
-// run leaves it: its credits, heat and crew, the holds full. A test player
-// does what a careful player would:
+// A test voyage through act 2 (M19's and M20's Done whens): from launch,
+// across the act's sectors to where the charts end. The ship launches from
+// a test run of act 1 at the same seed (tools/run.js), so it sets out with
+// what such a run leaves it: its credits, heat and crew, the holds full. A
+// test player does what a careful player would (its judgment is
+// voyagePlan.js's):
+//   - at an event, make the choice worth most;
 //   - at a station, fill the holds, as far as the credits go;
+//   - with --scan yes (the default), scan wherever a scan would show a
+//     node ahead; with --scan no, never;
 //   - from each node, plan every way on to the jump point, a link at a
 //     time, and jump to the next node on the way that goes hungry least,
-//     then carries the most supplies on out of the sector, then the most
-//     credits;
+//     then is worth most: the supplies and credits carried out, and the
+//     nodes passed;
 //   - with --long heat (the default), when heat is at the hunters' level
 //     (huntHeat) or over, make a long jump on instead, if the supplies
 //     cover it and the way on from there goes hungry no more often; with
@@ -18,121 +22,54 @@
 //   node tools/voyage.js --seed 7      another seed
 //   node tools/voyage.js --runs 20     seeds 1 to 20, summed up
 //   node tools/voyage.js --long never  no long jumps
+//   node tools/voyage.js --scan no     no scans
 //   node tools/voyage.js --runs 20 --set supplyPrice=2
 //                                      a balance number changed for this run
 //                                      only (as many --set as you like)
 import { pathToFileURL } from 'node:url';
 import { indexDefs } from '../src/sim/defs.js';
+import { chooseEvent, partsOnHand } from '../src/sim/events.js';
 import { launch } from '../src/sim/launch.js';
-import { beginRun, buySupplies, hereOf, jump, jumpSupplies, leavePlan, leaveSector, linked, reach, supplyCapacity, supplyOffer } from '../src/sim/travel.js';
+import { beginRun, buySupplies, hereOf, jump, jumpSupplies, leavePlan, leaveSector, openEvent, scan, scanPlan, supplyOffer } from '../src/sim/travel.js';
 import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
+import { bestChoice, nextJump } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
+export const SCAN_POLICIES = ['yes', 'no'];
 const MAX_JUMPS = 100; // a voyage still going after this many stops
-
-// The ways on from node `id` to the sector's jump point, a link at a time:
-// lists of nodes, `id` first.
-function waysOn(sector, id) {
-  if (id === sector.exit) return [[id]];
-  const { col } = sector.nodes[id];
-  return linked(sector, id)
-    .filter((next) => sector.nodes[next].col > col)
-    .flatMap((next) => waysOn(sector, next).map((way) => [id, ...way]));
-}
-
-// What the holds take at a station, as far as the credits go.
-function fill(supplies, credits, room, price) {
-  return Math.max(0, Math.min(room - supplies, Math.floor(credits / price)));
-}
-
-// How a way on goes from what the ship carries: { hungry (jumps), supplies,
-// credits (what's left out of the sector) }. The jump out of the sector
-// counts too, unless it is the act's last.
-function wayCost(campaign, rules, way, { supplies, credits }) {
-  const { sector } = campaign.run;
-  const price = rules.balance.supplyPrice;
-  const room = supplyCapacity(campaign.ship, rules);
-  const each = jumpSupplies(campaign, rules);
-  let hungry = 0;
-  const eat = () => {
-    if (supplies < each) hungry += 1;
-    supplies = Math.max(0, supplies - each);
-  };
-  for (const id of way.slice(1)) {
-    eat();
-    if (sector.nodes[id].type === 'station') {
-      const bought = fill(supplies, credits, room, price);
-      supplies += bought;
-      credits -= bought * price;
-    }
-  }
-  if (leavePlan({ ...campaign, run: { ...campaign.run, at: sector.exit } }, rules).ok) eat();
-  return { hungry, supplies, credits };
-}
-
-// Whether way a beats way b (or there is no b): hungry least, then the most
-// supplies carried on (the next sector's stations are unknown), then the
-// most credits.
-function better(a, b) {
-  if (!b) return true;
-  if (a.hungry !== b.hungry) return a.hungry < b.hungry;
-  if (a.supplies !== b.supplies) return a.supplies > b.supplies;
-  return a.credits > b.credits;
-}
-
-// The best way on from node `from` with what the ship carries there.
-function bestWay(campaign, rules, from, carried) {
-  let best = null;
-  for (const way of waysOn(campaign.run.sector, from)) {
-    const cost = { ...wayCost(campaign, rules, way, carried), way };
-    if (better(cost, best)) best = cost;
-  }
-  return best;
-}
-
-// Where the test player jumps next from where the ship is (not the jump
-// point): a node id.
-function nextJump(campaign, rules, policy) {
-  const { sector, at } = campaign.run;
-  const carried = { supplies: campaign.supplies, credits: campaign.credits };
-  const way = bestWay(campaign, rules, at, carried);
-  if (policy !== 'heat' || campaign.heat < rules.balance.huntHeat) return way.way[1];
-  // A long jump on, where the supplies cover it and the way on from there
-  // goes hungry no more often.
-  const cost = jumpSupplies(campaign, rules, true);
-  if (campaign.supplies < cost) return way.way[1];
-  const price = rules.balance.supplyPrice;
-  const room = supplyCapacity(campaign.ship, rules);
-  let long = null;
-  for (const [to, links] of reach(sector, at)) {
-    if (links !== 2 || sector.nodes[to].col !== sector.nodes[at].col + 2) continue;
-    let supplies = campaign.supplies - cost;
-    let { credits } = campaign;
-    if (sector.nodes[to].type === 'station') {
-      const bought = fill(supplies, credits, room, price);
-      supplies += bought;
-      credits -= bought * price;
-    }
-    const on = { ...bestWay(campaign, rules, to, { supplies, credits }), to };
-    if (on.hungry <= way.hungry && better(on, long)) long = on;
-  }
-  return long ? long.to : way.way[1];
-}
 
 // A voyage from a launched campaign (act 2, the run not yet begun) to the
 // end of the charts: { ended, steps, sectors, tally, lines, campaign }.
-// steps: every jump and purchase with what it moved, [before, after];
-// sectors: each sector as the ship entered it.
-export function voyageFrom(defs, launched, { long = 'heat', label = '' } = {}) {
+// steps: every jump, purchase, event and scan with what it moved, [before,
+// after]; sectors: each sector as the ship entered it.
+export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', label = '' } = {}) {
   if (!LONG_POLICIES.includes(long)) throw new Error(`--long is one of ${LONG_POLICIES.join(', ')}`);
+  if (!SCAN_POLICIES.includes(scans)) throw new Error(`--scan is one of ${SCAN_POLICIES.join(', ')}`);
   const begun = beginRun(launched, defs);
   if (!begun.ok) throw new Error(begun.error);
   let campaign = begun.campaign;
   const steps = [];
   const sectors = [campaign.run.sector];
-  const tally = { crossed: 0, jumps: 0, longJumps: 0, hungryJumps: 0, stations: 0, bought: 0, spent: 0, heat: [launched.heat, null], hp: [hpOf(campaign), null] };
+  const tally = {
+    crossed: 0,
+    jumps: 0,
+    longJumps: 0,
+    hungryJumps: 0,
+    stations: 0,
+    bought: 0,
+    spent: 0,
+    events: 0,
+    eventCredits: 0,
+    eventSupplies: 0,
+    found: 0,
+    sold: 0,
+    wounds: 0,
+    scans: 0,
+    heat: [launched.heat, null],
+    hp: [hpOf(campaign), null],
+  };
   const hold = () => `${campaign.supplies} supplies, ${campaign.credits} credits, heat ${campaign.heat}`;
   const lines = [
     `${label}Launched with ${campaign.credits} credits, heat ${campaign.heat}, a crew of ${campaign.crew.length} (${hpOf(campaign)}) and ${campaign.supplies} supplies, the holds full. A jump eats ${jumpSupplies(campaign, defs)}.`,
@@ -142,7 +79,17 @@ export function voyageFrom(defs, launched, { long = 'heat', label = '' } = {}) {
     lines.push(`Sector ${sector.index}: ${sector.name}, ${sector.nodes.length} nodes, ${sector.nodes.filter((node) => node.type === 'station').length} station(s).`);
   };
   const record = (kind, before, extra = {}) => {
-    const step = { kind, sector: before.run.sector.index, supplies: [before.supplies, campaign.supplies], credits: [before.credits, campaign.credits], heat: [before.heat, campaign.heat], hp: [before.crew.map((m) => m.hp), campaign.crew.map((m) => m.hp)], crew: before.crew.length, ...extra };
+    const step = {
+      kind,
+      sector: before.run.sector.index,
+      supplies: [before.supplies, campaign.supplies],
+      credits: [before.credits, campaign.credits],
+      heat: [before.heat, campaign.heat],
+      hp: [before.crew.map((m) => m.hp), campaign.crew.map((m) => m.hp)],
+      parts: [partsOnHand(before), partsOnHand(campaign)],
+      crew: before.crew.length,
+      ...extra,
+    };
     steps.push(step);
     return step;
   };
@@ -151,6 +98,26 @@ export function voyageFrom(defs, launched, { long = 'heat', label = '' } = {}) {
     if (tally.jumps >= MAX_JUMPS) {
       lines.push(`Stopped: still going after ${MAX_JUMPS} jumps.`);
       break;
+    }
+    // An event where the ship is: the choice worth most.
+    const open = openEvent(campaign, defs);
+    if (open) {
+      const pick = bestChoice(campaign, defs, open.event);
+      const before = campaign;
+      const made = chooseEvent(campaign, defs, pick.choice.id);
+      if (!made.ok) throw new Error(made.error);
+      campaign = made.campaign;
+      const { result } = made;
+      const { changes } = result;
+      record('event', before, { event: open.event.id, choice: pick.choice.id, outcome: result.outcome, roll: result.roll, changes });
+      tally.events += 1;
+      tally.eventCredits += changes.credits;
+      tally.eventSupplies += changes.supplies;
+      tally.found += changes.parts.length;
+      tally.sold += changes.sold.length;
+      tally.wounds += changes.wounds.reduce((sum, wound) => sum + wound.hp, 0);
+      const said = pick.choice.outcomes[result.outcome].text;
+      lines.push(`   ${open.event.title}: ${pick.choice.label}${result.roll === null ? '' : ` (rolled ${result.roll})`}. ${said} ${hold()}.`);
     }
     const offer = supplyOffer(campaign, defs);
     const count = offer.ok ? Math.min(offer.room, offer.most) : 0;
@@ -162,6 +129,16 @@ export function voyageFrom(defs, launched, { long = 'heat', label = '' } = {}) {
       tally.bought += count;
       tally.spent += before.credits - campaign.credits;
       lines.push(`   Bought ${count} supplies at ${hereOf(campaign).name} for ${before.credits - campaign.credits} credits: ${hold()}.`);
+    }
+    // A scan, where it would show a node ahead.
+    const look = scans === 'yes' ? scanPlan(campaign, defs) : { ok: false };
+    const { sector, at } = campaign.run;
+    if (look.ok && look.reveals.some((id) => sector.nodes[id].col > sector.nodes[at].col)) {
+      const before = campaign;
+      campaign = scan(campaign, defs).campaign;
+      record('scan', before, { reveals: look.reveals.length });
+      tally.scans += 1;
+      lines.push(`   Scanned: ${look.reveals.length} node(s) shown, heat ${campaign.heat}.`);
     }
     const before = campaign;
     let moved;
@@ -195,7 +172,7 @@ export function voyageFrom(defs, launched, { long = 'heat', label = '' } = {}) {
   const ended = leavePlan(campaign, defs).last === true;
   const where = ended ? `The charts end at sector ${campaign.run.sector.index}'s jump point` : `Stopped in sector ${campaign.run.sector.index}`;
   lines.push(
-    `${where}, ${tally.crossed} sectors crossed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. Heat ${tally.heat[0]} to ${tally.heat[1]}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
+    `${where}, ${tally.crossed} sectors crossed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost; ${tally.scans} scans. Heat ${tally.heat[0]} to ${tally.heat[1]}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
   );
   return { ended, steps, sectors, tally, lines, campaign };
 }
@@ -225,9 +202,10 @@ export function manyVoyages(defs, runs, options = {}) {
   const hungryEarly = done.map((r) => early(r, (step) => step.hungry));
   const policy = options.long === 'never' ? 'never' : `when heat is at ${defs.balance.huntHeat} or over`;
   const lines = [
-    `${runs} voyages from launch, campaign seeds 1 to ${runs}, long jumps ${policy}. The median, then the least and most:`,
-    `Sectors crossed: ${spread(of('crossed'))}; ${done.filter((r) => r.ended).length} of ${done.length} reached the end of the charts.`,
+    `${runs} voyages from launch, campaign seeds 1 to ${runs}, long jumps ${policy}, ${options.scans === 'no' ? 'no scans' : 'scanning'}. The median, then the least and most:`,
+    `Sectors crossed: ${spread(of('crossed'))}; ${done.filter((r) => r.ended).length} of ${done.length} reached the end of the charts; fed all the way in ${done.filter((r) => r.tally.hungryJumps === 0).length} of ${done.length}.`,
     `Jumps: ${spread(of('jumps'))}, long ${spread(of('longJumps'))}, hungry ${spread(of('hungryJumps'))}.`,
+    `At the nodes: ${spread(of('events'))} events, ${spread(of('eventCredits'))} credits and ${spread(of('eventSupplies'))} supplies from them, ${spread(of('found'))} parts found, ${spread(of('sold'))} sold, ${spread(of('wounds'))} hit points lost; ${spread(of('scans'))} scans.`,
     `In the first three sectors: restocked at ${spread(done.map((r) => early(r, (step) => step.kind === 'buy')))} stations; hungry on ${spread(hungryEarly)} jumps; fed all the way in ${hungryEarly.filter((n) => n === 0).length} of ${done.length}.`,
     `Supplies bought: ${spread(of('bought'))}, for ${spread(of('spent'))} credits. Launch credits: ${spread(done.map((r) => r.steps[0]?.credits[0] ?? 0))}.`,
     `Heat at launch: ${spread(done.map((r) => r.tally.heat[0]))}; at the end: ${spread(done.map((r) => r.tally.heat[1]))}.`,
@@ -240,6 +218,10 @@ function hpOf(campaign) {
   return campaign.crew.map((member) => member.hp).join('/');
 }
 
+function signed(n) {
+  return n < 0 ? `−${-n}` : `+${n}`;
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const args = process.argv.slice(2);
   const value = (flag, fallback) => {
@@ -249,7 +231,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const sets = args.flatMap((arg, i) => (arg === '--set' ? [setting(args[i + 1] ?? '')] : []));
   const made = sets.length ? rulesWith(readData(), sets) : { ok: true, rules: indexDefs(readData()) };
   if (!made.ok) throw new Error(made.error);
-  const options = { long: value('--long', 'heat') };
+  const options = { long: value('--long', 'heat'), scans: value('--scan', 'yes') };
   const runs = Number(value('--runs', 0));
   console.log((runs ? manyVoyages(made.rules, runs, options) : voyage(made.rules, Number(value('--seed', 1)), options)).lines.join('\n'));
 }

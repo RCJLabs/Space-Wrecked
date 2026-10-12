@@ -4,10 +4,10 @@
 // empty tables.
 
 // The content files, by name: data/<name>.json.
-export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'tips'];
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'events', 'tips'];
 
 export function indexDefs(files) {
-  const { modules, frames, manufacturers, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, tips } = files;
+  const { modules, frames, manufacturers, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, events, tips } = files;
   return {
     balance,
     tilesPerCell: modules.tilesPerCell,
@@ -52,6 +52,10 @@ export function indexDefs(files) {
     // node by id, and the names it draws on.
     sectors: sectors ?? null,
     nodeTypes: byId(sectors?.nodes),
+    // What happens at a sector's nodes (events.js): each event by id, and
+    // the drop tables its outcomes draw parts from.
+    events: byId(events?.events),
+    eventDrops: events?.drops ?? {},
     // The first-run tips' words (src/ui/tips.js), by id.
     tips: byId(tips?.tips),
   };

@@ -43,7 +43,7 @@ The game has three acts, and the home moves at each gate.
 
 Every act runs the same mission loop: hub, travel, node, mission, aftermath, then push on or regroup.
 
-**Launch** (M17, `src/sim/launch.js`): once every flight check passes, Launch at the hangar ends act 1. The ship lifts off, and the campaign moves on to act 2 with its ship, crew, credits, parts and heat. The hangar's job board, shop, payments and raids stay behind. A raid at the door doesn't stop it: the pursuer finds an empty hangar. From M19 act 2's home is the sector map (§4.7): the run crosses the act's sectors by jumps, eating supplies (§4.6). Past the last sector's jump point the charts end, for now, with the stub's words.
+**Launch** (M17, `src/sim/launch.js`): once every flight check passes, Launch at the hangar ends act 1. The ship lifts off, and the campaign moves on to act 2 with its ship, crew, credits, parts and heat. The hangar's job board, shop, payments and raids stay behind. A raid at the door doesn't stop it: the pursuer finds an empty hangar. From M19 act 2's home is the sector map (§4.7): the run crosses the act's sectors by jumps, eating supplies (§4.6). Since M20 the nodes along the way hold events: derelicts, distress calls, traders and hazards. Past the last sector's jump point the charts end, for now, with the stub's words.
 
 Act length targets (proposed, to check in play): act 1 under an hour, act 2 the longest, act 3 open-ended.
 
@@ -192,7 +192,8 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - **The one loss in act 1** is a payment on the debt: 50 credits for 15 heat, at the hangar. It can also head off a raid that is due.
   - Heat doesn't fall on its own, and 100's confrontation isn't in act 1: the raid comes first.
   - Heat goes along when the ship launches (M17), raid or no raid, into act 2.
-- **Act 2 so far** (M19, `src/sim/travel.js`): a jump adds 3 heat and a long jump takes 10 off (`jumpHeat`, `longJumpHeat`), from 0 to 100. Nothing in act 2 reads heat yet: the hunters at nodes, regrouping and transponders are M24. Leaving a sector is a jump. Without long jumps, heat is at or near 100 by the end of the third sector (87 to 100 over 30 test runs).
+- **Act 2 so far** (M19, `src/sim/travel.js`): a jump adds 3 heat and a long jump takes 10 off (`jumpHeat`, `longJumpHeat`), from 0 to 100. Nothing in act 2 reads heat yet: the hunters at nodes, regrouping and transponders are M24. Leaving a sector is a jump. Without long jumps, heat is at or near 100 by the end of the third sector (87 to 100 over 30 test runs, M19).
+  - Since M20 a scan adds 2 heat (`scanHeat`), and some event choices add or take heat: stripping a company wreck with its transponder still pinging (+8), cracking a courier pod open (+10), tossing a stalled miner a crate (−4), running dark in the rocks (−6). M20's test player ends act 2 at heat 79 at the median (45 to 100); with no long jumps, 100 (97 to 100).
 - **In act 3**, heat decays slowly, distance from pursuer space lowers what you gain, and raid frequency follows heat.
 
 ### 4.5 Characters
@@ -212,8 +213,10 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Prices** (M16, `src/sim/economy.js`): a part costs its module's cost (`buyPercent` 100 in `data/balance.json`), and the shop buys one back for half (`sellPercent` 50), rounded down to 5 credits. The engine, at 200, is the dear part.
 - **The shop** (M16): the district's dealer, Dutch's yard (`shop` in `data/districts.json`). It has 4 different parts at a time, picked by weight from its table (engines weigh most) when each job board is rolled, so it turns over after every job. A price is fixed when it is offered. It buys any part on hand.
 - **Lifting off** (M16): act 1 ends by lifting off Homeworld, so its checklist asks for thrust at least the ship's mass (`liftOff` 1 in `data/campaign.json`), where the frame asks half. The start ship needs three engines; stripping it can save one at most. Only the campaign asks this.
-- **Supplies** (M19, `src/sim/travel.js`; the numbers in `data/balance.json`): a jump eats one per crew member (`jumpSupplies`), a long jump three times that (`longJumpFactor`). The ship carries 24 in its lockers (`baseSupplies`) and 20 more for each cargo hold. The run starts with them full. Stations sell them at 1 credit each (`supplyPrice`). A jump the supplies don't cover still goes: they run out, and each crew member loses 2 hit points (`hungerHp`), never the last one. In act 2 nothing heals until M23's med bay.
+- **Supplies** (M19, `src/sim/travel.js`; the numbers in `data/balance.json`): a jump eats one per crew member (`jumpSupplies`), a long jump three times that (`longJumpFactor`). The ship carries 30 in its lockers (`baseSupplies`, 24 in M19) and 20 more for each cargo hold. The run starts with them full. Stations sell them at 1 credit each (`supplyPrice`). A jump the supplies don't cover still goes: they run out, and each crew member loses 2 hit points (`hungerHp`), never the last one. In act 2 nothing heals until M23's med bay.
   - **Tuning** (M19's test player, `tools/voyage.js`, 30 launches from M16's test runs): 12 lockers at 3 credits starved every run, since 12 supplies don't reach from one station to the next. At 24 and 1 credit, a careful player with no long jumps crosses three sectors without going hungry in 18 of 30 runs, and all five in 8. The runs that go hungry launched with few credits: launch money is median 50 (0 to 220), and act 2 pays nothing until M20's nodes. M20 retunes this once nodes pay.
+  - **Retuned in M20,** when the nodes began to pay (M20's test player, the same 30 launches, long jumps at heat 50 or over; with no long jumps in brackets): with M19's 24 lockers and 1 or 2 stations a sector, 12 of 30 runs crossed all five sectors fed (15), though the nodes paid the median run over 100 credits. Money wasn't the problem: the holds ran dry between supply stops. Two stations in every sector alone made 17 (24); 30 lockers alone, 14 (20); doubling the traders' weight alone, 12 (18). Both, 30 lockers and 2 stations a sector: 25 of 30 (24), and 21 with no scans.
+- **What the nodes pay** (M20, `data/events.json`): credits and supplies from derelicts and distress calls, and parts from derelicts; supplies sold cheap, and parts bought, by traders; and a cost at hazards, in hit points or supplies. Each choice's chances are shown and rolled as shown (§4.7). M20's test player settles 11 events a run at the median (5 to 13): 130 credits and 8 supplies from them, 3 parts found, 6 hit points lost. Act 2 still has nothing else to spend credits on; the median run ends with about 100 (180 with no long jumps).
 - **Act 1 target:** launch in under an hour. M16's test player (`tools/run.js`) launches after 7 jobs at the median (3 to 14 over 50 runs), in 26 to 92 minutes at the slow pace, every run under an hour at the quick pace. The target before M16 was 8 to 12 jobs, but 12 jobs can't fit in an hour at Gate 2's 5 to 8 minutes a fight; M16 tuned for the hour. The engine's price moves it. Check in play.
 
 ### 4.7 Generators (all seeded)
@@ -241,12 +244,19 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - the pay, in steps of 5 credits, and the part, if any, from the job's drop table: a chance, and parts by weight (M16, `src/sim/drops.js`).
 
   All of it is rolled, with the fight's seed, when the board is, from the campaign's RNG, so an offer never changes once it is made. After each job, done or lost, the board is rolled again with none of the jobs it had, so no job comes twice in a row, and the shop's stock with it (M16). A job marked once (the repossession) never comes back once it is done. Clients and sites belong to the background's district (`data/districts.json`).
-- **Act 2's sectors** (M19, `src/sim/gen/sector.js`, pure; `data/sectors.json`) are node maps in 7 columns: the way in alone in the first, the jump point alone in the last, and 2 or 3 nodes in each column between.
+- **Act 2's sectors** (M19 and M20, `src/sim/gen/sector.js`, pure; `data/sectors.json`) are node maps in 7 columns: the way in alone in the first, the jump point alone in the last, and 2 or 3 nodes in each column between.
   - **Links** join each node to the next column by its height in its column, so none cross and every node can be reached both ways. Between any two columns, 35% of the time (`extraLinkChance`), one link more is added where it crosses nothing.
-  - **Stations**, 1 or 2 a sector, each stand in a column of their own. The other nodes are empty space, for now; M20 brings the other kinds.
+  - **Stations**, 2 a sector since M20 (1 or 2 in M19), each stand in a column of their own.
+  - **The other nodes** roll their kind from the data's mix, by weight: empty space 3, derelict 2, distress call 2, trader 1, hazard 2 (M20). A node of a kind that holds events gets one of its kind from `data/events.json`, none twice in a sector while the kind's events last.
   - **Names** come from the data's lists, none twice in a sector, and no sector's name twice in a run.
   - **A jump** goes to a linked node, and a long jump to one two links away. Either can go back as well as on. From the jump point, leaving is a jump into the next sector's way in. Act 2 has 5 sectors (`sectors` in `data/campaign.json`).
   - **Rolls:** each sector is rolled from the campaign's RNG as the ship enters it, and saved whole. The same seed always gives the same sector (golden file `tests/golden/sectors.txt`).
+  - **What is known** (M20): the way in, the jump point and stations are on the charts. Any other node shows what it holds once the ship has been at it or next to it, or after a scan: a scan shows every node within 2 links (`scanRange`) for 2 heat.
+- **Events** (M20, `src/sim/events.js`, pure; `data/events.json`, 10 of them): an event opens when the ship reaches its node and holds every jump and scan until a choice is made.
+  - **A choice** can need credits, supplies or parts on hand, and every event has one choice that needs nothing, so the ship is never stuck.
+  - **Its outcomes** each have a chance in 100. One roll from 0 to 99 picks the outcome whose share it falls in, so the odds shown are the odds rolled (Law 4).
+  - **Effects:** credits; supplies, up to what the holds take; heat; a wound, hit points off one crew member picked by a roll or off everyone, never the last one; a part, given or from a drop table; and selling parts on hand, the dearest first, at the shop's price.
+  - **After:** the run keeps the events settled and the last one's result until the next jump. The validator checks every event, so adding one needs no engine edits.
 
 ### 4.8 Saves
 
@@ -258,6 +268,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - Settings can export and import a save as text. A TWA shares Chrome's storage, so clearing Chrome's data wipes saves; the export is the player's backup. Since M18, Settings has Export, Copy and Import; Import checks the code, and a second tap replaces the save.
 - The settings themselves (difficulty, forgiving odds, motion, frame rate, tips and the tips put away) are part of the save (v9, M18).
 - The run (v10, M19): the supplies, and the sector the ship is in, saved whole with where it is, where it has been and the sectors behind it. A v9 campaign gets no supplies and no run; the run begins when the map first opens, holds full.
+- Events and scans (v11, M20): the events settled in the sector, the scans made, and the last event's result; a node's event is saved with its sector. A v10 run carries on with nothing settled or scanned. Its sector keeps its nodes as they were, with no events, and the next sector has them.
 - The builder keeps up to six ships in slots, each with the build log its replay plays back. A single ship travels between devices as a blueprint code.
 
 ---
@@ -395,12 +406,12 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
   - supplies: one per crew member a jump, carried up to the ship's lockers plus its cargo holds, bought at stations. A jump short of supplies goes hungry, which costs hit points, never a run.
 
   **Done when:** from launch, a run crosses three sectors by jumping and restocking at stations; supplies and heat move as `data/balance.json` says; the same seed always gives the same sectors.
-- [ ] **M20 Node types, events and scanning.**
+- [x] **M20 Node types, events and scanning.**
   - node types past stations: derelicts to salvage, distress calls, traders, hazards
   - events as data (`data/events.json`), with choices whose outcomes are credits, parts, supplies, heat or wounds
   - scanning: what a node holds is unknown until the ship is near or scans it
 
-  **Done when (draft):** ten events play from data, and a run earns its keep from the nodes it picks.
+  **Done when:** ten events play from `data/events.json`, each choice's odds shown and rolled as shown; scanning shows what a node holds before the ship gets there; and the nodes pay the run's way: over 30 test runs from launch, the test player, picking nodes for what they hold, crosses all five sectors without going hungry in at least 24 (M19, with nothing at the nodes: 8).
 - [ ] **M21 Approach phase** (§4.2).
 
   **Done when (draft):** a hostile ship at a node fights the approach phase to one of its outcomes with the odds shown, and its damage carries into the boarding map as wrecked rooms.
@@ -503,5 +514,9 @@ These ideas wait until v0.4 or later:
 - the sector map in 3D: M19's chart is flat, drawn in SVG like the job board. A starfield with the nodes as places, seen through the orbit camera, would match the ships (raised in M19)
 - names on the sector map: M19 names a node in the left panel when it is picked. Every name on the chart would crowd it at 7 columns on the cover screen (raised in M19)
 - tips for the run: what a jump costs, long jumps, stations and hunger (raised in M19)
+- a scanner part: scanning comes from the ship as such since M20. A sensor module that lengthens `scanRange` would tie scanning to the build, as Law 1 asks (raised in M20)
+- more for credits to buy in act 2: M20's runs end with about 100 unspent. Repairs, recruits (M23) and bribes (M24) are the likely sinks (raised in M20)
+- events that start a fight: M20's events settle with a roll. Ambushes and boardings at nodes come with M21 and M22 (raised in M20)
+- refits in act 2: parts found at the nodes can only be sold, at a scrap dealer, since construction mode stays in act 1's hangar. Refitting at stations, or between jumps, would make them worth fitting (raised in M20)
 
 Ideas that come up during a session go here, not into code.

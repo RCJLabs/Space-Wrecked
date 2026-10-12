@@ -16,11 +16,12 @@ import { readData } from './data.js';
 export const GOLDEN_SECTORS = fileURLToPath(new URL('../tests/golden/sectors.txt', import.meta.url));
 export const GOLDEN_SEEDS = [1, 2, 3];
 // A node on the drawn map: its id and its kind's mark.
-const MARKS = { start: 'S', exit: 'E', station: '$', empty: 'o' };
+const MARKS = { start: 'S', exit: 'E', station: '$', empty: 'o', derelict: 'd', distress: '!', trader: 't', hazard: 'x' };
 const ROWS = 3; // the map's lines: a column of one sits on the middle one
 
 // A sector as text: the map, column by column (three lines; a column of two
-// uses the top and bottom one), its links, and its nodes by name.
+// uses the top and bottom one), its links, and its nodes by name, with
+// their events.
 export function sectorText(sector, label = '') {
   const columns = Math.max(...sector.nodes.map((node) => node.col)) + 1;
   const lines = Array.from({ length: ROWS }, () => []);
@@ -36,7 +37,7 @@ export function sectorText(sector, label = '') {
     `Sector ${sector.index}: ${sector.name}${label}, ${sector.nodes.length} nodes, ${sector.links.length} links`,
     ...lines.map((cells) => cells.join('')),
     `links: ${sector.links.map(([a, b]) => `${a}-${b}`).join(' ')}`,
-    ...sector.nodes.map((node) => `  ${node.id} ${node.name} (${node.type}) at ${node.x}, ${node.y}`),
+    ...sector.nodes.map((node) => `  ${node.id} ${node.name} (${node.type}${node.event ? `: ${node.event}` : ''}) at ${node.x}, ${node.y}`),
   ].join('\n');
 }
 

@@ -71,11 +71,43 @@ test('stations as the data counts them, each in a column of its own; names never
     assert.ok(stations.every((node) => node.col > 0 && node.col < spec.columns - 1));
     assert.equal(new Set(sector.nodes.map((node) => node.name)).size, sector.nodes.length, `seed ${seed}: no name twice`);
     assert.ok(stations.every((node) => spec.names.stations.includes(node.name)));
-    assert.ok(sector.nodes.filter((node) => node.type === 'empty').every((node) => spec.names.places.includes(node.name)));
+    assert.ok(sector.nodes.filter((node) => node.type in spec.mix).every((node) => spec.names.places.includes(node.name)));
     assert.ok(sector.nodes.every((node) => node.x >= 0.08 && node.x <= 0.92 && node.y >= 0.08 && node.y <= 0.92), `seed ${seed}: in the margins`);
     tally.set(stations.length, (tally.get(stations.length) ?? 0) + 1);
   }
-  assert.ok(tally.get(1) > 50 && tally.get(2) > 50, `both counts come up: ${[...tally].join(' ')}`);
+  const [min, max] = spec.counts.station;
+  for (let count = min; count <= max; count++) assert.ok(tally.get(count) > 50, `each count comes up: ${[...tally].join(' ')}`);
+});
+
+test('the nodes between roll their kinds from the mix, and those that hold events get one of their kind', () => {
+  const kinds = new Map();
+  const events = new Set();
+  for (const seed of SEEDS) {
+    const sector = generateSector(rules, seed, 1);
+    const last = spec.columns - 1;
+    const between = sector.nodes.filter((node) => node.col > 0 && node.col < last);
+    assert.ok(between.every((node) => node.type in spec.mix || node.type in spec.counts), `seed ${seed}: kinds from the mix or the counts`);
+    for (const node of sector.nodes) {
+      kinds.set(node.type, (kinds.get(node.type) ?? 0) + 1);
+      const holds = Boolean(rules.nodeTypes.get(node.type)?.events);
+      assert.equal(Boolean(node.event), holds, `seed ${seed}: node ${node.id} (${node.type}) has an event only if its kind holds them`);
+      if (node.event) {
+        assert.equal(rules.events.get(node.event).kind, node.type);
+        events.add(node.event);
+      }
+    }
+    // None twice in a sector while the kind's events last.
+    for (const kind of Object.keys(spec.mix)) {
+      const ids = sector.nodes.filter((node) => node.type === kind && node.event).map((node) => node.event);
+      const pool = [...rules.events.values()].filter((event) => event.kind === kind).length;
+      assert.equal(new Set(ids).size, Math.min(ids.length, pool), `seed ${seed}: ${kind} events ${ids}`);
+    }
+  }
+  for (const kind of Object.keys(spec.mix)) assert.ok(kinds.get(kind) > 100, `${kind} comes up: ${kinds.get(kind)}`);
+  assert.equal(events.size, rules.events.size, 'every event comes up');
+  // The mix's weights show: empty space (3) comes about three times as often as a trader (1).
+  const ratio = kinds.get('empty') / kinds.get('trader');
+  assert.ok(ratio > 2.4 && ratio < 3.8, `empty to trader: ${ratio}`);
 });
 
 test('the same seed always gives the same sector, and names to avoid are avoided', () => {

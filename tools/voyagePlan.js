@@ -1,0 +1,187 @@
+// How the test voyage's player (tools/voyage.js) judges things: an event's
+// choices, what a node is worth passing through, and the way on to a
+// sector's jump point. What things are worth to it, in credits (WORTH):
+//   supply   2: out here, supplies are dearer than at a station
+//   short    6 a supply while the holds hold less than BUFFER_JUMPS jumps'
+//            worth: a hungry jump costs the whole crew hit points
+//   hp       2: nothing heals in act 2 yet
+//   heat     0.3 a point: it does nothing in act 2 yet, but it will
+//   part     half what the shop pays for it: it has to be sold to be spent
+// A choice is worth what its outcomes are, each at its chance. A node
+// whose kind is known is worth its event's best choice, until settled; one
+// still unknown, what the mix's events are worth on average.
+import { sellPriceOf } from '../src/sim/economy.js';
+import { choiceProblem } from '../src/sim/events.js';
+import { jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity } from '../src/sim/travel.js';
+
+export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5 };
+const BUFFER_JUMPS = 4;
+
+// What a change in supplies is worth: the part of it below the buffer at
+// WORTH.short each, the rest at WORTH.supply; gains only as far as the
+// holds take.
+function suppliesWorth(campaign, rules, change) {
+  const buffer = BUFFER_JUMPS * jumpSupplies(campaign, rules);
+  const from = campaign.supplies;
+  const to = Math.max(0, Math.min(supplyCapacity(campaign.ship, rules), from + change));
+  const [low, high] = to > from ? [from, to] : [to, from];
+  const short = Math.max(0, Math.min(high, buffer) - Math.min(low, buffer));
+  const worth = short * WORTH.short + (high - low - short) * WORTH.supply;
+  return to > from ? worth : -worth;
+}
+
+// What an outcome's effects are worth to the player, in credits, for the
+// campaign as it stands.
+export function effectsWorth(campaign, rules, effects) {
+  let worth = effects.credits ?? 0;
+  if (effects.supplies) worth += suppliesWorth(campaign, rules, effects.supplies);
+  worth -= WORTH.heat * (effects.heat ?? 0);
+  if (effects.wound) worth -= WORTH.hp * effects.wound.hp * (effects.wound.all ? campaign.crew.length : 1);
+  if (effects.part) worth += WORTH.part * (sellPriceOf(effects.part, rules) ?? 0);
+  if (effects.drop) worth += WORTH.part * dropWorth(rules, effects.drop);
+  // A sale turns a part, worth half its price held, into its price.
+  if (effects.sell) worth += (1 - WORTH.part) * dearest(campaign, rules, effects.sell);
+  return worth;
+}
+
+// What the shop pays, on average, for a part from a drop table.
+function dropWorth(rules, table) {
+  const entries = Object.entries(rules.eventDrops[table] ?? {});
+  const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
+  return total ? entries.reduce((sum, [part, weight]) => sum + weight * (sellPriceOf(part, rules) ?? 0), 0) / total : 0;
+}
+
+// What the shop pays for the `count` dearest parts on hand.
+function dearest(campaign, rules, count) {
+  const prices = Object.entries(campaign.parts).flatMap(([part, n]) => Array(n).fill(sellPriceOf(part, rules) ?? 0));
+  return prices.sort((a, b) => b - a).slice(0, count).reduce((sum, price) => sum + price, 0);
+}
+
+// The choice the player makes at an event: { choice, worth }, the one worth
+// most of those it can make.
+export function bestChoice(campaign, rules, event) {
+  let best = null;
+  for (const choice of event.choices) {
+    if (choiceProblem(campaign, choice)) continue;
+    const worth = choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * effectsWorth(campaign, rules, outcome.effects), 0);
+    if (!best || worth > best.worth) best = { choice, worth };
+  }
+  return best;
+}
+
+// What an unknown node is worth on average: the mix's kinds by weight, each
+// its events' best choices on average.
+function unknownWorth(campaign, rules) {
+  const mix = Object.entries(rules.sectors.mix);
+  const total = mix.reduce((sum, [, weight]) => sum + weight, 0);
+  let worth = 0;
+  for (const [kind, weight] of mix) {
+    const events = [...rules.events.values()].filter((event) => event.kind === kind);
+    if (!events.length) continue;
+    const each = events.reduce((sum, event) => sum + (bestChoice(campaign, rules, event)?.worth ?? 0), 0) / events.length;
+    worth += (weight / total) * each;
+  }
+  return worth;
+}
+
+// The ways on from node `id` to the sector's jump point, a link at a time:
+// lists of nodes, `id` first.
+function waysOn(sector, id) {
+  if (id === sector.exit) return [[id]];
+  const { col } = sector.nodes[id];
+  return linked(sector, id)
+    .filter((next) => sector.nodes[next].col > col)
+    .flatMap((next) => waysOn(sector, next).map((way) => [id, ...way]));
+}
+
+// What the holds take at a station, as far as the credits go.
+export function fill(supplies, credits, room, price) {
+  return Math.max(0, Math.min(room - supplies, Math.floor(credits / price)));
+}
+
+// How a way on goes from what the ship carries: { hungry (jumps), value }:
+// what is left out of the sector (supplies at their worth, and credits),
+// and what the nodes passed are worth. The jump out of the sector counts
+// too, unless it is the act's last.
+function wayCost(campaign, rules, way, { supplies, credits }, judge) {
+  const { sector } = campaign.run;
+  const price = rules.balance.supplyPrice;
+  const room = supplyCapacity(campaign.ship, rules);
+  const each = jumpSupplies(campaign, rules);
+  let hungry = 0;
+  let worth = 0;
+  const eat = () => {
+    if (supplies < each) hungry += 1;
+    supplies = Math.max(0, supplies - each);
+  };
+  for (const id of way.slice(1)) {
+    eat();
+    worth += judge(id);
+    if (sector.nodes[id].type === 'station') {
+      const bought = fill(supplies, credits, room, price);
+      supplies += bought;
+      credits -= bought * price;
+    }
+  }
+  if (leavePlan({ ...campaign, run: { ...campaign.run, at: sector.exit } }, rules).ok) eat();
+  return { hungry, value: WORTH.supply * supplies + credits + worth };
+}
+
+// Whether way a beats way b (or there is no b): hungry least, then worth
+// most.
+function better(a, b) {
+  return !b || (a.hungry !== b.hungry ? a.hungry < b.hungry : a.value > b.value);
+}
+
+// What each node is worth passing through, for the campaign as it stands.
+function nodeJudge(campaign, rules) {
+  const { run } = campaign;
+  const known = knownNodes(run, rules);
+  const guess = unknownWorth(campaign, rules);
+  return (id) => {
+    if (!known.has(id)) return guess;
+    const node = run.sector.nodes[id];
+    const event = node.event && !run.done.includes(id) ? rules.events.get(node.event) : null;
+    return event ? (bestChoice(campaign, rules, event)?.worth ?? 0) : 0;
+  };
+}
+
+// The best way on from node `from` with what the ship carries there.
+function bestWay(campaign, rules, from, carried, judge) {
+  let best = null;
+  for (const way of waysOn(campaign.run.sector, from)) {
+    const cost = { ...wayCost(campaign, rules, way, carried, judge), way };
+    if (better(cost, best)) best = cost;
+  }
+  return best;
+}
+
+// Where the player jumps next from where the ship is (not the jump point):
+// a node id. With the 'heat' policy, when heat is at the hunters' level or
+// over, a long jump on instead, if it leaves the holds above the buffer
+// and the way on from there goes hungry no more often.
+export function nextJump(campaign, rules, policy) {
+  const { sector, at } = campaign.run;
+  const judge = nodeJudge(campaign, rules);
+  const way = bestWay(campaign, rules, at, { supplies: campaign.supplies, credits: campaign.credits }, judge);
+  if (policy !== 'heat' || campaign.heat < rules.balance.huntHeat) return way.way[1];
+  const cost = jumpSupplies(campaign, rules, true);
+  if (campaign.supplies - cost < BUFFER_JUMPS * jumpSupplies(campaign, rules)) return way.way[1];
+  const price = rules.balance.supplyPrice;
+  const room = supplyCapacity(campaign.ship, rules);
+  let long = null;
+  for (const [to, links] of reach(sector, at)) {
+    if (links !== 2 || sector.nodes[to].col !== sector.nodes[at].col + 2) continue;
+    let supplies = campaign.supplies - cost;
+    let { credits } = campaign;
+    if (sector.nodes[to].type === 'station') {
+      const bought = fill(supplies, credits, room, price);
+      supplies += bought;
+      credits -= bought * price;
+    }
+    const on = bestWay(campaign, rules, to, { supplies, credits }, judge);
+    const there = { hungry: on.hungry, value: on.value + judge(to), to };
+    if (there.hungry <= way.hungry && better(there, long)) long = there;
+  }
+  return long ? long.to : way.way[1];
+}
