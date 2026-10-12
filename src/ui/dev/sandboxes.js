@@ -5,9 +5,11 @@
 import { battleScreen } from '../battle/screen.js';
 import { builderScreen } from '../builder/screen.js';
 import { fightScreen } from '../fight/screen.js';
+import { shipsScreen } from '../ships/screen.js';
 
 export const sandboxes = [
   { id: 'builder', name: 'Builder', screen: builderScreen },
   { id: 'battle', name: 'Battle map', screen: battleScreen },
   { id: 'fight', name: 'Fight', screen: fightScreen },
+  { id: 'ships', name: 'Enemy ships', screen: shipsScreen },
 ];

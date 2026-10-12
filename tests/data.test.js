@@ -71,6 +71,16 @@ const cases = [
   ['encounter with a crew job for an enemy', (d) => (d.encounters.encounters[0].enemies[0] = 'medic'), /unknown enemy "medic"/],
   ['encounter with no enemies', (d) => (d.encounters.encounters[0].enemies = []), /enemies must be a list of 1 to 8/],
   ['misspelled encounter field', (d) => (d.encounters.encounters[0].enemy = ['pirate']), /unknown field "enemy"/],
+  ['ship preset with an unknown part', (d) => (d.ships.ships[0].parts.cannon = 2), /parts: unknown module "cannon"/],
+  ['ship preset count back to front', (d) => (d.ships.ships[0].parts.engine = [3, 2]), /parts\.engine must be a whole number, or \[least, most\]/],
+  ['ship preset on an unknown frame', (d) => (d.ships.ships[0].frame = 'barge'), /unknown frame "barge"/],
+  ['ship preset with no crew', (d) => (d.ships.ships[0].crew = 0), /crew must be a whole number from 1/],
+  ['ship preset wider than its frame', (d) => (d.ships.ships[0].beam = [4, 30]), /beam must be \[least, most\] cells across, from 1 to 14/],
+  ['ship preset half symmetric', (d) => (d.ships.ships[0].symmetric = 'yes'), /symmetric must be true or false/],
+  ['ship preset wrecks back to front', (d) => (d.ships.ships[0].wrecks = [3, 1]), /wrecks must be \[least, most\] rooms/],
+  ['ship preset past its frame\'s cap', (d) => (d.ships.ships[0].parts.corridor = 40), /parts: up to \d+, but the Starter hull holds at most 40/],
+  ['ship preset with no parts', (d) => (d.ships.ships[0].parts = {}), /parts must be an object of module types and counts/],
+  ['misspelled ship preset field', (d) => (d.ships.ships[0].part = {}), /unknown field "part"/],
 ];
 
 test('the validator names each kind of mistake', () => {
@@ -99,5 +109,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 jobs, 2 enemies, 1 encounter\)/);
+  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 jobs, 2 enemies, 1 encounter, 3 ship presets\)/);
 });

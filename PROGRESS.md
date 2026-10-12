@@ -2,6 +2,153 @@
 
 Newest entry first.
 
+## M10 Enemy ship generator (2026-10-12)
+
+**Status:** done, and the ROADMAP.md box is ticked. Evan asked for the next milestone; M9 hasn't been reported on from the phone yet.
+
+Done when: "100 generated ships all pass the flight checklist (tested)."
+- `tests/ships.test.js` generates seeds 1 to 100 of each preset, 300 ships in all. Every one has no layout problems and passes the flight checklist for its preset's crew.
+- Every one also builds again, part by part, through the builder's `buildShip`. Every step of its build log passes the builder's layout rules, except the airlock rule, which waits for the airlock.
+
+### Shipped
+
+- **`data/ships.json`**: three presets, starting values. A preset lists its parts bow to stern, each a count or `[least, most]`.
+
+  | Preset | Crew | Beam (cells) | Mirrored | Notable parts |
+  | --- | --- | --- | --- | --- |
+  | Pirate cutter | 4 | 4–5 | no | guns forward |
+  | Patrol corvette | 6 | 7 | yes | shields, a med bay, an armory, two airlocks |
+  | Derelict hauler | 3 | 7–9 | yes | 3–5 cargo holds; 1–3 rooms come wrecked |
+
+  `tools/validate-data.js` checks presets: 10 new cases.
+- **`src/sim/gen/ship.js`** (pure, seeded): `generateShip(defs, preset, seed)` returns `{ ok, ship, preset, crew, wrecked }` or `{ ok: false, error }`.
+  - **It plans the parts:** the preset's counts, then each part the flight checklist names as its fix. This uses `partLines` in constraints.js, the checklist lines that only count parts. On a mirrored ship, a part that can't sit in the line along the middle row comes in pairs.
+  - **It lays them out** (layout.js), and starts again after a dead end, up to 20 tries.
+  - **It centres the ship in its frame.**
+  - **It wrecks a derelict's rooms:** fire, vacuum or rubble, never the bridge or an airlock.
+- **`src/sim/gen/layout.js`**: grows the ship from the bridge, placing in this order:
+  - the bridge at the front, consoles forward;
+  - a spine of corridors aft along the middle row;
+  - rooms bow to stern;
+  - engines at the stern;
+  - guns, then airlocks.
+
+  Every part goes in through `placeModule`, and the layout rules have to pass after each one. Each part takes the best of the places that join it to the ship, scored on:
+  - staying within the beam and near the middle row;
+  - its place bow to stern;
+  - sharing more wall and growing the ship less;
+  - keeping floor along its free sides, aft above all;
+  - a seeded nudge.
+- **Rules the generator adds to the builder's:**
+  - Nothing stands in an engine's wake or a gun's line of fire.
+  - Every airlock keeps a hatch.
+  - Every room can be walked to from the bridge.
+
+  The builder puts each doorway in the middle of a shared wall, whatever stands behind it. In this session's first version, doors opened onto lockers and machinery and cut rooms off. On one cutter the boarders had no way to the crew at all and sat on overwatch for 30 rounds.
+
+  The score now keeps floor along a room's free sides, and with the walking checks switched off, none of 300 ships had a room cut off. The checks stay as the guarantee. The builder's own rules are unchanged.
+- **`node tools/gen-ship.js`** (`npm run ships`): prints a ship's layout, build order, wrecks and checklist.
+  - `--check 100` tries seeds 1 to 100 of every preset.
+  - `--golden` writes `tests/golden/ships.txt`, new this session: every preset at seeds 1 to 3.
+- **Enemy ships sandbox** (dev menu): preset buttons, seed arrows, Hull, Plans and Map looks, Fit, and Builder.
+  - Builder copies the ship into a new builder slot, where its build log replays.
+  - The Battle map and Fight sandboxes then use that ship, wrecks and all.
+- **Hull fix** (`src/render/hull.js`): the exterior now roofs over empty cells a ship shuts in. The rules already counted them as hull, and the battle map has them as hull. Before, a gap with parts on only two sides showed as a hole through the ship: 38 of 100 generated haulers had one. Any player ship with such a gap is fixed too.
+- **Tests:** 355 in all, up from 344: ten for generated ships and one for the hull.
+
+Seed 1 of each preset. The glyphs are B bridge, + corridor, Q quarters, L life support, M med bay, X armory, S shield, C cargo, R reactor, E engine, W gun, A airlock:
+
+```
+Pirate cutter   Patrol corvette   Derelict hauler (rooms 15 and 18 on fire)
+EE.........     EE.............   EE............
+EERRR.QQXW.     EERRR.A..L.QQQW   EERRRCCC......
+EERRRLQQXBB     EERRR.A..LXQQQW   EERRRCCC..QQ..
+EERRRLQQ+BB     EERRRRRRMMXSSBB   EERRRCCC..QQ..
+..AA....WBB     .....RRRMM+++BB   ...AACCCLLQQBB
+                EERRRRRRMMXSSBB   .....CCC++++BB
+                EERRR.A..LXQQQW   ...AACCCLLQQBB
+                EERRR.A..L.QQQW   EERRRCCC..QQ..
+                EE.............   EERRRCCC..QQ..
+                                  EERRRCCC......
+                                  EE............
+```
+
+### Decisions made this session
+
+- **The order a preset lists its parts in sets where they go,** bow to stern. Adding a preset needs no engine edit.
+- **Mirrored ships pair what can't sit on the middle line:** engines, guns, airlocks, and rooms with a crate or locker at an end of their middle row (quarters, life support, armory, shields). An odd count gets one more, so a mirrored ship can carry more than its preset's top count.
+- **Generated ships are held to more than the builder asks** (wakes, hatches, rooms on foot). Player ships aren't; the doorway-onto-a-locker case is parked in ROADMAP §9.
+- **No enemy frame yet.** Every preset builds on the starter yard. §5 still counts an enemy frame for v0.1; it's parked in §9.
+
+### Verified here
+
+- **Tests:** all 355 pass in Node in about 9 s, and the data validates.
+- **100 seeds of each preset** (`node tools/gen-ship.js --check 100`): all pass.
+
+  | Preset | Length (cells) | Across (cells) | Parts | Different layouts | Mirrored |
+  | --- | --- | --- | --- | --- | --- |
+  | Pirate cutter | 9–13 | 4–7 | 10–15 | 100 | n/a |
+  | Patrol corvette | 8–20 | 9–13 | 23–28 | 95 | 96 |
+  | Derelict hauler | 10–17 | 6–13 | 15–22 | 83 | 90 |
+
+  A ship takes 9 to 16 ms in Node.
+- **Fights on generated ships:** 100 seeds each, deployed as the Fight sandbox does, 30-round limit.
+
+  | Ship | Crew played by | Crew wins | Boarders win | No winner |
+  | --- | --- | --- | --- | --- |
+  | Pirate cutter | scripted | 27 | 68 | 5 |
+  | Pirate cutter | AI | 48 | 25 | 27 |
+  | Patrol corvette | scripted | 22 | 77 | 1 |
+  | Patrol corvette | AI | 41 | 49 | 10 |
+  | Derelict hauler | scripted | 33 | 65 | 2 |
+  | Derelict hauler | AI | 47 | 49 | 4 |
+
+  The boarders are the AI in every row. Fights that end take a median of 5 to 8 rounds.
+- **In the browser** (headless Chromium):
+  - offline at 905×370, the sandbox shows every preset;
+  - the page makes the same ships as Node (9 compared);
+  - stepping seeds, each ship shown passes;
+  - a tile card opens on a long-press;
+  - Builder adds and opens a slot, and the Builder shows the ship "Ready to launch";
+  - the Battle map shows the derelict's wrecks;
+  - a fight starts on the ship and its turns play;
+  - at 821×283 and 960×825 the rows don't overlap and every button is 48 px or more;
+  - no console errors at any size.
+
+### Known issues
+
+- **AI standoffs on generated ships.** AI-against-AI fights reach the 30-round limit on 27 of 100 cutters, 10 corvettes and 4 haulers; M9 measured none of 100 on the example ship. Both sides hold on overwatch either side of a chokepoint. Against a crew that never moves, the boarders can also wait it out. A player who closes in won't see it, but it matters for M11's harness and for Gate 2's fight length. It's a new ROADMAP §8 risk row.
+- **Not every mirrored ship is mirrored:** 4 corvettes and 10 haulers in 100 have a part off true, where no mirrored place was left.
+- **Some ships come out boxy.** Corvettes with four engines stack them in columns, up to 13 cells across.
+- **A player's ship can still have a doorway in front of a locker,** cutting a room off on foot (§9).
+- **Builder fills a builder slot** (six at most); delete them in the Saves tab.
+- **An airlock that sticks out gets a hatch on every side open to space.** A hauler had seven hatches.
+- **Generation time on the phone is unmeasured.** The first ship after a page load takes longer than the rest.
+- **Carried over from M9:**
+  - the defenders win most AI-against-AI fights on the example ship;
+  - the AI sees everyone;
+  - the fight isn't saved;
+  - the camera doesn't follow the action.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Update,** then dev menu → Enemy ships.
+2. **Look at each preset.** Step through a dozen seeds with the arrows, in Hull and in Map. Do they read as a pirate cutter, a patrol corvette and a derelict hauler?
+3. **Look for anything broken:** a hole in the hull, an engine blowing into the ship, a part hanging off.
+4. **Try Builder on one you like,** then:
+   - the Builder: Saves → Replay plays it being built;
+   - the Battle map: a hauler's wrecked rooms;
+   - the Fight: board it.
+5. **Tell me:**
+   - which preset reads least like its name;
+   - how fights on generated ships feel next to the example ship;
+   - whether the boarders ever sit and wait.
+6. **Delete the generated slots** in Saves when done.
+
+### Next session
+
+**M11 Balance harness.** Done when: 1,000 fights report in under a minute. First task: `tools/sim.js` plays AI-against-AI fights headless (`autoplay`) on the example ship and on generated ships. It reports win rates, rounds, hits and misses, and stalls (fights that reach the round limit). Then come the weights M9 left as starting values, and the standoffs above.
+
 ## M9 Enemy AI v1 (2026-10-11)
 
 **Status:** done, and the ROADMAP.md box is ticked. Evan played M8 on the Fold ("it works") and asked for the next milestone.

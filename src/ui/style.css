@@ -734,6 +734,146 @@ textarea {
   color: var(--c-ink-dim);
 }
 
+/* Enemy ships sandbox: the preset and seed buttons along the top left (the
+   DEV button has the top right), what the ship is and a hint along the
+   bottom left, and the looks, Fit and Builder in the bottom right corner
+   (the bat-tool buttons). The fitted ship sits between the two rows. */
+.ships {
+  position: absolute;
+  inset: 0;
+}
+
+.shp-board {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+
+.shp-top {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  right: 80px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shp-presets {
+  display: flex;
+  gap: 6px;
+}
+
+#ui .shp-button {
+  padding: 0 12px;
+  background: var(--c-panel);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+#ui .shp-step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.shp-seed {
+  min-width: 64px;
+  margin: 0;
+  padding: 5px 8px;
+  border-radius: 12px;
+  background: rgba(7, 10, 20, 0.82);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.shp-lines {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  max-width: calc(100% - 330px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.shp-info,
+.shp-status {
+  max-width: 100%;
+  margin: 0;
+  padding: 5px 10px;
+  border-radius: 12px;
+  background: rgba(7, 10, 20, 0.82);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shp-info {
+  font-size: 12px;
+}
+
+.shp-info[data-tone='bad'],
+.shp-status[data-tone='bad'] {
+  color: var(--c-bad);
+}
+
+.shp-status {
+  font-size: 13px;
+}
+
+.shp-status[data-tone='good'] {
+  color: var(--c-good);
+}
+
+.shp-tools {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+.shp-card {
+  position: absolute;
+  top: 62px;
+  left: 8px;
+  max-width: min(340px, calc(100% - 16px));
+  padding: 10px 12px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-panel);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: auto;
+}
+
+/* On the right it sits above the tools, clear of the DEV button. */
+.shp-card[data-side='right'] {
+  top: auto;
+  right: 8px;
+  bottom: 68px;
+  left: auto;
+}
+
+.shp-card h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.shp-card p {
+  margin: 0;
+  color: var(--c-ink-dim);
+}
+
 /* Fight sandbox: the crew down the left with End turn under them, the
    board in the middle, and the selected unit's orders down the right
    (bottom up, clear of the DEV button). */

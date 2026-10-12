@@ -4,9 +4,9 @@
 // empty tables.
 
 // The content files, by name: data/<name>.json.
-export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'balance', 'weapons', 'jobs', 'enemies', 'tiles', 'encounters'];
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'balance', 'weapons', 'jobs', 'enemies', 'tiles', 'encounters', 'ships'];
 
-export function indexDefs({ modules, frames, manufacturers, balance, weapons, jobs, enemies, tiles, encounters }) {
+export function indexDefs({ modules, frames, manufacturers, balance, weapons, jobs, enemies, tiles, encounters, ships }) {
   return {
     balance,
     tilesPerCell: modules.tilesPerCell,
@@ -24,6 +24,8 @@ export function indexDefs({ modules, frames, manufacturers, balance, weapons, jo
     // crew) and the enemies an encounter brings.
     squad: encounters?.squad ?? [],
     encounters: byId(encounters?.encounters),
+    // The presets ships are generated from (src/sim/gen/ship.js).
+    ships: byId(ships?.ships),
   };
 }
 

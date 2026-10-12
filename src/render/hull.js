@@ -5,7 +5,7 @@
 // cells (the board's world units); the 3D scenes raise it into walls. Ships
 // fly toward +x.
 import { spaceTest } from '../sim/builder.js';
-import { SIDES, step } from '../sim/grid.js';
+import { createGrid, exteriorOf, SIDES, step, withCells } from '../sim/grid.js';
 import { facingSide, hasTag, placedCells, sideCells } from '../sim/modules.js';
 
 // Room the camera keeps around the ship, in cells, for what sticks out of
@@ -20,7 +20,9 @@ const NORMAL = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 
 // Returns plain data, in cells:
 //   cells     [x, y] under a module, row by row
-//   pockets   [x, y] empty cells with modules on three or four sides: hull
+//   pockets   [x, y] empty cells the hull closes over: modules on three or
+//             four sides, or shut in by the ship, out of reach of open
+//             space (as the rules have them: builder.js spaceTest)
 //   fairings  triangles [[x, y] × 3] across empty corners with modules on
 //             two adjacent sides; the middle point is the inside corner
 //   edges     the outline as { a, b, normal }: segments [x, y] to [x, y]
@@ -48,6 +50,11 @@ export function traceHull(ship, defs) {
   const ys = hull.cells.map(([, y]) => y);
   const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
 
+  // Open space: empty cells joined to the ring of cells round the ship.
+  const [ox, oy] = [minX - 1, minY - 1];
+  const around = withCells(createGrid(maxX - minX + 3, maxY - minY + 3, false), hull.cells.map(([x, y]) => [x - ox, y - oy]), true);
+  const open = exteriorOf(around, (taken) => !taken);
+
   const pocketKeys = new Set();
   const corners = [];
   for (let y = minY - 1; y <= maxY + 1; y++) {
@@ -58,7 +65,7 @@ export function traceHull(ship, defs) {
       const s = occupied(x, y + 1);
       const w = occupied(x - 1, y);
       const count = n + e + s + w;
-      if (count >= 3) {
+      if (count >= 3 || !open(x - ox, y - oy)) {
         hull.pockets.push([x, y]);
         pocketKeys.add(key(x, y));
       } else if (count === 2 && !(n && s) && !(e && w)) {
