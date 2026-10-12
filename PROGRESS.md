@@ -2,6 +2,114 @@
 
 Newest entry first.
 
+## M11 Balance harness (2026-10-12)
+
+**Status:** done, and the ROADMAP.md box is ticked. Evan asked for the next milestone; M10 hasn't been reported on from the phone yet. This ends Phase 2: Gate 2 is next, and it's Evan's call.
+
+Done when: "1,000 fights report in under a minute." `node tools/sim.js` plays 1,000 AI-against-AI fights and reports in 22.9 s here, 23 ms a fight. Generated ships are made fresh for each fight inside that time.
+
+### Shipped
+
+- **`tools/sim.js`** (`npm run sim`) plays fights headless with `autoplay`: the squad against the boarding party, the AI playing both sides. It reports:
+  - win rates, ship by ship and in all, with a 95% interval;
+  - stalls: fights still going at the round limit;
+  - rounds and crew orders in the fights that end: the median, and the 10th to 90th percentile;
+  - shots: hit rates by side, overwatch, crits and damage;
+  - shots grouped by the odds shown, against how often they hit (a check on Law 4).
+- **It's seeded:** the same options always give the same report. Each fight's seed (and, on a preset, its ship) comes from the run's seed, the ship and the fight's number, so adding a ship to a run doesn't change the other ships' fights.
+- **Options:**
+  - `--fights` sets the count.
+  - `--ships` takes the example, a preset, a ship script (`.json`, as `tools/build-ship.js` takes) or a blueprint code copied from the builder's Saves tab.
+  - `--set name=value` changes a `balance.json` number for one run, checked by the data validator.
+  - `--compare` plays the same fights before and after a `--set`.
+  - `--crew` and `--boarders` choose `ai` or `scripted`.
+  - `--rounds`, `--seed` and `--json` round it out.
+- **Tests:** 366 in all, up from 355. The harness has 11, covering:
+  - the options and their errors;
+  - changed numbers checked and the file left alone;
+  - every kind of ship;
+  - the same report every time, and each ship keeping its fights;
+  - totals adding up;
+  - stalls at the limit;
+  - the Wilson interval;
+  - the report and the compare form;
+  - the command line;
+  - shots landing as often as shown, within 6 points in every band with 200 or more shots.
+
+### The first run
+
+`node tools/sim.js`, with the balance numbers as they are:
+
+```
+1,000 fights on example ship, pirate cutter, patrol corvette, derelict hauler. The squad (marine, engineer, medic), played by the AI, against the boarding party (pirate, pirate, brute, pirate), played by the AI. 30 rounds at most, seed "balance".
+
+Ship             Fights    Crew wins  Boarders win  No winner    Rounds  Crew orders
+Example ship        250  64% (58–70)           36%         0%   7 (5–9)           29
+Pirate cutter       250  44% (38–51)           32%        24%  7 (5–11)           28
+Patrol corvette     250  41% (35–47)           50%         9%  8 (5–13)           28
+Derelict hauler     250  48% (41–54)           47%         5%  7 (4–11)           27
+All               1,000  49% (46–52)           41%        10%  7 (5–11)           28
+
+Rounds and crew orders count the fights with a winner: the median (10th to 90th percentile). Win rates have a 95% interval.
+
+Shots: 23,504, 23.5 a fight. Hit: crew 57%, boarders 40%.
+Shown odds  Shots  Shown  Hit
+0–19%       2,150     9%   9%
+20–39%      6,355    26%  27%
+40–59%      4,690    45%  45%
+60–79%      7,725    67%  68%
+80–100%     2,584    83%  83%
+On overwatch: 8% of shots, 26% hit. Crits: 33% of hits. Damage a hit: crew 4.5, boarders 4.5.
+A fight: 1.8 crew go down, 0.9 bleed out, 2.8 boarders die.
+
+1,000 fights in 22.9 s (23 ms a fight).
+```
+
+What it says:
+- **The odds are honest.** Every band hits within a point of the chance shown.
+- **The example ship favours the defenders,** 64% (58–70). M9's 70 of 100 is inside that interval.
+- **Generated ships stall:** a quarter of cutters, as M10 found.
+- **A decided fight is about 7 rounds and 28 crew orders.**
+- **Crits are a third of hits,** with flanking's +30 to crit.
+- **Overwatch is weak:** 8% of shots, 26% hit.
+
+Two comparisons, to show what the harness is for:
+- **Moving one module changes the fight** (Gate 2's first half). With the example ship's airlock moved from mid-ship to just under the bridge, the crew wins 83% (79–87) against 63% (58–68), over 400 fights each. Boarders who come in beside the defended bridge lose more often.
+- **Cover counts for a lot.** `--set halfCover=30 --set fullCover=50 --compare` on the example ship takes the crew from 64% to 79% over 200 fights.
+
+No balance number changed this session.
+
+### Decisions made this session
+
+- **The harness lives in `tools/`,** as CLAUDE.md lays out, and drives the pure `src/sim/` code. It changes nothing in the game.
+- **"No winner" is its own column,** not folded into either side. Rounds and crew orders count only fights that end, so stalls don't drag the medians to the limit.
+- **The AI's weights are still constants in `src/sim/ai.js`,** so `--set` can't reach them yet. Moving them into data is a small change, and is Evan's call (open since M9).
+
+### Known issues
+
+- **No real time.** Gate 2 asks for 5 to 8 minutes a fight. The harness counts rounds and crew orders, not minutes.
+
+  An estimate, not a measurement: at 8 to 12 s an order with tap to preview and tap to confirm, 28 orders is 4 to 6 minutes. Watching the enemy's 7 turns adds about a minute, less with Skip.
+- **AI against AI isn't a player.** The AI crew takes cover and waits; a player who presses on would see shorter fights and fewer stalls.
+- **The stalls on generated ships are still there** (ROADMAP §8). The harness measures them; nothing fixes them yet.
+- **Carried over:** the M10 items (mirrored ships off true, boxy corvettes, doorways onto lockers on player ships) and the M9 ones.
+
+### What to test on the phone (Galaxy Z Fold 6): Gate 2
+
+Gate 2: "moving modules changes how the fight plays, and a fight takes 5 to 8 minutes." It's Evan's call.
+
+1. **Time a whole fight** on the example ship in the Fight sandbox, from your first order to the end panel.
+2. **In the Builder, move one part:** the airlock under the bridge, say, or the weapon mount. Fight again. Does it play differently? The harness says the airlock move takes the AI crew from 63% to 83% wins.
+3. **If you get to it,** try M10's Enemy ships sandbox: open one with Builder and fight on it.
+4. **Tell me:** how long each fight took, whether the move changed how it played, and whether Gate 2 passes.
+
+### Next session
+
+Phase 3 waits on Gate 2. If it passes, record it here and start **M12 Campaign state**. Its first task: the campaign state shape and `SAVE_VERSION` 4 with the migration from version 3 (ROADMAP §7), tested before any screen. If it doesn't pass, the fight gets fixed first. The likely pieces, Evan's call:
+- fight length;
+- the standoffs (boarders pressing on);
+- moving the AI's weights into data, so the harness can tune them.
+
 ## M10 Enemy ship generator (2026-10-12)
 
 **Status:** done, and the ROADMAP.md box is ticked. Evan asked for the next milestone; M9 hasn't been reported on from the phone yet.
