@@ -3,10 +3,13 @@
 // jobs; players only ever read "jobs".
 //
 // A contract is a mission at one of its sites, for one of its clients,
-// against an encounter, for credits and maybe a part:
+// against an encounter, for credits and maybe a part from its drop table
+// (drops.js):
 //   clear  put down everyone who isn't crew
 //   grab   grab `crates` of the site's crates (battle.js objectives)
 //   hack   work the site's terminal for `turns` turns
+// A contract with once: true (a story job) never comes back once it is
+// done; the campaign keeps its id in spent. Lost, it can come again.
 // The job board offers boardSize contracts at a time, each with its client,
 // site, twist, pay and seed rolled with the board, so an offer never
 // changes once it is made. A job on the board:
@@ -20,14 +23,14 @@
 import { int, percent, shuffle } from '../core/rng.js';
 import { createBattle } from './battle.js';
 import { endFight, maxHp } from './campaign.js';
+import { rollDrop } from './drops.js';
+import { PAY_STEP, rollStock } from './economy.js';
 import { generateSite } from './gen/site.js';
 import { huntersFor, jobHeat, raidDue, withHeat } from './heat.js';
 
 // The missions the rules know. A new one means new rules (battle.js), so
 // it is added here on purpose.
 export const MISSIONS = ['clear', 'grab', 'hack'];
-// Pay comes in steps of this many credits.
-export const PAY_STEP = 5;
 const MAX_SEED = 0xffffffff;
 
 // The contracts the board can offer in a district: those at its sites.
@@ -68,20 +71,29 @@ export function rollBoard(rules, rng, district, skip = []) {
     const twist = twists.length && chance(twistChance) ? pick(twists) : null;
     const base = PAY_STEP * roll(contract.credits[0] / PAY_STEP, contract.credits[1] / PAY_STEP);
     const credits = PAY_STEP * Math.round((base * (100 + (twist?.pay ?? 0))) / 100 / PAY_STEP);
-    const part = contract.parts.length && chance(contract.partChance) ? pick(contract.parts) : null;
-    return { contract: contract.id, client, site, twist: twist?.id ?? null, seed: roll(0, MAX_SEED), credits, part };
+    const drop = rollDrop(state, contract.drops);
+    state = drop.state;
+    return { contract: contract.id, client, site, twist: twist?.id ?? null, seed: roll(0, MAX_SEED), credits, part: drop.value };
   });
   return { board, rng: state };
 }
 
-// The campaign with a board, rolled from its RNG if it has none yet (a new
-// campaign, or one saved before there were jobs). Not during a fight.
+// The campaign with a board and the shop's stock (economy.js), each rolled
+// from its RNG if it has none yet (a new campaign, or one saved before
+// there were jobs or a shop). Not during a fight.
 export function withBoard(campaign, rules) {
-  if (campaign.board.length || campaign.fight) return campaign;
   const district = rules.backgrounds.get(campaign.background)?.district;
-  if (!district) return campaign;
-  const { board, rng } = rollBoard(rules, campaign.rng, district);
-  return board.length ? { ...campaign, board, rng } : campaign;
+  if (campaign.fight || !district) return campaign;
+  let next = campaign;
+  if (!next.board.length) {
+    const { board, rng } = rollBoard(rules, next.rng, district, next.spent);
+    if (board.length) next = { ...next, board, rng };
+  }
+  if (next.shop === null) {
+    const { stock, rng } = rollStock(rules, next.rng, district);
+    next = { ...next, shop: stock, rng };
+  }
+  return next;
 }
 
 // The battle a job makes, for createBattle: the site's map from its
@@ -161,8 +173,9 @@ export function takeJob(campaign, rules, index) {
 // After a fight with a winner, home again (campaign.js endFight: wounds,
 // the dead, healing where the act heals, the fights counted). After a job,
 // also its pay if it was done, its heat, done or lost (heat.js jobHeat),
-// the job counted in the flags (jobsDone or jobsFailed), and a new board
-// with none of the old one's jobs. A fight still going is left as it is.
+// the job counted in the flags (jobsDone or jobsFailed), a new board with
+// none of the old one's jobs, and a new stock at the shop. A fight still
+// going is left as it is.
 export function endJob(campaign, rules) {
   const { fight } = campaign;
   const after = endFight(campaign, rules);
@@ -171,16 +184,20 @@ export function endJob(campaign, rules) {
   const won = fight.battle.winner === 'crew';
   const flag = won ? 'jobsDone' : 'jobsFailed';
   const parts = won && job.part ? { ...after.parts, [job.part]: (after.parts[job.part] ?? 0) + 1 } : after.parts;
+  const spent = won && rules.contracts.jobs.get(job.contract)?.once === true && !after.spent.includes(job.contract) ? [...after.spent, job.contract] : after.spent;
   const district = rules.backgrounds.get(after.background)?.district;
-  const skip = [job.contract, ...campaign.board.map((offer) => offer.contract)];
-  const { board, rng } = district ? rollBoard(rules, after.rng, district, skip) : { board: [], rng: after.rng };
+  const skip = [job.contract, ...campaign.board.map((offer) => offer.contract), ...spent];
+  const rolled = district ? rollBoard(rules, after.rng, district, skip) : { board: [], rng: after.rng };
+  const restocked = district ? rollStock(rules, rolled.rng, district) : { stock: after.shop, rng: rolled.rng };
   return {
     ...after,
     credits: after.credits + (won ? job.credits : 0),
     heat: withHeat(after.heat, jobHeat(job, rules).heat),
     parts,
     flags: { ...after.flags, [flag]: (after.flags[flag] ?? 0) + 1 },
-    board,
-    rng,
+    board: rolled.board,
+    shop: restocked.stock,
+    spent,
+    rng: restocked.rng,
   };
 }

@@ -17,7 +17,14 @@
         { "id": "yard", "name": "the Cable Street yard", "map": "yard", "blurb": "Dutch's scrapyard: a mile of dead machinery and a fence with opinions." },
         { "id": "depot", "name": "Depot 4", "map": "depot", "blurb": "The Company's warehouse for everything it charges you for twice." },
         { "id": "whistle", "name": "the Last Whistle", "map": "bar", "blurb": "The shift bar. Watered beer, honest fights." }
-      ]
+      ],
+      "shop": {
+        "name": "Dutch's yard",
+        "dealer": "dutch",
+        "pitch": "Dutch sells what the scavvers missed, and buys whatever you can carry in. Cash, no questions, no refunds.",
+        "size": 4,
+        "parts": { "engine": 6, "reactor": 1, "quarters": 1, "lifesupport": 1, "corridor": 2, "airlock": 1, "cargo": 2, "medbay": 1, "armory": 1, "weapon": 1, "shield": 1 }
+      }
     }
   ]
 }

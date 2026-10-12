@@ -10,7 +10,7 @@
 import { int } from '../core/rng.js';
 import { createBattle } from './battle.js';
 import { endFight, maxHp } from './campaign.js';
-import { PAY_STEP } from './contracts.js';
+import { PAY_STEP } from './economy.js';
 import { hangarDoors, hangarMap, waysIn } from './hangarMap.js';
 import { pursuerOf, raidDue } from './heat.js';
 import { hasTag } from './modules.js';

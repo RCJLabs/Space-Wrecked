@@ -1,6 +1,6 @@
 {
   "acts": [
-    { "act": 1, "name": "Homeworld", "hub": "hangar", "home": "The hangar", "heals": true },
+    { "act": 1, "name": "Homeworld", "hub": "hangar", "home": "The hangar", "heals": true, "liftOff": 1 },
     { "act": 2, "name": "The run", "hub": "ship", "home": "Your ship", "heals": false },
     { "act": 3, "name": "The colony", "hub": "colony", "home": "The colony", "heals": false }
   ]

@@ -31,19 +31,22 @@ export function shipStats(ship, defs) {
 // { id, ok, text, fix, add }. ok is true or false, or null for a line that
 // can't be checked until another one passes. fix is set on every failing
 // line; add is the module type to add when that is the fix, else null.
-export function flightChecklist(ship, defs, crew) {
-  return [...partLines(ship, defs, crew), layoutLine(ship, defs)];
+// liftOff, where set, is the thrust for each unit of mass it takes to lift
+// off a planet (act 1's, data/campaign.json), when that asks more than the
+// frame does.
+export function flightChecklist(ship, defs, crew, { liftOff = null } = {}) {
+  return [...partLines(ship, defs, crew, { liftOff }), layoutLine(ship, defs)];
 }
 
 // The lines that only count the parts: power, thrust, berths, life support
 // and the parts every ship needs. Where the parts go doesn't change them,
 // so they read only each module's type: a ship generator plans its parts
 // with them before it lays any out (src/sim/gen/).
-export function partLines(ship, defs, crew) {
+export function partLines(ship, defs, crew, { liftOff = null } = {}) {
   const stats = shipStats(ship, defs);
   return [
     powerLine(stats, defs),
-    thrustLine(stats, defs, defs.frames.get(ship.frame)),
+    thrustLine(stats, defs, defs.frames.get(ship.frame), liftOff),
     supplyLine('berths', 'Berths', 'berths', stats.berths, crew, defs),
     supplyLine('lifeSupport', 'Life support', 'crew', stats.lifeSupport, crew, defs),
     partsLine(ship, defs),
@@ -63,13 +66,15 @@ function powerLine(stats, defs) {
 }
 
 // Thrust has to be above zero and at least the frame's minimum share of the
-// mass. Each engine added brings its own mass, so the count of engines in
-// the fix allows for that.
-function thrustLine(stats, defs, frame) {
-  const min = frame?.minThrustToMass ?? 0;
+// mass, or lifting off's where that is more. Each engine added brings its
+// own mass, so the count of engines in the fix allows for that.
+function thrustLine(stats, defs, frame, liftOff) {
+  const frameMin = frame?.minThrustToMass ?? 0;
+  const lifting = liftOff !== null && liftOff > frameMin;
+  const min = lifting ? liftOff : frameMin;
   const { thrust, mass } = stats;
   const ratio = mass > 0 ? thrust / mass : 0;
-  const text = thrust > 0 ? `Thrust ${thrust} for mass ${mass}: ${ratio.toFixed(2)}, needs ${min.toFixed(2)}` : 'No thrust';
+  const text = thrust > 0 ? `Thrust ${thrust} for mass ${mass}: ${ratio.toFixed(2)}, needs ${min.toFixed(2)}${lifting ? ' to lift off' : ''}` : 'No thrust';
   if (thrust > 0 && thrust >= min * mass - 1e-9) return pass('thrust', text);
   const engine = bestSource(defs, 'thrust');
   if (!engine) return failing('thrust', text, 'No part gives thrust: remove mass');

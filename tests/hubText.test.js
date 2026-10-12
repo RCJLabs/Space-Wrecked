@@ -17,7 +17,7 @@ test('the hangar shows the act, its goal with what is on hand, the crew and the 
     ready: false,
     lines: [
       { ok: true, text: 'Power +6 (8 made, 2 used)', fix: null },
-      { ok: false, text: 'No thrust', fix: 'Add Engine (+12 thrust): none on hand' },
+      { ok: false, text: 'No thrust', fix: 'Add 2 × Engine (+12 thrust each): none on hand' },
       { ok: false, text: 'Berths 0 of 3 crew', fix: 'Add Crew quarters (+4 berths): 1 on hand' },
       { ok: false, text: 'Life support 0 of 3 crew', fix: 'Add Life support (+4 crew): 1 on hand' },
       { ok: false, text: 'Missing engine', fix: 'Add Engine: none on hand' },
@@ -45,8 +45,8 @@ test('the hint follows what is left to do', () => {
   assert.deepEqual(fitted.parts, { corridor: 2 });
   const text = hangarText(fitted, rules);
   assert.equal(text.build, false);
-  assert.deepEqual(text.hint, { tone: 'info', text: 'Tap Build to change the ship. The parts still missing come from jobs: tap Jobs.' });
-  assert.deepEqual(hangarText({ ...fitted, parts: {} }, rules).hint, { tone: 'info', text: 'The parts still missing come from jobs: tap Jobs.' });
+  assert.deepEqual(text.hint, { tone: 'info', text: "Tap Build to change the ship, or Shop to sell what it doesn't need. The rest comes from jobs." });
+  assert.deepEqual(hangarText({ ...fitted, parts: {} }, rules).hint, { tone: 'info', text: 'The parts still missing come from jobs and the shop: tap Jobs.' });
 });
 
 test('parts on hand and jobs done, in words', () => {

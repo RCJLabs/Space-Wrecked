@@ -194,14 +194,17 @@ test('quitting mid-raid and reopening resumes the raid where it was', () => {
 test('a v5 save gains raid: false on any fight', () => {
   const on = withBoard(newCampaign(rules, 4), rules);
   const job = reduce({ ...initialState(1), campaign: on }, { type: 'campaign/job/take', index: 0, rules }).campaign;
+  // As v5 saved it: no raid on the fight, and no shop (v7).
   const { raid, ...fight } = job.fight;
-  const v5 = { version: 5, data: { ...saveData(initialState(2)), campaign: { ...job, fight } } };
+  const { shop, spent, ...unshopped } = job;
+  const v5 = { version: 5, data: { ...saveData(initialState(2)), campaign: { ...unshopped, fight } } };
   const loaded = parseSave(JSON.stringify(v5));
   assert.ok(loaded.ok, loaded.error);
   assert.equal(loaded.save.data.campaign.fight.raid, false);
-  assert.deepEqual(loaded.save.data.campaign, job);
-  const hub = { version: 5, data: { ...saveData(initialState(2)), campaign: on } };
-  assert.deepEqual(parseSave(JSON.stringify(hub)).save.data.campaign, on, 'no fight: nothing to add');
+  assert.deepEqual(loaded.save.data.campaign, { ...job, shop: null });
+  const { shop: stock, spent: done, ...hubCampaign } = on;
+  const hub = { version: 5, data: { ...saveData(initialState(2)), campaign: hubCampaign } };
+  assert.deepEqual(parseSave(JSON.stringify(hub)).save.data.campaign, { ...on, shop: null }, 'no fight: nothing to add for raids');
   const damaged = { ...job, fight: { ...job.fight, raid: 'yes' } };
   assert.match(campaignProblems(damaged).join(' '), /fight is unreadable/);
 });

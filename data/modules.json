@@ -44,7 +44,7 @@
       "stats": { "power": -1, "mass": 3, "thrust": 12, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 15 },
       "tags": ["engine"],
       "interior": ["#.", "#."],
-      "cost": 150
+      "cost": 200
     },
     {
       "id": "corridor",

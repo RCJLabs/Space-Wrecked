@@ -57,7 +57,7 @@ test('the details card lists size, what faces space, stats and where a placed pa
   assert.deepEqual(placed.lines, [
     "2×2 squares · doesn't turn · exhaust must face space",
     'Power −1 · Thrust 12 · Mass 3 · Hull points 15',
-    'Cost 150 · Yard standard',
+    'Cost 200 · Yard standard',
     'At (0, 2) · not joined to the bridge',
   ]);
   const quarters = cardFor(defs, defs.modules.get('quarters'), { module: { uid: 1, type: 'quarters', x: 4, y: 0, rot: 1 }, joined: null });

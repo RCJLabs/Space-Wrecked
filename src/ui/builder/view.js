@@ -47,6 +47,8 @@ const TABS = 56; // the drawer's tab row and the space under it
 //                       nothing to build
 //   onSession(session, prev)   after every change to the session
 //   crew()              the crew the flight checklist counts
+//   liftOff()           optional: the thrust for each unit of mass lifting
+//                       off takes (a campaign's act on a planet), or null
 //   launch              true if the Ship tab has Launch
 //   leave               null, or { icon, label, onTap }: the way out, at
 //                       the end of the drawer's tabs
@@ -287,7 +289,7 @@ export function mountBuilder(root, source) {
   function derive(ship) {
     const problems = layoutProblems(ship, defs);
     const loose = problems.find((p) => p.rule === 'connected')?.uids ?? [];
-    const lines = flightChecklist(ship, defs, crew());
+    const lines = flightChecklist(ship, defs, crew(), { liftOff: source.liftOff?.() ?? null });
     return {
       doors: openings(ship, defs),
       hull: traceHull(ship, defs),

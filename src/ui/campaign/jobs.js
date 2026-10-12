@@ -51,7 +51,7 @@ export const jobsScreen = {
         if (!alive) return;
         defs = content;
         const { campaign } = game.getState();
-        if (campaign && !campaign.board.length) game.dispatch({ type: 'campaign/board', rules: defs });
+        if (campaign && (!campaign.board.length || campaign.shop === null)) game.dispatch({ type: 'campaign/board', rules: defs });
         render(game.getState().campaign);
       })
       .catch((err) => {

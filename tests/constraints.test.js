@@ -168,6 +168,28 @@ test('the thrust minimum holds exactly at the line despite floating point', () =
   assert.equal(flightChecklist(ship, tiny, 1)[1].ok, true, '7 thrust for 10 mass meets 0.7');
 });
 
+// Act 1 lifts off a planet (data/campaign.json liftOff): thrust at least
+// the mass, where the frame asks half.
+test('lifting off can ask more thrust than the frame, and the fix counts the engines for it', () => {
+  const thrust = (ship, liftOff) => flightChecklist(ship, defs, 4, { liftOff })[1];
+  // The example ship flies but can't lift off: one engine more does it.
+  assert.deepEqual(line(thrust(example(), 1)), [false, 'Thrust 24 for mass 27: 0.89, needs 1.00 to lift off', 'Add Engine (+12 thrust)']);
+  assert.equal(thrust(example(), 1).add, 'engine');
+  // A lift-off the frame already asks for changes nothing.
+  assert.deepEqual(line(thrust(example(), 0.4)), line(thrust(example(), null)));
+  assert.equal(thrust(example(), null).text, 'Thrust 24 for mass 27: 0.89, needs 0.50');
+  // The miner's start, with its quarters and life support fitted, needs
+  // three engines: each brings 3 mass of its own.
+  const { start } = defs.backgrounds.get('miner');
+  const fitted = [...start.ship.placements, { type: 'quarters', x: 9, y: 5, rot: 0 }, { type: 'lifesupport', x: 9, y: 8, rot: 0 }];
+  assert.equal(thrust(build(fitted), 1).fix, 'Add 3 × Engine (+12 thrust each)');
+  const engines = [4, 6, 8].map((y) => ({ type: 'engine', x: 7, y, rot: 0 }));
+  assert.deepEqual(line(thrust(build([...fitted, ...engines.slice(0, 2)]), 1)), [false, 'Thrust 24 for mass 27: 0.89, needs 1.00 to lift off', 'Add Engine (+12 thrust)']);
+  const lifted = build([...fitted, ...engines]);
+  assert.equal(thrust(lifted, 1).text, 'Thrust 36 for mass 30: 1.20, needs 1.00 to lift off');
+  assert.ok(canLaunch(flightChecklist(lifted, defs, 3, { liftOff: 1 })));
+});
+
 test('the parts the checklist requires all exist in the data', () => {
   for (const tag of REQUIRED_TAGS) assert.ok([...defs.modules.values()].some((d) => d.tags.includes(tag)), tag);
 });

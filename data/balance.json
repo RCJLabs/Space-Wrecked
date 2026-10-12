@@ -20,5 +20,7 @@
   "rumorHeat": 25,
   "huntHeat": 50,
   "raidHeat": 75,
-  "heatAfterRaid": 40
+  "heatAfterRaid": 40,
+  "buyPercent": 100,
+  "sellPercent": 50
 }

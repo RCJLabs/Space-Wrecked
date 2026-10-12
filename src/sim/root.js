@@ -5,14 +5,16 @@ import { int } from '../core/rng.js';
 import { emptyBuilds, reduceBuilds } from './builds.js';
 import { beginFight, newCampaign, refitShip, saveFight } from './campaign.js';
 import { endJob, takeJob, withBoard } from './contracts.js';
+import { buyPart, sellPart } from './economy.js';
 import { makePayment } from './heat.js';
 import { beginRaid, endRaid } from './raid.js';
 import { defaultSettings, reduceSettings } from './settings.js';
 
 // The screen each place in a campaign is played on, and every screen that
-// shows the campaign: construction mode and the job board are the hub's.
+// shows the campaign: construction mode, the job board and the shop are the
+// hub's.
 export const PLACE_SCREENS = { hub: 'hub', fight: 'campaign-fight' };
-export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs'];
+export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop'];
 
 export function initialState(seed) {
   return {
@@ -32,10 +34,14 @@ export function initialState(seed) {
 //                                  its seed is the game's next roll, and its
 //                                  first job board is rolled
 //   campaign/continue              back to where the campaign is
-//   campaign/board { rules }       a job board for a hub without one (a
-//                                  campaign saved before there were jobs)
+//   campaign/board { rules }       a job board and the shop's stock for a
+//                                  hub without them (a campaign saved
+//                                  before there were jobs or a shop)
 //   campaign/ship { ship }         the ship refitted at the hub
 //   campaign/pay { rules }         a payment on the debt: credits for heat
+//   campaign/buy { index, rules }  the part at index in the shop's stock,
+//                                  bought
+//   campaign/sell { part, rules }  a part on hand, sold to the shop
 //   campaign/job/take { index, rules }   the crew takes the board's job at
 //                                  index: its fight begins
 //   campaign/raid/begin { rules }  the crew faces the raid that is due
@@ -70,9 +76,12 @@ export function reduce(state, action) {
       return withCampaign(state, state.campaign && withBoard(state.campaign, action.rules));
     case 'campaign/ship':
       return withCampaign(state, state.campaign && refitShip(state.campaign, action.ship));
-    case 'campaign/pay': {
-      const paid = state.campaign && makePayment(state.campaign, action.rules);
-      return paid?.ok ? { ...state, campaign: paid.campaign } : state;
+    case 'campaign/pay':
+    case 'campaign/buy':
+    case 'campaign/sell': {
+      const trade = { 'campaign/pay': (c) => makePayment(c, action.rules), 'campaign/buy': (c) => buyPart(c, action.rules, action.index), 'campaign/sell': (c) => sellPart(c, action.rules, action.part) }[action.type];
+      const done = state.campaign && trade(state.campaign);
+      return done?.ok ? { ...state, campaign: done.campaign } : state;
     }
     case 'campaign/job/take':
     case 'campaign/raid/begin':

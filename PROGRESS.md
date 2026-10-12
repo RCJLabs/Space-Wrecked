@@ -2,6 +2,136 @@
 
 Newest entry first.
 
+## M16 Shop and economy v1 (2026-10-12)
+
+**Status:** done, and the ROADMAP.md box is ticked. After M15, Evan said "Start the next milestone". He hasn't said whether M14's or M15's phone tests ran.
+
+Done when: "a test run reaches launch in under an hour."
+- **What I found first:** launch needed a single engine, and the repossession job always pays one. Act 1 could end after one job, so no one would have seen the hunters or a raid. Most of M16 went into making launch cost something.
+- **`node tools/run.js`** plays act 1 from New game until every line of the checklist passes. A test player:
+  - fits what it has;
+  - sells what the ship doesn't need;
+  - buys what it does;
+  - pays heat down before the hunters come;
+  - takes the job worth most at its crew's odds.
+
+  The crew is played by the job player and the enemy by the AI. Time is estimated from what the run did, at the pace Gate 2 was passed on: 8 to 12 s an order, 6 to 10 s to watch an enemy turn, plus time at the board, the shop and the builder.
+- **Fifty runs** (seeds 1 to 50, `tools/run.js --runs 50`):
+  - all 50 reach launch;
+  - jobs: median 7, 90th percentile 10, most 14;
+  - minutes at the slow pace: median 44, 90th percentile 65, most 92;
+  - every run is under an hour at the quick pace, and 40 of 50 at the slow pace.
+
+  The test crew won 70% of its jobs (246 of 352); a person who wins more is quicker. `tests/run.test.js` runs seeds 1 to 10: every run launches, every one is under an hour at the quick pace, the median is under an hour at the slow pace, and the median takes at least 5 jobs.
+- **Whether that holds for a person is the phone's test:** play from New game to the checklist passing and time it.
+
+### Shipped
+
+- **Lifting off** (`data/campaign.json`, act 1 `liftOff: 1`): leaving Homeworld means lifting off it, so act 1's checklist asks for thrust at least the ship's mass, where the frame asks half. The start ship needs three engines: each brings 3 mass of its own. Only the campaign asks this; the builder sandbox, the generator and the golden ships keep the frame's 0.50.
+- **Prices** (`src/sim/economy.js`): a part costs its module's `cost` (`buyPercent` 100 in `data/balance.json`). The shop buys one back for half (`sellPercent` 50), rounded down to 5. The engine now costs 200, up from 150: the dear part.
+- **The shop:** Dutch's yard, run by Dutch Abernathy (`shop` in `data/districts.json`).
+  - It has 4 different parts at a time, picked by weight from its table. Engines weigh most.
+  - The stock is rolled with each job board, from the campaign's RNG, so a price never changes once offered. It turns over after every job, done or lost.
+  - It buys any part on hand.
+- **Drop tables** (`src/sim/drops.js`): a job's part comes from its own weighted table, `drops: { chance, parts: { type: weight } }` in `data/contracts.json`, in place of M14's list and chance. With every weight at 1 it rolls exactly as M14's did, so no board changed.
+- **Once-only jobs:** a job with `once: true` never comes back once done; the campaign keeps it in `spent`. The repossession is one: it is Ma Prewitt's late husband's one engine. Lost, it can come again.
+- **`SAVE_VERSION` 7:** the campaign's shop stock (null until rolled) and `spent`. The migration from 6 gives a campaign no stock (the hangar rolls one, as it rolled a board for M13 saves) and no jobs done once.
+- **Screens:**
+  - **The hangar:**
+    - Shop, between Pay and Jobs;
+    - the goal's fixes name the shop's price ("Add 3 × Engine (+12 thrust each): none on hand, 200 at Dutch's yard");
+    - when the shop has a part the ship needs and the credits are there, the hint says so. The hunters' warning still comes first.
+  - **The shop** (`src/ui/campaign/shop.js`, words in `shopText.js`) is laid out like the job board:
+    - down the left, the parts for sale, then the parts on hand, what the ship needs first and tagged "Needed";
+    - on the right, the part picked: its size and stats, what launch needs of it, and its price.
+    - Buy or Sell takes two taps, as Pay does. Selling a part the ship needs warns on the first tap.
+    - A part bought stays picked, now on hand, and the hint says to fit it with Build.
+  - **Construction mode's checklist** asks for lift-off thrust too ("needs 1.00 to lift off").
+- **Tools:**
+  - `tools/run.js`: a run step by step (`--seed`), runs summed up (`--runs`), and heat played three ways (`--heat hunters`, the default; `raids`; `never`).
+  - The validator checks the lift-off number, drop tables, the shop (its dealer a client, a table that can fill its stock), `once`, and that selling never pays more than buying.
+- **Tests:** 450 in all, up from 433:
+  - prices, drop tables, the stock, buying, selling, the words and the v6 to v7 migration (`tests/shop.test.js`);
+  - what the ship still needs, fitting a part, and the Done when (`tests/run.test.js`);
+  - lift-off in the checklist, once-only jobs, and the validator's new mistakes.
+- **Golden files:** none changed.
+
+### Decisions made this session
+
+Evan didn't weigh in on any of these:
+- **Three engines to lift off.** I put the requirement on act 1 (thrust at least mass, the physics of a vertical launch) instead of the frame. The frame change would have changed every generated ship and `tools/sim.js`'s numbers. Stripping the start ship (the gun, spare corridors) can save one engine at most: even the smallest ship that flies needs two at 1.00.
+- **The length: about 7 jobs, against ROADMAP §4.6's 8 to 12.** At Gate 2's 5 to 8 minutes a fight, 12 jobs can't fit in an hour, so the two targets conflict. I tuned for the Done when.
+  - Engines at 250 gave a median of 8 jobs, but a third of the test runs went past an hour at the slow pace.
+  - Engines at 200 give 7, with 4 in 5 under an hour at the slow pace.
+
+  One number in `data/modules.json` moves it.
+- **The repossession happens once.** Repeatable, it handed some runs two or three free engines.
+- **A sensible test player.** It weighs each job by its crew's record on it and its twist (measured over 750 jobs), and keeps heat under the hunters. Paying only to dodge raids kept heat in the hunters' band. With engines at 250, one such run took 24 jobs.
+- **Selling at half, with no buying back** what was sold. The shop doesn't stock what you sell it.
+- **Prices fixed when offered,** like a job's pay, so a content change never moves a price on screen.
+
+### Verified here
+
+- `node --test`: 450 pass. `node tools/validate-data.js`: OK.
+- **`node tools/sim.js`:** `balance.json` gained `buyPercent` and `sellPercent`, and no number a fight uses changed. The summary is M11's, unchanged: example ship 64% (58–70), all 1,000 fights 49% (46–52), 23,504 shots.
+- **Heat policies** (20 seeds each, `--heat`):
+  - keeping the hunters off: 7 jobs (3 to 11), 45 minutes (26 to 79) at the slow pace;
+  - dodging raids only: 6 (3 to 10), 43 (26 to 71);
+  - never paying: 6 (3 to 15), 43 (26 to 98), and up to 2 raids.
+
+  Keeping the hunters off costs about a job at the median. Never paying has the longest tail.
+- **M16's check** (scratchpad `m16/verify.mjs`), by touch at 905 × 370, 821 × 283 and 960 × 825: 29 of 29 at each size.
+  - **New game:** saves v7 with a board of 3 and a stock of 4. The goal asks for engines, with the shop's price.
+  - **The shop:**
+    - Dutch's yard at 0 credits: Buy is off and says why;
+    - on hand, what the ship needs first;
+    - every button is 48 px or more;
+    - a corridor sells in two taps, the first selling nothing;
+    - selling the quarters warns first, and Hangar instead sells nothing.
+  - **With credits:**
+    - the hangar points to the shop;
+    - the engine comes first and opens picked;
+    - two taps buy it: credits down 200, the engine on hand and gone from the stock, still picked, with what to do next;
+    - a cargo hold sells for 30.
+  - **Fitting it:** Build, the engine fitted by touch at the stern, and the checklist reads "Thrust 12 for mass 24: 0.50, needs 1.00 to lift off".
+  - **A job** played by touch to the end: a new stock after it.
+  - **Quit and reopen at the shop:** as it was.
+  - **An M15 save (v6)** opens as v7 with a stock.
+  - **Offline**, the shop opens.
+  - **No console errors or warnings.**
+- **Regressions:** M15's check, 30 of 30 at each size. M14's, M13's and M8's checks are still running at this commit.
+
+### Known issues
+
+- **The time is an estimate, and the test crew is not a person.** Every run in fifty reaches launch. The unluckiest fifth (losing streaks) pass an hour at the slow pace.
+- **The picket line is nearly unwinnable for the test crew: 2 of 66** (M14 content: two hired heavies and two company guards, all armoured, on open ground). The other clear-outs run 41 to 56%. It pays well, so a player who picks by pay walks into it. Fix candidates for Evan: swap a heavy for a guard, or make it three enemies.
+- **The shop is the only way to buy parts,** and it has 4 at a time. A run waits on the stock now and then: in 352 jobs, 17 visits found the credits for a part the ship needed, but none in stock.
+- **Fitting is by hand only.** The test run's fitter (`fitPart` in `tools/run.js`) isn't in the game.
+- **On the 283 px browser tab the hangar's bar is full:** Title, the hint (two lines), Pay, Shop, Jobs and Build. It fits, but a longer hint would wrap a third line.
+- **The start fix changes its count:** "Add 2 × Engine" until the quarters and life support go in, then "Add 3 × Engine", as each part adds mass. It's correct, but it may read as the goal moving.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **A whole act** (the Done when): New game, and play until every flight check passes. Time it, and count the jobs.
+   - Does it come in under an hour?
+   - Does it feel too short or too long? About 7 jobs is the target; the engine's price moves it.
+2. **The shop:**
+   - Shop at the hangar; the parts the ship needs come first, tagged.
+   - Buy an engine with two taps, then fit it with Build. The checklist should ask for lift-off thrust.
+   - Sell a part you don't need. Try selling the quarters: it should warn first.
+3. **After a job,** Dutch should have new stock.
+4. **Tell me:**
+   - whether three engines to lift off makes sense on screen;
+   - whether the prices and the act's length feel right;
+   - whether the picket line is as hard for you;
+   - and the M14 and M15 questions still open.
+
+### Next session
+
+**M17 Launch.** Done when: "launching saves and moves on cleanly."
+
+First task: launch as a campaign action in the sim: allowed only when the checklist passes, it ends act 1 and moves the campaign to act 2's stub, with a save version bump if the schema changes. Tested before any screen.
+
 ## M15 Heat v1 and the hangar raid (2026-10-12)
 
 **Status:** done, and the ROADMAP.md box is ticked. After M14, Evan said "Start the next milestone now". He didn't say whether M14's phone tests ran.

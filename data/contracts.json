@@ -23,8 +23,7 @@
       "sites": ["pit9", "yard"],
       "encounter": "jumpers",
       "credits": [70, 100],
-      "parts": ["corridor", "armory"],
-      "partChance": 40,
+      "drops": { "chance": 40, "parts": { "corridor": 1, "armory": 1 } },
       "pitch": "Somebody's working {site} without a permit, and they brought guns to the paperwork. {client} wants them gone."
     },
     {
@@ -36,8 +35,7 @@
       "sites": ["yard"],
       "encounter": "scavvers",
       "credits": [40, 60],
-      "parts": ["cargo", "armory", "shield", "corridor", "engine"],
-      "partChance": 80,
+      "drops": { "chance": 80, "parts": { "cargo": 1, "armory": 1, "shield": 1, "corridor": 1, "engine": 1 } },
       "pitch": "Scavvers are walking the good stuff out of {site}. {client} tagged what's his. Get it before they do."
     },
     {
@@ -49,9 +47,7 @@
       "sites": ["pit9"],
       "encounter": "guards",
       "credits": [110, 150],
-      "parts": [],
-      "partChance": 0,
-      "pitch": "The night shift's been shorted three weeks running. {client} wants the payroll records off the terminal at {site}."
+            "pitch": "The night shift's been shorted three weeks running. {client} wants the payroll records off the terminal at {site}."
     },
     {
       "id": "repo",
@@ -62,8 +58,8 @@
       "sites": ["depot"],
       "encounter": "recovery",
       "credits": [20, 40],
-      "parts": ["engine"],
-      "partChance": 100,
+      "drops": { "chance": 100, "parts": { "engine": 1 } },
+      "once": true,
       "pitch": "Con-Reg impounded {client}'s late husband's engine for storage fees. It's sitting in {site}. She'd like it back. You'd like it more."
     },
     {
@@ -74,9 +70,7 @@
       "sites": ["whistle"],
       "encounter": "regulars",
       "credits": [60, 90],
-      "parts": [],
-      "partChance": 0,
-      "pitch": "A table of {client}'s customers decided they don't owe. {client} disagrees, and you're the disagreement. They're drinking at {site}."
+            "pitch": "A table of {client}'s customers decided they don't owe. {client} disagrees, and you're the disagreement. They're drinking at {site}."
     },
     {
       "id": "picket",
@@ -86,8 +80,7 @@
       "sites": ["pit9", "depot"],
       "encounter": "strikebreakers",
       "credits": [100, 140],
-      "parts": ["shield", "weapon"],
-      "partChance": 30,
+      "drops": { "chance": 30, "parts": { "shield": 1, "weapon": 1 } },
       "pitch": "Con-Reg hired muscle to break the picket at {site}. {client} hired you to break the muscle."
     },
     {
@@ -99,8 +92,7 @@
       "sites": ["depot", "pit9"],
       "encounter": "guards",
       "credits": [80, 120],
-      "parts": ["medbay", "cargo"],
-      "partChance": 50,
+      "drops": { "chance": 50, "parts": { "medbay": 1, "cargo": 1 } },
       "pitch": "{client} wants to know what's on the next ore hauler out. The terminal at {site} knows. Keep it company for a couple of turns."
     },
     {
@@ -112,8 +104,7 @@
       "sites": ["depot", "whistle"],
       "encounter": "guards",
       "credits": [30, 50],
-      "parts": ["medbay", "lifesupport"],
-      "partChance": 60,
+      "drops": { "chance": 60, "parts": { "medbay": 1, "lifesupport": 1 } },
       "pitch": "The mission kitchen is out of antiseptic, and {site} is full of it. {client} calls it redistribution. The guards on the door call it theft."
     },
     {
@@ -125,9 +116,7 @@
       "sites": ["whistle"],
       "encounter": "recovery",
       "credits": [80, 110],
-      "parts": [],
-      "partChance": 0,
-      "pitch": "The Company's auditors want {client}'s ledger, and they sent Recovery to fetch it. {client} wants it wiped first. It's on the terminal in the back of {site}."
+            "pitch": "The Company's auditors want {client}'s ledger, and they sent Recovery to fetch it. {client} wants it wiped first. It's on the terminal in the back of {site}."
     },
     {
       "id": "rent",
@@ -137,8 +126,7 @@
       "sites": ["whistle", "yard"],
       "encounter": "regulars",
       "credits": [60, 90],
-      "parts": ["quarters", "lifesupport"],
-      "partChance": 40,
+      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1 } },
       "pitch": "{client}'s other tenants are three months behind and armed about it. She calls it an eviction. You'll call it Tuesday."
     }
   ]

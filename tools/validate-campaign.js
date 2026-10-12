@@ -4,13 +4,16 @@
 // map templates (sites.json) and the jobs (contracts.json).
 import { buildShip, layoutProblems } from '../src/sim/builder.js';
 import { ACTS } from '../src/sim/campaign.js';
-import { MISSIONS, PAY_STEP } from '../src/sim/contracts.js';
+import { MISSIONS } from '../src/sim/contracts.js';
+import { MAX_STOCK, PAY_STEP } from '../src/sim/economy.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { HAZARDS, siteMarks, siteProblems } from '../src/sim/gen/site.js';
 import { isId, isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 
 const CAMPAIGN_KEYS = ['acts'];
-const ACT_KEYS = ['act', 'name', 'hub', 'home', 'heals'];
+const ACT_KEYS = ['act', 'name', 'hub', 'home', 'heals', 'liftOff'];
+// Lifting off takes thrust for each unit of mass: up to this many.
+const MAX_LIFT_OFF = 4;
 const BACKGROUND_KEYS = ['id', 'name', 'blurb', 'pursuer', 'district', 'start'];
 const PURSUER_KEYS = ['name', 'blurb', 'levels', 'hunters', 'raiders', 'payment'];
 // Heat's levels (src/sim/heat.js), each with the pursuer's words for it.
@@ -22,14 +25,18 @@ const MAX_RAIDERS = 8;
 const START_KEYS = ['credits', 'parts', 'crew', 'ship'];
 const SCRIPT_KEYS = ['frame', 'placements'];
 const PLACEMENT_KEYS = ['type', 'x', 'y', 'rot'];
-const DISTRICT_KEYS = ['id', 'name', 'blurb', 'clients', 'sites'];
+const DISTRICT_KEYS = ['id', 'name', 'blurb', 'clients', 'sites', 'shop'];
+const SHOP_KEYS = ['name', 'dealer', 'pitch', 'size', 'parts'];
 const CLIENT_KEYS = ['id', 'name', 'title', 'blurb'];
 const SITE_KEYS = ['id', 'name', 'map', 'blurb'];
 const MAP_KEYS = ['id', 'name', 'rows'];
 const CONTRACTS_KEYS = ['boardSize', 'twistChance', 'missions', 'twists', 'jobs'];
 const MISSION_KEYS = ['id', 'name', 'brief', 'loud'];
 const TWIST_KEYS = ['id', 'name', 'text', 'enemies', 'hazard', 'patches', 'sight', 'deadline', 'pay', 'missions', 'loud'];
-const JOB_KEYS = ['id', 'title', 'mission', 'crates', 'turns', 'clients', 'sites', 'encounter', 'credits', 'parts', 'partChance', 'pitch'];
+const JOB_KEYS = ['id', 'title', 'mission', 'crates', 'turns', 'clients', 'sites', 'encounter', 'credits', 'drops', 'once', 'pitch'];
+const DROPS_KEYS = ['chance', 'parts'];
+// A drop table's weights (drops.js): whole numbers up to this.
+const MAX_WEIGHT = 100;
 // A twist's numbers, each one's allowed range. A twist sets at least one
 // of them, or a hazard.
 const TWIST_NUMBERS = { enemies: [-2, 2], patches: [1, 2], sight: [2, 20], deadline: [3, 30], pay: [-90, 200] };
@@ -51,7 +58,7 @@ const MAX_CREDITS = 9995;
 export function checkCampaignFiles(data, ids, fail) {
   checkActs(data.campaign, fail);
   const maps = checkSiteMaps(data.sites, fail);
-  const districts = checkDistricts(data.districts, maps, fail);
+  const districts = checkDistricts(data.districts, maps, ids, fail);
   const scripts = checkBackgrounds(data.backgrounds, districts, ids, fail);
   // Hunters join every job's fight once heat is high enough.
   const hunters = Math.max(0, ...(data.backgrounds?.backgrounds ?? []).map((b) => (Array.isArray(b?.pursuer?.hunters) ? b.pursuer.hunters.length : 0)));
@@ -82,7 +89,8 @@ export function checkStartShips(data, scripts, fail) {
 }
 
 // The acts in order, each with its name, its home (the hub: an id, and
-// words for the player) and whether coming home heals the crew.
+// words for the player), whether coming home heals the crew, and for an
+// act on a planet, the thrust for each unit of mass lifting off takes.
 function checkActs(file, fail) {
   const where = 'campaign.json';
   if (!isObject(file)) {
@@ -97,6 +105,9 @@ function checkActs(file, fail) {
     if (!isText(act.name) || !isText(act.home)) fail(at, 'name and home must be non-empty strings');
     if (!isId(act.hub)) fail(at, 'hub must be lowercase letters, digits and dashes');
     if (typeof act.heals !== 'boolean') fail(at, 'heals must be true or false');
+    if (act.liftOff !== undefined && !(typeof act.liftOff === 'number' && act.liftOff > 0 && act.liftOff <= MAX_LIFT_OFF)) {
+      fail(at, `liftOff must be a number above 0, up to ${MAX_LIFT_OFF}`);
+    }
   });
   if (acts.length !== ACTS || acts.some((act, i) => act.act !== i + 1)) fail(where, `acts must be acts 1 to ${ACTS} in order`);
 }
@@ -123,10 +134,10 @@ function checkSiteMaps(file, fail) {
 }
 
 // The districts: their clients and their sites, each site on a map
-// template. Client and site ids are unique across districts, so a job can
-// name them alone. Returns { districts: id -> { clients, sites }, sites:
-// id -> { district, map } }.
-function checkDistricts(file, maps, fail) {
+// template, and the shop if there is one. Client and site ids are unique
+// across districts, so a job can name them alone. Returns { districts:
+// id -> { clients, sites }, sites: id -> { district, map } }.
+function checkDistricts(file, maps, { moduleIds }, fail) {
   const districts = listOf(file, 'districts', 'districts.json', fail);
   uniqueIds(districts, 'districts.json', fail);
   const byId = new Map();
@@ -165,9 +176,27 @@ function checkDistricts(file, maps, fail) {
       if (!maps.has(site.map)) fail(at, `unknown or broken map "${site.map}" (sites.json)`);
     }
     if (!own.clients.size || !own.sites.size) fail(where, 'needs at least one client and one site');
+    if (district.shop !== undefined) checkShop(district.shop, `${where} shop`, own.clients, moduleIds, fail);
     if (isId(district.id)) byId.set(district.id, own);
   });
   return { districts: byId, sites };
+}
+
+// A district's shop (src/sim/economy.js): its name, the client who runs
+// it, the words on its screen, how many parts it has for sale at a time,
+// and the table they are picked from, with enough parts in it to fill a
+// stock.
+function checkShop(shop, where, clients, moduleIds, fail) {
+  if (!isObject(shop)) {
+    fail(where, 'must be { name, dealer, pitch, size, parts }');
+    return;
+  }
+  knownKeys(shop, SHOP_KEYS, where, fail);
+  if (!isText(shop.name) || !isText(shop.pitch)) fail(where, 'name and pitch must be non-empty strings');
+  if (!clients.has(shop.dealer)) fail(where, `dealer "${shop.dealer}" isn't one of the district's clients`);
+  checkTable(shop.parts, `${where} parts`, moduleIds, fail);
+  if (!isIntIn(shop.size, 1, MAX_STOCK)) fail(where, `size must be a whole number from 1 to ${MAX_STOCK}`);
+  else if (isObject(shop.parts) && shop.size > Object.keys(shop.parts).length) fail(where, `a stock of ${shop.size} needs as many different parts in its table`);
 }
 
 // The backgrounds: who the player was, the pursuer after them, their
@@ -264,7 +293,7 @@ function checkStart(start, where, { jobIds, moduleIds, frameById }, fail) {
 // the jobs themselves, each a mission at its sites for its clients, all in
 // one district, against an encounter that fits every site's spawn tiles
 // (with any twist's extra enemy), for credits in steps of PAY_STEP and
-// maybe a part.
+// maybe a part from its drop table.
 function checkContracts(file, { districts, sites }, maps, { moduleIds, encounters, hunters }, fail) {
   const where = 'contracts.json';
   if (!isObject(file)) {
@@ -353,17 +382,39 @@ function checkContracts(file, { districts, sites }, maps, { moduleIds, encounter
     if (!isRange(job.credits, 0, MAX_CREDITS) || job.credits.some((n) => n % PAY_STEP)) {
       fail(at, `credits must be [least, most], multiples of ${PAY_STEP} from 0 to ${MAX_CREDITS}`);
     }
-    if (!Array.isArray(job.parts) || !job.parts.every((type) => moduleIds.has(type))) fail(at, 'parts must be a list of module types');
-    if (!isIntIn(job.partChance, 0, 100)) fail(at, 'partChance must be a whole number from 0 to 100');
-    else if ((job.partChance > 0) !== (job.parts?.length > 0)) fail(at, 'a part comes with a chance, and a chance with parts');
+    if (job.drops !== undefined) {
+      if (!isObject(job.drops)) {
+        fail(at, 'drops must be { chance, parts }, or left out for no part');
+      } else {
+        knownKeys(job.drops, DROPS_KEYS, `${at} drops`, fail);
+        if (!isIntIn(job.drops.chance, 1, 100)) fail(`${at} drops`, 'chance must be a whole number from 1 to 100');
+        checkTable(job.drops.parts, `${at} drops parts`, moduleIds, fail);
+      }
+    }
+    if (job.once !== undefined && typeof job.once !== 'boolean') fail(at, 'once must be true or false');
     checkWords(job.pitch, PITCH_WORDS, `${at} pitch`, fail);
   });
   for (const id of districts.keys()) {
     const count = perDistrict.get(id) ?? 0;
-    // A new board offers none of the old board's jobs.
-    if (isIntIn(file.boardSize, 1, MAX_BOARD) && count < 2 * file.boardSize) {
-      fail(where, `district "${id}" has ${count} jobs: a board of ${file.boardSize} needs ${2 * file.boardSize}, as each board offers none of the last one's`);
+    // A new board offers none of the old board's jobs, and a job done once
+    // never comes back.
+    const lasting = jobs.filter((job) => job.once !== true && Array.isArray(job.sites) && job.sites.every((site) => districts.get(id)?.sites.has(site))).length;
+    if (isIntIn(file.boardSize, 1, MAX_BOARD) && lasting < 2 * file.boardSize) {
+      fail(where, `district "${id}" has ${lasting} jobs that come back${lasting < count ? ` (of ${count})` : ''}: a board of ${file.boardSize} needs ${2 * file.boardSize}, as each board offers none of the last one's`);
     }
+  }
+}
+
+// A drop table (drops.js): known module types, each with a whole-number
+// weight, at least one.
+export function checkTable(table, where, moduleIds, fail) {
+  if (!isObject(table) || !Object.keys(table).length) {
+    fail(where, 'must be an object of module types and weights, with at least one');
+    return;
+  }
+  for (const [type, weight] of Object.entries(table)) {
+    if (!moduleIds.has(type)) fail(where, `unknown module "${type}"`);
+    if (!isIntIn(weight, 1, MAX_WEIGHT)) fail(where, `${type}'s weight must be a whole number from 1 to ${MAX_WEIGHT}`);
   }
 }
 

@@ -40,6 +40,10 @@ const BALANCE = {
   huntHeat: [1, 100],
   raidHeat: [1, 100],
   heatAfterRaid: [0, 100],
+  // Prices (src/sim/economy.js): a part's cost, in percent, to buy and to
+  // sell.
+  buyPercent: [1, 1000],
+  sellPercent: [0, 100],
 };
 const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', 'clip'];
 const RANGE_BANDS = ['close', 'mid', 'long'];
@@ -110,6 +114,7 @@ export function validateData(data) {
     if (!(balance.rumorHeat < balance.huntHeat && balance.huntHeat < balance.raidHeat)) fail('balance.json', 'heat thresholds must rise: rumorHeat, then huntHeat, then raidHeat');
     if (!(balance.heatAfterRaid < balance.raidHeat)) fail('balance.json', 'heatAfterRaid must be under raidHeat, or one raid brings the next');
     if (balance.loudJobHeat < balance.jobHeat) fail('balance.json', 'loudJobHeat must be at least jobHeat');
+    if (balance.sellPercent > balance.buyPercent) fail('balance.json', 'sellPercent must be at most buyPercent, or buying and selling makes money');
   }
 
   const weapons = listOf(weaponFile, 'weapons', 'weapons.json', fail);

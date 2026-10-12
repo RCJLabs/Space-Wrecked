@@ -202,8 +202,11 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 
 - **Credits** buy parts and services. **Parts** are modules held in inventory. **Salvage** is raw material for repairs and, later, crafting.
 - **Act 1 starts** (M13; since M14 the background's start in `data/backgrounds.json`) with a half-built hull: bridge, reactor, corridors, airlock and a gun, with no quarters, life support or engines. On hand are crew quarters, life support and two corridors, so a new player's first minute fixes two flight checks. The engines have to come from jobs.
-- **Jobs pay** (M14) credits, and on some jobs a part: the repossession always pays an engine, the scrap run sometimes. Until the shop (M16), credits buy only heat off: a payment on the debt, 50 credits for 15 (M15, §4.4). A lost raid can take half of them.
-- Act 1 target: launch after roughly 8 to 12 jobs, in under an hour. Check this in play.
+- **Jobs pay** (M14) credits, and on some jobs a part from the job's drop table (M16, §4.7): the repossession always pays an engine, once; the scrap run sometimes. Credits also buy heat off: a payment on the debt, 50 credits for 15 (M15, §4.4). A lost raid can take half of them.
+- **Prices** (M16, `src/sim/economy.js`): a part costs its module's cost (`buyPercent` 100 in `data/balance.json`), and the shop buys one back for half (`sellPercent` 50), rounded down to 5 credits. The engine, at 200, is the dear part.
+- **The shop** (M16): the district's dealer, Dutch's yard (`shop` in `data/districts.json`). It has 4 different parts at a time, picked by weight from its table (engines weigh most) when each job board is rolled, so it turns over after every job. A price is fixed when it is offered. It buys any part on hand.
+- **Lifting off** (M16): act 1 ends by lifting off Homeworld, so its checklist asks for thrust at least the ship's mass (`liftOff` 1 in `data/campaign.json`), where the frame asks half. The start ship needs three engines; stripping it can save one at most. Only the campaign asks this.
+- **Act 1 target:** launch in under an hour. M16's test player (`tools/run.js`) launches after 7 jobs at the median (3 to 14 over 50 runs), in 26 to 92 minutes at the slow pace, every run under an hour at the quick pace. The target before M16 was 8 to 12 jobs, but 12 jobs can't fit in an hour at Gate 2's 5 to 8 minutes a fight; M16 tuned for the hour. The engine's price moves it. Check in play.
 
 ### 4.7 Generators (all seeded)
 
@@ -227,9 +230,9 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **The job board** (M14, `src/sim/contracts.js`, pure) offers 3 jobs. Each is a template (`data/contracts.json`: a mission at its sites for its clients, against an encounter, for credits and maybe a part) crossed with who, where and a twist:
   - the client and the site, from the template's lists;
   - a twist half the time: an enemy more or fewer, fire or a cave-in on site, the lights out (sight cut to 6), a deadline, or the pay changed;
-  - the pay, in steps of 5 credits, and the part, if any.
+  - the pay, in steps of 5 credits, and the part, if any, from the job's drop table: a chance, and parts by weight (M16, `src/sim/drops.js`).
 
-  All of it is rolled, with the fight's seed, when the board is, from the campaign's RNG, so an offer never changes once it is made. After each job, done or lost, the board is rolled again with none of the jobs it had, so no job comes twice in a row. Clients and sites belong to the background's district (`data/districts.json`).
+  All of it is rolled, with the fight's seed, when the board is, from the campaign's RNG, so an offer never changes once it is made. After each job, done or lost, the board is rolled again with none of the jobs it had, so no job comes twice in a row, and the shop's stock with it (M16). A job marked once (the repossession) never comes back once it is done. Clients and sites belong to the background's district (`data/districts.json`).
 - Act 2 sectors as node graphs with typed nodes.
 
 ### 4.8 Saves
@@ -353,7 +356,7 @@ Pick the tone before M14. (Picked: wry and blue-collar.)
   **Done when:** ten jobs in a row feel varied (Evan's call).
 - [x] **M15 Heat v1 and the hangar raid.** Heat from jobs, thresholds, and a raid defended on the hangar map.
   **Done when:** ignoring heat brings a raid, and managing it avoids one.
-- [ ] **M16 Shop and economy v1.** A parts shop, prices and drop tables.
+- [x] **M16 Shop and economy v1.** A parts shop, prices and drop tables.
   **Done when:** a test run reaches launch in under an hour.
 - [ ] **M17 Launch.** The checklist passes, the launch sequence plays, and a stub stands in for act 2.
   **Done when:** launching saves and moves on cleanly.
@@ -418,7 +421,7 @@ A Capacitor build; a paid version with a web demo; optional cloud saves on Base4
 | Percentage misses feel unfair | Testers complain about high-odds misses | Clearer cover display, the forgiving-odds setting, the math always shown |
 | 3D on canvas runs slowly on mid-range phones | Dropped frames turning or zooming the board (M4), or in battles (M8) | Rough half-resolution frames while the camera moves or units walk, only on a phone too slow for full ones (the frame budget, after M6: they blurred zooming on the Fold); cache the still board, and in a fight redraw it only when something on it changed (M8); fewer lines, cap the pixel ratio. Past that: three.js (MIT, one vendored file, no build step), with Evan's approval |
 | Lost saves | Reports after Chrome data is cleared | Persistent storage request, export and import, migrations |
-| Act 1 drags | Test runs pass an hour | Fewer jobs to launch; the builder from the first minute |
+| Act 1 drags | Test runs pass an hour. M16's test player (`tools/run.js`): 10 of 50 runs pass an hour at the slow pace, none at the quick pace; the long ones are losing streaks | The engine's price and the lift-off rule (each one number); fewer jobs to launch; the builder from the first minute |
 | Generated images look mismatched | The image pass looks patchy | Palette pass, reference images, fewer images |
 | Tone still undecided | M14 arrives | Settled before M14: wry and blue-collar (Evan, 2026-10-12) |
 
@@ -451,5 +454,7 @@ These ideas wait until v0.4 or later:
 - choosing where the crew stands before a raid, instead of all on the bridge (raised in M15)
 - more hunters as heat climbs past 50, and a bigger raid at 100 (raised in M15)
 - lying low: ways to shed heat in act 1 besides paying, such as heat that falls while the crew sits out a board (raised in M15)
+- fitting a part for the player: the test run's fitter (`tools/run.js` fitPart) could offer where a bought part goes best (raised in M16)
+- a shop with more to it: stocking what you sell it, haggling, a second dealer, a price that changes with heat (raised in M16)
 
 Ideas that come up during a session go here, not into code.
