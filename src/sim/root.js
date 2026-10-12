@@ -5,6 +5,8 @@ import { int } from '../core/rng.js';
 import { emptyBuilds, reduceBuilds } from './builds.js';
 import { beginFight, newCampaign, refitShip, saveFight } from './campaign.js';
 import { endJob, takeJob, withBoard } from './contracts.js';
+import { makePayment } from './heat.js';
+import { beginRaid, endRaid } from './raid.js';
 import { defaultSettings, reduceSettings } from './settings.js';
 
 // The screen each place in a campaign is played on, and every screen that
@@ -33,13 +35,16 @@ export function initialState(seed) {
 //   campaign/board { rules }       a job board for a hub without one (a
 //                                  campaign saved before there were jobs)
 //   campaign/ship { ship }         the ship refitted at the hub
+//   campaign/pay { rules }         a payment on the debt: credits for heat
 //   campaign/job/take { index, rules }   the crew takes the board's job at
 //                                  index: its fight begins
+//   campaign/raid/begin { rules }  the crew faces the raid that is due
 //   campaign/fight/begin { rules } the crew fights boarders at home (M15's
 //                                  raids will)
 //   campaign/fight/save { battle, log }   the fight after an order
 //   campaign/fight/end { rules }   back to the hub once the fight is won or
-//                                  lost: a job's pay, and a new board
+//                                  lost: a job's pay and heat, and a new
+//                                  board; or what a raid cost
 export function reduce(state, action) {
   switch (action.type) {
     case 'save/restore':
@@ -65,15 +70,22 @@ export function reduce(state, action) {
       return withCampaign(state, state.campaign && withBoard(state.campaign, action.rules));
     case 'campaign/ship':
       return withCampaign(state, state.campaign && refitShip(state.campaign, action.ship));
+    case 'campaign/pay': {
+      const paid = state.campaign && makePayment(state.campaign, action.rules);
+      return paid?.ok ? { ...state, campaign: paid.campaign } : state;
+    }
     case 'campaign/job/take':
+    case 'campaign/raid/begin':
     case 'campaign/fight/begin': {
-      const begun = state.campaign && (action.type === 'campaign/job/take' ? takeJob(state.campaign, action.rules, action.index) : beginFight(state.campaign, action.rules));
+      const begin = { 'campaign/job/take': (c) => takeJob(c, action.rules, action.index), 'campaign/raid/begin': (c) => beginRaid(c, action.rules), 'campaign/fight/begin': (c) => beginFight(c, action.rules) }[action.type];
+      const begun = state.campaign && begin(state.campaign);
       return begun?.ok ? { ...state, campaign: begun.campaign, screen: PLACE_SCREENS.fight } : state;
     }
     case 'campaign/fight/save':
       return withCampaign(state, state.campaign && saveFight(state.campaign, action.battle, action.log));
     case 'campaign/fight/end': {
-      const next = withCampaign(state, state.campaign && endJob(state.campaign, action.rules));
+      const end = state.campaign?.fight?.raid ? endRaid : endJob;
+      const next = withCampaign(state, state.campaign && end(state.campaign, action.rules));
       return next === state ? state : { ...next, screen: PLACE_SCREENS[next.campaign.place] };
     }
     default: {

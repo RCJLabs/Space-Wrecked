@@ -369,7 +369,16 @@ textarea {
   color: var(--c-good);
 }
 
+.hgr-hint[data-tone='warn'] {
+  color: var(--c-dash);
+}
+
+.hgr-hint[data-tone='bad'] {
+  color: var(--c-bad);
+}
+
 #ui .hgr-tool,
+#ui .hgr-pay,
 #ui .hgr-jobs,
 #ui .hgr-build {
   display: flex;
@@ -379,9 +388,79 @@ textarea {
   white-space: nowrap;
 }
 
-#ui .hgr-jobs {
+#ui .hgr-jobs,
+#ui .hgr-pay {
   padding: 0 18px;
   background: var(--c-panel);
+}
+
+/* Pay's first tap: the price, waiting for a second. */
+#ui .hgr-pay[data-armed='true'] {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
+/* A raid at the door: Defend in place of Jobs. */
+#ui .hgr-jobs[data-raid='true'] {
+  border-color: var(--c-bad);
+  background: var(--c-bad);
+  color: var(--c-space);
+}
+
+/* Heat, by the act: a bar with the thresholds marked, in the level's
+   color. */
+.hgr-heat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-panel);
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+.hgr-heat-bar {
+  position: relative;
+  width: 96px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--c-line);
+  overflow: hidden;
+}
+
+.hgr-heat-fill {
+  display: block;
+  height: 100%;
+  background: var(--c-good);
+}
+
+.hgr-heat-bar i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--c-space);
+}
+
+.hgr-heat[data-level='rumors'] .hgr-heat-fill {
+  background: var(--c-dash);
+}
+
+.hgr-heat[data-level='hunters'] .hgr-heat-fill {
+  background: var(--c-accent);
+}
+
+.hgr-heat[data-level='raid'] .hgr-heat-fill {
+  background: var(--c-bad);
+}
+
+.hgr-heat[data-level='raid'] .hgr-heat-label {
+  color: var(--c-bad);
 }
 
 #ui .hgr-build {
@@ -573,6 +652,14 @@ textarea {
   margin: 0;
   color: var(--c-ink-dim);
   font-size: 13.5px;
+}
+
+.jobs-hint[data-tone='warn'] {
+  color: var(--c-dash);
+}
+
+.jobs-hint[data-tone='bad'] {
+  color: var(--c-bad);
 }
 
 #ui .jobs-back,

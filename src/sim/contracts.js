@@ -21,6 +21,7 @@ import { int, percent, shuffle } from '../core/rng.js';
 import { createBattle } from './battle.js';
 import { endFight, maxHp } from './campaign.js';
 import { generateSite } from './gen/site.js';
+import { huntersFor, jobHeat, raidDue, withHeat } from './heat.js';
 
 // The missions the rules know. A new one means new rules (battle.js), so
 // it is added here on purpose.
@@ -87,11 +88,12 @@ export function withBoard(campaign, rules) {
 // template and the job's seed (gen/site.js), with the twist's hazard; the
 // crew (campaign crew members, in order) at the ways in and the enemies at
 // the spawn tiles, both shuffled by the seed; the encounter's enemies with
-// one more or fewer as the twist says, picked by the seed; the mission's
-// objective; and the twist's sight range and deadline. The battle's own
-// seed is where the site's rolls left off. Throws if the site has too few
-// places for everyone (validate-data.js checks the content).
-export function jobSetup(job, rules, crew) {
+// one more or fewer as the twist says, picked by the seed, and any hunters
+// the pursuer sends along (heat.js huntersFor); the mission's objective;
+// and the twist's sight range and deadline. The battle's own seed is where
+// the site's rolls left off. Throws if the site has too few places for
+// everyone (validate-data.js checks the content).
+export function jobSetup(job, rules, crew, { hunters = [] } = {}) {
   const contract = rules.contracts.jobs.get(job.contract);
   const twist = job.twist ? rules.contracts.twists.get(job.twist) : null;
   const template = rules.siteMaps.get(rules.sites.get(job.site).map);
@@ -110,6 +112,7 @@ export function jobSetup(job, rules, crew) {
   const enemies = [...rules.encounters.get(contract.encounter).enemies];
   for (let n = twist?.enemies ?? 0; n > 0; n--) enemies.push(enemies[roll(0, enemies.length - 1)]);
   for (let n = twist?.enemies ?? 0; n < 0 && enemies.length > 1; n++) enemies.splice(roll(0, enemies.length - 1), 1);
+  enemies.push(...hunters);
   const entries = shuffled(site.zones.entry);
   const spawns = shuffled(site.zones.spawn);
   if (entries.length < crew.length || spawns.length < enemies.length) {
@@ -133,10 +136,12 @@ export function jobSetup(job, rules, crew) {
 }
 
 // Takes the job at that place on the board: its fight begins, with the
-// whole crew. Returns { ok: true, campaign } with the fight on, or
-// { ok: false, error } saying why it can't.
+// whole crew, and the pursuer's hunters if heat has brought them. Not
+// while a raid is due. Returns { ok: true, campaign } with the fight on,
+// or { ok: false, error } saying why it can't.
 export function takeJob(campaign, rules, index) {
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
+  if (raidDue(campaign, rules)) return { ok: false, error: 'Not with a raid at the door.' };
   const job = campaign.board[index];
   if (!job || !rules.contracts.jobs.has(job.contract) || !rules.sites.has(job.site)) return { ok: false, error: 'That job is gone.' };
   if (!campaign.crew.length) return { ok: false, error: 'There is no one to send.' };
@@ -144,20 +149,20 @@ export function takeJob(campaign, rules, index) {
   if (unknown) return { ok: false, error: `${unknown.name}'s job "${unknown.job}" is unknown.` };
   let started;
   try {
-    started = createBattle(jobSetup(job, rules, campaign.crew), rules);
+    started = createBattle(jobSetup(job, rules, campaign.crew, { hunters: huntersFor(campaign, rules) }), rules);
   } catch (err) {
     return { ok: false, error: `That job can't start: ${err.message}.` };
   }
   const { encounter } = rules.contracts.jobs.get(job.contract);
-  const fight = { encounter, seed: job.seed, crew: campaign.crew.map((member) => member.id), battle: started.battle, log: started.events, job };
+  const fight = { encounter, seed: job.seed, crew: campaign.crew.map((member) => member.id), battle: started.battle, log: started.events, job, raid: false };
   return { ok: true, campaign: { ...campaign, place: 'fight', fight } };
 }
 
 // After a fight with a winner, home again (campaign.js endFight: wounds,
 // the dead, healing where the act heals, the fights counted). After a job,
-// also its pay if it was done, the job counted in the flags (jobsDone or
-// jobsFailed), and a new board with none of the old one's jobs. A fight
-// still going is left as it is.
+// also its pay if it was done, its heat, done or lost (heat.js jobHeat),
+// the job counted in the flags (jobsDone or jobsFailed), and a new board
+// with none of the old one's jobs. A fight still going is left as it is.
 export function endJob(campaign, rules) {
   const { fight } = campaign;
   const after = endFight(campaign, rules);
@@ -172,6 +177,7 @@ export function endJob(campaign, rules) {
   return {
     ...after,
     credits: after.credits + (won ? job.credits : 0),
+    heat: withHeat(after.heat, jobHeat(job, rules).heat),
     parts,
     flags: { ...after.flags, [flag]: (after.flags[flag] ?? 0) + 1 },
     board,

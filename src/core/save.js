@@ -22,7 +22,8 @@ import { FPS_CAPS } from '../sim/settings.js';
 //   4  plus the campaign (campaign.js), or null before one starts (M12)
 //   5  the campaign's background, its job board, and jobs as fights: a
 //      fight's job and its battle's objective (M14)
-export const SAVE_VERSION = 5;
+//   6  raids: a fight says whether it is the pursuer's raid (M15)
+export const SAVE_VERSION = 6;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -68,6 +69,15 @@ export const MIGRATIONS = [
       const { fight } = data.campaign;
       const job = isObject(fight) ? { ...fight, job: null, battle: isObject(fight.battle) ? { ...fight.battle, objective: null } : fight.battle } : fight;
       return { ...data, campaign: { ...data.campaign, background: 'miner', board: [], fight: job } };
+    },
+  },
+  // Raids join the campaign. A fight on from before was a job or a fight
+  // at home, never a raid.
+  {
+    from: 5,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign) || !isObject(data.campaign.fight)) return data;
+      return { ...data, campaign: { ...data.campaign, fight: { ...data.campaign.fight, raid: false } } };
     },
   },
 ];

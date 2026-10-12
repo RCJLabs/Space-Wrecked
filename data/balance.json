@@ -14,5 +14,11 @@
   "suitAir": 3,
   "airlessDamage": 2,
   "forgivingStep": 10,
-  "forgivingMax": 30
+  "forgivingMax": 30,
+  "jobHeat": 8,
+  "loudJobHeat": 15,
+  "rumorHeat": 25,
+  "huntHeat": 50,
+  "raidHeat": 75,
+  "heatAfterRaid": 40
 }

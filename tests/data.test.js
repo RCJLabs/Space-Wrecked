@@ -102,7 +102,7 @@ const cases = [
   ['start ship with no airlock', (d) => (start(d).ship.placements = start(d).ship.placements.filter((p) => p.type !== 'airlock')), /start\.ship: No airlock on the hull edge/],
   ['no backgrounds', (d) => (d.backgrounds.backgrounds = []), /needs at least one background/],
   ['background in an unknown district', (d) => (d.backgrounds.backgrounds[0].district = 'docks'), /unknown district "docks"/],
-  ['background with no pursuer', (d) => delete d.backgrounds.backgrounds[0].pursuer, /pursuer must be \{ name, blurb \}/],
+  ['background with no pursuer', (d) => delete d.backgrounds.backgrounds[0].pursuer, /pursuer: must be \{ name, blurb, levels, hunters, raiders, payment \}/],
   ['client in two districts', (d) => d.districts.districts.push({ ...structuredClone(district(d)), id: 'docks', sites: [{ id: 'pier', name: 'Pier', map: 'yard', blurb: 'Wet.' }] }), /duplicate client id "marta"/],
   ['site on an unknown map', (d) => (district(d).sites[0].map = 'moon'), /unknown or broken map "moon"/],
   ['site map with a stray character', (d) => (d.sites.maps[0].rows[1] = d.sites.maps[0].rows[1].replace('k', 'Z')), /"Z" is no site tile/],
@@ -125,7 +125,17 @@ const cases = [
   ['job at an unknown site', (d) => job(d, 'rent').sites.push('moon'), /unknown site "moon"/],
   ['job for a client from another district', (d) => (job(d, 'rent').clients = ['nobody']), /client "nobody" isn't in its sites' district/],
   ['job against an unknown encounter', (d) => (job(d, 'rent').encounter = 'ghosts'), /unknown encounter "ghosts"/],
-  ['job with more enemies than spawn tiles', (d) => d.encounters.encounters.find((e) => e.id === 'guards').enemies.push('guard', 'guard', 'guard'), /7 enemies with a twist, but depot's map has 6 spawn tiles/],
+  ['job with more enemies than spawn tiles', (d) => d.encounters.encounters.find((e) => e.id === 'guards').enemies.push('guard', 'guard', 'guard'), /8 enemies with a twist and the hunters, but depot's map has 6 spawn tiles/],
+  ['heat thresholds out of order', (d) => (d.balance.huntHeat = 80), /heat thresholds must rise/],
+  ['heat after a raid still a raid', (d) => (d.balance.heatAfterRaid = 75), /heatAfterRaid must be under raidHeat/],
+  ['a loud job quieter than a quiet one', (d) => (d.balance.loudJobHeat = 5), /loudJobHeat must be at least jobHeat/],
+  ['mission loud as a word', (d) => (d.contracts.missions[0].loud = 'yes'), /mission clear: loud must be true or false/],
+  ['pursuer with no words for the hunters', (d) => delete d.backgrounds.backgrounds[0].pursuer.levels.hunters, /levels must say something for each of calm, rumors, hunters, raid/],
+  ['pursuer sending a hunter that is no enemy', (d) => (d.backgrounds.backgrounds[0].pursuer.hunters = ['marine']), /hunters must be a list of 1 to 2 enemies/],
+  ['pursuer raiding with an unknown encounter', (d) => (d.backgrounds.backgrounds[0].pursuer.raiders = 'army'), /unknown raiders encounter "army"/],
+  ['payment of odd credits', (d) => (d.backgrounds.backgrounds[0].pursuer.payment.credits = 52), /credits must be a multiple of 5/],
+  ['payment that buys no heat', (d) => (d.backgrounds.backgrounds[0].pursuer.payment.heat = 0), /heat must be a whole number from 1 to 100/],
+  ['tiles with no rule for the deck', (d) => delete d.tiles.tiles.deck, /no rules for the tile "deck"/],
   ['job paying odd credits', (d) => (job(d, 'rent').credits = [61, 90]), /multiples of 5/],
   ['job with a part chance and no parts', (d) => (job(d, 'payroll').partChance = 10), /a part comes with a chance/],
   ['job pitch with a word that can\'t be filled in', (d) => (job(d, 'rent').pitch = 'Pay {rent}.'), /"\{rent\}" can't be filled in: use \{client\}, \{site\}/],
@@ -157,5 +167,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 crew jobs, 7 enemies, 7 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates\)/);
+  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 crew jobs, 7 enemies, 8 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates\)/);
 });

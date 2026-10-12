@@ -33,6 +33,13 @@ const BALANCE = {
   airlessDamage: [0, 20],
   forgivingStep: [0, 50],
   forgivingMax: [0, 100],
+  // Heat (src/sim/heat.js): what a job adds, and the thresholds.
+  jobHeat: [0, 100],
+  loudJobHeat: [0, 100],
+  rumorHeat: [1, 100],
+  huntHeat: [1, 100],
+  raidHeat: [1, 100],
+  heatAfterRaid: [0, 100],
 };
 const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', 'clip'];
 const RANGE_BANDS = ['close', 'mid', 'long'];
@@ -48,8 +55,9 @@ const MAX_CREW = 20;
 const MAX_SQUAD = 5;
 const MAX_ENEMIES = 8;
 // Tiles every battle map has, besides the interior templates'
-// (mapFromShip.js), and those of the job sites' maps (gen/site.js).
-const MAP_TILES = ['space', 'hull', ...new Set(Object.values(SITE_CHARS).map((kind) => kind.tile))];
+// (mapFromShip.js), the hangar's deck (hangarMap.js), and those of the job
+// sites' maps (gen/site.js).
+const MAP_TILES = ['space', 'hull', 'deck', ...new Set(Object.values(SITE_CHARS).map((kind) => kind.tile))];
 const MAX_MODULE_SIZE = 4;
 const MAX_FRAME_SIZE = 32;
 
@@ -99,6 +107,9 @@ export function validateData(data) {
       if (!isIntIn(balance[key], min, max)) fail('balance.json', `${key} must be a whole number from ${min} to ${max}`);
     }
     if (balance.midRange < balance.closeRange) fail('balance.json', 'midRange must be at least closeRange');
+    if (!(balance.rumorHeat < balance.huntHeat && balance.huntHeat < balance.raidHeat)) fail('balance.json', 'heat thresholds must rise: rumorHeat, then huntHeat, then raidHeat');
+    if (!(balance.heatAfterRaid < balance.raidHeat)) fail('balance.json', 'heatAfterRaid must be under raidHeat, or one raid brings the next');
+    if (balance.loudJobHeat < balance.jobHeat) fail('balance.json', 'loudJobHeat must be at least jobHeat');
   }
 
   const weapons = listOf(weaponFile, 'weapons', 'weapons.json', fail);
@@ -205,7 +216,7 @@ export function validateData(data) {
   ships.forEach((ship, i) => checkShip(ship, `ships.json ${ship.id ?? `#${i}`}`, frameById, moduleIds, fail));
 
   const encounterById = new Map(encounters.filter((e) => Array.isArray(e.enemies)).map((e) => [e.id, e.enemies]));
-  const scripts = checkCampaignFiles(data, { jobIds, moduleIds, frameById, encounters: encounterById }, fail);
+  const scripts = checkCampaignFiles(data, { jobIds, enemyIds, moduleIds, frameById, encounters: encounterById }, fail);
   // The starting ships are built only from content that checks out.
   if (!problems.length) checkStartShips(data, scripts, fail);
   return problems;

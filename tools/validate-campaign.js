@@ -12,7 +12,13 @@ import { isId, isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, 
 const CAMPAIGN_KEYS = ['acts'];
 const ACT_KEYS = ['act', 'name', 'hub', 'home', 'heals'];
 const BACKGROUND_KEYS = ['id', 'name', 'blurb', 'pursuer', 'district', 'start'];
-const PURSUER_KEYS = ['name', 'blurb'];
+const PURSUER_KEYS = ['name', 'blurb', 'levels', 'hunters', 'raiders', 'payment'];
+// Heat's levels (src/sim/heat.js), each with the pursuer's words for it.
+const HEAT_LEVELS = ['calm', 'rumors', 'hunters', 'raid'];
+const PAYMENT_KEYS = ['name', 'text', 'credits', 'heat'];
+const MAX_HUNTERS = 2;
+// A raid's raiders, at the hangar's doors (hangarMap.js).
+const MAX_RAIDERS = 8;
 const START_KEYS = ['credits', 'parts', 'crew', 'ship'];
 const SCRIPT_KEYS = ['frame', 'placements'];
 const PLACEMENT_KEYS = ['type', 'x', 'y', 'rot'];
@@ -21,8 +27,8 @@ const CLIENT_KEYS = ['id', 'name', 'title', 'blurb'];
 const SITE_KEYS = ['id', 'name', 'map', 'blurb'];
 const MAP_KEYS = ['id', 'name', 'rows'];
 const CONTRACTS_KEYS = ['boardSize', 'twistChance', 'missions', 'twists', 'jobs'];
-const MISSION_KEYS = ['id', 'name', 'brief'];
-const TWIST_KEYS = ['id', 'name', 'text', 'enemies', 'hazard', 'patches', 'sight', 'deadline', 'pay', 'missions'];
+const MISSION_KEYS = ['id', 'name', 'brief', 'loud'];
+const TWIST_KEYS = ['id', 'name', 'text', 'enemies', 'hazard', 'patches', 'sight', 'deadline', 'pay', 'missions', 'loud'];
 const JOB_KEYS = ['id', 'title', 'mission', 'crates', 'turns', 'clients', 'sites', 'encounter', 'credits', 'parts', 'partChance', 'pitch'];
 // A twist's numbers, each one's allowed range. A twist sets at least one
 // of them, or a hazard.
@@ -47,7 +53,9 @@ export function checkCampaignFiles(data, ids, fail) {
   const maps = checkSiteMaps(data.sites, fail);
   const districts = checkDistricts(data.districts, maps, fail);
   const scripts = checkBackgrounds(data.backgrounds, districts, ids, fail);
-  checkContracts(data.contracts, districts, maps, ids, fail);
+  // Hunters join every job's fight once heat is high enough.
+  const hunters = Math.max(0, ...(data.backgrounds?.backgrounds ?? []).map((b) => (Array.isArray(b?.pursuer?.hunters) ? b.pursuer.hunters.length : 0)));
+  checkContracts(data.contracts, districts, maps, { ...ids, hunters }, fail);
   return scripts;
 }
 
@@ -166,7 +174,7 @@ function checkDistricts(file, maps, fail) {
 // district, and what a campaign from it starts with: credits, parts held,
 // the crew by job, and the ship as a script of placements
 // (tools/build-ship.js).
-function checkBackgrounds(file, { districts }, { jobIds, moduleIds, frameById }, fail) {
+function checkBackgrounds(file, { districts }, { jobIds, enemyIds, moduleIds, frameById, encounters }, fail) {
   const backgrounds = listOf(file, 'backgrounds', 'backgrounds.json', fail);
   uniqueIds(backgrounds, 'backgrounds.json', fail);
   if (!backgrounds.length) fail('backgrounds.json', 'needs at least one background');
@@ -175,14 +183,41 @@ function checkBackgrounds(file, { districts }, { jobIds, moduleIds, frameById },
     const where = `backgrounds.json ${background.id ?? `#${i}`}`;
     knownKeys(background, BACKGROUND_KEYS, where, fail);
     if (!isText(background.name) || !isText(background.blurb)) fail(where, 'name and blurb must be non-empty strings');
-    const { pursuer } = background;
-    if (!isObject(pursuer) || !isText(pursuer.name) || !isText(pursuer.blurb)) fail(where, 'pursuer must be { name, blurb }');
-    else knownKeys(pursuer, PURSUER_KEYS, `${where} pursuer`, fail);
+    checkPursuer(background.pursuer, `${where} pursuer`, { enemyIds, encounters }, fail);
     if (!districts.has(background.district)) fail(where, `unknown district "${background.district}"`);
     const script = checkStart(background.start, `${where} start`, { jobIds, moduleIds, frameById }, fail);
     if (script) scripts.push([`${where} start.ship`, script]);
   });
   return scripts;
+}
+
+// The pursuer: who they are, their words for each level of heat, the
+// hunters they send along on jobs once heat is high, the encounter they
+// raid the hangar with, and the payment that buys some heat off.
+function checkPursuer(pursuer, where, { enemyIds, encounters }, fail) {
+  if (!isObject(pursuer)) {
+    fail(where, 'must be { name, blurb, levels, hunters, raiders, payment }');
+    return;
+  }
+  knownKeys(pursuer, PURSUER_KEYS, where, fail);
+  if (!isText(pursuer.name) || !isText(pursuer.blurb)) fail(where, 'name and blurb must be non-empty strings');
+  const { levels } = pursuer;
+  if (!isObject(levels) || Object.keys(levels).length !== HEAT_LEVELS.length || !HEAT_LEVELS.every((level) => isText(levels[level]))) {
+    fail(where, `levels must say something for each of ${HEAT_LEVELS.join(', ')}`);
+  }
+  if (!isListIn(pursuer.hunters, 1, MAX_HUNTERS) || !pursuer.hunters.every((id) => enemyIds.has(id))) fail(where, `hunters must be a list of 1 to ${MAX_HUNTERS} enemies`);
+  const raiders = encounters.get(pursuer.raiders);
+  if (!raiders) fail(where, `unknown raiders encounter "${pursuer.raiders}"`);
+  else if (raiders.length > MAX_RAIDERS) fail(where, `a raid of ${raiders.length}: the hangar's doors take ${MAX_RAIDERS}`);
+  const { payment } = pursuer;
+  if (!isObject(payment)) {
+    fail(where, 'payment must be { name, text, credits, heat }');
+    return;
+  }
+  knownKeys(payment, PAYMENT_KEYS, `${where} payment`, fail);
+  if (!isText(payment.name) || !isText(payment.text)) fail(`${where} payment`, 'name and text must be non-empty strings');
+  if (!isIntIn(payment.credits, PAY_STEP, MAX_CREDITS) || payment.credits % PAY_STEP) fail(`${where} payment`, `credits must be a multiple of ${PAY_STEP} from ${PAY_STEP} to ${MAX_CREDITS}`);
+  if (!isIntIn(payment.heat, 1, 100)) fail(`${where} payment`, 'heat must be a whole number from 1 to 100');
 }
 
 // Returns the start's ship script if it is well formed, else null.
@@ -230,7 +265,7 @@ function checkStart(start, where, { jobIds, moduleIds, frameById }, fail) {
 // one district, against an encounter that fits every site's spawn tiles
 // (with any twist's extra enemy), for credits in steps of PAY_STEP and
 // maybe a part.
-function checkContracts(file, { districts, sites }, maps, { moduleIds, encounters }, fail) {
+function checkContracts(file, { districts, sites }, maps, { moduleIds, encounters, hunters }, fail) {
   const where = 'contracts.json';
   if (!isObject(file)) {
     fail(where, 'must be an object with the board, missions, twists and jobs');
@@ -247,6 +282,7 @@ function checkContracts(file, { districts, sites }, maps, { moduleIds, encounter
     knownKeys(mission, MISSION_KEYS, at, fail);
     if (!MISSIONS.includes(mission.id)) fail(at, `unknown mission: the rules know ${MISSIONS.join(', ')}`);
     if (!isText(mission.name)) fail(at, 'name must be a non-empty string');
+    if (mission.loud !== undefined && typeof mission.loud !== 'boolean') fail(at, 'loud must be true or false');
     checkWords(mission.brief, BRIEF_WORDS[mission.id] ?? [], `${at} brief`, fail);
   });
 
@@ -262,6 +298,7 @@ function checkContracts(file, { districts, sites }, maps, { moduleIds, encounter
     if (twist.enemies === 0 || twist.pay === 0) fail(at, 'enemies and pay, where set, change something');
     if (twist.hazard !== undefined && !HAZARDS.includes(twist.hazard)) fail(at, `hazard must be one of ${HAZARDS.join(', ')}`);
     if ((twist.hazard === undefined) !== (twist.patches === undefined)) fail(at, 'a hazard comes with its patches, and patches with a hazard');
+    if (twist.loud !== undefined && typeof twist.loud !== 'boolean') fail(at, 'loud must be true or false');
     if (!['enemies', 'hazard', 'sight', 'deadline', 'pay'].some((key) => twist[key] !== undefined)) fail(at, 'does nothing: set enemies, a hazard, sight, a deadline or pay');
     if (twist.missions !== undefined && (!isListIn(twist.missions, 1, MISSIONS.length) || !twist.missions.every((id) => missionIds.has(id)) || new Set(twist.missions).size !== twist.missions.length)) {
       fail(at, 'missions must be a list of the missions it can come with');
@@ -305,7 +342,8 @@ function checkContracts(file, { districts, sites }, maps, { moduleIds, encounter
       for (const id of job.sites) {
         const marks = maps.get(sites.get(id)?.map);
         if (!marks) continue;
-        if (enemies.length + extra > marks.spawn) fail(at, `${enemies.length + extra} enemies with a twist, but ${id}'s map has ${marks.spawn} spawn tiles`);
+        const most = enemies.length + extra + hunters;
+        if (most > marks.spawn) fail(at, `${most} enemies with a twist and the hunters, but ${id}'s map has ${marks.spawn} spawn tiles`);
         if (MAX_SQUAD > marks.entry) fail(at, `${id}'s map has ${marks.entry} ways in for a squad of up to ${MAX_SQUAD}`);
         if (job.mission === 'grab' && job.crates > marks.loot) fail(at, `${job.crates} crates, but ${id}'s map has ${marks.loot}`);
         if (job.mission === 'hack' && !marks.terminal) fail(at, `${id}'s map has no terminal`);

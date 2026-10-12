@@ -2,13 +2,13 @@
   "boardSize": 3,
   "twistChance": 50,
   "missions": [
-    { "id": "clear", "name": "Clear out", "brief": "Put down everyone who isn't crew." },
+    { "id": "clear", "name": "Clear out", "brief": "Put down everyone who isn't crew.", "loud": true },
     { "id": "grab", "name": "Grab and go", "brief": "Grab {crates}. You have to stand right beside a crate to grab it, and the job's done when the last one's in hand." },
     { "id": "hack", "name": "Work the terminal", "brief": "Work the terminal for {turns}. It takes a crew member's whole turn, and it only counts once a round." }
   ],
   "twists": [
     { "id": "overtime", "name": "Overtime", "text": "There are more of them than the quote said.", "enemies": 1 },
-    { "id": "hazard", "name": "Hazard pay", "text": "Something on site is on fire. The pay's better for it.", "hazard": "fire", "patches": 2, "pay": 50 },
+    { "id": "hazard", "name": "Hazard pay", "text": "Something on site is on fire. The pay's better for it, and so's the noise.", "hazard": "fire", "patches": 2, "pay": 50, "loud": true },
     { "id": "cavein", "name": "Cave-in", "text": "Half the site came down last shift. Watch your step.", "hazard": "rubble", "patches": 2 },
     { "id": "lights", "name": "Lights out", "text": "Somebody cut the floodlights. Nobody sees past {sight} tiles.", "sight": 6 },
     { "id": "rush", "name": "Rush job", "text": "Done by the end of round {deadline}, or nobody gets paid.", "deadline": 6, "pay": 30, "missions": ["grab", "hack"] },

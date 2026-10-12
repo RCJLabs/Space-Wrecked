@@ -124,13 +124,13 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 
 ### 4.3 Squad battles
 
-- **Maps:** a ship layout converted by `src/sim/mapFromShip.js`, or a planet map built from templates. A ship's map is one tile per builder cell (`tilesPerCell`), with a tile of space around it; the same ship always converts to the identical map (M6, tested against a golden map). A planet map (M14, `src/sim/gen/site.js`) is a job site's template turned over by the seed and furnished, with no space around it; §4.7 has how.
-- **Tiles** come from each room's interior template: floor, half cover, full cover, machinery, console (objective), airlock floor. Outside the rooms a tile is space, or hull where the hull closes over a notch.
+- **Maps:** a ship layout converted by `src/sim/mapFromShip.js`, or a planet map built from templates. A ship's map is one tile per builder cell (`tilesPerCell`), with a tile of space around it; the same ship always converts to the identical map (M6, tested against a golden map). A planet map (M14, `src/sim/gen/site.js`) is a job site's template turned over by the seed and furnished, with no space around it; §4.7 has how. The hangar map for a raid (M15, `src/sim/hangarMap.js`) is the ship's own map standing on the hangar's deck, with 2 cells of deck around it; in the hangar an airlock's hatch is a door onto the deck.
+- **Tiles** come from each room's interior template: floor, half cover, full cover, machinery, console (objective), airlock floor. Outside the rooms a tile is space, or hull where the hull closes over a notch, or in a raid the hangar's deck.
 - **Edges:** walls stand between tiles, not on them, since rooms can be one tile across. An edge is a wall between rooms, the hull, a door (open, closed or locked) where the builder joins two rooms, or a hatch where an airlock opens onto space (entry and exit).
 - **Wrecked rooms** from the approach phase put their hazard on every tile of the room: fire, vacuum or rubble.
 - **What tiles do** is data (`data/tiles.json`): units stand on floor and airlock floor; crates and consoles are half cover, lockers and machinery full cover; lockers, machinery and the hull block sight. On planet maps, rock is full cover and blocks sight.
 - **Squad size:** 3 at the start, up to 5 with drop bay modules later. Enemies number 4 to 8. Crew fight as their job (`data/jobs.json`: hit points, aim, defense, mobility, armor, a weapon), and enemies by type (`data/enemies.json`). The attributes in §4.5 feed these numbers later. A campaign's crew fights as itself, wounds and all (M12); the sandboxes and `tools/sim.js` fight with the squad in `data/encounters.json`, where each encounter's enemies are listed too.
-- **Where they start** (M8): on a boarding, the squad on the bridge and the boarders at the hatches they come in by, each taking the tiles nearest by walking distance (`src/sim/deploy.js`). On a job (M14), the crew at the site's ways in and the enemies on its spawn tiles, both shuffled by the job's seed. The crew moves first.
+- **Where they start** (M8): on a boarding, the squad on the bridge and the boarders at the hatches they come in by, each taking the tiles nearest by walking distance (`src/sim/deploy.js`). On a job (M14), the crew at the site's ways in and the enemies on its spawn tiles, both shuffled by the job's seed; from heat 50, the pursuer's hunter starts with the enemies (§4.4). In a raid (M15), the crew on the bridge and the raiders inside the hangar's doors along its west edge, behind the ship's stern. The crew moves first.
 - **Turns:** sides take turns; each unit gets 2 actions (`balance.actionPoints`):
   - move: one action within its mobility, both for a dash within twice it
   - shoot, which ends the unit's turn
@@ -164,6 +164,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   A plan's score is in expected hit points. It is the harm its shot should do (kills count 4 more), minus the harm every enemy who can see where it ends up could do to it there, and minus the overwatch fire on the way. Overwatch adds something, more with an enemy close enough to step into sight. When it won't shoot, each step from the enemy costs a little. Doors its path opens count.
 
   A shot worth taking goes before holding back, unless it is reckless. The AI never ends up in the open (seen by an enemy with no cover between) unless no cover is in reach, or the shot from there beats every covered tile's. The weights are starting values for M11 to tune.
+- **Raiders press on** (M15, `src/sim/press.js`): with an enemy in sight a raider plays as the AI does; otherwise it walks toward the crew and opens the doors in its way, so a raid can't stall at a door. A battle with `options.press` (a raid) plays its enemy this way, and the test player that plays the crew on jobs (`src/sim/jobAi.js`) is built on it. Boarders still play the AI alone.
 
 ### 4.4 Heat
 
@@ -181,6 +182,12 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - 50: hunter encounters at nodes
   - 75: a task force, and raids
   - 100: a forced confrontation event
+- **Act 1 as built** (M15, `src/sim/heat.js`; the numbers in `data/balance.json`, the pursuer's part in `data/backgrounds.json`):
+  - A job adds 8 heat, done or lost, and a loud one 15: clear-outs and the fire twist are loud (`loud` in `data/contracts.json`).
+  - From 25 the pursuer's words change, and that's all in act 1. From 50 a Recovery agent goes along on every job (the pursuer's hunters).
+  - From 75 a raid is due at the hangar, and no job can be taken until it has been faced. The player picks when: Defend fights it on the hangar map (§4.3) against the pursuer's raiders, four of them, who press on. Won or lost, heat falls to 40 after it. Lost, the raiders take the dearest part on hand, or with none, half the credits, never a part off the ship.
+  - **The one loss in act 1** is a payment on the debt: 50 credits for 15 heat, at the hangar. It can also head off a raid that is due.
+  - Heat doesn't fall on its own, and 100's confrontation isn't in act 1: the raid comes first.
 - **In act 3**, heat decays slowly, distance from pursuer space lowers what you gain, and raid frequency follows heat.
 
 ### 4.5 Characters
@@ -195,7 +202,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 
 - **Credits** buy parts and services. **Parts** are modules held in inventory. **Salvage** is raw material for repairs and, later, crafting.
 - **Act 1 starts** (M13; since M14 the background's start in `data/backgrounds.json`) with a half-built hull: bridge, reactor, corridors, airlock and a gun, with no quarters, life support or engines. On hand are crew quarters, life support and two corridors, so a new player's first minute fixes two flight checks. The engines have to come from jobs.
-- **Jobs pay** (M14) credits, and on some jobs a part: the repossession always pays an engine, the scrap run sometimes. Credits buy nothing until the shop (M16).
+- **Jobs pay** (M14) credits, and on some jobs a part: the repossession always pays an engine, the scrap run sometimes. Until the shop (M16), credits buy only heat off: a payment on the debt, 50 credits for 15 (M15, §4.4). A lost raid can take half of them.
 - Act 1 target: launch after roughly 8 to 12 jobs, in under an hour. Check this in play.
 
 ### 4.7 Generators (all seeded)
@@ -344,7 +351,7 @@ Pick the tone before M14. (Picked: wry and blue-collar.)
   **Done when:** a new player is building within 60 seconds of starting.
 - [x] **M14 Background, district and jobs.** One background, a job board, 10 job templates, planet map generator v1, 3 mission types, rewards.
   **Done when:** ten jobs in a row feel varied (Evan's call).
-- [ ] **M15 Heat v1 and the hangar raid.** Heat from jobs, thresholds, and a raid defended on the hangar map.
+- [x] **M15 Heat v1 and the hangar raid.** Heat from jobs, thresholds, and a raid defended on the hangar map.
   **Done when:** ignoring heat brings a raid, and managing it avoids one.
 - [ ] **M16 Shop and economy v1.** A parts shop, prices and drop tables.
   **Done when:** a test run reaches launch in under an hour.
@@ -406,7 +413,8 @@ A Capacitor build; a paid version with a web demo; optional cloud saves on Base4
 | The builder feels fiddly on a phone | Gate 1 fails | Fix it before Phase 2; fall back to bigger modules or a slot hull |
 | Two deep systems overrun scope | Phase 2 runs past about 8 sessions | Keep the shared grid; cut base building to slots first |
 | Players build chokepoint fortresses | Balance runs show defenders always win. AI against AI on the example ship, the crew of 3 wins 64% (58–70) against 4 boarders (`tools/sim.js`, M11). With the airlock moved under the bridge it wins 83% | Enemies breach walls and choose entry points; corridors stay two tiles wide. Since M9 the AI breaches doors: it opens one and shoots through, which overwatch can't punish |
-| Fights stall in standoffs | AI-against-AI fights reach the round limit. The harness's 1,000 fights in M11 stalled on 24% of cutters, 9% of corvettes and 5% of haulers, and none on the example ship. Both sides hold on overwatch either side of a chokepoint. Boarders never attack a crew that holds the bridge: with a crew that only ends its turn, 5 of 5 fights reached 60 rounds on the example ship and on the campaign's start ship (M12). A campaign fight can't be left until one side wins, so there the player has to go to them. On jobs (M14) the AI waits behind a closed door as the crew's AI would: `tools/jobs.js` plays the crew with a player that pushes in and opens doors, and then every job ends | Candidates, Evan's call: boarders press on (they came to fight), cutting through walls, ships with a second way round. `tools/sim.js` reports the stalls ("No winner") |
+| Fights stall in standoffs | AI-against-AI fights reach the round limit. The harness's 1,000 fights in M11 stalled on 24% of cutters, 9% of corvettes and 5% of haulers, and none on the example ship. Both sides hold on overwatch either side of a chokepoint. Boarders never attack a crew that holds the bridge: with a crew that only ends its turn, 5 of 5 fights reached 60 rounds on the example ship and on the campaign's start ship (M12). A campaign fight can't be left until one side wins, so there the player has to go to them. On jobs (M14) the AI waits behind a closed door as the crew's AI would: `tools/jobs.js` plays the crew with a player that pushes in and opens doors, and then every job ends. Raiders press on (M15, `src/sim/press.js`): of 360 raids played out on three ships, one went past 60 rounds | Candidates, Evan's call: boarders press on as raiders do, cutting through walls, ships with a second way round. `tools/sim.js` reports the stalls ("No winner") |
+| A raid's odds swing with the ship's layout | The AI crew against four raiders wins 11 of 60 on the example ship, 22 on the start ship and 39 once it has an engine (M15) | Candidates, Evan's call after the phone: three raiders, or raiders scaled to the ship; cover on the hangar deck; the crew choosing where to stand |
 | Percentage misses feel unfair | Testers complain about high-odds misses | Clearer cover display, the forgiving-odds setting, the math always shown |
 | 3D on canvas runs slowly on mid-range phones | Dropped frames turning or zooming the board (M4), or in battles (M8) | Rough half-resolution frames while the camera moves or units walk, only on a phone too slow for full ones (the frame budget, after M6: they blurred zooming on the Fold); cache the still board, and in a fight redraw it only when something on it changed (M8); fewer lines, cap the pixel ratio. Past that: three.js (MIT, one vendored file, no build step), with Evan's approval |
 | Lost saves | Reports after Chrome data is cleared | Persistent storage request, export and import, migrations |
@@ -439,5 +447,9 @@ These ideas wait until v0.4 or later:
 - carrying crates out: a grab is done once the last crate is grabbed, with no walk back to the way in (raised in M14; it would be the extract objective in §4.3)
 - a job board that remembers further back than the last board, so a job comes back less often (raised in M14)
 - a site that looks like the ground around it: a job's map sits on the starfield, like a ship's (raised in M14)
+- the hangar drawn as a hangar: walls, and doors that open for the raiders. A raid's deck is a plate on the starfield with a hazard stripe where the doors would be (raised in M15)
+- choosing where the crew stands before a raid, instead of all on the bridge (raised in M15)
+- more hunters as heat climbs past 50, and a bigger raid at 100 (raised in M15)
+- lying low: ways to shed heat in act 1 besides paying, such as heat that falls while the crew sits out a board (raised in M15)
 
 Ideas that come up during a session go here, not into code.

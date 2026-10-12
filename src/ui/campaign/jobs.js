@@ -6,13 +6,14 @@
 // changes only once a job is done or lost.
 import { loadContent } from '../../platform/content.js';
 import { palette } from '../../render/palette.js';
+import { huntersFor, pursuerOf, raidDue } from '../../sim/heat.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { jobText } from './jobText.js';
 
 // A job the content no longer has.
-const GONE = { title: 'Gone', mission: 'No longer on offer', where: '', pay: '', twist: null };
+const GONE = { title: 'Gone', mission: 'No longer on offer', where: '', pay: '', heat: '', twist: null };
 
 export const jobsScreen = {
   mount(root, { store: game }) {
@@ -73,8 +74,17 @@ export const jobsScreen = {
       }
       rows.forEach((row, i) => row.button.setAttribute('aria-pressed', String(i === picked)));
       if (shown[picked] !== detailed) showJob(shown[picked]);
-      takeButton.disabled = !jobText(shown[picked], defs);
-      setText(hint, 'Pick a job to read it, then take it. The crew heals up at the hangar after.');
+      const raid = raidDue(campaign, defs);
+      takeButton.disabled = raid || !jobText(shown[picked], defs);
+      const hunted = huntersFor(campaign, defs).length > 0;
+      setText(hint, raid ? 'Not with a raid at the door: back to the hangar.' : hunted ? pursuerOf(campaign, defs).levels.hunters : 'Pick a job to read it, then take it. The crew heals up at the hangar after.');
+      hint.dataset.tone = raid ? 'bad' : hunted ? 'warn' : 'info';
+    }
+
+    // The pursuer's hunters, who join every job once heat is high.
+    function hunters() {
+      const { campaign } = game.getState();
+      return campaign ? huntersFor(campaign, defs) : [];
     }
 
     // A button a job: its title and twist, the mission and where, and the
@@ -82,13 +92,13 @@ export const jobsScreen = {
     function build(board) {
       rows.forEach((row) => row.detach());
       rows = board.map((job, i) => {
-        const words = jobText(job, defs) ?? GONE;
+        const words = jobText(job, defs, hunters()) ?? GONE;
         const button = node('button', 'btn jobs-pick');
         button.type = 'button';
         const top = node('span', 'jobs-top');
         top.append(node('b', null, words.title));
         if (words.twist) top.append(node('span', 'jobs-twist', words.twist.name));
-        button.append(top, node('span', null, [words.mission, words.where].filter(Boolean).join(' · ')), node('span', 'jobs-pay', words.pay));
+        button.append(top, node('span', null, [words.mission, words.where].filter(Boolean).join(' · ')), node('span', 'jobs-pay', [words.pay, words.heat].filter(Boolean).join(' · ')));
         return { button, detach: onTap(button, () => pick(i)) };
       });
       list.replaceChildren(...rows.map((row) => row.button));
@@ -102,7 +112,7 @@ export const jobsScreen = {
 
     function showJob(job) {
       detailed = job;
-      const words = jobText(job, defs);
+      const words = jobText(job, defs, hunters());
       if (!words) {
         detail.replaceChildren(node('h2', null, GONE.title), node('p', 'jobs-who', 'The game has changed since this board went up. The next board has new work.'));
         return;
@@ -117,6 +127,7 @@ export const jobsScreen = {
       if (words.twist) fact('The twist', `${words.twist.name}. ${words.twist.text}`);
       fact('Against', words.against);
       fact('Pays', words.pay);
+      fact('Heat', words.heat);
       detail.replaceChildren(node('h2', null, words.title), node('p', 'jobs-who', `${words.who} · ${words.where}`), node('p', 'jobs-pitch', words.pitch), facts);
       detail.scrollTop = 0;
     }
