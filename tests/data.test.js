@@ -90,6 +90,13 @@ const cases = [
   ['campaign with a fourth act', (d) => d.campaign.acts.push({ act: 4, name: 'Epilogue', hub: 'ship', home: 'Your ship' }), /acts must be acts 1 to 3/],
   ['act that may or may not heal', (d) => (d.campaign.acts[0].heals = 'yes'), /act #1: heals must be true or false/],
   ['campaign start left in campaign.json', (d) => (d.campaign.start = {}), /campaign\.json: unknown field "start"/],
+  ['too few traits for a captain', (d) => (d.traits.traits = d.traits.traits.slice(0, 1)), /needs at least 2 traits for a captain to pick/],
+  ['a captain name too long to keep', (d) => d.backgrounds.backgrounds[0].captains.push('Maximilian Bartholomew Oyelaran'), /captains must be a list of 1 to 20 names of up to 24 letters/],
+  ['trait that does nothing', (d) => (d.traits.traits[0].effects = {}), /traits\.json steady: effects must change something/],
+  ['trait moving a number fights have not got', (d) => (d.traits.traits[0].effects = { luck: 5 }), /effects: unknown number "luck"/],
+  ['trait far past its range', (d) => (d.traits.traits[0].effects = { aim: 50 }), /effects\.aim must be a whole number from -30 to 30/],
+  ['misspelled trait field', (d) => (d.traits.traits[0].effect = {}), /traits\.json steady: unknown field "effect"/],
+  ['an easy setting that makes enemies better', (d) => (d.balance.easyEnemyAim = 10), /easyEnemyAim must be a whole number from -50 to 0/],
   ['act standing in with no words', (d) => (d.campaign.acts[1].stub = ''), /act #2: stub must be a non-empty string/],
   ['background with no words for lifting off', (d) => delete d.backgrounds.backgrounds[0].launch, /miner launch: must be \{ text, escaped \}/],
   ['launch with nothing for an empty hangar', (d) => (d.backgrounds.backgrounds[0].launch.escaped = ''), /launch: text and escaped must be non-empty strings/],
@@ -181,5 +188,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 crew jobs, 7 enemies, 8 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates\)/);
+  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 8 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates\)/);
 });

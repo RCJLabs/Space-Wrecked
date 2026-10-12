@@ -5,8 +5,11 @@
 //
 //   node tools/validate-data.js
 import { pathToFileURL } from 'node:url';
+import { CAPTAIN_TRAITS } from '../src/sim/campaign.js';
 import { REQUIRED_TAGS } from '../src/sim/constraints.js';
 import { SITE_CHARS } from '../src/sim/gen/site.js';
+import { TRAIT_STATS } from '../src/sim/traits.js';
+import { TIP_IDS } from '../src/ui/tipSteps.js';
 import { isIntIn, isListIn, isRange, isText, listOf, uniqueIds } from './checks.js';
 import { readData } from './data.js';
 import { checkCampaignFiles, checkStartShips } from './validate-campaign.js';
@@ -44,12 +47,26 @@ const BALANCE = {
   // sell.
   buyPercent: [1, 1000],
   sellPercent: [0, 100],
+  // Difficulty (src/sim/settings.js): what each enemy brings on easy and on
+  // hard, added to its aim and hit points. Normal adds nothing.
+  easyEnemyAim: [-50, 0],
+  easyEnemyHp: [-5, 0],
+  hardEnemyAim: [0, 50],
+  hardEnemyHp: [0, 10],
 };
 const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', 'clip'];
 const RANGE_BANDS = ['close', 'mid', 'long'];
 // Crew jobs and enemies are both fighters, with the same fields.
 const FIGHTER_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'weapon'];
 const TILE_RULE_KEYS = ['walk', 'cover', 'blocksSight'];
+// Traits (src/sim/traits.js): what each can add to a fighter's numbers, up
+// or down, and how far.
+const TRAIT_KEYS = ['id', 'name', 'text', 'effects'];
+const TRAIT_RANGES = { hp: [-5, 5], aim: [-30, 30], defense: [-30, 30], mobility: [-2, 2], armor: [-2, 2] };
+// Tips (src/ui/tips.js): words short enough for a card on the cover
+// screen. Which tips there are is the game's: src/ui/tipSteps.js.
+const TIP_KEYS = ['id', 'text'];
+const MAX_TIP = 200;
 const ENCOUNTER_KEYS = ['id', 'name', 'enemies'];
 // Ship presets (src/sim/gen/ship.js).
 const SHIP_KEYS = ['id', 'name', 'frame', 'crew', 'beam', 'symmetric', 'parts', 'wrecks'];
@@ -132,6 +149,8 @@ export function validateData(data) {
   jobs.forEach((job, i) => checkFighter(job, `jobs.json ${job.id ?? `#${i}`}`, weaponIds, fail));
   enemies.forEach((enemy, i) => checkFighter(enemy, `enemies.json ${enemy.id ?? `#${i}`}`, weaponIds, fail));
   const enemyIds = new Set(enemies.map((enemy) => enemy.id));
+  checkTraits(data.traits, fail);
+  checkTips(data.tips, fail);
 
   // Who fights: the squad by job, and each encounter's enemies.
   const squad = encounterFile?.squad;
@@ -261,6 +280,43 @@ function checkShip(ship, where, frameById, moduleIds, fail) {
 
 // A weapon: damage [least, most], an accuracy change at each range band, a
 // crit chance and extra damage on a crit, and the shots in a clip.
+// The traits: each with a name, a line about it, and what it adds to a
+// fighter's numbers, at least one of them. A captain picks CAPTAIN_TRAITS,
+// so there are at least that many.
+function checkTraits(file, fail) {
+  const traits = listOf(file, 'traits', 'traits.json', fail);
+  uniqueIds(traits, 'traits.json', fail);
+  if (traits.length < CAPTAIN_TRAITS) fail('traits.json', `needs at least ${CAPTAIN_TRAITS} traits for a captain to pick`);
+  traits.forEach((trait, i) => {
+    const where = `traits.json ${trait.id ?? `#${i}`}`;
+    for (const key of Object.keys(trait)) if (!TRAIT_KEYS.includes(key)) fail(where, `unknown field "${key}"`);
+    if (!isText(trait.name) || !isText(trait.text)) fail(where, 'name and text must be non-empty strings');
+    const { effects } = trait;
+    if (typeof effects !== 'object' || effects === null || Array.isArray(effects)) {
+      fail(where, `effects must be an object of ${TRAIT_STATS.join(', ')}`);
+      return;
+    }
+    for (const [key, value] of Object.entries(effects)) {
+      if (!TRAIT_STATS.includes(key)) fail(where, `effects: unknown number "${key}"`);
+      else if (!isIntIn(value, ...TRAIT_RANGES[key]) || value === 0) fail(where, `effects.${key} must be a whole number from ${TRAIT_RANGES[key][0]} to ${TRAIT_RANGES[key][1]}, not 0`);
+    }
+    if (!Object.keys(effects).length) fail(where, 'effects must change something');
+  });
+}
+
+// The tips: one for each step the game has (TIP_IDS), and no others.
+function checkTips(file, fail) {
+  const tips = listOf(file, 'tips', 'tips.json', fail);
+  const ids = uniqueIds(tips, 'tips.json', fail);
+  tips.forEach((tip, i) => {
+    const where = `tips.json ${tip.id ?? `#${i}`}`;
+    for (const key of Object.keys(tip)) if (!TIP_KEYS.includes(key)) fail(where, `unknown field "${key}"`);
+    if (!isText(tip.text) || tip.text.length > MAX_TIP) fail(where, `text must be a non-empty string of up to ${MAX_TIP} letters`);
+    if (!TIP_IDS.includes(tip.id)) fail(where, 'no step of the game shows this tip');
+  });
+  for (const id of TIP_IDS) if (!ids.has(id)) fail('tips.json', `the tip "${id}" has no words`);
+}
+
 function checkWeapon(weapon, where, fail) {
   for (const key of Object.keys(weapon)) {
     if (!WEAPON_KEYS.includes(key)) fail(where, `unknown field "${key}"`);
@@ -418,7 +474,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   console.log(
     `validate-data: OK (${count(data.modules.modules.length, 'module')}, ${count(data.frames.frames.length, 'frame')}, ` +
       `${count(data.manufacturers.manufacturers.length, 'manufacturer')}, ${count(data.weapons.weapons.length, 'weapon')}, ` +
-      `${count(data.jobs.jobs.length, 'crew job')}, ${data.enemies.enemies.length} enem${data.enemies.enemies.length === 1 ? 'y' : 'ies'}, ` +
+      `${count(data.jobs.jobs.length, 'crew job')}, ${count(data.traits.traits.length, 'trait')}, ${data.enemies.enemies.length} enem${data.enemies.enemies.length === 1 ? 'y' : 'ies'}, ` +
       `${count(data.encounters.encounters.length, 'encounter')}, ${count(data.ships.ships.length, 'ship preset')}, ` +
       `${count(data.campaign.acts.length, 'act')}, ${count(data.backgrounds.backgrounds.length, 'background')}, ` +
       `${count(data.districts.districts.length, 'district')}, ${count(data.sites.maps.length, 'site map')}, ` +

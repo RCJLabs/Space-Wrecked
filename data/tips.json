@@ -1,0 +1,15 @@
+{
+  "tips": [
+    { "id": "hangar-goal", "text": "This is the goal: every line of the flight checklist passing, so the ship can lift off. A cross is a line still open." },
+    { "id": "hangar-build", "text": "You have parts on hand that close two of those lines. Tap Build to fit them." },
+    { "id": "build-parts", "text": "These are the parts on hand. Tap the ringed one: the checklist needs it." },
+    { "id": "build-place", "text": "Now tap the grid where it goes. It shows as a ghost first, red if it can't go there. Tap the ghost again to put it down." },
+    { "id": "build-back", "text": "Everything on hand that the checklist needs is fitted. Tap Hangar to go back." },
+    { "id": "hangar-jobs", "text": "The engines have to be earned or bought. Jobs pay credits, and sometimes a part. Tap Jobs." },
+    { "id": "jobs-take", "text": "Each job says what it pays, who you'll face and any twist. Pick one, then tap Take the job." },
+    { "id": "fight-crew", "text": "Your crew. Tap one to give them orders: two actions a turn each." },
+    { "id": "fight-move", "text": "Tap a tile to see the move and the cover where it ends. Tap it again to go." },
+    { "id": "fight-shoot", "text": "Tap an enemy, or Shoot, to see the odds. Fire takes the shot, and ends that crew member's turn." },
+    { "id": "fight-end", "text": "When the crew is done, End turn hands it to the enemy. A turn also ends once nobody has an action left." }
+  ]
+}

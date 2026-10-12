@@ -1,0 +1,40 @@
+{
+  "traits": [
+    {
+      "id": "steady",
+      "name": "Steady hands",
+      "text": "Eleven years of setting charges, and you still have all ten fingers.",
+      "effects": { "aim": 5 }
+    },
+    {
+      "id": "thick-skull",
+      "name": "Thick skull",
+      "text": "A rockfall in the Tailings put you out for one shift. Just the one.",
+      "effects": { "hp": 2 }
+    },
+    {
+      "id": "quick",
+      "name": "Quick feet",
+      "text": "First one out when the roof creaks.",
+      "effects": { "mobility": 1 }
+    },
+    {
+      "id": "low-profile",
+      "name": "Low profile",
+      "text": "You learned to keep your head down before you learned to read.",
+      "effects": { "defense": 5 }
+    },
+    {
+      "id": "patched",
+      "name": "Patched suit",
+      "text": "More tape than suit by now, but it holds.",
+      "effects": { "armor": 1 }
+    },
+    {
+      "id": "hothead",
+      "name": "Hothead",
+      "text": "Shoot first. Apologize to the Company later.",
+      "effects": { "aim": 10, "defense": -5 }
+    }
+  ]
+}

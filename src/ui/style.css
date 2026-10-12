@@ -60,6 +60,7 @@ body {
 }
 
 #ui button,
+#ui input,
 #ui textarea,
 #ui .dev-panel {
   pointer-events: auto;
@@ -290,9 +291,19 @@ textarea {
 }
 
 .hgr-name {
+  min-width: 0;
+}
+
+.hgr-name > * {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.hgr-name small {
+  color: var(--c-ink-dim);
+  font-size: 0.82em;
 }
 
 .hgr-hp {
@@ -513,11 +524,363 @@ textarea {
   }
 
   .hgr-crew li {
+    grid-template-columns: minmax(0, 1fr) 36px 3.4em;
     min-height: 22px;
   }
 
   .hgr-hint {
     font-size: 12.5px;
+  }
+}
+
+/* First-run tips (tips.js): a card beside the control it is about, and a
+   ring around the control. The card takes touches; the ring lets them
+   through to the control. */
+.tip-ring {
+  position: absolute;
+  z-index: 20;
+  border: 2px solid var(--c-accent);
+  border-radius: 12px;
+  box-shadow: 0 0 0 4px rgba(255, 155, 61, 0.25);
+  pointer-events: none;
+}
+
+.tip {
+  position: absolute;
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: max-content;
+  max-width: min(300px, 70vw);
+  padding: 10px 12px;
+  border: 1px solid var(--c-accent);
+  border-radius: 12px;
+  background: var(--c-panel);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+}
+
+.tip-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+#ui .tip-ok {
+  align-self: flex-end;
+  min-height: 48px;
+  padding: 0 18px;
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
+@media (max-height: 320px) {
+  .tip {
+    flex-direction: row;
+    align-items: center;
+    max-width: min(420px, 80vw);
+    padding: 6px 8px 6px 12px;
+  }
+
+  .tip-text {
+    font-size: 13px;
+  }
+}
+
+/* Making a captain: the background, the captain and the traits side by
+   side, each a panel that scrolls if it has to, and Title, the hint and
+   Start along the bottom. */
+.cap {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(170px, 26%) minmax(0, 1fr) minmax(0, 1.1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 8px 12px 10px;
+}
+
+.cap-head {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  padding-right: 64px; /* clear of the DEV button */
+}
+
+.cap-head h1 {
+  margin: 0;
+  font-size: clamp(18px, 6vh, 28px);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.cap-sub {
+  margin: 0;
+  color: var(--c-ink-dim);
+  font-size: 15px;
+}
+
+.cap-bg-name {
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+
+.cap-bg-blurb,
+.cap-bg-pursuer,
+.cap-numbers,
+.cap-flavor {
+  margin: 0 0 6px;
+  color: var(--c-ink-dim);
+}
+
+.cap-bg-pursuer {
+  color: var(--c-dash);
+}
+
+.cap-label {
+  display: block;
+  margin: 2px 0 4px;
+  color: var(--c-ink-dim);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cap-name {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 4px;
+  padding: 0 12px;
+  border: 1px solid var(--c-line);
+  border-radius: 10px;
+  background: var(--c-space-hi);
+  color: var(--c-ink);
+  font: inherit;
+  font-size: 16px; /* no zoom on focus */
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.cap-name:focus {
+  border-color: var(--c-accent);
+  outline: none;
+}
+
+.cap-jobs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+#ui .cap-job {
+  padding: 0 6px;
+}
+
+.cap-traits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+#ui .cap-trait {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4px 10px;
+  text-align: left;
+  line-height: 1.2;
+}
+
+.cap-trait-effect {
+  color: var(--c-ink-dim);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+#ui .cap-trait[aria-pressed='true'] {
+  border-color: var(--c-accent);
+  background: var(--c-panel);
+}
+
+#ui .cap-trait[aria-pressed='true'] .cap-trait-effect {
+  color: var(--c-accent);
+}
+
+.cap-foot {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cap-hint {
+  flex: 1;
+  margin: 0;
+  color: var(--c-ink-dim);
+  font-size: 13.5px;
+}
+
+.cap-hint[data-tone='good'] {
+  color: var(--c-good);
+}
+
+#ui .cap-back,
+#ui .cap-start {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+#ui .cap-start {
+  padding: 0 22px;
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
+#ui .cap-start:disabled {
+  border-color: var(--c-line);
+  background: var(--c-panel);
+  color: var(--c-ink-dim);
+}
+
+/* Settings: a row a setting, its choices and what the one picked does,
+   then the save as a code; the whole list scrolls. */
+.set {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 8px 12px 10px;
+}
+
+.set-head h1 {
+  margin: 0;
+  font-size: clamp(18px, 6vh, 28px);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.set-head {
+  padding-right: 64px; /* clear of the DEV button */
+}
+
+/* The whole list takes touches, so a swipe scrolls it from anywhere, even
+   below the shorter column. */
+.set-body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+}
+
+.set-rows,
+.set-save {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-panel);
+  pointer-events: auto;
+  align-self: start;
+}
+
+.set-row h2,
+.set-save h2 {
+  margin: 0 0 4px;
+  color: var(--c-ink-dim);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.set-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#ui .set-choice[aria-pressed='true'] {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
+.set-line,
+.set-note {
+  margin: 4px 0 0;
+  color: var(--c-ink-dim);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.set-note[data-tone='good'] {
+  color: var(--c-good);
+}
+
+.set-note[data-tone='warn'] {
+  color: var(--c-dash);
+}
+
+.set-note[data-tone='bad'] {
+  color: var(--c-bad);
+}
+
+#ui .set-reset {
+  margin-top: 6px;
+}
+
+.set-code {
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 8px;
+  border: 1px solid var(--c-line);
+  border-radius: 8px;
+  background: var(--c-space-hi);
+  color: var(--c-ink);
+  font: 12px ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
+  resize: vertical;
+}
+
+.set-save-row,
+.set-foot {
+  display: flex;
+  gap: 8px;
+}
+
+#ui .set-export,
+#ui .set-copy,
+#ui .set-import,
+#ui .set-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+/* The unfolded screen: one column. */
+@media (max-aspect-ratio: 3 / 2) {
+  .set-body {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -611,11 +974,9 @@ textarea {
   color: var(--c-space);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .lnc-words,
-  .lnc-words .lnc-escaped {
-    transition: none;
-  }
+:root[data-motion='reduce'] .lnc-words,
+:root[data-motion='reduce'] .lnc-words .lnc-escaped {
+  transition: none;
 }
 
 @media (max-height: 320px) {
@@ -2186,11 +2547,9 @@ textarea {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  #rotate svg {
-    animation: none;
-    transform: rotate(-90deg);
-  }
+:root[data-motion='reduce'] #rotate svg {
+  animation: none;
+  transform: rotate(-90deg);
 }
 
 /* Dev overlay and menu (?dev=1) */

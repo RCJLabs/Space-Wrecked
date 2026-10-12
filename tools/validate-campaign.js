@@ -3,7 +3,7 @@
 // districts with their clients and job sites (districts.json), the sites'
 // map templates (sites.json) and the jobs (contracts.json).
 import { buildShip, layoutProblems } from '../src/sim/builder.js';
-import { ACTS } from '../src/sim/campaign.js';
+import { ACTS, MAX_NAME } from '../src/sim/campaign.js';
 import { MISSIONS } from '../src/sim/contracts.js';
 import { MAX_STOCK, PAY_STEP } from '../src/sim/economy.js';
 import { indexDefs } from '../src/sim/defs.js';
@@ -14,7 +14,9 @@ const CAMPAIGN_KEYS = ['acts'];
 const ACT_KEYS = ['act', 'name', 'hub', 'home', 'heals', 'liftOff', 'stub'];
 // Lifting off takes thrust for each unit of mass: up to this many.
 const MAX_LIFT_OFF = 4;
-const BACKGROUND_KEYS = ['id', 'name', 'blurb', 'pursuer', 'launch', 'district', 'start'];
+const BACKGROUND_KEYS = ['id', 'name', 'blurb', 'pursuer', 'launch', 'captains', 'district', 'start'];
+// Names the captain's name field offers, each a name a captain can have.
+const MAX_CAPTAINS = 20;
 // The words as the ship lifts off (launch.js), and the pursuer's when it
 // lifts off with a raid at the door.
 const LAUNCH_KEYS = ['text', 'escaped'];
@@ -218,6 +220,9 @@ function checkBackgrounds(file, { districts }, { jobIds, enemyIds, moduleIds, fr
     knownKeys(background, BACKGROUND_KEYS, where, fail);
     if (!isText(background.name) || !isText(background.blurb)) fail(where, 'name and blurb must be non-empty strings');
     checkPursuer(background.pursuer, `${where} pursuer`, { enemyIds, encounters }, fail);
+    if (!isListIn(background.captains, 1, MAX_CAPTAINS) || !background.captains.every((name) => isText(name) && name.trim().length <= MAX_NAME)) {
+      fail(where, `captains must be a list of 1 to ${MAX_CAPTAINS} names of up to ${MAX_NAME} letters`);
+    }
     const { launch } = background;
     if (!isObject(launch)) fail(`${where} launch`, 'must be { text, escaped }');
     else {

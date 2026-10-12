@@ -64,25 +64,31 @@ import { shotOdds } from './odds.js';
 import { canSee } from './sight.js';
 import { hazardAt, inReach, walkable } from './terrain.js';
 
-// setup: { map, units: [{ kind, x, y, name?, hp? }], seed, first?,
+// setup: { map, units: [{ kind, x, y, name?, hp?, bonus? }], seed, first?,
 // options?, objective? }. kind is a crew job (data/jobs.json), which puts
-// the unit on the crew's side, or an enemy (data/enemies.json). A unit
-// starts with its kind's hit points, or with hp if given: a wounded crew
-// member's, from 1 up to its kind's. Units get ids by side in order: c1,
-// c2... and e1, e2... seed is a number or a string. The objective starts
-// with nothing done: give a grab its crates and a hack its terminal and
-// turns. The first side's turn starts at once. Returns { battle, events }.
+// the unit on the crew's side, or an enemy (data/enemies.json). bonus adds
+// to its kind's numbers: { hp, aim, defense, mobility, armor }, each
+// optional (a captain's traits, the difficulty), with at least 1 hit point
+// and 1 of mobility left. A unit starts with all its hit points, or with hp
+// if given: a wounded crew member's, from 1 up. Units get ids by side in
+// order: c1, c2... and e1, e2... seed is a number or a string. The
+// objective starts with nothing done: give a grab its crates and a hack its
+// terminal and turns. The first side's turn starts at once. Returns
+// { battle, events }.
 export function createBattle({ map, units, seed, first = 'crew', options = {}, objective = null }, rules) {
   const counts = { crew: 0, enemy: 0 };
   const battle = {
     map,
-    units: units.map(({ kind, x, y, name, hp: wounded }) => {
+    units: units.map(({ kind, x, y, name, hp: wounded, bonus = {} }) => {
       const job = rules.jobs.get(kind);
       const template = job ?? rules.enemies.get(kind);
       if (!template) throw new Error(`createBattle: no job or enemy "${kind}"`);
       const side = job ? 'crew' : 'enemy';
       counts[side] += 1;
-      const { hp, aim, defense, mobility, armor, weapon } = template;
+      const add = (key) => template[key] + (bonus[key] ?? 0);
+      const hp = Math.max(1, add('hp'));
+      const [aim, defense, mobility, armor] = [add('aim'), add('defense'), Math.max(1, add('mobility')), add('armor')];
+      const { weapon } = template;
       if (wounded !== undefined && !(Number.isInteger(wounded) && wounded >= 1 && wounded <= hp)) {
         throw new RangeError(`createBattle: ${name ?? template.name} can't start with ${wounded} hit points (1 to ${hp})`);
       }

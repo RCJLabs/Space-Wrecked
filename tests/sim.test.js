@@ -11,7 +11,8 @@ function deepFreeze(value) {
 }
 
 test('initial state starts on the title with default settings and the given seed', () => {
-  assert.deepEqual(initialState(42), { screen: 'title', settings: { fpsCap: 60 }, rng: 42, builds: { active: 0, slots: [] }, campaign: null });
+  const settings = { fpsCap: 60, difficulty: 'normal', forgiving: false, motion: 'auto', tips: true, tipsSeen: [] };
+  assert.deepEqual(initialState(42), { screen: 'title', settings, rng: 42, builds: { active: 0, slots: [] }, campaign: null });
   assert.equal(initialState(-1).rng, 0xffffffff);
 });
 
@@ -53,5 +54,5 @@ test('unknown actions return the same state object', () => {
 
 test('saveData holds what a save needs and nothing else', () => {
   const state = initialState(5);
-  assert.deepEqual(saveData(state), { settings: { fpsCap: 60 }, rng: 5, builds: { active: 0, slots: [] }, campaign: null });
+  assert.deepEqual(saveData(state), { settings: state.settings, rng: 5, builds: { active: 0, slots: [] }, campaign: null });
 });

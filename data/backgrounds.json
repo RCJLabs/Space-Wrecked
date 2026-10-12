@@ -26,6 +26,7 @@
         "text": "The hangar drops away, then the Tailings, then the whole grey rock. Eleven years of Con-Reg's ore, and you leave in a ship that's yours. The Company will be along for it.",
         "escaped": "Con-Reg Recovery storms the hangar with its court order and finds an empty cradle. They'll bill you for the trip."
       },
+      "captains": ["Dell Okafor", "Rosa Vint", "Hollis Marr", "Bea Tanaka", "Tomas Ruiz", "Wren Castell", "June Abara", "Ike Malloy"],
       "district": "tailings",
       "start": {
         "credits": 0,
