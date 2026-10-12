@@ -19,6 +19,11 @@
 // that made the ship from an empty frame, in order, which undo and redo keep
 // exact and the replay plays back (replay.js). Launch only goes ahead when
 // every line of the flight checklist passes (constraints.js).
+//
+// In construction mode (a campaign's hangar), the session has a stock: how
+// many of each part there are in all, on the ship and on hand. A part only
+// goes on while one is on hand, and taking one off puts it back, so undo and
+// redo keep the count too. Without a stock (the sandbox), parts are endless.
 import { applyCommand, moduleAt, rotateModule, turnedPlacement } from './builder.js';
 import { flightChecklist } from './constraints.js';
 import { footprint } from './modules.js';
@@ -29,8 +34,18 @@ export const HISTORY_LIMIT = 500;
 export const EDGE_GRACE = 1;
 
 // log: the commands that built `ship` from an empty frame (see replay.js).
-export function createSession(ship, log = []) {
-  return { ship, log, past: [], future: [], selected: null, armed: null, ghost: null, notice: null };
+// stock: { [type]: count } of every part there is, on the ship or on hand,
+// or null for no limit.
+export function createSession(ship, log = [], stock = null) {
+  return { ship, log, stock, past: [], future: [], selected: null, armed: null, ghost: null, notice: null };
+}
+
+// How many of a part are on hand to put on the ship: Infinity without a
+// stock.
+export function partsLeft(session, type) {
+  if (!session.stock) return Infinity;
+  const fitted = session.ship.modules.filter((m) => m.type === type).length;
+  return Math.max(0, (session.stock[type] ?? 0) - fitted);
 }
 
 // The commands that built the current ship, oldest first (while the history
@@ -62,9 +77,10 @@ export function reduceSession(session, action, defs) {
     case 'build/launch':
       return launch(session, defs, action.crew);
     // A ship from elsewhere (another slot, a pasted blueprint, an imported
-    // save) replaces this one with its log, and the history starts over.
+    // save) replaces this one with its log and stock, and the history
+    // starts over.
     case 'build/load':
-      return action.ship === session.ship ? session : createSession(action.ship, action.log ?? []);
+      return action.ship === session.ship ? session : createSession(action.ship, action.log ?? [], action.stock ?? null);
     default:
       return session;
   }
@@ -100,6 +116,7 @@ export function covers(defs, placement, x, y) {
 function arm(session, defs, type, toggle) {
   if (!defs.modules.has(type)) return session;
   if (session.armed?.type === type) return toggle ? { ...session, armed: null, ghost: null } : session;
+  if (partsLeft(session, type) < 1) return withNotice(session, 'bad', noneLeft(defs, type));
   return { ...session, armed: { type, rot: 0 }, ghost: null, selected: null };
 }
 
@@ -149,18 +166,20 @@ function moveTo(session, defs, ghost) {
 }
 
 // Places a part from a confirmed ghost or a drop. A part placed while it is
-// armed stays armed for the next one; otherwise the new module is selected.
+// armed stays armed for the next one, while there is one; otherwise the new
+// module is selected.
 function place(session, defs, placement) {
   const def = defs.modules.get(placement.type);
   if (!def) return session;
   const { type, x, y, rot } = placement;
+  if (partsLeft(session, type) < 1) return withNotice({ ...session, armed: null, ghost: null }, 'bad', noneLeft(defs, type));
   const result = applyCommand(session.ship, defs, { op: 'place', type, x, y, rot });
   if (!result.ok) {
     const ghost = { type, x, y, rot };
     return withNotice({ ...session, armed: { type, rot }, ghost, selected: null }, 'bad', result.message);
   }
-  const stayArmed = session.armed?.type === type;
   const next = record(session, result.ship, { op: 'place', uid: result.uid, type, x, y, rot }, `place ${def.name}`);
+  const stayArmed = session.armed?.type === type && partsLeft(next, type) > 0;
   return withNotice(
     { ...next, armed: stayArmed ? { type, rot } : null, ghost: null, selected: stayArmed ? null : result.uid },
     'good',
@@ -265,4 +284,8 @@ function withNotice(session, tone, text) {
 
 function nameOf(defs, type) {
   return defs.modules.get(type)?.name ?? type;
+}
+
+function noneLeft(defs, type) {
+  return `No ${nameOf(defs, type)} on hand.`;
 }

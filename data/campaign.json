@@ -6,18 +6,16 @@
   ],
   "start": {
     "credits": 0,
-    "parts": {},
+    "parts": { "quarters": 1, "lifesupport": 1, "corridor": 2 },
     "crew": ["marine", "engineer", "medic"],
     "ship": {
       "frame": "starter",
       "placements": [
         { "type": "bridge", "x": 15, "y": 6, "rot": 1 },
         { "type": "reactor", "x": 12, "y": 5, "rot": 0 },
-        { "type": "quarters", "x": 9, "y": 5, "rot": 0 },
         { "type": "corridor", "x": 9, "y": 7, "rot": 0 },
         { "type": "corridor", "x": 10, "y": 7, "rot": 0 },
         { "type": "corridor", "x": 11, "y": 7, "rot": 0 },
-        { "type": "lifesupport", "x": 9, "y": 8, "rot": 0 },
         { "type": "airlock", "x": 11, "y": 8, "rot": 0 },
         { "type": "weapon", "x": 13, "y": 8, "rot": 2 }
       ]

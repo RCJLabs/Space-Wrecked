@@ -1,30 +1,48 @@
-// The drawer on the left of the builder, with three tabs: Parts (the
+// The drawer on the left of the builder, with up to three tabs: Parts (the
 // palette), Ship (the flight check, Launch and the totals) and Saves (the
 // ships kept in slots, codes and the replay). The Ship tab carries a badge:
-// how many checks are still open, or a tick when the ship can launch.
+// how many checks are still open, or a tick when the ship can launch. In
+// construction mode there is no Saves tab: the way back to the hangar takes
+// its place.
 import { onTap } from '../gestures.js';
 import { createPalette } from './palette.js';
 import { createSavesPanel } from './savesPanel.js';
 import { createShipPanel } from './shipPanel.js';
 
-// palette: the palette's handlers (see palette.js). onLaunch() and
-// onFix(type) as in shipPanel.js; saves: the handlers in savesPanel.js.
-export function createDrawer(defs, { palette: paletteHandlers, onLaunch, onFix, saves: savesHandlers }) {
+// palette: the palette's handlers (see palette.js). onLaunch() (or null:
+// no Launch) and onFix(type) as in shipPanel.js; saves: the handlers in
+// savesPanel.js, or null for no Saves tab; leave: null, or { icon, label,
+// onTap }, a button at the end of the tabs.
+export function createDrawer(defs, { palette: paletteHandlers, onLaunch, onFix, saves: savesHandlers, leave }) {
   const el = node('div', 'bld-drawer');
   const tabs = node('div', 'bld-tabs');
   tabs.setAttribute('role', 'tablist');
   const partsTab = tab('Parts');
   const shipTab = tab('Ship');
-  const savesTab = tab('Saves');
   const badge = node('span', 'bld-badge');
   shipTab.append(badge);
-  tabs.append(partsTab, shipTab, savesTab);
+  tabs.append(partsTab, shipTab);
   const parts = createPalette(defs, paletteHandlers);
   const ship = createShipPanel({ onLaunch, onFix });
-  const saves = createSavesPanel(savesHandlers);
-  el.append(tabs, parts.el, ship.el, saves.el);
-  const panels = { parts: [parts.el, partsTab], ship: [ship.el, shipTab], saves: [saves.el, savesTab] };
+  el.append(tabs, parts.el, ship.el);
+  const panels = { parts: [parts.el, partsTab], ship: [ship.el, shipTab] };
+  const saves = savesHandlers ? createSavesPanel(savesHandlers) : null;
+  if (saves) {
+    const savesTab = tab('Saves');
+    tabs.append(savesTab);
+    el.append(saves.el);
+    panels.saves = [saves.el, savesTab];
+  }
   const detach = Object.entries(panels).map(([name, [, button]]) => onTap(button, () => show(name)));
+  if (leave) {
+    const button = node('button', 'btn bld-leave');
+    button.type = 'button';
+    button.innerHTML = leave.icon;
+    button.append(node('span', null, leave.label));
+    button.setAttribute('aria-label', leave.label);
+    tabs.append(button);
+    detach.push(onTap(button, leave.onTap));
+  }
   show('parts');
 
   function show(name) {
@@ -39,6 +57,7 @@ export function createDrawer(defs, { palette: paletteHandlers, onLaunch, onFix, 
     show,
     saves,
     setArmed: parts.setArmed,
+    setStock: parts.setStock,
     update(lines, totals, context) {
       ship.update(lines, totals, context);
       const open = lines.filter((line) => line.ok !== true).length;
@@ -50,7 +69,7 @@ export function createDrawer(defs, { palette: paletteHandlers, onLaunch, onFix, 
       for (const off of detach) off();
       parts.dispose();
       ship.dispose();
-      saves.dispose();
+      saves?.dispose();
       el.remove();
     },
   };

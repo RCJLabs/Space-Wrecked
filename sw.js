@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "65aa223286a5";
+const VERSION = "54d343dbabf2";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/balance.json",
@@ -99,8 +99,10 @@ const FILES = [
   "src/ui/builder/savesPanel.js",
   "src/ui/builder/screen.js",
   "src/ui/builder/shipPanel.js",
+  "src/ui/builder/view.js",
+  "src/ui/campaign/construction.js",
   "src/ui/campaign/fight.js",
-  "src/ui/campaign/hub.js",
+  "src/ui/campaign/hangar.js",
   "src/ui/campaign/hubText.js",
   "src/ui/dev/fps.js",
   "src/ui/dev/menu.js",

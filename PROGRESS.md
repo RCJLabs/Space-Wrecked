@@ -2,6 +2,93 @@
 
 Newest entry first.
 
+## M13 Hangar hub (2026-10-12)
+
+**Status:** done, and the ROADMAP.md box is ticked. After M12, Evan said "Good, move to the next milestone". He didn't say whether the phone tests ran, and he didn't pick the starting hull and parts, so I did; see the decisions below.
+
+Done when: "a new player is building within 60 seconds of starting."
+- **Scripted (headless Chromium, by touch):** a player who pauses 1.5 s before every tap has the first part on the ship 9.7 s after tapping New game, in 5 taps: New game, Build, the part, where it goes, and again. Each screen's line says what to do next.
+- **The real test is a person.** The script knows where the gap is. A new player has to find it and learn that a part takes two taps. Evan's call, on the phone, ideally with someone who hasn't seen the game.
+
+### Shipped
+
+- **The hangar** replaces M12's placeholder hub:
+  - the ship in the middle, seen from outside;
+  - on the left, the act's goal: the flight checklist, each failing line with its fix and whether the part is on hand;
+  - on the right, the crew with their hit points, and the hangar's holdings: credits, heat, parts on hand and fights;
+  - along the bottom, Title, a line saying what to do next, Repel boarders, and Build.
+- **Construction mode** is the builder on the campaign's ship, with only the parts the campaign has:
+  - The palette shows the parts on hand, each with how many. A part with none left goes, and comes back when one is taken off.
+  - A part goes on only while one is on hand. Deleting puts it back, and undo and redo keep the count (`src/sim/session.js` stock).
+  - A fix whose part isn't on hand reads "none on hand" instead of picking it. The chip on the board names the first fix the parts on hand can make.
+  - Hangar, where the Saves tab would be, goes back. There is no Launch: that is M17.
+  - Every change is saved through the campaign at once (`campaign/ship`). The campaign checks the parts add up: what is on the ship plus what is on hand never changes in a refit (`refitShip`).
+- **The half-built start** (`data/campaign.json`):
+  - The hull has a bridge, reactor, three corridors, an airlock and a gun, with no quarters, life support or engines.
+  - On hand are crew quarters, life support and two corridors.
+  - The checklist opens with four lines to fix; the parts on hand fix two, where the hull has gaps for them. The engines have to come from jobs.
+- **The builder is split** (`src/ui/builder/view.js`), as the Fight screen was in M12. The sandbox keeps its slots, Saves tab, codes and replay; construction mode keeps none of them.
+- **Tests:** 386 in all, up from 383. They cover parts on hand in the session, refits at the hub (only parts the campaign has, only at the hub, same frame), and the hangar's text. The quit-anywhere test now also quits in construction mode after a refit.
+
+### Decisions made this session
+
+- **The starting hull and parts are my call.** Evan didn't pick, and they are data, so changing them is an edit to `campaign.json`. I chose a start whose first minute fixes real flight checks, without finishing act 1: launching needs engines, which come from jobs (M14) or the shop (M16).
+- **The hangar and construction mode are two screens.** Build is one tap from the hangar, which has room for M14's job board, M16's shop and M17's launch.
+- **Construction mode isn't a place in the save.** Reopening goes to the hangar, with every change already saved. One tap on Build goes back.
+- **No save version bump.** The campaign keeps no build log for its ship, so construction mode has no timelapse (parked in ROADMAP §9).
+- **Old campaigns keep their start.** A campaign begun in M12 has the old hull and nothing on hand, so construction mode can only rearrange it. New game gives the new start. Saves are never reset.
+
+### Verified here
+
+- `node --test`: 386 pass. `node tools/validate-data.js`: OK.
+- **M13's check** (scratchpad `m13/verify.mjs`), by touch at 905 × 370, 821 × 283 and 960 × 825: 24 of 24 at each size.
+  - A new player's path to the first part (above).
+  - Construction mode shows only the parts on hand, with no Saves tab and no Launch.
+  - A part used up leaves the palette. Delete puts it back, and Undo fits it again, with the save following each step.
+  - The Ship tab's fixes without the part read as words, not buttons.
+  - Back in the hangar, the goal shows berths and life support passing, and the line points to jobs.
+  - Quit in construction mode and reopen: Continue opens the hangar with the refit kept, and Build opens on it.
+  - Repel boarders fights on the refitted ship (its map has the new rooms).
+  - Offline, and no console errors.
+- **M12's checks, on the hangar:**
+  - quit and reopen everywhere, 29 of 29;
+  - regressions, 12 of 12.
+- **The Builder sandbox, on the split builder:**
+  - M5c's tap-to-move check: every check passes.
+  - M5b's Saves-tab check (slots, codes between two devices, replay, delete, reload, M3 and M5 saves coming forward, now to version 4): every check passes.
+  - No console errors.
+
+### Known issues
+
+- **Act 1 can't be finished yet.** No engine can be got until jobs (M14) or the shop (M16).
+- **Carried over from M12:** nothing heals, and boarders don't attack a crew that holds the bridge.
+- **The hangar's view of the ship is still,** with no pan, zoom or turn, and the backdrop is space, not a hangar.
+- **Construction mode keeps its undo history** while you go to the hangar and back, but not over a reload, as in the sandbox.
+- **Carried over:** M11's items (stalls on generated ships, the AI's weights in code) and M10's.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **The 60 seconds.** Ideally hand the phone to someone who hasn't seen the game. Tap New game, and time from there to the first part on the ship. Watch where they hesitate.
+2. **Parts on hand:**
+   - Fit the crew quarters and life support. Each one's tile should go once used.
+   - Delete one: its tile should come back.
+   - Undo, and check the hangar's goal follows.
+3. **The fight.** Tap Repel boarders: the fight should be on the ship as you built it.
+4. **Quit mid-build.** Swipe the app away during construction and reopen. Continue should open the hangar with your changes, and Build should continue from there.
+5. **The Builder sandbox** (dev menu) should work as before, Saves tab and replay included.
+6. **Tell me:**
+   - whether the 60 seconds passed;
+   - whether the start suits you: hull, parts on hand, and which checks they fix;
+   - your call on the tone, before M14 (see next session).
+
+### Next session
+
+**M14 Background, district and jobs.** Done when: "ten jobs in a row feel varied (Evan's call)."
+
+ROADMAP says to pick the tone before M14: grim survival, hopeful frontier, or wry and blue-collar. That, and whether act 1 heals between fights, are Evan's calls to settle first.
+
+First task: the job template data (who, where and a twist) and the job board, seeded from the campaign's RNG and tested before any screen.
+
 ## M12 Campaign state (2026-10-12)
 
 **Status:** done, and the ROADMAP.md box is ticked. This is Phase 3's first milestone, after Gate 2.

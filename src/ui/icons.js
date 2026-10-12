@@ -28,6 +28,7 @@ export const icons = {
   log: icon('<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>'),
   again: icon('<path d="M3 12a9 9 0 0 1 15.3-6.4L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.3 6.4L3 16"/><path d="M3 21v-5h5"/>'),
   // The campaign.
+  build: icon('<path d="M14.5 4.5a4 4 0 0 0-3.9 5.1L4 16.2 7.8 20l6.6-6.6a4 4 0 0 0 5.1-3.9l-2.7 2.7-2.4-.7-.7-2.4z"/>'),
   home: icon('<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5.5h4V20"/>'),
   leave: icon('<path d="M10 4H5v16h5"/><path d="M9 12h11"/><path d="m16 8 4 4-4 4"/>'),
 };
