@@ -41,16 +41,17 @@ export const MIN_VIEW = [14, 8];
 const TALL = 1.2; // the rooms and what stands on them
 
 // What the fitted camera keeps in view: the ship (its cells, as traced)
-// and what sticks out of its hull, at least MIN_VIEW, centred on the ship
-// (or the frame when it is empty).
-export function boardBox(frame, hull) {
+// and what sticks out of its hull, at least `min` cells (the builder's
+// MIN_VIEW unless given), centred on the ship (or the frame when it is
+// empty).
+export function boardBox(frame, hull, min = MIN_VIEW) {
   const xs = hull.cells.map(([x]) => x);
   const ys = hull.cells.map(([, y]) => y);
   const [cx, cy] = xs.length ? [(Math.min(...xs) + Math.max(...xs) + 1) / 2, (Math.min(...ys) + Math.max(...ys) + 1) / 2] : [frame.width / 2, frame.height / 2];
-  const half = (lo, hi, min) => Math.max(min / 2, (hi - lo) / 2);
+  const half = (lo, hi, least) => Math.max(least / 2, (hi - lo) / 2);
   const [hw, hh] = xs.length
-    ? [half(Math.min(...xs), Math.max(...xs) + 1, MIN_VIEW[0]), half(Math.min(...ys), Math.max(...ys) + 1, MIN_VIEW[1])]
-    : [MIN_VIEW[0] / 2, MIN_VIEW[1] / 2];
+    ? [half(Math.min(...xs), Math.max(...xs) + 1, min[0]), half(Math.min(...ys), Math.max(...ys) + 1, min[1])]
+    : [min[0] / 2, min[1] / 2];
   return { x0: cx - hw - OVERHANG.left, y0: cy - hh - OVERHANG.top, x1: cx + hw + OVERHANG.right, y1: cy + hh + OVERHANG.bottom, z1: TALL };
 }
 

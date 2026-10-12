@@ -192,7 +192,20 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 
 ### 4.7 Generators (all seeded)
 
-- Enemy ships built with the builder's rules, with presets: pirate cutter, patrol corvette, derelict hauler.
+- **Enemy ships** (M10, `src/sim/gen/`, pure) are built with the builder's own rules from a preset in `data/ships.json` and a seed: a pirate cutter, a patrol corvette, a derelict hauler. The same preset and seed always give the same ship.
+  - **A preset** names its frame, the crew it carries, its beam (cells across), whether it is mirrored about its middle row, and its parts bow to stern, each a count or a range. A derelict also says how many rooms come wrecked.
+  - **The parts** are the preset's counts, then whatever the flight checklist asks for: its fixes name the part to add. On a mirrored ship a part comes in pairs unless it can sit in the line along the middle row with the way on open. Engines, guns and airlocks can't, nor can rooms with a crate or locker at an end of their middle row.
+  - **The layout** grows from the bridge at the front:
+    - a spine of corridors aft along the middle row;
+    - the rooms, bow to stern;
+    - engines at the stern, then guns, then airlocks.
+
+    Every part goes in through `placeModule`, and every layout rule has to pass after each one. Each goes in the best place by a score: within the beam, at its place bow to stern, sharing the most wall, plus a seeded nudge.
+  - **The generator asks more than the builder:**
+    - nothing stands in an engine's wake or a gun's line of fire;
+    - every airlock keeps a hatch;
+    - every room can be walked to. A doorway in front of a locker or machinery could otherwise cut a room off.
+  - **Every generated ship** passes the flight checklist for its crew, converts to a boarding map with a way on foot from its hatches to every room, and opens in the builder, where its build log replays.
 - Planet maps from templates plus props.
 - A job board built from templates crossed with who, where and a twist.
 - Act 2 sectors as node graphs with typed nodes.
@@ -297,7 +310,7 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
   **Done when:** a full 3-against-4 fight plays on the Fold.
 - [x] **M9 Enemy AI v1.** Scored positions (cover, flank, distance, threat), target choice, an overwatch fallback, breaching from airlocks.
   **Done when:** in test scenarios the AI takes cover and flanks, and never stands in the open without a reason.
-- [ ] **M10 Enemy ship generator.** Presets built with the builder's rules.
+- [x] **M10 Enemy ship generator.** Presets built with the builder's rules.
   **Done when:** 100 generated ships all pass the flight checklist (tested).
 - [ ] **M11 Balance harness.** `node tools/sim.js` runs AI-against-AI battles headless and reports win rate, turn count and hit distribution.
   **Done when:** 1,000 fights report in under a minute.
@@ -376,6 +389,7 @@ A Capacitor build; a paid version with a web demo; optional cloud saves on Base4
 | The builder feels fiddly on a phone | Gate 1 fails | Fix it before Phase 2; fall back to bigger modules or a slot hull |
 | Two deep systems overrun scope | Phase 2 runs past about 8 sessions | Keep the shared grid; cut base building to slots first |
 | Players build chokepoint fortresses | Balance runs show defenders always win (AI against AI on the example ship, M9: the crew of 3 wins 70 of 100 against 4 boarders) | Enemies breach walls and choose entry points; corridors stay two tiles wide. Since M9 the AI breaches doors: it opens one and shoots through, which overwatch can't punish |
+| Fights stall in standoffs | AI-against-AI fights reach the round limit. M10 measured it on generated ships: 27 of 100 cutters, 10 corvettes and 4 haulers, against none of 100 on the example ship in M9. Both sides hold on overwatch either side of a chokepoint | Candidates, Evan's call: boarders press on (they came to fight), cutting through walls, ships with a second way round. M11's harness counts stalls |
 | Percentage misses feel unfair | Testers complain about high-odds misses | Clearer cover display, the forgiving-odds setting, the math always shown |
 | 3D on canvas runs slowly on mid-range phones | Dropped frames turning or zooming the board (M4), or in battles (M8) | Rough half-resolution frames while the camera moves or units walk, only on a phone too slow for full ones (the frame budget, after M6: they blurred zooming on the Fold); cache the still board, and in a fight redraw it only when something on it changed (M8); fewer lines, cap the pixel ratio. Past that: three.js (MIT, one vendored file, no build step), with Evan's approval |
 | Lost saves | Reports after Chrome data is cleared | Persistent storage request, export and import, migrations |
@@ -400,5 +414,7 @@ These ideas wait until v0.4 or later:
 - fog of war: since M8 every enemy is always shown; hiding those no one in the crew can see would make scouting matter (raised in M7, decided against for now in M8)
 - the camera following the action in an enemy turn: on a ship too big for the screen, part of a turn can play out of view (raised in M8)
 - dragging to lay a run of corridor in one go: since M5b a corridor is one cell, so a long one takes two taps a cell (raised in M5b; could come sooner if Gate 1 finds it tedious)
+- doorways onto lockers: the builder puts a doorway in the middle of a shared wall even with a locker, crates or machinery behind it. That can leave a room out of reach on foot in a fight. Generated ships avoid it; a player's ship still can, with no warning (raised in M10)
+- an enemy hull frame: §5 counts one for v0.1, but every preset builds on the starter yard for now. One comes when enemy ships need a bigger yard or a higher cap (raised in M10)
 
 Ideas that come up during a session go here, not into code.

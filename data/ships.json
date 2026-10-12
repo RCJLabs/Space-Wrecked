@@ -1,0 +1,63 @@
+{
+  "ships": [
+    {
+      "id": "cutter",
+      "name": "Pirate cutter",
+      "frame": "starter",
+      "crew": 4,
+      "beam": [4, 5],
+      "symmetric": false,
+      "parts": {
+        "bridge": 1,
+        "weapon": [2, 3],
+        "armory": [0, 1],
+        "quarters": 1,
+        "lifesupport": 1,
+        "corridor": [1, 3],
+        "airlock": 1,
+        "reactor": 1,
+        "engine": [2, 3]
+      }
+    },
+    {
+      "id": "corvette",
+      "name": "Patrol corvette",
+      "frame": "starter",
+      "crew": 6,
+      "beam": [7, 7],
+      "symmetric": true,
+      "parts": {
+        "bridge": 1,
+        "weapon": [2, 4],
+        "shield": [1, 2],
+        "medbay": 1,
+        "armory": 1,
+        "corridor": [3, 5],
+        "quarters": 2,
+        "lifesupport": 2,
+        "airlock": 2,
+        "reactor": 2,
+        "engine": [2, 4]
+      }
+    },
+    {
+      "id": "hauler",
+      "name": "Derelict hauler",
+      "frame": "starter",
+      "crew": 3,
+      "beam": [7, 9],
+      "symmetric": true,
+      "parts": {
+        "bridge": 1,
+        "quarters": 1,
+        "lifesupport": 1,
+        "corridor": [2, 4],
+        "airlock": [1, 2],
+        "cargo": [3, 5],
+        "reactor": 1,
+        "engine": [2, 4]
+      },
+      "wrecks": [1, 3]
+    }
+  ]
+}

@@ -14,6 +14,7 @@
     "ship": "node tools/build-ship.js",
     "map": "node tools/battle-map.js",
     "battle": "node tools/battle-log.js",
+    "ships": "node tools/gen-ship.js",
     "hooks": "git config core.hooksPath .githooks"
   }
 }

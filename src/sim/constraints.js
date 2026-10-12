@@ -32,6 +32,14 @@ export function shipStats(ship, defs) {
 // can't be checked until another one passes. fix is set on every failing
 // line; add is the module type to add when that is the fix, else null.
 export function flightChecklist(ship, defs, crew) {
+  return [...partLines(ship, defs, crew), layoutLine(ship, defs)];
+}
+
+// The lines that only count the parts: power, thrust, berths, life support
+// and the parts every ship needs. Where the parts go doesn't change them,
+// so they read only each module's type: a ship generator plans its parts
+// with them before it lays any out (src/sim/gen/).
+export function partLines(ship, defs, crew) {
   const stats = shipStats(ship, defs);
   return [
     powerLine(stats, defs),
@@ -39,7 +47,6 @@ export function flightChecklist(ship, defs, crew) {
     supplyLine('berths', 'Berths', 'berths', stats.berths, crew, defs),
     supplyLine('lifeSupport', 'Life support', 'crew', stats.lifeSupport, crew, defs),
     partsLine(ship, defs),
-    layoutLine(ship, defs),
   ];
 }
 

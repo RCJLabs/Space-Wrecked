@@ -37,6 +37,9 @@ const RANGE_BANDS = ['close', 'mid', 'long'];
 const FIGHTER_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'weapon'];
 const TILE_RULE_KEYS = ['walk', 'cover', 'blocksSight'];
 const ENCOUNTER_KEYS = ['id', 'name', 'enemies'];
+// Ship presets (src/sim/gen/ship.js).
+const SHIP_KEYS = ['id', 'name', 'frame', 'crew', 'beam', 'symmetric', 'parts', 'wrecks'];
+const MAX_CREW = 20;
 // Squads of 3 to start, up to 5 later; 4 to 8 enemies (ROADMAP §4.3). Fewer
 // are allowed, for small tests.
 const MAX_SQUAD = 5;
@@ -53,7 +56,7 @@ export const KNOWN_TAGS = [
 ];
 
 // Returns a list of problems as "where: what" strings. Empty means valid.
-export function validateData({ modules: moduleFile, frames: frameFile, manufacturers: makerFile, balance, weapons: weaponFile, jobs: jobFile, enemies: enemyFile, tiles: tileFile, encounters: encounterFile }) {
+export function validateData({ modules: moduleFile, frames: frameFile, manufacturers: makerFile, balance, weapons: weaponFile, jobs: jobFile, enemies: enemyFile, tiles: tileFile, encounters: encounterFile, ships: shipFile }) {
   const problems = [];
   const fail = (where, message) => problems.push(`${where}: ${message}`);
 
@@ -189,7 +192,45 @@ export function validateData({ modules: moduleFile, frames: frameFile, manufactu
       fail('modules.json', `no module is tagged "${tag}", which the flight checklist needs`);
     }
   }
+
+  const ships = listOf(shipFile, 'ships', 'ships.json', fail);
+  uniqueIds(ships, 'ships.json', fail);
+  const moduleIds = new Set(modules.map((def) => def.id));
+  const frameById = new Map(frames.map((frame) => [frame.id, frame]));
+  ships.forEach((ship, i) => checkShip(ship, `ships.json ${ship.id ?? `#${i}`}`, frameById, moduleIds, fail));
   return problems;
+}
+
+// A ship preset: the frame a generated ship is built on, the crew it has to
+// carry (berths and life support), how many cells across it should be (its
+// beam), whether it is mirrored about its middle row, its parts bow to stern
+// (each a count, or [least, most]) and, for a derelict, how many rooms are
+// wrecked.
+function checkShip(ship, where, frameById, moduleIds, fail) {
+  for (const key of Object.keys(ship)) {
+    if (!SHIP_KEYS.includes(key)) fail(where, `unknown field "${key}"`);
+  }
+  if (!isText(ship.name)) fail(where, 'name must be a non-empty string');
+  const frame = frameById.get(ship.frame);
+  if (!frame) fail(where, `unknown frame "${ship.frame}"`);
+  if (!isIntIn(ship.crew, 1, MAX_CREW)) fail(where, `crew must be a whole number from 1 to ${MAX_CREW}`);
+  const across = frame?.height ?? MAX_FRAME_SIZE;
+  if (!isRange(ship.beam, 1, across)) fail(where, `beam must be [least, most] cells across, from 1 to ${across}`);
+  if (typeof ship.symmetric !== 'boolean') fail(where, 'symmetric must be true or false');
+  if (ship.wrecks !== undefined && !isRange(ship.wrecks, 0, 99)) fail(where, 'wrecks must be [least, most] rooms');
+  const { parts } = ship;
+  if (!parts || typeof parts !== 'object' || Array.isArray(parts) || !Object.keys(parts).length) {
+    fail(where, 'parts must be an object of module types and counts');
+    return;
+  }
+  let most = 0;
+  for (const [type, count] of Object.entries(parts)) {
+    if (!moduleIds.has(type)) fail(where, `parts: unknown module "${type}"`);
+    if (isIntIn(count, 0, Infinity)) most += count;
+    else if (isRange(count, 0, Infinity)) most += count[1];
+    else fail(where, `parts.${type} must be a whole number, or [least, most]`);
+  }
+  if (frame && most > frame.maxModules) fail(where, `parts: up to ${most}, but the ${frame.name} holds at most ${frame.maxModules}`);
 }
 
 // A weapon: damage [least, most], an accuracy change at each range band, a
@@ -372,6 +413,11 @@ function isListIn(value, min, max) {
   return Array.isArray(value) && value.length >= min && value.length <= max;
 }
 
+// [least, most]: whole numbers from min to max, least no more than most.
+function isRange(value, min, max) {
+  return Array.isArray(value) && value.length === 2 && value.every((n) => isIntIn(n, min, max)) && value[0] <= value[1];
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   let data;
   try {
@@ -391,6 +437,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     `validate-data: OK (${count(data.modules.modules.length, 'module')}, ${count(data.frames.frames.length, 'frame')}, ` +
       `${count(data.manufacturers.manufacturers.length, 'manufacturer')}, ${count(data.weapons.weapons.length, 'weapon')}, ` +
       `${count(data.jobs.jobs.length, 'job')}, ${data.enemies.enemies.length} enem${data.enemies.enemies.length === 1 ? 'y' : 'ies'}, ` +
-      `${count(data.encounters.encounters.length, 'encounter')})`,
+      `${count(data.encounters.encounters.length, 'encounter')}, ${count(data.ships.ships.length, 'ship preset')})`,
   );
 }

@@ -75,6 +75,17 @@ test('a gap closed on three sides is filled with hull, not sloped', () => {
   assert.ok(hull.fairings.every((tri) => !tri.some(([x, y]) => x > 2 && x < 3 && y > 1 && y < 2)));
 });
 
+test('a gap the ship shuts in is hull, however few parts touch each cell of it', () => {
+  // +++++
+  // +...+   the middle cell has parts on two sides only
+  // +++++
+  const ring = [[1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [1, 1], [5, 1], [1, 2], [2, 2], [3, 2], [4, 2], [5, 2]];
+  const hull = traceHull(ship(ring.map(([x, y]) => at('corridor', x, y))), defs);
+  assert.deepEqual(hull.pockets, [[2, 1], [3, 1], [4, 1]]);
+  assert.equal(hull.edges.length, 16, 'the outline is the outside of the ring alone');
+  assert.deepEqual(hull.fairings, []);
+});
+
 test('a nose caps each run of cells on the front column, longer for longer runs', () => {
   assert.deepEqual(round(traceHull(ship(MOCKUP), defs).noses), [{ x: 17, y0: 6, y1: 9, length: 1.35 }]);
   const long = traceHull(ship([0, 1, 2, 3, 4, 5].map((y) => at('corridor', 3, y))), defs);

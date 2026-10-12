@@ -11,6 +11,12 @@ export const icons = {
   done: icon('<path d="m5 12 5 5 9-10"/>'),
   fit: icon('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'),
   hull: icon('<path d="M5 8h8l7 4-7 4H5z"/><path d="M5 10.5H2M5 13.5H2"/><path d="M9.5 8v8"/>'),
+  // The enemy ships sandbox.
+  prev: icon('<path d="m15 5-7 7 7 7"/>'),
+  next: icon('<path d="m9 5 7 7-7 7"/>'),
+  plans: icon('<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 12h18M9 5v14M15 5v14"/>'),
+  map: icon('<rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 11h7v9M10 11V4M15 4v8h6"/>'),
+  open: icon('<path d="M14 4h6v6"/><path d="m20 4-9 9"/><path d="M18 14v6H4V6h6"/>'),
   // Fight orders.
   shoot: icon('<circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/>'),
   overwatch: icon('<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/>'),
