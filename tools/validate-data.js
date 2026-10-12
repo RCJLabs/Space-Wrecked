@@ -53,6 +53,17 @@ const BALANCE = {
   easyEnemyHp: [-5, 0],
   hardEnemyAim: [0, 50],
   hardEnemyHp: [0, 10],
+  // The run (src/sim/run.js): the supplies a ship carries without a cargo
+  // hold, what a crew member eats in a jump, a long jump's cost in jumps,
+  // the price of one, the hit points a jump short of them costs, and the
+  // heat a jump and a long jump add (a long jump sheds it).
+  baseSupplies: [0, 999],
+  jumpSupplies: [0, 20],
+  longJumpFactor: [1, 10],
+  supplyPrice: [1, 1000],
+  hungerHp: [0, 20],
+  jumpHeat: [0, 50],
+  longJumpHeat: [-100, 50],
 };
 const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', 'clip'];
 const RANGE_BANDS = ['close', 'mid', 'long'];
@@ -478,6 +489,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       `${count(data.encounters.encounters.length, 'encounter')}, ${count(data.ships.ships.length, 'ship preset')}, ` +
       `${count(data.campaign.acts.length, 'act')}, ${count(data.backgrounds.backgrounds.length, 'background')}, ` +
       `${count(data.districts.districts.length, 'district')}, ${count(data.sites.maps.length, 'site map')}, ` +
-      `${count(data.contracts.jobs.length, 'job template')})`,
+      `${count(data.contracts.jobs.length, 'job template')}, ${count(data.sectors.nodes.length, 'kind')} of sector node)`,
   );
 }

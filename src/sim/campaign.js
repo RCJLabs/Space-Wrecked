@@ -32,6 +32,11 @@
 //   shop     the shop's stock (economy.js): [{ part, price }], null until
 //            one is rolled, and [] from launch on
 //   spent    the ids of jobs done that are only done once (contracts.js)
+//   supplies what the ship carries for the run (travel.js): 0 until the
+//            run begins, when the holds are filled
+//   run      null until the run (act 2) begins at its first visit home,
+//            then the sector the ship is in, where on its map, and the
+//            sectors behind it (travel.js, runShape.js)
 //   fight    null, or the fight on now: { encounter, seed, crew, battle,
 //            log, job, raid }. crew is who fights, by id, in the battle's
 //            order (c1, c2...). battle and log are the fight as it stands
@@ -50,6 +55,7 @@ import { flightChecklist, partLines } from './constraints.js';
 import { deploy } from './deploy.js';
 import { MAX_STOCK } from './economy.js';
 import { mapFromShip } from './mapFromShip.js';
+import { runProblem } from './runShape.js';
 import { enemyBonus } from './settings.js';
 import { traitBonus } from './traits.js';
 
@@ -65,6 +71,8 @@ export const CAPTAIN_TRAITS = 2;
 // More traits than anyone has: a guard on what a save can hold.
 const MAX_TRAITS = 4;
 export const MAX_FLAG_TEXT = 64;
+// More supplies than any ship holds: a guard on what a save can hold.
+const MAX_SUPPLIES = 9999;
 // More jobs than any board offers: a guard on what a save can hold.
 export const MAX_BOARD = 12;
 // More one-off jobs than act 1 has: the same kind of guard.
@@ -109,6 +117,8 @@ export function newCampaign(rules, seed, { background = firstBackground(rules), 
     board: [],
     shop: null,
     spent: [],
+    supplies: 0,
+    run: null,
     fight: null,
   };
 }
@@ -285,6 +295,12 @@ export function campaignProblems(value) {
   if (!Array.isArray(value.board) || value.board.length > MAX_BOARD || !value.board.every(isJob)) wrong('job board is unreadable');
   if (value.shop !== null && !(Array.isArray(value.shop) && value.shop.length <= MAX_STOCK && value.shop.every(isStockItem))) wrong("shop's stock is unreadable");
   if (!Array.isArray(value.spent) || value.spent.length > MAX_SPENT || !value.spent.every(isId) || new Set(value.spent).size !== value.spent.length) wrong('jobs done once are unreadable');
+  if (!isInt(value.supplies, 0, MAX_SUPPLIES)) wrong('supplies are invalid');
+  if (value.run !== null) {
+    const why = runProblem(value.run);
+    if (why) wrong(`run ${why}`);
+    else if (value.act === 1) wrong('run has begun before launch');
+  }
   if ((value.place === 'fight') !== isRecord(value.fight) || (value.place !== 'fight' && value.fight !== null)) {
     wrong("fight doesn't match where the player is");
   } else if (value.fight !== null) {

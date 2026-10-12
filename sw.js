@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "ed0df5889e8b";
+const VERSION = "08bdcdada5b4";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -18,6 +18,7 @@ const FILES = [
   "data/jobs.json",
   "data/manufacturers.json",
   "data/modules.json",
+  "data/sectors.json",
   "data/ships.json",
   "data/sites.json",
   "data/tiles.json",
@@ -86,6 +87,7 @@ const FILES = [
   "src/sim/fight.js",
   "src/sim/frame.js",
   "src/sim/gen/layout.js",
+  "src/sim/gen/sector.js",
   "src/sim/gen/ship.js",
   "src/sim/gen/site.js",
   "src/sim/grid.js",
@@ -103,12 +105,14 @@ const FILES = [
   "src/sim/regrid.js",
   "src/sim/replay.js",
   "src/sim/root.js",
+  "src/sim/runShape.js",
   "src/sim/scripted.js",
   "src/sim/session.js",
   "src/sim/settings.js",
   "src/sim/sight.js",
   "src/sim/terrain.js",
   "src/sim/traits.js",
+  "src/sim/travel.js",
   "src/ui/battle/screen.js",
   "src/ui/battle/tileText.js",
   "src/ui/battle/wrecks.js",
@@ -131,6 +135,8 @@ const FILES = [
   "src/ui/campaign/jobs.js",
   "src/ui/campaign/launch.js",
   "src/ui/campaign/launchText.js",
+  "src/ui/campaign/sector.js",
+  "src/ui/campaign/sectorText.js",
   "src/ui/campaign/shop.js",
   "src/ui/campaign/shopText.js",
   "src/ui/campaign/stub.js",

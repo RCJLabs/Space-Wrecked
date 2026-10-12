@@ -38,6 +38,16 @@ export const icons = {
   // The shop: a storefront under its awning, and a price tag.
   shop: icon('<path d="M4 9 5.5 4h13L20 9"/><path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9"/><path d="M5.5 12v8h13v-8"/><path d="M10 20v-5h4v5"/>'),
   tag: icon('<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/>'),
+  // The run: a jump and a long one, a crate of supplies, the sector map's
+  // nodes (the way in, a station, the jump point), and the ship's mark on
+  // it, filled by its CSS.
+  jump: icon('<path d="M3 18c2-6.5 7-9.5 14-9"/><path d="m13.5 5 4 4-4 4"/>'),
+  longJump: icon('<path d="M2.5 18c1.5-4.5 4-6.5 7.5-6.5"/><path d="M8.5 18c2-7 6.5-10 12-9.5"/><path d="m17 5 3.8 3.6L17 12.4"/>'),
+  supplies: icon('<rect x="3.5" y="8" width="17" height="12" rx="1.2"/><path d="M3.5 12h17M8.5 8V5h7v3M10 15.5h4"/>'),
+  wayIn: icon('<path d="M2.5 12h10"/><path d="m9 8 4 4-4 4"/><path d="M15 5.5a7 7 0 0 1 0 13"/>'),
+  station: icon('<rect x="9.5" y="7" width="5" height="10" rx="1"/><path d="M2.5 9.5h5v5h-5zM16.5 9.5h5v5h-5zM7.5 12h2M14.5 12h2"/>'),
+  jumpPoint: icon('<circle cx="12" cy="12" r="8.5" stroke-dasharray="2.6 2.6"/><circle cx="12" cy="12" r="3.5"/>'),
+  shipMark: icon('<path d="M3.5 6.5 20.5 12l-17 5.5L7.5 12z"/>'),
   // Launch: a ship standing on its tail, fins out, its flame under it.
   launch: icon('<path d="M12 2.5c3 2.4 4.5 5.9 4.5 10.5v3h-9v-3C7.5 8.4 9 4.9 12 2.5z"/><path d="m7.5 12.5-2.5 3v2l2.5-1.5M16.5 12.5l2.5 3v2l-2.5-1.5"/><circle cx="12" cy="9.5" r="1.6"/><path d="M10.5 19 12 22l1.5-3"/>'),
 };

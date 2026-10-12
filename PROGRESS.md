@@ -2,9 +2,167 @@
 
 Newest entry first.
 
+## M19 Sector generator, supplies and jumps (2026-10-12)
+
+**Status:** done, and the ROADMAP.md box is ticked. Evan said "Gate 3 passed, start the next milestone". M18's notes planned to detail Phase 4 with Evan before M19; I drafted it instead (ROADMAP.md §7), with M19's Done when stated at the start of the session and M20 to M25 marked as drafts. No phone results have come back yet for M14 to M18.
+
+Done when: "from launch, a run crosses three sectors by jumping and restocking at stations; supplies and heat move as `data/balance.json` says; the same seed always gives the same sectors."
+- **`tests/voyage.test.js`:** campaign seeds 1 to 3 each play act 1 to launch (`tools/run.js`). The test player (`tools/voyage.js`) then crosses all five sectors, restocking at stations in at least two of the first three. Every jump and every purchase moves supplies, credits, heat and hit points exactly as `balance.json` says. The same seed gives the same five sectors and the same steps.
+- **By touch in Chromium** (below): launch, the map, jumps, a long jump, a station, the next sector, quit and reopen.
+
+### Shipped
+
+- **Sectors** (`src/sim/gen/sector.js`, the content in `data/sectors.json`). A sector is a seeded map in 7 columns:
+  - the way in alone in the first column, the jump point alone in the last, and 2 or 3 nodes in each column between;
+  - links join each node to the next column by its height, so none cross and every node can be reached. Between any two columns, 35% of the time (`extraLinkChance`), one link more is added where it crosses nothing;
+  - 1 or 2 stations, each in a column of its own. Every other node is empty space until M20;
+  - names from the data's lists, none twice in a sector, and no sector's name twice in a run.
+- **The run** (`src/sim/travel.js`), from the first time act 2's home opens:
+  - **A jump** goes to a linked node: it eats a supply for each crew member, and heat goes up 3.
+  - **A long jump** goes to a node two links away: three times the supplies, and heat goes down 10.
+  - Jumps go back as well as on.
+  - **Hunger:** a jump the supplies don't cover still goes. They run out, and each crew member loses 2 hit points, never the last one.
+  - **Stations** sell supplies at 1 credit each, up to what the holds take: 24 in the lockers and 20 for each cargo hold.
+  - **The jump point** leads into the next sector's way in, for a jump's supplies and heat. Act 2 has 5 sectors. Past the last one the charts end, for now, with the words the stub had.
+  - Each sector is rolled from the campaign's RNG as the ship enters it and saved whole.
+- **The sector map** (`src/ui/campaign/sector.js`, words in `sectorText.js`) replaces the stub as act 2's home. The stub stays for act 3.
+  - **The chart** fills the middle: links, and a button for each node. Marks show the way in, stations and the jump point. The ship sits over its node and glides to the next, or jumps there with reduced motion. A node a jump reaches is ringed: solid for a jump, dashed for a long one.
+  - **Picking a jump:** a tap on a node shows on the left what the jump eats, what is left, and heat after it, and draws its way. A second tap, or Jump (Long jump), makes it. A node out of reach says why.
+  - **Stations:** Buy 3 (a jump's worth) and Fill up, in the footer, two taps each. The first says the price.
+  - **The jump point:** Jump on, two taps, into the next sector.
+  - **Around the chart:** the crew, supplies and credits on the right; heat by the act; Title.
+  - **Fit:** each node's button is its share of its column, so no two overlap and each stays 48 px or more at every size checked.
+- **The title's Continue** says the sector: "Act 2 · Sector 2 · Tollway Nine".
+- **`SAVE_VERSION` 10:** the campaign gains its supplies and its run. A v9 campaign gets no supplies and no run; the run begins, holds full, when the map first opens. The run's shape is checked when a save loads (`src/sim/runShape.js`).
+- **The hangar's heat meter** moved into `hubParts.js` so the map shares it. The hangar shows the same.
+- **Data and tools:**
+  - `data/balance.json` gains `baseSupplies` 24, `jumpSupplies` 1, `longJumpFactor` 3, `supplyPrice` 1, `hungerHp` 2, `jumpHeat` 3 and `longJumpHeat` −10;
+  - `data/campaign.json` gives act 2 its 5 sectors, and its stub words now speak of the charts' end;
+  - the validator checks the sectors' data (`tools/validate-sectors.js`): the layout, the node kinds, names enough for every node and every sector of a run, and the new balance numbers;
+  - `node tools/sectors.js` prints a sector (`--seed`, `--golden`);
+  - `node tools/voyage.js` runs test voyages from launch (`--runs`, `--long heat|never`, `--set`).
+- **Tests:** 501 in all, up from 478:
+  - the generator, its golden file and its rules over 300 seeds (`tests/sector.test.js`);
+  - the run's rules, the reducer's actions and the v9 to v10 migration (`tests/travel.test.js`);
+  - the Done when (`tests/voyage.test.js`);
+  - the map's words and Continue's (`tests/sectorText.test.js`);
+  - the validator's new mistakes.
+- **Golden files:** a new one, `tests/golden/sectors.txt` (the first sector at seeds 1 to 3). None changed.
+
+### Decisions made this session
+
+Evan didn't weigh in on any of these:
+- **Phase 4 is my draft.** M19's Done when was stated at the start; M20 to M25 carry "Done when (draft)", to settle as each starts.
+- **Supplies: 24 in the lockers, 1 credit each.** I started at 12 and 3: every test voyage starved, because 12 supplies (4 jumps for a crew of 3) don't reach from one station to the next. The numbers are below. M20 brings income and should retune them.
+- **Hunger costs hit points and never ends a run.** Nothing in act 2 heals until M23's med bay, so the loss stays.
+- **Jumps go any way within reach,** back included, and a long jump is any node two links away.
+- **Leaving a sector costs a jump:** its supplies and its 3 heat.
+- **The run begins when the map first opens,** holds full, as if the hangar stocked the ship. A v9 save at the stub gets the same.
+- **The sector map is a flat chart:** SVG and buttons, like the job board, not a scene through the 3D camera. It doesn't touch the locked graphics decision, which is about ships; a 3D chart is in §9.
+- **Buying is a jump's worth or a fill-up,** each two taps; there is no count to type.
+- **Heat in act 2 uses act 1's levels and words** until M24.
+
+### Verified here
+
+- `node --test`: 501 pass. `node tools/validate-data.js`: OK, with 4 kinds of sector node.
+- **`node tools/sim.js`:** the new balance numbers aren't used in fights, and the summary is M11's:
+  ```
+  All               1,000  49% (46–52)           41%        10%  7 (5–11)           28
+  Shots: 23,504, 23.5 a fight. Hit: crew 57%, boarders 40%.
+  A fight: 1.8 crew go down, 0.9 bleed out, 2.8 boarders die.
+  ```
+- **`node tools/voyage.js --runs 30`** (campaign seeds 1 to 30, each launched from its act 1 test run):
+  ```
+  long jumps when heat is at 50 or over (the default):
+  Sectors crossed: 5 (5 to 5); 30 of 30 reached the end of the charts.
+  Jumps: 31 (28 to 34), long 3 (0 to 6), hungry 9 (0 to 27).
+  In the first three sectors: restocked at 3 (0 to 3) stations; hungry on 2 (0 to 14) jumps; fed all the way in 9 of 30.
+  Supplies bought: 50 (0 to 108), for 50 (0 to 108) credits. Launch credits: 50 (0 to 220).
+  Heat at launch: 48 (24 to 49); at the end: 100 (46 to 100).
+
+  --long never:
+  Jumps: 34 (34 to 34), long 0 (0 to 0), hungry 5 (0 to 26).
+  In the first three sectors: restocked at 3 (0 to 4) stations; hungry on 0 (0 to 13) jumps; fed all the way in 18 of 30.
+  Heat at the end: 100 (100 to 100).
+  ```
+  Long jumps keep heat down and cost supplies, so the runs that make them go hungry more. The runs that go hungry in the first three sectors launched with few credits.
+- **Tuning** (the same 30 launches, no long jumps; first three sectors):
+
+  | Lockers | Price | Hungry jumps (median) | Fed all the way |
+  | --- | --- | --- | --- |
+  | 12 | 3 | 10 | 0 of 30 |
+  | 12 | 1 | 7 | 0 of 30 |
+  | 24 | 2 | 3 | 10 of 30 |
+  | 24 | 1 | 0 | 18 of 30 |
+  | 30 | 1 | 0 | 21 of 30 |
+
+  At 12, even free supplies wouldn't help: the holds run dry between stations. 30 left stations mattering less.
+- **M19's check** (scratchpad `m19/verify.mjs`), by touch at 905 × 370, 821 × 283 and 960 × 825: 52 of 52 at each size.
+  - Launch, the lift-off, Continue: the map, the run begun and saved as v10, holds full.
+  - The chart's nodes, links and rings match the sim. Every button is 48 px or more and takes a tap at its middle. No two node buttons overlap, and the side panels show whole.
+  - A tap shows a jump and moves nothing; a second makes it, saved. A long jump by the Jump button, its way drawn. A node out of reach does nothing.
+  - A station: Buy's first tap asks, stands down after 3 s, and two taps fill the holds.
+  - The jump point: Jump on's first tap asks; the second leads into sector 2, a new name and chart.
+  - Quit and reopen: Continue names the sector and opens the same map.
+  - The last sector's jump point: the end of the charts, the stub's words, no Jump on.
+  - A v9 save opens on the map with the run begun, as v10.
+  - Hunger: the jump says so, and costs each crew member 2 hit points.
+  - Reduced motion stops the ship's glide. Offline, the map opens. No console errors or warnings.
+- **Regressions,** one after another with nothing else running:
+  - **M18's check:** 43 of 43 at each size, once its three checks pinned to save version 9 read "9 or later";
+  - **M18's column check:** 15 of 15 at each size;
+  - **M17's check** (adapted, below): 37 of 37 at each size;
+  - **M16's check:** 29 of 29 at each size;
+  - **M15's check:** 30 of 30 at each size, the hangar's heat meter included;
+  - **M14's check:** 46 of 46 at 905 × 370, three jobs played to the end by touch with no drags needed. It takes over 15 minutes;
+  - **M14's saves check:** 10 of 10, v4 saves migrated through to v10;
+  - **M13's check:** 24 of 24;
+  - **M8's fight sandbox checks:** the fight and the orders column pass with no console errors; and the extras, 16 of 16, offline with the server stopped.
+- **What changed in the old checks:**
+  - M17's check expected the stub after launch; its copy (`m17/verify19.mjs`) expects the map. The stub's own checks (how act 1 went) are gone with it from act 2.
+  - M18's three checks pinned to v9 now read "9 or later".
+  - **Offline checks:** Playwright's `setOffline` doesn't stop the service worker's own fetches, so a file missing from the cache can still load. M19's check stops the server instead. M8's extras do too, and they caught the new files missing from `sw.js` before `tools/precache.js` ran; the pre-commit hook runs it in any case.
+- **Found and fixed by the checks:** on the 283 px-tall screen, the Buy buttons sat below the left panel's edge, so a tap there hit Title. They moved into the footer. The Ship panel lost its last row there too, so "A jump eats" went: each jump's preview says it.
+
+### Known issues
+
+- **A broke launch starves.** With no credits there is nothing to buy, and the crew is down to 1 hit point by the second sector. Nothing in act 2 pays until M20.
+- **Heat does nothing in act 2 yet,** and without long jumps it reaches about 100 by the end of the third sector (87 to 100 over 30 test runs). The meter still names act 1's levels: it says "Raid" past 75, and there are no raids in act 2.
+- **Hit points lost to hunger stay lost** until M23's med bay.
+- **Empty space is empty.** The nodes between stations have nothing at them until M20.
+- **Names are only in the left panel,** for the node the ship is at or the one picked (§9).
+- **No tips for the run** (§9).
+- **The charts end at the fifth jump point** with a note; act 2 has no ending until M25.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Launch** (or Continue an act 2 save): the map opens, "Sector 1 of 5", holds full.
+2. **Jumps:** tap a ringed node; the left panel says what it eats and what heat does. Tap it again to go. Then a dashed node for a long jump, by the Jump button: heat drops 10.
+3. **A station** (the green mark): Buy 3 and Fill up in the footer, two taps each.
+4. **The jump point:** Jump on, two taps, into sector 2. Spend supplies down and see hunger.
+5. **Quit mid-sector and reopen:** Continue names the sector, and the map is as you left it.
+6. **Both screens:** are the nodes easy to hit, and does the map read at a glance?
+7. **Tell me:**
+   - whether supplies feel tight or loose;
+   - whether long jumps are worth it;
+   - whether jumping back should stay;
+   - whether the flat chart is fine, or should be 3D like the ships;
+   - and the M14 to M18 questions still open.
+
+### Next session
+
+**M20 Node types, events and scanning.** Settle its Done when with Evan first: the draft is "ten events play from data, and a run earns its keep from the nodes it picks". Then retune supplies against what nodes pay.
+
+## Gate 3 (2026-10-12)
+
+**Passed.** Evan's words: "Gate 3 passed, start the next milestone".
+- That passes M18's Done when, so M18's box is ticked. v0.1 is done: Phases 0 to 3.
+- No phone results have come back for M14 to M17 or for the toolbar's move. The gate is Evan's call, so it stands as passed.
+- Phase 4 starts with M19 (sector generator, supplies and jumps). ROADMAP.md held Phase 4's details until v0.1 shipped. They are drafted there now, with M19's Done when in full and the rest marked as drafts.
+
 ## M18 First run and settings (2026-10-12)
 
-**Status:** built. The ROADMAP.md box is **not** ticked: M18's Done when is Gate 3, which Evan runs. After M17, Evan said "Start the next milestone". After the first M18 merge, Evan said "Move the toolbar into the right-hand column", the fix for the back-row taps the browser checks found (below). No phone results have come back yet for M14 to M17.
+**Status:** done; Gate 3 passed (above), and the ROADMAP.md box is ticked. M18's Done when is Gate 3, which Evan runs. After M17, Evan said "Start the next milestone". After the first M18 merge, Evan said "Move the toolbar into the right-hand column", the fix for the back-row taps the browser checks found (below). No phone results have come back yet for M14 to M17.
 
 Done when: "Gate 3 passes": "a stranger plays from the first screen to launch unaided." Only a person can pass it. What I could check:
 - **The first run, by touch, following only the tips:** from an empty browser, through captain creation, the build and the first job's whole fight, at all three screen sizes.

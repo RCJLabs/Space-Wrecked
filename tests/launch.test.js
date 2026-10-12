@@ -54,11 +54,12 @@ test('a raid at the door does not stop the launch: the pursuer finds an empty ha
   assert.deepEqual(campaignProblems(campaign), []);
 });
 
-test('through the game: Launch plays the launch, and Continue goes to the stub for act 2', () => {
+test('through the game: Launch plays the launch, and Continue goes to the sector map for act 2', () => {
   const state = { ...initialState(1), screen: 'hub', campaign: ready() };
   const launched = reduce(state, { type: 'campaign/launch', rules });
   assert.deepEqual([launched.screen, launched.campaign.act], ['launch', 2]);
-  assert.equal(reduce({ ...launched, screen: 'title' }, { type: 'campaign/continue' }).screen, 'stub');
+  assert.equal(reduce({ ...launched, screen: 'title' }, { type: 'campaign/continue' }).screen, 'sector');
+  assert.equal(campaignScreen({ ...launched.campaign, act: 3 }), 'stub', 'the act after the run is still the stub');
   assert.equal(campaignScreen(state.campaign), 'hub');
   // Not ready: nothing changes.
   const early = { ...state, campaign: withBoard(newCampaign(rules, 5), rules) };

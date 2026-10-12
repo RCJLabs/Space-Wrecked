@@ -77,7 +77,7 @@ function whole(text, arg, least) {
   return Number(text);
 }
 
-function setting(text) {
+export function setting(text) {
   const match = /^([A-Za-z]+)=(-?\d+)$/.exec(text);
   if (!match) throw new Error(`--set needs name=number, like halfCover=25, not "${text}".`);
   return { name: match[1], value: Number(match[2]) };
