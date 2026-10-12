@@ -23,7 +23,9 @@ import { FPS_CAPS } from '../sim/settings.js';
 //   5  the campaign's background, its job board, and jobs as fights: a
 //      fight's job and its battle's objective (M14)
 //   6  raids: a fight says whether it is the pursuer's raid (M15)
-export const SAVE_VERSION = 6;
+//   7  the shop: the campaign's stock at the shop, or null until one is
+//      rolled, and the jobs done that only come once (M16)
+export const SAVE_VERSION = 7;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -79,6 +81,13 @@ export const MIGRATIONS = [
       if (!isObject(data) || !isObject(data.campaign) || !isObject(data.campaign.fight)) return data;
       return { ...data, campaign: { ...data.campaign, fight: { ...data.campaign.fight, raid: false } } };
     },
+  },
+  // The shop opens. A campaign from before has no stock yet: the hangar
+  // rolls one, as it rolled a board for saves from before jobs. No job
+  // was only done once before.
+  {
+    from: 6,
+    up: (data) => (isObject(data) && isObject(data.campaign) ? { ...data, campaign: { ...data.campaign, shop: null, spent: [] } } : data),
   },
 ];
 

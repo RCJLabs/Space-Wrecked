@@ -6,7 +6,8 @@ import { aiAction } from '../src/sim/ai.js';
 import { autoplay } from '../src/sim/autoplay.js';
 import { createBattle } from '../src/sim/battle.js';
 import { beginFight, campaignProblems, newCampaign } from '../src/sim/campaign.js';
-import { contractsIn, endJob, jobSetup, MISSIONS, PAY_STEP, rollBoard, takeJob, twistsFor, withBoard } from '../src/sim/contracts.js';
+import { contractsIn, endJob, jobSetup, MISSIONS, rollBoard, takeJob, twistsFor, withBoard } from '../src/sim/contracts.js';
+import { PAY_STEP } from '../src/sim/economy.js';
 import { jobAction } from '../src/sim/jobAi.js';
 import { jobOutcome, jobText, objectiveText, payText } from '../src/ui/campaign/jobText.js';
 import { jobsInARow } from '../tools/jobs.js';
@@ -31,7 +32,7 @@ test('a board offers different jobs, each rolled within its template', () => {
     const pay = (n) => PAY_STEP * Math.round((n * (100 + (twist?.pay ?? 0))) / 100 / PAY_STEP);
     assert.ok(job.credits >= pay(contract.credits[0]) && job.credits <= pay(contract.credits[1]), `${job.contract}: ${job.credits}`);
     assert.equal(job.credits % PAY_STEP, 0);
-    assert.ok(job.part === null || contract.parts.includes(job.part));
+    assert.ok(job.part === null || Object.hasOwn(contract.drops?.parts ?? {}, job.part));
     assert.ok(Number.isInteger(job.seed) && job.seed >= 0 && job.seed <= 0xffffffff);
   }
   assert.deepEqual(rollBoard(rules, 42, DISTRICT), rollBoard(rules, 42, DISTRICT), 'the same RNG state, the same board');
@@ -59,6 +60,29 @@ test('a new board offers none of the jobs skipped', () => {
     assert.equal(next.length, contracts.boardSize);
     assert.ok(next.every((job) => !skip.includes(job.contract)), `board ${i}`);
   }
+});
+
+// The repossession is Ma Prewitt's late husband's one engine (once: true).
+test('a job done once never comes back; lost, it can', () => {
+  let campaign = null;
+  for (let seed = 1; !campaign; seed++) {
+    const tried = withBoard(newCampaign(rules, seed), rules);
+    if (tried.board.some((job) => job.contract === 'repo')) campaign = tried;
+  }
+  const on = takeJob(campaign, rules, campaign.board.findIndex((job) => job.contract === 'repo')).campaign;
+  const end = (fought, winner) => endJob({ ...fought, fight: { ...fought.fight, battle: { ...fought.fight.battle, winner } } }, rules);
+  assert.deepEqual(end(on, 'enemy').spent, [], 'lost: it can come again');
+  const done = end(on, 'crew');
+  assert.deepEqual(done.spent, ['repo']);
+  assert.deepEqual(campaignProblems(done), []);
+  let later = done;
+  for (let n = 0; n < 30; n++) {
+    assert.ok(!later.board.some((job) => job.contract === 'repo'), `board ${n}`);
+    later = end(takeJob({ ...later, heat: 0 }, rules, 0).campaign, 'crew');
+  }
+  assert.deepEqual(later.spent, ['repo'], 'counted once');
+  assert.match(campaignProblems({ ...done, spent: ['repo', 'repo'] }).join(' '), /jobs done once are unreadable/);
+  assert.match(campaignProblems({ ...done, spent: 'repo' }).join(' '), /jobs done once are unreadable/);
 });
 
 test('a hub gets a board when it has none, and only then', () => {

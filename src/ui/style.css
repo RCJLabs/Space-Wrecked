@@ -379,6 +379,7 @@ textarea {
 
 #ui .hgr-tool,
 #ui .hgr-pay,
+#ui .hgr-shop,
 #ui .hgr-jobs,
 #ui .hgr-build {
   display: flex;
@@ -389,6 +390,7 @@ textarea {
 }
 
 #ui .hgr-jobs,
+#ui .hgr-shop,
 #ui .hgr-pay {
   padding: 0 18px;
   background: var(--c-panel);
@@ -492,9 +494,11 @@ textarea {
   }
 }
 
-/* The job board: the jobs down the left, the one picked in full on the
-   right, and the orders along the bottom. */
-.jobs {
+/* The job board, and the shop laid out the same way: the jobs (or parts)
+   down the left, the one picked in full on the right, and the orders along
+   the bottom. */
+.jobs,
+.shop {
   position: absolute;
   inset: 0;
   display: grid;
@@ -504,7 +508,8 @@ textarea {
   padding: 8px 12px 10px;
 }
 
-.jobs-head {
+.jobs-head,
+.shop-head {
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
@@ -513,7 +518,8 @@ textarea {
   padding-right: 64px; /* clear of the DEV button */
 }
 
-.jobs-head h1 {
+.jobs-head h1,
+.shop-head h1 {
   margin: 0;
   font-size: clamp(18px, 6vh, 28px);
   font-weight: 800;
@@ -521,13 +527,15 @@ textarea {
   text-transform: uppercase;
 }
 
-.jobs-where {
+.jobs-where,
+.shop-where {
   margin: 0;
   color: var(--c-ink-dim);
   font-size: 15px;
 }
 
-.jobs-list {
+.jobs-list,
+.shop-list {
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -537,7 +545,8 @@ textarea {
   pointer-events: auto;
 }
 
-#ui .jobs-pick {
+#ui .jobs-pick,
+#ui .shop-pick {
   flex: none;
   display: flex;
   flex-direction: column;
@@ -549,16 +558,19 @@ textarea {
   text-align: left;
 }
 
-#ui .jobs-pick[aria-pressed='true'] {
+#ui .jobs-pick[aria-pressed='true'],
+#ui .shop-pick[aria-pressed='true'] {
   color: inherit;
   box-shadow: inset 0 0 0 1px var(--c-accent);
 }
 
-.jobs-pick b {
+.jobs-pick b,
+.shop-pick b {
   font-size: 14px;
 }
 
-.jobs-pick span {
+.jobs-pick span,
+.shop-pick span {
   max-width: 100%;
   overflow: hidden;
   color: var(--c-ink-dim);
@@ -569,7 +581,8 @@ textarea {
 }
 
 /* The title, and the twist on the same line, at its end. */
-.jobs-pick .jobs-top {
+.jobs-pick .jobs-top,
+.shop-pick .shop-top {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -578,17 +591,20 @@ textarea {
   color: var(--c-ink);
 }
 
-.jobs-pick .jobs-pay {
+.jobs-pick .jobs-pay,
+.shop-pick .shop-pay {
   color: var(--c-good);
 }
 
-.jobs-pick .jobs-twist {
+.jobs-pick .jobs-twist,
+.shop-pick .shop-twist {
   flex: none;
   color: var(--c-dash);
   font-size: 11.5px;
 }
 
-.jobs-detail {
+.jobs-detail,
+.shop-detail {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -601,45 +617,53 @@ textarea {
   pointer-events: auto;
 }
 
-.jobs-detail h2 {
+.jobs-detail h2,
+.shop-detail h2 {
   margin: 0;
   font-size: 18px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.jobs-who {
+.jobs-who,
+.shop-who {
   margin: 0 0 8px;
   color: var(--c-ink-dim);
   font-size: 13px;
 }
 
-.jobs-pitch {
+.jobs-pitch,
+.shop-pitch {
   margin: 0 0 10px;
   font-style: italic;
 }
 
-.jobs-facts {
+.jobs-facts,
+.shop-facts {
   display: grid;
   gap: 5px;
   margin: 0;
 }
 
-.jobs-facts div {
+.jobs-facts div,
+.shop-facts div {
   display: grid;
   grid-template-columns: 6.2em minmax(0, 1fr);
   gap: 8px;
 }
 
-.jobs-facts dt {
+.jobs-facts dt,
+.shop-facts dt {
   color: var(--c-ink-dim);
 }
 
-.jobs-facts dd {
+.jobs-facts dd,
+.shop-facts dd {
   margin: 0;
 }
 
-.jobs-foot {
+.jobs-foot,
+.shop-foot {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
@@ -647,23 +671,29 @@ textarea {
 }
 
 .jobs-hint,
-.jobs-none {
+.shop-hint,
+.jobs-none,
+.shop-none {
   flex: 1;
   margin: 0;
   color: var(--c-ink-dim);
   font-size: 13.5px;
 }
 
-.jobs-hint[data-tone='warn'] {
+.jobs-hint[data-tone='warn'],
+.shop-hint[data-tone='warn'] {
   color: var(--c-dash);
 }
 
-.jobs-hint[data-tone='bad'] {
+.jobs-hint[data-tone='bad'],
+.shop-hint[data-tone='bad'] {
   color: var(--c-bad);
 }
 
 #ui .jobs-back,
-#ui .jobs-take {
+#ui .shop-back,
+#ui .jobs-take,
+#ui .shop-take {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -671,7 +701,8 @@ textarea {
   white-space: nowrap;
 }
 
-#ui .jobs-take {
+#ui .jobs-take,
+#ui .shop-take {
   padding: 0 22px;
   border-color: var(--c-accent);
   background: var(--c-accent);
@@ -679,30 +710,82 @@ textarea {
 }
 
 @media (max-height: 320px) {
-  .jobs {
+  .jobs,
+  .shop {
     gap: 6px;
     padding-top: 4px;
     padding-bottom: 6px;
   }
 
-  #ui .jobs-pick {
+  #ui .jobs-pick,
+  #ui .shop-pick {
     min-height: 48px;
     padding: 3px 8px;
     line-height: 1.2;
   }
 
-  .jobs-pick b {
+  .jobs-pick b,
+  .shop-pick b {
     font-size: 13px;
   }
 
-  .jobs-detail {
+  .jobs-detail,
+  .shop-detail {
     padding: 8px 10px;
     font-size: 13px;
   }
 
-  .jobs-hint {
+  .jobs-hint,
+  .shop-hint {
     font-size: 12.5px;
   }
+}
+
+/* The shop's own: the credits by its name, the list in two parts (for
+   sale, and on hand to sell), a part the ship needs, and Buy or Sell, which
+   waits for a second tap as Pay does at the hangar. */
+.shop-credits {
+  padding: 3px 10px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-panel);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.shop-section {
+  flex: none;
+  margin: 2px 2px 0;
+  color: var(--c-ink-dim);
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.shop-pick .shop-price {
+  color: var(--c-good);
+}
+
+.shop-pick .shop-need {
+  flex: none;
+  color: var(--c-accent);
+  font-size: 11.5px;
+}
+
+.shop-hint[data-tone='good'] {
+  color: var(--c-good);
+}
+
+#ui .shop-take {
+  border-color: var(--c-line);
+  background: var(--c-panel);
+  color: inherit;
+}
+
+#ui .shop-take[data-armed='true'] {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
 }
 
 /* Builder: the palette drawer on the left, tools on the right, and the

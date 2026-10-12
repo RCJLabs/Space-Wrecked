@@ -1,9 +1,11 @@
 // Text for the campaign's screens: the hangar's panels and the title's
 // Continue line. rules are the content tables (src/sim/defs.js).
-import { actOf, HEAT_MAX, maxHp } from '../../sim/campaign.js';
-import { canLaunch, flightChecklist } from '../../sim/constraints.js';
+import { actOf, HEAT_MAX, maxHp, partsNeeded, shipChecklist } from '../../sim/campaign.js';
+import { canLaunch } from '../../sim/constraints.js';
+import { shopOf } from '../../sim/economy.js';
 import { heatLevel, paymentFor, pursuerOf, raidDue } from '../../sim/heat.js';
 import { beginRaid } from '../../sim/raid.js';
+import { offerText } from './shopText.js';
 
 const LEVEL_NAMES = { calm: 'Calm', rumors: 'Rumors', hunters: 'Hunters', raid: 'Raid' };
 
@@ -11,7 +13,7 @@ const LEVEL_NAMES = { calm: 'Calm', rumors: 'Rumors', hunters: 'Hunters', raid: 
 //   act, home   "Act 1 · Homeworld", "The hangar"
 //   goal        { ready, lines }: the flight checklist, act 1's goal. Each
 //               line is { ok, text, fix }, and a fix that adds a part says
-//               how many are on hand.
+//               how many are on hand, and the shop's price if it has one.
 //   crew        [{ name, job, hp, max }]: job is blank when it is the name
 //   holdings    [[label, value]]: credits, parts on hand and jobs
 //   hint        { tone, text }: what to do next
@@ -22,24 +24,29 @@ const LEVEL_NAMES = { calm: 'Calm', rumors: 'Rumors', hunters: 'Hunters', raid: 
 //               payment: { label, ask, ok, why }
 //   raid        null, or the raid at the door: { line, ok, why }, why
 //               saying what stops it starting
+//   shop        true when the district has a shop (economy.js)
 export function hangarText(campaign, rules) {
   const act = actOf(campaign, rules);
   const crew = campaign.crew.map((member) => {
     const job = rules.jobs.get(member.job)?.name ?? member.job;
     return { name: member.name, job: job === member.name ? '' : job, hp: member.hp, max: maxHp(member, rules) };
   });
-  const checklist = flightChecklist(campaign.ship, rules, campaign.crew.length);
+  const checklist = shipChecklist(campaign, rules);
   const onHand = (type) => campaign.parts[type] ?? 0;
   const lines = checklist.map((line) => ({
     ok: line.ok === true,
     text: line.text,
-    fix: line.ok === true || !line.fix ? null : line.add ? `${line.fix}: ${onHand(line.add) ? `${onHand(line.add)} on hand` : 'none on hand'}` : line.fix,
+    fix: line.ok === true || !line.fix ? null : line.add ? `${line.fix}: ${[onHand(line.add) ? `${onHand(line.add)} on hand` : 'none on hand', offerText(campaign, rules, line.add)].filter(Boolean).join(', ')}` : line.fix,
   }));
   const ready = canLaunch(checklist);
   const build = checklist.some((line) => line.ok !== true && line.add && onHand(line.add) > 0);
   const held = Object.values(campaign.parts).reduce((sum, count) => sum + count, 0);
   const heat = heatText(campaign, rules);
   const raid = raidDue(campaign, rules) ? raidText(campaign, rules) : null;
+  const shop = shopOf(campaign, rules);
+  // A part the checklist needs, for sale and affordable.
+  const needs = partsNeeded(campaign, rules);
+  const buy = shop && (campaign.shop ?? []).find((item) => needs[item.part] > onHand(item.part) && item.price <= campaign.credits);
   return {
     act: `Act ${campaign.act} · ${act?.name ?? 'Unknown'}`,
     home: act?.home ?? '',
@@ -53,18 +60,24 @@ export function hangarText(campaign, rules) {
     build,
     heat,
     raid,
-    hint: raid
-      ? { tone: 'bad', text: raid.ok ? `${raid.line} Defend the ship, or pay heat down under ${rules.balance.raidHeat}.` : `${raid.line} ${raid.why}` }
-      : ready
-        ? { tone: 'good', text: 'Every flight check passes. Launching ends act 1: it comes later.' }
-        : build
-          ? { tone: 'good', text: 'Your ship is half built. Tap Build to fit the parts on hand.' }
-          : heat.level !== 'calm'
-            ? { tone: 'warn', text: `${heat.line} A payment buys some heat off.` }
-            : held
-              ? { tone: 'info', text: 'Tap Build to change the ship. The parts still missing come from jobs: tap Jobs.' }
-              : { tone: 'info', text: 'The parts still missing come from jobs: tap Jobs.' },
+    shop: Boolean(shop),
+    hint: hangarHint({ raid, ready, build, buy, heat, held, shop }, rules),
   };
+}
+
+// What to do next at the hangar, the most pressing first: a raid at the
+// door, launch, parts on hand to fit, the hunters on every job, a part the
+// ship needs at the shop, rumors, and otherwise where parts come from.
+function hangarHint({ raid, ready, build, buy, heat, held, shop }, rules) {
+  const warn = { tone: 'warn', text: `${heat.line} A payment buys some heat off.` };
+  if (raid) return { tone: 'bad', text: raid.ok ? `${raid.line} Defend the ship, or pay heat down under ${rules.balance.raidHeat}.` : `${raid.line} ${raid.why}` };
+  if (ready) return { tone: 'good', text: 'Every flight check passes. Launching ends act 1: it comes later.' };
+  if (build) return { tone: 'good', text: 'Your ship is half built. Tap Build to fit the parts on hand.' };
+  if (heat.level === 'hunters') return warn;
+  if (buy) return { tone: 'good', text: `${shop.name} has the ${rules.modules.get(buy.part)?.name ?? buy.part} the ship needs, for ${buy.price}. Tap Shop.` };
+  if (heat.level !== 'calm') return warn;
+  if (held) return { tone: 'info', text: shop ? 'The parts still missing come from jobs and the shop, where spares sell too.' : 'Tap Build to change the ship. The parts still missing come from jobs: tap Jobs.' };
+  return { tone: 'info', text: `The parts still missing come from jobs${shop ? ' and the shop' : ''}: tap Jobs.` };
 }
 
 // The heat meter: see hangarText.

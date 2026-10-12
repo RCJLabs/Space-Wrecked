@@ -23,6 +23,9 @@
 //   ship     the ship (builder.js)
 //   board    the jobs on offer at the hub (contracts.js), or [] until one
 //            is rolled
+//   shop     the shop's stock (economy.js): [{ part, price }], or null
+//            until one is rolled
+//   spent    the ids of jobs done that are only done once (contracts.js)
 //   fight    null, or the fight on now: { encounter, seed, crew, battle,
 //            log, job, raid }. crew is who fights, by id, in the battle's
 //            order (c1, c2...). battle and log are the fight as it stands
@@ -36,7 +39,9 @@ import { int, isState } from '../core/rng.js';
 import { battleProblem } from './battleShape.js';
 import { createBattle } from './battle.js';
 import { buildShip, isShipData } from './builder.js';
+import { flightChecklist, partLines } from './constraints.js';
 import { deploy } from './deploy.js';
+import { MAX_STOCK } from './economy.js';
 import { mapFromShip } from './mapFromShip.js';
 
 export const PLACES = ['hub', 'fight'];
@@ -47,6 +52,10 @@ export const MAX_NAME = 24;
 export const MAX_FLAG_TEXT = 64;
 // More jobs than any board offers: a guard on what a save can hold.
 export const MAX_BOARD = 12;
+// More one-off jobs than act 1 has: the same kind of guard.
+export const MAX_SPENT = 100;
+// More parts than any ship could need at once (partsNeeded).
+const MAX_NEEDED = 40;
 // Who boards the ship in a fight (data/encounters.json).
 export const FIGHT_ENCOUNTER = 'boarders';
 const MAX_SEED = 0xffffffff;
@@ -75,6 +84,8 @@ export function newCampaign(rules, seed, background = firstBackground(rules)) {
     flags: {},
     ship,
     board: [],
+    shop: null,
+    spent: [],
     fight: null,
   };
 }
@@ -84,9 +95,35 @@ export function firstBackground(rules) {
   return rules.backgrounds.keys().next().value;
 }
 
-// The act's entry in data/campaign.json: { act, name, hub, home, heals }.
+// The act's entry in data/campaign.json: { act, name, hub, home, heals },
+// and liftOff where leaving the act means lifting off a planet.
 export function actOf(campaign, rules) {
   return rules.acts.get(campaign.act) ?? null;
+}
+
+// The ship's flight checklist (constraints.js) as the campaign asks it:
+// for the crew aboard, and in an act on a planet, with what lifting off
+// takes. Act 1's goal is every line passing.
+export function shipChecklist(campaign, rules) {
+  return flightChecklist(campaign.ship, rules, campaign.crew.length, { liftOff: actOf(campaign, rules)?.liftOff ?? null });
+}
+
+// The parts the ship still needs for the checklist, by type: { [type]:
+// count }. Each failing part line (power, thrust, berths, life support,
+// the parts every ship has) asks for its part, and that part is added
+// until none asks, as each brings stats of its own (an engine its mass).
+// Where parts go doesn't change those lines, so they are added nowhere.
+export function partsNeeded(campaign, rules) {
+  const options = { liftOff: actOf(campaign, rules)?.liftOff ?? null };
+  const needed = {};
+  let ship = campaign.ship;
+  for (let n = 0; n < MAX_NEEDED; n++) {
+    const line = partLines(ship, rules, campaign.crew.length, options).find((l) => l.ok === false && l.add);
+    if (!line) break;
+    needed[line.add] = (needed[line.add] ?? 0) + 1;
+    ship = { ...ship, modules: [...ship.modules, { uid: -1 - n, type: line.add, x: 0, y: 0, rot: 0 }] };
+  }
+  return needed;
 }
 
 // A crew member's most hit points: their job's.
@@ -201,6 +238,8 @@ export function campaignProblems(value) {
   }
   if (!isShipData(value.ship)) wrong('ship is unreadable');
   if (!Array.isArray(value.board) || value.board.length > MAX_BOARD || !value.board.every(isJob)) wrong('job board is unreadable');
+  if (value.shop !== null && !(Array.isArray(value.shop) && value.shop.length <= MAX_STOCK && value.shop.every(isStockItem))) wrong("shop's stock is unreadable");
+  if (!Array.isArray(value.spent) || value.spent.length > MAX_SPENT || !value.spent.every(isId) || new Set(value.spent).size !== value.spent.length) wrong('jobs done once are unreadable');
   if ((value.place === 'fight') !== isRecord(value.fight) || (value.place !== 'fight' && value.fight !== null)) {
     wrong("fight doesn't match where the player is");
   } else if (value.fight !== null) {
@@ -231,6 +270,11 @@ function isJob(job) {
     isRecord(job) && isId(job.contract) && isId(job.client) && isId(job.site) && (job.twist === null || isId(job.twist)) &&
     isState(job.seed) && isInt(job.credits, 0, Number.MAX_SAFE_INTEGER) && (job.part === null || isId(job.part))
   );
+}
+
+// A part for sale (economy.js): its type and price.
+function isStockItem(item) {
+  return isRecord(item) && isId(item.part) && isInt(item.price, 0, Number.MAX_SAFE_INTEGER);
 }
 
 function isId(value) {

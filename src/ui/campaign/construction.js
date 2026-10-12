@@ -3,7 +3,7 @@
 // out of the hangar and one taken off goes back (campaign.js refitShip).
 // Every change is saved through the campaign at once. Hangar, at the end of
 // the drawer's tabs, goes back to the hub. The board is ../builder/view.js's.
-import { stockOf } from '../../sim/campaign.js';
+import { actOf, stockOf } from '../../sim/campaign.js';
 import { mountBuilder } from '../builder/view.js';
 import { icons } from '../icons.js';
 
@@ -14,13 +14,19 @@ let kept = null;
 
 export const constructionScreen = {
   mount(root, { store: game }) {
+    let defs = null;
     return mountBuilder(root, {
       launch: false,
       leave: { icon: icons.home, label: 'Hangar', onTap: () => game.dispatch({ type: 'screen/show', screen: 'hub' }) },
       crew: () => game.getState().campaign?.crew.length ?? 0,
+      liftOff: () => {
+        const { campaign } = game.getState();
+        return (campaign && defs && actOf(campaign, defs)?.liftOff) ?? null;
+      },
       // The campaign keeps no build log (nothing replays it), so a session
       // starts with none.
-      open() {
+      open(content) {
+        defs = content;
         const { campaign } = game.getState();
         if (!campaign || campaign.place !== 'hub') return null;
         const stock = stockOf(campaign);

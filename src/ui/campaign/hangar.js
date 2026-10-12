@@ -3,7 +3,8 @@
 // checklist, each fix saying whether the part is on hand), the crew with
 // their hit points, and what the campaign holds. Build opens construction
 // mode (construction.js) on the ship; Jobs opens the job board (jobs.js),
-// where the parts still missing are earned. Heat shows by the act, with
+// where the parts still missing are earned, and Shop the district's shop
+// (shop.js), where they are bought. Heat shows by the act, with
 // Pay to buy some off (a tap shows the price, a second pays); once heat
 // brings a raid, Defend takes the place of Jobs. Everything the campaign
 // holds is saved as it changes, so the hangar reopens as it was left.
@@ -46,11 +47,13 @@ export const hangarScreen = {
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const hint = node('p', 'hgr-hint', 'Loading…');
     const payButton = toolButton('hgr-pay', icons.pay, 'Pay');
+    const shopButton = toolButton('hgr-shop', icons.shop, 'Shop');
     const jobsButton = toolButton('hgr-jobs', icons.jobs, 'Jobs');
     const buildButton = toolButton('hgr-build', icons.build, 'Build');
-    payButton.hidden = true;
+    payButton.hidden = shopButton.hidden = true;
     jobsButton.disabled = buildButton.disabled = true;
-    foot.append(titleButton, hint, payButton, jobsButton, buildButton);
+    titleButton.setAttribute('aria-label', 'Title');
+    foot.append(titleButton, hint, payButton, shopButton, jobsButton, buildButton);
     el.append(head, panel('Goal: launch', goalLines), shipArea, side, foot);
     root.append(el);
 
@@ -73,6 +76,7 @@ export const hangarScreen = {
         else game.dispatch({ type: 'screen/show', screen: 'jobs' });
       }),
       onTap(payButton, pay),
+      onTap(shopButton, () => game.dispatch({ type: 'screen/show', screen: 'shop' })),
       () => clearTimeout(armTimer),
       game.subscribe((state) => alive && render(state.campaign)),
     ];
@@ -84,8 +88,10 @@ export const hangarScreen = {
       .then((content) => {
         if (!alive) return;
         defs = content;
-        // A campaign saved before there were jobs gets its first board.
-        if (game.getState().campaign && !game.getState().campaign.board.length) game.dispatch({ type: 'campaign/board', rules: defs });
+        // A campaign saved before there were jobs or a shop gets its first
+        // board and stock.
+        const saved = game.getState().campaign;
+        if (saved && (!saved.board.length || saved.shop === null)) game.dispatch({ type: 'campaign/board', rules: defs });
         render(game.getState().campaign);
       })
       .catch((err) => {
@@ -153,6 +159,7 @@ export const hangarScreen = {
       }
       setText(jobsButton.querySelector('span'), raid ? 'Defend' : 'Jobs');
       jobsButton.disabled = Boolean(raid && !raid.ok);
+      shopButton.hidden = !text.shop;
       buildButton.disabled = false;
       setText(hint, armed && heat.payment ? heat.payment.text : text.hint.text);
       hint.dataset.tone = armed ? 'warn' : text.hint.tone;
