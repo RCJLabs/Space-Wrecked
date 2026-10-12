@@ -3,6 +3,8 @@
 // (src/sim/defs.js). tools/jobs.js prints jobs with them too.
 import { objectiveDone } from '../../sim/battle.js';
 import { jobSetup } from '../../sim/contracts.js';
+import { jobHeat } from '../../sim/heat.js';
+import { raidLoss } from '../../sim/raid.js';
 
 // A job on the board, in words:
 //   title    "Claim jumpers"
@@ -13,15 +15,18 @@ import { jobSetup } from '../../sim/contracts.js';
 //   twist    null, or { name, text }
 //   against  "Claim jumper ×4": who is there, the twist's change counted
 //   pay      "85 credits + Corridor"
-// Null for a job the content no longer has (a save from before an edit).
-export function jobText(job, rules) {
+//   heat     "+15 heat, loud": what it adds to heat, done or lost
+// hunters: enemies the pursuer sends along (heat.js huntersFor), counted
+// in against. Null for a job the content no longer has (a save from
+// before an edit).
+export function jobText(job, rules, hunters = []) {
   const contract = rules.contracts.jobs.get(job.contract);
   const client = rules.clients.get(job.client);
   const site = rules.sites.get(job.site);
   const mission = rules.contracts.missions.get(contract?.mission);
   if (!contract || !client || !site || !mission || !rules.siteMaps.has(site.map)) return null;
   const twist = job.twist ? rules.contracts.twists.get(job.twist) ?? null : null;
-  const { units } = jobSetup(job, rules, []);
+  const { units } = jobSetup(job, rules, [], { hunters });
   return {
     title: contract.title,
     who: `${client.name}, ${client.title}`,
@@ -32,7 +37,14 @@ export function jobText(job, rules) {
     twist: twist ? { name: twist.name, text: fill(twist.text, twist) } : null,
     against: countedNames(units.map((unit) => rules.enemies.get(unit.kind)?.name ?? unit.kind)),
     pay: payText(job, rules),
+    heat: heatText(job, rules),
   };
+}
+
+// "+15 heat, loud": what a job adds to heat.
+export function heatText(job, rules) {
+  const { heat, loud } = jobHeat(job, rules);
+  return `+${heat} heat${loud ? ', loud' : ''}`;
 }
 
 // "85 credits + Corridor": what a job pays when it is done.
@@ -67,9 +79,26 @@ export function objectiveText(battle, job, rules) {
 // How a job's fight ended, for the end panel: { tone, title, text }. log is
 // the fight's events, whose last says why it ended.
 export function jobOutcome(battle, job, rules, log = []) {
-  if (battle.winner === 'crew') return { tone: 'good', title: 'Job done', text: `Paid ${payText(job, rules)}.` };
+  const heat = ` Heat +${jobHeat(job, rules).heat}.`;
+  if (battle.winner === 'crew') return { tone: 'good', title: 'Job done', text: `Paid ${payText(job, rules)}.${heat}` };
   const why = log.findLast((event) => event.type === 'over')?.reason === 'deadline' ? 'Out of time' : 'The crew is down';
-  return { tone: 'bad', title: 'Job lost', text: `${why}: no pay.` };
+  return { tone: 'bad', title: 'Job lost', text: `${why}: no pay.${heat}` };
+}
+
+// A raid's line under the round: { title, progress, done, deadline }.
+export function raidObjective(battle) {
+  const left = battle.units.filter((unit) => unit.side === 'enemy' && unit.status === 'active').length;
+  return { title: 'Raid', progress: `${left} raider${left === 1 ? '' : 's'} left`, done: false, deadline: null };
+}
+
+// How a raid ended, for the end panel: { tone, title, text }. campaign is
+// as it stands before the crew goes home (raid.js endRaid).
+export function raidOutcome(battle, campaign, rules) {
+  const after = `Heat falls to ${Math.min(campaign.heat, rules.balance.heatAfterRaid)}.`;
+  if (battle.winner === 'crew') return { tone: 'good', title: 'Raid beaten', text: `They back off, for now. ${after}` };
+  const loss = raidLoss(campaign, rules);
+  const took = loss?.part ? `They took the ${rules.modules.get(loss.part)?.name ?? loss.part}.` : loss?.credits ? `They took ${loss.credits} credits.` : 'There was nothing to take.';
+  return { tone: 'bad', title: 'Raid lost', text: `${took} ${after}` };
 }
 
 function fill(text, words) {

@@ -7,6 +7,9 @@ import { edgeKey, wallAt } from '../../sim/mapFromShip.js';
 export const WRECK_TEXT = { fire: 'on fire', vacuum: 'open to vacuum', rubble: 'full of rubble' };
 const SIDE_NAMES = { n: 'north', e: 'east', s: 'south', w: 'west' };
 const EDGE_TEXT = { wall: 'wall', hull: 'hull', door: 'door', hatch: 'hatch' };
+// A tile in no room: the hull, space, the hangar's deck, a site's rock or
+// ground.
+const TILE_TITLES = { hull: 'Hull', space: 'Space', deck: 'Hangar deck', rock: 'Rock' };
 
 // The name of the room a uid stands for, as its module is called.
 export function roomName(map, uid, defs) {
@@ -14,11 +17,13 @@ export function roomName(map, uid, defs) {
   return defs.modules.get(type)?.name ?? type;
 }
 
-// { title, lines } for tile (x, y).
+// { title, lines } for tile (x, y). On a job's site, an area walls close
+// off is no room: the tile is called what it is.
 export function tileText(map, x, y, defs, doors = []) {
   const uid = cellAt(map.roomAt, x, y);
   const kind = cellAt(map.tiles, x, y);
-  const title = uid === null ? (kind === 'hull' ? 'Hull' : 'Space') : roomName(map, uid, defs);
+  const room = uid !== null && map.rooms.some((r) => r.uid === uid);
+  const title = room ? roomName(map, uid, defs) : TILE_TITLES[kind] ?? `${kind.charAt(0).toUpperCase()}${kind.slice(1)}`;
   const lines = [`Tile (${x}, ${y}): ${kind}.`];
   if (uid !== null) {
     const edges = Object.entries(SIDE_NAMES)

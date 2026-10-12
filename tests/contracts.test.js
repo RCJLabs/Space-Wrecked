@@ -181,7 +181,10 @@ test('a job in words: the board card, the objective and the pay', () => {
     twist: { name: 'Rush job', text: 'Done by the end of round 6, or nobody gets paid.' },
     against: 'Recovery agent ×2, Hired heavy',
     pay: '35 credits + Engine',
+    heat: '+8 heat',
   });
+  assert.equal(jobText({ ...job, contract: 'jumpers', site: 'pit9', client: 'marta', twist: null }, rules).heat, '+15 heat, loud');
+  assert.equal(jobText(job, rules, ['agent']).against, 'Recovery agent ×3, Hired heavy', 'a hunter along');
   assert.equal(jobText({ ...job, site: 'yard', contract: 'scrap', client: 'dutch', twist: null }, rules).where, 'The Cable Street yard');
   assert.equal(jobText({ ...job, contract: 'payroll', site: 'pit9', client: 'marta', twist: 'overtime' }, rules).brief, "Work the terminal for 2 turns. It takes a crew member's whole turn, and it only counts once a round.");
   assert.equal(jobText({ ...job, contract: 'scrap', site: 'yard', client: 'dutch', twist: null }, rules).brief, "Grab 3 tagged crates. You have to stand right beside a crate to grab it, and the job's done when the last one's in hand.");
@@ -193,18 +196,23 @@ test('a job in words: the board card, the objective and the pay', () => {
   const cleared = createBattle(jobSetup(clear, rules, newCampaign(rules, 1).crew), rules).battle;
   assert.deepEqual(objectiveText(cleared, clear, rules), { title: 'Clear out', progress: '4 left standing', done: false, deadline: null });
   assert.equal(objectiveText(cleared, null, rules), null);
-  assert.deepEqual(jobOutcome({ ...battle, winner: 'crew' }, job, rules), { tone: 'good', title: 'Job done', text: 'Paid 35 credits + Engine.' });
-  assert.deepEqual(jobOutcome({ ...battle, winner: 'enemy' }, job, rules, [{ type: 'over', winner: 'enemy', reason: 'deadline' }]), { tone: 'bad', title: 'Job lost', text: 'Out of time: no pay.' });
-  assert.deepEqual(jobOutcome({ ...battle, winner: 'enemy' }, job, rules, []), { tone: 'bad', title: 'Job lost', text: 'The crew is down: no pay.' });
+  assert.deepEqual(jobOutcome({ ...battle, winner: 'crew' }, job, rules), { tone: 'good', title: 'Job done', text: 'Paid 35 credits + Engine. Heat +8.' });
+  assert.deepEqual(jobOutcome({ ...battle, winner: 'enemy' }, job, rules, [{ type: 'over', winner: 'enemy', reason: 'deadline' }]), { tone: 'bad', title: 'Job lost', text: 'Out of time: no pay. Heat +8.' });
+  assert.deepEqual(jobOutcome({ ...battle, winner: 'enemy' }, job, rules, []), { tone: 'bad', title: 'Job lost', text: 'The crew is down: no pay. Heat +8.' });
 });
 
-test('ten jobs in a row from a new campaign all play out, and the tool prints them', () => {
-  const lines = jobsInARow(rules, 1, 10);
+test('ten jobs in a row from a new campaign all play out, a raid too, and the tool prints them', () => {
+  const { lines, raids } = jobsInARow(rules, 1, 10);
   assert.equal(lines.filter((line) => /^\d+\. /.test(line)).length, 10);
-  assert.equal(lines.filter((line) => /^ {3}(Done|Lost) in round \d+/.test(line)).length, 10);
-  assert.match(lines.at(-1), /^After: \d+ credits; on hand: .*; \d+ done, \d+ lost\.$/);
+  assert.equal(lines.filter((line) => /^ {3}(Done|Lost) in round \d+.*\. Heat \d+, (calm|rumors|hunters|raid)\.$/.test(line)).length, 10);
+  assert.equal(lines.filter((line) => /^ {3}Raid at heat \d+: (held|lost.*) in round \d+\. Heat \d+\.$/.test(line)).length, raids);
+  assert.ok(raids > 0, 'ignoring heat, a raid came');
+  assert.match(lines.at(-1), /^After: \d+ credits; on hand: .*; \d+ done, \d+ lost; heat \d+, \d+ raids?(, and one at the door)?\.$/);
   const tool = fileURLToPath(new URL('../tools/jobs.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool, '--seed', '1'], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stderr);
   assert.equal(run.stdout, `${lines.join('\n')}\n`);
+  const managed = spawnSync(process.execPath, [tool, '--seed', '1', '--manage', '--count', '12'], { encoding: 'utf8' });
+  assert.equal(managed.stdout, `${jobsInARow(rules, 1, 12, { manage: true }).lines.join('\n')}\n`);
+  assert.match(managed.stdout, /A payment on the debt: heat \d+ to \d+/);
 });

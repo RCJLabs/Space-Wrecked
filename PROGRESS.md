@@ -2,6 +2,165 @@
 
 Newest entry first.
 
+## M15 Heat v1 and the hangar raid (2026-10-12)
+
+**Status:** done, and the ROADMAP.md box is ticked. After M14, Evan said "Start the next milestone now". He didn't say whether M14's phone tests ran.
+
+Done when: "ignoring heat brings a raid, and managing it avoids one."
+- **Twenty campaigns played both ways** (`tools/jobs.js`; `tests/heat.test.js` runs seeds 1 to 10 every time). The crew is played by the job player and the enemy by the AI.
+  - **Ignoring heat** (the board's first job every time, no payments): a raid comes after job 6 to 9 on every seed, and 1 or 2 raids in ten jobs. On 4 seeds another is at the door after the tenth.
+  - **Managing it** (the quietest job, and a payment whenever the next job would bring heat to the hunters): no raid in 12 jobs on any seed, heat never above 49, and 4 or 5 payments.
+- **In the browser**, by touch, at all three sizes:
+  - a payment keeps a job from bringing a raid (heat 64, paid down to 49, then 57 after the job);
+  - a job at heat 70 brings one (85: Defend takes the place of Jobs);
+  - the raid is fought on the hangar map to the end.
+- **Whether managing heat is a choice or a chore** is for the phone.
+
+### Shipped
+
+- **Heat** (`src/sim/heat.js`; the numbers in `data/balance.json`):
+  - A job adds 8 heat, done or lost, and a loud one 15. Loud is data: clear-outs (`loud` on the mission) and the fire twist (`loud` on the twist).
+  - Four levels, each with the pursuer's words for it in `data/backgrounds.json`: calm, rumors from 25, hunters from 50, raid from 75.
+  - From 50, a Recovery agent goes along on every job (the pursuer's `hunters`). The job board counts it.
+  - From 75, a raid is due at the hangar. No job can be taken until it has been faced, or heat paid back under 75.
+  - **A payment on the debt** (the pursuer's `payment`): 50 credits for 15 heat off, at the hangar. The flags count payments.
+- **The hangar map** (`src/sim/hangarMap.js`) is the ship's own map from `mapFromShip.js` standing on the hangar's deck, with 2 cells of deck around it. In the hangar an airlock's hatch is just a door. The hangar's doors are along the west edge, behind the ship's stern, where the raiders come in.
+- **The raid** (`src/sim/raid.js`): the whole crew on the bridge, against the pursuer's raiders at the hangar's doors (`raid` in `data/encounters.json`: two Recovery agents, a hired heavy and a company guard).
+  - Afterwards heat falls to 40, won or lost.
+  - Lost, the raiders take the dearest part on hand, or with none, half the credits. Never a part off the ship.
+- **Raiders press on** (`src/sim/press.js`). With an enemy in sight, a raider plays as the AI does. Otherwise it walks toward the crew and opens the doors in its way, so a raid can't stall at a door. Only a battle with `options.press` uses it, so boarding fights are unchanged. The job test player (`src/sim/jobAi.js`) is now built on it.
+- **`SAVE_VERSION` 6:** a fight says whether it is the raid (`raid`). The migration from 5 marks a fight in progress as no raid: it was a job or a fight at home.
+- **Screens:**
+  - **The hangar:**
+    - a heat meter by the act, with the level and marks at 25, 50 and 75;
+    - Pay 50: a tap shows the price and what it buys, a second pays;
+    - from rumors on, the pursuer's words in the hint.
+
+    With a raid due, Defend takes the place of Jobs, and the hint says so. The holdings lost their Heat row, since the meter shows it.
+  - **The job board:** each job's heat ("+15 heat, loud") on its card and in its facts. From 50, Against counts the Recovery agent. While a raid is due, Take the job is off.
+  - **A job's end panel** adds the heat.
+  - **The raid:**
+    - "Raid · 4 raiders left" under the round;
+    - the hangar's deck around the ship, with a hazard stripe along its doors;
+    - the end panel says what the raid cost and where heat falls to.
+  - **The title's Continue:** "The raid, round 2".
+  - **The tile card** names a tile outside the rooms by what it is: hangar deck, rock, floor. On M14's sites it said "Space".
+- **Tools:**
+  - `tools/jobs.js` prints each job's heat, the payments and the raids, and `--manage` plays the managing way.
+  - The validator checks:
+    - the heat numbers: thresholds rising, and heat after a raid under the raid's;
+    - the pursuer's levels, hunters, raiders and payment;
+    - `loud` flags.
+- **Tests:** 433 in all, up from 414:
+  - heat (`tests/heat.test.js`), with the Done when over seeds 1 to 10;
+  - the raid (`tests/raid.test.js`): the hangar map, pressing on, the raid's start and end, quitting mid-raid, the v5 to v6 migration, and the words;
+  - the validator's new mistakes.
+- **Golden files:** none changed.
+
+### Decisions made this session
+
+Evan didn't weigh in on any of these:
+- **A payment is act 1's way to shed heat:** 50 credits for 15, any time at the hangar. §4.4's other losses (long jumps, transponders, bribes) belong to act 2. Credits now have a use before the shop, and M16 has to price parts against it.
+- **Loud jobs** are the clear-outs and the fire twist.
+- **The thresholds are §4.4's:**
+  - rumors at 25 change only the words in act 1;
+  - hunters at 50 put a Recovery agent on every job;
+  - 75 brings the raid.
+
+  100's forced confrontation isn't in act 1: the raid comes first.
+- **The raid waits for the player.** At 75 it's due and blocks jobs, and the player picks when to Defend, or pays heat back down. It never starts on its own.
+- **Four raiders.** In early runs, three were easy on the start ship and five too many on the example ship. The odds below are for four, as built.
+- **A lost raid costs what the raiders can carry:** the dearest part on hand, or half the credits. Never a part off the ship, so a raid can't undo the build.
+- **Heat falls to 40 after any raid,** won or lost. Ignored, the next raid comes about 5 jobs later.
+- **Raiders press on; boarders don't.** Pressing is for raids only. The boarding AI is untouched: `tools/sim.js` gives M11's numbers exactly.
+- **Where everyone starts:** the crew on the bridge, the raiders at the hangar's west doors. The player doesn't choose where the crew stands.
+
+### Verified here
+
+- `node --test`: 433 pass. `node tools/validate-data.js`: OK.
+- **`node tools/sim.js`:** `balance.json` gained six heat numbers, and no number a fight uses changed. The summary is M11's, unchanged:
+
+  ```
+  Ship             Fights    Crew wins  Boarders win  No winner    Rounds  Crew orders
+  Example ship        250  64% (58–70)           36%         0%   7 (5–9)           29
+  Pirate cutter       250  44% (38–51)           32%        24%  7 (5–11)           28
+  Patrol corvette     250  41% (35–47)           50%         9%  8 (5–13)           28
+  Derelict hauler     250  48% (41–54)           47%         5%  7 (4–11)           27
+  All               1,000  49% (46–52)           41%        10%  7 (5–11)           28
+  Shots: 23,504, 23.5 a fight. Hit: crew 57%, boarders 40%.
+  ```
+- **M15's check** (scratchpad `m15/verify.mjs`), by touch at 905 × 370, 821 × 283 and 960 × 825: 30 of 30 at each size.
+  - **Heat at the hangar:** the meter and the pursuer's line; every button 48 px or more.
+  - **Pay:**
+    - a first tap shows the price and pays nothing;
+    - the second pays: heat 64 to 49, credits 200 to 150;
+    - with 30 credits, Pay is off.
+  - **Under 50:**
+    - each job's heat is on the board;
+    - no agent tags along;
+    - the end panel says the heat;
+    - heat is 57 after the job, with no raid: Jobs, not Defend.
+  - **At 70:**
+    - the job card counts the agent, and the agent is in the fight;
+    - heat is 85 after it, Defend takes the place of Jobs, the hint says why, and the meter reads "Heat 85 · Raid".
+  - **The raid:**
+    - Defend starts it on the hangar map, with the raiders pressing on;
+    - the line under the round counts them;
+    - quit mid-raid: Continue says "The raid, round 2", and reopening finds the raid as it was;
+    - the raid is held in round 7, and the end panel says so;
+    - home, heat is 40, and Jobs is back.
+  - **Offline**, the game reopens at the hangar, heat and all.
+  - **No console errors or warnings.**
+- **Raid odds** (scratchpad `m15/raidodds.mjs`): the crew played by the AI, at full health, against the four raiders pressing on, 60 seeds a ship:
+
+  | Ship | Crew wins | Rounds (median, range) |
+  | --- | --- | --- |
+  | Start ship with quarters and life support fitted | 22 of 60 | 6 (3–16) |
+  | The same with an engine | 39 of 60 | 7 (4–33) |
+  | Example ship | 11 of 60 (1 reached 60 rounds) | 7 (3–22) |
+
+  A crew that rushes the raiders instead won 4 to 7 of 60 on each.
+- **Regressions:**
+  - **M14's check:** 38 of 39, 39 of 40 and 40 of 41 at the three sizes. Each time the one miss was its first check, which asked for a v5 save. With that check taking v5 or later, it passes 40 of 40 at 905 × 370. The count varies with how the played jobs go.
+  - **M14's saves check:** 10 of 10 at 905 × 370. These are v4 saves as M13 wrote them, now migrated through v5 to v6.
+  - **M13's check:** 24 of 24 at 905 × 370.
+  - **M8's fight sandbox checks:** the fight, the orders column at all three sizes, and the extras all pass, with no console errors.
+  - **M15's check after the last change** (the holdings' Heat row gone): 30 of 30 at 905 × 370.
+
+### Known issues
+
+- **Raid odds swing with the layout:** 11 to 39 of 60 for the AI crew (above). On a ship laid out like the example ship, the AI crew loses most raids. A person holding the bridge on overwatch should do better than the AI. Check it on the phone. The candidates are in ROADMAP §8.
+- **The hangar is a plate on the starfield,** with a hazard stripe where its doors would be. No walls or doors are drawn (parked).
+- **Heat never falls on its own in act 1.** Only payments and raids lower it.
+- **The price of a payment** (50 credits for 15) is a starting value. M16 has to set it against the shop's prices.
+- **Boarders still don't attack a crew that holds the bridge** (M12). The fight at home against boarders has had no button since M14, and the raid replaces it.
+- **On the 283 px browser tab, the hangar's holdings scroll,** as they have since M13. Jobs is below the fold there.
+- **Labels overlap** for units side by side, as before.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Ignore heat** (the Done when): New game, then take jobs without paying.
+   - The meter should climb 8 a job, or 15 for a clear-out or a fire.
+   - From 50, a Recovery agent should show up on the job cards.
+   - From 75, Defend should take the place of Jobs.
+2. **Defend:**
+   - fight the raid on the hangar map;
+   - quit mid-raid and reopen;
+   - after it, heat should be 40, and if you lost, the end panel says what they took.
+3. **Manage heat:** in another game, pay whenever the meter nears 50. No raid should come, and no agent should tag along.
+4. **Pay:** the first tap shows the price, the second pays. With under 50 credits, it's off.
+5. **Tell me:**
+   - whether managing heat feels like a choice or a chore;
+   - whether a raid is too hard or too easy on your ship, and whether four raiders is right;
+   - whether 50 credits for 15 heat is the right price;
+   - and M14's questions: varied jobs, the tone, clear-outs, the pay.
+
+### Next session
+
+**M16 Shop and economy v1.** Done when: "a test run reaches launch in under an hour."
+
+First task: the shop's stock and prices as data, and buying a part in the sim (credits for a part on hand), tested before any screen. Payments now spend credits too, so price parts with them in mind.
+
 ## M14 Background, district and jobs (2026-10-12)
 
 **Status:** done, and the ROADMAP.md box is ticked. Before it, Evan made two calls: the tone is wry and blue-collar, and in act 1 the crew heals fully at the hangar. He didn't say whether M13's phone tests ran.

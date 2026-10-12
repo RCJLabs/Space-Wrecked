@@ -24,13 +24,14 @@
 //   board    the jobs on offer at the hub (contracts.js), or [] until one
 //            is rolled
 //   fight    null, or the fight on now: { encounter, seed, crew, battle,
-//            log, job }. crew is who fights, by id, in the battle's order
-//            (c1, c2...). battle and log are the fight as it stands
+//            log, job, raid }. crew is who fights, by id, in the battle's
+//            order (c1, c2...). battle and log are the fight as it stands
 //            (battle.js, fight.js), saved after every order: the start of
 //            each of the crew's turns is saved, and so is every order in
-//            between. job is the job it is, off the board, or null for a
-//            fight at home: the crew against boarders on its own ship,
-//            which stands in for M15's raids.
+//            between. job is the job it is, off the board (contracts.js),
+//            or null. raid is true for the pursuer's raid on the hangar
+//            (raid.js). Neither is a fight at home against boarders
+//            (beginFight), which no screen starts any more.
 import { int, isState } from '../core/rng.js';
 import { battleProblem } from './battleShape.js';
 import { createBattle } from './battle.js';
@@ -143,7 +144,7 @@ export function beginFight(campaign, rules) {
     return member ? { ...unit, name: member.name, hp: Math.min(member.hp, maxHp(member, rules)) } : unit;
   });
   const { battle, events } = createBattle({ map, units, seed }, rules);
-  const fight = { encounter: FIGHT_ENCOUNTER, seed, crew: campaign.crew.map((member) => member.id), battle, log: events, job: null };
+  const fight = { encounter: FIGHT_ENCOUNTER, seed, crew: campaign.crew.map((member) => member.id), battle, log: events, job: null, raid: false };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };
 }
 
@@ -216,6 +217,7 @@ function fightProblem(fight, crew) {
     return "names crew who aren't aboard";
   }
   if (fight.job !== null && !isJob(fight.job)) return 'has an unreadable job';
+  if (typeof fight.raid !== 'boolean' || (fight.raid && fight.job !== null)) return 'is unreadable';
   const battle = battleProblem(fight.battle);
   if (battle) return battle;
   if (fight.battle.units.filter((unit) => unit.side === 'crew').length !== fight.crew.length) return "doesn't match its crew";

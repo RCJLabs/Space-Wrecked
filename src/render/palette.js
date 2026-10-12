@@ -89,6 +89,8 @@ export const skins = {
     // Inside, on a battle map.
     floors: ['#28344e', '#2c3955', '#253048', '#2f3c59'],
     floorSeam: '#18202f',
+    // The hangar's deck around the ship, in a raid (hangarMap.js).
+    deck: '#30363f',
     wall: '#6a7da3',
     door: '#e3b341',
     doorLight: '#ffe39a',

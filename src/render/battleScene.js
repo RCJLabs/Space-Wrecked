@@ -5,7 +5,8 @@
 // lockers for full cover, machinery, consoles, the airlock's pad). Wrecked
 // rooms burn, frost over or fill with rubble. An open door has slid down
 // into the deck. A job's site (src/sim/gen/site.js) is drawn the same way
-// in the ground skin, with rock standing in lumps. Pure: map in, { faces,
+// in the ground skin, with rock standing in lumps; in a raid, the hangar's
+// deck lies around the ship (hangarMap.js), painted at its doors. Pure: map in, { faces,
 // glows } out (solid.js faces, mesh.js glows), in the manufacturer's skin.
 // Units are tiles, z up.
 import { cellAt } from '../sim/grid.js';
@@ -39,6 +40,12 @@ export function battleScene({ map, skin, open = [] }) {
       if (kind === 'space') continue;
       if (kind === 'rock') {
         rock(faces, x, y, skin);
+        continue;
+      }
+      if (kind === 'deck') {
+        plate(faces, [x, y], [x + 1, y + 1], 0, skin.deck ?? skin.floors[0], { edge: skin.floorSeam });
+        // The line the hangar's doors close on, on the west edge.
+        if (x === 0) plate(faces, [x + 0.08, y], [x + 0.26, y + 1], 0.002, skin.hazard);
         continue;
       }
       if (uid === null) {

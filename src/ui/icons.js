@@ -34,4 +34,5 @@ export const icons = {
   home: icon('<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5.5h4V20"/>'),
   leave: icon('<path d="M10 4H5v16h5"/><path d="M9 12h11"/><path d="m16 8 4 4-4 4"/>'),
   jobs: icon('<rect x="5" y="4" width="14" height="17" rx="1.5"/><path d="M9 4V2.8h6V4"/><path d="M9 10h6M9 14h6M9 18h3"/>'),
+  pay: icon('<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v5M17.5 9.5v5"/>'),
 };

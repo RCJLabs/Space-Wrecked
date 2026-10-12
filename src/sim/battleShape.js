@@ -40,7 +40,8 @@ function isOptions(options) {
   return (
     isRecord(options) && typeof options.forgiving === 'boolean' && typeof options.permadeath === 'boolean' &&
     (options.sight === undefined || isInt(options.sight, 1, MAX_TILES)) &&
-    (options.deadline === undefined || isInt(options.deadline, 1, MAX))
+    (options.deadline === undefined || isInt(options.deadline, 1, MAX)) &&
+    (options.press === undefined || typeof options.press === 'boolean')
   );
 }
 
@@ -61,8 +62,10 @@ function isObjective(objective, map) {
 
 function isMap(map) {
   if (!isRecord(map) || !isInt(map.width, 1, MAX_TILES) || !isInt(map.height, 1, MAX_TILES) || !isInt(map.tilesPerCell, 1, 8)) return false;
-  // A job's site has no space around it, and its template's id.
+  // A job's site has no space around it, and its template's id; the
+  // hangar has no space around it either.
   if ((map.margin !== undefined && !isInt(map.margin, 0, MAX_TILES)) || (map.site !== undefined && typeof map.site !== 'string')) return false;
+  if (map.hangar !== undefined && typeof map.hangar !== 'boolean') return false;
   if (!Array.isArray(map.origin) || map.origin.length !== 2 || !map.origin.every(Number.isInteger)) return false;
   const fits = (grid, ok) =>
     isRecord(grid) && grid.width === map.width && grid.height === map.height &&

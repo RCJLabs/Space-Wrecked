@@ -8,6 +8,7 @@
     "console": { "cover": "half" },
     "space": {},
     "hull": { "cover": "full", "blocksSight": true },
-    "rock": { "cover": "full", "blocksSight": true }
+    "rock": { "cover": "full", "blocksSight": true },
+    "deck": { "walk": true }
   }
 }

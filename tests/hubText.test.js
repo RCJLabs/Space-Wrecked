@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { applyCommand } from '../src/sim/builder.js';
 import { beginFight, newCampaign, refitShip } from '../src/sim/campaign.js';
 import { takeJob, withBoard } from '../src/sim/contracts.js';
+import { initialState, reduce } from '../src/sim/root.js';
 import { continueText, hangarText, jobsText, partsText } from '../src/ui/campaign/hubText.js';
 import { rules } from './battleKit.js';
 
@@ -28,7 +29,8 @@ test('the hangar shows the act, its goal with what is on hand, the crew and the 
     { name: 'Ada', job: 'Engineer', hp: 8, max: 8 },
     { name: 'Medic', job: '', hp: 8, max: 8 },
   ]);
-  assert.deepEqual(text.holdings, [['Credits', '1,250'], ['Heat', '0 of 100'], ['Parts on hand', 'Crew quarters, Life support, Corridor ×2'], ['Jobs', 'None yet']]);
+  // Heat has its own meter (text.heat), by the act.
+  assert.deepEqual(text.holdings, [['Credits', '1,250'], ['Parts on hand', 'Crew quarters, Life support, Corridor ×2'], ['Jobs', 'None yet']]);
   assert.equal(text.build, true);
   assert.deepEqual(text.hint, { tone: 'good', text: 'Your ship is half built. Tap Build to fit the parts on hand.' });
 });
@@ -70,4 +72,31 @@ test("Continue says where the campaign is, with or without the content loaded", 
   assert.equal(continueText(onJob, null), 'Act 1 · On a job, round 1');
   const jobOver = { ...onJob, fight: { ...onJob.fight, battle: { ...onJob.fight.battle, winner: 'enemy' } } };
   assert.equal(continueText(jobOver, rules), 'Act 1 · A job just ended');
+});
+
+test('the hangar shows heat by its level, the payment, and a raid at the door', () => {
+  const campaign = { ...newCampaign(rules, 77), credits: 120 };
+  const calm = hangarText(campaign, rules);
+  assert.deepEqual([calm.heat.value, calm.heat.level, calm.heat.name, calm.heat.marks], [0, 'calm', 'Calm', [25, 50, 75]]);
+  assert.equal(calm.heat.line, "Con-Reg has other debtors to worry about. For now.");
+  assert.deepEqual([calm.heat.payment.label, calm.heat.payment.ask, calm.heat.payment.ok, calm.heat.payment.why], ['Pay 50', 'Pay 50?', false, 'There is no heat to pay off.']);
+  assert.equal(calm.raid, null);
+  const hunted = hangarText({ ...campaign, heat: 55, parts: {} }, rules);
+  assert.deepEqual([hunted.heat.level, hunted.heat.payment.ok], ['hunters', true]);
+  assert.deepEqual(hunted.hint, { tone: 'warn', text: 'A Recovery agent tails the crew to every job. A payment buys some heat off.' });
+  const raided = hangarText({ ...campaign, heat: 80 }, rules);
+  assert.deepEqual(raided.raid, { line: 'Con-Reg Recovery is at the hangar door with a court order and a lot of friends.', ok: true, why: null });
+  assert.deepEqual(raided.hint, { tone: 'bad', text: 'Con-Reg Recovery is at the hangar door with a court order and a lot of friends. Defend the ship, or pay heat down under 75.' });
+  const airlock = campaign.ship.modules.find((m) => m.type === 'airlock');
+  const sealed = hangarText({ ...campaign, heat: 80, ship: { ...campaign.ship, modules: campaign.ship.modules.filter((m) => m !== airlock) } }, rules);
+  assert.equal(sealed.raid.ok, false);
+  assert.match(sealed.hint.text, /won't cut through the hull\. Put an airlock on it, then face them\.$/);
+});
+
+test('Continue names a raid', () => {
+  const raiding = { ...newCampaign(rules, 77), heat: 80 };
+  const begun = reduce({ ...initialState(1), campaign: raiding }, { type: 'campaign/raid/begin', rules }).campaign;
+  assert.equal(continueText(begun, rules), 'Act 1 · The raid, round 1');
+  const over = { ...begun, fight: { ...begun.fight, battle: { ...begun.fight.battle, winner: 'enemy' } } };
+  assert.equal(continueText(over, null), 'Act 1 · The raid just ended');
 });

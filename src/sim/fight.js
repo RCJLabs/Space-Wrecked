@@ -12,8 +12,9 @@
 //   part (odds.js). Only a second tap on that enemy, or Fire, takes it.
 // - A tap on another crew member selects them instead.
 // Every action goes through battle.js. When the crew's turn ends, the
-// enemy's whole turn is played at once by the enemy AI (ai.js), up to the
-// crew's next turn or the end of the battle. What a dispatch played is kept in `played`, for the screen to
+// enemy's whole turn is played at once by the enemy AI (ai.js), pressing
+// on where the battle says so (press.js), up to the crew's next turn or the
+// end of the battle. What a dispatch played is kept in `played`, for the screen to
 // show it happening.
 //
 // A fight:
@@ -47,6 +48,7 @@ import { act, targetsFor } from './battle.js';
 import { SIDES } from './grid.js';
 import { edgeKey, wallAt } from './mapFromShip.js';
 import { reachable } from './moves.js';
+import { pressAction } from './press.js';
 import { inReach, walkable } from './terrain.js';
 
 // More actions than any side's turn can take: a guard, should the enemy
@@ -211,8 +213,11 @@ function play(fight, action, rules) {
   if (!first.ok) return withNotice({ ...fight, preview: null }, 'bad', first.error);
   const played = [{ action, events: first.events, battle: first.battle }];
   let { battle } = first;
+  // The enemy plays as the AI, or presses on where the battle says so (a
+  // raid's raiders, press.js).
+  const enemy = battle.options.press ? pressAction : aiAction;
   while (battle.side === 'enemy' && !battle.winner) {
-    let next = played.length > MAX_TURN_ACTIONS ? { type: 'end' } : aiAction(battle, rules);
+    let next = played.length > MAX_TURN_ACTIONS ? { type: 'end' } : enemy(battle, rules);
     let result = act(battle, next, rules);
     if (!result.ok) {
       next = { type: 'end' };

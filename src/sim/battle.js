@@ -19,11 +19,12 @@
 //   round    from 1; a round is both sides' turns
 //   rng      the RNG state
 //   misses   { crew, enemy }: shots missed in a row (forgiving odds)
-//   options  { forgiving, permadeath, sight?, deadline? }. sight, where a
-//            job's twist sets it, is how far anyone sees, in tiles, in
-//            place of balance.sightRange. deadline is the last round the
+//   options  { forgiving, permadeath, sight?, deadline?, press? }. sight,
+//            where a job's twist sets it, is how far anyone sees, in tiles,
+//            in place of balance.sightRange. deadline is the last round the
 //            crew has: if it hasn't won by the end of its turn then, it has
-//            lost.
+//            lost. press: the enemy presses on (press.js), as a raid's
+//            raiders do, rather than playing as the AI alone.
 //   objective  null, or what the crew came for besides the fight (a job's
 //            mission, contracts.js); once it is done, the crew has won:
 //              { type: 'grab', crates: [[x, y]...], taken: [[x, y]...] }
