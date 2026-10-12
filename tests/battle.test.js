@@ -43,6 +43,15 @@ test('a battle refuses a bad setup', () => {
   assert.throws(() => fight(map, [{ kind: 'wizard', x: 0, y: 0 }]), /no job or enemy "wizard"/);
   assert.throws(() => fight(map, [{ kind: 'marine', x: 2, y: 0 }]), /can't stand at \(2, 0\)/);
   assert.throws(() => fight(map, [{ kind: 'marine', x: 0, y: 0 }, { kind: 'pirate', x: 0, y: 0 }]), /two units at \(0, 0\)/);
+  for (const hp of [0, 11, 2.5]) {
+    assert.throws(() => fight(map, [{ kind: 'marine', x: 0, y: 0, hp }]), /Marine can't start with .* hit points \(1 to 10\)/, `hp ${hp}`);
+  }
+});
+
+test('a wounded unit starts with the hit points it has left, out of its usual', () => {
+  const { battle } = fight(openMap(9, 3), [{ kind: 'marine', x: 0, y: 1, hp: 3 }, { kind: 'pirate', x: 8, y: 1 }]);
+  assert.deepEqual([who(battle, 'c1').hp, who(battle, 'c1').maxHp], [3, 10]);
+  assert.deepEqual([who(battle, 'e1').hp, who(battle, 'e1').maxHp], [rules.enemies.get('pirate').hp, rules.enemies.get('pirate').hp]);
 });
 
 test('a move costs one action within the mobility, and both for a dash', () => {

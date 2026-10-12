@@ -1,0 +1,300 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { makeSave, parseSave } from '../src/core/save.js';
+import { act } from '../src/sim/battle.js';
+import { aiAction } from '../src/sim/ai.js';
+import { buildShip, layoutProblems } from '../src/sim/builder.js';
+import { actOf, beginFight, campaignProblems, endFight, maxHp, newCampaign, saveFight } from '../src/sim/campaign.js';
+import { createFight, reduceFight } from '../src/sim/fight.js';
+import { initialState, PLACE_SCREENS, reduce, saveData } from '../src/sim/root.js';
+import { scriptedAction } from '../src/sim/scripted.js';
+import { ordersOf, rules } from './battleKit.js';
+
+function deepFreeze(value) {
+  if (value && typeof value === 'object') {
+    for (const v of Object.values(value)) deepFreeze(v);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+// A game with a new campaign at the hub.
+const started = (seed) => reduce(initialState(seed), { type: 'campaign/new', rules });
+
+// Quitting: what main.js writes after the last change. Reopening: a fresh
+// game reads it back, as main.js does on launch, and Continue is tapped.
+function quitAndReopen(state) {
+  const loaded = parseSave(JSON.stringify(makeSave(saveData(state))));
+  assert.ok(loaded.ok, loaded.error);
+  const fresh = reduce(initialState(12345), { type: 'save/restore', data: loaded.save.data });
+  assert.equal(fresh.screen, 'title');
+  return reduce(fresh, { type: 'campaign/continue' });
+}
+
+// What the campaign's Fight screen does: orders go to the fight, and every
+// order that changes the battle is saved to the campaign.
+function order(state, fight, action) {
+  const next = reduceFight(fight, action, rules);
+  const saved = next.battle === fight.battle ? state : reduce(state, { type: 'campaign/fight/save', battle: next.battle, log: next.log });
+  return { state: saved, fight: next };
+}
+
+const fightOf = (state) => createFight(state.campaign.fight.battle, rules, state.campaign.fight.log);
+
+test('a new campaign starts in act 1 at the hangar, with the start in data/campaign.json', () => {
+  const campaign = newCampaign(rules, 77);
+  const { ship } = buildShip(rules, rules.start.ship.frame, rules.start.ship.placements);
+  assert.deepEqual(campaign, {
+    seed: 77,
+    rng: 77,
+    act: 1,
+    place: 'hub',
+    credits: 0,
+    parts: {},
+    crew: [
+      { id: 1, name: 'Marine', job: 'marine', hp: 10 },
+      { id: 2, name: 'Engineer', job: 'engineer', hp: 8 },
+      { id: 3, name: 'Medic', job: 'medic', hp: 8 },
+    ],
+    heat: 0,
+    flags: {},
+    ship,
+    fight: null,
+  });
+  assert.deepEqual(actOf(campaign, rules), { act: 1, name: 'Homeworld', hub: 'hangar', home: 'The hangar' });
+  assert.deepEqual(layoutProblems(campaign.ship, rules), [], 'the half-built ship breaks no layout rule');
+  assert.deepEqual(campaignProblems(campaign), []);
+  assert.deepEqual(newCampaign(rules, 77), campaign, 'the same seed, the same campaign');
+});
+
+test("a new campaign's seed is the game's next roll, and the game goes to the hub", () => {
+  const state = deepFreeze(initialState(5));
+  const first = reduce(state, { type: 'campaign/new', rules });
+  assert.equal(first.screen, 'hub');
+  assert.notEqual(first.rng, state.rng);
+  assert.equal(first.campaign.seed, first.campaign.rng);
+  assert.deepEqual(reduce(state, { type: 'campaign/new', rules }), first, 'the same game state, the same campaign');
+  const second = reduce(first, { type: 'campaign/new', rules });
+  assert.notEqual(second.campaign.seed, first.campaign.seed, 'starting over rolls a new one');
+});
+
+test('a fight puts the whole crew against the boarders on the ship, seeded by the campaign', () => {
+  const campaign = deepFreeze(newCampaign(rules, 77));
+  const begun = beginFight(campaign, rules);
+  assert.ok(begun.ok, begun.error);
+  const { fight, rng, place } = begun.campaign;
+  assert.equal(place, 'fight');
+  assert.notEqual(rng, campaign.rng, 'the seed is a roll');
+  assert.deepEqual(fight.crew, [1, 2, 3]);
+  assert.equal(fight.encounter, 'boarders');
+  const crew = fight.battle.units.filter((u) => u.side === 'crew');
+  assert.deepEqual(crew.map((u) => [u.id, u.name, u.kind, u.hp]), [['c1', 'Marine', 'marine', 10], ['c2', 'Engineer', 'engineer', 8], ['c3', 'Medic', 'medic', 8]]);
+  assert.deepEqual(fight.battle.units.filter((u) => u.side === 'enemy').map((u) => u.kind), rules.encounters.get('boarders').enemies);
+  assert.deepEqual(fight.log, [{ type: 'turn', side: 'crew', round: 1 }]);
+  assert.deepEqual(campaignProblems(begun.campaign), []);
+  // Reloading never rerolls: the same campaign begins the same fight.
+  assert.deepEqual(beginFight(structuredClone(campaign), rules), begun);
+});
+
+test('wounds carry into the next fight, up to the job\'s hit points', () => {
+  const campaign = newCampaign(rules, 77);
+  const wounded = { ...campaign, crew: [{ ...campaign.crew[0], hp: 3 }, { ...campaign.crew[1], hp: 50 }, campaign.crew[2]] };
+  const crew = beginFight(wounded, rules).campaign.fight.battle.units.filter((u) => u.side === 'crew');
+  assert.deepEqual(crew.map((u) => [u.hp, u.maxHp]), [[3, 10], [8, 8], [8, 8]]);
+  assert.equal(maxHp(wounded.crew[0], rules), 10);
+});
+
+test("a fight that can't start says why", () => {
+  const campaign = newCampaign(rules, 77);
+  const on = beginFight(campaign, rules).campaign;
+  assert.deepEqual(beginFight(on, rules), { ok: false, error: 'A fight is on already.' });
+  assert.deepEqual(beginFight({ ...campaign, crew: [] }, rules), { ok: false, error: 'There is no one aboard to fight.' });
+  assert.deepEqual(beginFight({ ...campaign, crew: [{ ...campaign.crew[0], job: 'pilot' }] }, rules), { ok: false, error: 'Marine\'s job "pilot" is unknown.' });
+  assert.deepEqual(beginFight({ ...campaign, ship: { ...campaign.ship, modules: [] } }, rules), { ok: false, error: 'The ship has no parts yet.' });
+  const sealed = { ...campaign.ship, modules: campaign.ship.modules.filter((m) => m.type !== 'airlock') };
+  assert.match(beginFight({ ...campaign, ship: sealed }, rules).error, /Boarders need a way in/);
+  // The root reducer leaves the game as it was.
+  const state = deepFreeze({ ...started(1), campaign: { ...started(1).campaign, ship: sealed } });
+  assert.equal(reduce(state, { type: 'campaign/fight/begin', rules }), state);
+});
+
+test('a fight is saved after every order, and only while one is on', () => {
+  const campaign = beginFight(newCampaign(rules, 77), rules).campaign;
+  const { battle } = act(campaign.fight.battle, { type: 'end' }, rules);
+  const log = [...campaign.fight.log, { type: 'turn', side: 'enemy', round: 1 }];
+  const saved = saveFight(campaign, battle, log);
+  assert.equal(saved.fight.battle, battle);
+  assert.equal(saved.fight.log, log);
+  assert.equal(saved.fight.seed, campaign.fight.seed);
+  assert.equal(saveFight(saved, battle, log), saved, 'the same fight changes nothing');
+  const atHub = newCampaign(rules, 77);
+  assert.equal(saveFight(atHub, battle, log), atHub, 'no fight on: nothing to save');
+});
+
+test('after a fight: wounds stay, the fallen come back hurt, the dead leave, and the flags count it', () => {
+  const campaign = beginFight(newCampaign(rules, 77), rules).campaign;
+  const units = campaign.fight.battle.units.map((u) => {
+    if (u.id === 'c1') return { ...u, hp: 4 };
+    if (u.id === 'c2') return { ...u, hp: 0, status: 'out' };
+    if (u.id === 'c3') return { ...u, hp: 0, status: 'stable' };
+    return { ...u, hp: 0, status: 'dead' };
+  });
+  const won = { ...campaign, fight: { ...campaign.fight, battle: { ...campaign.fight.battle, units, winner: 'crew' } } };
+  const after = endFight(won);
+  assert.equal(after.place, 'hub');
+  assert.equal(after.fight, null);
+  assert.deepEqual(after.crew.map((m) => [m.name, m.hp]), [['Marine', 4], ['Engineer', 1], ['Medic', 1]]);
+  assert.deepEqual(after.flags, { fightsWon: 1 });
+  assert.deepEqual(campaignProblems(after), []);
+
+  const killed = units.map((u) => (u.id === 'c2' ? { ...u, status: 'dead' } : u));
+  const lost = endFight({ ...won, flags: { fightsLost: 2 }, fight: { ...won.fight, battle: { ...won.fight.battle, units: killed, winner: 'enemy' } } });
+  assert.deepEqual(lost.crew.map((m) => m.name), ['Marine', 'Medic'], 'killed where death is permanent');
+  assert.deepEqual(lost.flags, { fightsLost: 3 });
+
+  assert.equal(endFight(campaign), campaign, 'a fight still going is left alone');
+  const atHub = newCampaign(rules, 77);
+  assert.equal(endFight(atHub), atHub);
+});
+
+test('the screens follow the campaign: hub, fight and back', () => {
+  let state = started(3);
+  assert.equal(state.screen, PLACE_SCREENS.hub);
+  state = reduce(state, { type: 'screen/show', screen: 'title' });
+  state = reduce(state, { type: 'campaign/continue' });
+  assert.equal(state.screen, 'hub');
+  state = reduce(state, { type: 'campaign/fight/begin', rules });
+  assert.equal(state.screen, 'campaign-fight');
+  assert.equal(reduce(state, { type: 'campaign/fight/end' }), state, 'not over yet');
+  const over = { ...state.campaign.fight.battle, winner: 'crew' };
+  state = reduce(state, { type: 'campaign/fight/save', battle: over, log: state.campaign.fight.log });
+  state = reduce(state, { type: 'campaign/fight/end' });
+  assert.equal(state.screen, 'hub');
+  assert.equal(state.campaign.place, 'hub');
+  // With no campaign, Continue and the campaign's actions do nothing.
+  const none = deepFreeze(initialState(1));
+  for (const type of ['campaign/continue', 'campaign/fight/begin', 'campaign/fight/save', 'campaign/fight/end']) {
+    assert.equal(reduce(none, { type, rules, battle: over, log: [] }), none, type);
+  }
+});
+
+// The milestone's Done when: quitting anywhere and reopening resumes
+// correctly. The game is quit after every change a player can make, from
+// the new campaign through a whole fight and back to the hub, and reopened:
+// it is where it was, and it plays on exactly as it would have.
+test('quitting anywhere and reopening resumes where the player was', () => {
+  for (const seed of [2, 1]) {
+    let state = started(seed);
+    let reopened = quitAndReopen(state);
+    assert.equal(reopened.screen, 'hub');
+    assert.deepEqual(saveData(reopened), saveData(state), 'at the hub');
+
+    state = reduce(state, { type: 'campaign/fight/begin', rules });
+    assert.deepEqual(reduce(reopened, { type: 'campaign/fight/begin', rules }).campaign, state.campaign, 'the fight a reopened hub begins is the same');
+    let fight = fightOf(state);
+    let checked = 0;
+    while (!fight.battle.winner) {
+      assert.ok(fight.battle.round <= 30, 'the fight ends');
+      for (const action of ordersOf(scriptedAction(fight.battle, rules))) {
+        const before = state;
+        ({ state, fight } = order(state, fight, action));
+        if (state === before) continue;
+        reopened = quitAndReopen(state);
+        assert.equal(reopened.screen, 'campaign-fight');
+        assert.deepEqual(saveData(reopened), saveData(state), `seed ${seed}, round ${fight.battle.round}`);
+        assert.deepEqual(fightOf(reopened).battle, fight.battle);
+        // Now and then, play the rest of the fight from the reopened game
+        // too: it ends the same way, roll for roll.
+        if (checked++ % 6 === 0) assert.deepEqual(playOut(reopened), playOut(state));
+      }
+    }
+    assert.equal(quitAndReopen(state).screen, 'campaign-fight', 'the end of the fight, before going back');
+
+    const fought = state.campaign.fight.battle;
+    state = reduce(state, { type: 'campaign/fight/end' });
+    reopened = quitAndReopen(state);
+    assert.equal(reopened.screen, 'hub');
+    assert.deepEqual(saveData(reopened), saveData(state), 'back at the hub');
+    const flag = fought.winner === 'crew' ? 'fightsWon' : 'fightsLost';
+    assert.equal(reopened.campaign.flags[flag], 1);
+    const hp = fought.units.filter((u) => u.side === 'crew').map((u) => Math.max(1, u.hp));
+    assert.deepEqual(reopened.campaign.crew.map((m) => m.hp), hp, 'wounds carried');
+  }
+});
+
+// The rest of a fight, the scripted crew against the AI, as the screen
+// plays it: the battle at the end.
+function playOut(state) {
+  let fight = fightOf(state);
+  while (!fight.battle.winner) {
+    for (const action of ordersOf(scriptedAction(fight.battle, rules))) fight = reduceFight(fight, action, rules);
+  }
+  return fight.battle;
+}
+
+test('every battle the AI plays to on the ship reads back from a save', () => {
+  for (const seed of [1, 2, 3, 4, 5, 6]) {
+    let campaign = beginFight(newCampaign(rules, seed), rules).campaign;
+    let { battle, log } = campaign.fight;
+    while (!battle.winner && battle.round <= 30) {
+      const result = act(battle, aiAction(battle, rules), rules);
+      assert.ok(result.ok, result.error);
+      battle = result.battle;
+      log = [...log, ...result.events];
+      campaign = saveFight(campaign, battle, log);
+      assert.deepEqual(campaignProblems(campaign), [], `seed ${seed}, round ${battle.round}`);
+      assert.deepEqual(JSON.parse(JSON.stringify(campaign)), campaign);
+    }
+  }
+});
+
+test("a damaged campaign is named, part by part, and never read", () => {
+  const atHub = newCampaign(rules, 77);
+  const inFight = beginFight(atHub, rules).campaign;
+  const unit = (c, changes) => ({ ...c, fight: { ...c.fight, battle: { ...c.fight.battle, units: c.fight.battle.units.map((u, i) => (i === 0 ? { ...u, ...changes } : u)) } } });
+  const battle = (c, changes) => ({ ...c, fight: { ...c.fight, battle: { ...c.fight.battle, ...changes } } });
+  const map = (c, changes) => battle(c, { map: { ...c.fight.battle.map, ...changes } });
+  const cases = [
+    [null, /campaign is unreadable/],
+    [[], /campaign is unreadable/],
+    [{ ...atHub, rng: -1 }, /seed or RNG state is invalid/],
+    [{ ...atHub, act: 4 }, /act is invalid/],
+    [{ ...atHub, place: 'bar' }, /place is invalid/],
+    [{ ...atHub, credits: 1.5 }, /credits are invalid/],
+    [{ ...atHub, parts: { engine: 0 } }, /parts are unreadable/],
+    [{ ...atHub, parts: [] }, /parts are unreadable/],
+    [{ ...atHub, crew: [atHub.crew[0], atHub.crew[0]] }, /crew is unreadable/],
+    [{ ...atHub, crew: [{ ...atHub.crew[0], hp: 0 }] }, /crew is unreadable/],
+    [{ ...atHub, crew: [{ ...atHub.crew[0], name: '' }] }, /crew is unreadable/],
+    [{ ...atHub, heat: 101 }, /heat is invalid/],
+    [{ ...atHub, flags: { 'no spaces': true } }, /flags are unreadable/],
+    [{ ...atHub, flags: { met: {} } }, /flags are unreadable/],
+    [{ ...atHub, ship: { ...atHub.ship, nextUid: 0 } }, /ship is unreadable/],
+    [{ ...atHub, place: 'fight' }, /fight doesn't match where the player is/],
+    [{ ...inFight, place: 'hub' }, /fight doesn't match where the player is/],
+    [{ ...atHub, fight: undefined }, /fight doesn't match where the player is/],
+    [{ ...inFight, fight: { ...inFight.fight, crew: [1, 2, 9] } }, /fight names crew who aren't aboard/],
+    [{ ...inFight, fight: { ...inFight.fight, crew: [1, 2] } }, /fight doesn't match its crew/],
+    [{ ...inFight, fight: { ...inFight.fight, seed: 'x' } }, /fight is unreadable/],
+    [{ ...inFight, fight: { ...inFight.fight, log: [{}] } }, /fight has an unreadable log/],
+    [battle(inFight, { units: [] }), /fight has no units/],
+    [unit(inFight, { hp: 11 }), /fight has an unreadable unit/],
+    [unit(inFight, { x: 999 }), /fight has an unreadable unit/],
+    [unit(inFight, { status: 'asleep' }), /fight has an unreadable unit/],
+    [unit(inFight, { id: 'e1' }), /fight has an unreadable unit/],
+    [battle(inFight, { round: 0 }), /fight has an unreadable turn/],
+    [battle(inFight, { side: 'both' }), /fight has an unreadable turn/],
+    [battle(inFight, { doors: [3] }), /fight has unreadable doors/],
+    [battle(inFight, { misses: { crew: -1, enemy: 0 } }), /fight has unreadable misses/],
+    [battle(inFight, { options: {} }), /fight has unreadable options/],
+    [battle(inFight, { winner: 'nobody' }), /fight has an unreadable winner/],
+    [map(inFight, { width: 0 }), /fight has an unreadable map/],
+    [map(inFight, { tiles: { ...inFight.fight.battle.map.tiles, cells: [] } }), /fight has an unreadable map/],
+    [map(inFight, { walls: { n: inFight.fight.battle.map.walls.n } }), /fight has an unreadable map/],
+    [map(inFight, { hatches: [{ uid: 8, x: 0, y: 0, side: 'up' }] }), /fight has an unreadable map/],
+  ];
+  for (const [value, expected] of cases) {
+    const problems = campaignProblems(value);
+    assert.ok(problems.some((p) => expected.test(p)), `${expected}: got ${JSON.stringify(problems)}`);
+  }
+});

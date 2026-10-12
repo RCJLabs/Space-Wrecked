@@ -2,6 +2,114 @@
 
 Newest entry first.
 
+## M12 Campaign state (2026-10-12)
+
+**Status:** done, and the ROADMAP.md box is ticked. This is Phase 3's first milestone, after Gate 2.
+
+Done when: "quitting anywhere and reopening resumes correctly."
+- **Headless:** `tests/campaign.test.js` quits and reopens after every change a player can make, from New game through two whole fights (one won, one lost) and back to the hub. The reopened game equals the one quit, and the rest of the fight plays out the same, roll for roll.
+- **In Chromium**, at the Fold's three sizes, 29 checks each: quit at the hub, as a fight begins, mid-turn after a move (the board the same pixel for pixel), during the enemy's turn, at the end panel and back at the hub, and once offline.
+
+### Shipped
+
+- **The campaign** (`src/sim/campaign.js`, pure) holds:
+  - the act, and where the player is: the hub, or a fight;
+  - credits, parts held, and the crew with their hit points (wounds);
+  - heat (0 to 100), flags, and the ship;
+  - the fight in progress.
+
+  A new one starts from `data/campaign.json`: the three acts, and the start. The start is no credits, no parts, the three-job crew, and a half-built hull (the example ship without its engines, so the flight checklist names what act 1 is for).
+- **Fights in the campaign:**
+  - **Who and where:** the whole crew against the boarders, on the campaign's ship.
+  - **Seeded by the campaign's RNG,** so a reopened hub begins the same fight.
+  - **The wounded start wounded:** `createBattle` takes a unit's hit points.
+  - **Afterwards:** everyone keeps the hit points they ended with. The fallen come back with 1, the dead (only where death is permanent) leave, and the flags count fights won and lost.
+- **Saves, version 4.**
+  - The campaign joins the save, null before one starts, with a migration from version 3.
+  - Every field is checked on load, the fight's battle and map included (`src/sim/battleShape.js`). A damaged campaign is named in the error, like a damaged ship.
+- **Autosave: every change is saved as it happens.** That covers the hub, a fight's start, every order, and its end (ROADMAP §4.8 now says so).
+- **Screens.**
+  - **The title** has Continue, saying where the campaign is, and New game. A new game over a campaign takes a second tap.
+  - **A placeholder hub** stands in for M13's hangar: the act and home, the crew with their hit points, the ship's failing checklist lines, and credits, heat, parts and fights. Its one order is Repel boarders.
+  - **The campaign fight** has Title in its tools, and Continue on its end panel, which goes home.
+  - **The board is shared.** The Fight screen's board moved to `src/ui/fight/view.js`, used by both the sandbox and the campaign.
+- **Data checks.** `tools/validate-data.js` checks `campaign.json`, with 13 new cases. Among them: the start ship has to build with the builder's rules and break no layout rule.
+- **Tests:** 383 in all, up from 366:
+  - `tests/campaign.test.js`: 11;
+  - `tests/hubText.test.js`: 3;
+  - save version 4: 2;
+  - a wounded start in `tests/battle.test.js`: 1.
+
+### Decisions made this session
+
+- **Saved after every order, not only at the start of each turn.** §4.8 named the turn start. Saving every order covers that and closes a hole. With turn-start saves alone, a player could shoot, miss, quit and reopen to the same RNG state: the same roll comes back, to spend on a different shot. A save mid-fight is 10 to 15 KB for the campaign, written once an order.
+- **A saved fight holds its battle whole, map included** (3 to 8 KB of it), rather than rebuilding the map from the ship. A game update between quitting and reopening can't move a wall under a unit.
+- **The game reopens at the title, not inside the campaign.** Continue is one tap away and says where it goes. If a saved fight ever can't be picked up, the player still lands somewhere safe.
+- **New campaigns and fights are made by the root reducer.** Their actions carry the content tables (`rules`), and their seeds come from the game's RNG (a new campaign) or the campaign's (a fight). The fight's orders still run in the Fight screen's own store, which saves each result to the game's, as the builder does.
+- **The start values are placeholders:** the hull for M13, and credits and parts for M14 and M16. They live in `data/campaign.json`, so changing them is a data edit.
+- **Repel boarders stands in** for jobs (M14) and raids (M15). Heat is a number nothing raises yet.
+- No balance number changed.
+
+### Verified here
+
+- `node --test`: 383 pass. `node tools/validate-data.js`: OK, now with 3 acts.
+- **Quit and reopen in Chromium** with touch, at 905 × 370, 821 × 283 and 960 × 825 (scratchpad `m12/verify.mjs`): 29 of 29 at each size. "Quitting" closes the page and "reopening" opens a new one in the same profile.
+  - New game, quit at the hub: Continue says "Act 1 · The hangar", and the hub comes back as it was.
+  - The fight is saved as it begins. Quit before an order: the same fight, nothing rerolled.
+  - A move mid-turn is saved at once. Quit and reopen: the same save, the same crew bar, and the board pixel for pixel.
+  - End turn, then quit while the boarders' turn plays. Continue says round 2, and the save already holds their whole turn.
+  - Quit at the end panel: Continue says "A fight just ended", and the panel comes back. Its Continue goes home with the wounds (1, 1, 1 after a loss) and "0 won, 1 lost". Reopened there: the same.
+  - The next fight starts with the crew wounded, and the crew bar shows it.
+  - Offline: the game reopens and Continue picks the fight up.
+  - New game over a campaign: one tap only asks, and it disarms after 3 s. Two taps start a new one from a new seed.
+  - No console errors or warnings.
+- **Regressions** (`m12/regress.mjs`, 12 of 12):
+  - An M5b save (version 3) loads in the browser and is written back as version 4, with its ship and settings.
+  - The builder keeps the migrated ship.
+  - The dev menu exports and imports a version 4 code.
+  - The Fight sandbox saves nothing.
+- **The Fight sandbox on the shared board:** M8's whole-fight check (`m8/fight.mjs`, its save setup updated for version 4) plays 18 orders by touch with 0 mismatches against Node. Fight again works, with 0 console errors.
+
+### Known issues
+
+- **Nothing heals.** Wounds carry, and the med bay is M23's, in act 2. After a lost fight the crew is at 1 hit point each, and the next fight is hopeless until New game. Act 1 needs a rule, Evan's call, for M14: rest at the hangar heals fully, say, or a few hit points a job.
+- **Boarders don't attack a crew that holds the bridge.** With a crew that only ends its turn, 5 of 5 fights reached 60 rounds, on the example ship and on the start ship. A campaign fight can't be left until one side wins, so the player has to go to them. This is ROADMAP §8's standoff row, and its fix is still Evan's call.
+- **Losing costs only wounds.** What a lost fight means for the campaign belongs to M14 and M15.
+- **Quitting during the boarders' turn skips its playback.** The reopened board shows where it ended, and the Log card has what happened.
+- **Not saved:** the crew member giving orders and the camera. Reopening selects the first who can act and fits the view.
+- **The hub is text.** The ship isn't drawn there; that is M13's hangar.
+- **Carried over:** M11's items (stalls on generated ships, the AI's weights in code) and M10's (mirrored ships off true, boxy corvettes, doorways onto lockers on player ships).
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **The update itself.** When "Update ready" shows, tap it. The title should offer New game, and the dev menu's Builder should still have your ships: the old save converts to version 4.
+2. **New game:** the hub shows Act 1 · Homeworld, the hangar, three crew, and the ship's two missing lines (thrust, engine).
+3. **Quit at the hub.** Swipe the app away and reopen. Continue should say "Act 1 · The hangar" and bring the hub back as it was.
+4. **Quit mid-turn.** Tap Repel boarders, move one crew member, then swipe the app away. Reopen and tap Continue: the same unit should have moved, with 1 action left.
+5. **Quit during the boarders' turn.** End the turn and swipe away while they move. Reopen: it should be round 2, your turn.
+6. **Quit at the end.** Finish the fight and swipe away at the end panel. Reopen: the panel again. Its Continue should show the wounds and the fight count at the hub. Swipe away once more: the same.
+7. **Unfolded:** the hub and the fight at the big size.
+8. **Tell me:** anything that didn't come back as you left it, and whether act 1 should heal between fights (and how).
+
+### Next session
+
+**M13 Hangar hub.** Done when: "a new player is building within 60 seconds of starting."
+
+First task: construction mode on the campaign's ship, with owned parts only (`campaign.parts`), saved through the campaign. The builder's sessions keep a build log, so the ship will likely need one too: a `SAVE_VERSION` 5 with its migration.
+
+Then the hangar screen around the ship, in place of the hub's text panels, with the flight checklist as the act goal and a crew panel.
+
+Decide with Evan first:
+- the half-built hull and the parts it starts with (now: the example ship without engines, and no parts);
+- whether act 1 heals between fights, which M14 needs.
+
+## Gate 2 (2026-10-12)
+
+**Passed.** Evan's words: "Gate 2 passed, start the next milestone".
+- He didn't report the fight times or how the moved part changed the fight. The gate is his call, so it stands as passed.
+- M10's Enemy ships sandbox hasn't been reported on from the phone.
+- Phase 3 starts with M12 (campaign state).
+
 ## M11 Balance harness (2026-10-12)
 
 **Status:** done, and the ROADMAP.md box is ticked. Evan asked for the next milestone; M10 hasn't been reported on from the phone yet. This ends Phase 2: Gate 2 is next, and it's Evan's call.

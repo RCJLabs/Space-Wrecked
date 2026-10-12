@@ -8,6 +8,7 @@ import { checksum, fromBase64Url, toBase64Url } from './codec.js';
 import { isState } from './rng.js';
 import { isShipData } from '../sim/builder.js';
 import { emptyBuilds, isBuilds } from '../sim/builds.js';
+import { campaignProblems } from '../sim/campaign.js';
 import { regridCommand, regridShip } from '../sim/regrid.js';
 import { isCommand, logFor, renumbered } from '../sim/replay.js';
 import { FPS_CAPS } from '../sim/settings.js';
@@ -18,7 +19,8 @@ import { FPS_CAPS } from '../sim/settings.js';
 //   2  the ship becomes saved slots with build logs (builds.js) (M5)
 //   3  the builder's cells split in four: ships and logs move to the fine
 //      grid (regrid.js) (M5b)
-export const SAVE_VERSION = 3;
+//   4  plus the campaign (campaign.js), or null before one starts (M12)
+export const SAVE_VERSION = 4;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -52,6 +54,8 @@ export const MIGRATIONS = [
       return { ...data, builds: { ...data.builds, slots } };
     },
   },
+  // The campaign joins the save. Saves from before M12 have none yet.
+  { from: 3, up: (data) => (isObject(data) ? { ...data, campaign: null } : data) },
 ];
 
 const PREFIX = config.appId;
@@ -97,6 +101,8 @@ export function validate(save) {
   if (!isObject(data.settings)) problems.push('Settings are missing.');
   else if (!FPS_CAPS.includes(data.settings.fpsCap)) problems.push('The frame cap setting is invalid.');
   if (!isBuilds(data.builds)) problems.push('The saved ships are missing or unreadable.');
+  if (data.campaign === undefined) problems.push('The campaign is missing.');
+  else if (data.campaign !== null) problems.push(...campaignProblems(data.campaign));
   return problems;
 }
 

@@ -8,7 +8,7 @@ import { shotOdds } from '../src/sim/odds.js';
 import { aiAction } from '../src/sim/ai.js';
 import { autoplay } from '../src/sim/autoplay.js';
 import { scriptedAction } from '../src/sim/scripted.js';
-import { exampleMap, openMap, rules } from './battleKit.js';
+import { exampleMap, openMap, ordersOf, rules } from './battleKit.js';
 
 const boarders = rules.encounters.get('boarders').enemies;
 
@@ -179,20 +179,6 @@ test('the other orders: open the door beside, reload, overwatch, stabilize', () 
 
 // The scripted player's crew orders, given the way a player gives them:
 // select, then a tap to see the move or shot and another to make it.
-function ordersOf(action) {
-  const pick = { type: 'fight/select', unit: action.unit };
-  switch (action.type) {
-    case 'move':
-      return [pick, tap(...action.to), tap(...action.to)];
-    case 'shoot':
-      return [pick, { type: 'fight/aim', target: action.target }, { type: 'fight/aim', target: action.target }];
-    case 'end':
-      return [{ type: 'fight/end' }];
-    default:
-      return [pick, { type: `fight/${action.type}` }];
-  }
-}
-
 // The crew given the scripted player's orders by taps, against the AI's
 // boarders, plays out exactly as the battle rules play the same two
 // players.

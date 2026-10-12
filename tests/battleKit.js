@@ -54,4 +54,21 @@ export function exampleMap() {
   return mapFromShip(ship, rules);
 }
 
+// The taps and buttons that give a battle action as an order on the Fight
+// screen (fight.js): choose the unit, then tap twice, or press the button.
+export function ordersOf(action) {
+  const pick = { type: 'fight/select', unit: action.unit };
+  const tap = (x, y) => ({ type: 'fight/tap', x, y });
+  switch (action.type) {
+    case 'move':
+      return [pick, tap(...action.to), tap(...action.to)];
+    case 'shoot':
+      return [pick, { type: 'fight/aim', target: action.target }, { type: 'fight/aim', target: action.target }];
+    case 'end':
+      return [{ type: 'fight/end' }];
+    default:
+      return [pick, { type: `fight/${action.type}` }];
+  }
+}
+
 export { step };

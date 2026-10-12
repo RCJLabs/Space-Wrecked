@@ -28,7 +28,7 @@ A ship-first sandbox RPG in 3D: build a ship on a grid, run from a pursuer, and 
 - **`SAVE_VERSION` gates all saves.** Never change the save schema without bumping `SAVE_VERSION` and writing a migration. Never reset player saves. (This is the Ascent rule.)
 - **Seeded RNG everywhere**, using `mulberry32` in `src/core/rng.js`. This covers battles, the approach phase, generators, loot and events. No bare `Math.random()` in game logic. RNG state is part of the save, so reloading never rerolls.
 - **All content is data** in `data/*.json`:
-  - modules, hull frames, manufacturers, weapons, enemies, encounters, ship presets
+  - modules, hull frames, manufacturers, weapons, enemies, encounters, ship presets, the campaign's acts and start
   - jobs, traits, backgrounds, pursuers
   - mission and job templates, events, balance numbers
 

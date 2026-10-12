@@ -44,22 +44,27 @@ import { shotOdds } from './odds.js';
 import { canSee } from './sight.js';
 import { hazardAt, walkable } from './terrain.js';
 
-// setup: { map, units: [{ kind, x, y, name? }], seed, first?, options? }.
-// kind is a crew job (data/jobs.json), which puts the unit on the crew's
-// side, or an enemy (data/enemies.json). Units get ids by side in order:
-// c1, c2... and e1, e2... seed is a number or a string. The first side's
-// turn starts at once. Returns { battle, events }.
+// setup: { map, units: [{ kind, x, y, name?, hp? }], seed, first?,
+// options? }. kind is a crew job (data/jobs.json), which puts the unit on
+// the crew's side, or an enemy (data/enemies.json). A unit starts with its
+// kind's hit points, or with hp if given: a wounded crew member's, from 1 up
+// to its kind's. Units get ids by side in order: c1, c2... and e1, e2...
+// seed is a number or a string. The first side's turn starts at once.
+// Returns { battle, events }.
 export function createBattle({ map, units, seed, first = 'crew', options = {} }, rules) {
   const counts = { crew: 0, enemy: 0 };
   const battle = {
     map,
-    units: units.map(({ kind, x, y, name }) => {
+    units: units.map(({ kind, x, y, name, hp: wounded }) => {
       const job = rules.jobs.get(kind);
       const template = job ?? rules.enemies.get(kind);
       if (!template) throw new Error(`createBattle: no job or enemy "${kind}"`);
       const side = job ? 'crew' : 'enemy';
       counts[side] += 1;
       const { hp, aim, defense, mobility, armor, weapon } = template;
+      if (wounded !== undefined && !(Number.isInteger(wounded) && wounded >= 1 && wounded <= hp)) {
+        throw new RangeError(`createBattle: ${name ?? template.name} can't start with ${wounded} hit points (1 to ${hp})`);
+      }
       return {
         id: `${side === 'crew' ? 'c' : 'e'}${counts[side]}`,
         side,
@@ -67,7 +72,7 @@ export function createBattle({ map, units, seed, first = 'crew', options = {} },
         name: name ?? template.name,
         x,
         y,
-        hp,
+        hp: wounded ?? hp,
         maxHp: hp,
         aim,
         defense,

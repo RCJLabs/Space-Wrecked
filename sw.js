@@ -4,10 +4,11 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "61395619be46";
+const VERSION = "65aa223286a5";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/balance.json",
+  "data/campaign.json",
   "data/encounters.json",
   "data/enemies.json",
   "data/frames.json",
@@ -63,8 +64,10 @@ const FILES = [
   "src/sim/autoplay.js",
   "src/sim/battle.js",
   "src/sim/battleLog.js",
+  "src/sim/battleShape.js",
   "src/sim/builder.js",
   "src/sim/builds.js",
+  "src/sim/campaign.js",
   "src/sim/constraints.js",
   "src/sim/cover.js",
   "src/sim/defs.js",
@@ -96,12 +99,16 @@ const FILES = [
   "src/ui/builder/savesPanel.js",
   "src/ui/builder/screen.js",
   "src/ui/builder/shipPanel.js",
+  "src/ui/campaign/fight.js",
+  "src/ui/campaign/hub.js",
+  "src/ui/campaign/hubText.js",
   "src/ui/dev/fps.js",
   "src/ui/dev/menu.js",
   "src/ui/dev/sandboxes.js",
   "src/ui/fight/hints.js",
   "src/ui/fight/panels.js",
   "src/ui/fight/screen.js",
+  "src/ui/fight/view.js",
   "src/ui/gestures.js",
   "src/ui/icons.js",
   "src/ui/screens.js",
