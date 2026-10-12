@@ -1,25 +1,52 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { beginFight, newCampaign } from '../src/sim/campaign.js';
-import { continueText, fightsText, hubText, partsText } from '../src/ui/campaign/hubText.js';
+import { applyCommand } from '../src/sim/builder.js';
+import { beginFight, newCampaign, refitShip } from '../src/sim/campaign.js';
+import { continueText, fightsText, hangarText, partsText } from '../src/ui/campaign/hubText.js';
 import { rules } from './battleKit.js';
 
-test('the hub shows the act, its home, the crew, the ship and what the campaign holds', () => {
+test('the hangar shows the act, its goal with what is on hand, the crew and the holdings', () => {
   const campaign = newCampaign(rules, 77);
   const wounded = { ...campaign, credits: 1250, crew: [{ ...campaign.crew[0], hp: 4 }, { ...campaign.crew[1], name: 'Ada' }, campaign.crew[2]] };
-  const text = hubText(wounded, rules);
+  const text = hangarText(wounded, rules);
   assert.equal(text.act, 'Act 1 · Homeworld');
   assert.equal(text.home, 'The hangar');
+  assert.deepEqual(text.goal, {
+    ready: false,
+    lines: [
+      { ok: true, text: 'Power +6 (8 made, 2 used)', fix: null },
+      { ok: false, text: 'No thrust', fix: 'Add Engine (+12 thrust): none on hand' },
+      { ok: false, text: 'Berths 0 of 3 crew', fix: 'Add Crew quarters (+4 berths): 1 on hand' },
+      { ok: false, text: 'Life support 0 of 3 crew', fix: 'Add Life support (+4 crew): 1 on hand' },
+      { ok: false, text: 'Missing engine', fix: 'Add Engine: none on hand' },
+      { ok: true, text: 'Every part joined to the bridge, airlock on the hull edge', fix: null },
+    ],
+  });
   assert.deepEqual(text.crew, [
     { name: 'Marine', job: '', hp: 4, max: 10 },
     { name: 'Ada', job: 'Engineer', hp: 8, max: 8 },
     { name: 'Medic', job: '', hp: 8, max: 8 },
   ]);
-  assert.deepEqual(text.ship, { size: '9 parts', ready: false, lines: ['No thrust: Add Engine (+12 thrust)', 'Missing engine: Add Engine'] });
-  assert.deepEqual(text.holdings, [['Credits', '1,250'], ['Heat', '0 of 100'], ['Parts', 'None'], ['Fights', 'None yet']]);
+  assert.deepEqual(text.holdings, [['Credits', '1,250'], ['Heat', '0 of 100'], ['Parts on hand', 'Crew quarters, Life support, Corridor ×2'], ['Fights', 'None yet']]);
+  assert.equal(text.build, true);
+  assert.deepEqual(text.hint, { tone: 'good', text: 'Your ship is half built. Tap Build to fit the parts on hand.' });
 });
 
-test('parts held and fights fought, in words', () => {
+test('the hint follows what is left to do', () => {
+  const campaign = newCampaign(rules, 77);
+  // The quarters and life support fitted: only corridors on hand, and the
+  // engine has to come from somewhere else.
+  let ship = applyCommand(campaign.ship, rules, { op: 'place', type: 'quarters', x: 9, y: 5, rot: 0 }).ship;
+  ship = applyCommand(ship, rules, { op: 'place', type: 'lifesupport', x: 9, y: 8, rot: 0 }).ship;
+  const fitted = refitShip(campaign, ship);
+  assert.deepEqual(fitted.parts, { corridor: 2 });
+  const text = hangarText(fitted, rules);
+  assert.equal(text.build, false);
+  assert.deepEqual(text.hint, { tone: 'info', text: 'Tap Build to change the ship. The parts still missing come from jobs, which come next.' });
+  assert.deepEqual(hangarText({ ...fitted, parts: {} }, rules).hint, { tone: 'info', text: 'The parts still missing come from jobs, which come next.' });
+});
+
+test('parts on hand and fights fought, in words', () => {
   assert.equal(partsText({}, rules), 'None');
   assert.equal(partsText({ engine: 2, corridor: 1 }, rules), 'Engine ×2, Corridor');
   assert.equal(fightsText({}), 'None yet');

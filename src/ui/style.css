@@ -165,18 +165,21 @@ textarea {
   font-size: 14px;
 }
 
-/* The campaign's hub: a stand-in for the hangar. Three panels across, the
-   head above and the footer below; a panel scrolls if it has to. */
-.hub {
+/* The hangar: the act's goal on the left, the crew and holdings on the
+   right, the ship (drawn on the canvas) in the middle, and the orders along
+   the bottom. A panel scrolls if it has to. */
+.hgr {
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(170px, 27%) minmax(0, 1fr) minmax(160px, 24%);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 8px;
   padding: 8px 12px 10px;
 }
 
-.hub-head {
+.hgr-head {
+  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -184,29 +187,22 @@ textarea {
   padding-right: 64px; /* clear of the DEV button */
 }
 
-.hub-head h1 {
+.hgr-head h1 {
   margin: 0;
   font-size: clamp(18px, 6vh, 28px);
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.7);
 }
 
-.hub-home {
+.hgr-home {
   margin: 0;
   color: var(--c-ink-dim);
   font-size: 15px;
 }
 
-.hub-panels {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.hub-panel {
+.hgr-panel {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -214,11 +210,12 @@ textarea {
   border: 1px solid var(--c-line);
   border-radius: 12px;
   background: var(--c-panel);
-  font-size: 14px;
+  font-size: 13.5px;
+  line-height: 1.3;
   pointer-events: auto;
 }
 
-.hub-panel h2 {
+.hgr-panel h2 {
   margin: 0 0 6px;
   color: var(--c-ink-dim);
   font-size: 12px;
@@ -226,134 +223,192 @@ textarea {
   text-transform: uppercase;
 }
 
-.hub-panel ul {
+.hgr-panel ul {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.hub-crew li {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 56px 3.4em;
-  align-items: center;
-  gap: 8px;
-  min-height: 28px;
+/* The ship's place: empty, so the canvas shows through. */
+.hgr-ship {
+  min-width: 0;
+  min-height: 0;
 }
 
-.hub-name {
+.hgr-side {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* The crew all show; the holdings scroll if they have to. */
+.hgr-side .hgr-panel:first-child {
+  flex: none;
+}
+
+.hgr-side .hgr-panel:last-child {
+  flex: 0 1 auto;
+}
+
+.hgr-goal li {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 6px;
+  padding-left: 16px;
+  position: relative;
+}
+
+.hgr-goal li::before {
+  position: absolute;
+  left: 0;
+  content: '✕';
+  color: var(--c-bad);
+  font-weight: 700;
+}
+
+.hgr-goal li[data-ok='true']::before {
+  content: '✓';
+  color: var(--c-good);
+}
+
+.hgr-goal li[data-ok='true'] {
+  color: var(--c-ink-dim);
+}
+
+.hgr-fix {
+  color: var(--c-dash);
+  font-size: 12.5px;
+}
+
+.hgr-crew li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px 3.4em;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+}
+
+.hgr-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.hub-hp {
+.hgr-hp {
   height: 6px;
   border-radius: 3px;
   background: var(--c-line);
   overflow: hidden;
 }
 
-.hub-hp span {
+.hgr-hp span {
   display: block;
   height: 100%;
   background: var(--c-good);
 }
 
-.hub-crew li[data-wounded='true'] .hub-hp span {
+.hgr-crew li[data-wounded='true'] .hgr-hp span {
   background: var(--c-dash);
 }
 
-.hub-num {
+.hgr-num {
   font-variant-numeric: tabular-nums;
   color: var(--c-ink-dim);
   text-align: right;
 }
 
-.hub-size {
-  margin: 0 0 4px;
-}
-
-.hub-check li {
-  margin: 0 0 4px;
-  padding-left: 12px;
-  color: var(--c-dash);
-  text-indent: -12px;
-}
-
-.hub-check li::before {
-  content: '• ';
-}
-
-.hub-hold {
+.hgr-hold {
   margin: 0;
 }
 
-.hub-hold div {
+.hgr-hold div {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 8px;
-  min-height: 26px;
-  align-items: center;
+  padding: 2px 0;
 }
 
-.hub-hold dt {
+.hgr-hold dt {
+  flex: none;
   color: var(--c-ink-dim);
 }
 
-.hub-hold dd {
+.hgr-hold dd {
   margin: 0;
   text-align: right;
 }
 
-.hub-foot {
+/* A long value, the parts on hand say, takes its own line. */
+.hgr-hold div[data-wide] {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+
+.hgr-hold div[data-wide] dd {
+  text-align: left;
+}
+
+.hgr-foot {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.hub-note {
+.hgr-hint {
   flex: 1;
   margin: 0;
   color: var(--c-ink-dim);
-  font-size: 13px;
+  font-size: 13.5px;
 }
 
-#ui .hub-tool,
-#ui .hub-fight {
+.hgr-hint[data-tone='good'] {
+  color: var(--c-good);
+}
+
+#ui .hgr-tool,
+#ui .hgr-fight,
+#ui .hgr-build {
   display: flex;
   align-items: center;
   gap: 6px;
   min-height: 48px;
+  white-space: nowrap;
 }
 
-#ui .hub-fight {
-  padding: 0 18px;
+#ui .hgr-fight {
+  background: var(--c-panel);
+}
+
+#ui .hgr-build {
+  padding: 0 22px;
   border-color: var(--c-accent);
   background: var(--c-accent);
   color: var(--c-space);
 }
 
-#ui .hub-fight:disabled {
-  border-color: var(--c-line);
-  background: var(--c-space-hi);
-  color: var(--c-ink-dim);
-}
-
 /* Short screens: tighter panels, and the head and footer on less. */
 @media (max-height: 320px) {
-  .hub {
+  .hgr {
     gap: 6px;
     padding-top: 4px;
     padding-bottom: 6px;
   }
 
-  .hub-panel {
+  .hgr-panel {
     padding: 6px 8px;
-    font-size: 13px;
+    font-size: 12.5px;
   }
 
-  .hub-crew li {
-    min-height: 24px;
+  .hgr-crew li {
+    min-height: 22px;
+  }
+
+  .hgr-hint {
+    font-size: 12.5px;
   }
 }
 
@@ -400,6 +455,27 @@ textarea {
 #ui .bld-tab[aria-selected='true'] {
   border-color: var(--c-accent);
   color: var(--c-accent);
+}
+
+/* Construction mode's way back to the hangar, where the Saves tab would be. */
+#ui .bld-leave {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  padding: 0 2px;
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+  font-size: 11px;
+}
+
+.bld-leave svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
 }
 
 /* On the tab's corner, so three tabs fit the narrowest drawer. */
@@ -699,6 +775,32 @@ textarea {
   width: auto;
   height: auto;
   max-height: calc(var(--tile) * 0.36);
+}
+
+/* How many of a part are on hand, in construction mode. */
+.bld-part {
+  position: relative;
+}
+
+.bld-count {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  padding: 0 3px;
+  border-radius: 5px;
+  background: var(--c-space-hi);
+  color: var(--c-accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.bld-empty {
+  grid-column: 1 / -1;
+  align-self: end;
+  margin: 0;
+  color: var(--c-ink-dim);
+  font-size: 12.5px;
 }
 
 .bld-part[aria-pressed='true'] {

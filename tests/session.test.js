@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { applyCommand, newShip } from '../src/sim/builder.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { footprint } from '../src/sim/modules.js';
-import { commandsOf, covers, createSession, HISTORY_LIMIT, reduceSession, snapPlacement } from '../src/sim/session.js';
+import { commandsOf, covers, createSession, HISTORY_LIMIT, partsLeft, reduceSession, snapPlacement } from '../src/sim/session.js';
 
 // A small catalog, so content changes don't break these interaction rules.
 const mod = (id, size, rotates = true) => ({ id, name: id[0].toUpperCase() + id.slice(1), size, rotates, tags: [] });
@@ -252,4 +252,36 @@ test('actions that change nothing return the same session', () => {
   ]) {
     assert.equal(act(s, action), s, action.type);
   }
+});
+
+test('with a stock, a part goes on only while one is on hand, and taking one off puts it back', () => {
+  let s = createSession(newShip('yard'), [], { hall: 1, long: 2 });
+  assert.deepEqual([partsLeft(s, 'hall'), partsLeft(s, 'long'), partsLeft(s, 'big')], [1, 2, 0]);
+  assert.equal(partsLeft(start(), 'big'), Infinity, 'no stock, no limit');
+  const none = arm(s, 'big');
+  assert.equal(none.armed, null);
+  assert.equal(none.notice.text, 'No Big on hand.');
+  // The last one on hand goes on, and placing stops, with it selected.
+  s = tap(tap(arm(s, 'hall'), 0.5, 0.5), 0.5, 0.5);
+  assert.deepEqual(modules(s), [[1, 'hall', 0, 0, 0]]);
+  assert.deepEqual([s.armed, s.selected, partsLeft(s, 'hall')], [null, 1, 0]);
+  const another = drop(s, 'hall', 3, 0);
+  assert.deepEqual(modules(another), modules(s), 'no second one to drop');
+  assert.equal(another.notice.text, 'No Hall on hand.');
+  // Taking it off puts it back; undo and redo keep the count.
+  s = act(s, { type: 'build/delete' });
+  assert.equal(partsLeft(s, 'hall'), 1);
+  s = act(s, { type: 'build/undo' });
+  assert.equal(partsLeft(s, 'hall'), 0);
+  s = act(s, { type: 'build/redo' });
+  assert.equal(partsLeft(s, 'hall'), 1);
+  // Two on hand: armed for the second, not after it.
+  s = arm(s, 'long');
+  s = tap(tap(s, 1, 2.5), 1, 2.5);
+  assert.deepEqual(s.armed, { type: 'long', rot: 0 });
+  s = tap(tap(s, 4, 2.5), 4, 2.5);
+  assert.equal(s.armed, null);
+  assert.equal(partsLeft(s, 'long'), 0);
+  // A ship from elsewhere comes with its own stock, or none.
+  assert.equal(act(s, { type: 'build/load', ship: newShip('yard') }).stock, null);
 });

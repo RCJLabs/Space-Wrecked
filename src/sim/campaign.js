@@ -11,7 +11,9 @@
 //   act      1, 2 or 3; data/campaign.json names each act and its home
 //   place    where the player is: 'hub', or 'fight' while a fight is on
 //   credits  money, a whole number
-//   parts    { [module type]: count }: parts held, not on the ship
+//   parts    { [module type]: count }: parts on hand in the hangar, not on
+//            the ship. Refitting the ship (construction mode) takes parts
+//            from here and puts back what comes off.
 //   crew     [{ id, name, job, hp }]: everyone aboard. hp is what they have
 //            now: wounds carry from fight to fight, up to the job's hp.
 //   heat     the pursuer's meter, 0 to HEAT_MAX (§4.4)
@@ -75,6 +77,37 @@ export function actOf(campaign, rules) {
 // A crew member's most hit points: their job's.
 export function maxHp(member, rules) {
   return rules.jobs.get(member.job)?.hp ?? member.hp;
+}
+
+// Every part the campaign has, on the ship or on hand: what construction
+// mode can build with (session.js stock).
+export function stockOf(campaign) {
+  const stock = { ...campaign.parts };
+  for (const module of campaign.ship.modules) stock[module.type] = (stock[module.type] ?? 0) + 1;
+  return stock;
+}
+
+// The ship after a refit in the hangar, and the parts on hand after it: a
+// part fitted comes out of the hangar, one taken off goes back. Only at the
+// hub, on the same frame, and only with the parts the campaign has;
+// otherwise the campaign is left as it was.
+export function refitShip(campaign, ship) {
+  if (campaign.place !== 'hub' || ship === campaign.ship || !isShipData(ship) || ship.frame !== campaign.ship.frame) return campaign;
+  const parts = onHandAfter(campaign.parts, campaign.ship, ship);
+  return parts ? { ...campaign, ship, parts } : campaign;
+}
+
+// The parts on hand once ship `before` becomes `after`, or null if `after`
+// needs parts that aren't there.
+export function onHandAfter(parts, before, after) {
+  const held = { ...parts };
+  for (const module of before.modules) held[module.type] = (held[module.type] ?? 0) + 1;
+  for (const module of after.modules) held[module.type] = (held[module.type] ?? 0) - 1;
+  for (const [type, count] of Object.entries(held)) {
+    if (count < 0) return null;
+    if (count === 0) delete held[type];
+  }
+  return held;
 }
 
 // Starts a fight: the whole crew against the boarders, on the ship. Its

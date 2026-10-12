@@ -92,7 +92,7 @@ const cases = [
   ['campaign crew of six', (d) => d.campaign.start.crew.push('marine', 'marine', 'marine'), /crew must be a list of 1 to 5 crew jobs/],
   ['campaign ship on an unknown frame', (d) => (d.campaign.start.ship.frame = 'barge'), /start\.ship: unknown frame "barge"/],
   ['campaign ship with a half turn of nothing', (d) => (d.campaign.start.ship.placements[0].rot = 5), /placement 1 must be \{ type, x, y, rot \}/],
-  ['campaign ship with parts on top of each other', (d) => d.campaign.start.ship.placements.push({ type: 'corridor', x: 9, y: 7, rot: 0 }), /placement 10 \(corridor\) is rejected/],
+  ['campaign ship with parts on top of each other', (d) => d.campaign.start.ship.placements.push({ type: 'corridor', x: 9, y: 7, rot: 0 }), /placement 8 \(corridor\) is rejected/],
   ['campaign ship with no airlock', (d) => (d.campaign.start.ship.placements = d.campaign.start.ship.placements.filter((p) => p.type !== 'airlock')), /start\.ship: No airlock on the hull edge/],
 ];
 

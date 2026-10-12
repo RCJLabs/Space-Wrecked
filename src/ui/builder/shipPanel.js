@@ -1,8 +1,10 @@
 // The Ship tab: the flight checklist, with the fix for each failing line,
 // the Launch button and the ship's totals. A fix that adds a part is a
-// button that picks that part. Launch is locked while any line is open: a
-// tap on it then just says what to fix. When it is ready, the first tap
-// arms it and a second tap within ARM_MS launches.
+// button that picks that part, unless there is none on hand (construction
+// mode). Launch is locked while any line is open: a tap on it then just
+// says what to fix. When it is ready, the first tap arms it and a second
+// tap within ARM_MS launches. Construction mode has no Launch: launching
+// ends act 1 (M17).
 import { onTap } from '../gestures.js';
 
 const ARM_MS = 3000;
@@ -25,12 +27,14 @@ const STAT_ROWS = [
   ['Hull points', (t) => t.hp],
 ];
 
-// onLaunch() asks the session to launch; onFix(type) picks a part to add.
+// onLaunch() asks the session to launch (null: no Launch button); onFix(type)
+// picks a part to add.
 export function createShipPanel({ onLaunch, onFix }) {
   const el = node('div', 'bld-ship');
   const checks = node('ul', 'bld-checks');
   const launch = node('button', 'btn bld-launch');
   launch.type = 'button';
+  launch.hidden = !onLaunch;
   const stats = node('dl', 'bld-stats');
   el.append(node('h3', null, 'Flight check'), checks, launch, node('h3', null, 'Ship'), stats);
 
@@ -39,7 +43,10 @@ export function createShipPanel({ onLaunch, onFix }) {
   let timer = 0;
   let fixTaps = [];
 
+  let onHand = () => Infinity;
+
   const detachLaunch = onTap(launch, () => {
+    if (!onLaunch) return;
     if (open) return onLaunch(); // locked: the session refuses and names a fix
     if (performance.now() < armedUntil) {
       disarm();
@@ -76,13 +83,13 @@ export function createShipPanel({ onLaunch, onFix }) {
     mark.innerHTML = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${MARKS[state]}</svg>`;
     const body = node('div', 'bld-check');
     body.append(node('p', 'bld-check-text', line.text));
-    if (line.fix && line.add) {
+    if (line.fix && line.add && onHand(line.add) > 0) {
       const fix = node('button', 'btn bld-fix', line.fix);
       fix.type = 'button';
       fixTaps.push(onTap(fix, () => onFix(line.add)));
       body.append(fix);
     } else if (line.fix) {
-      body.append(node('p', 'bld-check-fix', line.fix));
+      body.append(node('p', 'bld-check-fix', line.add ? `${line.fix}: none on hand` : line.fix));
     }
     item.append(mark, body);
     return item;
@@ -90,8 +97,10 @@ export function createShipPanel({ onLaunch, onFix }) {
 
   return {
     el,
-    // lines from flightChecklist, totals from shipStats, and { crew, maxModules }.
+    // lines from flightChecklist, totals from shipStats, and { crew,
+    // maxModules, onHand(type) }.
     update(lines, totals, context) {
+      onHand = context.onHand ?? (() => Infinity);
       for (const detach of fixTaps) detach();
       fixTaps = [];
       checks.replaceChildren(...lines.map(lineItem));

@@ -104,6 +104,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Auto-hull:** trace the outline of the occupied cells, slope the corners between parts (fairings), cap the front with a nose, and add nozzles, gun barrels and docking collars where engines, guns and airlocks face space. The builder shows it as the blueprint's rim; outside the builder it is raised into a solid hull, plated in the manufacturer's skin.
 - **Blueprint codes** are versioned, compact (base64url) and carry a checksum. A bad code fails with a message, never a crash.
 - **Build replay:** every placement is a command, and replaying the command list plays back a timelapse.
+- **Construction mode** (M13): in a campaign, the builder works on the campaign's ship with the parts the campaign has. A part goes on only while one is on hand, and one taken off goes back, undo and redo included. The palette shows only the parts on hand, with how many. A checklist fix whose part isn't on hand says so instead of picking it. Every change is saved through the campaign at once.
 - **Touch controls:**
   - drag from a palette drawer, with a ghost preview tinted valid or invalid
   - nothing lands from a single tap: a tap shows the part as a ghost, and a second tap on it places it
@@ -188,6 +189,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 ### 4.6 Economy
 
 - **Credits** buy parts and services. **Parts** are modules held in inventory. **Salvage** is raw material for repairs and, later, crafting.
+- **Act 1 starts** (M13, `data/campaign.json`) with a half-built hull: bridge, reactor, corridors, airlock and a gun, with no quarters, life support or engines. On hand are crew quarters, life support and two corridors, so a new player's first minute fixes two flight checks. The engines have to come from jobs.
 - Act 1 target: launch after roughly 8 to 12 jobs, in under an hour. Check this in play.
 
 ### 4.7 Generators (all seeded)
@@ -325,7 +327,7 @@ Pick the tone before M14.
 
 - [x] **M12 Campaign state.** Acts, hub, credits, parts, crew, heat and flags; autosave points; `SAVE_VERSION` 4 (M3 took 1 for the builder's ship, M5 took 2 for its slots, M5b took 3 for the finer grid).
   **Done when:** quitting anywhere and reopening resumes correctly.
-- [ ] **M13 Hangar hub.** The half-built starter hull, construction mode (owned parts only), the flight checklist as the act goal, and a crew panel.
+- [x] **M13 Hangar hub.** The half-built starter hull, construction mode (owned parts only), the flight checklist as the act goal, and a crew panel.
   **Done when:** a new player is building within 60 seconds of starting.
 - [ ] **M14 Background, district and jobs.** One background, a job board, 10 job templates, planet map generator v1, 3 mission types, rewards.
   **Done when:** ten jobs in a row feel varied (Evan's call).
@@ -418,5 +420,7 @@ These ideas wait until v0.4 or later:
 - dragging to lay a run of corridor in one go: since M5b a corridor is one cell, so a long one takes two taps a cell (raised in M5b; could come sooner if Gate 1 finds it tedious)
 - doorways onto lockers: the builder puts a doorway in the middle of a shared wall even with a locker, crates or machinery behind it. That can leave a room out of reach on foot in a fight. Generated ships avoid it; a player's ship still can, with no warning (raised in M10)
 - an enemy hull frame: §5 counts one for v0.1, but every preset builds on the starter yard for now. One comes when enemy ships need a bigger yard or a higher cap (raised in M10)
+- the campaign ship's timelapse: the campaign keeps no build log, so construction mode has no replay. A log would need a save version bump (raised in M13)
+- the hangar's goal lines as shortcuts: a fix whose part is on hand could open construction mode with that part picked, one tap fewer (raised in M13)
 
 Ideas that come up during a session go here, not into code.

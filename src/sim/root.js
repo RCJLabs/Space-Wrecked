@@ -3,11 +3,13 @@
 // content tables (rules) for the actions that need them.
 import { int } from '../core/rng.js';
 import { emptyBuilds, reduceBuilds } from './builds.js';
-import { beginFight, endFight, newCampaign, saveFight } from './campaign.js';
+import { beginFight, endFight, newCampaign, refitShip, saveFight } from './campaign.js';
 import { defaultSettings, reduceSettings } from './settings.js';
 
-// The screen each place in a campaign is played on.
+// The screen each place in a campaign is played on, and every screen that
+// shows the campaign: construction mode is the hub's.
 export const PLACE_SCREENS = { hub: 'hub', fight: 'campaign-fight' };
+export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction'];
 
 export function initialState(seed) {
   return {
@@ -26,6 +28,7 @@ export function initialState(seed) {
 //   campaign/new { rules }         a new campaign, in place of any other;
 //                                  its seed is the game's next roll
 //   campaign/continue              back to where the campaign is
+//   campaign/ship { ship }         the ship refitted at the hub
 //   campaign/fight/begin { rules } the crew fights at the hub's word
 //   campaign/fight/save { battle, log }   the fight after an order
 //   campaign/fight/end             back to the hub, once the fight is won
@@ -41,7 +44,7 @@ export function reduce(state, action) {
         campaign: action.data.campaign ?? null,
         // A campaign screen can't stay open on a campaign that changed
         // under it.
-        screen: Object.values(PLACE_SCREENS).includes(state.screen) ? 'title' : state.screen,
+        screen: CAMPAIGN_SCREENS.includes(state.screen) ? 'title' : state.screen,
       };
     case 'screen/show':
       return action.screen === state.screen ? state : { ...state, screen: action.screen };
@@ -51,6 +54,8 @@ export function reduce(state, action) {
     }
     case 'campaign/continue':
       return state.campaign ? { ...state, screen: PLACE_SCREENS[state.campaign.place] } : state;
+    case 'campaign/ship':
+      return withCampaign(state, state.campaign && refitShip(state.campaign, action.ship));
     case 'campaign/fight/begin': {
       const begun = state.campaign && beginFight(state.campaign, action.rules);
       return begun?.ok ? { ...state, campaign: begun.campaign, screen: PLACE_SCREENS.fight } : state;

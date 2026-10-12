@@ -3,8 +3,8 @@ import { test } from 'node:test';
 import { makeSave, parseSave } from '../src/core/save.js';
 import { act } from '../src/sim/battle.js';
 import { aiAction } from '../src/sim/ai.js';
-import { buildShip, layoutProblems } from '../src/sim/builder.js';
-import { actOf, beginFight, campaignProblems, endFight, maxHp, newCampaign, saveFight } from '../src/sim/campaign.js';
+import { applyCommand, buildShip, layoutProblems, removeModule } from '../src/sim/builder.js';
+import { actOf, beginFight, campaignProblems, endFight, maxHp, newCampaign, refitShip, saveFight, stockOf } from '../src/sim/campaign.js';
 import { createFight, reduceFight } from '../src/sim/fight.js';
 import { initialState, PLACE_SCREENS, reduce, saveData } from '../src/sim/root.js';
 import { scriptedAction } from '../src/sim/scripted.js';
@@ -50,7 +50,7 @@ test('a new campaign starts in act 1 at the hangar, with the start in data/campa
     act: 1,
     place: 'hub',
     credits: 0,
-    parts: {},
+    parts: { quarters: 1, lifesupport: 1, corridor: 2 },
     crew: [
       { id: 1, name: 'Marine', job: 'marine', hp: 10 },
       { id: 2, name: 'Engineer', job: 'engineer', hp: 8 },
@@ -65,6 +65,35 @@ test('a new campaign starts in act 1 at the hangar, with the start in data/campa
   assert.deepEqual(layoutProblems(campaign.ship, rules), [], 'the half-built ship breaks no layout rule');
   assert.deepEqual(campaignProblems(campaign), []);
   assert.deepEqual(newCampaign(rules, 77), campaign, 'the same seed, the same campaign');
+});
+
+test('a refit at the hub takes parts from the hangar and puts back what comes off', () => {
+  const campaign = deepFreeze(newCampaign(rules, 77));
+  assert.deepEqual(stockOf(campaign), { quarters: 1, lifesupport: 1, corridor: 5, bridge: 1, reactor: 1, airlock: 1, weapon: 1 });
+  const quarters = applyCommand(campaign.ship, rules, { op: 'place', type: 'quarters', x: 9, y: 5, rot: 0 });
+  assert.ok(quarters.ok, quarters.message);
+  const fitted = refitShip(campaign, quarters.ship);
+  assert.equal(fitted.ship, quarters.ship);
+  assert.deepEqual(fitted.parts, { lifesupport: 1, corridor: 2 });
+  assert.deepEqual(campaignProblems(fitted), []);
+  const corridor = fitted.ship.modules.find((m) => m.type === 'corridor');
+  assert.deepEqual(refitShip(fitted, removeModule(fitted.ship, corridor.uid)).parts, { lifesupport: 1, corridor: 3 }, 'a part taken off goes back');
+  // Only parts the campaign has: no engine, and no second quarters.
+  const engine = applyCommand(campaign.ship, rules, { op: 'place', type: 'engine', x: 7, y: 6, rot: 0 });
+  assert.ok(engine.ok, engine.message);
+  assert.equal(refitShip(campaign, engine.ship), campaign);
+  const twice = applyCommand(fitted.ship, rules, { op: 'place', type: 'quarters', x: 5, y: 5, rot: 0 });
+  assert.ok(twice.ok, twice.message);
+  assert.equal(refitShip(fitted, twice.ship), fitted);
+  // Not in a fight, not onto another frame, and the same ship changes nothing.
+  const fighting = beginFight(campaign, rules).campaign;
+  assert.equal(refitShip(fighting, quarters.ship), fighting);
+  assert.equal(refitShip(campaign, { ...quarters.ship, frame: 'barge' }), campaign);
+  assert.equal(refitShip(campaign, campaign.ship), campaign);
+  // Through the game's reducer.
+  const state = started(4);
+  assert.deepEqual(reduce(state, { type: 'campaign/ship', ship: quarters.ship }).campaign.parts, { lifesupport: 1, corridor: 2 });
+  assert.equal(reduce(state, { type: 'campaign/ship', ship: engine.ship }), state);
 });
 
 test("a new campaign's seed is the game's next roll, and the game goes to the hub", () => {
@@ -188,6 +217,16 @@ test('quitting anywhere and reopening resumes where the player was', () => {
     let reopened = quitAndReopen(state);
     assert.equal(reopened.screen, 'hub');
     assert.deepEqual(saveData(reopened), saveData(state), 'at the hub');
+
+    // Construction mode: a part fitted is saved at once.
+    state = reduce(state, { type: 'screen/show', screen: 'construction' });
+    const fitted = applyCommand(state.campaign.ship, rules, { op: 'place', type: 'quarters', x: 9, y: 5, rot: 0 });
+    state = reduce(state, { type: 'campaign/ship', ship: fitted.ship });
+    reopened = quitAndReopen(state);
+    assert.equal(reopened.screen, 'hub', 'construction mode reopens at the hangar');
+    assert.deepEqual(saveData(reopened), saveData(state), 'after a refit');
+    assert.deepEqual(reopened.campaign.parts, { lifesupport: 1, corridor: 2 });
+    state = reduce(state, { type: 'screen/show', screen: 'hub' });
 
     state = reduce(state, { type: 'campaign/fight/begin', rules });
     assert.deepEqual(reduce(reopened, { type: 'campaign/fight/begin', rules }).campaign, state.campaign, 'the fight a reopened hub begins is the same');
