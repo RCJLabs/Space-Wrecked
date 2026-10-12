@@ -99,7 +99,12 @@ Evan didn't weigh in on any of these:
   - **An M15 save (v6)** opens as v7 with a stock.
   - **Offline**, the shop opens.
   - **No console errors or warnings.**
-- **Regressions:** M15's check, 30 of 30 at each size. M14's, M13's and M8's checks are still running at this commit.
+- **Regressions:**
+  - **M15's check:** 30 of 30 at each size.
+  - **M14's check:** 40 of 40 at 905 × 370.
+  - **M14's saves check:** v4 saves migrated through to v7, 10 of 10.
+  - **M13's check:** 24 of 24, after one fix. It caught the hangar's hint for spare parts no longer saying where the missing parts come from. It now reads "The parts still missing come from jobs and the shop, where spares sell too."
+  - **M8's fight sandbox checks:** the fight, the orders column at all three sizes, and the extras all pass, with no console errors.
 
 ### Known issues
 

@@ -76,7 +76,7 @@ function hangarHint({ raid, ready, build, buy, heat, held, shop }, rules) {
   if (heat.level === 'hunters') return warn;
   if (buy) return { tone: 'good', text: `${shop.name} has the ${rules.modules.get(buy.part)?.name ?? buy.part} the ship needs, for ${buy.price}. Tap Shop.` };
   if (heat.level !== 'calm') return warn;
-  if (held) return { tone: 'info', text: shop ? "Tap Build to change the ship, or Shop to sell what it doesn't need. The rest comes from jobs." : 'Tap Build to change the ship. The parts still missing come from jobs: tap Jobs.' };
+  if (held) return { tone: 'info', text: shop ? 'The parts still missing come from jobs and the shop, where spares sell too.' : 'Tap Build to change the ship. The parts still missing come from jobs: tap Jobs.' };
   return { tone: 'info', text: `The parts still missing come from jobs${shop ? ' and the shop' : ''}: tap Jobs.` };
 }
 

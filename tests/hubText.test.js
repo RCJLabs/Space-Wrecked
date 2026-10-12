@@ -45,7 +45,7 @@ test('the hint follows what is left to do', () => {
   assert.deepEqual(fitted.parts, { corridor: 2 });
   const text = hangarText(fitted, rules);
   assert.equal(text.build, false);
-  assert.deepEqual(text.hint, { tone: 'info', text: "Tap Build to change the ship, or Shop to sell what it doesn't need. The rest comes from jobs." });
+  assert.deepEqual(text.hint, { tone: 'info', text: 'The parts still missing come from jobs and the shop, where spares sell too.' });
   assert.deepEqual(hangarText({ ...fitted, parts: {} }, rules).hint, { tone: 'info', text: 'The parts still missing come from jobs and the shop: tap Jobs.' });
 });
 
