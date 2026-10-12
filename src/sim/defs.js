@@ -4,9 +4,10 @@
 // empty tables.
 
 // The content files, by name: data/<name>.json.
-export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'balance', 'weapons', 'jobs', 'enemies', 'tiles', 'encounters', 'ships', 'campaign'];
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'balance', 'weapons', 'jobs', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts'];
 
-export function indexDefs({ modules, frames, manufacturers, balance, weapons, jobs, enemies, tiles, encounters, ships, campaign }) {
+export function indexDefs(files) {
+  const { modules, frames, manufacturers, balance, weapons, jobs, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts } = files;
   return {
     balance,
     tilesPerCell: modules.tilesPerCell,
@@ -26,9 +27,24 @@ export function indexDefs({ modules, frames, manufacturers, balance, weapons, jo
     encounters: byId(encounters?.encounters),
     // The presets ships are generated from (src/sim/gen/ship.js).
     ships: byId(ships?.ships),
-    // The campaign's acts, and what a new one starts with (campaign.js).
+    // The campaign's acts (campaign.js), and act 1's content: the
+    // backgrounds a campaign can start from (each with its start and its
+    // district), the districts with their clients and job sites (ids are
+    // unique across districts), the sites' map templates (gen/site.js) and
+    // the jobs (contracts.js).
     acts: new Map((campaign?.acts ?? []).map((act) => [act.act, act])),
-    start: campaign?.start ?? null,
+    backgrounds: byId(backgrounds?.backgrounds),
+    districts: byId(districts?.districts),
+    clients: byId((districts?.districts ?? []).flatMap((district) => district.clients ?? [])),
+    sites: byId((districts?.districts ?? []).flatMap((district) => district.sites ?? [])),
+    siteMaps: byId(sites?.maps),
+    contracts: {
+      boardSize: contracts?.boardSize ?? 0,
+      twistChance: contracts?.twistChance ?? 0,
+      missions: byId(contracts?.missions),
+      twists: byId(contracts?.twists),
+      jobs: byId(contracts?.jobs),
+    },
   };
 }
 

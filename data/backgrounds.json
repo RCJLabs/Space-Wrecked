@@ -1,0 +1,31 @@
+{
+  "backgrounds": [
+    {
+      "id": "miner",
+      "name": "Debt-bound miner",
+      "blurb": "Eleven years hauling ore for Consolidated Regolith, and you still owe them for the boots. The half-built ship in Ma Prewitt's hangar is the first thing you've owned outright. The Company's lawyers disagree.",
+      "pursuer": {
+        "name": "Con-Reg Recovery",
+        "blurb": "The Company's repo crews. They find a ship by its registration, and they bill you for the trip."
+      },
+      "district": "tailings",
+      "start": {
+        "credits": 0,
+        "parts": { "quarters": 1, "lifesupport": 1, "corridor": 2 },
+        "crew": ["marine", "engineer", "medic"],
+        "ship": {
+          "frame": "starter",
+          "placements": [
+            { "type": "bridge", "x": 15, "y": 6, "rot": 1 },
+            { "type": "reactor", "x": 12, "y": 5, "rot": 0 },
+            { "type": "corridor", "x": 9, "y": 7, "rot": 0 },
+            { "type": "corridor", "x": 10, "y": 7, "rot": 0 },
+            { "type": "corridor", "x": 11, "y": 7, "rot": 0 },
+            { "type": "airlock", "x": 11, "y": 8, "rot": 0 },
+            { "type": "weapon", "x": 13, "y": 8, "rot": 2 }
+          ]
+        }
+      }
+    }
+  ]
+}

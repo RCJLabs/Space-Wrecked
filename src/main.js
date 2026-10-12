@@ -48,6 +48,8 @@ store.subscribe(syncScreen);
 const params = new URLSearchParams(location.search);
 if (params.has('dev')) storage.writeFlag('dev', params.get('dev') !== '0');
 const dev = storage.readFlag('dev');
+// Panels that sit where the DEV button goes make room for it.
+if (dev) ui.dataset.dev = '';
 const fps = dev ? createFpsOverlay(ui) : null;
 if (dev) createDevMenu(ui, { store, getStatus });
 

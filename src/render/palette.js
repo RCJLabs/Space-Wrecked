@@ -96,6 +96,19 @@ export const skins = {
   },
 };
 
+// A job's site on the ground (src/sim/gen/site.js), not a ship: the yard's
+// fittings on dusty concrete, with rock where a ship has its hull and fences
+// for walls.
+skins.ground = {
+  ...skins.yard,
+  edge: '#15120f',
+  hull: '#5e534a',
+  dark: '#2a2622',
+  floors: ['#3b3631', '#3f3a34', '#37332e', '#423c35'],
+  floorSeam: '#26221e',
+  wall: '#8b929b',
+};
+
 // The skin for a manufacturer, or the yard's for one without a skin yet.
 export function skinFor(manufacturer) {
   return skins[manufacturer] ?? skins.yard;

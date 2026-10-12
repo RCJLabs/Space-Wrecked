@@ -21,6 +21,10 @@ test('the shipped data has the 12 v0.1 module types', () => {
 // validator to name it. The starter frame is an open yard, so the shape
 // cases cut a small frame of their own.
 const engine = (d) => d.modules.modules.find((m) => m.id === 'engine');
+const start = (d) => d.backgrounds.backgrounds[0].start;
+const district = (d) => d.districts.districts[0];
+const twist = (d, id) => d.contracts.twists.find((t) => t.id === id);
+const job = (d, id) => d.contracts.jobs.find((j) => j.id === id);
 const small = (d) => Object.assign(d.frames.frames[0], { width: 4, height: 4 });
 const cases = [
   ['duplicate id', (d) => d.modules.modules.push(structuredClone(d.modules.modules[0])), /duplicate id "bridge"/],
@@ -84,16 +88,47 @@ const cases = [
   ['campaign acts out of order', (d) => (d.campaign.acts[1].act = 3), /acts must be acts 1 to 3 in order/],
   ['campaign act with no home', (d) => (d.campaign.acts[0].home = ''), /act #1: name and home must be non-empty strings/],
   ['campaign with a fourth act', (d) => d.campaign.acts.push({ act: 4, name: 'Epilogue', hub: 'ship', home: 'Your ship' }), /acts must be acts 1 to 3/],
-  ['misspelled campaign start field', (d) => (d.campaign.start.credit = 5), /start: unknown field "credit"/],
-  ['campaign starting in debt', (d) => (d.campaign.start.credits = -5), /credits must be a whole number, 0 or more/],
-  ['campaign starting with an unknown part', (d) => (d.campaign.start.parts.cannon = 1), /start\.parts: unknown module "cannon"/],
-  ['campaign starting with none of a part', (d) => (d.campaign.start.parts.engine = 0), /engine must be a whole number, 1 or more/],
-  ['campaign crew with an enemy in it', (d) => (d.campaign.start.crew[0] = 'pirate'), /start\.crew: unknown job "pirate"/],
-  ['campaign crew of six', (d) => d.campaign.start.crew.push('marine', 'marine', 'marine'), /crew must be a list of 1 to 5 crew jobs/],
-  ['campaign ship on an unknown frame', (d) => (d.campaign.start.ship.frame = 'barge'), /start\.ship: unknown frame "barge"/],
-  ['campaign ship with a half turn of nothing', (d) => (d.campaign.start.ship.placements[0].rot = 5), /placement 1 must be \{ type, x, y, rot \}/],
-  ['campaign ship with parts on top of each other', (d) => d.campaign.start.ship.placements.push({ type: 'corridor', x: 9, y: 7, rot: 0 }), /placement 8 \(corridor\) is rejected/],
-  ['campaign ship with no airlock', (d) => (d.campaign.start.ship.placements = d.campaign.start.ship.placements.filter((p) => p.type !== 'airlock')), /start\.ship: No airlock on the hull edge/],
+  ['act that may or may not heal', (d) => (d.campaign.acts[0].heals = 'yes'), /act #1: heals must be true or false/],
+  ['campaign start left in campaign.json', (d) => (d.campaign.start = {}), /campaign\.json: unknown field "start"/],
+  ['misspelled start field', (d) => (start(d).credit = 5), /start: unknown field "credit"/],
+  ['start in debt', (d) => (start(d).credits = -5), /credits must be a whole number, 0 or more/],
+  ['start with an unknown part', (d) => (start(d).parts.cannon = 1), /start\.parts: unknown module "cannon"/],
+  ['start with none of a part', (d) => (start(d).parts.engine = 0), /engine must be a whole number, 1 or more/],
+  ['start crew with an enemy in it', (d) => (start(d).crew[0] = 'pirate'), /start\.crew: unknown job "pirate"/],
+  ['start crew of six', (d) => start(d).crew.push('marine', 'marine', 'marine'), /crew must be a list of 1 to 5 crew jobs/],
+  ['start ship on an unknown frame', (d) => (start(d).ship.frame = 'barge'), /start\.ship: unknown frame "barge"/],
+  ['start ship with a half turn of nothing', (d) => (start(d).ship.placements[0].rot = 5), /placement 1 must be \{ type, x, y, rot \}/],
+  ['start ship with parts on top of each other', (d) => start(d).ship.placements.push({ type: 'corridor', x: 9, y: 7, rot: 0 }), /placement 8 \(corridor\) is rejected/],
+  ['start ship with no airlock', (d) => (start(d).ship.placements = start(d).ship.placements.filter((p) => p.type !== 'airlock')), /start\.ship: No airlock on the hull edge/],
+  ['no backgrounds', (d) => (d.backgrounds.backgrounds = []), /needs at least one background/],
+  ['background in an unknown district', (d) => (d.backgrounds.backgrounds[0].district = 'docks'), /unknown district "docks"/],
+  ['background with no pursuer', (d) => delete d.backgrounds.backgrounds[0].pursuer, /pursuer must be \{ name, blurb \}/],
+  ['client in two districts', (d) => d.districts.districts.push({ ...structuredClone(district(d)), id: 'docks', sites: [{ id: 'pier', name: 'Pier', map: 'yard', blurb: 'Wet.' }] }), /duplicate client id "marta"/],
+  ['site on an unknown map', (d) => (district(d).sites[0].map = 'moon'), /unknown or broken map "moon"/],
+  ['site map with a stray character', (d) => (d.sites.maps[0].rows[1] = d.sites.maps[0].rows[1].replace('k', 'Z')), /"Z" is no site tile/],
+  ['site map short of spawn tiles', (d) => (d.sites.maps[0].rows[1] = d.sites.maps[0].rows[1].replace(' s', ' .')), /5 spawn tiles: it needs 6/],
+  ['site map with a pen no one can walk into', (d) => (d.sites.maps[3].rows[14] = ` -${d.sites.maps[3].rows[14].slice(2)}`) && (d.sites.maps[3].rows[15] = ` .|${d.sites.maps[3].rows[15].slice(3)}`), /\(0, 7\) can't be walked to/],
+  ['site map with the hull for a wall', (d) => (d.sites.maps[0].rows[0] = ` =${d.sites.maps[0].rows[0].slice(2)}`), /a hull on an edge: a site has only walls and doors/],
+  ['tiles with no rule for rock', (d) => delete d.tiles.tiles.rock, /no rules for the tile "rock"/],
+  ['board bigger than the jobs allow', (d) => (d.contracts.boardSize = 5) && d.contracts.jobs.pop(), /has 9 jobs: a board of 5 needs 10/],
+  ['mission the rules don\'t know', (d) => d.contracts.missions.push({ id: 'escort', name: 'Escort', brief: 'Walk them home.' }), /unknown mission: the rules know clear, grab, hack/],
+  ['brief with a word that can\'t be filled in', (d) => (d.contracts.missions[0].brief = 'Clear {site}.'), /"\{site\}" can't be filled in/],
+  ['twist that does nothing', (d) => (d.contracts.twists[0] = { id: 'quiet', name: 'Quiet night', text: 'Nothing happens.' }), /does nothing/],
+  ['twist with a hazard of its own', (d) => (d.contracts.twists[1].hazard = 'acid'), /hazard must be one of fire, rubble/],
+  ['twist with a hazard and no patches', (d) => delete d.contracts.twists[1].patches, /a hazard comes with its patches/],
+  ['twist text naming a number it has not got', (d) => (d.contracts.twists[0].text = 'Done by round {deadline}.'), /"\{deadline\}" can't be filled in/],
+  ['twist with no missions in its list', (d) => (twist(d, 'rush').missions = []), /missions must be a list of the missions/],
+  ['job with an unknown mission', (d) => (job(d, 'repo').mission = 'steal'), /unknown mission "steal"/],
+  ['grab job with no crates', (d) => delete job(d, 'repo').crates, /a grab job needs crates/],
+  ['clear job with crates', (d) => (job(d, 'jumpers').crates = 2), /crates is only for grab jobs/],
+  ['hack job with too many turns', (d) => (job(d, 'payroll').turns = 9), /needs turns, a whole number from 1 to 5/],
+  ['job at an unknown site', (d) => job(d, 'rent').sites.push('moon'), /unknown site "moon"/],
+  ['job for a client from another district', (d) => (job(d, 'rent').clients = ['nobody']), /client "nobody" isn't in its sites' district/],
+  ['job against an unknown encounter', (d) => (job(d, 'rent').encounter = 'ghosts'), /unknown encounter "ghosts"/],
+  ['job with more enemies than spawn tiles', (d) => d.encounters.encounters.find((e) => e.id === 'guards').enemies.push('guard', 'guard', 'guard'), /7 enemies with a twist, but depot's map has 6 spawn tiles/],
+  ['job paying odd credits', (d) => (job(d, 'rent').credits = [61, 90]), /multiples of 5/],
+  ['job with a part chance and no parts', (d) => (job(d, 'payroll').partChance = 10), /a part comes with a chance/],
+  ['job pitch with a word that can\'t be filled in', (d) => (job(d, 'rent').pitch = 'Pay {rent}.'), /"\{rent\}" can't be filled in: use \{client\}, \{site\}/],
 ];
 
 test('the validator names each kind of mistake', () => {
@@ -122,5 +157,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 jobs, 2 enemies, 1 encounter, 3 ship presets, 3 acts\)/);
+  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 crew jobs, 7 enemies, 7 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates\)/);
 });

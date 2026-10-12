@@ -1,0 +1,341 @@
+// The campaign's content, for validate-data.js: its acts (campaign.json),
+// the backgrounds a campaign starts from (backgrounds.json), act 1's
+// districts with their clients and job sites (districts.json), the sites'
+// map templates (sites.json) and the jobs (contracts.json).
+import { buildShip, layoutProblems } from '../src/sim/builder.js';
+import { ACTS } from '../src/sim/campaign.js';
+import { MISSIONS, PAY_STEP } from '../src/sim/contracts.js';
+import { indexDefs } from '../src/sim/defs.js';
+import { HAZARDS, siteMarks, siteProblems } from '../src/sim/gen/site.js';
+import { isId, isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
+
+const CAMPAIGN_KEYS = ['acts'];
+const ACT_KEYS = ['act', 'name', 'hub', 'home', 'heals'];
+const BACKGROUND_KEYS = ['id', 'name', 'blurb', 'pursuer', 'district', 'start'];
+const PURSUER_KEYS = ['name', 'blurb'];
+const START_KEYS = ['credits', 'parts', 'crew', 'ship'];
+const SCRIPT_KEYS = ['frame', 'placements'];
+const PLACEMENT_KEYS = ['type', 'x', 'y', 'rot'];
+const DISTRICT_KEYS = ['id', 'name', 'blurb', 'clients', 'sites'];
+const CLIENT_KEYS = ['id', 'name', 'title', 'blurb'];
+const SITE_KEYS = ['id', 'name', 'map', 'blurb'];
+const MAP_KEYS = ['id', 'name', 'rows'];
+const CONTRACTS_KEYS = ['boardSize', 'twistChance', 'missions', 'twists', 'jobs'];
+const MISSION_KEYS = ['id', 'name', 'brief'];
+const TWIST_KEYS = ['id', 'name', 'text', 'enemies', 'hazard', 'patches', 'sight', 'deadline', 'pay', 'missions'];
+const JOB_KEYS = ['id', 'title', 'mission', 'crates', 'turns', 'clients', 'sites', 'encounter', 'credits', 'parts', 'partChance', 'pitch'];
+// A twist's numbers, each one's allowed range. A twist sets at least one
+// of them, or a hazard.
+const TWIST_NUMBERS = { enemies: [-2, 2], patches: [1, 2], sight: [2, 20], deadline: [3, 30], pay: [-90, 200] };
+// What each mission needs of a job, and its range: grab the crates to
+// grab, hack the turns of work on the terminal.
+const MISSION_NEEDS = { grab: ['crates', 1, 3], hack: ['turns', 1, 5] };
+// The {words} each text may use, filled in when it is shown.
+const BRIEF_WORDS = { clear: [], grab: ['crates'], hack: ['turns'] };
+const PITCH_WORDS = ['client', 'site'];
+// Everyone aboard fights, so a starting crew is a squad's size.
+const MAX_SQUAD = 5;
+const MAX_BOARD = 5;
+const MAX_CREDITS = 9995;
+
+// Checks every campaign file. ids: the content the campaign refers to, as
+// { jobIds, moduleIds, frameById, encounters (id -> enemy list) }. Returns
+// the starting ships that are well formed, as [where, script], for
+// checkStartShips.
+export function checkCampaignFiles(data, ids, fail) {
+  checkActs(data.campaign, fail);
+  const maps = checkSiteMaps(data.sites, fail);
+  const districts = checkDistricts(data.districts, maps, fail);
+  const scripts = checkBackgrounds(data.backgrounds, districts, ids, fail);
+  checkContracts(data.contracts, districts, maps, ids, fail);
+  return scripts;
+}
+
+// Each starting ship builds part by part with the builder's rules, and its
+// layout breaks none of them. Unfinished is fine: act 1 is about finishing
+// it. Only for content that checks out, since the rules index it.
+export function checkStartShips(data, scripts, fail) {
+  let defs;
+  try {
+    defs = indexDefs(data);
+  } catch (err) {
+    fail('backgrounds.json', `the content can't be indexed: ${err.message}`);
+    return;
+  }
+  for (const [at, script] of scripts) {
+    try {
+      const { ship, rejected } = buildShip(defs, script.frame, script.placements);
+      for (const r of rejected) fail(at, `placement ${r.index + 1} (${r.placement.type}) is rejected: ${r.message}`);
+      if (!rejected.length) for (const p of layoutProblems(ship, defs)) fail(at, p.message);
+    } catch (err) {
+      fail(at, `can't be built: ${err.message}`);
+    }
+  }
+}
+
+// The acts in order, each with its name, its home (the hub: an id, and
+// words for the player) and whether coming home heals the crew.
+function checkActs(file, fail) {
+  const where = 'campaign.json';
+  if (!isObject(file)) {
+    fail(where, 'must be an object with "acts"');
+    return;
+  }
+  knownKeys(file, CAMPAIGN_KEYS, where, fail);
+  const acts = listOf(file, 'acts', where, fail);
+  acts.forEach((act, i) => {
+    const at = `${where} act #${i + 1}`;
+    knownKeys(act, ACT_KEYS, at, fail);
+    if (!isText(act.name) || !isText(act.home)) fail(at, 'name and home must be non-empty strings');
+    if (!isId(act.hub)) fail(at, 'hub must be lowercase letters, digits and dashes');
+    if (typeof act.heals !== 'boolean') fail(at, 'heals must be true or false');
+  });
+  if (acts.length !== ACTS || acts.some((act, i) => act.act !== i + 1)) fail(where, `acts must be acts 1 to ${ACTS} in order`);
+}
+
+// The sites' map templates, each with no problem gen/site.js can find.
+// Returns each good template's mark counts, by id.
+function checkSiteMaps(file, fail) {
+  const maps = listOf(file, 'maps', 'sites.json', fail);
+  uniqueIds(maps, 'sites.json', fail);
+  const marks = new Map();
+  maps.forEach((map, i) => {
+    const where = `sites.json ${map.id ?? `#${i}`}`;
+    knownKeys(map, MAP_KEYS, where, fail);
+    if (!isText(map.name)) fail(where, 'name must be a non-empty string');
+    if (!Array.isArray(map.rows) || !map.rows.every((row) => typeof row === 'string')) {
+      fail(where, 'rows must be a list of lines in the battle map text format');
+      return;
+    }
+    const problems = siteProblems(map);
+    for (const problem of problems) fail(where, problem);
+    if (!problems.length && isId(map.id)) marks.set(map.id, siteMarks(map));
+  });
+  return marks;
+}
+
+// The districts: their clients and their sites, each site on a map
+// template. Client and site ids are unique across districts, so a job can
+// name them alone. Returns { districts: id -> { clients, sites }, sites:
+// id -> { district, map } }.
+function checkDistricts(file, maps, fail) {
+  const districts = listOf(file, 'districts', 'districts.json', fail);
+  uniqueIds(districts, 'districts.json', fail);
+  const byId = new Map();
+  const sites = new Map();
+  const clients = new Set();
+  districts.forEach((district, i) => {
+    const where = `districts.json ${district.id ?? `#${i}`}`;
+    knownKeys(district, DISTRICT_KEYS, where, fail);
+    if (!isText(district.name) || !isText(district.blurb)) fail(where, 'name and blurb must be non-empty strings');
+    const own = { clients: new Set(), sites: new Set() };
+    for (const client of listOf(district, 'clients', where, fail)) {
+      const at = `${where} client ${client.id ?? '?'}`;
+      knownKeys(client, CLIENT_KEYS, at, fail);
+      if (!isId(client.id)) {
+        fail(at, 'id must be lowercase letters, digits and dashes');
+      } else if (clients.has(client.id)) {
+        fail(at, `duplicate client id "${client.id}"`);
+      } else {
+        clients.add(client.id);
+        own.clients.add(client.id);
+      }
+      if (!isText(client.name) || !isText(client.title) || !isText(client.blurb)) fail(at, 'name, title and blurb must be non-empty strings');
+    }
+    for (const site of listOf(district, 'sites', where, fail)) {
+      const at = `${where} site ${site.id ?? '?'}`;
+      knownKeys(site, SITE_KEYS, at, fail);
+      if (!isId(site.id)) {
+        fail(at, 'id must be lowercase letters, digits and dashes');
+      } else if (sites.has(site.id)) {
+        fail(at, `duplicate site id "${site.id}"`);
+      } else {
+        sites.set(site.id, { district: district.id, map: site.map });
+        own.sites.add(site.id);
+      }
+      if (!isText(site.name) || !isText(site.blurb)) fail(at, 'name and blurb must be non-empty strings');
+      if (!maps.has(site.map)) fail(at, `unknown or broken map "${site.map}" (sites.json)`);
+    }
+    if (!own.clients.size || !own.sites.size) fail(where, 'needs at least one client and one site');
+    if (isId(district.id)) byId.set(district.id, own);
+  });
+  return { districts: byId, sites };
+}
+
+// The backgrounds: who the player was, the pursuer after them, their
+// district, and what a campaign from it starts with: credits, parts held,
+// the crew by job, and the ship as a script of placements
+// (tools/build-ship.js).
+function checkBackgrounds(file, { districts }, { jobIds, moduleIds, frameById }, fail) {
+  const backgrounds = listOf(file, 'backgrounds', 'backgrounds.json', fail);
+  uniqueIds(backgrounds, 'backgrounds.json', fail);
+  if (!backgrounds.length) fail('backgrounds.json', 'needs at least one background');
+  const scripts = [];
+  backgrounds.forEach((background, i) => {
+    const where = `backgrounds.json ${background.id ?? `#${i}`}`;
+    knownKeys(background, BACKGROUND_KEYS, where, fail);
+    if (!isText(background.name) || !isText(background.blurb)) fail(where, 'name and blurb must be non-empty strings');
+    const { pursuer } = background;
+    if (!isObject(pursuer) || !isText(pursuer.name) || !isText(pursuer.blurb)) fail(where, 'pursuer must be { name, blurb }');
+    else knownKeys(pursuer, PURSUER_KEYS, `${where} pursuer`, fail);
+    if (!districts.has(background.district)) fail(where, `unknown district "${background.district}"`);
+    const script = checkStart(background.start, `${where} start`, { jobIds, moduleIds, frameById }, fail);
+    if (script) scripts.push([`${where} start.ship`, script]);
+  });
+  return scripts;
+}
+
+// Returns the start's ship script if it is well formed, else null.
+function checkStart(start, where, { jobIds, moduleIds, frameById }, fail) {
+  if (!isObject(start)) {
+    fail(where, 'must be { credits, parts, crew, ship }');
+    return null;
+  }
+  knownKeys(start, START_KEYS, where, fail);
+  if (!isIntIn(start.credits, 0, Infinity)) fail(where, 'credits must be a whole number, 0 or more');
+  if (!isObject(start.parts)) {
+    fail(where, 'parts must be an object of module types and counts');
+  } else {
+    for (const [type, count] of Object.entries(start.parts)) {
+      if (!moduleIds.has(type)) fail(`${where}.parts`, `unknown module "${type}"`);
+      if (!isIntIn(count, 1, Infinity)) fail(`${where}.parts`, `${type} must be a whole number, 1 or more`);
+    }
+  }
+  if (!isListIn(start.crew, 1, MAX_SQUAD)) fail(where, `crew must be a list of 1 to ${MAX_SQUAD} crew jobs`);
+  else for (const id of start.crew) if (!jobIds.has(id)) fail(`${where}.crew`, `unknown job "${id}"`);
+
+  const script = start.ship;
+  const at = `${where}.ship`;
+  if (!isObject(script) || !Array.isArray(script.placements)) {
+    fail(at, 'must be { frame, placements: [{ type, x, y, rot }] }');
+    return null;
+  }
+  knownKeys(script, SCRIPT_KEYS, at, fail);
+  let readable = frameById.has(script.frame);
+  if (!readable) fail(at, `unknown frame "${script.frame}"`);
+  script.placements.forEach((placement, i) => {
+    const ok = isObject(placement) && Object.keys(placement).every((key) => PLACEMENT_KEYS.includes(key)) && moduleIds.has(placement.type) &&
+      Number.isInteger(placement.x) && Number.isInteger(placement.y) && [0, 1, 2, 3].includes(placement.rot);
+    if (!ok) {
+      fail(at, `placement ${i + 1} must be { type, x, y, rot } with a known module, whole numbers and a quarter turn`);
+      readable = false;
+    }
+  });
+  return readable ? script : null;
+}
+
+// The jobs (contracts.js): the board's size and how often a job comes with
+// a twist; the missions the rules know, each with a brief; the twists; and
+// the jobs themselves, each a mission at its sites for its clients, all in
+// one district, against an encounter that fits every site's spawn tiles
+// (with any twist's extra enemy), for credits in steps of PAY_STEP and
+// maybe a part.
+function checkContracts(file, { districts, sites }, maps, { moduleIds, encounters }, fail) {
+  const where = 'contracts.json';
+  if (!isObject(file)) {
+    fail(where, 'must be an object with the board, missions, twists and jobs');
+    return;
+  }
+  knownKeys(file, CONTRACTS_KEYS, where, fail);
+  if (!isIntIn(file.boardSize, 1, MAX_BOARD)) fail(where, `boardSize must be a whole number from 1 to ${MAX_BOARD}`);
+  if (!isIntIn(file.twistChance, 0, 100)) fail(where, 'twistChance must be a whole number from 0 to 100');
+
+  const missions = listOf(file, 'missions', where, fail);
+  const missionIds = uniqueIds(missions, `${where} missions`, fail);
+  missions.forEach((mission, i) => {
+    const at = `${where} mission ${mission.id ?? `#${i}`}`;
+    knownKeys(mission, MISSION_KEYS, at, fail);
+    if (!MISSIONS.includes(mission.id)) fail(at, `unknown mission: the rules know ${MISSIONS.join(', ')}`);
+    if (!isText(mission.name)) fail(at, 'name must be a non-empty string');
+    checkWords(mission.brief, BRIEF_WORDS[mission.id] ?? [], `${at} brief`, fail);
+  });
+
+  const twists = listOf(file, 'twists', where, fail);
+  uniqueIds(twists, `${where} twists`, fail);
+  twists.forEach((twist, i) => {
+    const at = `${where} twist ${twist.id ?? `#${i}`}`;
+    knownKeys(twist, TWIST_KEYS, at, fail);
+    if (!isText(twist.name)) fail(at, 'name must be a non-empty string');
+    for (const [key, [min, max]] of Object.entries(TWIST_NUMBERS)) {
+      if (twist[key] !== undefined && !isIntIn(twist[key], min, max)) fail(at, `${key} must be a whole number from ${min} to ${max}`);
+    }
+    if (twist.enemies === 0 || twist.pay === 0) fail(at, 'enemies and pay, where set, change something');
+    if (twist.hazard !== undefined && !HAZARDS.includes(twist.hazard)) fail(at, `hazard must be one of ${HAZARDS.join(', ')}`);
+    if ((twist.hazard === undefined) !== (twist.patches === undefined)) fail(at, 'a hazard comes with its patches, and patches with a hazard');
+    if (!['enemies', 'hazard', 'sight', 'deadline', 'pay'].some((key) => twist[key] !== undefined)) fail(at, 'does nothing: set enemies, a hazard, sight, a deadline or pay');
+    if (twist.missions !== undefined && (!isListIn(twist.missions, 1, MISSIONS.length) || !twist.missions.every((id) => missionIds.has(id)) || new Set(twist.missions).size !== twist.missions.length)) {
+      fail(at, 'missions must be a list of the missions it can come with');
+    }
+    checkWords(twist.text, ['deadline', 'sight'].filter((key) => twist[key] !== undefined), `${at} text`, fail);
+  });
+
+  const jobs = listOf(file, 'jobs', where, fail);
+  uniqueIds(jobs, `${where} jobs`, fail);
+  const perDistrict = new Map();
+  jobs.forEach((job, i) => {
+    const at = `${where} job ${job.id ?? `#${i}`}`;
+    knownKeys(job, JOB_KEYS, at, fail);
+    if (!isText(job.title)) fail(at, 'title must be a non-empty string');
+    if (!missionIds.has(job.mission)) fail(at, `unknown mission "${job.mission}"`);
+    for (const [mission, [key, min, max]] of Object.entries(MISSION_NEEDS)) {
+      if (job.mission === mission && !isIntIn(job[key], min, max)) fail(at, `a ${mission} job needs ${key}, a whole number from ${min} to ${max}`);
+      if (job.mission !== mission && job[key] !== undefined) fail(at, `${key} is only for ${mission} jobs`);
+    }
+    // Where: its sites, all in one district with its clients.
+    const homes = new Set();
+    if (!isListIn(job.sites, 1, Infinity)) {
+      fail(at, 'sites must be a list of sites');
+    } else {
+      for (const id of job.sites) {
+        if (sites.has(id)) homes.add(sites.get(id).district);
+        else fail(at, `unknown site "${id}"`);
+      }
+    }
+    const [home] = homes;
+    if (homes.size > 1) fail(at, 'its sites must all be in one district');
+    if (!isListIn(job.clients, 1, Infinity)) fail(at, 'clients must be a list of clients');
+    else if (home) for (const id of job.clients) if (!districts.get(home)?.clients.has(id)) fail(at, `client "${id}" isn't in its sites' district`);
+    if (homes.size === 1) perDistrict.set(home, (perDistrict.get(home) ?? 0) + 1);
+    if (new Set(job.sites).size !== job.sites?.length || new Set(job.clients).size !== job.clients?.length) fail(at, 'sites and clients are listed once each');
+    // Who: the encounter, at its biggest with a twist, fits every site.
+    const enemies = encounters.get(job.encounter);
+    if (!enemies) fail(at, `unknown encounter "${job.encounter}"`);
+    else if (Array.isArray(job.sites)) {
+      const extra = Math.max(0, ...twists.filter((t) => !t.missions || t.missions.includes(job.mission)).map((t) => (isIntIn(t.enemies, -2, 2) ? t.enemies : 0)));
+      for (const id of job.sites) {
+        const marks = maps.get(sites.get(id)?.map);
+        if (!marks) continue;
+        if (enemies.length + extra > marks.spawn) fail(at, `${enemies.length + extra} enemies with a twist, but ${id}'s map has ${marks.spawn} spawn tiles`);
+        if (MAX_SQUAD > marks.entry) fail(at, `${id}'s map has ${marks.entry} ways in for a squad of up to ${MAX_SQUAD}`);
+        if (job.mission === 'grab' && job.crates > marks.loot) fail(at, `${job.crates} crates, but ${id}'s map has ${marks.loot}`);
+        if (job.mission === 'hack' && !marks.terminal) fail(at, `${id}'s map has no terminal`);
+      }
+    }
+    // The pay.
+    if (!isRange(job.credits, 0, MAX_CREDITS) || job.credits.some((n) => n % PAY_STEP)) {
+      fail(at, `credits must be [least, most], multiples of ${PAY_STEP} from 0 to ${MAX_CREDITS}`);
+    }
+    if (!Array.isArray(job.parts) || !job.parts.every((type) => moduleIds.has(type))) fail(at, 'parts must be a list of module types');
+    if (!isIntIn(job.partChance, 0, 100)) fail(at, 'partChance must be a whole number from 0 to 100');
+    else if ((job.partChance > 0) !== (job.parts?.length > 0)) fail(at, 'a part comes with a chance, and a chance with parts');
+    checkWords(job.pitch, PITCH_WORDS, `${at} pitch`, fail);
+  });
+  for (const id of districts.keys()) {
+    const count = perDistrict.get(id) ?? 0;
+    // A new board offers none of the old board's jobs.
+    if (isIntIn(file.boardSize, 1, MAX_BOARD) && count < 2 * file.boardSize) {
+      fail(where, `district "${id}" has ${count} jobs: a board of ${file.boardSize} needs ${2 * file.boardSize}, as each board offers none of the last one's`);
+    }
+  }
+}
+
+// A text for the player, using only the {words} allowed.
+function checkWords(text, allowed, where, fail) {
+  if (!isText(text)) {
+    fail(where, 'must be a non-empty string');
+    return;
+  }
+  for (const [, word] of text.matchAll(/\{([^}]*)\}/g)) {
+    if (!allowed.includes(word)) fail(where, `"{${word}}" can't be filled in${allowed.length ? `: use ${allowed.map((w) => `{${w}}`).join(', ')}` : ''}`);
+  }
+}

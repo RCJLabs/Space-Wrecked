@@ -2,16 +2,15 @@
 // the middle, seen from outside. Around it are the act's goal (the flight
 // checklist, each fix saying whether the part is on hand), the crew with
 // their hit points, and what the campaign holds. Build opens construction
-// mode (construction.js) on the ship; Repel boarders, standing in for jobs
-// (M14) and raids (M15), starts a fight. Everything the campaign holds is
-// saved as it changes, so the hangar reopens as it was left.
+// mode (construction.js) on the ship; Jobs opens the job board (jobs.js),
+// where the parts still missing are earned. Everything the campaign holds
+// is saved as it changes, so the hangar reopens as it was left.
 import { loadContent } from '../../platform/content.js';
 import { traceHull } from '../../render/hull.js';
 import { fitOrbit } from '../../render/orbit.js';
 import { palette, skinFor } from '../../render/palette.js';
 import { BOARD_VIEW, boardBox, createBoard } from '../../render/shipView.js';
 import { openings } from '../../sim/builder.js';
-import { beginFight } from '../../sim/campaign.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
@@ -36,10 +35,10 @@ export const hangarScreen = {
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const hint = node('p', 'hgr-hint', 'Loading…');
-    const fightButton = toolButton('hgr-fight', icons.shoot, 'Repel boarders');
+    const jobsButton = toolButton('hgr-jobs', icons.jobs, 'Jobs');
     const buildButton = toolButton('hgr-build', icons.build, 'Build');
-    fightButton.disabled = buildButton.disabled = true;
-    foot.append(titleButton, hint, fightButton, buildButton);
+    jobsButton.disabled = buildButton.disabled = true;
+    foot.append(titleButton, hint, jobsButton, buildButton);
     el.append(head, panel('Goal: launch', goalLines), shipArea, side, foot);
     root.append(el);
 
@@ -53,7 +52,7 @@ export const hangarScreen = {
     const cleanups = [
       onTap(titleButton, () => game.dispatch({ type: 'screen/show', screen: 'title' })),
       onTap(buildButton, () => game.dispatch({ type: 'screen/show', screen: 'construction' })),
-      onTap(fightButton, () => defs && game.dispatch({ type: 'campaign/fight/begin', rules: defs })),
+      onTap(jobsButton, () => game.dispatch({ type: 'screen/show', screen: 'jobs' })),
       game.subscribe((state) => alive && render(state.campaign)),
     ];
     const observer = new ResizeObserver(() => layout());
@@ -64,6 +63,8 @@ export const hangarScreen = {
       .then((content) => {
         if (!alive) return;
         defs = content;
+        // A campaign saved before there were jobs gets its first board.
+        if (game.getState().campaign && !game.getState().campaign.board.length) game.dispatch({ type: 'campaign/board', rules: defs });
         render(game.getState().campaign);
       })
       .catch((err) => {
@@ -106,10 +107,8 @@ export const hangarScreen = {
           return row;
         }),
       );
-      const fight = beginFight(campaign, defs);
-      fightButton.disabled = !fight.ok;
-      buildButton.disabled = false;
-      setText(hint, fight.ok ? text.hint.text : `${text.hint.text} ${fight.error}`);
+      jobsButton.disabled = buildButton.disabled = false;
+      setText(hint, text.hint.text);
       hint.dataset.tone = text.hint.tone;
       if (shipChanged) showShip(campaign.ship);
     }

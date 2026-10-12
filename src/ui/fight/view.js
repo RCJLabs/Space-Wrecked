@@ -1,10 +1,12 @@
-// A fight on a ship's battle map: the board, the crew down the left, the
-// selected unit's orders down the right, and the cards over the board. The
-// player gives the crew orders; the enemy AI (src/sim/ai.js) plays the
-// boarders. Where its battles come from, and where they go, is the
-// source's business: the Fight sandbox (screen.js) fights on the builder's
+// A fight on a battle map: the board, the crew down the left, the selected
+// unit's orders down the right, and the cards over the board. The player
+// gives the crew orders; the enemy AI (src/sim/ai.js) plays the other side.
+// Where its battles come from, and where they go, is the source's
+// business: the Fight sandbox (screen.js) fights boarders on the builder's
 // open ship from a new seed each time; the campaign (../campaign/fight.js)
-// fights the battle in its save and saves every order.
+// fights the battle in its save, a job's or one at home, and saves every
+// order. A job's objective shows under the round, its crates and terminal
+// are marked on the board, and Grab and Hack join the orders.
 // Input -> fight action (src/sim/fight.js) -> new fight -> playback -> redraw.
 // What an order set off is shown happening (src/render/playback.js) before
 // the board takes the next; Skip goes to the end at once.
@@ -15,6 +17,7 @@ import { createBattleBoard, FIGHT_VIEW } from '../../render/battleView.js';
 import { paintFightLabels } from '../../render/fightLabels.js';
 import { clampOrbit, fitOrbit, panOrbit, pinchOrbit, project, turnOrbit, unproject, zoomOrbit } from '../../render/orbit.js';
 import { palette, skinFor } from '../../render/palette.js';
+import { objectiveDone } from '../../sim/battle.js';
 import { convexHull, inside } from '../../render/pick.js';
 import { frameAt, makeTimeline } from '../../render/playback.js';
 import { crewColor, ordersScene, UNIT_TOP, unitsScene } from '../../render/units.js';
@@ -23,10 +26,11 @@ import { canAct, createFight, ordersFor, reduceFight, selectedUnit } from '../..
 import { tileText } from '../battle/tileText.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
-import { chipFor, eventText, hintFor, oddsText, unitText } from './hints.js';
+import { chipFor, endingFor, eventText, hintFor, oddsText, unitText } from './hints.js';
 import { createActionBar, createCrewBar, node, setText, toolButton } from './panels.js';
 
-const SKIN = skinFor('yard');
+// A ship's insides in the yard's skin; a job's site on the ground.
+const skinOf = (map) => skinFor(map.site ? 'ground' : 'yard');
 const MARGIN = 14; // pixels around the ship when the view is fitted
 const MAX_ZOOM = 3; // times the fitted scale
 const MIN_ZOOM = 0.6; // times the fitted scale, or of the whole map's if that is further out
@@ -47,23 +51,30 @@ const LOG_LINES = 16;
 //              cleanup
 //   onChange(fight, prev)   after every change to the fight
 //   onOver()   the end panel's button was tapped
+//   objective(battle)   optional: the objective's line under the round,
+//              { title, progress, deadline, done }, or null for none
+//   ending(battle, log)   optional: how the fight ended, { tone, title,
+//              text }, for the end panel and the hint; boarders' words if
+//              not given
 export function mountFight(root, source) {
   const el = node('section', 'fight');
   const board = node('div', 'fgt-board');
   const chip = node('p', 'fgt-chip');
+  const goal = node('p', 'fgt-goal');
   const status = node('p', 'fgt-status');
   const card = node('div', 'fgt-card');
   const over = node('div', 'fgt-over');
   const overText = node('p');
+  const overNote = node('p', 'fgt-over-note');
   const overButton = toolButton('fgt-again', source.over.icon, source.over.label);
-  over.append(overText, overButton);
+  over.append(overText, overNote, overButton);
   const tools = node('div', 'fgt-tools');
   const logButton = toolButton('fgt-tool', icons.log, 'Log');
   const fitButton = toolButton('fgt-tool', icons.fit, 'Fit');
   const extraTools = (source.tools ?? []).map((tool) => ({ ...tool, button: toolButton('fgt-tool', tool.icon, tool.label) }));
   tools.append(logButton, fitButton, ...extraTools.map((tool) => tool.button));
-  chip.hidden = card.hidden = over.hidden = true;
-  board.append(chip, status, card, over, tools);
+  chip.hidden = goal.hidden = card.hidden = over.hidden = true;
+  board.append(chip, goal, status, card, over, tools);
   const crewBar = createCrewBar({ onSelect: (id) => order({ type: 'fight/select', unit: id }), onEnd: endTurn });
   const actionBar = createActionBar({
     shoot: () => order({ type: 'fight/aim' }),
@@ -71,6 +82,8 @@ export function mountFight(root, source) {
     reload: () => order({ type: 'fight/reload' }),
     stabilize: () => order({ type: 'fight/stabilize' }),
     open: () => order({ type: 'fight/open' }),
+    grab: () => order({ type: 'fight/grab' }),
+    hack: () => order({ type: 'fight/hack' }),
     skip,
   });
   el.append(crewBar.el, board, actionBar.el);
@@ -228,7 +241,7 @@ export function mountFight(root, source) {
     mapView.setActors(null);
     actorsKey = null;
     labels = {};
-    chip.hidden = over.hidden = true;
+    chip.hidden = goal.hidden = over.hidden = true;
     crewBar.update([], colors, null);
     crewBar.setEnd('off');
     actionBar.update(null, false);
@@ -308,10 +321,24 @@ export function mountFight(root, source) {
     actionBar.update(orders, busy());
     setLine(chip, chipFor(shown));
     chip.hidden = false;
-    if (!busy() && !endArmed) setStatus(flash ?? hintFor(fight, orders));
-    over.hidden = busy() || !fight.battle.winner;
-    if (!over.hidden) setText(overText, fight.battle.winner === 'crew' ? 'The crew holds the ship.' : 'The boarders have the ship.');
+    showGoal(shown);
+    const ending = fight.battle.winner ? source.ending?.(fight.battle, fight.log) ?? endingFor(fight.battle) : null;
+    if (!busy() && !endArmed) setStatus(flash ?? hintFor(fight, orders, ending));
+    over.hidden = busy() || !ending;
+    if (ending) {
+      setText(overText, ending.title);
+      setText(overNote, ending.text);
+      overNote.hidden = !ending.text;
+      over.dataset.tone = ending.tone;
+    }
     if (!busy()) showBoard(fight, orders, playing?.frame ?? null);
+  }
+
+  // The objective's line under the round, as the battle shown stands.
+  function showGoal(battle) {
+    const objective = source.objective?.(battle) ?? null;
+    goal.hidden = !objective;
+    if (objective) setLine(goal, { tone: objective.done ? 'good' : 'info', text: [objective.title, objective.progress, objective.deadline].filter(Boolean).join(' · ') });
   }
 
   // Moves a playback on to `now`.
@@ -334,7 +361,10 @@ export function mountFight(root, source) {
       showBoard(store.getState(), ordersFor(store.getState(), defs), frame);
       return;
     }
-    if (frame.view !== before?.view) crewBar.update(frame.view.units.filter((u) => u.side === 'crew'), colors, null);
+    if (frame.view !== before?.view) {
+      crewBar.update(frame.view.units.filter((u) => u.side === 'crew'), colors, null);
+      showGoal(frame.view);
+    }
     if (frame.event && frame.event !== before?.event) {
       setStatus(eventText(frame.event, frame.view));
       // A new turn shows as its banner goes up.
@@ -349,7 +379,7 @@ export function mountFight(root, source) {
   function showBoard(fight, orders, frame) {
     const battle = frame ? frame.view : fight.battle;
     if (battle.doors !== doorsShown) {
-      mapView.setMap({ map, skin: SKIN, open: battle.doors });
+      mapView.setMap({ map, skin: skinOf(map), open: battle.doors });
       doorsShown = battle.doors;
     }
     const figures = battle.units.map((u) => figure(u, battle, frame));
@@ -376,6 +406,7 @@ export function mountFight(root, source) {
     labels = {
       units: battle.units.map((u, i) => ({ at: figures[i].at, status: u.status, hp: u.hp, maxHp: u.maxHp, color: colors.get(u.id) ?? palette.enemyTrim, overwatch: u.overwatch, bleed: u.bleed, selected: u.id === orders?.unit.id })),
       badges: (orders?.targets ?? []).map(({ target, odds }) => ({ at: [target.x, target.y], text: `${odds.hit}%`, strong: target.id === aimed?.id })),
+      marks: objectiveMarks(battle.objective),
       floats: frame?.floats ?? [],
       shot: frame?.done ? null : frame?.shot ?? null,
       banner: frame?.event?.type === 'turn' ? { text: frame.event.side === 'crew' ? 'YOUR TURN' : 'ENEMY TURN', progress: frame.progress } : null,
@@ -572,6 +603,19 @@ export function mountFight(root, source) {
       el.remove();
     },
   };
+}
+
+// The objective on the board: a tag over each crate to grab, and over the
+// terminal, saying how far along it is.
+function objectiveMarks(objective) {
+  if (objective?.type === 'grab') {
+    return objective.crates.map(([x, y]) => {
+      const done = objective.taken.some(([tx, ty]) => tx === x && ty === y);
+      return { at: [x, y], text: done ? 'GOT IT' : 'GRAB', done };
+    });
+  }
+  if (objective?.type === 'hack') return [{ at: objective.at, text: `HACK ${Math.min(objective.progress, objective.turns)}/${objective.turns}`, done: objectiveDone(objective) }];
+  return [];
 }
 
 function middle(box) {

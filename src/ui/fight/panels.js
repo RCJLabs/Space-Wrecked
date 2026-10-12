@@ -1,6 +1,10 @@
 // The Fight screen's side panels: the crew down the left, a button each
 // with End turn under them, and the selected unit's orders down the right
 // (Skip in their place while a turn plays out). Buttons are 48 px or more.
+// The orders stack from the bottom: Shoot, Overwatch and Reload always in
+// the same place, and the orders that come and go over them, so on a
+// screen too short for them all, what scrolls away is Reload, not a job's
+// Grab or Hack.
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { stateText } from './hints.js';
@@ -58,15 +62,19 @@ export function createCrewBar({ onSelect, onEnd }) {
   }
 }
 
-// handlers: { shoot, overwatch, reload, stabilize, open, skip }
+// handlers: { shoot, overwatch, reload, stabilize, open, grab, hack, skip }.
+// Stabilize, Open door, Grab and Hack show only when there is someone,
+// a door, a crate or the terminal to do it to.
 export function createActionBar(handlers) {
   const el = node('div', 'fgt-actions');
   const buttons = {
+    grab: toolButton('fgt-act fgt-job', icons.grab, 'Grab'),
+    hack: toolButton('fgt-act fgt-job', icons.hack, 'Hack'),
+    stabilize: toolButton('fgt-act', icons.stabilize, 'Stabilize'),
+    open: toolButton('fgt-act', icons.door, 'Open door'),
     shoot: toolButton('fgt-act', icons.shoot, 'Shoot'),
     overwatch: toolButton('fgt-act', icons.overwatch, 'Overwatch'),
     reload: toolButton('fgt-act', icons.reload, 'Reload'),
-    stabilize: toolButton('fgt-act', icons.stabilize, 'Stabilize'),
-    open: toolButton('fgt-act', icons.door, 'Open door'),
     skip: toolButton('fgt-act fgt-skip', icons.skip, 'Skip'),
   };
   el.append(...Object.values(buttons));
@@ -83,6 +91,8 @@ export function createActionBar(handlers) {
       buttons.reload.disabled = !orders?.reload;
       buttons.stabilize.hidden = playing || !orders?.stabilize;
       buttons.open.hidden = playing || !orders?.door;
+      buttons.grab.hidden = playing || !orders?.grab;
+      buttons.hack.hidden = playing || !orders?.hack;
     },
     dispose() {
       for (const cleanup of cleanups) cleanup();

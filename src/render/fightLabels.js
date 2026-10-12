@@ -1,8 +1,9 @@
 // What a fight shows over the 3D board, drawn flat on top of it: each
 // unit's hit points as pips (and overwatch, or how long until it bleeds
-// out), the hit chance over each enemy the selected unit can shoot, shots in
-// flight, words rising over the units hit, and the banner for whose turn it
-// is. Draws in CSS pixels through the orbit camera; never changes anything.
+// out), the hit chance over each enemy the selected unit can shoot, a job's
+// crates and terminal tagged, shots in flight, words rising over the units
+// hit, and the banner for whose turn it is. Draws in CSS pixels through the
+// orbit camera; never changes anything.
 import { project } from './orbit.js';
 import { palette, rgba } from './palette.js';
 import { FLIGHT, FLOAT_MS } from './playback.js';
@@ -20,14 +21,16 @@ const TONES = { hit: palette.bpGlow, hurt: palette.bad, miss: palette.inkDim, go
 //            at is the point it stands on, color its pips'; the selected
 //            unit has a marker over it
 //   badges   [{ at: [x, y], text, strong }]: over tiles
+//   marks    [{ at: [x, y], text, done }]: a job's objective, on its tiles
 //   floats   playback.js frame floats
 //   shot     playback.js frame shot, or null
 //   banner   { text, progress } or null
 // }
-export function paintFightLabels(ctx, cam, rect, { units = [], badges = [], floats = [], shot = null, banner = null }) {
+export function paintFightLabels(ctx, cam, rect, { units = [], badges = [], marks = [], floats = [], shot = null, banner = null }) {
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  for (const mark of marks) tag(ctx, cam, mark);
   if (shot) tracer(ctx, cam, shot);
   for (const unit of units) if (unit.status !== 'dead') bar(ctx, cam, unit);
   for (const badge of badges) pill(ctx, cam, badge);
@@ -88,6 +91,31 @@ function pill(ctx, cam, { at: [x, y], text, strong }) {
   ctx.strokeStyle = palette.target;
   ctx.stroke();
   ctx.fillStyle = strong ? palette.space : palette.target;
+  ctx.fillText(text, sx, sy + 0.5);
+}
+
+// A tag on a pole over a tile of the objective's: a crate to grab, or the
+// terminal. Done, it goes quiet.
+function tag(ctx, cam, { at: [x, y], text, done }) {
+  const [bx, by] = project(cam, x + 0.5, y + 0.5, 0.36);
+  const [sx, sy] = project(cam, x + 0.5, y + 0.5, 0.95);
+  const color = done ? palette.good : palette.accent;
+  ctx.strokeStyle = rgba(color, done ? 0.5 : 0.9);
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(bx, by);
+  ctx.lineTo(sx, sy + 8);
+  ctx.stroke();
+  ctx.font = SMALL;
+  const w = ctx.measureText(text).width + 10;
+  ctx.beginPath();
+  ctx.roundRect(sx - w / 2, sy - 8, w, 16, 4);
+  ctx.fillStyle = done ? rgba(palette.space, 0.8) : color;
+  ctx.fill();
+  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = color;
+  ctx.stroke();
+  ctx.fillStyle = done ? color : palette.space;
   ctx.fillText(text, sx, sy + 0.5);
 }
 

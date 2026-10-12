@@ -19,8 +19,21 @@
 //   round    from 1; a round is both sides' turns
 //   rng      the RNG state
 //   misses   { crew, enemy }: shots missed in a row (forgiving odds)
-//   options  { forgiving, permadeath }
-//   winner   null, or the side still standing at the end
+//   options  { forgiving, permadeath, sight?, deadline? }. sight, where a
+//            job's twist sets it, is how far anyone sees, in tiles, in
+//            place of balance.sightRange. deadline is the last round the
+//            crew has: if it hasn't won by the end of its turn then, it has
+//            lost.
+//   objective  null, or what the crew came for besides the fight (a job's
+//            mission, contracts.js); once it is done, the crew has won:
+//              { type: 'grab', crates: [[x, y]...], taken: [[x, y]...] }
+//                the crates to grab, and those grabbed so far
+//              { type: 'hack', at: [x, y], turns, progress, worked }
+//                the terminal, the turns of work it needs and has had,
+//                and the round it was last worked in (0 for never)
+//   winner   null, or the side that won: the one still standing, or the
+//            crew once its objective is done, or the enemy once the
+//            crew's deadline has passed
 //
 // Actions, each by a unit of the side whose turn it is (act):
 //   { type: 'move', unit, to: [x, y] }   1 action within its mobility, or
@@ -33,6 +46,12 @@
 //                                        stops bleeding
 //   { type: 'open', unit, side }         1 action: opens the door on that
 //                                        side of its tile ('n', 'e', 's', 'w')
+//   { type: 'grab', unit, at: [x, y] }   1 action: the crew grabs a crate of
+//                                        the objective's in its reach
+//                                        (terrain.js inReach)
+//   { type: 'hack', unit }               ends the unit's turn: the crew works
+//                                        the terminal in its reach, a turn of
+//                                        work, once a round
 //   { type: 'end' }                      ends the side's turn
 // A side's turn also ends by itself once none of its units has an action
 // left.
@@ -42,16 +61,17 @@ import { edgeKey, wallAt } from './mapFromShip.js';
 import { reachable, sideToward } from './moves.js';
 import { shotOdds } from './odds.js';
 import { canSee } from './sight.js';
-import { hazardAt, walkable } from './terrain.js';
+import { hazardAt, inReach, walkable } from './terrain.js';
 
 // setup: { map, units: [{ kind, x, y, name?, hp? }], seed, first?,
-// options? }. kind is a crew job (data/jobs.json), which puts the unit on
-// the crew's side, or an enemy (data/enemies.json). A unit starts with its
-// kind's hit points, or with hp if given: a wounded crew member's, from 1 up
-// to its kind's. Units get ids by side in order: c1, c2... and e1, e2...
-// seed is a number or a string. The first side's turn starts at once.
-// Returns { battle, events }.
-export function createBattle({ map, units, seed, first = 'crew', options = {} }, rules) {
+// options?, objective? }. kind is a crew job (data/jobs.json), which puts
+// the unit on the crew's side, or an enemy (data/enemies.json). A unit
+// starts with its kind's hit points, or with hp if given: a wounded crew
+// member's, from 1 up to its kind's. Units get ids by side in order: c1,
+// c2... and e1, e2... seed is a number or a string. The objective starts
+// with nothing done: give a grab its crates and a hack its terminal and
+// turns. The first side's turn starts at once. Returns { battle, events }.
+export function createBattle({ map, units, seed, first = 'crew', options = {}, objective = null }, rules) {
   const counts = { crew: 0, enemy: 0 };
   const battle = {
     map,
@@ -94,6 +114,7 @@ export function createBattle({ map, units, seed, first = 'crew', options = {} },
     rng: seedFrom(seed),
     misses: { crew: 0, enemy: 0 },
     options: { forgiving: false, permadeath: false, ...options },
+    objective: startObjective(objective),
     winner: null,
   };
   const taken = new Set();
@@ -105,6 +126,13 @@ export function createBattle({ map, units, seed, first = 'crew', options = {} },
   const events = [];
   startTurn(battle, events, rules);
   return { battle, events };
+}
+
+function startObjective(objective) {
+  if (!objective) return null;
+  if (objective.type === 'grab') return { type: 'grab', crates: objective.crates.map(([x, y]) => [x, y]), taken: [] };
+  if (objective.type === 'hack') return { type: 'hack', at: [...objective.at], turns: objective.turns, progress: 0, worked: 0 };
+  throw new Error(`createBattle: no objective "${objective.type}"`);
 }
 
 // Applies one action. Returns { ok: true, battle, events } or
@@ -208,6 +236,32 @@ function doAction(battle, unit, action, events, rules) {
       events.push({ type: 'door', unit: unit.id, at: [unit.x, unit.y], side: action.side });
       return null;
     }
+    case 'grab': {
+      const { objective } = battle;
+      const at = Array.isArray(action.at) ? action.at : [];
+      const same = ([x, y]) => x === at[0] && y === at[1];
+      if (unit.side !== 'crew' || objective?.type !== 'grab' || !objective.crates.some(same)) return 'There is no crate to grab there.';
+      if (objective.taken.some(same)) return 'That crate is grabbed already.';
+      if (!inReach(battle, [unit.x, unit.y], at)) return `${unit.name} has to be next to the crate.`;
+      unit.ap -= 1;
+      const taken = [...objective.taken, [at[0], at[1]]];
+      battle.objective = { ...objective, taken };
+      events.push({ type: 'grab', unit: unit.id, at: [at[0], at[1]], left: objective.crates.length - taken.length });
+      decide(battle, events);
+      return null;
+    }
+    case 'hack': {
+      const { objective } = battle;
+      if (unit.side !== 'crew' || objective?.type !== 'hack') return 'There is no terminal to work.';
+      if (!inReach(battle, [unit.x, unit.y], objective.at)) return `${unit.name} has to be next to the terminal.`;
+      if (objective.worked === battle.round) return 'The terminal has been worked this turn.';
+      unit.ap = 0;
+      const progress = objective.progress + 1;
+      battle.objective = { ...objective, progress, worked: battle.round };
+      events.push({ type: 'hack', unit: unit.id, progress, turns: objective.turns });
+      decide(battle, events);
+      return null;
+    }
     default:
       return `Unknown action "${action.type}".`;
   }
@@ -299,9 +353,15 @@ function hurt(battle, unit, damage, events, rules) {
   decide(battle, events);
 }
 
+// A side's turn ends. The crew's, in its deadline's round, ends the battle.
 function endTurn(battle, events, rules) {
   events.push({ type: 'end', side: battle.side });
   for (const unit of battle.units) if (unit.side === battle.side) unit.ap = 0;
+  const { deadline } = battle.options;
+  if (deadline && battle.side === 'crew' && battle.round >= deadline) {
+    win(battle, 'enemy', events, 'deadline');
+    return;
+  }
   battle.side = battle.side === 'crew' ? 'enemy' : 'crew';
   if (battle.side === battle.first) battle.round += 1;
   startTurn(battle, events, rules);
@@ -344,12 +404,26 @@ function startTurn(battle, events, rules) {
   decide(battle, events);
 }
 
-// The battle is over when one side has no one active left.
+// The battle is over when one side has no one active left, or when the
+// crew has done what it came for.
 function decide(battle, events) {
   if (battle.winner) return;
   const standing = (side) => battle.units.some((u) => u.side === side && u.status === 'active');
-  const winner = !standing('enemy') ? 'crew' : !standing('crew') ? 'enemy' : null;
-  if (!winner) return;
+  if (!standing('enemy')) win(battle, 'crew', events);
+  else if (!standing('crew')) win(battle, 'enemy', events);
+  else if (objectiveDone(battle.objective)) win(battle, 'crew', events, 'objective');
+}
+
+// True once an objective is done: every crate grabbed, or every turn of
+// work on the terminal had.
+export function objectiveDone(objective) {
+  if (objective?.type === 'grab') return objective.taken.length >= objective.crates.length;
+  if (objective?.type === 'hack') return objective.progress >= objective.turns;
+  return false;
+}
+
+// The 'over' event says why only when it wasn't a side left standing.
+function win(battle, winner, events, reason = null) {
   battle.winner = winner;
-  events.push({ type: 'over', winner });
+  events.push(reason ? { type: 'over', winner, reason } : { type: 'over', winner });
 }

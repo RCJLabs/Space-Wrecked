@@ -8,11 +8,16 @@
 import { edgeAt, tileRule } from './terrain.js';
 
 // True if a unit at `from` can see `to` ([x, y] tiles): within the sight
-// range (balance.sightRange, in tiles) and with a clear line.
+// range (balance.sightRange in tiles, or the battle's own where a job's
+// twist cuts it) and with a clear line.
 export function canSee(battle, from, to, rules) {
   const [dx, dy] = [to[0] - from[0], to[1] - from[1]];
-  const range = rules.balance.sightRange;
+  const range = sightRange(battle, rules);
   return dx * dx + dy * dy <= range * range && lineOfSight(battle, from, to, rules);
+}
+
+export function sightRange(battle, rules) {
+  return battle.options?.sight ?? rules.balance.sightRange;
 }
 
 export function lineOfSight(battle, [ax, ay], [bx, by], rules) {

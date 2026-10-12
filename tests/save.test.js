@@ -311,3 +311,29 @@ test('a campaign in the middle of a fight round-trips, and a damaged one is name
   const { campaign, ...missing } = saveData(atHub);
   assert.deepEqual(validate(makeSave(missing)), ['The campaign is missing.']);
 });
+
+test('an M12 or M13 save (v4) gains the miner background, an empty job board, and fights at home with no job', () => {
+  const rules = indexDefs(readData());
+  const atHub = reduce(initialState(8), { type: 'campaign/new', rules });
+  const fighting = reduce(atHub, { type: 'campaign/fight/begin', rules });
+  for (const state of [atHub, fighting]) {
+    // The campaign as v4 saved it: no background or board, and a fight
+    // with no job, its battle with no objective.
+    const { background, board, ...old } = state.campaign;
+    if (old.fight) {
+      const { job, ...fight } = old.fight;
+      const { objective, ...battle } = fight.battle;
+      old.fight = { ...fight, battle };
+    }
+    const v4 = { version: 4, data: { ...saveData(state), campaign: old } };
+    const result = parseSave(JSON.stringify(v4));
+    assert.equal(result.ok, true, result.error);
+    assert.deepEqual(result.save.data.campaign, { ...state.campaign, board: [] });
+    assert.equal(importSave(craftSave(v4)).ok, true, 'a v4 export code imports too');
+    // The hub rolls the board it has no jobs on.
+    const opened = reduce({ ...initialState(1), campaign: result.save.data.campaign }, { type: 'campaign/board', rules });
+    assert.equal(opened.campaign.board.length, state.campaign.fight ? 0 : rules.contracts.boardSize, 'not during a fight');
+  }
+  const none = { version: 4, data: saveData(initialState(3)) };
+  assert.equal(parseSave(JSON.stringify(none)).save.data.campaign, null, 'no campaign yet: still none');
+});

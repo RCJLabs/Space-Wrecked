@@ -4,11 +4,14 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "54d343dbabf2";
+const VERSION = "f6d934157349";
 const CACHE_PREFIX = "wt-";
 const FILES = [
+  "data/backgrounds.json",
   "data/balance.json",
   "data/campaign.json",
+  "data/contracts.json",
+  "data/districts.json",
   "data/encounters.json",
   "data/enemies.json",
   "data/frames.json",
@@ -16,6 +19,7 @@ const FILES = [
   "data/manufacturers.json",
   "data/modules.json",
   "data/ships.json",
+  "data/sites.json",
   "data/tiles.json",
   "data/weapons.json",
   "icon.svg",
@@ -69,6 +73,7 @@ const FILES = [
   "src/sim/builds.js",
   "src/sim/campaign.js",
   "src/sim/constraints.js",
+  "src/sim/contracts.js",
   "src/sim/cover.js",
   "src/sim/defs.js",
   "src/sim/deploy.js",
@@ -76,8 +81,11 @@ const FILES = [
   "src/sim/frame.js",
   "src/sim/gen/layout.js",
   "src/sim/gen/ship.js",
+  "src/sim/gen/site.js",
   "src/sim/grid.js",
+  "src/sim/jobAi.js",
   "src/sim/mapFromShip.js",
+  "src/sim/mapText.js",
   "src/sim/modules.js",
   "src/sim/moves.js",
   "src/sim/odds.js",
@@ -104,6 +112,8 @@ const FILES = [
   "src/ui/campaign/fight.js",
   "src/ui/campaign/hangar.js",
   "src/ui/campaign/hubText.js",
+  "src/ui/campaign/jobText.js",
+  "src/ui/campaign/jobs.js",
   "src/ui/dev/fps.js",
   "src/ui/dev/menu.js",
   "src/ui/dev/sandboxes.js",

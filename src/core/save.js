@@ -20,7 +20,9 @@ import { FPS_CAPS } from '../sim/settings.js';
 //   3  the builder's cells split in four: ships and logs move to the fine
 //      grid (regrid.js) (M5b)
 //   4  plus the campaign (campaign.js), or null before one starts (M12)
-export const SAVE_VERSION = 4;
+//   5  the campaign's background, its job board, and jobs as fights: a
+//      fight's job and its battle's objective (M14)
+export const SAVE_VERSION = 5;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -56,6 +58,18 @@ export const MIGRATIONS = [
   },
   // The campaign joins the save. Saves from before M12 have none yet.
   { from: 3, up: (data) => (isObject(data) ? { ...data, campaign: null } : data) },
+  // Jobs join the campaign. Every campaign so far began as the debt-bound
+  // miner, the only start there was, and has no board yet (the hub rolls
+  // one); a fight on is a fight at home, with no job and no objective.
+  {
+    from: 4,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign)) return data;
+      const { fight } = data.campaign;
+      const job = isObject(fight) ? { ...fight, job: null, battle: isObject(fight.battle) ? { ...fight.battle, objective: null } : fight.battle } : fight;
+      return { ...data, campaign: { ...data.campaign, background: 'miner', board: [], fight: job } };
+    },
+  },
 ];
 
 const PREFIX = config.appId;

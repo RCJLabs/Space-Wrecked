@@ -1,0 +1,145 @@
+{
+  "boardSize": 3,
+  "twistChance": 50,
+  "missions": [
+    { "id": "clear", "name": "Clear out", "brief": "Put down everyone who isn't crew." },
+    { "id": "grab", "name": "Grab and go", "brief": "Grab {crates}. You have to stand right beside a crate to grab it, and the job's done when the last one's in hand." },
+    { "id": "hack", "name": "Work the terminal", "brief": "Work the terminal for {turns}. It takes a crew member's whole turn, and it only counts once a round." }
+  ],
+  "twists": [
+    { "id": "overtime", "name": "Overtime", "text": "There are more of them than the quote said.", "enemies": 1 },
+    { "id": "hazard", "name": "Hazard pay", "text": "Something on site is on fire. The pay's better for it.", "hazard": "fire", "patches": 2, "pay": 50 },
+    { "id": "cavein", "name": "Cave-in", "text": "Half the site came down last shift. Watch your step.", "hazard": "rubble", "patches": 2 },
+    { "id": "lights", "name": "Lights out", "text": "Somebody cut the floodlights. Nobody sees past {sight} tiles.", "sight": 6 },
+    { "id": "rush", "name": "Rush job", "text": "Done by the end of round {deadline}, or nobody gets paid.", "deadline": 6, "pay": 30, "missions": ["grab", "hack"] },
+    { "id": "skeleton", "name": "Skeleton crew", "text": "They're short-staffed tonight. So is the pay.", "enemies": -1, "pay": -20 }
+  ],
+  "jobs": [
+    {
+      "id": "jumpers",
+      "title": "Claim jumpers",
+      "mission": "clear",
+      "clients": ["marta", "sully"],
+      "sites": ["pit9", "yard"],
+      "encounter": "jumpers",
+      "credits": [70, 100],
+      "parts": ["corridor", "armory"],
+      "partChance": 40,
+      "pitch": "Somebody's working {site} without a permit, and they brought guns to the paperwork. {client} wants them gone."
+    },
+    {
+      "id": "scrap",
+      "title": "Scrap run",
+      "mission": "grab",
+      "crates": 3,
+      "clients": ["dutch"],
+      "sites": ["yard"],
+      "encounter": "scavvers",
+      "credits": [40, 60],
+      "parts": ["cargo", "armory", "shield", "corridor", "engine"],
+      "partChance": 80,
+      "pitch": "Scavvers are walking the good stuff out of {site}. {client} tagged what's his. Get it before they do."
+    },
+    {
+      "id": "payroll",
+      "title": "Short pay",
+      "mission": "hack",
+      "turns": 2,
+      "clients": ["marta"],
+      "sites": ["pit9"],
+      "encounter": "guards",
+      "credits": [110, 150],
+      "parts": [],
+      "partChance": 0,
+      "pitch": "The night shift's been shorted three weeks running. {client} wants the payroll records off the terminal at {site}."
+    },
+    {
+      "id": "repo",
+      "title": "Repossession",
+      "mission": "grab",
+      "crates": 1,
+      "clients": ["prewitt"],
+      "sites": ["depot"],
+      "encounter": "recovery",
+      "credits": [20, 40],
+      "parts": ["engine"],
+      "partChance": 100,
+      "pitch": "Con-Reg impounded {client}'s late husband's engine for storage fees. It's sitting in {site}. She'd like it back. You'd like it more."
+    },
+    {
+      "id": "debts",
+      "title": "Bad debts",
+      "mission": "clear",
+      "clients": ["rook"],
+      "sites": ["whistle"],
+      "encounter": "regulars",
+      "credits": [60, 90],
+      "parts": [],
+      "partChance": 0,
+      "pitch": "A table of {client}'s customers decided they don't owe. {client} disagrees, and you're the disagreement. They're drinking at {site}."
+    },
+    {
+      "id": "picket",
+      "title": "The picket line",
+      "mission": "clear",
+      "clients": ["marta"],
+      "sites": ["pit9", "depot"],
+      "encounter": "strikebreakers",
+      "credits": [100, 140],
+      "parts": ["shield", "weapon"],
+      "partChance": 30,
+      "pitch": "Con-Reg hired muscle to break the picket at {site}. {client} hired you to break the muscle."
+    },
+    {
+      "id": "manifest",
+      "title": "The manifest",
+      "mission": "hack",
+      "turns": 2,
+      "clients": ["dutch", "rook"],
+      "sites": ["depot", "pit9"],
+      "encounter": "guards",
+      "credits": [80, 120],
+      "parts": ["medbay", "cargo"],
+      "partChance": 50,
+      "pitch": "{client} wants to know what's on the next ore hauler out. The terminal at {site} knows. Keep it company for a couple of turns."
+    },
+    {
+      "id": "supplies",
+      "title": "Redistribution",
+      "mission": "grab",
+      "crates": 2,
+      "clients": ["agnes"],
+      "sites": ["depot", "whistle"],
+      "encounter": "guards",
+      "credits": [30, 50],
+      "parts": ["medbay", "lifesupport"],
+      "partChance": 60,
+      "pitch": "The mission kitchen is out of antiseptic, and {site} is full of it. {client} calls it redistribution. The guards on the door call it theft."
+    },
+    {
+      "id": "ledger",
+      "title": "Cooking the books",
+      "mission": "hack",
+      "turns": 2,
+      "clients": ["rook"],
+      "sites": ["whistle"],
+      "encounter": "recovery",
+      "credits": [80, 110],
+      "parts": [],
+      "partChance": 0,
+      "pitch": "The Company's auditors want {client}'s ledger, and they sent Recovery to fetch it. {client} wants it wiped first. It's on the terminal in the back of {site}."
+    },
+    {
+      "id": "rent",
+      "title": "Back rent",
+      "mission": "clear",
+      "clients": ["prewitt"],
+      "sites": ["whistle", "yard"],
+      "encounter": "regulars",
+      "credits": [60, 90],
+      "parts": ["quarters", "lifesupport"],
+      "partChance": 40,
+      "pitch": "{client}'s other tenants are three months behind and armed about it. She calls it an eviction. You'll call it Tuesday."
+    }
+  ]
+}

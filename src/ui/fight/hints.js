@@ -13,10 +13,20 @@ export function eventText(event, battle) {
   return { tone, text: describeEvent(event, battle) };
 }
 
+// How a boarding fight ended, for the end panel: { tone, title, text }.
+// A job's fight says it its own way (../campaign/jobText.js jobOutcome).
+export function endingFor(battle) {
+  return battle.winner === 'crew'
+    ? { tone: 'good', title: 'The crew holds the ship.', text: '' }
+    : { tone: 'bad', title: 'The boarders have the ship.', text: '' };
+}
+
 // What the player can do next, as { tone, text }. orders: fight.js
-// ordersFor(fight).
-export function hintFor(fight, orders) {
+// ordersFor(fight). ending: how the fight ended, once it has (endingFor, or
+// the source's own).
+export function hintFor(fight, orders, ending = null) {
   const { battle, preview } = fight;
+  if (battle.winner && ending?.text) return { tone: ending.tone, text: `${ending.title.replace(/\.$/, '')} · ${ending.text}` };
   if (battle.winner) return battle.winner === 'crew' ? { tone: 'good', text: 'The boarders are down: the crew holds the ship.' } : { tone: 'bad', text: 'The crew is down: the boarders have the ship.' };
   if (battle.side !== 'crew') return { tone: 'info', text: 'Enemy turn.' };
   if (!orders) return { tone: 'info', text: 'No one can act: tap End turn.' };
@@ -29,13 +39,15 @@ export function hintFor(fight, orders) {
     const target = battle.units.find((u) => u.id === preview.target);
     return { tone: 'good', text: `${preview.odds.hit}% to hit ${target.name} ${target.id}. Tap Fire, or the target again.` };
   }
+  if (orders.grab) return { tone: 'good', text: `${unit.name} can reach a crate: tap Grab, or a tile to move.` };
+  if (orders.hack) return { tone: 'good', text: `${unit.name} can reach the terminal: tap Hack to work it. It takes the rest of the turn.` };
   const shoot = orders.targets.length ? ', or an enemy to shoot' : '';
   return { tone: 'info', text: `${unit.name}: tap a tile to move${shoot}.` };
 }
 
 // Round and whose turn it is, for the chip on the board.
 export function chipFor(battle) {
-  if (battle.winner) return { tone: battle.winner === 'crew' ? 'good' : 'bad', text: `Round ${battle.round} · ${battle.winner === 'crew' ? 'Crew wins' : 'Boarders win'}` };
+  if (battle.winner) return { tone: battle.winner === 'crew' ? 'good' : 'bad', text: `Round ${battle.round} · ${battle.winner === 'crew' ? 'Crew wins' : 'Enemy wins'}` };
   return { tone: 'info', text: `Round ${battle.round} · ${battle.side === 'crew' ? 'Your turn' : 'Enemy turn'}` };
 }
 
@@ -80,7 +92,7 @@ export function stateText(unit) {
 // A unit's card: { title, lines }.
 export function unitText(unit, rules) {
   const weapon = rules.weapons.get(unit.weapon);
-  const side = unit.side === 'crew' ? 'Crew' : 'Boarder';
+  const side = unit.side === 'crew' ? 'Crew' : 'Enemy';
   return {
     title: `${unit.name} ${unit.id}`,
     lines: [

@@ -370,7 +370,7 @@ textarea {
 }
 
 #ui .hgr-tool,
-#ui .hgr-fight,
+#ui .hgr-jobs,
 #ui .hgr-build {
   display: flex;
   align-items: center;
@@ -379,7 +379,8 @@ textarea {
   white-space: nowrap;
 }
 
-#ui .hgr-fight {
+#ui .hgr-jobs {
+  padding: 0 18px;
   background: var(--c-panel);
 }
 
@@ -408,6 +409,211 @@ textarea {
   }
 
   .hgr-hint {
+    font-size: 12.5px;
+  }
+}
+
+/* The job board: the jobs down the left, the one picked in full on the
+   right, and the orders along the bottom. */
+.jobs {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(190px, 34%) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 8px 12px 10px;
+}
+
+.jobs-head {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  padding-right: 64px; /* clear of the DEV button */
+}
+
+.jobs-head h1 {
+  margin: 0;
+  font-size: clamp(18px, 6vh, 28px);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.jobs-where {
+  margin: 0;
+  color: var(--c-ink-dim);
+  font-size: 15px;
+}
+
+.jobs-list {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+}
+
+#ui .jobs-pick {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-height: 56px;
+  padding: 6px 10px;
+  background: var(--c-panel);
+  text-align: left;
+}
+
+#ui .jobs-pick[aria-pressed='true'] {
+  color: inherit;
+  box-shadow: inset 0 0 0 1px var(--c-accent);
+}
+
+.jobs-pick b {
+  font-size: 14px;
+}
+
+.jobs-pick span {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--c-ink-dim);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The title, and the twist on the same line, at its end. */
+.jobs-pick .jobs-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  color: var(--c-ink);
+}
+
+.jobs-pick .jobs-pay {
+  color: var(--c-good);
+}
+
+.jobs-pick .jobs-twist {
+  flex: none;
+  color: var(--c-dash);
+  font-size: 11.5px;
+}
+
+.jobs-detail {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 14px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-panel);
+  font-size: 14px;
+  line-height: 1.35;
+  pointer-events: auto;
+}
+
+.jobs-detail h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.jobs-who {
+  margin: 0 0 8px;
+  color: var(--c-ink-dim);
+  font-size: 13px;
+}
+
+.jobs-pitch {
+  margin: 0 0 10px;
+  font-style: italic;
+}
+
+.jobs-facts {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+
+.jobs-facts div {
+  display: grid;
+  grid-template-columns: 6.2em minmax(0, 1fr);
+  gap: 8px;
+}
+
+.jobs-facts dt {
+  color: var(--c-ink-dim);
+}
+
+.jobs-facts dd {
+  margin: 0;
+}
+
+.jobs-foot {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.jobs-hint,
+.jobs-none {
+  flex: 1;
+  margin: 0;
+  color: var(--c-ink-dim);
+  font-size: 13.5px;
+}
+
+#ui .jobs-back,
+#ui .jobs-take {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  white-space: nowrap;
+}
+
+#ui .jobs-take {
+  padding: 0 22px;
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
+@media (max-height: 320px) {
+  .jobs {
+    gap: 6px;
+    padding-top: 4px;
+    padding-bottom: 6px;
+  }
+
+  #ui .jobs-pick {
+    min-height: 48px;
+    padding: 3px 8px;
+    line-height: 1.2;
+  }
+
+  .jobs-pick b {
+    font-size: 13px;
+  }
+
+  .jobs-detail {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .jobs-hint {
     font-size: 12.5px;
   }
 }
@@ -1334,13 +1540,18 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 58px 8px 8px;
+  padding: 8px;
   overflow-y: auto;
   scrollbar-width: none;
 }
 
-/* Bottom up, but a column too tall for the screen still starts below the
-   DEV button and scrolls (flex-end would push it up out of reach). */
+/* In dev mode, the column starts below the DEV button. */
+#ui[data-dev] .fgt-actions {
+  padding-top: 58px;
+}
+
+/* Bottom up, but a column too tall for the screen still starts at the top
+   and scrolls (flex-end would push it up out of reach). */
 .fgt-actions::before {
   content: '';
   flex: 1 0 0;
@@ -1361,7 +1572,8 @@ textarea {
   font-size: 10px;
 }
 
-#ui .fgt-skip {
+#ui .fgt-skip,
+#ui .fgt-job {
   border-color: var(--c-accent);
   color: var(--c-accent);
 }
@@ -1386,6 +1598,29 @@ textarea {
   left: 8px;
   max-width: calc(100% - 132px);
   font-size: 12px;
+}
+
+/* A job's objective, under the round. */
+.fgt-goal {
+  position: absolute;
+  top: 34px;
+  left: 8px;
+  max-width: calc(100% - 16px);
+  margin: 0;
+  padding: 4px 10px;
+  border-left: 3px solid var(--c-accent);
+  border-radius: 4px 12px 12px 4px;
+  background: rgba(7, 10, 20, 0.82);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.fgt-goal[data-tone='good'] {
+  border-left-color: var(--c-good);
+  color: var(--c-good);
 }
 
 .fgt-status {
@@ -1562,6 +1797,21 @@ textarea {
   margin: 0;
   font-size: 17px;
   font-weight: 700;
+}
+
+.fgt-over[data-tone='good'] p:first-child {
+  color: var(--c-good);
+}
+
+.fgt-over[data-tone='bad'] p:first-child {
+  color: var(--c-bad);
+}
+
+.fgt-over .fgt-over-note {
+  margin-top: -4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--c-ink);
 }
 
 /* Update prompt */
