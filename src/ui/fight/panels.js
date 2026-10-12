@@ -1,10 +1,13 @@
 // The Fight screen's side panels: the crew down the left, a button each
-// with End turn under them, and the selected unit's orders down the right
-// (Skip in their place while a turn plays out). Buttons are 48 px or more.
-// The orders stack from the bottom: Shoot, Overwatch and Reload always in
-// the same place, and the orders that come and go over them, so on a
-// screen too short for them all, what scrolls away is Reload, not a job's
-// Grab or Hack.
+// with End turn under them, and down the right the tools (Title, Log, Fit)
+// at the top and the selected unit's orders at the bottom (Skip in their
+// place while a turn plays out). Buttons are 48 px or more, and none sit
+// over the board, where Chrome would take a tap on a tile beside one for
+// the button. The orders stack from the bottom: Shoot, Overwatch and
+// Reload always in the same place, and the orders that come and go over
+// them. On a screen too short for it all, the orders stay in sight and the
+// tools scroll away; too short for the orders alone, what scrolls away is
+// Reload, not a job's Grab or Hack.
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { stateText } from './hints.js';
@@ -64,9 +67,12 @@ export function createCrewBar({ onSelect, onEnd }) {
 
 // handlers: { shoot, overwatch, reload, stabilize, open, grab, hack, skip }.
 // Stabilize, Open door, Grab and Hack show only when there is someone,
-// a door, a crate or the terminal to do it to.
-export function createActionBar(handlers) {
+// a door, a crate or the terminal to do it to. tools: the buttons for the
+// top of the column, made and wired by the caller.
+export function createActionBar(handlers, tools = []) {
   const el = node('div', 'fgt-actions');
+  const top = node('div', 'fgt-tools');
+  top.append(...tools);
   const buttons = {
     grab: toolButton('fgt-act fgt-job', icons.grab, 'Grab'),
     hack: toolButton('fgt-act fgt-job', icons.hack, 'Hack'),
@@ -77,8 +83,16 @@ export function createActionBar(handlers) {
     reload: toolButton('fgt-act', icons.reload, 'Reload'),
     skip: toolButton('fgt-act fgt-skip', icons.skip, 'Skip'),
   };
-  el.append(...Object.values(buttons));
+  el.append(top, ...Object.values(buttons));
   const cleanups = Object.entries(buttons).map(([name, button]) => onTap(button, () => handlers[name]()));
+  // The column scrolls into place when the orders shown change or its size
+  // does, never while the player is scrolling it. An edge with more past
+  // it fades (data-more).
+  let shown = '';
+  const sized = new ResizeObserver(anchor);
+  sized.observe(el);
+  el.addEventListener('scroll', edges, { passive: true });
+  cleanups.push(() => el.removeEventListener('scroll', edges));
   return {
     el,
     // orders: fight.js ordersFor (null when no one can act); playing: a
@@ -93,11 +107,39 @@ export function createActionBar(handlers) {
       buttons.open.hidden = playing || !orders?.door;
       buttons.grab.hidden = playing || !orders?.grab;
       buttons.hack.hidden = playing || !orders?.hack;
+      const now = Object.values(buttons).map((button) => (button.hidden ? '-' : '+')).join('');
+      if (now !== shown) {
+        shown = now;
+        anchor();
+      }
     },
     dispose() {
+      sized.disconnect();
       for (const cleanup of cleanups) cleanup();
     },
   };
+
+  // A column too short for everything shows all the orders and as much of
+  // the tools above them as fits; one too short for the orders alone shows
+  // them from the top.
+  function anchor() {
+    const showing = Object.values(buttons).filter((button) => !button.hidden);
+    if (showing.length && el.scrollHeight > el.clientHeight) {
+      const box = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      const top = showing[0].getBoundingClientRect().top - box.top + el.scrollTop - parseFloat(style.paddingTop);
+      const bottom = showing.at(-1).getBoundingClientRect().bottom - box.top + el.scrollTop + parseFloat(style.paddingBottom);
+      el.scrollTop = bottom - top <= el.clientHeight ? bottom - el.clientHeight : top;
+    }
+    edges();
+  }
+
+  function edges() {
+    const more = [];
+    if (el.scrollTop > 1) more.push('above');
+    if (el.scrollTop < el.scrollHeight - el.clientHeight - 1) more.push('below');
+    el.dataset.more = more.join(' ');
+  }
 }
 
 export function node(tag, className, text) {

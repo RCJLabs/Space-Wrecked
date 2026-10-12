@@ -4,7 +4,7 @@ Newest entry first.
 
 ## M18 First run and settings (2026-10-12)
 
-**Status:** built. The ROADMAP.md box is **not** ticked: M18's Done when is Gate 3, which Evan runs. After M17, Evan said "Start the next milestone". No phone results have come back yet for M14 to M17.
+**Status:** built. The ROADMAP.md box is **not** ticked: M18's Done when is Gate 3, which Evan runs. After M17, Evan said "Start the next milestone". After the first M18 merge, Evan said "Move the toolbar into the right-hand column", the fix for the back-row taps the browser checks found (below). No phone results have come back yet for M14 to M17.
 
 Done when: "Gate 3 passes": "a stranger plays from the first screen to launch unaided." Only a person can pass it. What I could check:
 - **The first run, by touch, following only the tips:** from an empty browser, through captain creation, the build and the first job's whole fight, at all three screen sizes.
@@ -49,6 +49,10 @@ Done when: "Gate 3 passes": "a stranger plays from the first screen to launch un
   - crew members gain traits, none for a campaign already under way;
   - a campaign gains its captain: its first crew member, as named.
 - **The hangar's crew list** puts the captain's job under their name.
+- **The fight's toolbar is in the right-hand column** (Evan's call). Title, Log and Fit head the orders' column, with the orders at the bottom as before; no button sits over the board.
+  - **Why:** Chrome takes a tap on a tile beside a button for the button, and three back-row tiles of a job's map sat just under the toolbar on the folded screens.
+  - **Where room runs out:** the column scrolls to keep every order in sight, and the tools scroll away above them first. The edge with more past it fades, and a swipe on the column brings them back. Where even the orders alone don't fit (six at once in a browser tab on the cover screen), they show from the top, so Reload is the one cut, as before.
+  - `src/ui/fight/panels.js` scrolls the column when the orders shown change or the screen does, never while the player is scrolling it.
 - **The settings list scrolls from anywhere on it.** At the folded size its two columns are uneven, and a swipe on the space under the shorter one used to go through to the starfield. The browser check found this.
 - **Data and tools:**
   - the validator checks traits (stats, ranges, at least 2), tips (each with a step, and none longer than 200 letters), the captains' names and the difficulty numbers;
@@ -71,6 +75,7 @@ Evan didn't weigh in on any of these:
 - **The defaults keep a new game as it was:** Normal, forgiving odds off, motion as the phone asks.
 - **Tips are on for saves from before M18 too.** A returning player sees them once, and can turn them off.
 - **The tips stop at the first fight.** The shop, heat, raids and launch have their hangar hints, but no tips (§9).
+- **In the right-hand column the orders win the room.** Evan picked the column, and I chose how it fills: Title at the top, the least used in a fight and the first to scroll away, then Log and Fit. The tools are 48 px tall and the column keeps its 80 px width, so the board stays the size it was.
 
 ### Verified here
 
@@ -119,6 +124,22 @@ Evan didn't weigh in on any of these:
   - **M14's saves check:** v4 saves migrated through to v9, 10 of 10.
   - **M13's check:** 24 of 24.
   - **M8's fight sandbox checks:** the fight, the orders column and the extras pass, with no console errors.
+- **After the toolbar moved,** checked again by touch at the three sizes:
+  - **A new check of the column** (scratchpad `m18/column.mjs`), 15 of 15 at each size, on a grab job with the captain beside a crate:
+    - Title, Log and Fit, top down, 48 px or more, with none over the board;
+    - with four orders every order is in sight, and the edge fades where the column scrolls;
+    - with six and seven orders, every order is in sight where they fit, otherwise they show from the top with Reload cut;
+    - Fit after a pinch, Log opening and closing the log, and Title, all by touch;
+    - the back row takes a tap all along it, the tiles once under the toolbar included;
+    - no tile's middle is within 15 px of a button.
+  - **The board is the size it was** (697 × 370 at 905 × 370), and the column is still 80 px wide.
+  - **Every check above passes again:**
+    - M18's 43 at each size, with its first fight by touch;
+    - M17, M16 and M15 at each size;
+    - M14's 41 of 41, with no drags needed;
+    - M14's saves check and M13's check;
+    - M8's fight, orders column and extras.
+  - **M8's fight check found one thing:** in dev mode, scrolling to a tool parked it under the DEV button. The column now has scroll padding below DEV in dev mode.
 - **What changed in the old checks:**
   - M17's two "v8" checks now read "v8 or later".
   - M14's healing check counts traits.
@@ -131,13 +152,16 @@ Evan didn't weigh in on any of these:
 ### Known issues
 
 - **Gate 3 hasn't been run.** Everything above is a script following the tips; a stranger may stall where a script can't.
-- **Three back-row tiles sit under Log, Fit and Title** on job maps at the folded sizes. On a 14 × 8 map, those are tiles 11 to 13 of row 0, at 905 × 370 and 821 × 283; the unfolded screen has none.
-  - **What goes wrong:** Chrome moves a touch that close onto the button. A tap meant for one of those tiles opens the log, refits the camera, or leaves for the title. Leaving for the title loses nothing, since the fight is saved.
-  - **Dragging doesn't help much:** at the opening zoom the whole map already fits, so a drag moves the board only a few pixels.
-  - **Not new:** M8's toolbar has sat over M14's maps since M14. M14's browser check hit it 5 times this session. The captain's traits change how its scripted fights go, which is my guess at why it shows up now.
-  - **Fixes, Evan's call:** fit the fight camera below the toolbar, with somewhat smaller tiles, or move Log, Fit and Title into the right-hand column.
+- **Fixed: three back-row tiles sat under Log, Fit and Title** on job maps at the folded sizes. On a 14 × 8 map these were tiles 11 to 13 of row 0, at 905 × 370 and 821 × 283.
+  - **What went wrong:** Chrome moved a touch that close onto the button. A tap meant for one of those tiles opened the log, refit the camera, or left for the title.
+  - **History:** M8's toolbar had sat over M14's maps since M14. M14's browser check hit it 5 times this session.
+  - **The fix:** the toolbar moved into the right-hand column (Shipped). Every tile now takes a tap, and no tile's middle is within 15 px of a button.
+- **On the cover screen, the column can't hold the tools and four or more orders.** What scrolls away at the top:
+  - with four orders, Title fades out;
+  - with six, Log goes too, and Fit is cut;
+  - in a browser tab on the cover screen, most of Title goes even with three, and half of Log with four.
 
-  It could trip a stranger in Gate 3.
+  A swipe down on the column brings them back.
 - **No tips after the first fight.** The shop, heat, payments, raids and launch rely on the hangar's hints.
 - **The captain has no portrait,** and a long typed name is cut in the hangar's crew list (the job shows under it).
 - **Reduce motion doesn't change a fight's playback.** Units still walk tile to tile in the enemy's turn; Skip jumps to its end.
@@ -152,14 +176,16 @@ Evan didn't weigh in on any of these:
    - whether they reach launch, and how long it takes.
 2. **Captain creation** on both screens: the name field with the keyboard up, two traits, Start.
 3. **Tips:** does each point at the right thing, and does any get in the way?
-4. **The back row under the toolbar,** folded, in a job's fight: tap a tile at the far right of the back row, just under Log, Fit and Title. Does it take, or does a button?
+4. **The right-hand column** in a job's fight, folded:
+   - tap tiles at the far right of the back row, where the toolbar was: they should take;
+   - with Grab or Open door showing, Title fades out at the top of the column. A swipe down on the column brings it back.
 5. **Settings:**
    - Export, Copy and paste the code somewhere safe;
    - Import it again (Replace save?);
    - Hard, and Reduce motion with the lift-off.
 6. **Tell me:**
    - whether Gate 3 passes;
-   - which fix you want for the back row under the toolbar, if it bites;
+   - whether Title scrolling away on the cover screen bothers you;
    - whether the traits read in the tone;
    - whether Hard and Easy feel right;
    - and the M14 to M17 questions still open.
@@ -169,7 +195,6 @@ Evan didn't weigh in on any of these:
 **Gate 3 is Evan's call,** and Phase 4 waits for it.
 - **If it passes:** record it here and in ROADMAP.md, and tick M18. v0.1 is then done. ROADMAP.md says Phase 4 is detailed after v0.1 ships, so the next session's first task is detailing Phase 4's milestones with Evan before M19.
 - **If it doesn't:** the next session fixes where the stranger stalled, inside M18. Likely candidates:
-  - the back row under the toolbar (known issues);
   - more tips (the shop, heat, launch);
   - clearer hangar hints.
 

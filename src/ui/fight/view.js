@@ -1,5 +1,6 @@
 // A fight on a battle map: the board, the crew down the left, the selected
-// unit's orders down the right, and the cards over the board. The player
+// unit's orders down the right with Log, Fit and the source's tools above
+// them, and the cards over the board. The player
 // gives the crew orders; the enemy AI (src/sim/ai.js) plays the other side.
 // Where its battles come from, and where they go, is the source's
 // business: the Fight sandbox (screen.js) fights boarders on the builder's
@@ -44,7 +45,7 @@ const LOG_LINES = 16;
 // Mounts a fight in root and returns the screen's handle (resize, draw,
 // unmount, frameStats). source:
 //   over       { icon, label }: the button on the end panel
-//   tools      [{ icon, label, onTap }]: more buttons by Log and Fit
+//   tools      [{ icon, label, onTap }]: more buttons, above Log and Fit
 //   start(defs, fights)   once the content has loaded: shows the first
 //              fight with fights.show({ map, battle, log, seed }), or says
 //              why there is none with fights.stop(why); may return a
@@ -68,24 +69,28 @@ export function mountFight(root, source) {
   const overNote = node('p', 'fgt-over-note');
   const overButton = toolButton('fgt-again', source.over.icon, source.over.label);
   over.append(overText, overNote, overButton);
-  const tools = node('div', 'fgt-tools');
   const logButton = toolButton('fgt-tool', icons.log, 'Log');
   const fitButton = toolButton('fgt-tool', icons.fit, 'Fit');
   const extraTools = (source.tools ?? []).map((tool) => ({ ...tool, button: toolButton('fgt-tool', tool.icon, tool.label) }));
-  tools.append(logButton, fitButton, ...extraTools.map((tool) => tool.button));
   chip.hidden = goal.hidden = card.hidden = over.hidden = true;
-  board.append(chip, goal, status, card, over, tools);
+  board.append(chip, goal, status, card, over);
   const crewBar = createCrewBar({ onSelect: (id) => order({ type: 'fight/select', unit: id }), onEnd: endTurn });
-  const actionBar = createActionBar({
-    shoot: () => order({ type: 'fight/aim' }),
-    overwatch: () => order({ type: 'fight/overwatch' }),
-    reload: () => order({ type: 'fight/reload' }),
-    stabilize: () => order({ type: 'fight/stabilize' }),
-    open: () => order({ type: 'fight/open' }),
-    grab: () => order({ type: 'fight/grab' }),
-    hack: () => order({ type: 'fight/hack' }),
-    skip,
-  });
+  // The tools head the orders' column, off the board: the source's own
+  // (Title) at the top, the least used in a fight and the first to scroll
+  // away on a short screen.
+  const actionBar = createActionBar(
+    {
+      shoot: () => order({ type: 'fight/aim' }),
+      overwatch: () => order({ type: 'fight/overwatch' }),
+      reload: () => order({ type: 'fight/reload' }),
+      stabilize: () => order({ type: 'fight/stabilize' }),
+      open: () => order({ type: 'fight/open' }),
+      grab: () => order({ type: 'fight/grab' }),
+      hack: () => order({ type: 'fight/hack' }),
+      skip,
+    },
+    [...extraTools.map((tool) => tool.button), logButton, fitButton],
+  );
   el.append(crewBar.el, board, actionBar.el);
   root.append(el);
   setStatus({ tone: 'info', text: 'Loading parts…' });
