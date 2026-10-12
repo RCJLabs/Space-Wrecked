@@ -1,7 +1,14 @@
 {
   "acts": [
     { "act": 1, "name": "Homeworld", "hub": "hangar", "home": "The hangar", "heals": true, "liftOff": 1 },
-    { "act": 2, "name": "The run", "hub": "ship", "home": "Your ship", "heals": false },
+    {
+      "act": 2,
+      "name": "The run",
+      "hub": "ship",
+      "home": "Your ship",
+      "heals": false,
+      "stub": "This is as far as the early build goes. The run comes in v0.2: jumps between sectors, worlds to scout, trade, boarding and salvage. Your ship, crew and parts are saved here until then."
+    },
     { "act": 3, "name": "The colony", "hub": "colony", "home": "The colony", "heals": false }
   ]
 }

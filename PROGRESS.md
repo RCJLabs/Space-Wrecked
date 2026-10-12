@@ -2,6 +2,125 @@
 
 Newest entry first.
 
+## M17 Launch (2026-10-12)
+
+**Status:** done, and the ROADMAP.md box is ticked. After M16, Evan said "Start the next milestone". No phone results have come back yet for M14, M15 or M16.
+
+Done when: "launching saves and moves on cleanly."
+- **Launching saves.** Launch is one campaign action, saved the moment it happens like every other change. The lift-off after it is only a screen. Quit during the lift-off and reopen: the title says "Act 2 · Your ship", and Continue opens the stub.
+- **It moves on cleanly.** The campaign goes to act 2, at its home, with the ship, crew, credits, parts, heat and RNG as they were. The job board and the shop's stock stay behind (empty). From act 2, the hangar's jobs, raids, payments and shop all refuse, and `campaignProblems` finds nothing wrong with the launched campaign.
+- **Tested on real ends of act 1,** not just hand-built ones: `tests/launch.test.js` plays five runs of `tools/run.js` to the checklist, launches each, and saves it through the save format.
+
+### Shipped
+
+- **Launch in the sim** (`src/sim/launch.js`):
+  - only from the hangar, only when every flight check passes (lifting off included), and never past the last act;
+  - a raid at the door doesn't stop it. `flags.escapedRaid` records it, and heat goes along into act 2.
+- **The hangar stays behind** (`src/sim/acts.js`, `atHangar`): the job board, the shop, payments and raids ask whether the campaign is at the hangar, act 1's home. Before, they asked only whether it was at its hub, which an act 2 campaign also is.
+- **`SAVE_VERSION` 8:** nothing in a v7 save changes, and the migration passes it through. The bump is there because a campaign can now be past act 1, and a build from before M17 would open one on the hangar.
+- **Words as data:**
+  - each background's `launch` in `data/backgrounds.json`: `text` as the ship lifts off, and `escaped` for a raid left at the door;
+  - an act's `stub` in `data/campaign.json`: what stands in for act 2 until v0.2.
+
+  The validator checks both.
+- **Screens:**
+  - **The hangar:**
+    - Once every check passes, Launch leads the goal panel, and Build steps back from orange.
+    - The first tap asks: "Lift off and end act 1? The job board and the shop stay behind. Tap Launch again." The second launches.
+    - With a raid at the door and the ship ready, the hint offers the way out: launch, and leave them an empty hangar.
+  - **Construction mode:** when the last check passes there, the hint points to the hangar's Launch.
+  - **The lift-off** (`src/ui/campaign/launch.js`, drawn by `src/render/liftOff.js`) takes about 5 seconds:
+    - the engines light and shake the ship;
+    - it climbs toward the camera;
+    - it flies off nose first, ever faster, until it is out of sight.
+
+    The background's words come up as it climbs, then the pursuer's if a raid was due. Skip jumps to the end, and Continue goes on to the stub. With reduced motion set on the phone, nothing moves: the ship stands with its engines lit, and the words and Continue show at once.
+  - **The stub** (`src/ui/campaign/stub.js`):
+    - "Act 2 · The run" and "Your ship", with the ship in the middle;
+    - how act 1 went: jobs, raids, credits, parts on hand and heat;
+    - the crew, and the stub's words.
+
+    Title is the only way out. The title's Continue says "Act 2 · Your ship" and comes back here.
+  - The hangar and the stub share their panels and the standing ship (`src/ui/campaign/hubParts.js`).
+- **Tests:** 466 in all, up from 450:
+  - the launch rules and act 2 (`tests/launch.test.js`);
+  - the words (`tests/launchText.test.js`);
+  - the lift-off's timing, camera and flames (`tests/liftOff.test.js`);
+  - the validator's new mistakes.
+- **Golden files:** none changed.
+
+### Decisions made this session
+
+Evan didn't weigh in on any of these:
+- **Launch is only at the hangar,** at the top of the goal panel, and takes two taps like Pay. Construction mode points there, so act 1 ends in one place.
+- **Launching with a raid due is allowed.** It's the way out: the pursuer finds an empty hangar, and the words say so. Heat carries into act 2, since §4.4 has heat in all three acts.
+- **Skip goes to the end of the lift-off, not past it,** so its words can still be read. Continue then goes on.
+- **The stub keeps the campaign whole** for v0.2 to pick up. Nothing is reset. New game (two taps) is the way to play act 1 again.
+- **The lift-off is drawn in space,** like the hangar's view of the ship. There's no ground or hangar under it; a glow on the pad stands in for one.
+
+### Verified here
+
+- `node --test`: 466 pass. `node tools/validate-data.js`: OK.
+- **`node tools/sim.js`:** no balance number changed, and the summary is M11's: example ship 64% (58–70), all 1,000 fights 49% (46–52), 23,504 shots.
+- **M17's check** (scratchpad `m17/verify.mjs`), by touch at 905 × 370, 821 × 283 and 960 × 825: 38 of 38 at each size.
+  - **A new game** has no Launch.
+  - **The last check passing in construction mode:** the third engine is fitted by touch, the hint points to the hangar, and Launch waits there.
+  - **A ship ready to launch:**
+    - Launch shows with the hint, every button 48 px or more;
+    - the first tap asks and launches nothing, and left alone it stands down;
+    - two taps launch and save at once: v8, act 2, an empty board and stock, and everything else unchanged.
+  - **The lift-off:**
+    - the background's words come up as it climbs;
+    - Continue at the end, 48 px or more;
+    - the stub with how act 1 went, the crew and the words from the data;
+    - Title, and the title's Continue says "Act 2 · Your ship" and comes back. Looking around changes nothing in the save.
+  - **Skip** goes to the end at once, every word up.
+  - **Quitting during the lift-off** reopens to "Act 2 · Your ship", and Continue opens the stub.
+  - **An M16 save (v7)** launches and saves as v8.
+  - **A raid at the door:**
+    - the hint offers the launch;
+    - the pursuer's words show on the lift-off;
+    - the flag and the heat are saved;
+    - the stub's record says "1 left at the door" and "80 · Raid".
+  - **Reduced motion:** every word and Continue at once, and the ship stands still with its engines lit.
+  - **Offline,** the stub opens with its words.
+  - **No console errors or warnings.**
+- **The lift-off frame by frame** on a paused page clock (scratchpad `m17/frames.mjs`), at 905 × 370 and 960 × 825. Before I capped it, the ship at rest filled the unfolded screen and its flames ran off the left edge. It now takes up to 60% of the width, which leaves room for the flames and the climb. `tests/liftOff.test.js` checks both screen shapes: the ship stays in sight through most of its flight and is out of sight once gone, at 4.2 s.
+- **Regressions,** after the hangar moved onto the shared pieces:
+  - **M16's check:** 29 of 29 at each size. Its two pinned "v7" checks now read "v7 or later".
+  - **M15's check:** 30 of 30 at each size.
+  - **M14's check:** 39 of 39 at 905 × 370. One of its checks counts only when a job won pays a part, so the total moves with the random seed (40 in M16's run).
+  - **M14's saves check:** v4 saves migrated through to v8, 10 of 10.
+  - **M13's check:** 24 of 24.
+  - **M8's fight sandbox checks:** the fight, the orders column and the extras pass, with no console errors.
+
+### Known issues
+
+- **Past the launch there is only the stub.** A launched campaign waits there for v0.2. New game is the way to play act 1 again, and it ends that campaign after its second tap.
+- **The lift-off is drawn over the starfield,** with no hangar or Tailings below to leave. §9 already has the hangar drawn as a hangar.
+- **Reduced motion follows the phone's setting.** The game's own setting comes with M18's settings.
+- **The act 1 record counts only what the flags count.** Time played isn't kept.
+- **On short screens the goal panel scrolls,** now that Launch takes its top 56 px. Its lines are all ticked by then.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Launch** (the Done when): play until every flight check passes, or continue a campaign that's there. Launch: the first tap asks, the second lifts off.
+   - Does the lift-off read as the ship leaving? Are 5 seconds right, and the shake?
+   - Launch again from a fresh run and quit during the lift-off. On reopening, the title should say "Act 2 · Your ship", and Continue should open the stub.
+2. **The stub:** does the record match the act you played?
+3. **With a raid at the door,** launch instead of defending. The pursuer's line should show.
+4. **Reduced motion** (Android: Settings, Accessibility, Remove animations): the lift-off should stand still with every word shown.
+5. **Tell me:**
+   - whether the launch's words fit the tone;
+   - whether act 1 ending in a stub feels like an ending for v0.1;
+   - and the M14, M15 and M16 questions still open.
+
+### Next session
+
+**M18 First run and settings.** Done when: Gate 3 passes, "a stranger plays from the first screen to launch unaided."
+
+First task: traits as data (`data/traits.json`, 6 for v0.1, §5) and captain creation in the sim: a captain with a name, 2 traits and a job, the background fixed for v0.1. Bump the save version with a migration that gives a campaign under way its captain. Test it before any screen.
+
 ## M16 Shop and economy v1 (2026-10-12)
 
 **Status:** done, and the ROADMAP.md box is ticked. After M15, Evan said "Start the next milestone". He hasn't said whether M14's or M15's phone tests ran.

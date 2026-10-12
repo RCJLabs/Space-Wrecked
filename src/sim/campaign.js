@@ -10,7 +10,8 @@
 //   rng      its RNG state now (core/rng.js)
 //   background  who the player was before (data/backgrounds.json): where
 //            act 1 starts and its district
-//   act      1, 2 or 3; data/campaign.json names each act and its home
+//   act      1, 2 or 3; data/campaign.json names each act and its home.
+//            Launching (launch.js) moves it on from act 1.
 //   place    where the player is: 'hub', or 'fight' while a fight is on
 //   credits  money, a whole number
 //   parts    { [module type]: count }: parts on hand in the hangar, not on
@@ -21,10 +22,10 @@
 //   heat     the pursuer's meter, 0 to HEAT_MAX (§4.4)
 //   flags    { [name]: true, a number or a short text }: what has happened
 //   ship     the ship (builder.js)
-//   board    the jobs on offer at the hub (contracts.js), or [] until one
-//            is rolled
-//   shop     the shop's stock (economy.js): [{ part, price }], or null
-//            until one is rolled
+//   board    the jobs on offer at the hangar (contracts.js): [] until one
+//            is rolled, and from launch on
+//   shop     the shop's stock (economy.js): [{ part, price }], null until
+//            one is rolled, and [] from launch on
 //   spent    the ids of jobs done that are only done once (contracts.js)
 //   fight    null, or the fight on now: { encounter, seed, crew, battle,
 //            log, job, raid }. crew is who fights, by id, in the battle's
@@ -36,6 +37,7 @@
 //            (raid.js). Neither is a fight at home against boarders
 //            (beginFight), which no screen starts any more.
 import { int, isState } from '../core/rng.js';
+import { actOf } from './acts.js';
 import { battleProblem } from './battleShape.js';
 import { createBattle } from './battle.js';
 import { buildShip, isShipData } from './builder.js';
@@ -43,6 +45,8 @@ import { flightChecklist, partLines } from './constraints.js';
 import { deploy } from './deploy.js';
 import { MAX_STOCK } from './economy.js';
 import { mapFromShip } from './mapFromShip.js';
+
+export { actOf } from './acts.js';
 
 export const PLACES = ['hub', 'fight'];
 export const ACTS = 3;
@@ -93,12 +97,6 @@ export function newCampaign(rules, seed, background = firstBackground(rules)) {
 // The background a campaign starts from when none is chosen: v0.1 has one.
 export function firstBackground(rules) {
   return rules.backgrounds.keys().next().value;
-}
-
-// The act's entry in data/campaign.json: { act, name, hub, home, heals },
-// and liftOff where leaving the act means lifting off a planet.
-export function actOf(campaign, rules) {
-  return rules.acts.get(campaign.act) ?? null;
 }
 
 // The ship's flight checklist (constraints.js) as the campaign asks it:

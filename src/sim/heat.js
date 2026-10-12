@@ -8,6 +8,7 @@
 //   raid      from raidHeat: they raid the hangar (raid.js), and no job can
 //             be taken until the raid is fought, or heat is paid down
 // Pure: plain data in, plain data out.
+import { atHangar } from './acts.js';
 import { HEAT_MAX } from './campaign.js';
 
 export const LEVELS = ['calm', 'rumors', 'hunters', 'raid'];
@@ -47,10 +48,10 @@ export function huntersFor(campaign, rules) {
   return pursuerOf(campaign, rules)?.hunters ?? [];
 }
 
-// True when the pursuer raids the hangar before anything else: at the hub,
-// with heat at raidHeat or more.
+// True when the pursuer raids the hangar before anything else: at the
+// hangar (act 1; launch.js leaves it behind), with heat at raidHeat or more.
 export function raidDue(campaign, rules) {
-  return campaign.place === 'hub' && campaign.heat >= rules.balance.raidHeat;
+  return atHangar(campaign, rules) && campaign.heat >= rules.balance.raidHeat;
 }
 
 // What a payment on the debt costs and buys: the pursuer's payment
@@ -59,7 +60,7 @@ export function raidDue(campaign, rules) {
 export function paymentFor(campaign, rules) {
   const payment = pursuerOf(campaign, rules)?.payment ?? null;
   if (!payment) return { payment, ok: false, why: 'There is no one to pay.' };
-  if (campaign.place !== 'hub') return { payment, ok: false, why: 'Payments are made from the hangar.' };
+  if (!atHangar(campaign, rules)) return { payment, ok: false, why: 'Payments are made from the hangar.' };
   if (campaign.heat <= 0) return { payment, ok: false, why: 'There is no heat to pay off.' };
   if (campaign.credits < payment.credits) return { payment, ok: false, why: `A payment is ${payment.credits} credits.` };
   return { payment, ok: true, why: null };

@@ -2,7 +2,8 @@
 // the campaign has. The palette shows what is on hand; a part fitted comes
 // out of the hangar and one taken off goes back (campaign.js refitShip).
 // Every change is saved through the campaign at once. Hangar, at the end of
-// the drawer's tabs, goes back to the hub. The board is ../builder/view.js's.
+// the drawer's tabs, goes back to the hub, where Launch is once every
+// flight check passes. The board is ../builder/view.js's.
 import { actOf, stockOf } from '../../sim/campaign.js';
 import { mountBuilder } from '../builder/view.js';
 import { icons } from '../icons.js';
@@ -17,6 +18,7 @@ export const constructionScreen = {
     let defs = null;
     return mountBuilder(root, {
       launch: false,
+      ready: 'Every flight check passes. Launch is at the hangar: tap Hangar.',
       leave: { icon: icons.home, label: 'Hangar', onTap: () => game.dispatch({ type: 'screen/show', screen: 'hub' }) },
       crew: () => game.getState().campaign?.crew.length ?? 0,
       liftOff: () => {

@@ -25,7 +25,10 @@ import { FPS_CAPS } from '../sim/settings.js';
 //   6  raids: a fight says whether it is the pursuer's raid (M15)
 //   7  the shop: the campaign's stock at the shop, or null until one is
 //      rolled, and the jobs done that only come once (M16)
-export const SAVE_VERSION = 7;
+//   8  launch: a campaign can be past act 1 (M17). Nothing in a v7 save
+//      changes, but a game from before M17 would show an act 2 campaign
+//      the hangar, so it is kept from reading one.
+export const SAVE_VERSION = 8;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -89,6 +92,8 @@ export const MIGRATIONS = [
     from: 6,
     up: (data) => (isObject(data) && isObject(data.campaign) ? { ...data, campaign: { ...data.campaign, shop: null, spent: [] } } : data),
   },
+  // Launch. Every v7 campaign is in act 1, as before.
+  { from: 7, up: (data) => data },
 ];
 
 const PREFIX = config.appId;

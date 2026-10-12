@@ -4,11 +4,22 @@ import { constructionScreen } from './campaign/construction.js';
 import { campaignFightScreen } from './campaign/fight.js';
 import { hangarScreen } from './campaign/hangar.js';
 import { jobsScreen } from './campaign/jobs.js';
+import { launchScreen } from './campaign/launch.js';
 import { shopScreen } from './campaign/shop.js';
+import { stubScreen } from './campaign/stub.js';
 import { sandboxes } from './dev/sandboxes.js';
 import { titleScreen } from './title.js';
 
-const screens = { title: titleScreen, hub: hangarScreen, construction: constructionScreen, jobs: jobsScreen, shop: shopScreen, 'campaign-fight': campaignFightScreen };
+const screens = {
+  title: titleScreen,
+  hub: hangarScreen,
+  construction: constructionScreen,
+  jobs: jobsScreen,
+  shop: shopScreen,
+  'campaign-fight': campaignFightScreen,
+  launch: launchScreen,
+  stub: stubScreen,
+};
 
 export function screenFor(id) {
   return screens[id] ?? sandboxes.find((s) => s.id === id)?.screen ?? titleScreen;

@@ -43,6 +43,8 @@ The game has three acts, and the home moves at each gate.
 
 Every act runs the same mission loop: hub, travel, node, mission, aftermath, then push on or regroup.
 
+**Launch** (M17, `src/sim/launch.js`): once every flight check passes, Launch at the hangar ends act 1. The ship lifts off, and the campaign moves on to act 2 with its ship, crew, credits, parts and heat. The hangar's job board, shop, payments and raids stay behind. A raid at the door doesn't stop it: the pursuer finds an empty hangar. Until act 2 is built (v0.2), a stub stands in for it: the ship, how act 1 went and the crew.
+
 Act length targets (proposed, to check in play): act 1 under an hour, act 2 the longest, act 3 open-ended.
 
 **Settling:** the ship stays flyable for expeditions. Founding the colony asks you to donate modules, such as a reactor or hydroponics, which become its first buildings.
@@ -188,6 +190,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - From 75 a raid is due at the hangar, and no job can be taken until it has been faced. The player picks when: Defend fights it on the hangar map (§4.3) against the pursuer's raiders, four of them, who press on. Won or lost, heat falls to 40 after it. Lost, the raiders take the dearest part on hand, or with none, half the credits, never a part off the ship.
   - **The one loss in act 1** is a payment on the debt: 50 credits for 15 heat, at the hangar. It can also head off a raid that is due.
   - Heat doesn't fall on its own, and 100's confrontation isn't in act 1: the raid comes first.
+  - Heat goes along when the ship launches (M17), raid or no raid, into act 2.
 - **In act 3**, heat decays slowly, distance from pursuer space lowers what you gain, and raid frequency follows heat.
 
 ### 4.5 Characters
@@ -240,7 +243,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - `SAVE_VERSION` gates all saves, with a migration for every bump. Never reset player saves.
 - Every change to the campaign is saved as it happens (M12): at the hub, as a fight begins, after every order in a fight, and as it ends. This list first named the start of each player turn; saving only there would let a player quit after a miss, reopen to the same roll and spend it on another shot.
 - A saved fight holds its battle whole, the map and its RNG state included, so a game update between quitting and reopening can't move a wall under a unit.
-- The game reopens at the title, and Continue goes back to where the campaign was: the hub, or the fight as it stood.
+- The game reopens at the title, and Continue goes back to where the campaign was: the hub, or the fight as it stood. Past act 1 that is the stub (M17). The lift-off is only a screen: launching saves the campaign in act 2 at once, so quitting during it reopens past it.
 - The RNG state is part of the save.
 - Settings can export and import a save as text. A TWA shares Chrome's storage, so clearing Chrome's data wipes saves; the export is the player's backup.
 - The builder keeps up to six ships in slots, each with the build log its replay plays back. A single ship travels between devices as a blueprint code.
@@ -358,7 +361,7 @@ Pick the tone before M14. (Picked: wry and blue-collar.)
   **Done when:** ignoring heat brings a raid, and managing it avoids one.
 - [x] **M16 Shop and economy v1.** A parts shop, prices and drop tables.
   **Done when:** a test run reaches launch in under an hour.
-- [ ] **M17 Launch.** The checklist passes, the launch sequence plays, and a stub stands in for act 2.
+- [x] **M17 Launch.** The checklist passes, the launch sequence plays, and a stub stands in for act 2.
   **Done when:** launching saves and moves on cleanly.
 - [ ] **M18 First run and settings.**
   - captain creation: background fixed for v0.1, 2 traits, a job
@@ -456,5 +459,8 @@ These ideas wait until v0.4 or later:
 - lying low: ways to shed heat in act 1 besides paying, such as heat that falls while the crew sits out a board (raised in M15)
 - fitting a part for the player: the test run's fitter (`tools/run.js` fitPart) could offer where a bought part goes best (raised in M16)
 - a shop with more to it: stocking what you sell it, haggling, a second dealer, a price that changes with heat (raised in M16)
+- the lift-off seen from the ground: the hangar's roof opening and the Tailings falling away, where M17's lift-off is drawn over the starfield (raised in M17)
+- Launch in construction mode, where the last check usually passes: M17 keeps it at the hangar and points there (raised in M17)
+- an act's record with time played and fights won and lost, kept per act: the stub shows what the flags count (raised in M17)
 
 Ideas that come up during a session go here, not into code.

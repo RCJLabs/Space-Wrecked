@@ -21,6 +21,7 @@
 // hazard on the site, cut the sight range, set a deadline and change the
 // pay.
 import { int, percent, shuffle } from '../core/rng.js';
+import { atHangar } from './acts.js';
 import { createBattle } from './battle.js';
 import { endFight, maxHp } from './campaign.js';
 import { rollDrop } from './drops.js';
@@ -80,10 +81,11 @@ export function rollBoard(rules, rng, district, skip = []) {
 
 // The campaign with a board and the shop's stock (economy.js), each rolled
 // from its RNG if it has none yet (a new campaign, or one saved before
-// there were jobs or a shop). Not during a fight.
+// there were jobs or a shop). Only at the hangar: not during a fight, nor
+// once the ship has launched.
 export function withBoard(campaign, rules) {
   const district = rules.backgrounds.get(campaign.background)?.district;
-  if (campaign.fight || !district) return campaign;
+  if (!atHangar(campaign, rules) || !district) return campaign;
   let next = campaign;
   if (!next.board.length) {
     const { board, rng } = rollBoard(rules, next.rng, district, next.spent);
@@ -153,6 +155,7 @@ export function jobSetup(job, rules, crew, { hunters = [] } = {}) {
 // or { ok: false, error } saying why it can't.
 export function takeJob(campaign, rules, index) {
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
+  if (!atHangar(campaign, rules)) return { ok: false, error: 'Jobs are taken from the hangar.' };
   if (raidDue(campaign, rules)) return { ok: false, error: 'Not with a raid at the door.' };
   const job = campaign.board[index];
   if (!job || !rules.contracts.jobs.has(job.contract) || !rules.sites.has(job.site)) return { ok: false, error: 'That job is gone.' };

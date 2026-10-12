@@ -7,14 +7,24 @@ import { beginFight, newCampaign, refitShip, saveFight } from './campaign.js';
 import { endJob, takeJob, withBoard } from './contracts.js';
 import { buyPart, sellPart } from './economy.js';
 import { makePayment } from './heat.js';
+import { launch } from './launch.js';
 import { beginRaid, endRaid } from './raid.js';
 import { defaultSettings, reduceSettings } from './settings.js';
 
-// The screen each place in a campaign is played on, and every screen that
-// shows the campaign: construction mode, the job board and the shop are the
-// hub's.
+// The screen each place in a campaign is played on in act 1, and every
+// screen that shows the campaign: construction mode, the job board and the
+// shop are the hangar's; the launch plays between act 1 and the stub that
+// stands in for the acts not built yet.
 export const PLACE_SCREENS = { hub: 'hub', fight: 'campaign-fight' };
-export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop'];
+export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'stub'];
+
+// The screen a campaign is played on where it is now: its fight, or its
+// act's home (the hangar in act 1; the stub for the acts after it, until
+// they are built).
+export function campaignScreen(campaign) {
+  if (campaign.place === 'fight') return PLACE_SCREENS.fight;
+  return campaign.act === 1 ? PLACE_SCREENS.hub : 'stub';
+}
 
 export function initialState(seed) {
   return {
@@ -45,6 +55,8 @@ export function initialState(seed) {
 //   campaign/job/take { index, rules }   the crew takes the board's job at
 //                                  index: its fight begins
 //   campaign/raid/begin { rules }  the crew faces the raid that is due
+//   campaign/launch { rules }      the ship lifts off: act 1 ends, and the
+//                                  launch plays (launch.js)
 //   campaign/fight/begin { rules } the crew fights boarders at home (M15's
 //                                  raids will)
 //   campaign/fight/save { battle, log }   the fight after an order
@@ -71,7 +83,7 @@ export function reduce(state, action) {
       return { ...state, rng, campaign: withBoard(newCampaign(action.rules, seed), action.rules), screen: PLACE_SCREENS.hub };
     }
     case 'campaign/continue':
-      return state.campaign ? { ...state, screen: PLACE_SCREENS[state.campaign.place] } : state;
+      return state.campaign ? { ...state, screen: campaignScreen(state.campaign) } : state;
     case 'campaign/board':
       return withCampaign(state, state.campaign && withBoard(state.campaign, action.rules));
     case 'campaign/ship':
@@ -95,7 +107,11 @@ export function reduce(state, action) {
     case 'campaign/fight/end': {
       const end = state.campaign?.fight?.raid ? endRaid : endJob;
       const next = withCampaign(state, state.campaign && end(state.campaign, action.rules));
-      return next === state ? state : { ...next, screen: PLACE_SCREENS[next.campaign.place] };
+      return next === state ? state : { ...next, screen: campaignScreen(next.campaign) };
+    }
+    case 'campaign/launch': {
+      const launched = state.campaign && launch(state.campaign, action.rules);
+      return launched?.ok ? { ...state, campaign: launched.campaign, screen: 'launch' } : state;
     }
     default: {
       if (action.type.startsWith('builds/')) {

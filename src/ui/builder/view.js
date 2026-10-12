@@ -50,6 +50,8 @@ const TABS = 56; // the drawer's tab row and the space under it
 //   liftOff()           optional: the thrust for each unit of mass lifting
 //                       off takes (a campaign's act on a planet), or null
 //   launch              true if the Ship tab has Launch
+//   ready               optional: what the hint says once every flight
+//                       check passes, for a builder without Launch
 //   leave               null, or { icon, label, onTap }: the way out, at
 //                       the end of the drawer's tabs
 //   slots(api)          null, or the Saves tab: { handlers (savesPanel.js,
@@ -276,7 +278,7 @@ export function mountBuilder(root, source) {
     // the hint for what is on screen now.
     clearTimeout(flashTimer);
     flash = null;
-    const ready = 'Every flight check passes: ready to launch.';
+    const ready = source.ready ?? 'Every flight check passes: ready to launch.';
     if (session.notice && session.notice !== prev.notice) {
       flash = becameReady ? { tone: 'good', text: `${session.notice.text} ${ready}` } : session.notice;
     } else if (becameReady) {
