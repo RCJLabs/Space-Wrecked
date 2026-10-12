@@ -5,7 +5,10 @@
 //
 //   node tools/validate-data.js
 import { pathToFileURL } from 'node:url';
+import { buildShip, layoutProblems } from '../src/sim/builder.js';
+import { ACTS } from '../src/sim/campaign.js';
 import { REQUIRED_TAGS } from '../src/sim/constraints.js';
+import { indexDefs } from '../src/sim/defs.js';
 import { readData } from './data.js';
 
 const SIDES = ['n', 'e', 's', 'w'];
@@ -39,6 +42,12 @@ const TILE_RULE_KEYS = ['walk', 'cover', 'blocksSight'];
 const ENCOUNTER_KEYS = ['id', 'name', 'enemies'];
 // Ship presets (src/sim/gen/ship.js).
 const SHIP_KEYS = ['id', 'name', 'frame', 'crew', 'beam', 'symmetric', 'parts', 'wrecks'];
+// The campaign (src/sim/campaign.js): its acts and what a new one starts with.
+const CAMPAIGN_KEYS = ['acts', 'start'];
+const ACT_KEYS = ['act', 'name', 'hub', 'home'];
+const START_KEYS = ['credits', 'parts', 'crew', 'ship'];
+const SCRIPT_KEYS = ['frame', 'placements'];
+const PLACEMENT_KEYS = ['type', 'x', 'y', 'rot'];
 const MAX_CREW = 20;
 // Squads of 3 to start, up to 5 later; 4 to 8 enemies (ROADMAP §4.3). Fewer
 // are allowed, for small tests.
@@ -56,7 +65,8 @@ export const KNOWN_TAGS = [
 ];
 
 // Returns a list of problems as "where: what" strings. Empty means valid.
-export function validateData({ modules: moduleFile, frames: frameFile, manufacturers: makerFile, balance, weapons: weaponFile, jobs: jobFile, enemies: enemyFile, tiles: tileFile, encounters: encounterFile, ships: shipFile }) {
+export function validateData(data) {
+  const { modules: moduleFile, frames: frameFile, manufacturers: makerFile, balance, weapons: weaponFile, jobs: jobFile, enemies: enemyFile, tiles: tileFile, encounters: encounterFile, ships: shipFile, campaign } = data;
   const problems = [];
   const fail = (where, message) => problems.push(`${where}: ${message}`);
 
@@ -198,7 +208,87 @@ export function validateData({ modules: moduleFile, frames: frameFile, manufactu
   const moduleIds = new Set(modules.map((def) => def.id));
   const frameById = new Map(frames.map((frame) => [frame.id, frame]));
   ships.forEach((ship, i) => checkShip(ship, `ships.json ${ship.id ?? `#${i}`}`, frameById, moduleIds, fail));
+
+  const shipScript = checkCampaign(campaign, jobIds, moduleIds, frameById, fail);
+  // The starting ship is built only from content that checks out.
+  if (shipScript && !problems.length) checkStartShip(data, shipScript, fail);
   return problems;
+}
+
+// The campaign: its acts in order, each with its name and its home (the
+// hub: an id, and words for the player), and what a new campaign starts
+// with: credits, parts held, the crew by job, and the ship as a script of
+// placements (tools/build-ship.js). Returns the ship script if it is
+// well formed, for checkStartShip.
+function checkCampaign(file, jobIds, moduleIds, frameById, fail) {
+  const where = 'campaign.json';
+  if (!file || typeof file !== 'object' || Array.isArray(file)) {
+    fail(where, 'must be an object with "acts" and "start"');
+    return null;
+  }
+  for (const key of Object.keys(file)) if (!CAMPAIGN_KEYS.includes(key)) fail(where, `unknown field "${key}"`);
+  const acts = listOf(file, 'acts', where, fail);
+  acts.forEach((act, i) => {
+    const at = `${where} act #${i + 1}`;
+    for (const key of Object.keys(act)) if (!ACT_KEYS.includes(key)) fail(at, `unknown field "${key}"`);
+    if (!isText(act.name) || !isText(act.home)) fail(at, 'name and home must be non-empty strings');
+    if (typeof act.hub !== 'string' || !/^[a-z][a-z0-9-]*$/.test(act.hub)) fail(at, 'hub must be lowercase letters, digits and dashes');
+  });
+  if (acts.length !== ACTS || acts.some((act, i) => act.act !== i + 1)) fail(where, `acts must be acts 1 to ${ACTS} in order`);
+
+  const { start } = file;
+  if (!start || typeof start !== 'object' || Array.isArray(start)) {
+    fail(where, '"start" must be an object');
+    return null;
+  }
+  for (const key of Object.keys(start)) if (!START_KEYS.includes(key)) fail(`${where} start`, `unknown field "${key}"`);
+  if (!isIntIn(start.credits, 0, Infinity)) fail(`${where} start`, 'credits must be a whole number, 0 or more');
+  if (!start.parts || typeof start.parts !== 'object' || Array.isArray(start.parts)) {
+    fail(`${where} start`, 'parts must be an object of module types and counts');
+  } else {
+    for (const [type, count] of Object.entries(start.parts)) {
+      if (!moduleIds.has(type)) fail(`${where} start.parts`, `unknown module "${type}"`);
+      if (!isIntIn(count, 1, Infinity)) fail(`${where} start.parts`, `${type} must be a whole number, 1 or more`);
+    }
+  }
+  // Everyone aboard fights, so the crew is a squad's size.
+  if (!isListIn(start.crew, 1, MAX_SQUAD)) fail(`${where} start`, `crew must be a list of 1 to ${MAX_SQUAD} crew jobs`);
+  else for (const id of start.crew) if (!jobIds.has(id)) fail(`${where} start.crew`, `unknown job "${id}"`);
+
+  const script = start.ship;
+  const at = `${where} start.ship`;
+  if (!script || typeof script !== 'object' || Array.isArray(script) || !Array.isArray(script.placements)) {
+    fail(at, 'must be { frame, placements: [{ type, x, y, rot }] }');
+    return null;
+  }
+  for (const key of Object.keys(script)) if (!SCRIPT_KEYS.includes(key)) fail(at, `unknown field "${key}"`);
+  let readable = frameById.has(script.frame);
+  if (!readable) fail(at, `unknown frame "${script.frame}"`);
+  script.placements.forEach((placement, i) => {
+    const ok = placement && typeof placement === 'object' && !Array.isArray(placement) &&
+      Object.keys(placement).every((key) => PLACEMENT_KEYS.includes(key)) && moduleIds.has(placement.type) &&
+      Number.isInteger(placement.x) && Number.isInteger(placement.y) && [0, 1, 2, 3].includes(placement.rot);
+    if (!ok) {
+      fail(at, `placement ${i + 1} must be { type, x, y, rot } with a known module, whole numbers and a quarter turn`);
+      readable = false;
+    }
+  });
+  return readable ? script : null;
+}
+
+// The starting ship builds part by part with the builder's rules, and its
+// layout breaks none of them. Unfinished is fine: act 1 is about finishing
+// it.
+function checkStartShip(data, script, fail) {
+  const at = 'campaign.json start.ship';
+  try {
+    const defs = indexDefs(data);
+    const { ship, rejected } = buildShip(defs, script.frame, script.placements);
+    for (const r of rejected) fail(at, `placement ${r.index + 1} (${r.placement.type}) is rejected: ${r.message}`);
+    if (!rejected.length) for (const p of layoutProblems(ship, defs)) fail(at, p.message);
+  } catch (err) {
+    fail(at, `can't be built: ${err.message}`);
+  }
 }
 
 // A ship preset: the frame a generated ship is built on, the crew it has to
@@ -437,6 +527,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     `validate-data: OK (${count(data.modules.modules.length, 'module')}, ${count(data.frames.frames.length, 'frame')}, ` +
       `${count(data.manufacturers.manufacturers.length, 'manufacturer')}, ${count(data.weapons.weapons.length, 'weapon')}, ` +
       `${count(data.jobs.jobs.length, 'job')}, ${data.enemies.enemies.length} enem${data.enemies.enemies.length === 1 ? 'y' : 'ies'}, ` +
-      `${count(data.encounters.encounters.length, 'encounter')}, ${count(data.ships.ships.length, 'ship preset')})`,
+      `${count(data.encounters.encounters.length, 'encounter')}, ${count(data.ships.ships.length, 'ship preset')}, ` +
+      `${count(data.campaign.acts.length, 'act')})`,
   );
 }

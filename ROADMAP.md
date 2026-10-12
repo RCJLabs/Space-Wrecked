@@ -128,7 +128,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Edges:** walls stand between tiles, not on them, since rooms can be one tile across. An edge is a wall between rooms, the hull, a door (open, closed or locked) where the builder joins two rooms, or a hatch where an airlock opens onto space (entry and exit).
 - **Wrecked rooms** from the approach phase put their hazard on every tile of the room: fire, vacuum or rubble.
 - **What tiles do** is data (`data/tiles.json`): units stand on floor and airlock floor; crates and consoles are half cover, lockers and machinery full cover; lockers, machinery and the hull block sight.
-- **Squad size:** 3 at the start, up to 5 with drop bay modules later. Enemies number 4 to 8. Crew fight as their job (`data/jobs.json`: hit points, aim, defense, mobility, armor, a weapon), and enemies by type (`data/enemies.json`). The attributes in §4.5 feed these numbers later. Until a campaign has a crew, the squad and each encounter's enemies are data (`data/encounters.json`).
+- **Squad size:** 3 at the start, up to 5 with drop bay modules later. Enemies number 4 to 8. Crew fight as their job (`data/jobs.json`: hit points, aim, defense, mobility, armor, a weapon), and enemies by type (`data/enemies.json`). The attributes in §4.5 feed these numbers later. A campaign's crew fights as itself, wounds and all (M12); the sandboxes and `tools/sim.js` fight with the squad in `data/encounters.json`, where each encounter's enemies are listed too.
 - **Where they start** (M8): on a boarding, the squad on the bridge and the boarders at the hatches they come in by, each taking the tiles nearest by walking distance (`src/sim/deploy.js`). The crew moves first.
 - **Turns:** sides take turns; each unit gets 2 actions (`balance.actionPoints`):
   - move: one action within its mobility, both for a dash within twice it
@@ -182,7 +182,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Captain:** background, 2 traits and a starting job. **Crew:** generated recruits with a background, a trait and a job.
 - **Attributes:** Grit, Aim, Wits, Nerve.
 - **Jobs:** Marine, Engineer and Medic in v0.1; Pilot, Scout, Xenobiologist and Quartermaster later. Each job has a ship station effect, battle abilities and a colony effect.
-- **Wounds** carry between battles and heal in the med bay over time.
+- **Wounds** carry between battles and heal in the med bay over time. Since M12 a crew member's hit points carry from fight to fight, and anyone who went down comes back with 1. Nothing heals them yet: the med bay is M23's, so act 1 needs a rule of its own (for M14, Evan's call).
 - **Portraits:** recruits use layered SVG portraits drawn in code, so scars and implants can appear mid-game. Named characters use hand-edited Base44 portraits.
 
 ### 4.6 Economy
@@ -213,7 +213,9 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 ### 4.8 Saves
 
 - `SAVE_VERSION` gates all saves, with a migration for every bump. Never reset player saves.
-- Autosave at the hub, before and after each battle, and at the start of each player turn in battle.
+- Every change to the campaign is saved as it happens (M12): at the hub, as a fight begins, after every order in a fight, and as it ends. This list first named the start of each player turn; saving only there would let a player quit after a miss, reopen to the same roll and spend it on another shot.
+- A saved fight holds its battle whole, the map and its RNG state included, so a game update between quitting and reopening can't move a wall under a unit.
+- The game reopens at the title, and Continue goes back to where the campaign was: the hub, or the fight as it stood.
 - The RNG state is part of the save.
 - Settings can export and import a save as text. A TWA shares Chrome's storage, so clearing Chrome's data wipes saves; the export is the player's backup.
 - The builder keeps up to six ships in slots, each with the build log its replay plays back. A single ship travels between devices as a blueprint code.
@@ -315,13 +317,13 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
 - [x] **M11 Balance harness.** `node tools/sim.js` runs AI-against-AI battles headless and reports win rate, turn count and hit distribution.
   **Done when:** 1,000 fights report in under a minute.
 
-**Gate 2:** moving modules changes how the fight plays, and a fight takes 5 to 8 minutes.
+**Gate 2:** moving modules changes how the fight plays, and a fight takes 5 to 8 minutes. **Passed 2026-10-12** ("Gate 2 passed").
 
 ### Phase 3: Act 1 (v0.1)
 
 Pick the tone before M14.
 
-- [ ] **M12 Campaign state.** Acts, hub, credits, parts, crew, heat and flags; autosave points; `SAVE_VERSION` 4 (M3 took 1 for the builder's ship, M5 took 2 for its slots, M5b took 3 for the finer grid).
+- [x] **M12 Campaign state.** Acts, hub, credits, parts, crew, heat and flags; autosave points; `SAVE_VERSION` 4 (M3 took 1 for the builder's ship, M5 took 2 for its slots, M5b took 3 for the finer grid).
   **Done when:** quitting anywhere and reopening resumes correctly.
 - [ ] **M13 Hangar hub.** The half-built starter hull, construction mode (owned parts only), the flight checklist as the act goal, and a crew panel.
   **Done when:** a new player is building within 60 seconds of starting.
@@ -389,7 +391,7 @@ A Capacitor build; a paid version with a web demo; optional cloud saves on Base4
 | The builder feels fiddly on a phone | Gate 1 fails | Fix it before Phase 2; fall back to bigger modules or a slot hull |
 | Two deep systems overrun scope | Phase 2 runs past about 8 sessions | Keep the shared grid; cut base building to slots first |
 | Players build chokepoint fortresses | Balance runs show defenders always win. AI against AI on the example ship, the crew of 3 wins 64% (58–70) against 4 boarders (`tools/sim.js`, M11). With the airlock moved under the bridge it wins 83% | Enemies breach walls and choose entry points; corridors stay two tiles wide. Since M9 the AI breaches doors: it opens one and shoots through, which overwatch can't punish |
-| Fights stall in standoffs | AI-against-AI fights reach the round limit. The harness's 1,000 fights in M11 stalled on 24% of cutters, 9% of corvettes and 5% of haulers, and none on the example ship. Both sides hold on overwatch either side of a chokepoint | Candidates, Evan's call: boarders press on (they came to fight), cutting through walls, ships with a second way round. `tools/sim.js` reports the stalls ("No winner") |
+| Fights stall in standoffs | AI-against-AI fights reach the round limit. The harness's 1,000 fights in M11 stalled on 24% of cutters, 9% of corvettes and 5% of haulers, and none on the example ship. Both sides hold on overwatch either side of a chokepoint. Boarders never attack a crew that holds the bridge: with a crew that only ends its turn, 5 of 5 fights reached 60 rounds on the example ship and on the campaign's start ship (M12). A campaign fight can't be left until one side wins, so there the player has to go to them | Candidates, Evan's call: boarders press on (they came to fight), cutting through walls, ships with a second way round. `tools/sim.js` reports the stalls ("No winner") |
 | Percentage misses feel unfair | Testers complain about high-odds misses | Clearer cover display, the forgiving-odds setting, the math always shown |
 | 3D on canvas runs slowly on mid-range phones | Dropped frames turning or zooming the board (M4), or in battles (M8) | Rough half-resolution frames while the camera moves or units walk, only on a phone too slow for full ones (the frame budget, after M6: they blurred zooming on the Fold); cache the still board, and in a fight redraw it only when something on it changed (M8); fewer lines, cap the pixel ratio. Past that: three.js (MIT, one vendored file, no build step), with Evan's approval |
 | Lost saves | Reports after Chrome data is cleared | Persistent storage request, export and import, migrations |

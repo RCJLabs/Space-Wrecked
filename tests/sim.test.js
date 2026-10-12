@@ -11,7 +11,7 @@ function deepFreeze(value) {
 }
 
 test('initial state starts on the title with default settings and the given seed', () => {
-  assert.deepEqual(initialState(42), { screen: 'title', settings: { fpsCap: 60 }, rng: 42, builds: { active: 0, slots: [] } });
+  assert.deepEqual(initialState(42), { screen: 'title', settings: { fpsCap: 60 }, rng: 42, builds: { active: 0, slots: [] }, campaign: null });
   assert.equal(initialState(-1).rng, 0xffffffff);
 });
 
@@ -23,13 +23,17 @@ test('the frame cap accepts 60 and 30 only', () => {
   assert.equal(reduce(state, { type: 'settings/fpsCap', value: 60 }), state);
 });
 
-test('restoring a save replaces settings, RNG state and saved ships but not the screen', () => {
+test('restoring a save replaces settings, RNG state, saved ships and the campaign but not the screen', () => {
   const state = deepFreeze(reduce(initialState(1), { type: 'screen/show', screen: 'sandbox' }));
   const builds = { active: 0, slots: [{ name: 'Ship 1', ship: { frame: 'starter', modules: [], nextUid: 1 }, log: [] }] };
-  const data = { settings: { fpsCap: 30 }, rng: 999, builds };
+  const data = { settings: { fpsCap: 30 }, rng: 999, builds, campaign: null };
   const restored = reduce(state, { type: 'save/restore', data });
-  assert.deepEqual(restored, { screen: 'sandbox', settings: { fpsCap: 30 }, rng: 999, builds });
+  assert.deepEqual(restored, { screen: 'sandbox', settings: { fpsCap: 30 }, rng: 999, builds, campaign: null });
   assert.notEqual(restored.settings, data.settings);
+  // On a campaign's screen, a restored save goes back to the title: that
+  // screen was showing the campaign before.
+  const onHub = deepFreeze(reduce(initialState(1), { type: 'screen/show', screen: 'hub' }));
+  assert.equal(reduce(onHub, { type: 'save/restore', data }).screen, 'title');
 });
 
 test("builds/ actions reach the saved ships; the same ship changes nothing", () => {
@@ -49,5 +53,5 @@ test('unknown actions return the same state object', () => {
 
 test('saveData holds what a save needs and nothing else', () => {
   const state = initialState(5);
-  assert.deepEqual(saveData(state), { settings: { fpsCap: 60 }, rng: 5, builds: { active: 0, slots: [] } });
+  assert.deepEqual(saveData(state), { settings: { fpsCap: 60 }, rng: 5, builds: { active: 0, slots: [] }, campaign: null });
 });

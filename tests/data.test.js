@@ -81,6 +81,19 @@ const cases = [
   ['ship preset past its frame\'s cap', (d) => (d.ships.ships[0].parts.corridor = 40), /parts: up to \d+, but the Starter hull holds at most 40/],
   ['ship preset with no parts', (d) => (d.ships.ships[0].parts = {}), /parts must be an object of module types and counts/],
   ['misspelled ship preset field', (d) => (d.ships.ships[0].part = {}), /unknown field "part"/],
+  ['campaign acts out of order', (d) => (d.campaign.acts[1].act = 3), /acts must be acts 1 to 3 in order/],
+  ['campaign act with no home', (d) => (d.campaign.acts[0].home = ''), /act #1: name and home must be non-empty strings/],
+  ['campaign with a fourth act', (d) => d.campaign.acts.push({ act: 4, name: 'Epilogue', hub: 'ship', home: 'Your ship' }), /acts must be acts 1 to 3/],
+  ['misspelled campaign start field', (d) => (d.campaign.start.credit = 5), /start: unknown field "credit"/],
+  ['campaign starting in debt', (d) => (d.campaign.start.credits = -5), /credits must be a whole number, 0 or more/],
+  ['campaign starting with an unknown part', (d) => (d.campaign.start.parts.cannon = 1), /start\.parts: unknown module "cannon"/],
+  ['campaign starting with none of a part', (d) => (d.campaign.start.parts.engine = 0), /engine must be a whole number, 1 or more/],
+  ['campaign crew with an enemy in it', (d) => (d.campaign.start.crew[0] = 'pirate'), /start\.crew: unknown job "pirate"/],
+  ['campaign crew of six', (d) => d.campaign.start.crew.push('marine', 'marine', 'marine'), /crew must be a list of 1 to 5 crew jobs/],
+  ['campaign ship on an unknown frame', (d) => (d.campaign.start.ship.frame = 'barge'), /start\.ship: unknown frame "barge"/],
+  ['campaign ship with a half turn of nothing', (d) => (d.campaign.start.ship.placements[0].rot = 5), /placement 1 must be \{ type, x, y, rot \}/],
+  ['campaign ship with parts on top of each other', (d) => d.campaign.start.ship.placements.push({ type: 'corridor', x: 9, y: 7, rot: 0 }), /placement 10 \(corridor\) is rejected/],
+  ['campaign ship with no airlock', (d) => (d.campaign.start.ship.placements = d.campaign.start.ship.placements.filter((p) => p.type !== 'airlock')), /start\.ship: No airlock on the hull edge/],
 ];
 
 test('the validator names each kind of mistake', () => {
@@ -109,5 +122,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 jobs, 2 enemies, 1 encounter, 3 ship presets\)/);
+  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 jobs, 2 enemies, 1 encounter, 3 ship presets, 3 acts\)/);
 });
