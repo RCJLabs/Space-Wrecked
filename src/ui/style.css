@@ -2085,8 +2085,9 @@ textarea {
 }
 
 /* Fight sandbox: the crew down the left with End turn under them, the
-   board in the middle, and the selected unit's orders down the right
-   (bottom up, clear of the DEV button). */
+   board in the middle, and down the right the tools at the top and the
+   selected unit's orders at the bottom (bottom up, clear of the DEV
+   button). No button sits over the board. */
 .fight {
   position: absolute;
   inset: 0;
@@ -2203,6 +2204,8 @@ textarea {
   -webkit-touch-callout: none;
 }
 
+/* The whole column takes touches, so a swipe anywhere on it scrolls it on
+   a screen too short for it (panels.js scrolls it to the orders). */
 .fgt-actions {
   flex: none;
   display: flex;
@@ -2210,19 +2213,46 @@ textarea {
   gap: 6px;
   padding: 8px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   scrollbar-width: none;
+  pointer-events: auto;
 }
 
-/* In dev mode, the column starts below the DEV button. */
+/* In dev mode, the column starts below the DEV button, and scrolling to a
+   button stops below it too. */
 #ui[data-dev] .fgt-actions {
   padding-top: 58px;
+  scroll-padding-top: 58px;
 }
 
-/* Bottom up, but a column too tall for the screen still starts at the top
-   and scrolls (flex-end would push it up out of reach). */
-.fgt-actions::before {
-  content: '';
-  flex: 1 0 0;
+/* An edge of the column with more past it fades: there is more to scroll
+   to (panels.js sets data-more). */
+.fgt-actions[data-more~='above'] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 20px);
+  mask-image: linear-gradient(to bottom, transparent, #000 20px);
+}
+
+.fgt-actions[data-more~='below'] {
+  -webkit-mask-image: linear-gradient(to top, transparent, #000 20px);
+  mask-image: linear-gradient(to top, transparent, #000 20px);
+}
+
+.fgt-actions[data-more='above below'] {
+  -webkit-mask-image: linear-gradient(transparent, #000 20px, #000 calc(100% - 20px), transparent);
+  mask-image: linear-gradient(transparent, #000 20px, #000 calc(100% - 20px), transparent);
+}
+
+/* Title, Log and Fit at the top; the room left over goes between them and
+   the orders, which sit at the bottom. An auto margin, not flex-end: a
+   column too tall for the screen still starts at the top and scrolls. */
+.fgt-tools {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: auto;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--c-line);
 }
 
 #ui .fgt-act,
@@ -2246,8 +2276,8 @@ textarea {
   color: var(--c-accent);
 }
 
-/* The board's own: the round top left, Log and Fit top right, the hint
-   along the bottom. */
+/* The board's own: the round top left, a job's objective under it, the
+   hint along the bottom. */
 .fgt-chip,
 .fgt-status {
   position: absolute;
@@ -2264,7 +2294,7 @@ textarea {
 .fgt-chip {
   top: 4px;
   left: 8px;
-  max-width: calc(100% - 132px);
+  max-width: calc(100% - 16px);
   font-size: 12px;
 }
 
@@ -2313,16 +2343,7 @@ textarea {
   color: var(--c-dash);
 }
 
-.fgt-tools {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  display: flex;
-  gap: 6px;
-}
-
 #ui .fgt-tool {
-  width: 52px;
   height: 48px;
 }
 
@@ -2353,7 +2374,7 @@ textarea {
   touch-action: pan-y;
 }
 
-/* On the right it sits under Log and Fit. */
+/* On the right it sits clear of a job's objective line. */
 .fgt-card[data-side='right'] {
   top: 60px;
   right: 8px;
@@ -2425,11 +2446,17 @@ textarea {
 }
 
 /* Short screens (the Fold's cover screen in a browser tab): buttons at the
-   48 px minimum. Five orders at once still scroll there. */
+   48 px minimum. The tools scroll away above three orders there, and five
+   orders at once still scroll. */
 @media (max-height: 320px) {
   .fgt-crew,
-  .fgt-actions {
+  .fgt-actions,
+  .fgt-tools {
     gap: 4px;
+  }
+
+  .fgt-tools {
+    padding-bottom: 4px;
   }
 
   #ui .fgt-act,
