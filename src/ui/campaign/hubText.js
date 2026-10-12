@@ -9,7 +9,7 @@ import { canLaunch, flightChecklist } from '../../sim/constraints.js';
 //               line is { ok, text, fix }, and a fix that adds a part says
 //               how many are on hand.
 //   crew        [{ name, job, hp, max }]: job is blank when it is the name
-//   holdings    [[label, value]]: credits, heat, parts on hand and fights
+//   holdings    [[label, value]]: credits, heat, parts on hand and jobs
 //   hint        { tone, text }: what to do next
 //   build       true when a part on hand fixes a failing line
 export function hangarText(campaign, rules) {
@@ -37,7 +37,7 @@ export function hangarText(campaign, rules) {
       ['Credits', campaign.credits.toLocaleString('en')],
       ['Heat', `${campaign.heat} of ${HEAT_MAX}`],
       ['Parts on hand', partsText(campaign.parts, rules)],
-      ['Fights', fightsText(campaign.flags)],
+      ['Jobs', jobsText(campaign.flags)],
     ],
     build,
     hint: ready
@@ -45,8 +45,8 @@ export function hangarText(campaign, rules) {
       : build
         ? { tone: 'good', text: 'Your ship is half built. Tap Build to fit the parts on hand.' }
         : held
-          ? { tone: 'info', text: 'Tap Build to change the ship. The parts still missing come from jobs, which come next.' }
-          : { tone: 'info', text: 'The parts still missing come from jobs, which come next.' },
+          ? { tone: 'info', text: 'Tap Build to change the ship. The parts still missing come from jobs: tap Jobs.' }
+          : { tone: 'info', text: 'The parts still missing come from jobs: tap Jobs.' },
   };
 }
 
@@ -59,18 +59,21 @@ export function partsText(parts, rules) {
   return held.length ? held.join(', ') : 'None';
 }
 
-// "2 won, 1 lost", from the flags the fights keep.
-export function fightsText(flags) {
-  const won = flags.fightsWon ?? 0;
-  const lost = flags.fightsLost ?? 0;
-  return won || lost ? `${won} won, ${lost} lost` : 'None yet';
+// "2 done, 1 lost", from the flags the jobs keep.
+export function jobsText(flags) {
+  const done = flags.jobsDone ?? 0;
+  const lost = flags.jobsFailed ?? 0;
+  return done || lost ? `${done} done, ${lost} lost` : 'None yet';
 }
 
 // Under the title's Continue: where the campaign is. rules may still be
-// loading (null): then the act goes without its home.
+// loading (null): then the act goes without its home, and a job without
+// its name.
 export function continueText(campaign, rules) {
-  const at = campaign.fight
-    ? campaign.fight.battle.winner ? 'A fight just ended' : `In a fight, round ${campaign.fight.battle.round}`
+  const { fight } = campaign;
+  const what = fight?.job ? rules?.contracts.jobs.get(fight.job.contract)?.title ?? 'On a job' : 'In a fight';
+  const at = fight
+    ? fight.battle.winner ? `${fight.job ? 'A job' : 'A fight'} just ended` : `${what}, round ${fight.battle.round}`
     : rules && actOf(campaign, rules)?.home;
   return at ? `Act ${campaign.act} · ${at}` : `Act ${campaign.act}`;
 }

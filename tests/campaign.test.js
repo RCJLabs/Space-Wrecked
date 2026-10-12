@@ -5,6 +5,7 @@ import { act } from '../src/sim/battle.js';
 import { aiAction } from '../src/sim/ai.js';
 import { applyCommand, buildShip, layoutProblems, removeModule } from '../src/sim/builder.js';
 import { actOf, beginFight, campaignProblems, endFight, maxHp, newCampaign, refitShip, saveFight, stockOf } from '../src/sim/campaign.js';
+import { withBoard } from '../src/sim/contracts.js';
 import { createFight, reduceFight } from '../src/sim/fight.js';
 import { initialState, PLACE_SCREENS, reduce, saveData } from '../src/sim/root.js';
 import { scriptedAction } from '../src/sim/scripted.js';
@@ -41,12 +42,14 @@ function order(state, fight, action) {
 
 const fightOf = (state) => createFight(state.campaign.fight.battle, rules, state.campaign.fight.log);
 
-test('a new campaign starts in act 1 at the hangar, with the start in data/campaign.json', () => {
+test("a new campaign starts in act 1 at the hangar, with its background's start", () => {
   const campaign = newCampaign(rules, 77);
-  const { ship } = buildShip(rules, rules.start.ship.frame, rules.start.ship.placements);
+  const { start } = rules.backgrounds.get('miner');
+  const { ship } = buildShip(rules, start.ship.frame, start.ship.placements);
   assert.deepEqual(campaign, {
     seed: 77,
     rng: 77,
+    background: 'miner',
     act: 1,
     place: 'hub',
     credits: 0,
@@ -59,9 +62,10 @@ test('a new campaign starts in act 1 at the hangar, with the start in data/campa
     heat: 0,
     flags: {},
     ship,
+    board: [],
     fight: null,
   });
-  assert.deepEqual(actOf(campaign, rules), { act: 1, name: 'Homeworld', hub: 'hangar', home: 'The hangar' });
+  assert.deepEqual(actOf(campaign, rules), { act: 1, name: 'Homeworld', hub: 'hangar', home: 'The hangar', heals: true });
   assert.deepEqual(layoutProblems(campaign.ship, rules), [], 'the half-built ship breaks no layout rule');
   assert.deepEqual(campaignProblems(campaign), []);
   assert.deepEqual(newCampaign(rules, 77), campaign, 'the same seed, the same campaign');
@@ -96,12 +100,13 @@ test('a refit at the hub takes parts from the hangar and puts back what comes of
   assert.equal(reduce(state, { type: 'campaign/ship', ship: engine.ship }), state);
 });
 
-test("a new campaign's seed is the game's next roll, and the game goes to the hub", () => {
+test("a new campaign's seed is the game's next roll, and the game goes to the hub with a job board", () => {
   const state = deepFreeze(initialState(5));
   const first = reduce(state, { type: 'campaign/new', rules });
   assert.equal(first.screen, 'hub');
   assert.notEqual(first.rng, state.rng);
-  assert.equal(first.campaign.seed, first.campaign.rng);
+  assert.deepEqual(first.campaign, withBoard(newCampaign(rules, first.campaign.seed), rules));
+  assert.equal(first.campaign.board.length, rules.contracts.boardSize);
   assert.deepEqual(reduce(state, { type: 'campaign/new', rules }), first, 'the same game state, the same campaign');
   const second = reduce(first, { type: 'campaign/new', rules });
   assert.notEqual(second.campaign.seed, first.campaign.seed, 'starting over rolls a new one');
@@ -160,7 +165,7 @@ test('a fight is saved after every order, and only while one is on', () => {
   assert.equal(saveFight(atHub, battle, log), atHub, 'no fight on: nothing to save');
 });
 
-test('after a fight: wounds stay, the fallen come back hurt, the dead leave, and the flags count it', () => {
+test('after a fight: the act 1 hangar heals, elsewhere wounds stay and the fallen come back hurt; the dead leave, and the flags count it', () => {
   const campaign = beginFight(newCampaign(rules, 77), rules).campaign;
   const units = campaign.fight.battle.units.map((u) => {
     if (u.id === 'c1') return { ...u, hp: 4 };
@@ -169,21 +174,23 @@ test('after a fight: wounds stay, the fallen come back hurt, the dead leave, and
     return { ...u, hp: 0, status: 'dead' };
   });
   const won = { ...campaign, fight: { ...campaign.fight, battle: { ...campaign.fight.battle, units, winner: 'crew' } } };
-  const after = endFight(won);
+  const after = endFight(won, rules);
   assert.equal(after.place, 'hub');
   assert.equal(after.fight, null);
-  assert.deepEqual(after.crew.map((m) => [m.name, m.hp]), [['Marine', 4], ['Engineer', 1], ['Medic', 1]]);
+  assert.deepEqual(after.crew.map((m) => [m.name, m.hp]), [['Marine', 10], ['Engineer', 8], ['Medic', 8]], 'act 1: healed at the hangar');
   assert.deepEqual(after.flags, { fightsWon: 1 });
   assert.deepEqual(campaignProblems(after), []);
+  const later = endFight({ ...won, act: 2 }, rules);
+  assert.deepEqual(later.crew.map((m) => [m.name, m.hp]), [['Marine', 4], ['Engineer', 1], ['Medic', 1]], 'act 2: no healing at home');
 
   const killed = units.map((u) => (u.id === 'c2' ? { ...u, status: 'dead' } : u));
-  const lost = endFight({ ...won, flags: { fightsLost: 2 }, fight: { ...won.fight, battle: { ...won.fight.battle, units: killed, winner: 'enemy' } } });
+  const lost = endFight({ ...won, flags: { fightsLost: 2 }, fight: { ...won.fight, battle: { ...won.fight.battle, units: killed, winner: 'enemy' } } }, rules);
   assert.deepEqual(lost.crew.map((m) => m.name), ['Marine', 'Medic'], 'killed where death is permanent');
   assert.deepEqual(lost.flags, { fightsLost: 3 });
 
-  assert.equal(endFight(campaign), campaign, 'a fight still going is left alone');
+  assert.equal(endFight(campaign, rules), campaign, 'a fight still going is left alone');
   const atHub = newCampaign(rules, 77);
-  assert.equal(endFight(atHub), atHub);
+  assert.equal(endFight(atHub, rules), atHub);
 });
 
 test('the screens follow the campaign: hub, fight and back', () => {
@@ -194,25 +201,30 @@ test('the screens follow the campaign: hub, fight and back', () => {
   assert.equal(state.screen, 'hub');
   state = reduce(state, { type: 'campaign/fight/begin', rules });
   assert.equal(state.screen, 'campaign-fight');
-  assert.equal(reduce(state, { type: 'campaign/fight/end' }), state, 'not over yet');
+  assert.equal(reduce(state, { type: 'campaign/fight/end', rules }), state, 'not over yet');
   const over = { ...state.campaign.fight.battle, winner: 'crew' };
   state = reduce(state, { type: 'campaign/fight/save', battle: over, log: state.campaign.fight.log });
-  state = reduce(state, { type: 'campaign/fight/end' });
+  state = reduce(state, { type: 'campaign/fight/end', rules });
   assert.equal(state.screen, 'hub');
   assert.equal(state.campaign.place, 'hub');
+  state = reduce(state, { type: 'campaign/job/take', index: 1, rules });
+  assert.equal(state.screen, 'campaign-fight');
+  assert.equal(state.campaign.fight.job.contract, started(3).campaign.board[1].contract);
   // With no campaign, Continue and the campaign's actions do nothing.
   const none = deepFreeze(initialState(1));
-  for (const type of ['campaign/continue', 'campaign/fight/begin', 'campaign/fight/save', 'campaign/fight/end']) {
-    assert.equal(reduce(none, { type, rules, battle: over, log: [] }), none, type);
+  for (const type of ['campaign/continue', 'campaign/board', 'campaign/job/take', 'campaign/fight/begin', 'campaign/fight/save', 'campaign/fight/end']) {
+    assert.equal(reduce(none, { type, rules, index: 0, battle: over, log: [] }), none, type);
   }
 });
 
-// The milestone's Done when: quitting anywhere and reopening resumes
-// correctly. The game is quit after every change a player can make, from
-// the new campaign through a whole fight and back to the hub, and reopened:
-// it is where it was, and it plays on exactly as it would have.
+// M12's Done when: quitting anywhere and reopening resumes correctly. The
+// game is quit after every change a player can make, from the new campaign
+// through a whole fight and back to the hub, and reopened: it is where it
+// was, and it plays on exactly as it would have. One fight is at home
+// against boarders, the other a job off the board.
 test('quitting anywhere and reopening resumes where the player was', () => {
   for (const seed of [2, 1]) {
+    const begin = seed === 2 ? { type: 'campaign/fight/begin', rules } : { type: 'campaign/job/take', index: 0, rules };
     let state = started(seed);
     let reopened = quitAndReopen(state);
     assert.equal(reopened.screen, 'hub');
@@ -228,8 +240,8 @@ test('quitting anywhere and reopening resumes where the player was', () => {
     assert.deepEqual(reopened.campaign.parts, { lifesupport: 1, corridor: 2 });
     state = reduce(state, { type: 'screen/show', screen: 'hub' });
 
-    state = reduce(state, { type: 'campaign/fight/begin', rules });
-    assert.deepEqual(reduce(reopened, { type: 'campaign/fight/begin', rules }).campaign, state.campaign, 'the fight a reopened hub begins is the same');
+    state = reduce(state, begin);
+    assert.deepEqual(reduce(reopened, begin).campaign, state.campaign, 'the fight a reopened hub begins is the same');
     let fight = fightOf(state);
     let checked = 0;
     while (!fight.battle.winner) {
@@ -250,14 +262,13 @@ test('quitting anywhere and reopening resumes where the player was', () => {
     assert.equal(quitAndReopen(state).screen, 'campaign-fight', 'the end of the fight, before going back');
 
     const fought = state.campaign.fight.battle;
-    state = reduce(state, { type: 'campaign/fight/end' });
+    state = reduce(state, { type: 'campaign/fight/end', rules });
     reopened = quitAndReopen(state);
     assert.equal(reopened.screen, 'hub');
     assert.deepEqual(saveData(reopened), saveData(state), 'back at the hub');
     const flag = fought.winner === 'crew' ? 'fightsWon' : 'fightsLost';
     assert.equal(reopened.campaign.flags[flag], 1);
-    const hp = fought.units.filter((u) => u.side === 'crew').map((u) => Math.max(1, u.hp));
-    assert.deepEqual(reopened.campaign.crew.map((m) => m.hp), hp, 'wounds carried');
+    assert.deepEqual(reopened.campaign.crew.map((m) => m.hp), [10, 8, 8], 'healed at the hangar');
   }
 });
 
@@ -290,6 +301,9 @@ test('every battle the AI plays to on the ship reads back from a save', () => {
 test("a damaged campaign is named, part by part, and never read", () => {
   const atHub = newCampaign(rules, 77);
   const inFight = beginFight(atHub, rules).campaign;
+  const withJob = withBoard(atHub, rules);
+  const onJob = reduce({ ...initialState(1), campaign: withJob }, { type: 'campaign/job/take', index: 0, rules }).campaign;
+  assert.deepEqual(campaignProblems(onJob), []);
   const unit = (c, changes) => ({ ...c, fight: { ...c.fight, battle: { ...c.fight.battle, units: c.fight.battle.units.map((u, i) => (i === 0 ? { ...u, ...changes } : u)) } } });
   const battle = (c, changes) => ({ ...c, fight: { ...c.fight, battle: { ...c.fight.battle, ...changes } } });
   const map = (c, changes) => battle(c, { map: { ...c.fight.battle.map, ...changes } });
@@ -297,6 +311,21 @@ test("a damaged campaign is named, part by part, and never read", () => {
     [null, /campaign is unreadable/],
     [[], /campaign is unreadable/],
     [{ ...atHub, rng: -1 }, /seed or RNG state is invalid/],
+    [{ ...atHub, background: 7 }, /background is invalid/],
+    [{ ...atHub, board: {} }, /job board is unreadable/],
+    [{ ...atHub, board: [{ contract: 'repo' }] }, /job board is unreadable/],
+    [{ ...withJob, board: [{ ...withJob.board[0], seed: -3 }] }, /job board is unreadable/],
+    [{ ...withJob, board: [{ ...withJob.board[0], twist: 5 }] }, /job board is unreadable/],
+    [{ ...onJob, fight: { ...onJob.fight, job: { ...onJob.fight.job, credits: -1 } } }, /fight has an unreadable job/],
+    [{ ...onJob, fight: { ...onJob.fight, job: undefined } }, /fight has an unreadable job/],
+    [battle(onJob, { objective: { type: 'grab', crates: [], taken: [] } }), /fight has an unreadable objective/],
+    [battle(onJob, { objective: { type: 'grab', crates: [[1, 1]], taken: [[2, 2]] } }), /fight has an unreadable objective/],
+    [battle(onJob, { objective: { type: 'hack', at: [999, 0], turns: 2, progress: 0, worked: 0 } }), /fight has an unreadable objective/],
+    [battle(onJob, { objective: { type: 'dance' } }), /fight has an unreadable objective/],
+    [battle(onJob, { objective: undefined }), /fight has an unreadable objective/],
+    [battle(onJob, { options: { forgiving: false, permadeath: false, sight: 0 } }), /fight has unreadable options/],
+    [battle(onJob, { options: { forgiving: false, permadeath: false, deadline: 'soon' } }), /fight has unreadable options/],
+    [map(onJob, { margin: -1 }), /fight has an unreadable map/],
     [{ ...atHub, act: 4 }, /act is invalid/],
     [{ ...atHub, place: 'bar' }, /place is invalid/],
     [{ ...atHub, credits: 1.5 }, /credits are invalid/],

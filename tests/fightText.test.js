@@ -52,5 +52,5 @@ test('the hint says what a tap does next, and the chip whose turn it is', () => 
   fight = reduceFight(fight, { type: 'fight/aim' }, rules);
   assert.equal(hintFor(fight, ordersFor(fight, rules)).text, `${fight.preview.odds.hit}% to hit Pirate e1. Tap Fire, or the target again.`);
   assert.deepEqual(chipFor(battle), { tone: 'info', text: 'Round 1 · Your turn' });
-  assert.deepEqual(chipFor({ ...battle, winner: 'enemy' }), { tone: 'bad', text: 'Round 1 · Boarders win' });
+  assert.deepEqual(chipFor({ ...battle, winner: 'enemy' }), { tone: 'bad', text: 'Round 1 · Enemy wins' });
 });

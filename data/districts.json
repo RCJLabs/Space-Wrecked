@@ -1,0 +1,23 @@
+{
+  "districts": [
+    {
+      "id": "tailings",
+      "name": "The Tailings",
+      "blurb": "A company town built on the ponds where the mine dumps what it can't sell. Everyone here works for Con-Reg, used to, or owes them.",
+      "clients": [
+        { "id": "marta", "name": "Marta Okafor", "title": "the union steward", "blurb": "Runs the night-shift local out of the back of the Last Whistle. Pays in cash and grudges." },
+        { "id": "dutch", "name": "Dutch Abernathy", "title": "the scrap dealer", "blurb": "Owns the Cable Street yard and most of what's in it. Pays in parts, some of them his." },
+        { "id": "sully", "name": "Foreman Sully", "title": "a company foreman", "blurb": "Works for Con-Reg by day and for himself the rest of the time." },
+        { "id": "prewitt", "name": "Ma Prewitt", "title": "your landlady", "blurb": "Owns the hangar your ship sits in. Rent's due, but she'll take a favour." },
+        { "id": "rook", "name": "Rook", "title": "a bookie at the Last Whistle", "blurb": "Takes bets on shift quotas, cave-ins and you." },
+        { "id": "agnes", "name": "Sister Agnes", "title": "the mission kitchen", "blurb": "Feeds half the Tailings on donations and the other half on what she can lift." }
+      ],
+      "sites": [
+        { "id": "pit9", "name": "Pit Nine", "map": "bench", "blurb": "An open cut gone quiet since the last cave-in. Quiet isn't empty." },
+        { "id": "yard", "name": "the Cable Street yard", "map": "yard", "blurb": "Dutch's scrapyard: a mile of dead machinery and a fence with opinions." },
+        { "id": "depot", "name": "Depot 4", "map": "depot", "blurb": "The Company's warehouse for everything it charges you for twice." },
+        { "id": "whistle", "name": "the Last Whistle", "map": "bar", "blurb": "The shift bar. Watered beer, honest fights." }
+      ]
+    }
+  ]
+}

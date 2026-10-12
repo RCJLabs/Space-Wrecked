@@ -8,6 +8,8 @@
 // A campaign:
 //   seed     the seed it began from
 //   rng      its RNG state now (core/rng.js)
+//   background  who the player was before (data/backgrounds.json): where
+//            act 1 starts and its district
 //   act      1, 2 or 3; data/campaign.json names each act and its home
 //   place    where the player is: 'hub', or 'fight' while a fight is on
 //   credits  money, a whole number
@@ -19,14 +21,16 @@
 //   heat     the pursuer's meter, 0 to HEAT_MAX (§4.4)
 //   flags    { [name]: true, a number or a short text }: what has happened
 //   ship     the ship (builder.js)
+//   board    the jobs on offer at the hub (contracts.js), or [] until one
+//            is rolled
 //   fight    null, or the fight on now: { encounter, seed, crew, battle,
-//            log }. crew is who fights, by id, in the battle's order (c1,
-//            c2...). battle and log are the fight as it stands (battle.js,
-//            fight.js), saved after every order: the start of each of the
-//            crew's turns is saved, and so is every order in between.
-//
-// For now a fight is the crew against a boarding party on their own ship,
-// standing in for M14's jobs and M15's raids.
+//            log, job }. crew is who fights, by id, in the battle's order
+//            (c1, c2...). battle and log are the fight as it stands
+//            (battle.js, fight.js), saved after every order: the start of
+//            each of the crew's turns is saved, and so is every order in
+//            between. job is the job it is, off the board, or null for a
+//            fight at home: the crew against boarders on its own ship,
+//            which stands in for M15's raids.
 import { int, isState } from '../core/rng.js';
 import { battleProblem } from './battleShape.js';
 import { createBattle } from './battle.js';
@@ -40,20 +44,24 @@ export const HEAT_MAX = 100;
 export const MAX_CREW = 20;
 export const MAX_NAME = 24;
 export const MAX_FLAG_TEXT = 64;
+// More jobs than any board offers: a guard on what a save can hold.
+export const MAX_BOARD = 12;
 // Who boards the ship in a fight (data/encounters.json).
 export const FIGHT_ENCOUNTER = 'boarders';
 const MAX_SEED = 0xffffffff;
 const ID = /^[a-z][a-z0-9-]*$/;
 const FLAG = /^[a-zA-Z][a-zA-Z0-9]*$/;
 
-// A new campaign from the start in data/campaign.json: act 1, at home, with
-// its ship, crew, credits and parts. seed is a whole number (a uint32).
-export function newCampaign(rules, seed) {
-  const { start } = rules;
+// A new campaign from a background's start (data/backgrounds.json; the
+// first one unless named): act 1, at home, with its ship, crew, credits and
+// parts. seed is a whole number (a uint32).
+export function newCampaign(rules, seed, background = firstBackground(rules)) {
+  const { start } = rules.backgrounds.get(background);
   const { ship } = buildShip(rules, start.ship.frame, start.ship.placements);
   return {
     seed,
     rng: seed,
+    background,
     act: 1,
     place: 'hub',
     credits: start.credits,
@@ -65,11 +73,17 @@ export function newCampaign(rules, seed) {
     heat: 0,
     flags: {},
     ship,
+    board: [],
     fight: null,
   };
 }
 
-// The act's entry in data/campaign.json: { act, name, hub, home }.
+// The background a campaign starts from when none is chosen: v0.1 has one.
+export function firstBackground(rules) {
+  return rules.backgrounds.keys().next().value;
+}
+
+// The act's entry in data/campaign.json: { act, name, hub, home, heals }.
 export function actOf(campaign, rules) {
   return rules.acts.get(campaign.act) ?? null;
 }
@@ -129,7 +143,7 @@ export function beginFight(campaign, rules) {
     return member ? { ...unit, name: member.name, hp: Math.min(member.hp, maxHp(member, rules)) } : unit;
   });
   const { battle, events } = createBattle({ map, units, seed }, rules);
-  const fight = { encounter: FIGHT_ENCOUNTER, seed, crew: campaign.crew.map((member) => member.id), battle, log: events };
+  const fight = { encounter: FIGHT_ENCOUNTER, seed, crew: campaign.crew.map((member) => member.id), battle, log: events, job: null };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };
 }
 
@@ -142,17 +156,20 @@ export function saveFight(campaign, battle, log) {
 // After a fight with a winner, back to the hub with what it left behind:
 // - each crew member keeps the hit points they ended with; anyone down,
 //   stabilized or bled out comes back with 1, badly hurt;
+// - in an act whose home heals (act 1's hangar), everyone heals fully;
 // - anyone killed (only where death is permanent) leaves the crew;
 // - the flags count the fights won and lost.
-// A fight still going is left as it is.
-export function endFight(campaign) {
+// A fight still going is left as it is. A job's pay is contracts.js's.
+export function endFight(campaign, rules) {
   const { fight } = campaign;
   if (!fight?.battle.winner) return campaign;
+  const heals = actOf(campaign, rules)?.heals === true;
   const fought = fight.battle.units.filter((unit) => unit.side === 'crew');
   const crew = campaign.crew.flatMap((member) => {
     const unit = fought[fight.crew.indexOf(member.id)];
+    if (unit?.status === 'dead') return [];
+    if (heals) return [{ ...member, hp: maxHp(member, rules) }];
     if (!unit) return [member];
-    if (unit.status === 'dead') return [];
     return [{ ...member, hp: Math.max(1, unit.hp) }];
   });
   const flag = fight.battle.winner === 'crew' ? 'fightsWon' : 'fightsLost';
@@ -169,6 +186,7 @@ export function campaignProblems(value) {
   const problems = [];
   const wrong = (what) => problems.push(`The campaign's ${what}.`);
   if (!isState(value.seed) || !isState(value.rng)) wrong('seed or RNG state is invalid');
+  if (!isId(value.background)) wrong('background is invalid');
   if (!isInt(value.act, 1, ACTS)) wrong('act is invalid');
   if (!PLACES.includes(value.place)) wrong('place is invalid');
   if (!isInt(value.credits, 0, Number.MAX_SAFE_INTEGER)) wrong('credits are invalid');
@@ -181,6 +199,7 @@ export function campaignProblems(value) {
     wrong('flags are unreadable');
   }
   if (!isShipData(value.ship)) wrong('ship is unreadable');
+  if (!Array.isArray(value.board) || value.board.length > MAX_BOARD || !value.board.every(isJob)) wrong('job board is unreadable');
   if ((value.place === 'fight') !== isRecord(value.fight) || (value.place !== 'fight' && value.fight !== null)) {
     wrong("fight doesn't match where the player is");
   } else if (value.fight !== null) {
@@ -196,11 +215,24 @@ function fightProblem(fight, crew) {
   if (!Array.isArray(fight.crew) || new Set(fight.crew).size !== fight.crew.length || !fight.crew.every((id) => ids.has(id))) {
     return "names crew who aren't aboard";
   }
+  if (fight.job !== null && !isJob(fight.job)) return 'has an unreadable job';
   const battle = battleProblem(fight.battle);
   if (battle) return battle;
   if (fight.battle.units.filter((unit) => unit.side === 'crew').length !== fight.crew.length) return "doesn't match its crew";
   if (!Array.isArray(fight.log) || !fight.log.every((event) => isRecord(event) && typeof event.type === 'string')) return 'has an unreadable log';
   return null;
+}
+
+// A job on the board (contracts.js): its ids, seed and pay.
+function isJob(job) {
+  return (
+    isRecord(job) && isId(job.contract) && isId(job.client) && isId(job.site) && (job.twist === null || isId(job.twist)) &&
+    isState(job.seed) && isInt(job.credits, 0, Number.MAX_SAFE_INTEGER) && (job.part === null || isId(job.part))
+  );
+}
+
+function isId(value) {
+  return typeof value === 'string' && ID.test(value);
 }
 
 function isCrew(crew) {

@@ -35,9 +35,11 @@
 //                            then the next each time
 //   fight/confirm            makes the move or takes the shot shown
 //   fight/cancel             drops the move or shot shown
-//   fight/overwatch, fight/reload, fight/stabilize, fight/open
-//                            the selected unit's other orders: stabilize
-//                            the ally down beside it, open the door beside it
+//   fight/overwatch, fight/reload, fight/stabilize, fight/open,
+//   fight/grab, fight/hack   the selected unit's other orders: stabilize
+//                            the ally down beside it, open the door beside
+//                            it, grab a crate in its reach, work the
+//                            terminal in its reach (a job's objective)
 //   fight/end                ends the crew's turn
 //   fight/load { battle, events }   a new battle
 import { aiAction } from './ai.js';
@@ -45,7 +47,7 @@ import { act, targetsFor } from './battle.js';
 import { SIDES } from './grid.js';
 import { edgeKey, wallAt } from './mapFromShip.js';
 import { reachable } from './moves.js';
-import { walkable } from './terrain.js';
+import { inReach, walkable } from './terrain.js';
 
 // More actions than any side's turn can take: a guard, should the enemy
 // player ever stall.
@@ -83,6 +85,12 @@ export function reduceFight(fight, action, rules) {
       const side = unit && doorBeside(fight.battle, unit);
       return side ? play(fight, { type: 'open', unit: unit.id, side }, rules) : fight;
     }
+    case 'fight/grab': {
+      const at = unit && crateInReach(fight.battle, unit);
+      return at ? play(fight, { type: 'grab', unit: unit.id, at }, rules) : fight;
+    }
+    case 'fight/hack':
+      return unit && terminalInReach(fight.battle, unit) ? play(fight, { type: 'hack', unit: unit.id }, rules) : fight;
     case 'fight/end':
       return play(fight, { type: 'end' }, rules);
     default:
@@ -109,6 +117,9 @@ export function canAct(battle, unit) {
 //   reload, overwatch   whether it can
 //   stabilize  the ally down beside it, or null
 //   door       the side of a closed door beside it, or null
+//   grab       the [x, y] of a crate to grab in its reach, or null
+//   hack       whether it can work the terminal now: in its reach, and not
+//              worked yet this round
 // Null when no one is selected.
 export function ordersFor(fight, rules) {
   const unit = selectedUnit(fight);
@@ -123,6 +134,8 @@ export function ordersFor(fight, rules) {
     overwatch: unit.ammo > 0,
     stabilize: downBeside(battle, unit),
     door: doorBeside(battle, unit),
+    grab: crateInReach(battle, unit),
+    hack: terminalInReach(battle, unit) && battle.objective.worked !== battle.round,
   };
 }
 
@@ -224,6 +237,18 @@ function focus(fight, after, rules) {
 
 function downBeside(battle, unit) {
   return battle.units.find((u) => u.side === unit.side && u.status === 'down' && Math.max(Math.abs(u.x - unit.x), Math.abs(u.y - unit.y)) <= 1) ?? null;
+}
+
+// The first crate of the objective's still to grab that the unit can reach.
+function crateInReach(battle, unit) {
+  const { objective } = battle;
+  if (objective?.type !== 'grab') return null;
+  const left = objective.crates.filter(([x, y]) => !objective.taken.some(([tx, ty]) => tx === x && ty === y));
+  return left.find((at) => inReach(battle, [unit.x, unit.y], at)) ?? null;
+}
+
+function terminalInReach(battle, unit) {
+  return battle.objective?.type === 'hack' && inReach(battle, [unit.x, unit.y], battle.objective.at);
 }
 
 function doorBeside(battle, unit) {

@@ -30,15 +30,39 @@ export function battleProblem(value) {
     return 'has an unreadable turn';
   }
   if (!isRecord(value.misses) || !TEAMS.every((side) => isInt(value.misses[side], 0, MAX))) return 'has unreadable misses';
-  if (!isRecord(value.options) || typeof value.options.forgiving !== 'boolean' || typeof value.options.permadeath !== 'boolean') {
-    return 'has unreadable options';
-  }
+  if (!isOptions(value.options)) return 'has unreadable options';
+  if (value.objective !== null && !isObjective(value.objective, map)) return 'has an unreadable objective';
   if (value.winner !== null && !TEAMS.includes(value.winner)) return 'has an unreadable winner';
   return null;
 }
 
+function isOptions(options) {
+  return (
+    isRecord(options) && typeof options.forgiving === 'boolean' && typeof options.permadeath === 'boolean' &&
+    (options.sight === undefined || isInt(options.sight, 1, MAX_TILES)) &&
+    (options.deadline === undefined || isInt(options.deadline, 1, MAX))
+  );
+}
+
+function isObjective(objective, map) {
+  if (!isRecord(objective)) return false;
+  const isTile = (at) => Array.isArray(at) && at.length === 2 && isInt(at[0], 0, map.width - 1) && isInt(at[1], 0, map.height - 1);
+  if (objective.type === 'grab') {
+    const { crates, taken } = objective;
+    if (!Array.isArray(crates) || !crates.length || !crates.every(isTile) || !Array.isArray(taken) || !taken.every(isTile)) return false;
+    const keys = new Set(crates.map(String));
+    return keys.size === crates.length && new Set(taken.map(String)).size === taken.length && taken.every((at) => keys.has(String(at)));
+  }
+  if (objective.type === 'hack') {
+    return isTile(objective.at) && isInt(objective.turns, 1, MAX) && isInt(objective.progress, 0, MAX) && isInt(objective.worked, 0, MAX);
+  }
+  return false;
+}
+
 function isMap(map) {
   if (!isRecord(map) || !isInt(map.width, 1, MAX_TILES) || !isInt(map.height, 1, MAX_TILES) || !isInt(map.tilesPerCell, 1, 8)) return false;
+  // A job's site has no space around it, and its template's id.
+  if ((map.margin !== undefined && !isInt(map.margin, 0, MAX_TILES)) || (map.site !== undefined && typeof map.site !== 'string')) return false;
   if (!Array.isArray(map.origin) || map.origin.length !== 2 || !map.origin.every(Number.isInteger)) return false;
   const fits = (grid, ok) =>
     isRecord(grid) && grid.width === map.width && grid.height === map.height &&

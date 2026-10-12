@@ -1,6 +1,12 @@
 {
   "squad": ["marine", "engineer", "medic"],
   "encounters": [
-    { "id": "boarders", "name": "Boarding party", "enemies": ["pirate", "pirate", "brute", "pirate"] }
+    { "id": "boarders", "name": "Boarding party", "enemies": ["pirate", "pirate", "brute", "pirate"] },
+    { "id": "jumpers", "name": "Claim jumpers", "enemies": ["jumper", "jumper", "jumper", "jumper"] },
+    { "id": "scavvers", "name": "Scavvers", "enemies": ["scavver", "scavver", "scavver", "heavy"] },
+    { "id": "guards", "name": "Company guards", "enemies": ["guard", "guard", "guard"] },
+    { "id": "strikebreakers", "name": "Strikebreakers", "enemies": ["heavy", "guard", "guard", "heavy"] },
+    { "id": "regulars", "name": "Last Whistle regulars", "enemies": ["scavver", "jumper", "heavy", "jumper"] },
+    { "id": "recovery", "name": "Con-Reg Recovery", "enemies": ["agent", "heavy", "agent"] }
   ]
 }

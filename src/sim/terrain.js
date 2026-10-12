@@ -30,3 +30,22 @@ export function edgeAt(battle, x, y, side) {
 export function hazardAt(battle, x, y) {
   return cellAt(battle.map.hazards, x, y) ?? null;
 }
+
+// True if a unit at `from` can reach the tile at `to` with its hands, as it
+// grabs a crate or works a terminal: next to it by a side or a corner, with
+// nothing standing on the edges between now.
+export function inReach(battle, from, to) {
+  return besideClear(from, to, (x, y, side) => edgeAt(battle, x, y, side) === null);
+}
+
+// True if `to` is next to `from` by a side or a corner and open(x, y, side)
+// holds for the edges between: the one between them, or, round a corner,
+// both edges of either way round.
+export function besideClear([ax, ay], [bx, by], open) {
+  const [dx, dy] = [bx - ax, by - ay];
+  if (Math.max(Math.abs(dx), Math.abs(dy)) !== 1) return false;
+  const [xSide, ySide] = [dx > 0 ? 'e' : 'w', dy > 0 ? 's' : 'n'];
+  if (dy === 0) return open(ax, ay, xSide);
+  if (dx === 0) return open(ax, ay, ySide);
+  return (open(ax, ay, xSide) && open(bx, ay, ySide)) || (open(ax, ay, ySide) && open(ax, by, xSide));
+}

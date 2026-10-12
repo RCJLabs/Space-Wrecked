@@ -1,6 +1,11 @@
 {
   "enemies": [
     { "id": "pirate", "name": "Pirate", "hp": 7, "aim": 60, "defense": 0, "mobility": 4, "armor": 0, "weapon": "carbine" },
-    { "id": "brute", "name": "Pirate brute", "hp": 11, "aim": 55, "defense": 0, "mobility": 3, "armor": 1, "weapon": "shotgun" }
+    { "id": "brute", "name": "Pirate brute", "hp": 11, "aim": 55, "defense": 0, "mobility": 3, "armor": 1, "weapon": "shotgun" },
+    { "id": "scavver", "name": "Scavver", "hp": 6, "aim": 55, "defense": 5, "mobility": 5, "armor": 0, "weapon": "pistol" },
+    { "id": "jumper", "name": "Claim jumper", "hp": 7, "aim": 60, "defense": 0, "mobility": 4, "armor": 0, "weapon": "carbine" },
+    { "id": "guard", "name": "Company guard", "hp": 8, "aim": 65, "defense": 0, "mobility": 4, "armor": 1, "weapon": "rifle" },
+    { "id": "heavy", "name": "Hired heavy", "hp": 11, "aim": 55, "defense": 0, "mobility": 3, "armor": 1, "weapon": "shotgun" },
+    { "id": "agent", "name": "Recovery agent", "hp": 8, "aim": 65, "defense": 5, "mobility": 5, "armor": 0, "weapon": "carbine" }
   ]
 }

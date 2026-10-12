@@ -4,8 +4,10 @@
 // tile edges; each tile's fitting stands on it (crates for half cover,
 // lockers for full cover, machinery, consoles, the airlock's pad). Wrecked
 // rooms burn, frost over or fill with rubble. An open door has slid down
-// into the deck. Pure: map in, { faces, glows } out (solid.js faces, mesh.js
-// glows), in the manufacturer's skin. Units are tiles, z up.
+// into the deck. A job's site (src/sim/gen/site.js) is drawn the same way
+// in the ground skin, with rock standing in lumps. Pure: map in, { faces,
+// glows } out (solid.js faces, mesh.js glows), in the manufacturer's skin.
+// Units are tiles, z up.
 import { cellAt } from '../sim/grid.js';
 import { MARGIN, wallAt } from '../sim/mapFromShip.js';
 import { palette } from './palette.js';
@@ -35,6 +37,10 @@ export function battleScene({ map, skin, open = [] }) {
       const kind = cellAt(map.tiles, x, y);
       const uid = cellAt(map.roomAt, x, y);
       if (kind === 'space') continue;
+      if (kind === 'rock') {
+        rock(faces, x, y, skin);
+        continue;
+      }
       if (uid === null) {
         // A notch the hull closes over: solid hull.
         solidBox(faces, [x, y, 0], [x + 1, y + 1, HULL_H], skin.hull, edge);
@@ -60,9 +66,9 @@ export function battleScene({ map, skin, open = [] }) {
 
 // The boxes the camera works with, in tiles: `fit`, the ship and what sticks
 // out of it, is what the view opens on; `all`, the whole map with its margin
-// of space, is as far as it pans.
+// of space, is as far as it pans. A site has no margin: the two are one.
 export function battleBoxes(map) {
-  const m = map.tilesPerCell * MARGIN - COLLAR;
+  const m = map.margin === undefined ? map.tilesPerCell * MARGIN - COLLAR : map.tilesPerCell * map.margin;
   return {
     fit: { x0: m, y0: m, x1: map.width - m, y1: map.height - m, z1: TALL },
     all: { x0: 0, y0: 0, x1: map.width, y1: map.height, z1: TALL },
@@ -159,6 +165,16 @@ const FITTINGS = {
     plate(f, [x + 0.23, y + 0.23], [x + 0.77, y + 0.77], 0.006, k.dark);
   },
 };
+
+// Rock: a lump about as tall as a locker, each a little different in
+// height and girth, with a darker patch on top, so a ridge of it doesn't
+// read as a wall.
+function rock(f, x, y, skin) {
+  const h = 0.62 + 0.24 * hash(x, y, 80);
+  const [a, b] = [0.03 * hash(x, y, 81), 0.03 * hash(x, y, 82)];
+  solidBox(f, [x + a, y + b, 0], [x + 1 - b, y + 1 - a, h], skin.hull, { edge: skin.edge });
+  plate(f, [x + 0.2 + 0.2 * hash(x, y, 83), y + 0.18], [x + 0.62 + 0.18 * hash(x, y, 84), y + 0.5 + 0.3 * hash(x, y, 85)], h + 0.002, skin.dark);
+}
 
 // A flat polygon of n sides lying at height z.
 function disc(f, cx, cy, r, z, color, n, extra = {}) {

@@ -2,7 +2,7 @@
 
 **One-liner:** Build a ship from scrap, run from whoever is hunting you, and find a world to call home. The ship you build is the map you defend: when you are boarded, the fight happens room by room in your own layout, in XCOM-style squad battles.
 
-**Tone:** Not decided yet. Pick one before M14 (the act 1 writing): grim survival, hopeful frontier, or wry and blue-collar.
+**Tone:** Wry and blue-collar (Evan's call, 2026-10-12, before M14). Working people doing dirty jobs, with dry humour: the company, the bills and the shift whistle are the background noise, not the villains' monologues.
 
 **Platform:** Browser game on GitHub Pages, installable as a PWA, published as a TWA on Google Play (RCJ Labs convention). Landscape only. Offline-first: no backend and no network calls. Android and web; iPhone is not a target. A Capacitor build comes later, for a possible paid version.
 
@@ -124,22 +124,23 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 
 ### 4.3 Squad battles
 
-- **Maps:** a ship layout converted by `src/sim/mapFromShip.js`, or a planet map built from templates. A ship's map is one tile per builder cell (`tilesPerCell`), with a tile of space around it; the same ship always converts to the identical map (M6, tested against a golden map).
+- **Maps:** a ship layout converted by `src/sim/mapFromShip.js`, or a planet map built from templates. A ship's map is one tile per builder cell (`tilesPerCell`), with a tile of space around it; the same ship always converts to the identical map (M6, tested against a golden map). A planet map (M14, `src/sim/gen/site.js`) is a job site's template turned over by the seed and furnished, with no space around it; §4.7 has how.
 - **Tiles** come from each room's interior template: floor, half cover, full cover, machinery, console (objective), airlock floor. Outside the rooms a tile is space, or hull where the hull closes over a notch.
 - **Edges:** walls stand between tiles, not on them, since rooms can be one tile across. An edge is a wall between rooms, the hull, a door (open, closed or locked) where the builder joins two rooms, or a hatch where an airlock opens onto space (entry and exit).
 - **Wrecked rooms** from the approach phase put their hazard on every tile of the room: fire, vacuum or rubble.
-- **What tiles do** is data (`data/tiles.json`): units stand on floor and airlock floor; crates and consoles are half cover, lockers and machinery full cover; lockers, machinery and the hull block sight.
+- **What tiles do** is data (`data/tiles.json`): units stand on floor and airlock floor; crates and consoles are half cover, lockers and machinery full cover; lockers, machinery and the hull block sight. On planet maps, rock is full cover and blocks sight.
 - **Squad size:** 3 at the start, up to 5 with drop bay modules later. Enemies number 4 to 8. Crew fight as their job (`data/jobs.json`: hit points, aim, defense, mobility, armor, a weapon), and enemies by type (`data/enemies.json`). The attributes in §4.5 feed these numbers later. A campaign's crew fights as itself, wounds and all (M12); the sandboxes and `tools/sim.js` fight with the squad in `data/encounters.json`, where each encounter's enemies are listed too.
-- **Where they start** (M8): on a boarding, the squad on the bridge and the boarders at the hatches they come in by, each taking the tiles nearest by walking distance (`src/sim/deploy.js`). The crew moves first.
+- **Where they start** (M8): on a boarding, the squad on the bridge and the boarders at the hatches they come in by, each taking the tiles nearest by walking distance (`src/sim/deploy.js`). On a job (M14), the crew at the site's ways in and the enemies on its spawn tiles, both shuffled by the job's seed. The crew moves first.
 - **Turns:** sides take turns; each unit gets 2 actions (`balance.actionPoints`):
   - move: one action within its mobility, both for a dash within twice it
   - shoot, which ends the unit's turn
   - overwatch, which ends it too
   - reload, open a door beside it, or stabilize a downed ally beside it: one action each
+  - on a job (M14): grab a crate in reach, one action; or work the terminal in reach, which ends the unit's turn and counts once a round. In reach is next to it, by a side or a corner, with no wall or closed door between.
 
   A side's turn ends when it says so, or when none of its units has an action left.
 - **Movement** (M7): four-way steps between tiles units stand on. Walls, the hull and hatches are in the way; walking through a closed door opens it. Rubble costs 2 a step. A unit passes its own side's units but not the other's, and stops on no one.
-- **Line of sight** (M7): a straight line between tile middles. Walls, the hull, hatches and closed doors on the edges it crosses block it, and so do tiles that block sight; through an exact corner it gets by if either way round is clear. Units don't block it. It is the same from either end, and reaches 20 tiles (`balance.sightRange`).
+- **Line of sight** (M7): a straight line between tile middles. Walls, the hull, hatches and closed doors on the edges it crosses block it, and so do tiles that block sight; through an exact corner it gets by if either way round is clear. Units don't block it. It is the same from either end, and reaches 20 tiles (`balance.sightRange`), or less where a job's twist cuts it (M14).
 - **Cover** (M7) is directional. Each side of a unit's tile gives cover from what is there: a wall, the hull, a hatch or a closed door is full cover, otherwise the next tile gives its own. Cover on a side counts against attackers on that side of the unit: the north side's against anyone north of it, at any angle. The best that counts is the unit's cover; with none, it is **flanked**.
 - **Hit chance** = shooter aim + weapon accuracy at range band − target cover − target defense − overwatch + forgiving odds, kept within 0 to 100. Range bands are straight-line distances: close up to 3 tiles, mid up to 7, long beyond; each weapon gains or loses accuracy by band (`data/weapons.json`). Starting values: half cover 20, full cover 40, overwatch 15. `src/sim/odds.js` returns every part, for the target preview.
 - **Crits:** the weapon's crit chance, plus 30 when flanking (`balance.flankCrit`). A crit adds the weapon's crit damage.
@@ -147,10 +148,14 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Overwatch:** the unit fires once, at the first enemy that steps into its sight during the other side's turn, with the overwatch penalty; not while that enemy is passing through an ally's tile, so two units never share one. It ends at the start of the unit's own next turn.
 - **Down, not dead:** crew at 0 HP go down and bleed out over 3 of their own turns (`balance.bleedOutTurns`) unless an ally beside them stabilizes them. Bleeding out puts them out of the fight, badly hurt, or kills them where permanent death is on (harder settings only). Enemies at 0 HP die.
 - **Hazards** (M7): fire burns 2 at the start of each of a unit's turns there. In vacuum, suit air lasts 3 turns, then the unit takes 2 a turn (the oxygen clock).
-- **Objectives:** eliminate, extract, hack, rescue, hold, salvage. M7 has eliminate: a side wins when the other has no one standing.
+- **Objectives:** eliminate, extract, hack, rescue, hold, salvage. M7 has eliminate: a side wins when the other has no one standing. M14 adds two for jobs, besides clearing out:
+  - **grab:** grab every tagged crate (the site's loot tiles), each from beside it;
+  - **hack:** work the terminal for a number of rounds.
+
+  Once the objective is done the crew has won, whoever is still standing. A deadline (a job's twist) ends the battle at the end of the crew's turn in its round: if the crew hasn't won by then, it has lost.
 - **Forgiving odds:** an optional menu setting adds 10 to the crew's next shot for each miss in a row, up to 30. The bonus is included in the number shown, so Law 4 still holds.
 - **The log:** every action returns the events it caused, and the same setup, seed and actions always give the same events (`src/sim/battle.js`; the example battle in `tests/golden/` is replayed by the tests).
-- **Giving orders** (M8, `src/sim/fight.js`): a tap never spends an action. A tap on a tile shows the move (its path, one action or a dash, and the cover where it stops), and a second tap on it makes it. A tap on an enemy, or Shoot, shows the shot with its odds part by part, and Fire or a second tap takes it. Overwatch, Reload, Stabilize and Open door are buttons; End turn takes a second tap while anyone can still act. The board opens square to the ship, where tiles are biggest, and every enemy is shown (no fog of war); those the selected unit can see show the hit chance.
+- **Giving orders** (M8, `src/sim/fight.js`): a tap never spends an action. A tap on a tile shows the move (its path, one action or a dash, and the cover where it stops), and a second tap on it makes it. A tap on an enemy, or Shoot, shows the shot with its odds part by part, and Fire or a second tap takes it. Overwatch, Reload, Stabilize and Open door are buttons, and on a job Grab and Hack, shown only when there is a crate or the terminal in reach; End turn takes a second tap while anyone can still act. A job's objective shows under the round, and its crates and terminal are tagged on the board. The board opens square to the ship, where tiles are biggest, and every enemy is shown (no fog of war); those the selected unit can see show the hit chance.
 - **The enemy's turn** is worked out at once by the rules and then played out on the board, event by event: walks, shots that land or fly wide with the damage over the unit hit, doors opening, whose turn it is. Skip goes to the end.
 - **The enemy AI** (M9, `src/sim/ai.js`, pure and with no random numbers) plays the enemy's turns. It plays a unit at a time and scores every plan the unit could make:
   - stay, move or dash, then shoot, overwatch or nothing;
@@ -183,13 +188,14 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Captain:** background, 2 traits and a starting job. **Crew:** generated recruits with a background, a trait and a job.
 - **Attributes:** Grit, Aim, Wits, Nerve.
 - **Jobs:** Marine, Engineer and Medic in v0.1; Pilot, Scout, Xenobiologist and Quartermaster later. Each job has a ship station effect, battle abilities and a colony effect.
-- **Wounds** carry between battles and heal in the med bay over time. Since M12 a crew member's hit points carry from fight to fight, and anyone who went down comes back with 1. Nothing heals them yet: the med bay is M23's, so act 1 needs a rule of its own (for M14, Evan's call).
+- **Wounds** carry between battles and heal in the med bay over time. Since M12 a crew member's hit points carry through a fight, and anyone who went down comes back with 1. In act 1 the crew heals fully back at the hangar (Evan's call, 2026-10-12); from act 2 the med bay heals over time (M23).
 - **Portraits:** recruits use layered SVG portraits drawn in code, so scars and implants can appear mid-game. Named characters use hand-edited Base44 portraits.
 
 ### 4.6 Economy
 
 - **Credits** buy parts and services. **Parts** are modules held in inventory. **Salvage** is raw material for repairs and, later, crafting.
-- **Act 1 starts** (M13, `data/campaign.json`) with a half-built hull: bridge, reactor, corridors, airlock and a gun, with no quarters, life support or engines. On hand are crew quarters, life support and two corridors, so a new player's first minute fixes two flight checks. The engines have to come from jobs.
+- **Act 1 starts** (M13; since M14 the background's start in `data/backgrounds.json`) with a half-built hull: bridge, reactor, corridors, airlock and a gun, with no quarters, life support or engines. On hand are crew quarters, life support and two corridors, so a new player's first minute fixes two flight checks. The engines have to come from jobs.
+- **Jobs pay** (M14) credits, and on some jobs a part: the repossession always pays an engine, the scrap run sometimes. Credits buy nothing until the shop (M16).
 - Act 1 target: launch after roughly 8 to 12 jobs, in under an hour. Check this in play.
 
 ### 4.7 Generators (all seeded)
@@ -208,8 +214,15 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
     - every airlock keeps a hatch;
     - every room can be walked to. A doorway in front of a locker or machinery could otherwise cut a room off.
   - **Every generated ship** passes the flight checklist for its crew, converts to a boarding map with a way on foot from its hatches to every room, and opens in the builder, where its build log replays.
-- Planet maps from templates plus props.
-- A job board built from templates crossed with who, where and a twist.
+- **Planet maps** (M14, `src/sim/gen/site.js`, pure) come from hand-drawn templates in `data/sites.json`, in the battle map text format. A template marks where the crew comes in, where enemies may start, the crates a job can tag, the terminal, prop slots, hazard slots and rock, with fences and gates on the edges.
+  - A map is its template turned left to right, top to bottom, both or neither by the seed. Each prop slot rolls a crate, a container or nothing, and a hazard twist lays its patches on the hazard slots, never where anyone starts.
+  - Every template is checked with every prop slot a crate, the worst case: every tile to stand on can be walked to from the way in, and every crate and the terminal can be reached. The same template, seed and hazard always give the same map (golden file `tests/golden/sites.txt`).
+- **The job board** (M14, `src/sim/contracts.js`, pure) offers 3 jobs. Each is a template (`data/contracts.json`: a mission at its sites for its clients, against an encounter, for credits and maybe a part) crossed with who, where and a twist:
+  - the client and the site, from the template's lists;
+  - a twist half the time: an enemy more or fewer, fire or a cave-in on site, the lights out (sight cut to 6), a deadline, or the pay changed;
+  - the pay, in steps of 5 credits, and the part, if any.
+
+  All of it is rolled, with the fight's seed, when the board is, from the campaign's RNG, so an offer never changes once it is made. After each job, done or lost, the board is rolled again with none of the jobs it had, so no job comes twice in a row. Clients and sites belong to the background's district (`data/districts.json`).
 - Act 2 sectors as node graphs with typed nodes.
 
 ### 4.8 Saves
@@ -244,7 +257,7 @@ The v1.0 column is a set of targets, not commitments.
 
 **v0.1 module types:** bridge, reactor, engine, corridor, airlock, crew quarters, life support, cargo hold, med bay, armory, weapon mount, shield generator.
 
-**v0.1 background** (my proposal; any one works): debt-bound miner. The company's repo crews hunt you by tracking your ship's registration.
+**v0.1 background** (M14, `data/backgrounds.json`): debt-bound miner. Con-Reg Recovery, the company's repo crews, hunt you by tracking your ship's registration. Act 1's district is the Tailings: six clients and four job sites (`data/districts.json`).
 
 ---
 
@@ -323,13 +336,13 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
 
 ### Phase 3: Act 1 (v0.1)
 
-Pick the tone before M14.
+Pick the tone before M14. (Picked: wry and blue-collar.)
 
 - [x] **M12 Campaign state.** Acts, hub, credits, parts, crew, heat and flags; autosave points; `SAVE_VERSION` 4 (M3 took 1 for the builder's ship, M5 took 2 for its slots, M5b took 3 for the finer grid).
   **Done when:** quitting anywhere and reopening resumes correctly.
 - [x] **M13 Hangar hub.** The half-built starter hull, construction mode (owned parts only), the flight checklist as the act goal, and a crew panel.
   **Done when:** a new player is building within 60 seconds of starting.
-- [ ] **M14 Background, district and jobs.** One background, a job board, 10 job templates, planet map generator v1, 3 mission types, rewards.
+- [x] **M14 Background, district and jobs.** One background, a job board, 10 job templates, planet map generator v1, 3 mission types, rewards.
   **Done when:** ten jobs in a row feel varied (Evan's call).
 - [ ] **M15 Heat v1 and the hangar raid.** Heat from jobs, thresholds, and a raid defended on the hangar map.
   **Done when:** ignoring heat brings a raid, and managing it avoids one.
@@ -393,13 +406,13 @@ A Capacitor build; a paid version with a web demo; optional cloud saves on Base4
 | The builder feels fiddly on a phone | Gate 1 fails | Fix it before Phase 2; fall back to bigger modules or a slot hull |
 | Two deep systems overrun scope | Phase 2 runs past about 8 sessions | Keep the shared grid; cut base building to slots first |
 | Players build chokepoint fortresses | Balance runs show defenders always win. AI against AI on the example ship, the crew of 3 wins 64% (58–70) against 4 boarders (`tools/sim.js`, M11). With the airlock moved under the bridge it wins 83% | Enemies breach walls and choose entry points; corridors stay two tiles wide. Since M9 the AI breaches doors: it opens one and shoots through, which overwatch can't punish |
-| Fights stall in standoffs | AI-against-AI fights reach the round limit. The harness's 1,000 fights in M11 stalled on 24% of cutters, 9% of corvettes and 5% of haulers, and none on the example ship. Both sides hold on overwatch either side of a chokepoint. Boarders never attack a crew that holds the bridge: with a crew that only ends its turn, 5 of 5 fights reached 60 rounds on the example ship and on the campaign's start ship (M12). A campaign fight can't be left until one side wins, so there the player has to go to them | Candidates, Evan's call: boarders press on (they came to fight), cutting through walls, ships with a second way round. `tools/sim.js` reports the stalls ("No winner") |
+| Fights stall in standoffs | AI-against-AI fights reach the round limit. The harness's 1,000 fights in M11 stalled on 24% of cutters, 9% of corvettes and 5% of haulers, and none on the example ship. Both sides hold on overwatch either side of a chokepoint. Boarders never attack a crew that holds the bridge: with a crew that only ends its turn, 5 of 5 fights reached 60 rounds on the example ship and on the campaign's start ship (M12). A campaign fight can't be left until one side wins, so there the player has to go to them. On jobs (M14) the AI waits behind a closed door as the crew's AI would: `tools/jobs.js` plays the crew with a player that pushes in and opens doors, and then every job ends | Candidates, Evan's call: boarders press on (they came to fight), cutting through walls, ships with a second way round. `tools/sim.js` reports the stalls ("No winner") |
 | Percentage misses feel unfair | Testers complain about high-odds misses | Clearer cover display, the forgiving-odds setting, the math always shown |
 | 3D on canvas runs slowly on mid-range phones | Dropped frames turning or zooming the board (M4), or in battles (M8) | Rough half-resolution frames while the camera moves or units walk, only on a phone too slow for full ones (the frame budget, after M6: they blurred zooming on the Fold); cache the still board, and in a fight redraw it only when something on it changed (M8); fewer lines, cap the pixel ratio. Past that: three.js (MIT, one vendored file, no build step), with Evan's approval |
 | Lost saves | Reports after Chrome data is cleared | Persistent storage request, export and import, migrations |
 | Act 1 drags | Test runs pass an hour | Fewer jobs to launch; the builder from the first minute |
 | Generated images look mismatched | The image pass looks patchy | Palette pass, reference images, fewer images |
-| Tone still undecided | M14 arrives | Decide before writing jobs and events |
+| Tone still undecided | M14 arrives | Settled before M14: wry and blue-collar (Evan, 2026-10-12) |
 
 ---
 
@@ -422,5 +435,9 @@ These ideas wait until v0.4 or later:
 - an enemy hull frame: §5 counts one for v0.1, but every preset builds on the starter yard for now. One comes when enemy ships need a bigger yard or a higher cap (raised in M10)
 - the campaign ship's timelapse: the campaign keeps no build log, so construction mode has no replay. A log would need a save version bump (raised in M13)
 - the hangar's goal lines as shortcuts: a fix whose part is on hand could open construction mode with that part picked, one tap fewer (raised in M13)
+- enemies that guard the objective: the AI fights as it does on a boarding and pays the crates and terminal no mind (raised in M14)
+- carrying crates out: a grab is done once the last crate is grabbed, with no walk back to the way in (raised in M14; it would be the extract objective in §4.3)
+- a job board that remembers further back than the last board, so a job comes back less often (raised in M14)
+- a site that looks like the ground around it: a job's map sits on the starfield, like a ship's (raised in M14)
 
 Ideas that come up during a session go here, not into code.

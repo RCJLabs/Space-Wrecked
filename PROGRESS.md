@@ -2,6 +2,147 @@
 
 Newest entry first.
 
+## M14 Background, district and jobs (2026-10-12)
+
+**Status:** done, and the ROADMAP.md box is ticked. Before it, Evan made two calls: the tone is wry and blue-collar, and in act 1 the crew heals fully at the hangar. He didn't say whether M13's phone tests ran.
+
+Done when: "ten jobs in a row feel varied (Evan's call)."
+- **That's a call for the phone.** What the tools can show is below.
+- **`node tools/jobs.js`** prints ten jobs in a row from a new campaign. Each time it takes the board's first job and plays it out, the crew by a test player that goes for the objective (`src/sim/jobAi.js`) and the enemy by the AI.
+- **Sixty jobs** (seeds 1 to 6, ten each):
+  - Every run of ten had all three missions, 3 or 4 of the 4 sites, 3 to 5 of the 6 clients, and 5 to 8 of the 10 job templates. About half came with a twist (28 of 60).
+  - Fights ran 2 to 13 rounds, median 5.
+  - The test crew won 37 and lost 23:
+    - clear-outs 8 of 23;
+    - grabs 16 of 21;
+    - hacks 13 of 16, with one lost to a deadline.
+  - Every run of ten paid at least one engine.
+
+### Shipped
+
+- **The background** (`data/backgrounds.json`): the debt-bound miner. It holds the blurb, the pursuer (Con-Reg Recovery), the district (the Tailings) and act 1's start, which moved here from `campaign.json`.
+- **The district** (`data/districts.json`): the Tailings, with six clients and four job sites:
+  - clients: Marta Okafor (the union steward), Dutch Abernathy (scrap dealer), Foreman Sully, Ma Prewitt (your landlady), Rook (a bookie), Sister Agnes;
+  - sites: Pit Nine, the Cable Street yard, Depot 4, the Last Whistle.
+- **Ten job templates** (`data/contracts.json`), in three missions:
+  - **clear:** put down everyone who isn't crew;
+  - **grab:** grab 1 to 3 tagged crates;
+  - **hack:** work the terminal for 2 turns.
+
+  Each template has its clients, sites, encounter, pay range and parts, and a pitch with the client and site filled in.
+- **Six twists:**
+  - Overtime: an enemy more;
+  - Hazard pay: fire on site, +50%;
+  - Cave-in: rubble;
+  - Lights out: sight 6 tiles;
+  - Rush job: done by the end of round 6, +30%, grab and hack only;
+  - Skeleton crew: an enemy fewer, −20%.
+- **New enemies** (`data/enemies.json`, `data/encounters.json`): scavver, claim jumper, company guard, hired heavy and recovery agent, in six new encounters.
+- **Planet map generator v1** (`src/sim/gen/site.js`), with four templates in `data/sites.json`: a scrapyard, a warehouse, an open-cut bench and the bar.
+  - A map is its template turned by the seed. Its props are rolled, and a hazard twist lays its patches.
+  - Rock is a new tile: full cover, blocks sight.
+  - The battle map text format moved to `src/sim/mapText.js`, shared by `tools/battle-map.js` and the templates.
+- **Mission rules** (`src/sim/battle.js`): a battle can have an objective (grab or hack), a deadline and its own sight range.
+  - Grab is one action from beside a crate. Hack ends the unit's turn and counts once a round. Neither reaches through a wall or a closed door.
+  - The crew wins once the objective is done. It loses at the end of its turn in the deadline's round.
+  - The Fight screen has Grab and Hack buttons.
+- **The job board** (`src/sim/contracts.js`): three jobs, each rolled with its client, site, twist, pay, part and the fight's seed when the board is. After a job, done or lost, a new board with none of the old board's jobs.
+- **Rewards and healing:**
+  - A job done pays its credits (in steps of 5) and its part, if any.
+  - The flags count jobs done and lost.
+  - In act 1 everyone heals fully once home (`heals` on each act in `campaign.json`).
+- **`SAVE_VERSION` 5:**
+  - Adds the campaign's background and board, the fight's job, and the battle's objective.
+  - The migration from 4 makes every old campaign the miner's (the only start there was), with an empty board. The hangar rolls one.
+- **Screens:**
+  - **The hangar** has Jobs where Repel boarders was, and its holdings count jobs.
+  - **The job board** (`src/ui/campaign/jobs.js`) lists the jobs on the left and the one picked on the right: who, where, the pitch, the job, the twist, who will be there and the pay. Take the job sends the crew.
+  - **In a job's fight:**
+    - the objective under the round;
+    - the crates and terminal tagged on the board;
+    - the site in a ground skin, with rock in lumps;
+    - the pay, or why there is none, on the end panel.
+  - **The title's Continue** names the job and the round.
+- **The orders column:**
+  - Orders that come and go now stack above Shoot, Overwatch and Reload, so on a short screen Reload scrolls away, not Grab or Hack.
+  - The column leaves room for the DEV button only in dev mode.
+- **Tools:**
+  - `tools/jobs.js`: ten jobs in a row (`--seed`, `--count`), every site map (`--maps`), and the golden file (`--golden`).
+  - The data validator checks every new file. The campaign checks moved to `tools/validate-campaign.js`, with shared helpers in `tools/checks.js`.
+- **Tests:** 414 in all, up from 386:
+  - site maps (`tests/site.test.js`);
+  - objectives (`tests/objectives.test.js`);
+  - the board, jobs, pay and the test player (`tests/contracts.test.js`);
+  - the v4 to v5 migration, and the validator's new mistakes.
+
+  The quit-anywhere test now also quits through a whole job.
+- **Golden files:** `tests/golden/sites.txt` is new, on purpose: every site map at seeds 1 to 3, bare, on fire and caved in. No other golden file changed.
+
+### Decisions made this session
+
+- **"Contracts" in code, "jobs" on screen.** `data/jobs.json` already holds the crew's jobs.
+- **The board refreshes only when a job ends,** done or lost, since no time passes in act 1 yet. Each new board leaves out the old one's jobs, so no job comes twice in a row. A job can come back after one board.
+- **A job's fight takes the whole crew.** Every site has room for five.
+- **Grab has no carrying out,** and the AI doesn't guard objectives. Both are parked in ROADMAP §9.
+- **A lost job pays nothing,** and the crew still heals. The economy is M16's to tune.
+- **Engines:** the repossession job always pays one, and the scrap run can (one of its five parts, at 80%). Nothing else sells engines until the shop.
+- **Numbers in the words come from the data:** "Grab 3 tagged crates", "Nobody sees past 6 tiles". The text can't disagree with the rules.
+- **The fight at home against boarders stays in the sim** for M15's raid, with no button.
+- **Spreading the jobs:** the first runs put 6 of 10 jobs at Depot 4 against the same guards. I moved jobs across the sites, added the Con-Reg Recovery crew, and moved crates past each map's middle so grabs aren't over in two rounds.
+- **Test player:** `tools/jobs.js` and the tests play the crew with a player that pushes in. AI against AI stalled at closed doors, as M11's harness found on ships.
+
+### Verified here
+
+- `node --test`: 414 pass. `node tools/validate-data.js`: OK.
+- **M14's check** (scratchpad `m14/verify.mjs`), by touch at 905 × 370, 821 × 283 and 960 × 825: 40, 39 and 39 checks, all passing. The extra one at 905 × 370 checks a part paid. It covers:
+  - New game saves v5 with a board of three, and the hangar's buttons are 48 px or more.
+  - The board shows three jobs and the first picked. A tap picks another and saves nothing. Hangar goes back.
+  - A job of each kind is played to the end by touch, with Grab and Hack showing when in reach.
+  - Quit mid-job and reopen: Continue names the job and round, and the fight and its objective are as they were.
+  - The end panel says the pay. At the hangar, the credits and part have arrived, the crew is healed, and the board is new.
+  - Offline, and no console errors.
+- **On the shortest screen** (821 × 283), all three jobs fit on the board. Before the orders column changed, Hack was scrolled out of reach there.
+- **M13 saves** (v4) in the browser (`m14/saves.mjs`): 10 of 10 at each size. One at the hangar gets a board. One in a fight against boarders plays to the end and goes home to a board.
+- **Regressions:**
+  - M13's check: 24 of 24 at each size, with the first part placed about 10 s after New game. It now takes a job where it fought boarders.
+  - M8's fight sandbox checks pass: the fight at three sizes, the orders column, and the extras.
+
+### Known issues
+
+- **The AI ignores the objective.** It fights as it does on a boarding. A grab with a crate near the way in can be over in two rounds.
+- **Clear-outs look hard:** the test crew won 8 of 23. A person should do better, but check it on the phone.
+- **Standoffs:** the AI never opens a door the other side is waiting behind. On a job the crew has to push. Carried over from M11 and M12: boarders don't attack a crew that holds the bridge.
+- **A site floats on the starfield,** with no ground around it (parked).
+- **Labels overlap** for units side by side ("OVERWATCH" twice), as before.
+- **Credits buy nothing yet** (M16), and every hack takes 2 turns.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Ten jobs in a row** (the Done when). New game, then take jobs one after another. After ten: did they feel varied? Note any that felt the same as another.
+2. **The board.** Pick each job and read it; check the words suit the tone. Take one.
+3. **A grab job:**
+   - the crates should be tagged on the board;
+   - Grab should show only beside a crate (not through a fence);
+   - the objective line should count up.
+4. **A hack job:** Hack should show beside the terminal, and only once a round.
+5. **A rush job:** wait it out on purpose; it should end at the end of round 6, unpaid.
+6. **Lights out:** no shots past 6 tiles.
+7. **Quit mid-job** and reopen: Continue should name the job, and the fight should be as you left it.
+8. **Back at the hangar:**
+   - the pay should arrive and the crew be healed;
+   - fit an engine from a repossession with Build: the thrust check should pass.
+9. **Tell me:**
+   - varied or not;
+   - whether the writing hits the tone;
+   - whether clear-outs are too hard;
+   - whether the pay feels right.
+
+### Next session
+
+**M15 Heat v1 and the hangar raid.** Done when: "ignoring heat brings a raid, and managing it avoids one."
+
+First task: heat from jobs (ROADMAP §4.4: +8 a job, +15 a loud one) and its thresholds in the campaign, tested before any screen.
+
 ## M13 Hangar hub (2026-10-12)
 
 **Status:** done, and the ROADMAP.md box is ticked. After M12, Evan said "Good, move to the next milestone". He didn't say whether the phone tests ran, and he didn't pick the starting hull and parts, so I did; see the decisions below.
