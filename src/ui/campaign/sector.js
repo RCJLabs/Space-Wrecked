@@ -1,0 +1,321 @@
+// The sector map: act 2's home, on the run (src/sim/travel.js). The
+// sector's nodes stand on a chart in the middle, linked column to column
+// from the way in to the jump point. The ship's node is marked, and the
+// nodes a jump reaches are ringed: solid for a jump, dashed for a long one.
+// A tap on a node shows on the left what the jump there takes, and a
+// second tap, or Jump, makes it: one tap never moves the ship. At a
+// station Buy sells supplies, and at the jump point Jump on leads into the
+// next sector, each two taps, the first saying what it costs; past the
+// act's last jump point the charts end, for now. The crew
+// and the holds are on the right, heat by the act. The run begins, its
+// first sector rolled, the first time the map opens.
+//
+// Each node's button is its share of its column, so no two overlap and
+// each stays 48 px or more on the screens the game is for; its mark sits
+// where the sector puts the node. The words are sectorText.js's.
+import { loadContent } from '../../platform/content.js';
+import { palette } from '../../render/palette.js';
+import { node, setText, toolButton } from '../fight/panels.js';
+import { onTap } from '../gestures.js';
+import { icons } from '../icons.js';
+import { crewRows, heatChip, listRows, panel } from './hubParts.js';
+import { jumpText, sectorText } from './sectorText.js';
+
+const ARM_MS = 3000; // Jump on and Buy wait this long for a second tap
+const SVG = 'http://www.w3.org/2000/svg';
+const MARKS = { start: icons.wayIn, exit: icons.jumpPoint, station: icons.station };
+
+export const sectorScreen = {
+  mount(root, { store: game }) {
+    const el = node('section', 'hgr sct');
+    const head = node('header', 'hgr-head');
+    const actLine = node('h1');
+    const whereLine = node('p', 'hgr-home');
+    const heat = heatChip();
+    head.append(actLine, whereLine, heat.el);
+    // The left panel: the node the ship is at, or the jump picked.
+    const info = node('section', 'hgr-panel sct-info');
+    const infoTitle = node('h2', null, 'Here');
+    const infoName = node('p', 'sct-name');
+    const infoKind = node('p', 'sct-kind');
+    const infoLines = node('ul', 'sct-lines');
+    const infoText = node('p', 'sct-text');
+    info.append(infoTitle, infoName, infoKind, infoLines, infoText);
+    const map = node('div', 'sct-map');
+    const links = document.createElementNS(SVG, 'svg');
+    links.setAttribute('class', 'sct-links');
+    links.setAttribute('viewBox', '0 0 100 100');
+    links.setAttribute('preserveAspectRatio', 'none');
+    links.setAttribute('aria-hidden', 'true');
+    const ship = node('span', 'sct-ship');
+    ship.innerHTML = icons.shipMark;
+    const crewList = node('ul', 'hgr-crew');
+    const hold = node('dl', 'hgr-hold');
+    const side = node('div', 'hgr-side');
+    side.append(panel('Crew', crewList), panel('Ship', hold));
+    const foot = node('footer', 'hgr-foot');
+    const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
+    const hint = node('p', 'hgr-hint', 'Loading…');
+    const buys = node('div', 'sct-buys');
+    const jumpButton = toolButton('sct-jump', icons.jump, 'Jump');
+    const onButton = toolButton('sct-on', icons.jumpPoint, 'Jump on');
+    jumpButton.hidden = onButton.hidden = true;
+    foot.append(titleButton, hint, buys, jumpButton, onButton);
+    el.append(head, info, map, side, foot);
+    root.append(el);
+
+    let defs = null;
+    let alive = true;
+    let picked = null; // the node picked on the map: its jump shows
+    let armed = null; // 'on', or the supplies a Buy is for, after its first tap
+    let armTimer = 0;
+    let shown = null; // the campaign last drawn
+    let sectorShown = null; // the sector the map's buttons are for
+    let nodeButtons = [];
+    let buyButtons = [];
+    const cleanups = [
+      onTap(titleButton, () => game.dispatch({ type: 'screen/show', screen: 'title' })),
+      onTap(jumpButton, makeJump),
+      onTap(onButton, () => twoTaps('on', () => game.dispatch({ type: 'campaign/sector/leave', rules: defs }))),
+      () => clearTimeout(armTimer),
+      () => nodeButtons.forEach((entry) => entry.detach()),
+      () => buyButtons.forEach((entry) => entry.detach()),
+      game.subscribe(() => alive && render()),
+    ];
+
+    loadContent()
+      .then((content) => {
+        if (!alive) return;
+        defs = content;
+        // The run begins the first time the map opens after launch.
+        if (game.getState().campaign && !game.getState().campaign.run) game.dispatch({ type: 'campaign/run/begin', rules: defs });
+        render(true);
+      })
+      .catch((err) => {
+        if (alive) setText(hint, `Couldn't load the game data: ${err.message}`);
+      });
+
+    // force: draw again though the campaign hasn't changed (a pick, a tap).
+    function render(force = false) {
+      const { campaign } = game.getState();
+      if (!defs || !campaign || (campaign === shown && !force)) return;
+      shown = campaign;
+      if (!campaign.run) {
+        setText(hint, 'The run starts once the ship has launched.');
+        return;
+      }
+      const { run } = campaign;
+      if (picked !== null && (picked === run.at || !run.sector.nodes[picked] || sectorShown !== run.sector)) picked = null;
+      const text = sectorText(campaign, defs);
+      const plan = picked === null ? null : jumpText(campaign, defs, picked);
+      setText(actLine, text.act);
+      setText(whereLine, text.where);
+      heat.show(text.heat);
+      crewList.replaceChildren(...crewRows(text.crew));
+      hold.replaceChildren(...listRows(text.hold));
+      drawMap(run, text, plan);
+      showInfo(text, plan);
+
+      // Jump, for the node picked; Jump on, at the jump point.
+      jumpButton.hidden = !plan;
+      if (plan) {
+        jumpButton.disabled = !plan.ok;
+        const mode = plan.long ? 'long' : 'jump';
+        if (jumpButton.dataset.mode !== mode) {
+          jumpButton.dataset.mode = mode;
+          jumpButton.querySelector('svg').outerHTML = plan.long ? icons.longJump : icons.jump;
+        }
+        setText(jumpButton.querySelector('span'), plan.label);
+        jumpButton.setAttribute('aria-label', plan.title);
+      }
+      const { leave } = text;
+      if (!leave?.ok && armed === 'on') disarm();
+      onButton.hidden = !leave || leave.last;
+      onButton.disabled = !leave?.ok;
+      setText(onButton.querySelector('span'), armed === 'on' ? leave.ask : 'Jump on');
+      onButton.dataset.armed = String(armed === 'on');
+
+      const buy = typeof armed === 'number' ? text.offer?.buys.find((entry) => entry.count === armed) : null;
+      if (typeof armed === 'number' && !buy) disarm();
+      const said = armed === 'on' ? { tone: leave.tone === 'bad' ? 'bad' : 'warn', text: `${leave.lines.join(' ')} Tap Jump on again.` }
+        : buy ? { tone: 'warn', text: buy.text }
+        : plan ? planHint(plan)
+        : text.hint;
+      setText(hint, said.text);
+      hint.dataset.tone = said.tone;
+    }
+
+    // What the foot says of the jump picked.
+    function planHint(plan) {
+      if (!plan.ok) return { tone: 'info', text: plan.lines[0] };
+      const again = `Tap it again, or ${plan.label}, to go.`;
+      return plan.tone === 'bad' ? { tone: 'bad', text: `Short of supplies: the crew goes hungry. ${again}` } : { tone: 'good', text: again };
+    }
+
+    // The chart: its links, and a button for each node, made again for
+    // each new sector; marks for where the ship is, what it reaches and
+    // the jump picked.
+    function drawMap(run, text, plan) {
+      const { sector } = run;
+      if (sectorShown !== sector) {
+        sectorShown = sector;
+        nodeButtons.forEach((entry) => entry.detach());
+        const columns = Math.max(...text.nodes.map((n) => n.col)) + 1;
+        links.replaceChildren(
+          ...text.links.map(({ a, b }) => {
+            const line = document.createElementNS(SVG, 'line');
+            const [from, to] = [sector.nodes[a], sector.nodes[b]];
+            line.setAttribute('x1', String(from.x * 100));
+            line.setAttribute('y1', String(from.y * 100));
+            line.setAttribute('x2', String(to.x * 100));
+            line.setAttribute('y2', String(to.y * 100));
+            return line;
+          }),
+        );
+        nodeButtons = text.nodes.map((n) => {
+          const button = node('button', 'sct-node');
+          button.type = 'button';
+          button.dataset.type = n.type;
+          Object.assign(button.style, {
+            left: `${(100 * n.col) / columns}%`,
+            top: `${(100 * n.row) / n.rows}%`,
+            width: `${100 / columns}%`,
+            height: `${100 / n.rows}%`,
+          });
+          const dot = node('span', 'sct-dot');
+          dot.innerHTML = MARKS[n.type] ?? '';
+          dot.style.left = `${(n.x * columns - n.col) * 100}%`;
+          dot.style.top = `${(n.y * n.rows - n.row) * 100}%`;
+          button.append(dot);
+          return { id: n.id, button, detach: onTap(button, () => tapNode(n.id)) };
+        });
+        map.replaceChildren(links, ...nodeButtons.map((entry) => entry.button), ship);
+      }
+      const way = new Set();
+      for (let i = 1; i < (plan?.way.length ?? 0); i++) way.add([plan.way[i - 1], plan.way[i]].sort((x, y) => x - y).join('-'));
+      [...links.children].forEach((line, i) => {
+        const { a, b, near } = text.links[i];
+        line.dataset.near = String(near);
+        line.dataset.way = String(way.has(`${a}-${b}`));
+      });
+      for (const { id, button } of nodeButtons) {
+        const n = text.nodes[id];
+        button.dataset.here = String(n.here);
+        button.dataset.seen = String(n.seen);
+        button.dataset.reach = String(n.links);
+        button.setAttribute('aria-pressed', String(id === picked));
+        const where = n.here ? 'the ship is here' : n.links === 1 ? 'a jump away' : n.links === 2 ? 'a long jump away' : 'out of reach';
+        button.setAttribute('aria-label', `${n.name}, ${where}`);
+      }
+      const here = sector.nodes[run.at];
+      ship.style.left = `${here.x * 100}%`;
+      ship.style.top = `${here.y * 100}%`;
+    }
+
+    // The left panel: the jump picked, or the node the ship is at, with
+    // what its station sells or where its jump point leads. A station's Buy
+    // buttons stand in the foot while no jump is picked.
+    function showInfo(text, plan) {
+      buyButtons.forEach((entry) => entry.detach());
+      buyButtons = [];
+      if (plan) {
+        setText(infoTitle, plan.ok ? plan.label : 'Out of reach');
+        setText(infoName, plan.node.name);
+        setText(infoKind, plan.node.kind);
+        infoLines.replaceChildren(...plan.lines.map((line) => lineItem(line, plan.tone)));
+        buys.replaceChildren();
+        buys.hidden = true;
+        setText(infoText, plan.node.text);
+        return;
+      }
+      const { here, offer, leave } = text;
+      setText(infoTitle, 'Here');
+      setText(infoName, here.name);
+      setText(infoKind, here.kind);
+      const said = leave ? [leave.title, ...leave.lines].map((line, i) => lineItem(line, i ? leave.tone : 'head')) : offer ? [offer.line, offer.why].filter(Boolean).map((line) => lineItem(line, 'info')) : [];
+      infoLines.replaceChildren(...said);
+      buyButtons = (offer?.buys ?? []).map((entry) => {
+        const button = toolButton('sct-buy', icons.supplies, armed === entry.count ? entry.ask : entry.label);
+        button.dataset.armed = String(armed === entry.count);
+        button.setAttribute('aria-label', `Buy ${entry.count} supplies`);
+        return { button, detach: onTap(button, () => twoTaps(entry.count, () => game.dispatch({ type: 'campaign/supplies', count: entry.count, rules: defs }))) };
+      });
+      buys.replaceChildren(...buyButtons.map((entry) => entry.button));
+      buys.hidden = !buyButtons.length;
+      setText(infoText, here.text);
+    }
+
+    function lineItem(text, tone) {
+      const item = node('li', null, text);
+      item.dataset.tone = tone;
+      return item;
+    }
+
+    // A tap on a node picks it, showing its jump; a second tap on it jumps.
+    // A tap on the ship's own node puts the pick down.
+    function tapNode(id) {
+      const campaign = game.getState().campaign;
+      if (!defs || !campaign?.run) return;
+      disarm();
+      if (id === picked) {
+        makeJump();
+        return;
+      }
+      picked = id === campaign.run.at ? null : id;
+      render(true);
+    }
+
+    function makeJump() {
+      const campaign = game.getState().campaign;
+      if (!defs || picked === null || !campaign?.run || !jumpText(campaign, defs, picked).ok) return;
+      const to = picked;
+      picked = null;
+      disarm();
+      game.dispatch({ type: 'campaign/jump', to, rules: defs });
+      render(true);
+    }
+
+    // Jump on and Buy: the first tap says what it costs, the second does it.
+    function twoTaps(which, act) {
+      if (!defs) return;
+      if (armed !== which) {
+        armed = which;
+        picked = null;
+        clearTimeout(armTimer);
+        armTimer = setTimeout(() => {
+          disarm();
+          if (alive) render(true);
+        }, ARM_MS);
+        render(true);
+        return;
+      }
+      disarm();
+      act();
+      if (alive) render(true);
+    }
+
+    function disarm() {
+      armed = null;
+      clearTimeout(armTimer);
+    }
+
+    let painted = false;
+    return {
+      resize() {
+        painted = false;
+      },
+      // Nothing on the canvas: the chart is all panels.
+      draw(ctx, view) {
+        if (painted) return;
+        painted = true;
+        ctx.fillStyle = palette.space;
+        ctx.fillRect(0, 0, view.width, view.height);
+      },
+      unmount() {
+        alive = false;
+        for (const cleanup of cleanups) cleanup();
+        el.remove();
+      },
+    };
+  },
+};

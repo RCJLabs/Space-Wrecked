@@ -96,6 +96,14 @@ const cases = [
   ['trait moving a number fights have not got', (d) => (d.traits.traits[0].effects = { luck: 5 }), /effects: unknown number "luck"/],
   ['trait far past its range', (d) => (d.traits.traits[0].effects = { aim: 50 }), /effects\.aim must be a whole number from -30 to 30/],
   ['misspelled trait field', (d) => (d.traits.traits[0].effect = {}), /traits\.json steady: unknown field "effect"/],
+  ['sector with no jump point', (d) => (d.sectors.nodes = d.sectors.nodes.filter((n) => n.id !== 'exit')), /the "exit" node kind is missing/],
+  ['more stations than columns between', (d) => (d.sectors.counts.station = [1, 9]), /counts take up to 9 columns, but only 5 lie between/],
+  ['too few places for a full sector', (d) => (d.sectors.names.places = d.sectors.names.places.slice(0, 4)), /filler: needs 15 names in its list, has 4/],
+  ['a place named twice', (d) => d.sectors.names.places.push('Dust Bank'), /names\.places: has a name twice/],
+  ['fewer sector names than a run has sectors', (d) => (d.sectors.names.sectors = ['The Shoals']), /needs 5 names for a run of 5 sectors, has 1/],
+  ['node kind naming a list that is not there', (d) => (d.sectors.nodes.find((n) => n.id === 'station').names = 'pubs'), /names "pubs" is not a list in names/],
+  ['a run of no sectors', (d) => (d.campaign.acts[1].sectors = 0), /sectors must be a whole number from 1 to 20/],
+  ['a jump that eats nothing past its range', (d) => (d.balance.longJumpFactor = 0), /longJumpFactor must be a whole number from 1 to 10/],
   ['an easy setting that makes enemies better', (d) => (d.balance.easyEnemyAim = 10), /easyEnemyAim must be a whole number from -50 to 0/],
   ['act standing in with no words', (d) => (d.campaign.acts[1].stub = ''), /act #2: stub must be a non-empty string/],
   ['background with no words for lifting off', (d) => delete d.backgrounds.backgrounds[0].launch, /miner launch: must be \{ text, escaped \}/],
@@ -188,5 +196,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 8 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates\)/);
+  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 8 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 4 kinds of sector node\)/);
 });

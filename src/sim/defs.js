@@ -4,10 +4,10 @@
 // empty tables.
 
 // The content files, by name: data/<name>.json.
-export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'tips'];
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'tips'];
 
 export function indexDefs(files) {
-  const { modules, frames, manufacturers, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, tips } = files;
+  const { modules, frames, manufacturers, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, tips } = files;
   return {
     balance,
     tilesPerCell: modules.tilesPerCell,
@@ -48,6 +48,10 @@ export function indexDefs(files) {
       twists: byId(contracts?.twists),
       jobs: byId(contracts?.jobs),
     },
+    // Act 2's sectors (gen/sector.js): how one is laid out, its kinds of
+    // node by id, and the names it draws on.
+    sectors: sectors ?? null,
+    nodeTypes: byId(sectors?.nodes),
     // The first-run tips' words (src/ui/tips.js), by id.
     tips: byId(tips?.tips),
   };

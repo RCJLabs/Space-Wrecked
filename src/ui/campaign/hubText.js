@@ -144,13 +144,13 @@ export function jobsText(flags, none = 'None yet') {
 
 // Under the title's Continue: where the campaign is. rules may still be
 // loading (null): then the act goes without its home, and a job without
-// its name.
+// its name. On the run, the sector says where.
 export function continueText(campaign, rules) {
-  const { fight } = campaign;
+  const { fight, run } = campaign;
   const what = fight?.raid ? 'The raid' : fight?.job ? rules?.contracts.jobs.get(fight.job.contract)?.title ?? 'On a job' : 'In a fight';
   const kind = fight?.raid ? 'The raid' : fight?.job ? 'A job' : 'A fight';
   const at = fight
     ? fight.battle.winner ? `${kind} just ended` : `${what}, round ${fight.battle.round}`
-    : rules && actOf(campaign, rules)?.home;
+    : run ? `Sector ${run.sector.index} · ${run.sector.name}` : rules && actOf(campaign, rules)?.home;
   return at ? `Act ${campaign.act} · ${at}` : `Act ${campaign.act}`;
 }

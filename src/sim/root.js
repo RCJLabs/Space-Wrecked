@@ -10,20 +10,21 @@ import { makePayment } from './heat.js';
 import { launch } from './launch.js';
 import { beginRaid, endRaid } from './raid.js';
 import { defaultSettings, fightSettings, reduceSettings } from './settings.js';
+import { beginRun, buySupplies, jump, leaveSector } from './travel.js';
 
 // The screen each place in a campaign is played on in act 1, and every
 // screen that shows the campaign: construction mode, the job board and the
-// shop are the hangar's; the launch plays between act 1 and the stub that
-// stands in for the acts not built yet.
+// shop are the hangar's; the launch plays between act 1 and act 2's sector
+// map; the stub stands in for act 3 until it is built.
 export const PLACE_SCREENS = { hub: 'hub', fight: 'campaign-fight' };
-export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'stub'];
+export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'sector', 'stub'];
 
 // The screen a campaign is played on where it is now: its fight, or its
-// act's home (the hangar in act 1; the stub for the acts after it, until
-// they are built).
+// act's home: the hangar in act 1, the sector map on the run (act 2), and
+// the stub for the act after it, until it is built.
 export function campaignScreen(campaign) {
   if (campaign.place === 'fight') return PLACE_SCREENS.fight;
-  return campaign.act === 1 ? PLACE_SCREENS.hub : 'stub';
+  return campaign.act === 1 ? PLACE_SCREENS.hub : campaign.act === 2 ? 'sector' : 'stub';
 }
 
 export function initialState(seed) {
@@ -62,6 +63,12 @@ export function initialState(seed) {
 //   campaign/raid/begin { rules }  the crew faces the raid that is due
 //   campaign/launch { rules }      the ship lifts off: act 1 ends, and the
 //                                  launch plays (launch.js)
+//   campaign/run/begin { rules }   the run's first sector, at the act's
+//                                  first visit home (travel.js)
+//   campaign/jump { to, rules }    a jump, or a long jump, to node `to`
+//   campaign/supplies { count, rules }   supplies bought at a station
+//   campaign/sector/leave { rules }   on from the jump point into the next
+//                                  sector
 //   campaign/fight/begin { rules } the crew fights boarders at home (M15's
 //                                  raids will)
 //   campaign/fight/save { battle, log }   the fight after an order
@@ -124,6 +131,19 @@ export function reduce(state, action) {
     case 'campaign/launch': {
       const launched = state.campaign && launch(state.campaign, action.rules);
       return launched?.ok ? { ...state, campaign: launched.campaign, screen: 'launch' } : state;
+    }
+    case 'campaign/run/begin':
+    case 'campaign/jump':
+    case 'campaign/supplies':
+    case 'campaign/sector/leave': {
+      const move = {
+        'campaign/run/begin': (c) => beginRun(c, action.rules),
+        'campaign/jump': (c) => jump(c, action.rules, action.to),
+        'campaign/supplies': (c) => buySupplies(c, action.rules, action.count),
+        'campaign/sector/leave': (c) => leaveSector(c, action.rules),
+      }[action.type];
+      const done = state.campaign && move(state.campaign);
+      return done?.ok ? { ...state, campaign: done.campaign } : state;
     }
     default: {
       if (action.type.startsWith('builds/')) {

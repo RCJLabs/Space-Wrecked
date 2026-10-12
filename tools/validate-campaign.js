@@ -1,5 +1,6 @@
 // The campaign's content, for validate-data.js: its acts (campaign.json),
-// the backgrounds a campaign starts from (backgrounds.json), act 1's
+// act 2's sectors (sectors.json, validate-sectors.js), the backgrounds a
+// campaign starts from (backgrounds.json), act 1's
 // districts with their clients and job sites (districts.json), the sites'
 // map templates (sites.json) and the jobs (contracts.json).
 import { buildShip, layoutProblems } from '../src/sim/builder.js';
@@ -9,9 +10,12 @@ import { MAX_STOCK, PAY_STEP } from '../src/sim/economy.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { HAZARDS, siteMarks, siteProblems } from '../src/sim/gen/site.js';
 import { isId, isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
+import { checkSectors } from './validate-sectors.js';
 
 const CAMPAIGN_KEYS = ['acts'];
-const ACT_KEYS = ['act', 'name', 'hub', 'home', 'heals', 'liftOff', 'stub'];
+const ACT_KEYS = ['act', 'name', 'hub', 'home', 'heals', 'liftOff', 'sectors', 'stub'];
+// A run (act 2) crosses up to this many sectors.
+const MAX_SECTORS = 20;
 // Lifting off takes thrust for each unit of mass: up to this many.
 const MAX_LIFT_OFF = 4;
 const BACKGROUND_KEYS = ['id', 'name', 'blurb', 'pursuer', 'launch', 'captains', 'district', 'start'];
@@ -62,6 +66,7 @@ const MAX_CREDITS = 9995;
 // checkStartShips.
 export function checkCampaignFiles(data, ids, fail) {
   checkActs(data.campaign, fail);
+  checkSectors(data.sectors, data.campaign?.acts, fail);
   const maps = checkSiteMaps(data.sites, fail);
   const districts = checkDistricts(data.districts, maps, ids, fail);
   const scripts = checkBackgrounds(data.backgrounds, districts, ids, fail);
@@ -114,6 +119,7 @@ function checkActs(file, fail) {
     if (act.liftOff !== undefined && !(typeof act.liftOff === 'number' && act.liftOff > 0 && act.liftOff <= MAX_LIFT_OFF)) {
       fail(at, `liftOff must be a number above 0, up to ${MAX_LIFT_OFF}`);
     }
+    if (act.sectors !== undefined && !isIntIn(act.sectors, 1, MAX_SECTORS)) fail(at, `sectors must be a whole number from 1 to ${MAX_SECTORS}`);
     if (act.stub !== undefined && !isText(act.stub)) fail(at, 'stub must be a non-empty string');
   });
   if (acts.length !== ACTS || acts.some((act, i) => act.act !== i + 1)) fail(where, `acts must be acts 1 to ${ACTS} in order`);

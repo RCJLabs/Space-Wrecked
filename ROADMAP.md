@@ -43,7 +43,7 @@ The game has three acts, and the home moves at each gate.
 
 Every act runs the same mission loop: hub, travel, node, mission, aftermath, then push on or regroup.
 
-**Launch** (M17, `src/sim/launch.js`): once every flight check passes, Launch at the hangar ends act 1. The ship lifts off, and the campaign moves on to act 2 with its ship, crew, credits, parts and heat. The hangar's job board, shop, payments and raids stay behind. A raid at the door doesn't stop it: the pursuer finds an empty hangar. Until act 2 is built (v0.2), a stub stands in for it: the ship, how act 1 went and the crew.
+**Launch** (M17, `src/sim/launch.js`): once every flight check passes, Launch at the hangar ends act 1. The ship lifts off, and the campaign moves on to act 2 with its ship, crew, credits, parts and heat. The hangar's job board, shop, payments and raids stay behind. A raid at the door doesn't stop it: the pursuer finds an empty hangar. From M19 act 2's home is the sector map (§4.7): the run crosses the act's sectors by jumps, eating supplies (§4.6). Past the last sector's jump point the charts end, for now, with the stub's words.
 
 Act length targets (proposed, to check in play): act 1 under an hour, act 2 the longest, act 3 open-ended.
 
@@ -192,6 +192,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - **The one loss in act 1** is a payment on the debt: 50 credits for 15 heat, at the hangar. It can also head off a raid that is due.
   - Heat doesn't fall on its own, and 100's confrontation isn't in act 1: the raid comes first.
   - Heat goes along when the ship launches (M17), raid or no raid, into act 2.
+- **Act 2 so far** (M19, `src/sim/travel.js`): a jump adds 3 heat and a long jump takes 10 off (`jumpHeat`, `longJumpHeat`), from 0 to 100. Nothing in act 2 reads heat yet: the hunters at nodes, regrouping and transponders are M24. Leaving a sector is a jump. Without long jumps, heat is at or near 100 by the end of the third sector (87 to 100 over 30 test runs).
 - **In act 3**, heat decays slowly, distance from pursuer space lowers what you gain, and raid frequency follows heat.
 
 ### 4.5 Characters
@@ -211,6 +212,8 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Prices** (M16, `src/sim/economy.js`): a part costs its module's cost (`buyPercent` 100 in `data/balance.json`), and the shop buys one back for half (`sellPercent` 50), rounded down to 5 credits. The engine, at 200, is the dear part.
 - **The shop** (M16): the district's dealer, Dutch's yard (`shop` in `data/districts.json`). It has 4 different parts at a time, picked by weight from its table (engines weigh most) when each job board is rolled, so it turns over after every job. A price is fixed when it is offered. It buys any part on hand.
 - **Lifting off** (M16): act 1 ends by lifting off Homeworld, so its checklist asks for thrust at least the ship's mass (`liftOff` 1 in `data/campaign.json`), where the frame asks half. The start ship needs three engines; stripping it can save one at most. Only the campaign asks this.
+- **Supplies** (M19, `src/sim/travel.js`; the numbers in `data/balance.json`): a jump eats one per crew member (`jumpSupplies`), a long jump three times that (`longJumpFactor`). The ship carries 24 in its lockers (`baseSupplies`) and 20 more for each cargo hold. The run starts with them full. Stations sell them at 1 credit each (`supplyPrice`). A jump the supplies don't cover still goes: they run out, and each crew member loses 2 hit points (`hungerHp`), never the last one. In act 2 nothing heals until M23's med bay.
+  - **Tuning** (M19's test player, `tools/voyage.js`, 30 launches from M16's test runs): 12 lockers at 3 credits starved every run, since 12 supplies don't reach from one station to the next. At 24 and 1 credit, a careful player with no long jumps crosses three sectors without going hungry in 18 of 30 runs, and all five in 8. The runs that go hungry launched with few credits: launch money is median 50 (0 to 220), and act 2 pays nothing until M20's nodes. M20 retunes this once nodes pay.
 - **Act 1 target:** launch in under an hour. M16's test player (`tools/run.js`) launches after 7 jobs at the median (3 to 14 over 50 runs), in 26 to 92 minutes at the slow pace, every run under an hour at the quick pace. The target before M16 was 8 to 12 jobs, but 12 jobs can't fit in an hour at Gate 2's 5 to 8 minutes a fight; M16 tuned for the hour. The engine's price moves it. Check in play.
 
 ### 4.7 Generators (all seeded)
@@ -238,17 +241,23 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - the pay, in steps of 5 credits, and the part, if any, from the job's drop table: a chance, and parts by weight (M16, `src/sim/drops.js`).
 
   All of it is rolled, with the fight's seed, when the board is, from the campaign's RNG, so an offer never changes once it is made. After each job, done or lost, the board is rolled again with none of the jobs it had, so no job comes twice in a row, and the shop's stock with it (M16). A job marked once (the repossession) never comes back once it is done. Clients and sites belong to the background's district (`data/districts.json`).
-- Act 2 sectors as node graphs with typed nodes.
+- **Act 2's sectors** (M19, `src/sim/gen/sector.js`, pure; `data/sectors.json`) are node maps in 7 columns: the way in alone in the first, the jump point alone in the last, and 2 or 3 nodes in each column between.
+  - **Links** join each node to the next column by its height in its column, so none cross and every node can be reached both ways. Between any two columns, 35% of the time (`extraLinkChance`), one link more is added where it crosses nothing.
+  - **Stations**, 1 or 2 a sector, each stand in a column of their own. The other nodes are empty space, for now; M20 brings the other kinds.
+  - **Names** come from the data's lists, none twice in a sector, and no sector's name twice in a run.
+  - **A jump** goes to a linked node, and a long jump to one two links away. Either can go back as well as on. From the jump point, leaving is a jump into the next sector's way in. Act 2 has 5 sectors (`sectors` in `data/campaign.json`).
+  - **Rolls:** each sector is rolled from the campaign's RNG as the ship enters it, and saved whole. The same seed always gives the same sector (golden file `tests/golden/sectors.txt`).
 
 ### 4.8 Saves
 
 - `SAVE_VERSION` gates all saves, with a migration for every bump. Never reset player saves.
 - Every change to the campaign is saved as it happens (M12): at the hub, as a fight begins, after every order in a fight, and as it ends. This list first named the start of each player turn; saving only there would let a player quit after a miss, reopen to the same roll and spend it on another shot.
 - A saved fight holds its battle whole, the map and its RNG state included, so a game update between quitting and reopening can't move a wall under a unit.
-- The game reopens at the title, and Continue goes back to where the campaign was: the hub, or the fight as it stood. Past act 1 that is the stub (M17). The lift-off is only a screen: launching saves the campaign in act 2 at once, so quitting during it reopens past it.
+- The game reopens at the title, and Continue goes back to where the campaign was: the hub, or the fight as it stood. Past act 1 that is the sector map (M19); the stub stays for act 3. The lift-off is only a screen: launching saves the campaign in act 2 at once, so quitting during it reopens past it.
 - The RNG state is part of the save.
 - Settings can export and import a save as text. A TWA shares Chrome's storage, so clearing Chrome's data wipes saves; the export is the player's backup. Since M18, Settings has Export, Copy and Import; Import checks the code, and a second tap replaces the save.
 - The settings themselves (difficulty, forgiving odds, motion, frame rate, tips and the tips put away) are part of the save (v9, M18).
+- The run (v10, M19): the supplies, and the sector the ship is in, saved whole with where it is, where it has been and the sectors behind it. A v9 campaign gets no supplies and no run; the run begins when the map first opens, holds full.
 - The builder keeps up to six ships in slots, each with the build log its replay plays back. A single ship travels between devices as a blueprint code.
 
 ---
@@ -366,24 +375,47 @@ Pick the tone before M14. (Picked: wry and blue-collar.)
   **Done when:** a test run reaches launch in under an hour.
 - [x] **M17 Launch.** The checklist passes, the launch sequence plays, and a stub stands in for act 2.
   **Done when:** launching saves and moves on cleanly.
-- [ ] **M18 First run and settings.**
+- [x] **M18 First run and settings.**
   - captain creation: background fixed for v0.1, 2 traits, a job
   - tutorial prompts for building and for the first battle
   - settings: difficulty, forgiving odds, reduce motion, sound, export and import save. Sound was cut: there is no audio to switch until M35, which brings the switch.
 
-  **Done when:** Gate 3 passes. Built 2026-10-12; waiting on Gate 3.
+  **Done when:** Gate 3 passes.
 
-**Gate 3:** a stranger plays from the first screen to launch unaided.
+**Gate 3:** a stranger plays from the first screen to launch unaided. **Passed 2026-10-12** ("Gate 3 passed"). v0.1 is done.
 
-### Phase 4: Act 2 (v0.2), detailed after v0.1 ships
+### Phase 4: Act 2 (v0.2)
 
-- [ ] M19 Sector generator, supplies and jumps
-- [ ] M20 Node types, events and scanning
-- [ ] M21 Approach phase
-- [ ] M22 Boarding both ways
-- [ ] M23 Recruits, crew management, med bay healing
-- [ ] M24 Heat v2: hunters, regrouping, transponders
-- [ ] M25 Scouting candidate worlds
+Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are drafts, to settle as each milestone starts.
+
+- [x] **M19 Sector generator, supplies and jumps.**
+  - sectors as seeded node graphs: a start, an exit to the next sector, and nodes between them, a few of them stations
+  - the act 2 hub: the sector map, on the ship, in place of the stub
+  - jumps to a linked node (+3 heat), and long jumps two links away (−10 heat, three times the supplies)
+  - supplies: one per crew member a jump, carried up to the ship's lockers plus its cargo holds, bought at stations. A jump short of supplies goes hungry, which costs hit points, never a run.
+
+  **Done when:** from launch, a run crosses three sectors by jumping and restocking at stations; supplies and heat move as `data/balance.json` says; the same seed always gives the same sectors.
+- [ ] **M20 Node types, events and scanning.**
+  - node types past stations: derelicts to salvage, distress calls, traders, hazards
+  - events as data (`data/events.json`), with choices whose outcomes are credits, parts, supplies, heat or wounds
+  - scanning: what a node holds is unknown until the ship is near or scans it
+
+  **Done when (draft):** ten events play from data, and a run earns its keep from the nodes it picks.
+- [ ] **M21 Approach phase** (§4.2).
+
+  **Done when (draft):** a hostile ship at a node fights the approach phase to one of its outcomes with the odds shown, and its damage carries into the boarding map as wrecked rooms.
+- [ ] **M22 Boarding both ways.** Boarded, the fight is on your own layout (Law 2); boarding, it is on the enemy's generated ship (M10). Salvage after.
+
+  **Done when (draft):** both directions play out from the approach phase, and every boarding leaves parts, salvage or wounds behind (Law 3).
+- [ ] **M23 Recruits, crew management, med bay healing.**
+
+  **Done when (draft):** recruits join at stations up to the ship's berths, and a med bay heals the wounded over jumps.
+- [ ] **M24 Heat v2: hunters, regrouping, transponders** (§4.4's act 2 rules).
+
+  **Done when (draft):** as in M15, ignoring heat brings the hunters, and managing it keeps them off.
+- [ ] **M25 Scouting candidate worlds.**
+
+  **Done when (draft):** a run reaches the last sector, scouts its worlds and picks one, ending act 2 cleanly.
 
 ### Phase 5: Act 3 (v0.3)
 
@@ -468,5 +500,8 @@ These ideas wait until v0.4 or later:
 - permanent death as a harder setting: it needs recruits to replace the dead and a game over, which act 1 has neither of (raised in M18)
 - tips past the first fight: the shop, heat and payments, a raid, launch. M18's tips cover building, the job board and the first fight's orders (raised in M18)
 - reduced motion in a fight: the enemy's turn still plays step by step, with Skip to jump it (raised in M18)
+- the sector map in 3D: M19's chart is flat, drawn in SVG like the job board. A starfield with the nodes as places, seen through the orbit camera, would match the ships (raised in M19)
+- names on the sector map: M19 names a node in the left panel when it is picked. Every name on the chart would crowd it at 7 columns on the cover screen (raised in M19)
+- tips for the run: what a jump costs, long jumps, stations and hunger (raised in M19)
 
 Ideas that come up during a session go here, not into code.

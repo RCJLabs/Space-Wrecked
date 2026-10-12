@@ -15,7 +15,7 @@ import { loadContent } from '../../platform/content.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
-import { createShipStand, crewRows, listRows, panel } from './hubParts.js';
+import { createShipStand, crewRows, heatChip, listRows, panel } from './hubParts.js';
 import { hangarText } from './hubText.js';
 
 const ARM_MS = 3000; // Pay and Launch wait this long for a second tap
@@ -26,14 +26,8 @@ export const hangarScreen = {
     const head = node('header', 'hgr-head');
     const actLine = node('h1');
     const homeLine = node('p', 'hgr-home');
-    const heatChip = node('div', 'hgr-heat');
-    const heatLabel = node('span', 'hgr-heat-label');
-    const heatBar = node('span', 'hgr-heat-bar');
-    const heatFill = node('span', 'hgr-heat-fill');
-    heatBar.append(heatFill);
-    heatChip.append(heatLabel, heatBar);
-    heatChip.hidden = true;
-    head.append(actLine, homeLine, heatChip);
+    const heat = heatChip();
+    head.append(actLine, homeLine, heat.el);
     const launchButton = toolButton('hgr-launch', icons.launch, 'Launch');
     launchButton.hidden = true;
     const goalLines = node('ul', 'hgr-goal');
@@ -115,20 +109,16 @@ export const hangarScreen = {
       crewList.replaceChildren(...crewRows(text.crew));
       holdings.replaceChildren(...listRows(text.holdings));
       // Heat, and the payment that buys some off.
-      const { heat, raid } = text;
-      heatChip.hidden = false;
-      heatChip.dataset.level = heat.level;
-      setText(heatLabel, `Heat ${heat.value} · ${heat.name}`);
-      heatFill.style.width = `${(100 * heat.value) / heat.max}%`;
-      if (heatBar.children.length === 1) heatBar.append(...heat.marks.map((at) => Object.assign(node('i'), { style: `left: ${(100 * at) / heat.max}%` })));
-      heatChip.setAttribute('aria-label', `Heat ${heat.value} of ${heat.max}: ${heat.name}. ${heat.line}`);
-      payButton.hidden = !heat.payment;
-      if (heat.payment) {
-        payButton.disabled = !heat.payment.ok;
-        if (!heat.payment.ok && armed === 'pay') disarm();
-        setText(payButton.querySelector('span'), armed === 'pay' ? heat.payment.ask : heat.payment.label);
+      const { raid } = text;
+      heat.show(text.heat);
+      const { payment } = text.heat;
+      payButton.hidden = !payment;
+      if (payment) {
+        payButton.disabled = !payment.ok;
+        if (!payment.ok && armed === 'pay') disarm();
+        setText(payButton.querySelector('span'), armed === 'pay' ? payment.ask : payment.label);
         payButton.dataset.armed = String(armed === 'pay');
-        payButton.setAttribute('aria-label', heat.payment.text);
+        payButton.setAttribute('aria-label', payment.text);
       }
       // Launch, once every flight check passes.
       const { launch } = text;
@@ -147,7 +137,7 @@ export const hangarScreen = {
       jobsButton.disabled = Boolean(raid && !raid.ok);
       shopButton.hidden = !text.shop;
       buildButton.disabled = false;
-      const ask = armed === 'pay' ? heat.payment?.text : armed === 'launch' ? launch.ask : null;
+      const ask = armed === 'pay' ? payment?.text : armed === 'launch' ? launch.ask : null;
       setText(hint, ask ?? text.hint.text);
       hint.dataset.tone = ask ? 'warn' : text.hint.tone;
       if (shipChanged) stand.show(campaign.ship, defs);

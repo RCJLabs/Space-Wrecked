@@ -1,12 +1,13 @@
-// Pieces the campaign's homes share: the hangar (hangar.js) and the stub
-// that stands in for an act not built yet (stub.js). A titled panel, the
-// crew's rows, a list of labels and values, and the ship standing still in
-// the middle, seen from outside.
+// Pieces the campaign's homes share: the hangar (hangar.js), the sector
+// map on the run (sector.js) and the stub that stands in for an act not
+// built yet (stub.js). A titled panel, the crew's rows, a list of labels
+// and values, the heat meter, and the ship standing still in the middle,
+// seen from outside.
 import { traceHull } from '../../render/hull.js';
 import { fitOrbit } from '../../render/orbit.js';
 import { palette, skinFor } from '../../render/palette.js';
 import { BOARD_VIEW, boardBox, createBoard } from '../../render/shipView.js';
-import { node } from '../fight/panels.js';
+import { node, setText } from '../fight/panels.js';
 
 const MARGIN = 10; // pixels around the ship
 const NO_MIN = [0, 0]; // the view fits the ship alone, however small
@@ -45,6 +46,29 @@ export function listRows(lines) {
     row.append(node('dt', null, label), node('dd', null, value));
     return row;
   });
+}
+
+// The heat meter, by the act: a bar with the thresholds marked, in the
+// level's color. chip.show(heat) takes hubText.js heatText's.
+export function heatChip() {
+  const el = node('div', 'hgr-heat');
+  const label = node('span', 'hgr-heat-label');
+  const bar = node('span', 'hgr-heat-bar');
+  const fill = node('span', 'hgr-heat-fill');
+  bar.append(fill);
+  el.append(label, bar);
+  el.hidden = true;
+  return {
+    el,
+    show(heat) {
+      el.hidden = false;
+      el.dataset.level = heat.level;
+      setText(label, `Heat ${heat.value} · ${heat.name}`);
+      fill.style.width = `${(100 * heat.value) / heat.max}%`;
+      if (bar.children.length === 1) bar.append(...heat.marks.map((at) => Object.assign(node('i'), { style: `left: ${(100 * at) / heat.max}%` })));
+      el.setAttribute('aria-label', `Heat ${heat.value} of ${heat.max}: ${heat.name}. ${heat.line}`);
+    },
+  };
 }
 
 // The ship standing still in area, seen from outside and fitted to it:

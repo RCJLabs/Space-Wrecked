@@ -30,7 +30,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      the hangar, so it is kept from reading one.
 //   9  the first run: settings for difficulty, forgiving odds, motion and
 //      tips; the campaign's captain, and every crew member's traits (M18)
-export const SAVE_VERSION = 9;
+//  10  the run: the campaign's supplies, and its run (act 2's sector map
+//      and where the ship is on it), null until the run begins (M19)
+export const SAVE_VERSION = 10;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -110,6 +112,13 @@ export const MIGRATIONS = [
       const crew = campaign.crew.map((member) => (isObject(member) ? { ...member, traits: [] } : member));
       return { ...data, settings, campaign: { ...campaign, crew, captain: isObject(crew[0]) ? crew[0].id : null } };
     },
+  },
+  // The run. A campaign has no supplies yet, and its run begins at its
+  // first visit home in act 2, launched already or not: the holds are
+  // filled then (travel.js beginRun).
+  {
+    from: 9,
+    up: (data) => (isObject(data) && isObject(data.campaign) ? { ...data, campaign: { ...data.campaign, supplies: 0, run: null } } : data),
   },
 ];
 
