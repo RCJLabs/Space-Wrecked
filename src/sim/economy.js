@@ -9,7 +9,9 @@
 // an offer never changes once it is made. On the campaign:
 //   shop   null until a stock is rolled, then [{ part, price }]: what is
 //          for sale, one of each; a part bought leaves it
-// Buying and selling are for the hub. Pure: every roll is the campaign's.
+// Buying and selling are for the hangar (act 1). Pure: every roll is the
+// campaign's.
+import { atHangar } from './acts.js';
 import { pickSeveral } from './drops.js';
 
 export const PAY_STEP = 5;
@@ -104,6 +106,6 @@ export function sellPart(campaign, rules, type) {
 // Why the shop can't trade now, or null.
 function shopWhy(campaign, rules) {
   if (!shopOf(campaign, rules)) return 'There is no shop here.';
-  if (campaign.place !== 'hub') return 'Buy and sell from the hangar.';
+  if (!atHangar(campaign, rules)) return 'Buy and sell from the hangar.';
   return null;
 }

@@ -11,10 +11,13 @@ import { HAZARDS, siteMarks, siteProblems } from '../src/sim/gen/site.js';
 import { isId, isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 
 const CAMPAIGN_KEYS = ['acts'];
-const ACT_KEYS = ['act', 'name', 'hub', 'home', 'heals', 'liftOff'];
+const ACT_KEYS = ['act', 'name', 'hub', 'home', 'heals', 'liftOff', 'stub'];
 // Lifting off takes thrust for each unit of mass: up to this many.
 const MAX_LIFT_OFF = 4;
-const BACKGROUND_KEYS = ['id', 'name', 'blurb', 'pursuer', 'district', 'start'];
+const BACKGROUND_KEYS = ['id', 'name', 'blurb', 'pursuer', 'launch', 'district', 'start'];
+// The words as the ship lifts off (launch.js), and the pursuer's when it
+// lifts off with a raid at the door.
+const LAUNCH_KEYS = ['text', 'escaped'];
 const PURSUER_KEYS = ['name', 'blurb', 'levels', 'hunters', 'raiders', 'payment'];
 // Heat's levels (src/sim/heat.js), each with the pursuer's words for it.
 const HEAT_LEVELS = ['calm', 'rumors', 'hunters', 'raid'];
@@ -89,8 +92,9 @@ export function checkStartShips(data, scripts, fail) {
 }
 
 // The acts in order, each with its name, its home (the hub: an id, and
-// words for the player), whether coming home heals the crew, and for an
-// act on a planet, the thrust for each unit of mass lifting off takes.
+// words for the player), whether coming home heals the crew, for an act on
+// a planet, the thrust for each unit of mass lifting off takes, and for an
+// act not built yet, the words that stand in for it.
 function checkActs(file, fail) {
   const where = 'campaign.json';
   if (!isObject(file)) {
@@ -108,6 +112,7 @@ function checkActs(file, fail) {
     if (act.liftOff !== undefined && !(typeof act.liftOff === 'number' && act.liftOff > 0 && act.liftOff <= MAX_LIFT_OFF)) {
       fail(at, `liftOff must be a number above 0, up to ${MAX_LIFT_OFF}`);
     }
+    if (act.stub !== undefined && !isText(act.stub)) fail(at, 'stub must be a non-empty string');
   });
   if (acts.length !== ACTS || acts.some((act, i) => act.act !== i + 1)) fail(where, `acts must be acts 1 to ${ACTS} in order`);
 }
@@ -199,10 +204,10 @@ function checkShop(shop, where, clients, moduleIds, fail) {
   else if (isObject(shop.parts) && shop.size > Object.keys(shop.parts).length) fail(where, `a stock of ${shop.size} needs as many different parts in its table`);
 }
 
-// The backgrounds: who the player was, the pursuer after them, their
-// district, and what a campaign from it starts with: credits, parts held,
-// the crew by job, and the ship as a script of placements
-// (tools/build-ship.js).
+// The backgrounds: who the player was, the pursuer after them, the words
+// as they lift off, their district, and what a campaign from it starts
+// with: credits, parts held, the crew by job, and the ship as a script of
+// placements (tools/build-ship.js).
 function checkBackgrounds(file, { districts }, { jobIds, enemyIds, moduleIds, frameById, encounters }, fail) {
   const backgrounds = listOf(file, 'backgrounds', 'backgrounds.json', fail);
   uniqueIds(backgrounds, 'backgrounds.json', fail);
@@ -213,6 +218,12 @@ function checkBackgrounds(file, { districts }, { jobIds, enemyIds, moduleIds, fr
     knownKeys(background, BACKGROUND_KEYS, where, fail);
     if (!isText(background.name) || !isText(background.blurb)) fail(where, 'name and blurb must be non-empty strings');
     checkPursuer(background.pursuer, `${where} pursuer`, { enemyIds, encounters }, fail);
+    const { launch } = background;
+    if (!isObject(launch)) fail(`${where} launch`, 'must be { text, escaped }');
+    else {
+      knownKeys(launch, LAUNCH_KEYS, `${where} launch`, fail);
+      if (!LAUNCH_KEYS.every((key) => isText(launch[key]))) fail(`${where} launch`, 'text and escaped must be non-empty strings');
+    }
     if (!districts.has(background.district)) fail(where, `unknown district "${background.district}"`);
     const script = checkStart(background.start, `${where} start`, { jobIds, moduleIds, frameById }, fail);
     if (script) scripts.push([`${where} start.ship`, script]);

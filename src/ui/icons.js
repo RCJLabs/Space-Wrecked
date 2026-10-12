@@ -38,4 +38,6 @@ export const icons = {
   // The shop: a storefront under its awning, and a price tag.
   shop: icon('<path d="M4 9 5.5 4h13L20 9"/><path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9"/><path d="M5.5 12v8h13v-8"/><path d="M10 20v-5h4v5"/>'),
   tag: icon('<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/>'),
+  // Launch: a ship standing on its tail, fins out, its flame under it.
+  launch: icon('<path d="M12 2.5c3 2.4 4.5 5.9 4.5 10.5v3h-9v-3C7.5 8.4 9 4.9 12 2.5z"/><path d="m7.5 12.5-2.5 3v2l2.5-1.5M16.5 12.5l2.5 3v2l-2.5-1.5"/><circle cx="12" cy="9.5" r="1.6"/><path d="M10.5 19 12 22l1.5-3"/>'),
 };

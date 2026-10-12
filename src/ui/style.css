@@ -472,6 +472,33 @@ textarea {
   color: var(--c-space);
 }
 
+/* Launch: the act's goal met. It leads the goal panel, and Build steps
+   back. Its first tap waits, outlined, for the second. */
+#ui .hgr-launch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  margin: 0 0 8px;
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+  font-weight: 700;
+}
+
+#ui .hgr-launch[data-armed='true'] {
+  background: var(--c-panel);
+  color: var(--c-accent);
+}
+
+#ui .hgr[data-ready='true'] .hgr-build {
+  border-color: var(--c-line);
+  background: var(--c-panel);
+  color: var(--c-ink);
+}
+
 /* Short screens: tighter panels, and the head and footer on less. */
 @media (max-height: 320px) {
   .hgr {
@@ -491,6 +518,116 @@ textarea {
 
   .hgr-hint {
     font-size: 12.5px;
+  }
+}
+
+/* The launch: the ship lifts off in the middle (drawn on the canvas), the
+   words come up under it as it climbs, and Skip, then Continue, waits in
+   the corner. */
+.lnc {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  padding: 8px 12px 10px;
+}
+
+.lnc-head {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  padding-right: 64px; /* clear of the DEV button */
+}
+
+.lnc-head h1 {
+  margin: 0;
+  font-size: clamp(18px, 6vh, 28px);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.7);
+}
+
+.lnc-from {
+  margin: 0;
+  color: var(--c-ink-dim);
+  font-size: 15px;
+}
+
+/* The ship's place: empty, so the canvas shows through. */
+.lnc-ship {
+  grid-column: 1 / -1;
+  min-height: 0;
+}
+
+.lnc-words {
+  align-self: end;
+  max-width: 36em;
+  padding: 8px 12px;
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  background: var(--c-panel);
+  font-size: 14px;
+  line-height: 1.35;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: auto;
+}
+
+.lnc-words p {
+  margin: 0;
+}
+
+.lnc-words .lnc-escaped {
+  margin-top: 6px;
+  color: var(--c-dash);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.lnc:not([data-shown='none']) .lnc-words,
+.lnc[data-shown='all'] .lnc-escaped {
+  opacity: 1;
+}
+
+#ui .lnc-go {
+  align-self: end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 0 20px;
+  white-space: nowrap;
+  background: var(--c-panel);
+}
+
+#ui .lnc-go[data-done='true'] {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lnc-words,
+  .lnc-words .lnc-escaped {
+    transition: none;
+  }
+}
+
+@media (max-height: 320px) {
+  .lnc {
+    gap: 6px 10px;
+    padding-top: 4px;
+    padding-bottom: 6px;
+  }
+
+  .lnc-words {
+    padding: 6px 10px;
+    font-size: 13px;
   }
 }
 

@@ -4,7 +4,7 @@
 // mode). Launch is locked while any line is open: a tap on it then just
 // says what to fix. When it is ready, the first tap arms it and a second
 // tap within ARM_MS launches. Construction mode has no Launch: launching
-// ends act 1 (M17).
+// ends act 1, and the hangar has it (M17).
 import { onTap } from '../gestures.js';
 
 const ARM_MS = 3000;

@@ -99,8 +99,9 @@ function jobWorth(job, campaign, defs, needed) {
 }
 
 // A run from New game to launch: { launched, jobs, raids, minutes: [quick,
-// slow], tally, lines }. tally counts what the run did; lines say it step
-// by step.
+// slow], tally, lines, campaign }. tally counts what the run did; lines say
+// it step by step; campaign is where it ended, ready to launch if it got
+// there.
 export function runToLaunch(defs, seed, { heat = 'hunters' } = {}) {
   if (!HEAT_POLICIES.includes(heat)) throw new Error(`--heat is one of ${HEAT_POLICIES.join(', ')}`);
   let campaign = withBoard(newCampaign(defs, seed), defs);
@@ -230,7 +231,7 @@ export function runToLaunch(defs, seed, { heat = 'hunters' } = {}) {
   say(launched
     ? `Ready to launch after ${tally.jobs} jobs (${tally.done} done, ${tally.lost} lost) and ${tally.raids} raid${tally.raids === 1 ? '' : 's'}: ${tally.orders} orders over ${tally.rounds} rounds, ${tally.fits} parts fitted, ${tally.bought} bought, ${tally.sold} sold, ${tally.payments} payments. About ${minutes[0]} to ${minutes[1]} minutes.`
     : `Stopped short of launch: ${tally.stuck}.`);
-  return { launched, jobs: tally.jobs, raids: tally.raids, minutes, tally, lines };
+  return { launched, jobs: tally.jobs, raids: tally.raids, minutes, tally, lines, campaign };
 }
 
 // Runs from seeds 1 to `runs`, summed up: { lines, results }.

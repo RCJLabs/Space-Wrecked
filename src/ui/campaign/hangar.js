@@ -6,22 +6,19 @@
 // where the parts still missing are earned, and Shop the district's shop
 // (shop.js), where they are bought. Heat shows by the act, with
 // Pay to buy some off (a tap shows the price, a second pays); once heat
-// brings a raid, Defend takes the place of Jobs. Everything the campaign
-// holds is saved as it changes, so the hangar reopens as it was left.
+// brings a raid, Defend takes the place of Jobs. Once every flight check
+// passes, Launch shows at the top of the goal: a tap says what launching
+// means, a second lifts off (launch.js), raid or no raid. Everything the
+// campaign holds is saved as it changes, so the hangar reopens as it was
+// left.
 import { loadContent } from '../../platform/content.js';
-import { traceHull } from '../../render/hull.js';
-import { fitOrbit } from '../../render/orbit.js';
-import { palette, skinFor } from '../../render/palette.js';
-import { BOARD_VIEW, boardBox, createBoard } from '../../render/shipView.js';
-import { openings } from '../../sim/builder.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { createShipStand, crewRows, listRows, panel } from './hubParts.js';
 import { hangarText } from './hubText.js';
 
-const MARGIN = 10; // pixels around the ship
-const NO_MIN = [0, 0]; // the view fits the ship alone, however small
-const ARM_MS = 3000; // Pay waits this long for its second tap
+const ARM_MS = 3000; // Pay and Launch wait this long for a second tap
 
 export const hangarScreen = {
   mount(root, { store: game }) {
@@ -37,6 +34,8 @@ export const hangarScreen = {
     heatChip.append(heatLabel, heatBar);
     heatChip.hidden = true;
     head.append(actLine, homeLine, heatChip);
+    const launchButton = toolButton('hgr-launch', icons.launch, 'Launch');
+    launchButton.hidden = true;
     const goalLines = node('ul', 'hgr-goal');
     const crewList = node('ul', 'hgr-crew');
     const holdings = node('dl', 'hgr-hold');
@@ -54,17 +53,14 @@ export const hangarScreen = {
     jobsButton.disabled = buildButton.disabled = true;
     titleButton.setAttribute('aria-label', 'Title');
     foot.append(titleButton, hint, payButton, shopButton, jobsButton, buildButton);
-    el.append(head, panel('Goal: launch', goalLines), shipArea, side, foot);
+    el.append(head, panel('Goal: launch', launchButton, goalLines), shipArea, side, foot);
     root.append(el);
 
     let defs = null;
-    let board = null; // the ship seen from outside (shipView.js)
-    let box = null; // what the view fits
-    let camera = null;
+    const stand = createShipStand(shipArea);
     let alive = true;
     let shown = null; // the campaign the screen shows
-    let dirty = true;
-    let armed = false; // Pay has had its first tap
+    let armed = null; // 'pay' or 'launch' once it has had its first tap
     let armTimer = 0;
     const cleanups = [
       onTap(titleButton, () => game.dispatch({ type: 'screen/show', screen: 'title' })),
@@ -75,12 +71,13 @@ export const hangarScreen = {
         if (hangarText(campaign, defs).raid) game.dispatch({ type: 'campaign/raid/begin', rules: defs });
         else game.dispatch({ type: 'screen/show', screen: 'jobs' });
       }),
-      onTap(payButton, pay),
+      onTap(payButton, () => twoTaps('pay', payButton, () => game.dispatch({ type: 'campaign/pay', rules: defs }))),
+      onTap(launchButton, () => twoTaps('launch', launchButton, () => game.dispatch({ type: 'campaign/launch', rules: defs }))),
       onTap(shopButton, () => game.dispatch({ type: 'screen/show', screen: 'shop' })),
       () => clearTimeout(armTimer),
       game.subscribe((state) => alive && render(state.campaign)),
     ];
-    const observer = new ResizeObserver(() => layout());
+    const observer = new ResizeObserver(() => stand.layout());
     observer.observe(shipArea);
     cleanups.push(() => observer.disconnect());
 
@@ -115,26 +112,8 @@ export const hangarScreen = {
           return item;
         }),
       );
-      crewList.replaceChildren(
-        ...text.crew.map(({ name, job, hp, max }) => {
-          const row = node('li');
-          row.dataset.wounded = String(hp < max);
-          const bar = node('span', 'hgr-hp');
-          const fill = node('span');
-          fill.style.width = `${(100 * hp) / max}%`;
-          bar.append(fill);
-          row.append(node('span', 'hgr-name', job ? `${name}, ${job}` : name), bar, node('span', 'hgr-num', `${hp}/${max}`));
-          return row;
-        }),
-      );
-      holdings.replaceChildren(
-        ...text.holdings.map(([label, value]) => {
-          const row = node('div');
-          if (value.length > 14) row.dataset.wide = '';
-          row.append(node('dt', null, label), node('dd', null, value));
-          return row;
-        }),
-      );
+      crewList.replaceChildren(...crewRows(text.crew));
+      holdings.replaceChildren(...listRows(text.holdings));
       // Heat, and the payment that buys some off.
       const { heat, raid } = text;
       heatChip.hidden = false;
@@ -146,11 +125,18 @@ export const hangarScreen = {
       payButton.hidden = !heat.payment;
       if (heat.payment) {
         payButton.disabled = !heat.payment.ok;
-        if (!heat.payment.ok) disarm();
-        setText(payButton.querySelector('span'), armed ? heat.payment.ask : heat.payment.label);
-        payButton.dataset.armed = String(armed);
+        if (!heat.payment.ok && armed === 'pay') disarm();
+        setText(payButton.querySelector('span'), armed === 'pay' ? heat.payment.ask : heat.payment.label);
+        payButton.dataset.armed = String(armed === 'pay');
         payButton.setAttribute('aria-label', heat.payment.text);
       }
+      // Launch, once every flight check passes.
+      const { launch } = text;
+      if (!launch.ok && armed === 'launch') disarm();
+      launchButton.hidden = !launch.ok;
+      el.dataset.ready = String(launch.ok);
+      setText(launchButton.querySelector('span'), armed === 'launch' ? 'Launch?' : 'Launch');
+      launchButton.dataset.armed = String(armed === 'launch');
       // A raid at the door: Defend in place of Jobs.
       const raiding = String(Boolean(raid));
       if (jobsButton.dataset.raid !== raiding) {
@@ -161,16 +147,17 @@ export const hangarScreen = {
       jobsButton.disabled = Boolean(raid && !raid.ok);
       shopButton.hidden = !text.shop;
       buildButton.disabled = false;
-      setText(hint, armed && heat.payment ? heat.payment.text : text.hint.text);
-      hint.dataset.tone = armed ? 'warn' : text.hint.tone;
-      if (shipChanged) showShip(campaign.ship);
+      const ask = armed === 'pay' ? heat.payment?.text : armed === 'launch' ? launch.ask : null;
+      setText(hint, ask ?? text.hint.text);
+      hint.dataset.tone = ask ? 'warn' : text.hint.tone;
+      if (shipChanged) stand.show(campaign.ship, defs);
     }
 
-    // Pay: the first tap shows what it costs, the second pays.
-    function pay() {
-      if (!defs || payButton.disabled) return;
-      if (!armed) {
-        armed = true;
+    // Pay and Launch: the first tap says what it does, the second does it.
+    function twoTaps(which, button, act) {
+      if (!defs || button.disabled || button.hidden) return;
+      if (armed !== which) {
+        armed = which;
         clearTimeout(armTimer);
         armTimer = setTimeout(() => {
           disarm();
@@ -180,59 +167,28 @@ export const hangarScreen = {
         return;
       }
       disarm();
-      game.dispatch({ type: 'campaign/pay', rules: defs });
-      rerender();
+      act();
+      if (alive) rerender();
     }
 
     function disarm() {
-      armed = false;
+      armed = null;
       clearTimeout(armTimer);
     }
 
-    // Draws the panels again, the campaign unchanged (Pay's two taps).
+    // Draws the panels again, the campaign unchanged (the two taps).
     function rerender() {
       render(game.getState().campaign, true);
     }
 
-    // The ship as it stands, from outside, fitted to the middle.
-    function showShip(ship) {
-      const frame = defs.frames.get(ship.frame);
-      if (!frame) return;
-      const hull = traceHull(ship, defs);
-      board = createBoard(frame);
-      board.setShip({ ship, defs, frame, doors: openings(ship, defs), hull, selected: null, lifted: null, flagged: new Set() });
-      board.setHull({ ship, defs, hull, skin: skinFor('yard') });
-      box = boardBox(frame, hull, NO_MIN);
-      camera = null;
-      layout();
-    }
-
-    function layout() {
-      if (!alive || !board) return;
-      const r = shipArea.getBoundingClientRect();
-      if (r.width < 48 || r.height < 48) return; // hidden, e.g. behind the rotate prompt
-      const rect = { x: r.left, y: r.top, w: r.width, h: r.height };
-      camera = fitOrbit({ ...BOARD_VIEW, pivot: [(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2] }, rect, box, MARGIN);
-      dirty = true;
-    }
-
     return {
       resize() {
-        layout();
-        dirty = true;
+        stand.layout();
       },
       // The ship stands still: it is drawn again only when it or the screen
       // changes.
       draw(ctx, view) {
-        if (!dirty) return;
-        dirty = false;
-        const all = { x: 0, y: 0, w: view.width, h: view.height };
-        if (!board || !camera) {
-          ctx.fillStyle = palette.space;
-          ctx.fillRect(0, 0, view.width, view.height);
-          return;
-        }
-        board.draw(ctx, camera, all, 'hull');
+        stand.draw(ctx, view);
       },
       unmount() {
         alive = false;
@@ -242,9 +198,3 @@ export const hangarScreen = {
     };
   },
 };
-
-function panel(title, ...children) {
-  const el = node('section', 'hgr-panel');
-  el.append(node('h2', null, title), ...children);
-  return el;
-}
