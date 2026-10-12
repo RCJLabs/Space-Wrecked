@@ -15,6 +15,7 @@
     "map": "node tools/battle-map.js",
     "battle": "node tools/battle-log.js",
     "ships": "node tools/gen-ship.js",
+    "sim": "node tools/sim.js",
     "hooks": "git config core.hooksPath .githooks"
   }
 }

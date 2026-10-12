@@ -312,7 +312,7 @@ One milestone per session. Each has a **Done when**; if a milestone won't fit, c
   **Done when:** in test scenarios the AI takes cover and flanks, and never stands in the open without a reason.
 - [x] **M10 Enemy ship generator.** Presets built with the builder's rules.
   **Done when:** 100 generated ships all pass the flight checklist (tested).
-- [ ] **M11 Balance harness.** `node tools/sim.js` runs AI-against-AI battles headless and reports win rate, turn count and hit distribution.
+- [x] **M11 Balance harness.** `node tools/sim.js` runs AI-against-AI battles headless and reports win rate, turn count and hit distribution.
   **Done when:** 1,000 fights report in under a minute.
 
 **Gate 2:** moving modules changes how the fight plays, and a fight takes 5 to 8 minutes.
@@ -388,8 +388,8 @@ A Capacitor build; a paid version with a web demo; optional cloud saves on Base4
 | --- | --- | --- |
 | The builder feels fiddly on a phone | Gate 1 fails | Fix it before Phase 2; fall back to bigger modules or a slot hull |
 | Two deep systems overrun scope | Phase 2 runs past about 8 sessions | Keep the shared grid; cut base building to slots first |
-| Players build chokepoint fortresses | Balance runs show defenders always win (AI against AI on the example ship, M9: the crew of 3 wins 70 of 100 against 4 boarders) | Enemies breach walls and choose entry points; corridors stay two tiles wide. Since M9 the AI breaches doors: it opens one and shoots through, which overwatch can't punish |
-| Fights stall in standoffs | AI-against-AI fights reach the round limit. M10 measured it on generated ships: 27 of 100 cutters, 10 corvettes and 4 haulers, against none of 100 on the example ship in M9. Both sides hold on overwatch either side of a chokepoint | Candidates, Evan's call: boarders press on (they came to fight), cutting through walls, ships with a second way round. M11's harness counts stalls |
+| Players build chokepoint fortresses | Balance runs show defenders always win. AI against AI on the example ship, the crew of 3 wins 64% (58–70) against 4 boarders (`tools/sim.js`, M11). With the airlock moved under the bridge it wins 83% | Enemies breach walls and choose entry points; corridors stay two tiles wide. Since M9 the AI breaches doors: it opens one and shoots through, which overwatch can't punish |
+| Fights stall in standoffs | AI-against-AI fights reach the round limit. The harness's 1,000 fights in M11 stalled on 24% of cutters, 9% of corvettes and 5% of haulers, and none on the example ship. Both sides hold on overwatch either side of a chokepoint | Candidates, Evan's call: boarders press on (they came to fight), cutting through walls, ships with a second way round. `tools/sim.js` reports the stalls ("No winner") |
 | Percentage misses feel unfair | Testers complain about high-odds misses | Clearer cover display, the forgiving-odds setting, the math always shown |
 | 3D on canvas runs slowly on mid-range phones | Dropped frames turning or zooming the board (M4), or in battles (M8) | Rough half-resolution frames while the camera moves or units walk, only on a phone too slow for full ones (the frame budget, after M6: they blurred zooming on the Fold); cache the still board, and in a fight redraw it only when something on it changed (M8); fewer lines, cap the pixel ratio. Past that: three.js (MIT, one vendored file, no build step), with Evan's approval |
 | Lost saves | Reports after Chrome data is cleared | Persistent storage request, export and import, migrations |
