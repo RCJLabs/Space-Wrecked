@@ -145,7 +145,7 @@ Evan didn't weigh in on any of these:
   - **M17's check** (as adapted in M19): 37 of 37 at each size;
   - **M16's check:** 29 of 29 at each size;
   - **M15's check:** 30 of 30 at each size;
-  - **M14's check:** still running when this was first committed (it takes over 15 minutes);
+  - **M14's check:** 41 of 41 at 905 × 370, with a job of each kind played by touch. The count depends on the boards dealt: this run met all three kinds in three jobs, and M19's run needed four, hence its 46. It takes over 15 minutes;
   - **M14's saves check:** 10 of 10, v4 saves migrated through to v11;
   - **M13's check:** 24 of 24;
   - **M8's fight sandbox checks:** the fight and the orders column pass with no console errors. The extras pass all 8 of their checks, offline with the server stopped, also with no console errors. M19's notes counted them twice, as 16.
