@@ -155,7 +155,8 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - **hack:** work the terminal for a number of rounds.
 
   Once the objective is done the crew has won, whoever is still standing. A deadline (a job's twist) ends the battle at the end of the crew's turn in its round: if the crew hasn't won by then, it has lost.
-- **Forgiving odds:** an optional menu setting adds 10 to the crew's next shot for each miss in a row, up to 30. The bonus is included in the number shown, so Law 4 still holds.
+- **Forgiving odds:** an optional setting (M18, in Settings, off unless turned on) adds 10 to the crew's next shot for each miss in a row, up to 30. The bonus is included in the number shown, so Law 4 still holds.
+- **Difficulty** (M18, in Settings): Easy, Normal or Hard, from the next fight. Easy enemies aim 10 worse and have 1 hit point fewer; Hard enemies aim 5 better and have 1 more (`data/balance.json`). Normal leaves them as the data has them. Permanent death waits for recruits and a game over (§9).
 - **The log:** every action returns the events it caused, and the same setup, seed and actions always give the same events (`src/sim/battle.js`; the example battle in `tests/golden/` is replayed by the tests).
 - **Giving orders** (M8, `src/sim/fight.js`): a tap never spends an action. A tap on a tile shows the move (its path, one action or a dash, and the cover where it stops), and a second tap on it makes it. A tap on an enemy, or Shoot, shows the shot with its odds part by part, and Fire or a second tap takes it. Overwatch, Reload, Stabilize and Open door are buttons, and on a job Grab and Hack, shown only when there is a crate or the terminal in reach; End turn takes a second tap while anyone can still act. A job's objective shows under the round, and its crates and terminal are tagged on the board. The board opens square to the ship, where tiles are biggest, and every enemy is shown (no fog of war); those the selected unit can see show the hit chance.
 - **The enemy's turn** is worked out at once by the rules and then played out on the board, event by event: walks, shots that land or fly wide with the damage over the unit hit, doors opening, whose turn it is. Skip goes to the end.
@@ -196,6 +197,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 ### 4.5 Characters
 
 - **Captain:** background, 2 traits and a starting job. **Crew:** generated recruits with a background, a trait and a job.
+- **As built in M18:** New game opens captain creation. The background is fixed in v0.1. The name comes filled in from the background's list and can be changed. The job is one of the three, and the captain takes its place in the crew. Two of the 6 traits in `data/traits.json` are picked. A trait adds to the job's numbers (hit points, aim, defense, mobility, armor) in every fight; the attributes below aren't in yet.
 - **Attributes:** Grit, Aim, Wits, Nerve.
 - **Jobs:** Marine, Engineer and Medic in v0.1; Pilot, Scout, Xenobiologist and Quartermaster later. Each job has a ship station effect, battle abilities and a colony effect.
 - **Wounds** carry between battles and heal in the med bay over time. Since M12 a crew member's hit points carry through a fight, and anyone who went down comes back with 1. In act 1 the crew heals fully back at the hangar (Evan's call, 2026-10-12); from act 2 the med bay heals over time (M23).
@@ -245,7 +247,8 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - A saved fight holds its battle whole, the map and its RNG state included, so a game update between quitting and reopening can't move a wall under a unit.
 - The game reopens at the title, and Continue goes back to where the campaign was: the hub, or the fight as it stood. Past act 1 that is the stub (M17). The lift-off is only a screen: launching saves the campaign in act 2 at once, so quitting during it reopens past it.
 - The RNG state is part of the save.
-- Settings can export and import a save as text. A TWA shares Chrome's storage, so clearing Chrome's data wipes saves; the export is the player's backup.
+- Settings can export and import a save as text. A TWA shares Chrome's storage, so clearing Chrome's data wipes saves; the export is the player's backup. Since M18, Settings has Export, Copy and Import; Import checks the code, and a second tap replaces the save.
+- The settings themselves (difficulty, forgiving odds, motion, frame rate, tips and the tips put away) are part of the save (v9, M18).
 - The builder keeps up to six ships in slots, each with the build log its replay plays back. A single ship travels between devices as a blueprint code.
 
 ---
@@ -366,9 +369,9 @@ Pick the tone before M14. (Picked: wry and blue-collar.)
 - [ ] **M18 First run and settings.**
   - captain creation: background fixed for v0.1, 2 traits, a job
   - tutorial prompts for building and for the first battle
-  - settings: difficulty, forgiving odds, reduce motion, sound, export and import save
+  - settings: difficulty, forgiving odds, reduce motion, sound, export and import save. Sound was cut: there is no audio to switch until M35, which brings the switch.
 
-  **Done when:** Gate 3 passes.
+  **Done when:** Gate 3 passes. Built 2026-10-12; waiting on Gate 3.
 
 **Gate 3:** a stranger plays from the first screen to launch unaided.
 
@@ -462,5 +465,8 @@ These ideas wait until v0.4 or later:
 - the lift-off seen from the ground: the hangar's roof opening and the Tailings falling away, where M17's lift-off is drawn over the starfield (raised in M17)
 - Launch in construction mode, where the last check usually passes: M17 keeps it at the hangar and points there (raised in M17)
 - an act's record with time played and fights won and lost, kept per act: the stub shows what the flags count (raised in M17)
+- permanent death as a harder setting: it needs recruits to replace the dead and a game over, which act 1 has neither of (raised in M18)
+- tips past the first fight: the shop, heat and payments, a raid, launch. M18's tips cover building, the job board and the first fight's orders (raised in M18)
+- reduced motion in a fight: the enemy's turn still plays step by step, with Skip to jump it (raised in M18)
 
 Ideas that come up during a session go here, not into code.

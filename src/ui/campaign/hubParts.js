@@ -17,17 +17,21 @@ export function panel(title, ...children) {
   return el;
 }
 
-// The crew list's rows, from crewText (hubText.js): name and job, a bar
-// for hit points, and the numbers.
+// The crew list's rows, from crewText (hubText.js): the name, with the job
+// under it when the name isn't the job's (the captain's), a bar for hit
+// points, and the numbers.
 export function crewRows(crew) {
   return crew.map(({ name, job, hp, max }) => {
     const row = node('li');
     row.dataset.wounded = String(hp < max);
+    const who = node('span', 'hgr-name');
+    who.append(node('span', null, name));
+    if (job) who.append(node('small', null, job));
     const bar = node('span', 'hgr-hp');
     const fill = node('span');
     fill.style.width = `${(100 * hp) / max}%`;
     bar.append(fill);
-    row.append(node('span', 'hgr-name', job ? `${name}, ${job}` : name), bar, node('span', 'hgr-num', `${hp}/${max}`));
+    row.append(who, bar, node('span', 'hgr-num', `${hp}/${max}`));
     return row;
   });
 }

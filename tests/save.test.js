@@ -15,6 +15,7 @@ import {
 } from '../src/core/save.js';
 import { initialState, reduce, saveData } from '../src/sim/root.js';
 import { emptyBuilds, MAX_SLOTS } from '../src/sim/builds.js';
+import { defaultSettings } from '../src/sim/settings.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { logFor, logMatches } from '../src/sim/replay.js';
 import { readData } from '../tools/data.js';
@@ -164,7 +165,7 @@ test('the shipped migrations line up with SAVE_VERSION', () => {
 
 test('validate accepts a fresh save and names what is wrong with a bad one', () => {
   assert.deepEqual(validate(sample()), []);
-  const problems = validate({ version: SAVE_VERSION, data: { settings: { fpsCap: 45 }, rng: 1, builds: emptyBuilds(), campaign: null } });
+  const problems = validate({ version: SAVE_VERSION, data: { settings: { ...defaultSettings(), fpsCap: 45 }, rng: 1, builds: emptyBuilds(), campaign: null } });
   assert.equal(problems.length, 1);
   assert.match(problems[0], /frame cap/);
 });
@@ -195,7 +196,7 @@ test('a save from before M3 (v0) loads with no ships', () => {
   const old = { version: 0, data: { settings: { fpsCap: 30 }, rng: 77 } };
   const result = parseSave(JSON.stringify(old));
   assert.equal(result.ok, true, result.error);
-  assert.deepEqual(result.save, { version: SAVE_VERSION, data: { settings: { fpsCap: 30 }, rng: 77, builds: emptyBuilds(), campaign: null } });
+  assert.deepEqual(result.save, { version: SAVE_VERSION, data: { settings: { ...defaultSettings(), fpsCap: 30 }, rng: 77, builds: emptyBuilds(), campaign: null } });
   assert.equal(importSave(craftSave(old)).ok, true, 'an old export code imports too');
 });
 
@@ -217,7 +218,7 @@ test("an M3 save's ship (v1) becomes slot 1, numbered in build order, with a log
   const v1 = { version: 1, data: { settings: { fpsCap: 60 }, rng: 5, ship } };
   const result = parseSave(JSON.stringify(v1));
   assert.equal(result.ok, true, result.error);
-  assert.deepEqual(result.save.data, { settings: { fpsCap: 60 }, rng: 5, builds: { active: 0, slots: [{ name: 'Ship 1', ship: fine, log: fineLog }] }, campaign: null });
+  assert.deepEqual(result.save.data, { settings: defaultSettings(), rng: 5, builds: { active: 0, slots: [{ name: 'Ship 1', ship: fine, log: fineLog }] }, campaign: null });
   const none = parseSave(JSON.stringify({ version: 1, data: { settings: { fpsCap: 60 }, rng: 5, ship: null } }));
   assert.deepEqual(none.save.data.builds, emptyBuilds(), 'no ship yet: no slots');
   assert.equal(importSave(craftSave(v1)).ok, true, 'an M3 export code imports too');
@@ -289,7 +290,7 @@ test('an M5b save (v3) loads with its ships and no campaign yet', () => {
   const v3 = { version: 3, data: { settings: { fpsCap: 60 }, rng: 5, builds } };
   const result = parseSave(JSON.stringify(v3));
   assert.equal(result.ok, true, result.error);
-  assert.deepEqual(result.save, { version: SAVE_VERSION, data: { settings: { fpsCap: 60 }, rng: 5, builds, campaign: null } });
+  assert.deepEqual(result.save, { version: SAVE_VERSION, data: { settings: defaultSettings(), rng: 5, builds, campaign: null } });
   assert.equal(importSave(craftSave(v3)).ok, true, 'an M5b export code imports too');
 });
 

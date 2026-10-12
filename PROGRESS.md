@@ -2,6 +2,177 @@
 
 Newest entry first.
 
+## M18 First run and settings (2026-10-12)
+
+**Status:** built. The ROADMAP.md box is **not** ticked: M18's Done when is Gate 3, which Evan runs. After M17, Evan said "Start the next milestone". No phone results have come back yet for M14 to M17.
+
+Done when: "Gate 3 passes": "a stranger plays from the first screen to launch unaided." Only a person can pass it. What I could check:
+- **The first run, by touch, following only the tips:** from an empty browser, through captain creation, the build and the first job's whole fight, at all three screen sizes.
+- **The rest of act 1 is reachable at every difficulty:** 50 test runs at each (`tools/run.js`) all reach launch.
+- **Not checked:** whether a stranger understands any of it. That is the gate.
+
+### Shipped
+
+- **Captain creation** (`src/ui/campaign/captain.js`). New game opens "Your captain":
+  - the background, fixed in v0.1: the miner and who is after them;
+  - a name, filled in from the background's list (`captains` in `data/backgrounds.json`) and free to change, up to 24 letters;
+  - a job (Marine, Engineer or Medic). The captain takes that job's place in the crew;
+  - 2 of 6 traits (`data/traits.json`). Each button shows what the trait does, and a tap adds its line of flavor. A third pick drops the first.
+
+  The captain's numbers show with the traits. Start waits for a name, a job and two traits, and says what is missing. Title goes back with nothing changed.
+- **Traits in the rules** (`src/sim/traits.js`): each adds to hit points, aim, defense, mobility or armor. The captain fights with them on jobs, in raids and at home, and full health counts them, so the hangar heals to the new top.
+- **Settings** (a new button on the title):
+  - **Difficulty:** Easy, Normal (as before) or Hard. On Easy enemies aim 10 worse and have 1 hit point fewer; on Hard, 5 better and 1 more (`data/balance.json`). From the next fight.
+  - **Forgiving odds:** off unless turned on. It is §4.3's rule: each miss in a row adds 10 to the crew's next shot, up to 30, and the odds shown include it. From the next fight.
+  - **Motion:** As the phone (the default), Reduce or Full. Reduce stills the title's stars and the lift-off, and stops the fades.
+  - **Frame rate:** 60 or 30 fps, until now only in the dev menu.
+  - **Tips:** on or off, and "Show tips again".
+  - **Save:** Export makes a save code, Copy copies it, and Import checks a pasted code. A second tap ("Replace save?") puts it in place of the campaign. The line above them says why: the save lives in the browser.
+
+  Each row says what the choice picked does, with its numbers from the data.
+- **Tips** (`src/ui/tips.js`; the steps in `src/ui/tipSteps.js`, the words in `data/tips.json`). There are 11, in the order a new player meets them:
+  1. the hangar's goal;
+  2. Build;
+  3. the part to pick (the one the checklist needs);
+  4. where it goes;
+  5. back to the hangar;
+  6. Jobs;
+  7. Take the job;
+  8. the crew;
+  9. moving;
+  10. shooting;
+  11. End turn.
+
+  One shows at a time, with its control ringed and the card beside it, never over it. Got it puts it away, and so does using the control. Either way it is saved and never shows again. In a fight a tip waits while the enemy plays or the end panel is up.
+- **`SAVE_VERSION` 9:**
+  - settings gain difficulty, forgiving odds, motion, tips and the tips put away;
+  - crew members gain traits, none for a campaign already under way;
+  - a campaign gains its captain: its first crew member, as named.
+- **The hangar's crew list** puts the captain's job under their name.
+- **The settings list scrolls from anywhere on it.** At the folded size its two columns are uneven, and a swipe on the space under the shorter one used to go through to the starfield. The browser check found this.
+- **Data and tools:**
+  - the validator checks traits (stats, ranges, at least 2), tips (each with a step, and none longer than 200 letters), the captains' names and the difficulty numbers;
+  - `tools/run.js --difficulty easy|hard`.
+- **Tests:** 478 in all, up from 466:
+  - captains, traits in each kind of fight, difficulty, settings into fights, the settings actions, and the v8 to v9 migration (`tests/captain.test.js`);
+  - the captain screen's words (`tests/captainText.test.js`);
+  - tips and their words (`tests/tips.test.js`);
+  - the validator's new mistakes.
+- **Golden files:** none changed.
+
+### Decisions made this session
+
+Evan didn't weigh in on any of these:
+- **Sound is cut from M18.** There is no audio until M35, so a switch would do nothing; it comes with M35.
+- **Difficulty is the enemy's aim and hit points, not permanent death.** Permanent death needs recruits and a game over, which act 1 has neither of (§9).
+- **Hard is +5 aim and +1 hit point.** My first try, +10 and +2, left 7 of 50 test runs short of launch; at +5 and +1 all 50 launch. Details below.
+- **Traits add straight to the job's numbers.** §4.5's attributes (Grit, Aim, Wits, Nerve) aren't in yet.
+- **The captain comes with a name and a job filled in,** so the one choice to make is the two traits. None are picked for you.
+- **The defaults keep a new game as it was:** Normal, forgiving odds off, motion as the phone asks.
+- **Tips are on for saves from before M18 too.** A returning player sees them once, and can turn them off.
+- **The tips stop at the first fight.** The shop, heat, raids and launch have their hangar hints, but no tips (§9).
+
+### Verified here
+
+- `node --test`: 478 pass. `node tools/validate-data.js`: OK, with 6 traits.
+- **`node tools/sim.js`:** no balance number it uses changed, and the summary is M11's:
+  ```
+  All               1,000  49% (46–52)           41%        10%  7 (5–11)           28
+  Shots: 23,504, 23.5 a fight. Hit: crew 57%, boarders 40%.
+  A fight: 1.8 crew go down, 0.9 bleed out, 2.8 boarders die.
+  ```
+- **Difficulty** (`node tools/run.js --runs 50 --difficulty …`, seeds 1 to 50, test captain without traits):
+
+  | Difficulty | Ready to launch | Jobs (median, range) | Jobs done | Minutes, slow pace |
+  | --- | --- | --- | --- | --- |
+  | Easy | 50 of 50 | 5 (3 to 11) | 87% | 36 (22 to 74) |
+  | Normal | 50 of 50 | 7 (3 to 14) | 70% | 44 (22 to 92) |
+  | Hard | 50 of 50 | 8 (3 to 29) | 58% | 53 (25 to 176) |
+
+  Normal is M16's run exactly. Hard's slowest run takes 29 jobs.
+- **M18's check** (scratchpad `m18/verify.mjs`), by touch at 905 × 370, 821 × 283 and 960 × 825: 43 of 43 at each size.
+  - **An empty browser:** New game and Settings, no Continue.
+  - **Captain creation:**
+    - a name from the list;
+    - Start waits for two traits, and a third drops the first;
+    - the numbers with the traits;
+    - every button 48 px or more;
+    - Start saves v9 with the captain, their job and traits, and 10 hit points with Thick skull.
+  - **The tips, followed in order:** each rings its control. Got it is 48 px or more, and using a control puts its tip away. Both parts get fitted by touch, then a job is taken and its fight played to the end by touch, with no tip in the way. All 11 are saved as seen, and none shows again.
+  - **Settings:**
+    - each choice is saved, every button is 48 px or more, and the lines quote the data;
+    - a swipe scrolls the list from a button or from the empty space, and changes nothing;
+    - Tips off, then Show tips again;
+    - Export gives a v9 code;
+    - a damaged code is named;
+    - a good code takes a second tap and replaces the save.
+  - **Settings reach the fights:** a job's fight has forgiving odds on, and enemies aim 5 better on Hard. The captain fights with the traits' hit points and mobility.
+  - **Reduce motion** reaches the page, and the lift-off stands still with Continue at once.
+  - **A v8 save** opens as v9: the first crew member leads, and the first tip shows.
+  - **Offline,** Settings and the hangar open.
+  - **No console errors or warnings.**
+- **Regressions,** run one after another with nothing else running. They go through captain creation, with tips turned off in Settings, as a player who knows the game would:
+  - **M17's check:** 38 of 38 at each size.
+  - **M16's check:** 29 of 29 at each size.
+  - **M15's check:** 30 of 30 at each size.
+  - **M14's check:** 47 of 47 at 905 × 370. Its total moves with the jobs a run draws. Earlier runs this session often stalled on an order: every stall whose tile I logged (5 of them) was on the back row under the toolbar (known issues).
+  - **M14's saves check:** v4 saves migrated through to v9, 10 of 10.
+  - **M13's check:** 24 of 24.
+  - **M8's fight sandbox checks:** the fight, the orders column and the extras pass, with no console errors.
+- **What changed in the old checks:**
+  - M17's two "v8" checks now read "v8 or later".
+  - M14's healing check counts traits.
+  - The harnesses scroll panels by swiping. A scroll made by script is undone by the next touch in headless Chromium, so the old checks' taps after one landed on the wrong row.
+  - **M14's harness plays fights more like a player:**
+    - it taps a part of a tile no unit stands in front of;
+    - it gives an order up to 5 s to be saved;
+    - it drags the board before tapping a tile beside the toolbar (known issues).
+
+### Known issues
+
+- **Gate 3 hasn't been run.** Everything above is a script following the tips; a stranger may stall where a script can't.
+- **Three back-row tiles sit under Log, Fit and Title** on job maps at the folded sizes. On a 14 × 8 map, those are tiles 11 to 13 of row 0, at 905 × 370 and 821 × 283; the unfolded screen has none.
+  - **What goes wrong:** Chrome moves a touch that close onto the button. A tap meant for one of those tiles opens the log, refits the camera, or leaves for the title. Leaving for the title loses nothing, since the fight is saved.
+  - **Dragging doesn't help much:** at the opening zoom the whole map already fits, so a drag moves the board only a few pixels.
+  - **Not new:** M8's toolbar has sat over M14's maps since M14. M14's browser check hit it 5 times this session. The captain's traits change how its scripted fights go, which is my guess at why it shows up now.
+  - **Fixes, Evan's call:** fit the fight camera below the toolbar, with somewhat smaller tiles, or move Log, Fit and Title into the right-hand column.
+
+  It could trip a stranger in Gate 3.
+- **No tips after the first fight.** The shop, heat, payments, raids and launch rely on the hangar's hints.
+- **The captain has no portrait,** and a long typed name is cut in the hangar's crew list (the job shows under it).
+- **Reduce motion doesn't change a fight's playback.** Units still walk tile to tile in the enemy's turn; Skip jumps to its end.
+- **A save code is about 2,100 characters.** Copy uses the clipboard; if the phone blocks that, the note says to select the code and copy it by hand.
+- **Sound:** none until M35.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Gate 3** (the Done when): hand the phone to someone who hasn't played. Start them on the title with an empty save, then don't help. Note:
+   - where they stall, and for how long;
+   - whether they read the tips or tap Got it straight away;
+   - whether they reach launch, and how long it takes.
+2. **Captain creation** on both screens: the name field with the keyboard up, two traits, Start.
+3. **Tips:** does each point at the right thing, and does any get in the way?
+4. **The back row under the toolbar,** folded, in a job's fight: tap a tile at the far right of the back row, just under Log, Fit and Title. Does it take, or does a button?
+5. **Settings:**
+   - Export, Copy and paste the code somewhere safe;
+   - Import it again (Replace save?);
+   - Hard, and Reduce motion with the lift-off.
+6. **Tell me:**
+   - whether Gate 3 passes;
+   - which fix you want for the back row under the toolbar, if it bites;
+   - whether the traits read in the tone;
+   - whether Hard and Easy feel right;
+   - and the M14 to M17 questions still open.
+
+### Next session
+
+**Gate 3 is Evan's call,** and Phase 4 waits for it.
+- **If it passes:** record it here and in ROADMAP.md, and tick M18. v0.1 is then done. ROADMAP.md says Phase 4 is detailed after v0.1 ships, so the next session's first task is detailing Phase 4's milestones with Evan before M19.
+- **If it doesn't:** the next session fixes where the stranger stalled, inside M18. Likely candidates:
+  - the back row under the toolbar (known issues);
+  - more tips (the shop, heat, launch);
+  - clearer hangar hints.
+
 ## M17 Launch (2026-10-12)
 
 **Status:** done, and the ROADMAP.md box is ticked. After M16, Evan said "Start the next milestone". No phone results have come back yet for M14, M15 or M16.

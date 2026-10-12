@@ -11,7 +11,7 @@ import { emptyBuilds, isBuilds } from '../sim/builds.js';
 import { campaignProblems } from '../sim/campaign.js';
 import { regridCommand, regridShip } from '../sim/regrid.js';
 import { isCommand, logFor, renumbered } from '../sim/replay.js';
-import { FPS_CAPS } from '../sim/settings.js';
+import { defaultSettings, settingsProblems } from '../sim/settings.js';
 
 // History:
 //   0  settings and RNG state (M0)
@@ -28,7 +28,9 @@ import { FPS_CAPS } from '../sim/settings.js';
 //   8  launch: a campaign can be past act 1 (M17). Nothing in a v7 save
 //      changes, but a game from before M17 would show an act 2 campaign
 //      the hangar, so it is kept from reading one.
-export const SAVE_VERSION = 8;
+//   9  the first run: settings for difficulty, forgiving odds, motion and
+//      tips; the campaign's captain, and every crew member's traits (M18)
+export const SAVE_VERSION = 9;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -94,6 +96,21 @@ export const MIGRATIONS = [
   },
   // Launch. Every v7 campaign is in act 1, as before.
   { from: 7, up: (data) => data },
+  // The first run. Settings keep the frame cap and take the defaults for
+  // the rest, tips included: a player from before has seen none. A
+  // campaign under way gets its first crew member as captain, as named,
+  // and no one has traits yet.
+  {
+    from: 8,
+    up: (data) => {
+      if (!isObject(data)) return data;
+      const settings = isObject(data.settings) ? { ...defaultSettings(), ...data.settings } : data.settings;
+      const { campaign } = data;
+      if (!isObject(campaign) || !Array.isArray(campaign.crew)) return { ...data, settings };
+      const crew = campaign.crew.map((member) => (isObject(member) ? { ...member, traits: [] } : member));
+      return { ...data, settings, campaign: { ...campaign, crew, captain: isObject(crew[0]) ? crew[0].id : null } };
+    },
+  },
 ];
 
 const PREFIX = config.appId;
@@ -136,8 +153,7 @@ export function validate(save) {
   const data = save.data;
   if (!isObject(data)) return [...problems, 'It has no data.'];
   if (!isState(data.rng)) problems.push('The RNG state is missing or invalid.');
-  if (!isObject(data.settings)) problems.push('Settings are missing.');
-  else if (!FPS_CAPS.includes(data.settings.fpsCap)) problems.push('The frame cap setting is invalid.');
+  problems.push(...settingsProblems(data.settings));
   if (!isBuilds(data.builds)) problems.push('The saved ships are missing or unreadable.');
   if (data.campaign === undefined) problems.push('The campaign is missing.');
   else if (data.campaign !== null) problems.push(...campaignProblems(data.campaign));

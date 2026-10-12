@@ -2,6 +2,7 @@
 import { exportSave, importSave, makeSave } from '../../core/save.js';
 import { saveData } from '../../sim/root.js';
 import { FPS_CAPS } from '../../sim/settings.js';
+import { copyText } from '../clipboard.js';
 import { sandboxes } from './sandboxes.js';
 
 export function createDevMenu(root, { store, getStatus }) {
@@ -134,19 +135,4 @@ function textArea(placeholder) {
   area.setAttribute('autocomplete', 'off');
   area.setAttribute('autocorrect', 'off');
   return area;
-}
-
-async function copyText(area) {
-  try {
-    await navigator.clipboard.writeText(area.value);
-    return true;
-  } catch {
-    area.focus();
-    area.select();
-    try {
-      return document.execCommand('copy');
-    } catch {
-      return false;
-    }
-  }
 }

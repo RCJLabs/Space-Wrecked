@@ -4,10 +4,10 @@
 // empty tables.
 
 // The content files, by name: data/<name>.json.
-export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'balance', 'weapons', 'jobs', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts'];
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'tips'];
 
 export function indexDefs(files) {
-  const { modules, frames, manufacturers, balance, weapons, jobs, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts } = files;
+  const { modules, frames, manufacturers, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, tips } = files;
   return {
     balance,
     tilesPerCell: modules.tilesPerCell,
@@ -20,6 +20,9 @@ export function indexDefs(files) {
     tileRules: tiles?.tiles ?? {},
     weapons: byId(weapons?.weapons),
     jobs: byId(jobs?.jobs),
+    // What a character can be besides their job: a captain has two traits
+    // (campaign.js), each adding to their numbers in a fight.
+    traits: byId(traits?.traits),
     enemies: byId(enemies?.enemies),
     // Who fights a battle: the squad (crew jobs, until a campaign has a
     // crew) and the enemies an encounter brings.
@@ -45,6 +48,8 @@ export function indexDefs(files) {
       twists: byId(contracts?.twists),
       jobs: byId(contracts?.jobs),
     },
+    // The first-run tips' words (src/ui/tips.js), by id.
+    tips: byId(tips?.tips),
   };
 }
 

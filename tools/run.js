@@ -25,6 +25,8 @@
 //   node tools/run.js --runs 20      seeds 1 to 20, summed up
 //   node tools/run.js --heat raids   pay heat down only before a raid
 //   node tools/run.js --heat never   never pay
+//   node tools/run.js --difficulty easy   (or hard) the enemy as the
+//                                    difficulty setting has it
 import { pathToFileURL } from 'node:url';
 import { aiAction } from '../src/sim/ai.js';
 import { playFrom } from '../src/sim/autoplay.js';
@@ -40,6 +42,7 @@ import { jobAction } from '../src/sim/jobAi.js';
 import { placedCells } from '../src/sim/modules.js';
 import { pressAction } from '../src/sim/press.js';
 import { beginRaid, endRaid } from '../src/sim/raid.js';
+import { DIFFICULTIES } from '../src/sim/settings.js';
 import { jobText } from '../src/ui/campaign/jobText.js';
 import { readData } from './data.js';
 
@@ -102,8 +105,9 @@ function jobWorth(job, campaign, defs, needed) {
 // slow], tally, lines, campaign }. tally counts what the run did; lines say
 // it step by step; campaign is where it ended, ready to launch if it got
 // there.
-export function runToLaunch(defs, seed, { heat = 'hunters' } = {}) {
+export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal' } = {}) {
   if (!HEAT_POLICIES.includes(heat)) throw new Error(`--heat is one of ${HEAT_POLICIES.join(', ')}`);
+  if (!DIFFICULTIES.includes(difficulty)) throw new Error(`--difficulty is one of ${DIFFICULTIES.join(', ')}`);
   let campaign = withBoard(newCampaign(defs, seed), defs);
   const lines = [`Campaign seed ${seed}, paying heat down ${{ raids: 'before a raid', hunters: 'before the hunters', never: 'never' }[heat]}:`];
   const say = (text) => lines.push(text);
@@ -182,7 +186,7 @@ export function runToLaunch(defs, seed, { heat = 'hunters' } = {}) {
     }
     while (raidDue(campaign, defs) && heat !== 'never' && paymentFor(campaign, defs).ok) pay('to head off the raid');
     if (raidDue(campaign, defs)) {
-      const begun = beginRaid(campaign, defs);
+      const begun = beginRaid(campaign, defs, { difficulty });
       if (!begun.ok) {
         tally.stuck = `the raid can't start: ${begun.error}`;
         break;
@@ -210,7 +214,7 @@ export function runToLaunch(defs, seed, { heat = 'hunters' } = {}) {
     const words = jobText(job, defs);
     tally.jobs += 1;
     say(`${tally.jobs}. ${words.title} (${words.mission}${words.twist ? `, ${words.twist.name}` : ''}): ${words.pay}, ${words.heat}.`);
-    const taken = takeJob(campaign, defs, index);
+    const taken = takeJob(campaign, defs, index, { difficulty });
     if (!taken.ok) {
       tally.stuck = `the job can't start: ${taken.error}`;
       break;
@@ -239,13 +243,14 @@ export function manyRuns(defs, runs, options = {}) {
   const results = [];
   for (let seed = 1; seed <= runs; seed++) results.push({ seed, ...runToLaunch(defs, seed, options) });
   const launched = results.filter((r) => r.launched);
+  const sum = (list, key) => list.reduce((total, r) => total + r.tally[key], 0);
   const spread = (values) => {
     const sorted = [...values].sort((a, b) => a - b);
     return sorted.length ? `${sorted[Math.floor((sorted.length - 1) / 2)]} (${sorted[0]} to ${sorted.at(-1)})` : '-';
   };
   const lines = [
     `${runs} runs, seeds 1 to ${runs}: ${launched.length} ready to launch.`,
-    `Jobs: ${spread(launched.map((r) => r.jobs))}. Raids: ${spread(launched.map((r) => r.raids))}.`,
+    `Jobs: ${spread(launched.map((r) => r.jobs))}. Raids: ${spread(launched.map((r) => r.raids))}. Jobs done: ${Math.round((100 * sum(results, 'done')) / Math.max(1, sum(results, 'jobs')))}% of ${sum(results, 'jobs')}.`,
     `Minutes, quick: ${spread(launched.map((r) => r.minutes[0]))}; slow: ${spread(launched.map((r) => r.minutes[1]))}. The median, then the least and most.`,
     ...results.filter((r) => !r.launched).map((r) => `Seed ${r.seed}: ${r.lines.at(-1)}`),
   ];
@@ -259,7 +264,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     return i >= 0 ? args[i + 1] : fallback;
   };
   const defs = indexDefs(readData());
-  const options = { heat: value('--heat', 'hunters') };
+  const options = { heat: value('--heat', 'hunters'), difficulty: value('--difficulty', 'normal') };
   const runs = Number(value('--runs', 0));
   console.log((runs ? manyRuns(defs, runs, options) : runToLaunch(defs, Number(value('--seed', 1)), options)).lines.join('\n'));
 }

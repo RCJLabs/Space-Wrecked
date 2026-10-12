@@ -23,11 +23,12 @@
 import { int, percent, shuffle } from '../core/rng.js';
 import { atHangar } from './acts.js';
 import { createBattle } from './battle.js';
-import { endFight, maxHp } from './campaign.js';
+import { crewUnit, endFight } from './campaign.js';
 import { rollDrop } from './drops.js';
 import { PAY_STEP, rollStock } from './economy.js';
 import { generateSite } from './gen/site.js';
 import { huntersFor, jobHeat, raidDue, withHeat } from './heat.js';
+import { enemyBonus } from './settings.js';
 
 // The missions the rules know. A new one means new rules (battle.js), so
 // it is added here on purpose.
@@ -104,10 +105,12 @@ export function withBoard(campaign, rules) {
 // the spawn tiles, both shuffled by the seed; the encounter's enemies with
 // one more or fewer as the twist says, picked by the seed, and any hunters
 // the pursuer sends along (heat.js huntersFor); the mission's objective;
-// and the twist's sight range and deadline. The battle's own seed is where
+// and the twist's sight range and deadline. The crew fight with what their
+// traits add, and every enemy with what the difficulty adds (settings.js);
+// forgiving odds are on or off as given. The battle's own seed is where
 // the site's rolls left off. Throws if the site has too few places for
 // everyone (validate-data.js checks the content).
-export function jobSetup(job, rules, crew, { hunters = [] } = {}) {
+export function jobSetup(job, rules, crew, { hunters = [], forgiving = false, difficulty = 'normal' } = {}) {
   const contract = rules.contracts.jobs.get(job.contract);
   const twist = job.twist ? rules.contracts.twists.get(job.twist) : null;
   const template = rules.siteMaps.get(rules.sites.get(job.site).map);
@@ -132,9 +135,10 @@ export function jobSetup(job, rules, crew, { hunters = [] } = {}) {
   if (entries.length < crew.length || spawns.length < enemies.length) {
     throw new Error(`${template.id} has room for ${entries.length} crew and ${spawns.length} enemies, not ${crew.length} and ${enemies.length}`);
   }
+  const bonus = enemyBonus(difficulty, rules.balance);
   const units = [
-    ...crew.map((member, i) => ({ kind: member.job, name: member.name, hp: Math.min(member.hp, maxHp(member, rules)), x: entries[i][0], y: entries[i][1] })),
-    ...enemies.map((kind, i) => ({ kind, x: spawns[i][0], y: spawns[i][1] })),
+    ...crew.map((member, i) => ({ ...crewUnit(member, rules), x: entries[i][0], y: entries[i][1] })),
+    ...enemies.map((kind, i) => ({ kind, x: spawns[i][0], y: spawns[i][1], bonus })),
   ];
   let objective = null;
   if (contract.mission === 'grab') {
@@ -143,7 +147,7 @@ export function jobSetup(job, rules, crew, { hunters = [] } = {}) {
   } else if (contract.mission === 'hack') {
     objective = { type: 'hack', at: site.zones.terminal[roll(0, site.zones.terminal.length - 1)], turns: contract.turns };
   }
-  const options = {};
+  const options = { forgiving };
   if (twist?.sight) options.sight = twist.sight;
   if (twist?.deadline) options.deadline = twist.deadline;
   return { map: site.map, units, seed: state, options, objective };
@@ -151,9 +155,11 @@ export function jobSetup(job, rules, crew, { hunters = [] } = {}) {
 
 // Takes the job at that place on the board: its fight begins, with the
 // whole crew, and the pursuer's hunters if heat has brought them. Not
-// while a raid is due. Returns { ok: true, campaign } with the fight on,
-// or { ok: false, error } saying why it can't.
-export function takeJob(campaign, rules, index) {
+// while a raid is due. setup is what the settings make of the fight
+// (settings.js fightSettings): { forgiving, difficulty }. Returns
+// { ok: true, campaign } with the fight on, or { ok: false, error } saying
+// why it can't.
+export function takeJob(campaign, rules, index, setup = {}) {
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
   if (!atHangar(campaign, rules)) return { ok: false, error: 'Jobs are taken from the hangar.' };
   if (raidDue(campaign, rules)) return { ok: false, error: 'Not with a raid at the door.' };
@@ -164,7 +170,7 @@ export function takeJob(campaign, rules, index) {
   if (unknown) return { ok: false, error: `${unknown.name}'s job "${unknown.job}" is unknown.` };
   let started;
   try {
-    started = createBattle(jobSetup(job, rules, campaign.crew, { hunters: huntersFor(campaign, rules) }), rules);
+    started = createBattle(jobSetup(job, rules, campaign.crew, { ...setup, hunters: huntersFor(campaign, rules) }), rules);
   } catch (err) {
     return { ok: false, error: `That job can't start: ${err.message}.` };
   }

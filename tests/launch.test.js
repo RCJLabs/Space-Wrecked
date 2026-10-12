@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { makeSave, parseSave, SAVE_VERSION } from '../src/core/save.js';
+import { makeSave, MIGRATIONS, parseSave } from '../src/core/save.js';
 import { beginFight, campaignProblems, newCampaign } from '../src/sim/campaign.js';
 import { takeJob, withBoard } from '../src/sim/contracts.js';
 import { buyable } from '../src/sim/economy.js';
@@ -67,16 +67,13 @@ test('through the game: Launch plays the launch, and Continue goes to the stub f
   assert.equal(reduce(launched, { type: 'save/restore', data: saveData(launched) }).screen, 'title');
 });
 
-test('a launched campaign saves as v8 and reads back the same; a v7 save is read unchanged', () => {
-  assert.equal(SAVE_VERSION, 8);
+test('a launched campaign saves and reads back the same; the step from v7 to v8 changes nothing', () => {
   const state = reduce({ ...initialState(1), screen: 'hub', campaign: ready() }, { type: 'campaign/launch', rules });
   const loaded = parseSave(JSON.stringify(makeSave(saveData(state))));
   assert.ok(loaded.ok, loaded.error);
   assert.deepEqual(loaded.save.data.campaign, state.campaign);
-  const v7 = { version: 7, data: saveData({ ...initialState(2), campaign: ready() }) };
-  const migrated = parseSave(JSON.stringify(v7));
-  assert.ok(migrated.ok, migrated.error);
-  assert.deepEqual(migrated.save, { version: 8, data: v7.data });
+  const v7 = saveData({ ...initialState(2), campaign: ready() });
+  assert.deepEqual(MIGRATIONS.find((step) => step.from === 7).up(v7), v7);
 });
 
 // M17's Done when: launching saves and moves on cleanly, from the end of

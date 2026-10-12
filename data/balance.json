@@ -22,5 +22,9 @@
   "raidHeat": 75,
   "heatAfterRaid": 40,
   "buyPercent": 100,
-  "sellPercent": 50
+  "sellPercent": 50,
+  "easyEnemyAim": -10,
+  "easyEnemyHp": -1,
+  "hardEnemyAim": 5,
+  "hardEnemyHp": 1
 }

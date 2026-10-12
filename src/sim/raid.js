@@ -9,10 +9,11 @@
 // Pure: every roll is the campaign's.
 import { int } from '../core/rng.js';
 import { createBattle } from './battle.js';
-import { endFight, maxHp } from './campaign.js';
+import { crewUnit, endFight } from './campaign.js';
 import { PAY_STEP } from './economy.js';
 import { hangarDoors, hangarMap, waysIn } from './hangarMap.js';
 import { pursuerOf, raidDue } from './heat.js';
+import { enemyBonus } from './settings.js';
 import { hasTag } from './modules.js';
 import { stepsFrom } from './moves.js';
 import { walkable } from './terrain.js';
@@ -20,10 +21,11 @@ import { walkable } from './terrain.js';
 const MAX_SEED = 0xffffffff;
 
 // Starts the raid that is due: the whole crew against the raiders, on the
-// hangar map. Its seed is the campaign's next roll. Returns { ok: true,
-// campaign } with the fight on, or { ok: false, error } saying why it
-// can't start.
-export function beginRaid(campaign, rules) {
+// hangar map. Its seed is the campaign's next roll. setup is what the
+// settings make of the fight (settings.js fightSettings): forgiving odds,
+// and the difficulty. Returns { ok: true, campaign } with the fight on, or
+// { ok: false, error } saying why it can't start.
+export function beginRaid(campaign, rules, { forgiving = false, difficulty = 'normal' } = {}) {
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
   if (!raidDue(campaign, rules)) return { ok: false, error: 'No one is raiding the hangar.' };
   const pursuer = pursuerOf(campaign, rules);
@@ -38,11 +40,12 @@ export function beginRaid(campaign, rules) {
   const placed = raidPlaces(map, campaign.crew.length, raiders.length, rules);
   if (!placed) return { ok: false, error: `There isn't room for ${campaign.crew.length} crew and ${raiders.length} raiders.` };
   const { value: seed, state: rng } = int(campaign.rng, 0, MAX_SEED);
+  const bonus = enemyBonus(difficulty, rules.balance);
   const units = [
-    ...campaign.crew.map((member, i) => ({ kind: member.job, name: member.name, hp: Math.min(member.hp, maxHp(member, rules)), x: placed.crew[i][0], y: placed.crew[i][1] })),
-    ...raiders.map((kind, i) => ({ kind, x: placed.raiders[i][0], y: placed.raiders[i][1] })),
+    ...campaign.crew.map((member, i) => ({ ...crewUnit(member, rules), x: placed.crew[i][0], y: placed.crew[i][1] })),
+    ...raiders.map((kind, i) => ({ kind, x: placed.raiders[i][0], y: placed.raiders[i][1], bonus })),
   ];
-  const { battle, events } = createBattle({ map, units, seed, options: { press: true } }, rules);
+  const { battle, events } = createBattle({ map, units, seed, options: { forgiving, press: true } }, rules);
   const fight = { encounter: pursuer.raiders, seed, crew: campaign.crew.map((member) => member.id), battle, log: events, job: null, raid: true };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };
 }

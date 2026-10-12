@@ -17,8 +17,13 @@
 //   parts    { [module type]: count }: parts on hand in the hangar, not on
 //            the ship. Refitting the ship (construction mode) takes parts
 //            from here and puts back what comes off.
-//   crew     [{ id, name, job, hp }]: everyone aboard. hp is what they have
-//            now: wounds carry from fight to fight, up to the job's hp.
+//   crew     [{ id, name, job, hp, traits }]: everyone aboard. hp is what
+//            they have now: wounds carry from fight to fight, up to the
+//            most they can have (maxHp). traits are ids in
+//            data/traits.json (traits.js).
+//   captain  the id of the crew member who is the player's captain: named,
+//            with a job and CAPTAIN_TRAITS traits, when the campaign
+//            starts
 //   heat     the pursuer's meter, 0 to HEAT_MAX (§4.4)
 //   flags    { [name]: true, a number or a short text }: what has happened
 //   ship     the ship (builder.js)
@@ -45,6 +50,8 @@ import { flightChecklist, partLines } from './constraints.js';
 import { deploy } from './deploy.js';
 import { MAX_STOCK } from './economy.js';
 import { mapFromShip } from './mapFromShip.js';
+import { enemyBonus } from './settings.js';
+import { traitBonus } from './traits.js';
 
 export { actOf } from './acts.js';
 
@@ -53,6 +60,10 @@ export const ACTS = 3;
 export const HEAT_MAX = 100;
 export const MAX_CREW = 20;
 export const MAX_NAME = 24;
+// The captain's traits, chosen when a campaign starts.
+export const CAPTAIN_TRAITS = 2;
+// More traits than anyone has: a guard on what a save can hold.
+const MAX_TRAITS = 4;
 export const MAX_FLAG_TEXT = 64;
 // More jobs than any board offers: a guard on what a save can hold.
 export const MAX_BOARD = 12;
@@ -68,10 +79,20 @@ const FLAG = /^[a-zA-Z][a-zA-Z0-9]*$/;
 
 // A new campaign from a background's start (data/backgrounds.json; the
 // first one unless named): act 1, at home, with its ship, crew, credits and
-// parts. seed is a whole number (a uint32).
-export function newCampaign(rules, seed, background = firstBackground(rules)) {
+// parts. seed is a whole number (a uint32). captain is { name, job, traits }
+// (captainProblem says what it takes): the crew member with that job
+// becomes the captain, named, with those traits. Without one, the first
+// crew member is captain, as they are, with no traits.
+export function newCampaign(rules, seed, { background = firstBackground(rules), captain = null } = {}) {
   const { start } = rules.backgrounds.get(background);
   const { ship } = buildShip(rules, start.ship.frame, start.ship.placements);
+  const why = captain && captainProblem(captain, rules, background);
+  if (why) throw new RangeError(`newCampaign: ${why}`);
+  const at = captain ? start.crew.indexOf(captain.job) : 0;
+  const crew = start.crew.map((job, i) => {
+    const member = i === at && captain ? { name: captain.name.trim(), job, traits: [...captain.traits] } : { name: rules.jobs.get(job).name, job, traits: [] };
+    return { id: i + 1, ...member, hp: maxHp(member, rules) };
+  });
   return {
     seed,
     rng: seed,
@@ -80,10 +101,8 @@ export function newCampaign(rules, seed, background = firstBackground(rules)) {
     place: 'hub',
     credits: start.credits,
     parts: { ...start.parts },
-    crew: start.crew.map((job, i) => {
-      const { name, hp } = rules.jobs.get(job);
-      return { id: i + 1, name, job, hp };
-    }),
+    crew,
+    captain: crew[at].id,
     heat: 0,
     flags: {},
     ship,
@@ -97,6 +116,22 @@ export function newCampaign(rules, seed, background = firstBackground(rules)) {
 // The background a campaign starts from when none is chosen: v0.1 has one.
 export function firstBackground(rules) {
   return rules.backgrounds.keys().next().value;
+}
+
+// Why a captain can't lead a campaign from the background, or null. A
+// captain is { name, job, traits }: a name of 1 to MAX_NAME letters once
+// trimmed, one of the start's crew jobs, and CAPTAIN_TRAITS different
+// traits that exist.
+export function captainProblem(captain, rules, background = firstBackground(rules)) {
+  const name = typeof captain?.name === 'string' ? captain.name.trim() : '';
+  if (!name) return 'Give your captain a name.';
+  if (name.length > MAX_NAME) return `A name fits ${MAX_NAME} letters.`;
+  if (!rules.backgrounds.get(background)?.start.crew.includes(captain.job)) return 'Pick a job for your captain.';
+  const { traits } = captain;
+  if (!Array.isArray(traits) || traits.length !== CAPTAIN_TRAITS || new Set(traits).size !== traits.length) return `Pick ${CAPTAIN_TRAITS} traits.`;
+  const unknown = traits.find((id) => !rules.traits?.has(id));
+  if (unknown) return `There is no trait "${unknown}".`;
+  return null;
 }
 
 // The ship's flight checklist (constraints.js) as the campaign asks it:
@@ -124,9 +159,17 @@ export function partsNeeded(campaign, rules) {
   return needed;
 }
 
-// A crew member's most hit points: their job's.
+// A crew member's most hit points: their job's, and what their traits add.
 export function maxHp(member, rules) {
-  return rules.jobs.get(member.job)?.hp ?? member.hp;
+  const job = rules.jobs.get(member.job);
+  return job ? Math.max(1, job.hp + traitBonus(member.traits, rules).hp) : member.hp;
+}
+
+// A crew member as a battle unit starts (battle.js createBattle), less
+// where they stand: their job, name, hit points now and what their traits
+// add.
+export function crewUnit(member, rules) {
+  return { kind: member.job, name: member.name, hp: Math.min(member.hp, maxHp(member, rules)), bonus: traitBonus(member.traits, rules) };
 }
 
 // Every part the campaign has, on the ship or on hand: what construction
@@ -161,9 +204,11 @@ export function onHandAfter(parts, before, after) {
 }
 
 // Starts a fight: the whole crew against the boarders, on the ship. Its
-// seed is the campaign's next roll. Returns { ok: true, campaign } with the
-// fight on, or { ok: false, error } saying why it can't start.
-export function beginFight(campaign, rules) {
+// seed is the campaign's next roll. setup is what the settings make of it
+// (settings.js fightSettings): forgiving odds, and the difficulty. Returns
+// { ok: true, campaign } with the fight on, or { ok: false, error } saying
+// why it can't start.
+export function beginFight(campaign, rules, { forgiving = false, difficulty = 'normal' } = {}) {
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
   if (!campaign.crew.length) return { ok: false, error: 'There is no one aboard to fight.' };
   const unknown = campaign.crew.find((member) => !rules.jobs.has(member.job));
@@ -174,11 +219,12 @@ export function beginFight(campaign, rules) {
   if (!placed.ok) return placed;
   const { value: seed, state: rng } = int(campaign.rng, 0, MAX_SEED);
   // deploy lists the crew first, in the order given.
+  const bonus = enemyBonus(difficulty, rules.balance);
   const units = placed.units.map((unit, i) => {
     const member = campaign.crew[i];
-    return member ? { ...unit, name: member.name, hp: Math.min(member.hp, maxHp(member, rules)) } : unit;
+    return member ? { ...unit, ...crewUnit(member, rules) } : { ...unit, bonus };
   });
-  const { battle, events } = createBattle({ map, units, seed }, rules);
+  const { battle, events } = createBattle({ map, units, seed, options: { forgiving } }, rules);
   const fight = { encounter: FIGHT_ENCOUNTER, seed, crew: campaign.crew.map((member) => member.id), battle, log: events, job: null, raid: false };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };
 }
@@ -230,6 +276,7 @@ export function campaignProblems(value) {
     wrong('parts are unreadable');
   }
   if (!isCrew(value.crew)) wrong('crew is unreadable');
+  else if (!value.crew.some((member) => member.id === value.captain)) wrong("captain isn't aboard");
   if (!isInt(value.heat, 0, HEAT_MAX)) wrong('heat is invalid');
   if (!isRecord(value.flags) || !Object.entries(value.flags).every(([name, flag]) => FLAG.test(name) && name.length <= 32 && isFlag(flag))) {
     wrong('flags are unreadable');
@@ -285,7 +332,10 @@ function isCrew(crew) {
   return crew.every((member) => {
     if (!isRecord(member) || !isInt(member.id, 1, Number.MAX_SAFE_INTEGER) || ids.has(member.id)) return false;
     ids.add(member.id);
-    return isName(member.name) && typeof member.job === 'string' && ID.test(member.job) && isInt(member.hp, 1, 999);
+    return (
+      isName(member.name) && typeof member.job === 'string' && ID.test(member.job) && isInt(member.hp, 1, 999) &&
+      Array.isArray(member.traits) && member.traits.length <= MAX_TRAITS && member.traits.every(isId) && new Set(member.traits).size === member.traits.length
+    );
   });
 }
 

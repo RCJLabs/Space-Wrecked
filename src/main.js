@@ -12,7 +12,9 @@ import { applyCssVars } from './render/palette.js';
 import { initialState, reduce, saveData } from './sim/root.js';
 import { createDevMenu } from './ui/dev/menu.js';
 import { createFpsOverlay } from './ui/dev/fps.js';
+import { syncMotion } from './ui/motion.js';
 import { screenFor } from './ui/screens.js';
+import { startTips } from './ui/tips.js';
 import { showUpdatePrompt } from './ui/updatePrompt.js';
 
 document.title = config.title;
@@ -35,6 +37,7 @@ store.subscribe((state) => {
   }
 });
 const persistence = storage.requestPersistence();
+syncMotion(store);
 
 // Screens and the render loop.
 let activeId = null;
@@ -42,6 +45,7 @@ let active = null;
 const view = createView(document.getElementById('board'), (v) => active?.resize?.(v));
 syncScreen(store.getState());
 store.subscribe(syncScreen);
+startTips(ui, store);
 
 // ?dev=1 turns dev mode on and ?dev=0 turns it off. It sticks, so the
 // installed app (which always opens at start_url) can use it too.

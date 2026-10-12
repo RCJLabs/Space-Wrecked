@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "5dddd36f3210";
+const VERSION = "fa21e1ddacf6";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -21,6 +21,8 @@ const FILES = [
   "data/ships.json",
   "data/sites.json",
   "data/tiles.json",
+  "data/tips.json",
+  "data/traits.json",
   "data/weapons.json",
   "icon.svg",
   "icons/icon-192.png",
@@ -106,6 +108,7 @@ const FILES = [
   "src/sim/settings.js",
   "src/sim/sight.js",
   "src/sim/terrain.js",
+  "src/sim/traits.js",
   "src/ui/battle/screen.js",
   "src/ui/battle/tileText.js",
   "src/ui/battle/wrecks.js",
@@ -117,6 +120,8 @@ const FILES = [
   "src/ui/builder/screen.js",
   "src/ui/builder/shipPanel.js",
   "src/ui/builder/view.js",
+  "src/ui/campaign/captain.js",
+  "src/ui/campaign/captainText.js",
   "src/ui/campaign/construction.js",
   "src/ui/campaign/fight.js",
   "src/ui/campaign/hangar.js",
@@ -129,6 +134,7 @@ const FILES = [
   "src/ui/campaign/shop.js",
   "src/ui/campaign/shopText.js",
   "src/ui/campaign/stub.js",
+  "src/ui/clipboard.js",
   "src/ui/dev/fps.js",
   "src/ui/dev/menu.js",
   "src/ui/dev/sandboxes.js",
@@ -138,9 +144,14 @@ const FILES = [
   "src/ui/fight/view.js",
   "src/ui/gestures.js",
   "src/ui/icons.js",
+  "src/ui/motion.js",
   "src/ui/screens.js",
+  "src/ui/settings.js",
+  "src/ui/settingsText.js",
   "src/ui/ships/screen.js",
   "src/ui/style.css",
+  "src/ui/tipSteps.js",
+  "src/ui/tips.js",
   "src/ui/title.js",
   "src/ui/updatePrompt.js",
 ];

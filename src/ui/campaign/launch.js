@@ -4,8 +4,8 @@
 // door. Skip goes to the end; at the end, Continue goes on to where the
 // campaign is now: the stub that stands in for act 2 (stub.js). The
 // campaign was saved as it launched, so quitting part way reopens there
-// too. With reduced motion nothing moves: the ship stands with its engines
-// lit, and the words are all there.
+// too. With reduced motion (the motion setting, ../motion.js) nothing
+// moves: the ship stands with its engines lit, and the words are all there.
 import { loadContent } from '../../platform/content.js';
 import { traceHull } from '../../render/hull.js';
 import { CLIMB, END, flameGlows, IGNITE, liftOffAt, liftOffCamera, liftOffScene } from '../../render/liftOff.js';
@@ -16,6 +16,7 @@ import { BOARD_VIEW, boardBox, drawSpace } from '../../render/shipView.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { motionReduced } from '../motion.js';
 import { launchText } from './launchText.js';
 
 const MARGIN = 10; // pixels around the ship at rest
@@ -43,7 +44,7 @@ export const launchScreen = {
     el.dataset.shown = 'none';
     root.append(el);
 
-    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const still = motionReduced(game.getState().settings);
     let alive = true;
     let scene = null; // the ship lifting off (liftOff.js)
     let box = null;

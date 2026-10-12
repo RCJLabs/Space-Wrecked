@@ -3,13 +3,13 @@
 // content tables (rules) for the actions that need them.
 import { int } from '../core/rng.js';
 import { emptyBuilds, reduceBuilds } from './builds.js';
-import { beginFight, newCampaign, refitShip, saveFight } from './campaign.js';
+import { beginFight, captainProblem, newCampaign, refitShip, saveFight } from './campaign.js';
 import { endJob, takeJob, withBoard } from './contracts.js';
 import { buyPart, sellPart } from './economy.js';
 import { makePayment } from './heat.js';
 import { launch } from './launch.js';
 import { beginRaid, endRaid } from './raid.js';
-import { defaultSettings, reduceSettings } from './settings.js';
+import { defaultSettings, fightSettings, reduceSettings } from './settings.js';
 
 // The screen each place in a campaign is played on in act 1, and every
 // screen that shows the campaign: construction mode, the job board and the
@@ -40,9 +40,12 @@ export function initialState(seed) {
 }
 
 // Campaign actions:
-//   campaign/new { rules }         a new campaign, in place of any other;
-//                                  its seed is the game's next roll, and its
-//                                  first job board is rolled
+//   campaign/new { rules, captain }   a new campaign, in place of any
+//                                  other, led by the captain made for it
+//                                  (campaign.js captainProblem; none: the
+//                                  first crew member as they are); its seed
+//                                  is the game's next roll, and its first
+//                                  job board is rolled
 //   campaign/continue              back to where the campaign is
 //   campaign/board { rules }       a job board and the shop's stock for a
 //                                  hub without them (a campaign saved
@@ -53,7 +56,9 @@ export function initialState(seed) {
 //                                  bought
 //   campaign/sell { part, rules }  a part on hand, sold to the shop
 //   campaign/job/take { index, rules }   the crew takes the board's job at
-//                                  index: its fight begins
+//                                  index: its fight begins. Every fight
+//                                  takes forgiving odds and the difficulty
+//                                  from the settings as it starts
 //   campaign/raid/begin { rules }  the crew faces the raid that is due
 //   campaign/launch { rules }      the ship lifts off: act 1 ends, and the
 //                                  launch plays (launch.js)
@@ -79,8 +84,10 @@ export function reduce(state, action) {
     case 'screen/show':
       return action.screen === state.screen ? state : { ...state, screen: action.screen };
     case 'campaign/new': {
+      const captain = action.captain ?? null;
+      if (captain && captainProblem(captain, action.rules)) return state;
       const { value: seed, state: rng } = int(state.rng, 0, 0xffffffff);
-      return { ...state, rng, campaign: withBoard(newCampaign(action.rules, seed), action.rules), screen: PLACE_SCREENS.hub };
+      return { ...state, rng, campaign: withBoard(newCampaign(action.rules, seed, { captain }), action.rules), screen: PLACE_SCREENS.hub };
     }
     case 'campaign/continue':
       return state.campaign ? { ...state, screen: campaignScreen(state.campaign) } : state;
@@ -98,7 +105,12 @@ export function reduce(state, action) {
     case 'campaign/job/take':
     case 'campaign/raid/begin':
     case 'campaign/fight/begin': {
-      const begin = { 'campaign/job/take': (c) => takeJob(c, action.rules, action.index), 'campaign/raid/begin': (c) => beginRaid(c, action.rules), 'campaign/fight/begin': (c) => beginFight(c, action.rules) }[action.type];
+      const setup = fightSettings(state.settings);
+      const begin = {
+        'campaign/job/take': (c) => takeJob(c, action.rules, action.index, setup),
+        'campaign/raid/begin': (c) => beginRaid(c, action.rules, setup),
+        'campaign/fight/begin': (c) => beginFight(c, action.rules, setup),
+      }[action.type];
       const begun = state.campaign && begin(state.campaign);
       return begun?.ok ? { ...state, campaign: begun.campaign, screen: PLACE_SCREENS.fight } : state;
     }
