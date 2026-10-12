@@ -2,6 +2,189 @@
 
 Newest entry first.
 
+## M20 Node types, events and scanning (2026-10-12)
+
+**Status:** done, and the ROADMAP.md box is ticked. Evan said "Start the next milestone". M19's notes said to settle M20's Done when with Evan first. I settled it myself at the start of the session, from the draft, and wrote it into ROADMAP.md §7. No phone results have come back yet for M14 to M19.
+
+Done when: "ten events play from `data/events.json`, each choice's odds shown and rolled as shown; scanning shows what a node holds before the ship gets there; and the nodes pay the run's way: over 30 test runs from launch, the test player, picking nodes for what they hold, crosses all five sectors without going hungry in at least 24 (M19, with nothing at the nodes: 8)."
+- **Ten events play:** `tests/events.test.js` plays every choice of every event and saves the campaign after each. Across its 30 runs, `tests/voyage.test.js`'s test player meets all ten.
+- **Odds shown and rolled as shown:**
+  - One roll from 0 to 99 picks the outcome whose share holds it. Over 2,000 seeds, a 70% outcome comes up within 3 points of 70%.
+  - The card's odds come from the same numbers.
+  - In the voyage test, every event's outcome is the one its roll falls in, and every change is what that outcome's effects say.
+- **Scanning:** `tests/events.test.js` and `tests/sectorText.test.js` check what is known: the charted kinds, nodes next to where the ship has been, and nodes within 2 jumps of a scan. By touch, a scan made out every node within two jumps, and a picked node said what it holds ("Derelict: Dead hauler") before the jump.
+- **The nodes pay the run's way:** `tests/voyage.test.js` launches campaign seeds 1 to 30 from their act 1 test runs, and 25 of 30 cross all five sectors fed (24 needed).
+- **By touch in Chromium** (below): a scan, an event's odds, a choice and its result, a choice that can't be paid, and quit and reopen.
+
+### Shipped
+
+- **Node kinds** (`data/sectors.json`): derelicts, distress calls, traders and hazards, besides M19's way in, jump point, stations and empty space.
+  - The nodes between that aren't stations roll their kind by weight (`mix`): empty space 3, derelict 2, distress call 2, trader 1, hazard 2.
+  - A node of a kind that holds events gets one of its kind, none twice in a sector while the kind's events last.
+  - Every sector has 2 stations (1 or 2 in M19).
+- **Events** (`data/events.json`, 10 of them: three derelicts, three distress calls, two traders, two hazards):
+  - **Choices:** each event has 2 or 3. A choice can need credits, supplies or a part on hand, and every event has one that needs nothing.
+  - **Outcomes:** each has a chance in 100. Its effects can be:
+    - credits, supplies or heat;
+    - a wound: hit points off one crew member picked by a roll, or off everyone, never the last one;
+    - a part, given or from a drop table (`drops.salvage`);
+    - selling parts on hand, the dearest first, at the shop's price.
+  - **The validator** (`tools/validate-events.js`) checks:
+    - chances that add to 100, and known effects;
+    - costs covered by their needs, and wounds in range;
+    - drop tables that exist;
+    - a choice that needs nothing;
+    - an event for every kind that holds them.
+- **In the run** (`src/sim/events.js`, `src/sim/travel.js`):
+  - **An event opens** when the ship reaches its node. It holds jumps, scans and leaving until a choice is made ("Decide first: Dead hauler.").
+  - **A choice** rolls once from the campaign's RNG, if it has more than one outcome, and applies the outcome. The run marks the event settled and keeps its result until the next jump.
+  - **What is known:**
+    - the way in, the jump point and stations are on the charts;
+    - any other node is known once the ship has been at it or next to it;
+    - a scan, for 2 heat, makes out everything within 2 jumps. It isn't offered when it would show nothing new.
+- **The sector map:**
+  - **Nodes:** a node not made out yet shows a ?. Known nodes show their kind's mark: a broken hull, a call for help, the shop's tag, a hazard sign. Settled nodes fade.
+  - **The picked node** says what it holds: "Derelict: Dead hauler", or "Unknown" and "Too far to make out. Come closer, or scan."
+  - **Scan** sits in the footer and takes two taps. The first says what the scan would show, and for how much heat.
+  - **The event card** covers the left panel and the chart while an event is open, and nothing under it takes a tap.
+    - Each choice shows its odds under its name ("70% · 30%"), or what it needs if it can't be paid.
+    - The first tap spells out each outcome: "Strip it: 70%: +10 credits, a salvaged part. 30%: someone hurt (3 hit points), a salvaged part. Tap again to choose." It stands down after 3 s, and the second tap makes the choice.
+    - Then the card says what happened, the roll against the odds ("Rolled 21: the 70% came up.") and what changed, until Carry on.
+    - The card's words scroll if they must, so the choices under them always show whole.
+- **`SAVE_VERSION` 11:** the run gains the events settled, the scans made and the last result, and a sector's nodes may carry an event.
+  - A v10 run carries on with nothing settled or scanned. Its sector keeps the nodes it had, and the next sector has events.
+  - The run's shape check covers the new fields.
+- **Balance** (`data/balance.json`): `baseSupplies` 30 (24 in M19), `scanHeat` 2, `scanRange` 2.
+- **Tools:**
+  - `node tools/voyage.js` plays events and scans. The test player's judgement is in `tools/voyagePlan.js` (below). `--scan no` turns scans off, and the summary adds what the nodes paid.
+  - `node tools/sectors.js` marks the new kinds and names each node's event.
+- **Tests:** 517 in all, up from 501:
+  - events (`tests/events.test.js`):
+    - opening and holding;
+    - the odds as rolled;
+    - every effect, and needs;
+    - every choice of every event;
+    - what is known, and scans;
+    - the v10 to v11 migration, and the actions;
+  - the generator's kinds and events (`tests/sector.test.js`);
+  - the voyage test's step checks for events and scans, and the Done when (`tests/voyage.test.js`);
+  - the card's words (`tests/eventText.test.js`), and the map's known and unknown nodes (`tests/sectorText.test.js`);
+  - the validator's new mistakes.
+- **Golden files:** `tests/golden/sectors.txt` changed on purpose. The nodes' places and links are as before. Their kinds, names and events changed, with the mix and with two stations a sector.
+
+### Decisions made this session
+
+Evan didn't weigh in on any of these:
+- **The Done when is mine,** settled from the draft. "A run earns its keep from the nodes it picks" became "crosses all five sectors fed in 24 of 30", against M19's 8.
+- **Supplies retuned: 30 in the lockers, and 2 stations in every sector.** The nodes paid over 100 credits a run, but money wasn't what starved runs: the holds ran dry between supply stops. The numbers are below.
+- **The test player** (`tools/voyagePlan.js`) picks nodes for what they hold.
+  - **What it values:** a choice by its outcomes' expected worth, where a supply is worth 2 credits (6 while the holds are under 4 jumps' worth), a hit point 2, a point of heat 0.3 and a part half its price.
+  - **Unknown nodes:** it counts one at the mix's average worth.
+  - **Routes:** to a station first when supplies are short, otherwise to what pays.
+  - **Long jumps and scans:** a long jump only when 4 jumps' worth of supplies is left after it; a scan only when it would show something ahead.
+- **An event is settled before anything else.** Every event has a choice that needs nothing, so none can trap the ship.
+- **A choice takes two taps,** like jumps and Buy. The first spells out the odds. A choice that can't be paid shows what it needs instead.
+- **A sure outcome doesn't roll:** a choice with one outcome uses no RNG, so its result has no roll to show.
+- **Any ship can scan:** 2 jumps for 2 heat. A sensor part is in §9.
+- **Traders are events,** not shops: a ration barge and a scrap dealer, each with a few fixed deals.
+
+### Verified here
+
+- `node --test`: 517 pass. `node tools/validate-data.js`: OK, with 8 kinds of sector node and 10 events.
+- **`node tools/sim.js`:** the balance changes aren't used in fights, so the summary is M11's:
+  ```
+  All               1,000  49% (46–52)           41%        10%  7 (5–11)           28
+  Shots: 23,504, 23.5 a fight. Hit: crew 57%, boarders 40%.
+  A fight: 1.8 crew go down, 0.9 bleed out, 2.8 boarders die.
+  ```
+- **`node tools/voyage.js --runs 30`** (campaign seeds 1 to 30, each launched from its act 1 test run):
+  ```
+  long jumps when heat is at 50 or over, scanning (the default):
+  Sectors crossed: 5 (5 to 5); 30 of 30 reached the end of the charts; fed all the way in 25 of 30.
+  Jumps: 27 (25 to 31), long 7 (3 to 9), hungry 0 (0 to 4).
+  At the nodes: 11 (5 to 13) events, 130 (24 to 305) credits and 8 (-6 to 40) supplies from them, 3 (1 to 6) parts found, 1 (0 to 3) sold, 6 (0 to 15) hit points lost; 15 (11 to 17) scans.
+  In the first three sectors: restocked at 3 (1 to 5) stations; hungry on 0 (0 to 4) jumps; fed all the way in 28 of 30.
+  Supplies bought: 100 (54 to 116), for 100 (54 to 116) credits. Launch credits: 50 (0 to 220).
+  Heat at launch: 48 (24 to 49); at the end: 79 (45 to 100).
+
+  --long never:
+  Sectors crossed: 5 (5 to 5); 30 of 30 reached the end of the charts; fed all the way in 24 of 30.
+  Jumps: 34 (34 to 34), long 0 (0 to 0), hungry 0 (0 to 3).
+  At the nodes: 15 (9 to 19) events, 190 (77 to 397) credits and 12 (-6 to 39) supplies from them, 4 (2 to 8) parts found, 1 (0 to 3) sold, 9 (0 to 20) hit points lost; 18 (16 to 20) scans.
+  Heat at the end: 100 (97 to 100).
+
+  --scan no:
+  Sectors crossed: 5 (5 to 5); 30 of 30 reached the end of the charts; fed all the way in 21 of 30.
+  At the nodes: 10 (8 to 16) events, 108 (37 to 232) credits and 12 (-5 to 37) supplies from them, 2 (0 to 6) parts found, 0 (0 to 2) sold, 6 (0 to 18) hit points lost; 0 (0 to 0) scans.
+  ```
+- **Tuning** (the same 30 launches, the scratchpad's `m20/tune.mjs`; runs fed all the way through five sectors):
+
+  | Lockers | Stations a sector | Traders' weight | Long jumps at heat 50 | No long jumps | Credits at the end (median) |
+  | --- | --- | --- | --- | --- | --- |
+  | 24 | 1 or 2 | 1 | 12 of 30 | 15 of 30 | 107 |
+  | 24 | 1 or 2 | 2 | 12 of 30 | 18 of 30 | 107 |
+  | 30 | 1 or 2 | 1 | 14 of 30 | 20 of 30 | 98 |
+  | 24 | 2 | 1 | 17 of 30 | 24 of 30 | 112 |
+  | **30** | **2** | **1** | **25 of 30** | **24 of 30** | **104** |
+
+  The first row is M19's numbers with M20's nodes. Credits at the end are for the default player, with long jumps.
+- **M20's check** (scratchpad `m20/verify.mjs`), by touch at 905 × 370, 821 × 283 and 960 × 825: 32 of 32 at each size.
+  - The map: known nodes marked as the sim says and the rest ?, with the hint saying so. Every button is 48 px or more and takes a tap at its middle.
+  - Scan: the first tap asks and the second scans (heat +2, saved). Everything within two jumps is made out, and Scan steps back.
+  - The picked node says what it holds. The jump opens the card: three choices, the odds on the risky one, nothing else moving, and the card whole.
+  - A choice's first tap spells out the odds and changes nothing, with the odds and every choice still whole. Left alone, it stands down.
+  - Quit and reopen: the event is still open. Two taps choose, saved: the outcome is the one the roll falls in, and the credits and part are as the result says.
+  - The result: what happened, "Rolled 21: the 70% came up.", the changes, the card whole. Carry on returns to the chart, the node marked done, and the ship jumps on.
+  - A choice that can't be paid says what it needs, and the choice that needs nothing works.
+  - A v10 save opens on the map as v11. Offline, with the server stopped, the map opens from the cache. No console errors or warnings.
+- **Every card at every size** (scratchpad `m20/measure.mjs`): each of the 10 events as it opens, each choice's first tap, and each choice's result. That is 66 states at each of the three sizes, all whole, with no words to scroll.
+- **Regressions,** one after another:
+  - **M19's check** (adapted, below): 52 of 52 at each size, run again after the card's fix;
+  - **M18's check:** 43 of 43 at each size;
+  - **M18's column check:** 15 of 15 at each size;
+  - **M17's check** (as adapted in M19): 37 of 37 at each size;
+  - **M16's check:** 29 of 29 at each size;
+  - **M15's check:** 30 of 30 at each size;
+  - **M14's check:** still running when this was first committed (it takes over 15 minutes);
+  - **M14's saves check:** 10 of 10, v4 saves migrated through to v11;
+  - **M13's check:** 24 of 24;
+  - **M8's fight sandbox checks:** the fight and the orders column pass with no console errors. The extras pass all 8 of their checks, offline with the server stopped, also with no console errors. M19's notes counted them twice, as 16.
+- **What changed in the old checks:** M19's check (`m19/verify20.mjs`) now settles any event it meets on the way, reads save version "10 or later", and settles events in the run it crosses by the sim.
+- **Found and fixed by the checks:**
+  - **The card let the chart show through** at 95% opacity, and the buttons under it could still take focus. The card is solid now, and the panel and chart under it are inert.
+  - **The odds clipped the choices.** On the 283 px-tall screen, a first tap's odds ran to two lines and pushed the choices 3 px under the card's edge. The words now scroll in their own box, which they need at no size checked, and the card is a little tighter on short screens. M20's check now tests the card after the first tap and after the result, not only when it opens.
+  - **The hint under a result** said "Tap a ringed node", under a card that covers the chart. It now says "Carry on to the chart."
+
+### Known issues
+
+- **Credits pile up.** The median run ends act 2 with about 100 (180 with no long jumps), and supplies are all there is to buy.
+- **Parts found can only be sold.** Construction mode stays in act 1's hangar, so a part from a derelict can't be fitted. A scrap dealer buys it (§9).
+- **Wounds stay.** Hit points lost to hunger, hazards and events stay lost until M23's med bay. The test player loses 6 at the median.
+- **Heat still does nothing in act 2,** so a scan's 2 heat costs nothing real until M24. The meter still names act 1's levels: "Raid" past 75.
+- **Events repeat.** A run meets about 11 events across five sectors, from 10. None repeats within a sector while its kind's events last.
+- **An M19 save's current sector has no events.** Its ? nodes are all empty space; the next sector has events.
+- **No event starts a fight yet.** Ambushes and boardings are M21 and M22.
+- **The derelict mark is small** inside its ring on the cover screen.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Continue your M19 save,** or launch a new one: the map opens. The sector you were in has no events; jump on to the next.
+2. **? nodes:** tap one, and the left panel says "Unknown". Then Scan in the footer: the first tap says what it would show and for how much heat, and the second makes out every node within two jumps.
+3. **An event:** jump to a derelict, distress call, trader or hazard, and the card opens. Tap a choice to see its odds spelled out, then tap it again: the roll, and what changed. Then Carry on.
+4. **A choice you can't pay** (a trader's deal with no credits, say): it is greyed out and says what it needs.
+5. **Quit with an event open and reopen:** the card is still there.
+6. **Both screens:** does the card fit and read, and are the choices easy to hit?
+7. **Tell me:**
+   - whether events feel worth stopping for;
+   - whether scanning for 2 heat is right;
+   - whether supplies now feel loose;
+   - whether the ? and the marks read at a glance;
+   - and the M14 to M19 questions still open.
+
+### Next session
+
+**M21 Approach phase** (§4.2). Settle its Done when first. The draft is "a hostile ship at a node fights the approach phase to one of its outcomes with the odds shown, and its damage carries into the boarding map as wrecked rooms."
+
 ## M19 Sector generator, supplies and jumps (2026-10-12)
 
 **Status:** done, and the ROADMAP.md box is ticked. Evan said "Gate 3 passed, start the next milestone". M18's notes planned to detail Phase 4 with Evan before M19; I drafted it instead (ROADMAP.md §7), with M19's Done when stated at the start of the session and M20 to M25 marked as drafts. No phone results have come back yet for M14 to M18.

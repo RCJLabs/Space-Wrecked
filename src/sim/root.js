@@ -6,11 +6,12 @@ import { emptyBuilds, reduceBuilds } from './builds.js';
 import { beginFight, captainProblem, newCampaign, refitShip, saveFight } from './campaign.js';
 import { endJob, takeJob, withBoard } from './contracts.js';
 import { buyPart, sellPart } from './economy.js';
+import { chooseEvent } from './events.js';
 import { makePayment } from './heat.js';
 import { launch } from './launch.js';
 import { beginRaid, endRaid } from './raid.js';
 import { defaultSettings, fightSettings, reduceSettings } from './settings.js';
-import { beginRun, buySupplies, jump, leaveSector } from './travel.js';
+import { beginRun, buySupplies, jump, leaveSector, scan } from './travel.js';
 
 // The screen each place in a campaign is played on in act 1, and every
 // screen that shows the campaign: construction mode, the job board and the
@@ -69,6 +70,9 @@ export function initialState(seed) {
 //   campaign/supplies { count, rules }   supplies bought at a station
 //   campaign/sector/leave { rules }   on from the jump point into the next
 //                                  sector
+//   campaign/event/choose { choice, rules }   a choice made at the event
+//                                  open where the ship is (events.js)
+//   campaign/scan { rules }        a scan from where the ship is
 //   campaign/fight/begin { rules } the crew fights boarders at home (M15's
 //                                  raids will)
 //   campaign/fight/save { battle, log }   the fight after an order
@@ -135,12 +139,16 @@ export function reduce(state, action) {
     case 'campaign/run/begin':
     case 'campaign/jump':
     case 'campaign/supplies':
-    case 'campaign/sector/leave': {
+    case 'campaign/sector/leave':
+    case 'campaign/event/choose':
+    case 'campaign/scan': {
       const move = {
         'campaign/run/begin': (c) => beginRun(c, action.rules),
         'campaign/jump': (c) => jump(c, action.rules, action.to),
         'campaign/supplies': (c) => buySupplies(c, action.rules, action.count),
         'campaign/sector/leave': (c) => leaveSector(c, action.rules),
+        'campaign/event/choose': (c) => chooseEvent(c, action.rules, action.choice),
+        'campaign/scan': (c) => scan(c, action.rules),
       }[action.type];
       const done = state.campaign && move(state.campaign);
       return done?.ok ? { ...state, campaign: done.campaign } : state;

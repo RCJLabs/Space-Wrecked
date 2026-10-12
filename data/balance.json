@@ -27,11 +27,13 @@
   "easyEnemyHp": -1,
   "hardEnemyAim": 5,
   "hardEnemyHp": 1,
-  "baseSupplies": 24,
+  "baseSupplies": 30,
   "jumpSupplies": 1,
   "longJumpFactor": 3,
   "supplyPrice": 1,
   "hungerHp": 2,
   "jumpHeat": 3,
-  "longJumpHeat": -10
+  "longJumpHeat": -10,
+  "scanHeat": 2,
+  "scanRange": 2
 }

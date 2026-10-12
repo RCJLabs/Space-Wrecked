@@ -10,6 +10,7 @@ import { MAX_STOCK, PAY_STEP } from '../src/sim/economy.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { HAZARDS, siteMarks, siteProblems } from '../src/sim/gen/site.js';
 import { isId, isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
+import { checkEvents } from './validate-events.js';
 import { checkSectors } from './validate-sectors.js';
 
 const CAMPAIGN_KEYS = ['acts'];
@@ -66,7 +67,9 @@ const MAX_CREDITS = 9995;
 // checkStartShips.
 export function checkCampaignFiles(data, ids, fail) {
   checkActs(data.campaign, fail);
-  checkSectors(data.sectors, data.campaign?.acts, fail);
+  const holding = checkSectors(data.sectors, data.campaign?.acts, fail);
+  const covered = checkEvents(data.events, holding, ids.moduleIds, fail);
+  for (const kind of holding) if (!covered.has(kind)) fail(`sectors.json node ${kind}`, 'holds events, but events.json has none of its kind');
   const maps = checkSiteMaps(data.sites, fail);
   const districts = checkDistricts(data.districts, maps, ids, fail);
   const scripts = checkBackgrounds(data.backgrounds, districts, ids, fail);

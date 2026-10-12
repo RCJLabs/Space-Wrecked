@@ -1,0 +1,230 @@
+{
+  "drops": {
+    "salvage": { "corridor": 3, "armory": 2, "cargo": 2, "medbay": 1, "shield": 1, "weapon": 1, "engine": 1 }
+  },
+  "events": [
+    {
+      "id": "dead-hauler",
+      "kind": "derelict",
+      "title": "Dead hauler",
+      "text": "A bulk hauler drifts with its running lights still on. Nobody answers. The cargo doors are open, which is either good news or very bad news.",
+      "choices": [
+        {
+          "id": "strip",
+          "label": "Strip it",
+          "outcomes": [
+            { "chance": 70, "text": "The crew comes back with a crate of parts and a few things nobody asks about.", "effects": { "drop": "salvage", "credits": 10 } },
+            { "chance": 30, "text": "A pressure door gives on the way out. Someone will feel it tomorrow, but the crate came too.", "effects": { "drop": "salvage", "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "loose",
+          "label": "Grab what's loose",
+          "outcomes": [{ "chance": 100, "text": "Loose change and canned food from the galley. Nobody gets hurt.", "effects": { "credits": 6, "supplies": 4 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Some things are best left drifting.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "gutted-tug",
+      "kind": "derelict",
+      "title": "Gutted tug",
+      "text": "Someone got here first. The tug's been picked over by people in a hurry, and people in a hurry miss things.",
+      "choices": [
+        {
+          "id": "search",
+          "label": "Go through it properly",
+          "outcomes": [
+            { "chance": 50, "text": "Under a deck plate: a part, still in its wrapping.", "effects": { "drop": "salvage" } },
+            { "chance": 50, "text": "Nothing but cut wiring and a strongly worded note. Some loose change, at least.", "effects": { "credits": 5 } }
+          ]
+        },
+        {
+          "id": "galley",
+          "label": "Raid the galley",
+          "outcomes": [{ "chance": 100, "text": "Half a pallet of ration packs, only slightly past their date.", "effects": { "supplies": 6 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Whoever picked it over can have the rest.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "company-wreck",
+      "kind": "derelict",
+      "title": "Company wreck",
+      "text": "A Con-Reg survey boat, holed and abandoned. Its transponder is still pinging head office, faithful to the last.",
+      "choices": [
+        {
+          "id": "fast",
+          "label": "Strip it fast",
+          "outcomes": [{ "chance": 100, "text": "Good parts, company issue. The transponder logs your visit, naturally.", "effects": { "drop": "salvage", "credits": 15, "heat": 8 } }]
+        },
+        {
+          "id": "pinger",
+          "label": "Pull the pinger first",
+          "outcomes": [
+            { "chance": 60, "text": "Pinger out, then the shopping. A clean job.", "effects": { "drop": "salvage", "credits": 15 } },
+            { "chance": 40, "text": "The pinger was wired to a charge. Company humour. You still get the till.", "effects": { "credits": 15, "wound": { "hp": 3 } } }
+          ]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Not worth the paperwork.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "stalled-miner",
+      "kind": "distress",
+      "title": "Stalled miner",
+      "text": "A mining skiff on the emergency band: drive dead, two aboard, rations low. They can pay, they say. Miners always say that.",
+      "choices": [
+        {
+          "id": "tow",
+          "label": "Tow them in",
+          "needs": { "supplies": 3 },
+          "outcomes": [
+            { "chance": 80, "text": "They pay, and in cash. Somewhere a pig is flying.", "effects": { "supplies": -3, "credits": 25 } },
+            { "chance": 20, "text": "They pay in IOUs and a bag of ore samples. Worth about what you'd think.", "effects": { "supplies": -3, "credits": 5 } }
+          ]
+        },
+        {
+          "id": "crate",
+          "label": "Toss them a crate",
+          "needs": { "supplies": 2 },
+          "outcomes": [{ "chance": 100, "text": "They swear they never saw you. Word gets around the right way.", "effects": { "supplies": -2, "heat": -4 } }]
+        },
+        { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "The band goes quiet behind you.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "bad-beacon",
+      "kind": "distress",
+      "title": "Odd beacon",
+      "text": "A distress beacon on a band nobody uses any more. It could be someone in trouble. It could be someone making trouble.",
+      "choices": [
+        {
+          "id": "answer",
+          "label": "Answer it",
+          "outcomes": [
+            { "chance": 60, "text": "A lone prospector, grateful and flush. She tips well and shares her rations.", "effects": { "credits": 25, "supplies": 4 } },
+            { "chance": 40, "text": "Claim jumpers. You get away, but not clean, and they'll talk.", "effects": { "wound": { "hp": 3 }, "heat": 5 } }
+          ]
+        },
+        { "id": "pass", "label": "Pass it by", "outcomes": [{ "chance": 100, "text": "Not your problem. Probably.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "lost-courier",
+      "kind": "distress",
+      "title": "Lost courier",
+      "text": "A courier pod with a cracked nav core, asking for a fix and a heading. The sender paid for delivery, and you look like delivery.",
+      "choices": [
+        {
+          "id": "fix",
+          "label": "Fix it up",
+          "outcomes": [{ "chance": 100, "text": "Twenty minutes with a wrench and a heading. The fee clears. The pod's log mentions you.", "effects": { "credits": 20, "heat": 2 } }]
+        },
+        {
+          "id": "crack",
+          "label": "Crack it open",
+          "outcomes": [
+            { "chance": 60, "text": "Inside: bearer bonds. Someone will miss those.", "effects": { "credits": 40, "heat": 10 } },
+            { "chance": 40, "text": "Inside: somebody's mail. Now the pod is screaming about it.", "effects": { "heat": 10 } }
+          ]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "It'll find its own way. Or it won't.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "ration-barge",
+      "kind": "trader",
+      "title": "Ration barge",
+      "text": "A family barge selling food out of the hold. The prices are fair. The cat is not for sale.",
+      "choices": [
+        {
+          "id": "six",
+          "label": "Buy 6 supplies",
+          "needs": { "credits": 4 },
+          "outcomes": [{ "chance": 100, "text": "Six crates of the good stuff. Well, the edible stuff.", "effects": { "credits": -4, "supplies": 6 } }]
+        },
+        {
+          "id": "twelve",
+          "label": "Buy 12 supplies",
+          "needs": { "credits": 8 },
+          "outcomes": [{ "chance": 100, "text": "Twelve crates, and a jar of pickles thrown in.", "effects": { "credits": -8, "supplies": 12 } }]
+        },
+        { "id": "look", "label": "Just looking", "outcomes": [{ "chance": 100, "text": "The cat watches you go.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "scrap-dealer",
+      "kind": "trader",
+      "title": "Scrap dealer",
+      "text": "A dealer with a hold full of junk and an eye for yours. He buys parts, no questions asked, and sells rations to anyone with cash.",
+      "choices": [
+        {
+          "id": "sell",
+          "label": "Sell a part",
+          "needs": { "parts": 1 },
+          "outcomes": [{ "chance": 100, "text": "He looks it over, sniffs, and pays. Fair enough.", "effects": { "sell": 1 } }]
+        },
+        {
+          "id": "buy",
+          "label": "Buy 6 supplies",
+          "needs": { "credits": 5 },
+          "outcomes": [{ "chance": 100, "text": "Six crates. He counts the change twice.", "effects": { "credits": -5, "supplies": 6 } }]
+        },
+        { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "He's already looking at the next ship.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "ion-storm",
+      "kind": "hazard",
+      "title": "Ion storm",
+      "text": "The instruments go white. An ion storm is rolling through, and the ship is in the middle of it.",
+      "choices": [
+        {
+          "id": "ride",
+          "label": "Ride it out",
+          "outcomes": [
+            { "chance": 60, "text": "Lights flicker, coffee spills, nothing breaks.", "effects": {} },
+            { "chance": 40, "text": "A panel blows in the corridor. Everyone has a scorch mark to show for it.", "effects": { "wound": { "hp": 2, "all": true } } }
+          ]
+        },
+        {
+          "id": "burn",
+          "label": "Burn hard out of it",
+          "needs": { "supplies": 3 },
+          "outcomes": [{ "chance": 100, "text": "Burning hard eats into the stores, but nobody gets cooked.", "effects": { "supplies": -3 } }]
+        }
+      ]
+    },
+    {
+      "id": "loose-rock",
+      "kind": "hazard",
+      "title": "Loose rock",
+      "text": "A field of drifting rock, thick enough to scrape paint. Thick enough to scrape worse.",
+      "choices": [
+        {
+          "id": "thread",
+          "label": "Thread through",
+          "outcomes": [
+            { "chance": 70, "text": "Not a scratch. The pilot will be insufferable.", "effects": {} },
+            { "chance": 30, "text": "A rock comes through the forward plating. Someone takes it on the shoulder.", "effects": { "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "around",
+          "label": "Go the long way",
+          "needs": { "supplies": 3 },
+          "outcomes": [{ "chance": 100, "text": "Slow and dull, and nobody gets hurt.", "effects": { "supplies": -3 } }]
+        },
+        {
+          "id": "hide",
+          "label": "Run dark in the rocks",
+          "outcomes": [
+            { "chance": 50, "text": "The rocks hide you from anyone watching.", "effects": { "heat": -6 } },
+            { "chance": 50, "text": "The rocks hide you, and one of them hits you.", "effects": { "heat": -6, "wound": { "hp": 3 } } }
+          ]
+        }
+      ]
+    }
+  ]
+}

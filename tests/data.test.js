@@ -25,6 +25,7 @@ const start = (d) => d.backgrounds.backgrounds[0].start;
 const district = (d) => d.districts.districts[0];
 const twist = (d, id) => d.contracts.twists.find((t) => t.id === id);
 const job = (d, id) => d.contracts.jobs.find((j) => j.id === id);
+const event = (d, id) => d.events.events.find((e) => e.id === id);
 const small = (d) => Object.assign(d.frames.frames[0], { width: 4, height: 4 });
 const cases = [
   ['duplicate id', (d) => d.modules.modules.push(structuredClone(d.modules.modules[0])), /duplicate id "bridge"/],
@@ -98,7 +99,18 @@ const cases = [
   ['misspelled trait field', (d) => (d.traits.traits[0].effect = {}), /traits\.json steady: unknown field "effect"/],
   ['sector with no jump point', (d) => (d.sectors.nodes = d.sectors.nodes.filter((n) => n.id !== 'exit')), /the "exit" node kind is missing/],
   ['more stations than columns between', (d) => (d.sectors.counts.station = [1, 9]), /counts take up to 9 columns, but only 5 lie between/],
-  ['too few places for a full sector', (d) => (d.sectors.names.places = d.sectors.names.places.slice(0, 4)), /filler: needs 15 names in its list, has 4/],
+  ['too few places for a full sector', (d) => (d.sectors.names.places = d.sectors.names.places.slice(0, 4)), /mix\.empty: needs 15 names in its list, has 4/],
+  ['a mix kind that is not a node kind', (d) => (d.sectors.mix.wreck = 2), /mix\.wreck: must be a node kind other than start, exit and the counted kinds/],
+  ['a kind holding events with none of its kind', (d) => (d.events.events = d.events.events.filter((e) => e.kind !== 'derelict')), /node derelict: holds events, but events\.json has none of its kind/],
+  ['an event at a kind that holds none', (d) => (event(d, 'ion-storm').kind = 'station'), /event ion-storm: kind must be a node kind that holds events/],
+  ['outcome chances that miss 100', (d) => (event(d, 'ion-storm').choices[0].outcomes[0].chance = 50), /choice ride: outcome chances must add up to 100, not 90/],
+  ['an effect the sim does not know', (d) => (event(d, 'dead-hauler').choices[1].outcomes[0].effects.fuel = 3), /unknown field "fuel"/],
+  ['a drop table that is not there', (d) => (event(d, 'gutted-tug').choices[0].outcomes[0].effects.drop = 'loot'), /drop "loot" is not a drop table in drops/],
+  ['an outcome taking more than its choice needs', (d) => (event(d, 'stalled-miner').choices[0].needs.supplies = 1), /takes 3 supplies, so the choice must need at least that many/],
+  ['a sale without a part needed', (d) => delete event(d, 'scrap-dealer').choices[0].needs, /sells 1, so the choice must need at least that many parts/],
+  ['an event that can hold the ship forever', (d) => (event(d, 'ion-storm').choices[0].needs = { supplies: 1 }), /event ion-storm: needs a choice that needs nothing/],
+  ['a wound of nothing', (d) => (event(d, 'loose-rock').choices[0].outcomes[1].effects.wound.hp = 0), /wound must be \{ hp: 1 to 20/],
+  ['a scan that reaches nothing', (d) => (d.balance.scanRange = 0), /scanRange must be a whole number from 1 to 4/],
   ['a place named twice', (d) => d.sectors.names.places.push('Dust Bank'), /names\.places: has a name twice/],
   ['fewer sector names than a run has sectors', (d) => (d.sectors.names.sectors = ['The Shoals']), /needs 5 names for a run of 5 sectors, has 1/],
   ['node kind naming a list that is not there', (d) => (d.sectors.nodes.find((n) => n.id === 'station').names = 'pubs'), /names "pubs" is not a list in names/],
@@ -196,5 +208,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 8 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 4 kinds of sector node\)/);
+  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 8 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 8 kinds of sector node, 10 events\)/);
 });

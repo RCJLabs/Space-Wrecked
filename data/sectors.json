@@ -2,13 +2,17 @@
   "columns": 7,
   "rows": [2, 3],
   "extraLinkChance": 35,
-  "counts": { "station": [1, 2] },
-  "filler": "empty",
+  "counts": { "station": [2, 2] },
+  "mix": { "empty": 3, "derelict": 2, "distress": 2, "trader": 1, "hazard": 2 },
   "nodes": [
     { "id": "start", "name": "Way in", "text": "Where the ship came into the sector." },
     { "id": "exit", "name": "Jump point", "text": "The way on to the next sector. Jump from here and this one is behind you." },
     { "id": "station", "name": "Station", "names": "stations", "text": "A tired station selling supplies by the crate. Cash only, and the coffee is extra." },
-    { "id": "empty", "name": "Empty space", "names": "places", "text": "Rock, dust and nobody. Nothing to stop for." }
+    { "id": "empty", "name": "Empty space", "names": "places", "text": "Rock, dust and nobody. Nothing to stop for." },
+    { "id": "derelict", "name": "Derelict", "names": "places", "events": true, "text": "Something dead and drifting, with whatever it carried still aboard." },
+    { "id": "distress", "name": "Distress call", "names": "places", "events": true, "text": "Someone on the emergency band, asking for help. Or saying they are." },
+    { "id": "trader", "name": "Trader", "names": "places", "events": true, "text": "A ship that sells, buys and asks no questions." },
+    { "id": "hazard", "name": "Hazard", "names": "places", "events": true, "text": "Weather, rock or worse. Getting through costs something." }
   ],
   "names": {
     "sectors": [

@@ -1,17 +1,21 @@
 // Text for the sector map (sector.js): where the ship is on the run
-// (src/sim/travel.js), what a jump to a node would take, and what a
-// station sells. rules are the content tables (src/sim/defs.js).
+// (src/sim/travel.js), what the nodes hold as far as it is known, what a
+// jump to a node would take, what a station sells and what a scan would
+// show. The event card's words are eventText.js's. rules are the content
+// tables (src/sim/defs.js).
 import { actOf } from '../../sim/campaign.js';
 import { withHeat } from '../../sim/heat.js';
-import { jumpPlan, jumpSupplies, leavePlan, linked, reach, supplyCapacity, supplyOffer } from '../../sim/travel.js';
+import { jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, supplyCapacity, supplyOffer } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
 
 // What the sector map shows, for a campaign on the run:
 //   act, where   "Act 2 · The run", "Sector 1 of 5 · Breaker's Yard"
 //   heat         the hangar's meter (hubText.js heatText)
 //   nodes        [{ id, col, row, rows, x, y, type, name, here, seen,
-//                links }]: rows is how many nodes share its column, links
-//                how far a jump from here is: 1, 2 (a long jump) or 0
+//                links, known, done }]: rows is how many nodes share its
+//                column, links how far a jump from here is: 1, 2 (a long
+//                jump) or 0; known whether what it holds is known (its type
+//                is 'unknown' until it is), done whether its event is settled
 //   links        [{ a, b, near }]: near when it joins the node the ship is at
 //   here         the node the ship is at, as nodeText says it
 //   crew         as the hangar's
@@ -20,11 +24,15 @@ import { actTitle, crewText, heatText } from './hubText.js';
 //                why, buys: [{ count, label, ask, text }] }
 //   leave        null away from the jump point; there { ok, last, label,
 //                ask, title, lines, tone }, last at the act's last
+//   scan         what a scan would show, or null when it would show nothing:
+//                { label, ask, text }
+//   deciding     true while an event is open where the ship is
 //   hint         { tone, text }
 export function sectorText(campaign, rules) {
-  const { sector, at, seen } = campaign.run;
+  const { sector, at, seen, done } = campaign.run;
   const act = actOf(campaign, rules);
   const far = reach(sector, at);
+  const known = knownNodes(campaign.run, rules);
   const columns = new Map();
   for (const node of sector.nodes) columns.set(node.col, (columns.get(node.col) ?? 0) + 1);
   const each = jumpSupplies(campaign, rules);
@@ -41,14 +49,16 @@ export function sectorText(campaign, rules) {
       rows: columns.get(node.col),
       x: node.x,
       y: node.y,
-      type: node.type,
+      type: known.has(node.id) ? node.type : 'unknown',
       name: node.name,
       here: node.id === at,
       seen: seen.includes(node.id),
       links: far.get(node.id) ?? 0,
+      known: known.has(node.id),
+      done: done.includes(node.id),
     })),
     links: sector.links.map(([a, b]) => ({ a, b, near: a === at || b === at })),
-    here: nodeText(sector.nodes[at], rules),
+    here: nodeText(sector.nodes[at], rules, { done: done.includes(at) }),
     crew: crewText(campaign, rules),
     hold: [
       ['Supplies', `${campaign.supplies} of ${supplyCapacity(campaign.ship, rules)}`],
@@ -56,16 +66,35 @@ export function sectorText(campaign, rules) {
     ],
     offer: offer.ok ? offerText(campaign, rules, offer) : null,
     leave,
-    hint: sectorHint(campaign, rules, { each, offer, leave }),
+    scan: scanText(campaign, rules),
+    deciding: Boolean(openEvent(campaign, rules)),
+    hint: sectorHint(campaign, rules, { each, offer, leave, known }),
   };
 }
 
-// A node: { name, kind (its kind's name, unless that is its name), text
-// (its kind's words) }.
-export function nodeText(node, rules) {
+// A node: { name, kind, text }. kind is its kind's name, unless that is its
+// name, with its event's title until the event is settled ("Derelict: Dead
+// hauler"); text is its kind's words. Unknown, it says so.
+export function nodeText(node, rules, { known = true, done = false } = {}) {
+  if (!known) return { name: node.name, kind: 'Unknown', text: 'Too far to make out. Come closer, or scan.' };
   const kind = rules.nodeTypes.get(node.type);
   const name = kind?.name ?? node.type;
-  return { name: node.name, kind: name === node.name ? '' : name, text: kind?.text ?? '' };
+  const event = node.event && !done ? rules.events.get(node.event) : null;
+  const what = name === node.name ? '' : name;
+  return { name: node.name, kind: event ? `${what}: ${event.title}` : done && node.event ? `${what}, been and done` : what, text: kind?.text ?? '' };
+}
+
+// What a scan would show from here: { label, ask, text }, or null.
+function scanText(campaign, rules) {
+  const plan = scanPlan(campaign, rules);
+  if (!plan.ok) return null;
+  const { scanRange } = rules.balance;
+  const count = plan.reveals.length;
+  return {
+    label: 'Scan',
+    ask: 'Scan?',
+    text: `A scan shows what ${count === 1 ? 'one node holds' : `${count} nodes hold`} within ${scanRange} jumps, for ${plan.heat} heat. Tap again to scan.`,
+  };
 }
 
 // What a jump to node `id` would take, for the panel and Jump: { ok,
@@ -75,7 +104,7 @@ export function nodeText(node, rules) {
 export function jumpText(campaign, rules, id) {
   const { sector, at } = campaign.run;
   const target = sector.nodes[id];
-  const node = nodeText(target, rules);
+  const node = nodeText(target, rules, { known: knownNodes(campaign.run, rules).has(id), done: campaign.run.done.includes(id) });
   const plan = jumpPlan(campaign, rules, id);
   if (!plan.ok) return { ok: false, long: false, label: 'Jump', title: target.name, node, lines: [plan.error], tone: 'info', way: [] };
   const long = plan.kind === 'long';
@@ -127,10 +156,14 @@ function leaveText(campaign, rules) {
 }
 
 // What to do next on the map, the most pressing first.
-function sectorHint(campaign, rules, { each, offer, leave }) {
+function sectorHint(campaign, rules, { each, offer, leave, known }) {
+  const open = openEvent(campaign, rules);
+  if (open) return { tone: 'warn', text: `Decide first: ${open.event.title}.` };
   if (leave?.last) return { tone: 'info', text: 'The charts end here. The rest of the run comes in later updates.' };
   if (offer.ok && offer.room && offer.most) return { tone: 'good', text: `Supplies sell here. A jump eats ${each}.` };
   if (leave) return { tone: 'good', text: `Tap Jump on for sector ${campaign.run.sector.index + 1}.` };
-  if (campaign.supplies < each) return { tone: 'bad', text: 'Short of supplies: the next jump goes hungry. Stations sell them.' };
+  if (campaign.supplies < each) return { tone: 'bad', text: 'Short of supplies: the next jump goes hungry. Stations and traders sell them.' };
+  const { sector, at } = campaign.run;
+  if ([...reach(sector, at).keys()].some((id) => !known.has(id))) return { tone: 'info', text: 'A ? is a node not made out yet: come closer, or Scan.' };
   return { tone: 'info', text: 'Tap a ringed node to plan a jump; dashed is a long jump.' };
 }

@@ -64,6 +64,8 @@ const BALANCE = {
   hungerHp: [0, 20],
   jumpHeat: [0, 50],
   longJumpHeat: [-100, 50],
+  scanHeat: [0, 50],
+  scanRange: [1, 4],
 };
 const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', 'clip'];
 const RANGE_BANDS = ['close', 'mid', 'long'];
@@ -489,6 +491,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       `${count(data.encounters.encounters.length, 'encounter')}, ${count(data.ships.ships.length, 'ship preset')}, ` +
       `${count(data.campaign.acts.length, 'act')}, ${count(data.backgrounds.backgrounds.length, 'background')}, ` +
       `${count(data.districts.districts.length, 'district')}, ${count(data.sites.maps.length, 'site map')}, ` +
-      `${count(data.contracts.jobs.length, 'job template')}, ${count(data.sectors.nodes.length, 'kind')} of sector node)`,
+      `${count(data.contracts.jobs.length, 'job template')}, ${count(data.sectors.nodes.length, 'kind')} of sector node, ${count(data.events.events.length, 'event')})`,
   );
 }

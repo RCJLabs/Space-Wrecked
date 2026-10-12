@@ -6,11 +6,16 @@
 // column, and now and then one link more; no two links cross, so every
 // node can be reached and the map reads at a glance. A set number of the
 // nodes between are of a kind the data counts (stations), each in a column
-// of its own; the rest are the filler (empty space). Nodes are named from
-// their kind's list, none twice in a sector, and the sector from its list,
-// past the names to avoid (the sectors already crossed). Pure and seeded:
-// the same seed and index always give the same sector.
+// of its own; every other node between rolls its kind from the data's mix,
+// by weight (empty space, derelicts, distress calls, traders, hazards). A
+// node of a kind that holds events is given one of its kind
+// (data/events.json), none twice in a sector while the kind's events last.
+// Nodes are named from their kind's list, none twice in a sector, and the
+// sector from its list, past the names to avoid (the sectors already
+// crossed). Pure and seeded: the same seed and index always give the same
+// sector.
 import { int, seedFrom, shuffle } from '../../core/rng.js';
+import { pickWeighted } from '../drops.js';
 
 // Where nodes sit on the map, each from 0 to 1: this far from its edges.
 const MARGIN = 0.08;
@@ -20,8 +25,8 @@ const JITTER = { y: 0.18, x: 0.2 };
 
 // rules: indexDefs (sectors, nodeTypes); seed: a number or string; index:
 // the sector's place in the run, 1 up. Returns { index, name, nodes, links,
-// start, exit }: nodes [{ id, col, row, x, y, type, name }] by id, 0 up,
-// column by column and top down; links [[a, b]] with a < b.
+// start, exit }: nodes [{ id, col, row, x, y, type, name, event? }] by id,
+// 0 up, column by column and top down; links [[a, b]] with a < b.
 export function generateSector(rules, seed, index, { avoid = [] } = {}) {
   const spec = rules.sectors;
   let rng = seedFrom(seed);
@@ -55,7 +60,7 @@ export function generateSector(rules, seed, index, { avoid = [] } = {}) {
         row,
         x: place(col * across + dx),
         y: place((row + 0.5) * down + dy),
-        type: col === 0 ? 'start' : col === last ? 'exit' : spec.filler,
+        type: col === 0 ? 'start' : col === last ? 'exit' : null,
         name: '',
       });
     }
@@ -87,6 +92,23 @@ export function generateSector(rules, seed, index, { avoid = [] } = {}) {
       const ids = free.shift();
       nodes[ids[roll(0, ids.length - 1)]].type = type;
     }
+  }
+
+  // Every other node between: a kind from the mix.
+  for (const node of nodes) {
+    if (node.type !== null) continue;
+    const kind = pickWeighted(rng, spec.mix);
+    rng = kind.state;
+    node.type = kind.value;
+  }
+
+  // Events, for the kinds that hold them.
+  const pools = new Map();
+  for (const node of nodes) {
+    if (!rules.nodeTypes.get(node.type)?.events) continue;
+    if (!pools.get(node.type)?.length) pools.set(node.type, mixed([...rules.events.values()].filter((event) => event.kind === node.type).map((event) => event.id)));
+    const event = pools.get(node.type).shift();
+    if (event) node.event = event;
   }
 
   // Names: a kind with a list draws from it, none twice; one without is

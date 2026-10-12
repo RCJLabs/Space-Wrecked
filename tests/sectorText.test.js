@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { launch } from '../src/sim/launch.js';
-import { beginRun, linked, reach } from '../src/sim/travel.js';
+import { beginRun, knownNodes, linked, reach, scan } from '../src/sim/travel.js';
 import { continueText } from '../src/ui/campaign/hubText.js';
 import { jumpText, nodeText, sectorText } from '../src/ui/campaign/sectorText.js';
 import { rules } from './battleKit.js';
@@ -30,7 +30,32 @@ test('the map: the sector, its nodes by column with what a jump reaches, its lin
   assert.deepEqual(text.hold, [['Supplies', `${balance.baseSupplies} of ${balance.baseSupplies}`], ['Credits', '40']]);
   assert.equal(text.offer, null);
   assert.equal(text.leave, null);
-  assert.match(text.hint.text, /Tap a ringed node/);
+  assert.match(text.hint.text, /A \? is a node not made out yet/);
+  assert.equal(text.deciding, false);
+});
+
+test('what the map knows: the charted kinds and the nodes next to the route; the rest unknown until a scan', () => {
+  const campaign = onRun({ heat: 30 });
+  const { sector } = campaign.run;
+  const text = sectorText(campaign, rules);
+  for (const n of text.nodes) {
+    const node = sector.nodes[n.id];
+    const known = ['start', 'exit', 'station'].includes(node.type) || n.id === sector.start || linked(sector, sector.start).includes(n.id);
+    assert.equal(n.known, known, `node ${n.id}`);
+    assert.equal(n.type, known ? node.type : 'unknown');
+  }
+  assert.match(text.scan.text, /^A scan shows what \d+ nodes? holds? within 2 jumps, for 2 heat\. Tap again to scan\.$/);
+  const scanned = scan(campaign, rules).campaign;
+  const after = sectorText(scanned, rules);
+  assert.ok(after.nodes.filter((n) => reach(sector, sector.start).has(n.id)).every((n) => n.known), 'a scan shows what lies in reach');
+  assert.equal(after.scan, null, 'and nothing more to show from here');
+  assert.match(after.hint.text, /Tap a ringed node/);
+  const unknown = sector.nodes.find((node) => !knownNodes(campaign.run, rules).has(node.id));
+  assert.deepEqual(nodeText(unknown, rules, { known: false }), { name: unknown.name, kind: 'Unknown', text: 'Too far to make out. Come closer, or scan.' });
+  const derelict = { ...unknown, type: 'derelict', event: 'dead-hauler' };
+  assert.equal(nodeText(derelict, rules).kind, 'Derelict: Dead hauler');
+  assert.equal(nodeText(derelict, rules, { done: true }).kind, 'Derelict, been and done');
+  assert.match(jumpText(campaign, rules, unknown.id).node.kind, /Unknown/);
 });
 
 test('a jump picked says what it eats and what heat does; out of reach, why', () => {
