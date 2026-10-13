@@ -25,9 +25,11 @@ import { frameAt, makeTimeline, poseAt } from '../../render/playback.js';
 import { crewColor, LYING_TOP, ordersScene, UNIT_TOP, unitsScene } from '../../render/units.js';
 import { describeEvent } from '../../sim/battleLog.js';
 import { canAct, createFight, ordersFor, reduceFight, selectedUnit } from '../../sim/fight.js';
+import { crewLook } from '../../sim/looks.js';
 import { tileText } from '../battle/tileText.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { portraitUrl } from '../portrait.js';
 import { chipFor, endingFor, eventText, hintFor, oddsText, unitText } from './hints.js';
 import { createActionBar, createCrewBar, node, setText, toolButton } from './panels.js';
 
@@ -58,6 +60,9 @@ const LOG_LINES = 16;
 //   ending(battle, log)   optional: how the fight ended, { tone, title,
 //              text }, for the end panel and the hint; boarders' words if
 //              not given
+//   lookOf(unit, index)   optional: the look (src/sim/looks.js) of the
+//              crew unit at `index` among the crew, for its portrait; one
+//              is rolled if not given
 export function mountFight(root, source) {
   const el = node('section', 'fight');
   const board = node('div', 'fgt-board');
@@ -122,6 +127,7 @@ export function mountFight(root, source) {
   let cardKind = null; // what the card shows: 'odds', 'unit', 'tile' or 'log'
   let cardCleanups = [];
   const colors = new Map(); // crew id -> trim
+  const faces = new Map(); // crew id -> portrait URL
   const cleanups = [() => crewBar.dispose(), () => actionBar.dispose()];
 
   loadContent()
@@ -219,7 +225,16 @@ export function mountFight(root, source) {
     if (moved) boxes = battleBoxes(map);
     const { battle, log } = next;
     colors.clear();
-    battle.units.filter((u) => u.side === 'crew').forEach((u, i) => colors.set(u.id, crewColor(i)));
+    faces.clear();
+    const looks = [];
+    battle.units.filter((u) => u.side === 'crew').forEach((u, i) => {
+      colors.set(u.id, crewColor(i));
+      // The crew member's look, or one rolled for a fight with no campaign
+      // behind it (the Fight sandbox), the same every time.
+      const look = source.lookOf?.(u, i) ?? crewLook('sandbox', i + 1, looks);
+      looks.push(look);
+      faces.set(u.id, portraitUrl(look, defs.jobs.get(u.kind)?.look, colors.get(u.id), 'face'));
+    });
     playing = null;
     doorsShown = null;
     disarmEnd();
@@ -322,7 +337,7 @@ export function mountFight(root, source) {
     // first frame, as it was), never the end it is heading for.
     const shown = playing ? playing.frame?.view ?? playing.timeline.before : fight.battle;
     const orders = busy() ? null : ordersFor(fight, defs);
-    crewBar.update(shown.units.filter((u) => u.side === 'crew'), colors, busy() ? null : fight.selected);
+    crewBar.update(shown.units.filter((u) => u.side === 'crew'), colors, busy() ? null : fight.selected, faces);
     crewBar.setEnd(busy() || !orders ? 'off' : endArmed ? 'armed' : 'ready');
     actionBar.update(orders, busy());
     setLine(chip, chipFor(shown));
@@ -368,7 +383,7 @@ export function mountFight(root, source) {
       return;
     }
     if (frame.view !== before?.view) {
-      crewBar.update(frame.view.units.filter((u) => u.side === 'crew'), colors, null);
+      crewBar.update(frame.view.units.filter((u) => u.side === 'crew'), colors, null, faces);
       showGoal(frame.view);
     }
     if (frame.event && frame.event !== before?.event) {

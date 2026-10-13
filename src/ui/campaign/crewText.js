@@ -4,6 +4,7 @@
 // the crew panel's heading; what a first tap on the card says; and the
 // squad a boarding takes, for the approach screen's picker (approach.js).
 // rules are the content tables (src/sim/defs.js).
+import { crewColor } from '../../render/units.js';
 import { maxHp } from '../../sim/campaign.js';
 import { crewRoom, defaultSquad } from '../../sim/crew.js';
 import { healRate } from '../../sim/medbay.js';
@@ -16,21 +17,22 @@ const STAT_NAMES = { hp: 'hit points', aim: 'aim', defense: 'defense', mobility:
 // The crew card:
 //   title    "Crew · 3 aboard, room for 4"
 //   text     the room, what the med bay heals, where crew come and go
-//   members  [{ id, name, about, traits, hp, max, dismiss }]: about is
-//            "Captain · Marine", or the job unless it is the name; dismiss
-//            { key, ok, label, ask, text, why } at a station, null elsewhere
-//            and for the captain
+//   members  [{ id, name, about, traits, hp, max, face, dismiss }]: about
+//            is "Captain · Marine", or the job unless it is the name; face
+//            is what their portrait is drawn from (faceOf); dismiss { key,
+//            ok, label, ask, text, why } at a station, null elsewhere and
+//            for the captain
 //   hire     null away from a station, else { title, line, recruits: [{
-//            key, slot, name, about, traits, hp, max, ok, label, ask, text,
-//            why }] }: line says why no one can sign on, or that no one is
-//            left, or is null
+//            key, slot, name, about, traits, hp, max, face, ok, label, ask,
+//            text, why }] }: line says why no one can sign on, or that no
+//            one is left, or is null
 //   hint     { tone, text } for the foot while nothing has had a first tap
 export function crewCardText(campaign, rules) {
   const room = crewRoom(campaign.ship, rules);
   const atStation = onTheRun(campaign, rules) && hereOf(campaign)?.type === 'station';
   const lines = [`The berths and life support carry ${room}.`, medbayLine(campaign, rules)];
   if (!atStation) lines.push('Crew sign on and are let go at stations.');
-  const members = campaign.crew.map((member) => {
+  const members = campaign.crew.map((member, i) => {
     const job = jobName(member.job, rules);
     const captain = member.id === campaign.captain;
     return {
@@ -40,10 +42,11 @@ export function crewCardText(campaign, rules) {
       traits: traitsText(member.traits, rules),
       hp: member.hp,
       max: maxHp(member, rules),
+      face: faceOf(member, rules, i),
       dismiss: atStation && !captain ? dismissText(campaign, rules, member) : null,
     };
   });
-  const recruits = atStation ? recruitOffer(campaign, rules).map((recruit) => recruitText(campaign, rules, recruit)) : [];
+  const recruits = atStation ? recruitOffer(campaign, rules).map((recruit, i) => recruitText(campaign, rules, recruit, campaign.crew.length + i)) : [];
   const line = !recruits.length ? 'No one else is for hire here.' : (recruits.find((recruit) => !recruit.ok)?.why ?? null);
   return {
     title: `Crew · ${campaign.crew.length} aboard, room for ${room}`,
@@ -73,8 +76,8 @@ export function crewSaid(card, armed) {
 
 // The squad picker, for a boarding: { show (more aboard than a squad
 // takes), size, label, line, title, text, members: [{ id, name, about, hp,
-// max, going }] }. line says who goes and who sits it out. picked: the crew
-// ids picked, or null for the default (crew.js).
+// max, face, going }] }. line says who goes and who sits it out. picked:
+// the crew ids picked, or null for the default (crew.js).
 export function squadText(campaign, rules, picked = null) {
   const size = rules.balance.squadSize;
   const going = new Set(picked ?? defaultSquad(campaign.crew, rules));
@@ -87,11 +90,18 @@ export function squadText(campaign, rules, picked = null) {
     line: `Going: ${names(true)}.${staying ? ` ${names(false)} ${staying === 1 ? 'sits' : 'sit'} this one out: tap Squad to change who.` : ''}`,
     title: `Who goes: up to ${size}`,
     text: 'Tap someone to take them or leave them aboard. The rest sit this one out.',
-    members: campaign.crew.map((member) => {
+    members: campaign.crew.map((member, i) => {
       const job = jobName(member.job, rules);
-      return { id: member.id, name: member.name, about: job === member.name ? '' : job, hp: member.hp, max: maxHp(member, rules), going: going.has(member.id) };
+      return { id: member.id, name: member.name, about: job === member.name ? '' : job, hp: member.hp, max: maxHp(member, rules), face: faceOf(member, rules, i), going: going.has(member.id) };
     }),
   };
+}
+
+// What a portrait (src/ui/portrait.js) is drawn from: { look, job, trim }:
+// the crew member's look, their job's helmet and suit (data/jobs.json), and
+// the trim of the place they hold in the crew.
+export function faceOf(member, rules, index) {
+  return { look: member.look, job: rules.jobs.get(member.job)?.look ?? null, trim: crewColor(index) };
 }
 
 // What the med bay does for the crew, as a line.
@@ -103,8 +113,9 @@ function medbayLine(campaign, rules) {
   return 'With no med bay aboard, wounds heal only when a station patches the crew.';
 }
 
-// A recruit for hire, as the card offers them.
-function recruitText(campaign, rules, recruit) {
+// A recruit for hire, as the card offers them, in the trim of the place
+// they would take in the crew.
+function recruitText(campaign, rules, recruit, place) {
   const plan = hirePlan(campaign, rules, recruit.slot);
   const fee = rules.balance.recruitFee;
   const crew = campaign.crew.length + 1;
@@ -118,6 +129,7 @@ function recruitText(campaign, rules, recruit) {
     traits: traitsText(recruit.traits, rules),
     hp: recruit.hp,
     max: recruit.hp,
+    face: faceOf(recruit, rules, place),
     ok: plan.ok,
     label: `Sign on · ${fee}`,
     ask: `Sign on for ${fee}?`,

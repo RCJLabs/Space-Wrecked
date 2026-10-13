@@ -42,7 +42,7 @@ test('the stub: act 2 with its words, how act 1 went, and the crew', () => {
     title: 'Act 1 · Homeworld',
     lines: [['Jobs', '7 done, 2 lost'], ['Raids', '1 fought off'], ['Credits', '140'], ['Parts on hand', 'Corridor ×2'], ['Heat', '30 · Rumors']],
   });
-  assert.deepEqual(text.crew.map((member) => member.name), ['Marine', 'Engineer', 'Medic']);
+  assert.deepEqual(text.crew.map((member) => member.name), launched.crew.map((member) => member.name));
   assert.deepEqual(stubText(launch(readyToLaunch(), rules).campaign, rules).record.lines[0], ['Jobs', 'None'], 'the act is over: no "yet"');
   // The title's Continue: the act's home.
   assert.equal(continueText(launched, rules), 'Act 2 · Your ship');

@@ -486,12 +486,12 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
   - poses: standing, aiming as they shoot, walking through a move, down, and out or dead
 
   **Done when:** every crew job and every enemy type has a figure of its own in one of the two suits, set in data, and told apart at the cover screen's tile size (each pair on a side differs in at least a fifth of their pixels there, seen from the front, the side and behind); a move walks, a shot aims and a unit that goes down falls; the fight keeps to the frame budget at the three sizes, holding the frame rate main holds in Chromium while the enemy's turn plays out; and the golden battle logs don't change (it is drawing only).
-- [ ] **M23c Portraits** (§4.5).
-  - portraits drawn in code (SVG) in layers: face and head, skin, hair, eyes, brows, mouth, and marks such as scars and implants
-  - each crew member's look saved with them: the captain's picked at creation, a recruit's rolled with them, the start crew's from their seed
-  - shown on the crew card, the fight's crew buttons, captain creation and the recruits for hire
+- [ ] **M23c Portraits** (§4.5). Evan's pick from five mockups (2026-10-13): the helmet badge, the face seen through the helmet the crew member's job wears in a fight.
+  - portraits drawn in code (SVG) in layers: face, skin, hair and its color, eyes, beard and a mark (a scar, freckles, a tattoo, an implant), through the helmet and suit of their job's figure (M23b), on a card in their trim
+  - each crew member's look saved with them: the captain's picked at creation, layer by layer or rolled; a recruit's rolled with them; the start crew's, and their names, from the campaign's seed
+  - shown on the crew card (crew and recruits), the squad card, the fight's crew buttons (the column about 20 px wider) and captain creation (the background shrinks to a line)
 
-  **Done when (draft):** every crew member has a portrait, the same each time it is drawn; captain creation picks the captain's look; recruits come with theirs; looks are saved with the crew (a `SAVE_VERSION` bump, older crews given theirs from their ids, the same on every load); and the screens that show them keep their buttons 48 px or more.
+  **Done when:** every crew member has a helmet-badge portrait drawn in code from a look saved with them (face, skin, hair, hair color, eyes, beard and a mark), through the helmet their job wears in a fight, the same each time it is drawn; captain creation steps through each layer and rolls; recruits come with theirs, rolled with them, the same on every visit; new games name the start crew from the recruits' names and give them looks from the campaign's seed; saves carry the looks (`SAVE_VERSION` 15: older crews get theirs from their ids, the same on every load, their names kept); two crew aboard always differ in at least two layers; portraits show on the crew card (crew and recruits), the squad card, the fight's crew buttons and captain creation, with every button there 48 px or more at the three sizes; and the golden battle logs don't change.
 - [ ] **M23d Sleek hulls** (§4.1, auto-hull).
   - the hull traced with curves and diagonals: outer corners rounded or cut, a curved nose, sloped top edges and a tapered stern, on every ship without the player doing anything
   - the parts that show outside bevelled: engine nacelles, turrets and collars
@@ -622,7 +622,8 @@ These ideas wait until v0.4 or later:
 - a test captain that boards: M22's test player never closes to board and in 30 runs disabled no ship, so its voyages measure only boardings by them. A captain that weighs Board, and a harness row for Board then the fight, would say what boarding is worth (raised in M22)
 - picking what to strip: a won boarding strips parts by a roll among her working ones, a bridge included. Choosing, or an engineer's pick, would make it a decision (raised in M22)
 - starting clear of hazards: deployment takes the tiles nearest the bridge or the hatches whatever is on them, so a crew member can start a boarding fight in a burning room and burn on the first turn (raised in M22)
-- recruits with more to them: a background and a portrait (§4.5), and a price that rises with their traits. M23's are a name, a job and a trait, at one fee (raised in M23)
+- recruits with more to them: a background (§4.5) and a price that rises with their traits. M23's are a name, a job and a trait, at one fee; M23c gives them a look (raised in M23)
+- scars and implants earned in play (§4.5): a crew member who goes down could come back scarred, and a med bay or a trader could fit an implant. M23c draws marks as layers of the look, so this needs only the rule and when it happens (Evan's call in M23c: later)
 - the crew card on the cover screen: past three aboard, its lists scroll under the head. A tighter row, or the head's words in the foot, would show four at once (raised in M23)
 - the approach screen with the ships' hulls: it draws both ships as their boarding maps, so M23d's curves and M23f's styling don't show there. A view of each ship's outside beside its map would (raised in planning, 2026-10-13)
 - a test player that weighs a recruit's mouth: M23's signs one on only with 10 jumps of supplies in the holds for the bigger crew, which the start ship's lockers never hold, so on the start ship it never hires (raised in M23)

@@ -2,13 +2,27 @@
 // starts from, the jobs and traits to pick from, and what is left to do.
 // rules are the content tables (src/sim/defs.js). Pure.
 import { CAPTAIN_TRAITS, captainProblem, firstBackground } from '../../sim/campaign.js';
+import { FACES, LOOK_KEYS } from '../../sim/looks.js';
 import { TRAIT_STATS, traitBonus } from '../../sim/traits.js';
 
 // A fighter's numbers in words, in the order the traits move them.
 const STAT_NAMES = { hp: 'Hit points', aim: 'Aim', defense: 'Defense', mobility: 'Moves', armor: 'Armor' };
 
-// What the screen shows for a draft captain, { name, job, traits }:
+// A look's layers and choices in words (src/sim/looks.js).
+export const LAYER_NAMES = { face: 'Face', skin: 'Skin', hair: 'Hair', hairColor: 'Hair color', eyes: 'Eyes', beard: 'Beard', mark: 'Mark' };
+export const LOOK_WORDS = {
+  skin: { porcelain: 'Porcelain', fair: 'Fair', peach: 'Peach', sand: 'Sand', olive: 'Olive', tan: 'Tan', umber: 'Umber', brown: 'Brown', deep: 'Deep' },
+  hair: { bald: 'Bald', buzz: 'Buzz cut', crop: 'Crop', sidepart: 'Side part', quiff: 'Quiff', mohawk: 'Mohawk', long: 'Long', bun: 'Bun', afro: 'Afro', locs: 'Locs' },
+  hairColor: { black: 'Black', darkBrown: 'Dark brown', brown: 'Brown', auburn: 'Auburn', copper: 'Copper', blond: 'Blond', platinum: 'Platinum', grey: 'Gray', teal: 'Teal', magenta: 'Magenta', violet: 'Violet' },
+  eyes: { brown: 'Brown', dark: 'Dark', hazel: 'Hazel', green: 'Green', blue: 'Blue', grey: 'Gray', amber: 'Amber' },
+  beard: { none: 'None', stubble: 'Stubble', mustache: 'Mustache', goatee: 'Goatee', full: 'Full' },
+  mark: { none: 'None', scar: 'Scar', freckles: 'Freckles', tattoo: 'Tattoo', ports: 'Ports', cybereye: 'Cyber eye', jawplate: 'Jaw plate', earring: 'Earring', eyepatch: 'Eye patch', lines: 'Lines' },
+};
+
+// What the screen shows for a draft captain, { name, job, traits, look }:
 //   background  { name, blurb, pursuer }: fixed in v0.1
+//   look        [{ key, label, value }]: each layer of the look, its name
+//               and its choice in words ([] without a look)
 //   jobs        [{ id, name, line, picked }]: the start's crew jobs, each
 //               with its numbers and weapon
 //   traits      [{ id, name, text, effect, picked }]
@@ -24,6 +38,7 @@ export function captainText(rules, draft, background = firstBackground(rules)) {
   const left = CAPTAIN_TRAITS - draft.traits.length;
   return {
     background: { name: start.name, blurb: start.blurb, pursuer: start.pursuer.name },
+    look: draft.look ? LOOK_KEYS.map((key) => ({ key, label: LAYER_NAMES[key], value: key === 'face' ? `${draft.look.face + 1} of ${FACES}` : LOOK_WORDS[key][draft.look[key]] })) : [],
     jobs: start.start.crew.map((id) => {
       const fighter = rules.jobs.get(id);
       return { id, name: fighter.name, line: statLine(fighter, rules), picked: id === draft.job };

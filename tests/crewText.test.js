@@ -23,14 +23,19 @@ const hurt = (campaign, hp) => ({ ...campaign, crew: campaign.crew.map((m) => (m
 const withBay = (campaign) => ({ ...campaign, ship: withPart(campaign.ship, rules, 'medbay') });
 
 test('the crew card away from a station: who is aboard, the room and the med bay, and no one to hire or let go', () => {
-  const card = crewCardText(onRun({ credits: 500 }), rules);
+  const campaign = onRun({ credits: 500 });
+  const card = crewCardText(campaign, rules);
   assert.equal(card.title, 'Crew · 3 aboard, room for 4');
   assert.equal(card.text, 'The berths and life support carry 4. With no med bay aboard, wounds heal only when a station patches the crew. Crew sign on and are let go at stations.');
+  const [a, b, c] = campaign.crew.map((m) => m.name);
   assert.deepEqual(
     card.members.map(({ name, about, hp, max, dismiss }) => [name, about, hp, max, dismiss]),
-    [['Marine', 'Captain', 10, 10, null], ['Engineer', '', 8, 8, null], ['Medic', '', 8, 8, null]],
-    'the job only where it isn\'t the name; the captain marked',
+    [[a, 'Captain · Marine', 10, 10, null], [b, 'Engineer', 8, 8, null], [c, 'Medic', 8, 8, null]],
+    'the captain marked',
   );
+  // Crew from before names (M23c) go by their jobs: the job isn't said twice.
+  const old = { ...campaign, crew: campaign.crew.map((m) => ({ ...m, name: rules.jobs.get(m.job).name })) };
+  assert.deepEqual(crewCardText(old, rules).members.map((m) => m.about), ['Captain', '', '']);
   assert.equal(card.hire, null);
   assert.equal(card.hint.text, 'Crew sign on and are let go at stations. Tap Done for the chart.');
   assert.deepEqual(crewHeading(onRun(), rules), { text: 'Crew', hire: false });
@@ -50,7 +55,7 @@ test('at a station: the recruits for hire with their fee and what they eat, and 
   const eats = 4 * balance.jumpSupplies;
   assert.equal(first.text, `Sign ${first.name} on for ${balance.recruitFee} credits. A crew of 4 eats ${eats} supplies a jump, and full holds last ${Math.floor(balance.baseSupplies / eats)} jumps. Tap again to sign on.`);
   assert.deepEqual(card.members.map((m) => m.dismiss?.key ?? null), [null, 'let:2', 'let:3'], 'the captain stays');
-  assert.equal(card.members[1].dismiss.text, 'Let Engineer go here, with nothing paid back: a crew of 2. Tap again to let them go.');
+  assert.equal(card.members[1].dismiss.text, `Let ${campaign.crew[1].name} go here, with nothing paid back: a crew of 2. Tap again to let them go.`);
   assert.deepEqual(crewHeading(campaign, rules), { text: `Crew · ${balance.recruitOffer} for hire`, hire: true });
   assert.equal(card.hint.text, 'Tap Sign on to see what a recruit takes, and again to sign them on.');
   // What a first tap says in the foot, and nothing for any other key.
@@ -98,16 +103,16 @@ test('the crew card says what the med bay heals, and when it is wrecked', () => 
 test('the squad picker: shown only with more aboard than a squad takes; the healthiest unless picked', () => {
   assert.equal(squadText(onRun(), rules).show, false, 'three aboard: all go');
   const four = hurt(hireRecruit(atStation({ credits: 500 }), rules, 0).campaign, { marine: 2 });
-  const recruit = four.crew[3].name;
+  const [marine, engineer, medic, recruit] = four.crew.map((m) => m.name);
   const text = squadText(four, rules);
   assert.equal(text.show, true);
   assert.equal(text.label, 'Squad · 3 of 4');
   assert.equal(text.title, `Who goes: up to ${balance.squadSize}`);
-  assert.equal(text.line, `Going: Engineer, Medic and ${recruit}. Marine sits this one out: tap Squad to change who.`);
+  assert.equal(text.line, `Going: ${engineer}, ${medic} and ${recruit}. ${marine} sits this one out: tap Squad to change who.`);
   assert.deepEqual(text.members.map((m) => m.going), [false, true, true, true], 'the hurt marine stays aboard');
   const picked = squadText(four, rules, [1, 4]);
   assert.equal(picked.label, 'Squad · 2 of 4');
-  assert.equal(picked.line, `Going: Marine and ${recruit}. Engineer and Medic sit this one out: tap Squad to change who.`);
+  assert.equal(picked.line, `Going: ${marine} and ${recruit}. ${engineer} and ${medic} sit this one out: tap Squad to change who.`);
   assert.deepEqual(picked.members.map((m) => m.going), [true, false, false, true]);
 });
 

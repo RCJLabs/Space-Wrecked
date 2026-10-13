@@ -17,10 +17,11 @@
 //   parts    { [module type]: count }: parts on hand in the hangar, not on
 //            the ship. Refitting the ship (construction mode) takes parts
 //            from here and puts back what comes off.
-//   crew     [{ id, name, job, hp, traits }]: everyone aboard. hp is what
-//            they have now: wounds carry from fight to fight, up to the
-//            most they can have (maxHp). traits are ids in
-//            data/traits.json (traits.js).
+//   crew     [{ id, name, job, hp, traits, look }]: everyone aboard. hp is
+//            what they have now: wounds carry from fight to fight, up to
+//            the most they can have (maxHp). traits are ids in
+//            data/traits.json (traits.js). look is what their portrait is
+//            drawn from (looks.js).
 //   captain  the id of the crew member who is the player's captain: named,
 //            with a job and CAPTAIN_TRAITS traits, when the campaign
 //            starts
@@ -51,13 +52,14 @@
 //            an approach (encounter.js), or null. None of them is a fight at
 //            home against boarders (beginFight), which no screen starts any
 //            more.
-import { int, isState } from '../core/rng.js';
+import { int, isState, pick, seedFrom } from '../core/rng.js';
 import { actOf } from './acts.js';
 import { battleProblem } from './battleShape.js';
 import { createBattle } from './battle.js';
 import { buildShip, isShipData } from './builder.js';
 import { flightChecklist, partLines } from './constraints.js';
 import { deploy } from './deploy.js';
+import { crewLook, isLook } from './looks.js';
 import { MAX_STOCK } from './economy.js';
 import { mapFromShip, WRECKS } from './mapFromShip.js';
 import { runProblem } from './runShape.js';
@@ -95,20 +97,19 @@ const FLAG = /^[a-zA-Z][a-zA-Z0-9]*$/;
 
 // A new campaign from a background's start (data/backgrounds.json; the
 // first one unless named): act 1, at home, with its ship, crew, credits and
-// parts. seed is a whole number (a uint32). captain is { name, job, traits }
-// (captainProblem says what it takes): the crew member with that job
-// becomes the captain, named, with those traits. Without one, the first
-// crew member is captain, as they are, with no traits.
+// parts. seed is a whole number (a uint32). captain is { name, job, traits,
+// look? } (captainProblem says what it takes): the crew member with that
+// job becomes the captain, named, with those traits and that look. Without
+// one, the first crew member is captain, with no traits. The rest of the
+// crew are named from data/recruits.json, and everyone without a look gets
+// one, all from the seed (startCrew).
 export function newCampaign(rules, seed, { background = firstBackground(rules), captain = null } = {}) {
   const { start } = rules.backgrounds.get(background);
   const { ship } = buildShip(rules, start.ship.frame, start.ship.placements);
   const why = captain && captainProblem(captain, rules, background);
   if (why) throw new RangeError(`newCampaign: ${why}`);
   const at = captain ? start.crew.indexOf(captain.job) : 0;
-  const crew = start.crew.map((job, i) => {
-    const member = i === at && captain ? { name: captain.name.trim(), job, traits: [...captain.traits] } : { name: rules.jobs.get(job).name, job, traits: [] };
-    return { id: i + 1, ...member, hp: maxHp(member, rules) };
-  });
+  const crew = startCrew(rules, seed, start.crew, at, captain);
   return {
     seed,
     rng: seed,
@@ -132,15 +133,58 @@ export function newCampaign(rules, seed, { background = firstBackground(rules), 
   };
 }
 
+// The start crew, ids 1 up in the background's order of jobs. The one at
+// `at` is the captain: named, with their traits and look, when given. The
+// rest are named from data/recruits.json (their jobs' names if it has
+// none), a name each, none the captain's. Looks come from the seed and each
+// id (looks.js crewLook), the captain's first, each LOOKS_APART layers from
+// those before it. Nothing here moves the campaign's RNG.
+function startCrew(rules, seed, jobs, at, captain) {
+  const names = new Set(captain ? [captain.name.trim()] : []);
+  const captainLook = captain?.look ?? crewLook(seed, at + 1);
+  const looks = [captainLook];
+  return jobs.map((job, i) => {
+    const id = i + 1;
+    const isCaptain = i === at;
+    const name = isCaptain && captain ? captain.name.trim() : startName(rules, seed, id, job, names);
+    const member = { name, job, traits: isCaptain && captain ? [...captain.traits] : [] };
+    let look = captainLook;
+    if (!isCaptain) {
+      look = crewLook(seed, id, looks);
+      looks.push(look);
+    }
+    return { id, ...member, hp: maxHp(member, rules), look };
+  });
+}
+
+// A start crew member's name from data/recruits.json, rolled from the
+// seed and their id, its first name none in `taken` has when 20 rolls can
+// find one: the lists that show first names only tell them apart.
+function startName(rules, seed, id, job, taken) {
+  const { first = [], last = [] } = rules.recruits ?? {};
+  if (!first.length || !last.length) return rules.jobs.get(job).name;
+  const firsts = new Set([...taken].map((name) => name.split(' ')[0]));
+  let rng = seedFrom(`crew ${seed} ${id}`);
+  let name = '';
+  for (let tries = 0; tries < 20 && (!name || firsts.has(name.split(' ')[0])); tries++) {
+    const a = pick(rng, first);
+    const b = pick(a.state, last);
+    rng = b.state;
+    name = `${a.value} ${b.value}`;
+  }
+  taken.add(name);
+  return name;
+}
+
 // The background a campaign starts from when none is chosen: v0.1 has one.
 export function firstBackground(rules) {
   return rules.backgrounds.keys().next().value;
 }
 
 // Why a captain can't lead a campaign from the background, or null. A
-// captain is { name, job, traits }: a name of 1 to MAX_NAME letters once
-// trimmed, one of the start's crew jobs, and CAPTAIN_TRAITS different
-// traits that exist.
+// captain is { name, job, traits, look? }: a name of 1 to MAX_NAME letters
+// once trimmed, one of the start's crew jobs, CAPTAIN_TRAITS different
+// traits that exist, and a look (looks.js) if one is given.
 export function captainProblem(captain, rules, background = firstBackground(rules)) {
   const name = typeof captain?.name === 'string' ? captain.name.trim() : '';
   if (!name) return 'Give your captain a name.';
@@ -150,6 +194,7 @@ export function captainProblem(captain, rules, background = firstBackground(rule
   if (!Array.isArray(traits) || traits.length !== CAPTAIN_TRAITS || new Set(traits).size !== traits.length) return `Pick ${CAPTAIN_TRAITS} traits.`;
   const unknown = traits.find((id) => !rules.traits?.has(id));
   if (unknown) return `There is no trait "${unknown}".`;
+  if (captain.look !== undefined && !isLook(captain.look)) return 'Pick a look for your captain.';
   return null;
 }
 
@@ -376,7 +421,8 @@ function isCrew(crew) {
     ids.add(member.id);
     return (
       isName(member.name) && typeof member.job === 'string' && ID.test(member.job) && isInt(member.hp, 1, 999) &&
-      Array.isArray(member.traits) && member.traits.length <= MAX_TRAITS && member.traits.every(isId) && new Set(member.traits).size === member.traits.length
+      Array.isArray(member.traits) && member.traits.length <= MAX_TRAITS && member.traits.every(isId) && new Set(member.traits).size === member.traits.length &&
+      isLook(member.look)
     );
   });
 }

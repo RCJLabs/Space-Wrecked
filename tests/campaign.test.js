@@ -6,6 +6,7 @@ import { aiAction } from '../src/sim/ai.js';
 import { applyCommand, buildShip, layoutProblems, removeModule } from '../src/sim/builder.js';
 import { actOf, beginFight, campaignProblems, endFight, maxHp, newCampaign, refitShip, saveFight, stockOf } from '../src/sim/campaign.js';
 import { withBoard } from '../src/sim/contracts.js';
+import { isLook } from '../src/sim/looks.js';
 import { createFight, reduceFight } from '../src/sim/fight.js';
 import { initialState, PLACE_SCREENS, reduce, saveData } from '../src/sim/root.js';
 import { scriptedAction } from '../src/sim/scripted.js';
@@ -46,7 +47,23 @@ test("a new campaign starts in act 1 at the hangar, with its background's start"
   const campaign = newCampaign(rules, 77);
   const { start } = rules.backgrounds.get('miner');
   const { ship } = buildShip(rules, start.ship.frame, start.ship.placements);
-  assert.deepEqual(campaign, {
+  const { crew, ...rest } = campaign;
+  assert.deepEqual(
+    crew.map(({ id, job, traits, hp }) => ({ id, job, traits, hp })),
+    [
+      { id: 1, job: 'marine', traits: [], hp: 10 },
+      { id: 2, job: 'engineer', traits: [], hp: 8 },
+      { id: 3, job: 'medic', traits: [], hp: 8 },
+    ],
+  );
+  // Named from the recruits' names, each their own, and each with a look.
+  for (const member of crew) {
+    const [first, last] = member.name.split(' ');
+    assert.ok(rules.recruits.first.includes(first) && rules.recruits.last.includes(last), member.name);
+    assert.ok(isLook(member.look), member.name);
+  }
+  assert.equal(new Set(crew.map((member) => member.name)).size, crew.length);
+  assert.deepEqual(rest, {
     seed: 77,
     rng: 77,
     background: 'miner',
@@ -54,11 +71,6 @@ test("a new campaign starts in act 1 at the hangar, with its background's start"
     place: 'hub',
     credits: 0,
     parts: { quarters: 1, lifesupport: 1, corridor: 2 },
-    crew: [
-      { id: 1, name: 'Marine', job: 'marine', traits: [], hp: 10 },
-      { id: 2, name: 'Engineer', job: 'engineer', traits: [], hp: 8 },
-      { id: 3, name: 'Medic', job: 'medic', traits: [], hp: 8 },
-    ],
     captain: 1,
     heat: 0,
     flags: {},
@@ -128,7 +140,8 @@ test('a fight puts the whole crew against the boarders on the ship, seeded by th
   assert.deepEqual(fight.crew, [1, 2, 3]);
   assert.equal(fight.encounter, 'boarders');
   const crew = fight.battle.units.filter((u) => u.side === 'crew');
-  assert.deepEqual(crew.map((u) => [u.id, u.name, u.kind, u.hp]), [['c1', 'Marine', 'marine', 10], ['c2', 'Engineer', 'engineer', 8], ['c3', 'Medic', 'medic', 8]]);
+  const [a, b, c] = campaign.crew.map((member) => member.name);
+  assert.deepEqual(crew.map((u) => [u.id, u.name, u.kind, u.hp]), [['c1', a, 'marine', 10], ['c2', b, 'engineer', 8], ['c3', c, 'medic', 8]]);
   assert.deepEqual(fight.battle.units.filter((u) => u.side === 'enemy').map((u) => u.kind), rules.encounters.get('boarders').enemies);
   assert.deepEqual(fight.log, [{ type: 'turn', side: 'crew', round: 1 }]);
   assert.deepEqual(campaignProblems(begun.campaign), []);
@@ -149,7 +162,7 @@ test("a fight that can't start says why", () => {
   const on = beginFight(campaign, rules).campaign;
   assert.deepEqual(beginFight(on, rules), { ok: false, error: 'A fight is on already.' });
   assert.deepEqual(beginFight({ ...campaign, crew: [] }, rules), { ok: false, error: 'There is no one aboard to fight.' });
-  assert.deepEqual(beginFight({ ...campaign, crew: [{ ...campaign.crew[0], job: 'pilot' }] }, rules), { ok: false, error: 'Marine\'s job "pilot" is unknown.' });
+  assert.deepEqual(beginFight({ ...campaign, crew: [{ ...campaign.crew[0], job: 'pilot' }] }, rules), { ok: false, error: `${campaign.crew[0].name}'s job "pilot" is unknown.` });
   assert.deepEqual(beginFight({ ...campaign, ship: { ...campaign.ship, modules: [] } }, rules), { ok: false, error: 'The ship has no parts yet.' });
   const sealed = { ...campaign.ship, modules: campaign.ship.modules.filter((m) => m.type !== 'airlock') };
   assert.match(beginFight({ ...campaign, ship: sealed }, rules).error, /Boarders need a way in/);
@@ -183,15 +196,15 @@ test('after a fight: the act 1 hangar heals, elsewhere wounds stay and the falle
   const after = endFight(won, rules);
   assert.equal(after.place, 'hub');
   assert.equal(after.fight, null);
-  assert.deepEqual(after.crew.map((m) => [m.name, m.hp]), [['Marine', 10], ['Engineer', 8], ['Medic', 8]], 'act 1: healed at the hangar');
+  assert.deepEqual(after.crew.map((m) => [m.job, m.hp]), [['marine', 10], ['engineer', 8], ['medic', 8]], 'act 1: healed at the hangar');
   assert.deepEqual(after.flags, { fightsWon: 1 });
   assert.deepEqual(campaignProblems(after), []);
   const later = endFight({ ...won, act: 2 }, rules);
-  assert.deepEqual(later.crew.map((m) => [m.name, m.hp]), [['Marine', 4], ['Engineer', 1], ['Medic', 1]], 'act 2: no healing at home');
+  assert.deepEqual(later.crew.map((m) => [m.job, m.hp]), [['marine', 4], ['engineer', 1], ['medic', 1]], 'act 2: no healing at home');
 
   const killed = units.map((u) => (u.id === 'c2' ? { ...u, status: 'dead' } : u));
   const lost = endFight({ ...won, flags: { fightsLost: 2 }, fight: { ...won.fight, battle: { ...won.fight.battle, units: killed, winner: 'enemy' } } }, rules);
-  assert.deepEqual(lost.crew.map((m) => m.name), ['Marine', 'Medic'], 'killed where death is permanent');
+  assert.deepEqual(lost.crew.map((m) => m.job), ['marine', 'medic'], 'killed where death is permanent');
   assert.deepEqual(lost.flags, { fightsLost: 3 });
 
   assert.equal(endFight(campaign, rules), campaign, 'a fight still going is left alone');

@@ -10,6 +10,7 @@
 // Reload, not a job's Grab or Hack.
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { portraitImg } from '../portrait.js';
 import { stateText } from './hints.js';
 
 // onSelect(id), onEnd()
@@ -20,12 +21,15 @@ export function createCrewBar({ onSelect, onEnd }) {
   el.append(list, end);
   const cleanups = [onTap(end, onEnd)];
   let rows = new Map(); // id -> { button, fill, state }
+  let built = null; // the units and faces the buttons were made for
   return {
     el,
     // units: the crew as the board shows them; colors: Map id -> trim;
-    // selected: the id giving orders.
-    update(units, colors, selected) {
-      if (units.map((u) => u.id).join() !== [...rows.keys()].join()) build(units, colors);
+    // selected: the id giving orders; faces: Map id -> portrait URL
+    // (src/ui/portrait.js).
+    update(units, colors, selected, faces = new Map()) {
+      const key = units.map((u) => `${u.id} ${faces.get(u.id) ?? ''}`).join();
+      if (key !== built) build(units, colors, faces, key);
       for (const unit of units) {
         const row = rows.get(unit.id);
         row.button.setAttribute('aria-pressed', String(unit.id === selected));
@@ -45,9 +49,12 @@ export function createCrewBar({ onSelect, onEnd }) {
     },
   };
 
-  function build(units, colors) {
+  // A button a unit: their portrait beside their name (the first name of
+  // two) and hit points, and their state under them.
+  function build(units, colors, faces, key) {
     for (const row of rows.values()) row.detach();
     rows = new Map();
+    built = key;
     list.replaceChildren();
     for (const unit of units) {
       const button = node('button', 'btn fgt-unit');
@@ -57,7 +64,12 @@ export function createCrewBar({ onSelect, onEnd }) {
       const fill = node('span');
       bar.append(fill);
       const state = node('span', 'fgt-state');
-      button.append(node('span', 'fgt-name', unit.name), bar, state);
+      const who = node('span', 'fgt-who');
+      who.append(node('span', 'fgt-name', unit.name.split(' ')[0]), bar);
+      const top = node('span', 'fgt-top');
+      if (faces.get(unit.id)) top.append(portraitImg('fgt-face', faces.get(unit.id)));
+      top.append(who);
+      button.append(top, state);
       button.setAttribute('aria-label', `${unit.name} ${unit.id}`);
       list.append(button);
       rows.set(unit.id, { button, fill, state, detach: onTap(button, () => onSelect(unit.id)) });

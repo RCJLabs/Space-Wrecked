@@ -9,6 +9,7 @@ import { isState } from './rng.js';
 import { isShipData } from '../sim/builder.js';
 import { emptyBuilds, isBuilds } from '../sim/builds.js';
 import { campaignProblems } from '../sim/campaign.js';
+import { crewLook } from '../sim/looks.js';
 import { regridCommand, regridShip } from '../sim/regrid.js';
 import { isCommand, logFor, renumbered } from '../sim/replay.js';
 import { defaultSettings, settingsProblems } from '../sim/settings.js';
@@ -40,7 +41,8 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      ends in one has its fight due (M22)
 //  14  recruits: the run keeps who has signed on at the sector's stations
 //      (M23)
-export const SAVE_VERSION = 14;
+//  15  portraits: every crew member's look (looks.js) (M23c)
+export const SAVE_VERSION = 15;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -174,6 +176,24 @@ export const MIGRATIONS = [
       if (!isObject(data) || !isObject(data.campaign)) return data;
       const { run } = data.campaign;
       return isObject(run) ? { ...data, campaign: { ...data.campaign, run: { ...run, hired: [] } } } : data;
+    },
+  },
+  // Portraits: each crew member gets a look from the campaign's seed and
+  // their id, apart from those before them, the same on every load. Names
+  // stay as they were.
+  {
+    from: 14,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign) || !Array.isArray(data.campaign.crew)) return data;
+      const seed = isState(data.campaign.seed) ? data.campaign.seed : 0;
+      const looks = [];
+      const crew = data.campaign.crew.map((member) => {
+        if (!isObject(member)) return member;
+        const look = crewLook(seed, member.id, looks);
+        looks.push(look);
+        return { ...member, look };
+      });
+      return { ...data, campaign: { ...data.campaign, crew } };
     },
   },
 ];

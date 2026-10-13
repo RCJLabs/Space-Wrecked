@@ -11,6 +11,7 @@
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { portraitImg, portraitUrl } from '../portrait.js';
 
 // tap(key): a Sign on or Let go button's tap; done(): Done.
 export function createCrewCard({ tap, done }) {
@@ -65,11 +66,12 @@ export function createCrewCard({ tap, done }) {
     },
   };
 
-  // A row: the name, what they are and their traits, hit points, and a
-  // button for what can be done with them here, if anything.
-  function row({ name, about, traits, hp, max }, action, armed) {
+  // A row: their portrait, the name, what they are and their traits, hit
+  // points, and a button for what can be done with them here, if anything.
+  function row({ name, about, traits, hp, max, face }, action, armed) {
     const item = node('li');
     item.dataset.wounded = String(hp < max);
+    item.append(portraitImg('crew-face', portraitUrl(face.look, face.job, face.trim, 'face')));
     const who = node('span', 'hgr-name');
     who.append(node('span', null, name));
     if (about) who.append(node('small', null, about));

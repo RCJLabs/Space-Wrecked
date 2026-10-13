@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { captainText, effectText } from '../src/ui/campaign/captainText.js';
+import { LOOK_LAYERS } from '../src/sim/looks.js';
+import { captainText, effectText, LAYER_NAMES, LOOK_WORDS } from '../src/ui/campaign/captainText.js';
 import { rules } from './battleKit.js';
 
 test('making a captain: the background, the jobs with their numbers, and every trait with its effect', () => {
@@ -29,4 +30,18 @@ test('effects in words', () => {
   assert.equal(effectText({ hp: 2 }), 'Hit points +2');
   assert.equal(effectText({ defense: -5, aim: 10 }), 'Aim +10, defense −5');
   assert.equal(effectText({ mobility: 1, armor: -1 }), 'Moves +1, armor −1');
+});
+
+test("the captain's look in words: each layer and its choice, and a word for every choice", () => {
+  const look = { face: 3, skin: 'tan', hair: 'sidepart', hairColor: 'darkBrown', eyes: 'grey', beard: 'none', mark: 'cybereye' };
+  const text = captainText(rules, { name: 'Rosa', job: 'marine', traits: [], look });
+  assert.deepEqual(
+    text.look.map(({ label, value }) => `${label}: ${value}`),
+    ['Face: 4 of 12', 'Skin: Tan', 'Hair: Side part', 'Hair color: Dark brown', 'Eyes: Gray', 'Beard: None', 'Mark: Cyber eye'],
+  );
+  assert.deepEqual(captainText(rules, { name: 'Rosa', job: 'marine', traits: [] }).look, [], 'no look, no words');
+  for (const [key, choices] of Object.entries(LOOK_LAYERS)) {
+    assert.ok(LAYER_NAMES[key], key);
+    for (const choice of choices) assert.match(LOOK_WORDS[key][choice] ?? '', /^[A-Z][a-z]+( [a-z]+)?$/, `${key} ${choice}`);
+  }
 });

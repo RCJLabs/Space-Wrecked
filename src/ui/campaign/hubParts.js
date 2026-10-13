@@ -18,15 +18,16 @@ export function panel(title, ...children) {
   return el;
 }
 
-// The crew list's rows, from crewText (hubText.js): the name, with the job
-// under it when the name isn't the job's (the captain's), a bar for hit
-// points, and the numbers.
+// The crew list's rows, from crewText (hubText.js): the first name, with
+// the job under it when the name isn't the job's, a bar for hit points, and
+// the numbers. The crew card has the whole name.
 export function crewRows(crew) {
   return crew.map(({ name, job, hp, max }) => {
     const row = node('li');
     row.dataset.wounded = String(hp < max);
     const who = node('span', 'hgr-name');
-    who.append(node('span', null, name));
+    who.append(node('span', null, name.split(' ')[0]));
+    who.title = name;
     if (job) who.append(node('small', null, job));
     const bar = node('span', 'hgr-hp');
     const fill = node('span');

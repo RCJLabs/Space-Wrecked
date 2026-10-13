@@ -9,7 +9,8 @@ import { rules } from './battleKit.js';
 
 test('the hangar shows the act, its goal with what is on hand, the crew and the holdings', () => {
   const campaign = newCampaign(rules, 77);
-  const wounded = { ...campaign, credits: 1250, crew: [{ ...campaign.crew[0], hp: 4 }, { ...campaign.crew[1], name: 'Ada' }, campaign.crew[2]] };
+  // Named by their job (as before M23c), by a name, and by a name and job alike.
+  const wounded = { ...campaign, credits: 1250, crew: [{ ...campaign.crew[0], hp: 4, name: 'Marine' }, { ...campaign.crew[1], name: 'Ada' }, campaign.crew[2]] };
   const text = hangarText(wounded, rules);
   assert.equal(text.act, 'Act 1 · Homeworld');
   assert.equal(text.home, 'The hangar');
@@ -27,7 +28,7 @@ test('the hangar shows the act, its goal with what is on hand, the crew and the 
   assert.deepEqual(text.crew, [
     { name: 'Marine', job: '', hp: 4, max: 10 },
     { name: 'Ada', job: 'Engineer', hp: 8, max: 8 },
-    { name: 'Medic', job: '', hp: 8, max: 8 },
+    { name: campaign.crew[2].name, job: 'Medic', hp: 8, max: 8 },
   ]);
   // Heat has its own meter (text.heat), by the act.
   assert.deepEqual(text.holdings, [['Credits', '1,250'], ['Parts on hand', 'Crew quarters, Life support, Corridor ×2'], ['Jobs', 'None yet']]);

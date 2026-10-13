@@ -36,6 +36,10 @@ export const campaignFightScreen = {
         if (fightOn()?.boarding) return boardingObjective(battle, game.getState().campaign);
         return job() ? objectiveText(battle, job(), defs) : null;
       },
+      lookOf(unit, index) {
+        const id = fightOn()?.crew[index];
+        return game.getState().campaign?.crew.find((member) => member.id === id)?.look ?? null;
+      },
       ending(battle, log) {
         if (!defs) return null;
         if (fightOn()?.raid) return raidOutcome(battle, game.getState().campaign, defs);
