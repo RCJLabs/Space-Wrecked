@@ -500,12 +500,22 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
   - wherever a hull is drawn: the builder's rim and hull view, the hangar, the lift-off, the enemy ships sandbox
 
   **Done when:** both styles are in data (`data/hulls.json`): Rounded, with rounded corners outside and in, a rounded shoulder and a bullet nose; and Plated, with cut corners, a stepped armor shoulder, panel seams on the roof and a blunt prow. In both, no outer corner of the outline is a plain right angle, and the hull covers every cell and never cuts into a room (tested). Nozzles, barrels and collars sit on the new skin, bevelled to match. The player picks the style in the builder, one tap, undoable, saved with the ship (`SAVE_VERSION` 16: older ships are Rounded) and carried by blueprint codes (version 3, which still reads 1 and 2). Every enemy ship gets one of the two at random, the same for the same seed, its layout unchanged (golden). The builder's rim and Hull view, the hangar, the lift-off and the Enemy ships sandbox all draw it. The builder's default view keeps every cell 22 px or more on the cover screen. The boarding maps don't change (golden), and the hull views keep to the frame budget at the three sizes.
-- [ ] **M23e Builder catalog and part variants** (§4.1, §5).
-  - the parts drawer in categories (command, power, engines, weapons, defense, crew, cargo and utility) with filters (on hand, by maker, by size)
-  - size and stat variants of today's parts, such as a light and a heavy engine, a light and a heavy gun mount, bunks, a small reactor and a large hold, each with its own footprint, interior, model and icon
+- [ ] **M23e Builder catalog and part variants** (§4.1, §5). Evan's picks (2026-10-13): the drawer as a picker, one category at a time; the nine parts below; enemy ships using some now; and Law 1 for variants as reworded in the Done when.
+  - the parts drawer in categories (command, power, engines, weapons, defense, crew, cargo and utility): one category at a time, or all, picked from a 48 px button, with a size filter. The maker filter waits for a second maker (M23g)
+  - nine new parts, each with its own footprint, interior, model and icon:
+    - **light engine:** half an engine's thrust for a third of its mass, cheap, wrecked by one hit
+    - **heavy engine:** about twice an engine's thrust, and two hits to wreck
+    - **point defense:** fires at incoming shots, cutting the other ship's hit chance
+    - **cannon:** a heavy gun whose hit goes through a shield and still wrecks a part
+    - **shield array:** holds more of a volley than a generator
+    - **small reactor:** half a reactor's power; as a spare, one wrecked reactor no longer disables the ship
+    - **bunks:** berths with their own air, so it makes room for crew by itself
+    - **surgery:** heals more a jump than a med bay
+    - **large hold:** twice a cargo hold's supplies
+  - guns' damage and shields' strength per part, and point defense's cut to the other ship's odds, shown in the odds (Law 4)
   - the shop, the drop tables and the enemy presets carry them
 
-  **Done when (draft):** at least 8 new parts, each doing something in play that no other part does as well, shown by `tools/approach.js`, `tools/sim.js` or the voyage player (Law 1); the drawer sorts parts into categories and filters them, two taps to place as now, every button 48 px or more; the shop sells them and enemy ships use some; and old saves and blueprint codes still load.
+  **Done when:** the nine parts are in `data/modules.json`, each with its own footprint, interior, model and icon. Each changes the approach, a fight or the voyage, shown by `tools/approach.js`, `tools/sim.js` or `tools/voyage.js` (Law 1), and none is worse than another part in every way (cost, size, mass, power, hit points and what it does). A gun's damage and a shield's strength come from its part, and point defense cuts the other ship's hit chance, every chance shown as rolled (Law 4). The drawer shows one category at a time or all, picked from a 48 px button, with a size filter, and in construction mode only the parts on hand; two taps to place as now, every button 48 px or more at the three sizes. The shop and the drop tables carry the new parts, and the enemy presets use some (the golden ships file updated on purpose). Old saves and blueprint codes still load, and the careful test player still crosses all five sectors fed in at least 24 of 30.
 - [ ] **M23f Styling pieces** (Law 1's styling line).
   - styling as data (`data/styling.json`): wings, fins, spoilers, antennas, lights, hull plates, and shaped pieces (wedges and curved corners) to sculpt the outline, plus paint and trim colors
   - placed in the builder on cells outside the ship's rooms, against the hull, never in front of an exhaust, a barrel or a hatch, with a cap of their own

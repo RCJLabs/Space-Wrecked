@@ -4,8 +4,9 @@
 // gives one: fire at a kind of module, evade, flee, or close to board.
 // Every chance is worked out before its roll and is the chance shown
 // (Law 4), each kept within chanceMin..chanceMax:
-//   - a gun hits at gunnery less the target's evasion, and evadeBonus less
-//     while the target evades;
+//   - a gun hits at gunnery less the target's evasion and its point
+//     defense (each working turret's intercept, up to interceptMax in all),
+//     and evadeBonus less while the target evades;
 //   - a ship's evasion is evasionPerThrust times its thrust for its mass,
 //     from the engines it has working;
 //   - fleeing wins at fleeChance and closing to board at closeChance, each
@@ -14,17 +15,20 @@
 // A round plays out in order: flights (the player's first), then both
 // volleys at once, each from the ship as it stood when the round began, then
 // boardings (the player's first), so a ship disabled by the volleys can't
-// close. Every working gun fires once. A hit does gunDamage, less what the
-// target's shields still hold this round (shieldPerGen for each working
-// generator), to the module of the kind aimed at that has the fewest hit
-// points left. A module whose damage reaches its hit points is wrecked: by a
-// roll its room is on fire, open to vacuum or full of rubble, which is how it
-// comes to the boarding map (mapFromShip.js). A ship with no working reactor
-// or no working engine is disabled, and the other boards it; either side can
-// also close to board one that can still fight. A boarding is a fight on the
-// boarded ship's map (encounter.js). A ship whose last reactor is wrecked
-// blows up blowChance times in 100, which leaves only scrap; the player's
-// ship never blows. After the last round, the ships part.
+// close. Every working gun fires once, in the order the guns were fitted. A
+// hit does its gun's damage, less what the target's shields still hold this
+// round (each working shield's strength, added up), to the module of the
+// kind aimed at that has the fewest hit points left. A gun's damage, a
+// shield's strength and a turret's intercept are its part's
+// (data/modules.json). A module whose damage reaches its hit points is
+// wrecked: by a roll its room is on fire, open to vacuum or full of rubble,
+// which is how it comes to the boarding map (mapFromShip.js). A ship with no
+// working reactor or no working engine is disabled, and the other boards it;
+// either side can also close to board one that can still fight. A boarding
+// is a fight on the boarded ship's map (encounter.js). A ship whose last
+// reactor is wrecked blows up blowChance times in 100, which leaves only
+// scrap; the player's ship never blows. After the last round, the ships
+// part.
 //
 // Pure. A side is { ship, damage, wrecked }: the ship's plain data
 // (builder.js), the hit points each module has lost in this approach
@@ -35,8 +39,9 @@ import { shipStats } from './constraints.js';
 import { WRECKS } from './mapFromShip.js';
 import { hasTag } from './modules.js';
 
-// What a volley can aim at, and the tag of the modules each one hits.
-export const AIM_TAGS = { weapons: 'weapon', engines: 'engine', shields: 'shield', reactor: 'reactor' };
+// What a volley can aim at, and the tags of the modules each one hits: the
+// point defense turrets are among the guns.
+export const AIM_TAGS = { weapons: ['weapon', 'pointdefense'], engines: ['engine'], shields: ['shield'], reactor: ['reactor'] };
 export const AIMS = Object.keys(AIM_TAGS);
 export const ORDERS = ['fire', 'evade', 'flee', 'close'];
 // How an approach can end: the player gets away, the other ship gets away,
@@ -47,21 +52,31 @@ export const OUTCOMES = ['escaped', 'fled', 'boarded', 'boardedBy', 'destroyed',
 // when the player boards her, 'you' when she boards the player.
 export const BOARDINGS = { boarded: 'them', boardedBy: 'you' };
 
-// A side's numbers, from the modules it has working: { guns, shields (what
-// they hold in a round), thrust, mass, ratio (thrust for mass), evasion,
-// powered, moving, disabled }.
+// True if a volley aimed at `aim` can hit a module of this kind.
+export function aimedAt(def, aim) {
+  return AIM_TAGS[aim].some((tag) => hasTag(def, tag));
+}
+
+// A side's numbers, from the modules it has working: { guns, damages (each
+// gun's damage a hit, in the order they fire), shields (what they hold in a
+// round), intercept (what its point defense takes off the other ship's hit
+// chance), thrust, mass, ratio (thrust for mass), evasion, powered, moving,
+// disabled }.
 export function sideStats(side, rules) {
   const { balance } = rules;
-  const working = side.ship.modules.filter((module) => !(module.uid in side.wrecked) && rules.modules.has(module.type));
-  const count = (tag) => working.filter((module) => hasTag(rules.modules.get(module.type), tag)).length;
-  const thrust = working.reduce((sum, module) => sum + rules.modules.get(module.type).stats.thrust, 0);
+  const working = side.ship.modules.filter((module) => !(module.uid in side.wrecked) && rules.modules.has(module.type)).map((module) => rules.modules.get(module.type));
+  const tagged = (tag) => working.filter((def) => hasTag(def, tag));
+  const thrust = working.reduce((sum, def) => sum + def.stats.thrust, 0);
   const mass = massOf(side.ship, rules);
   const ratio = mass > 0 ? thrust / mass : 0;
-  const powered = count('reactor') > 0;
+  const powered = tagged('reactor').length > 0;
   const moving = thrust > 0;
+  const damages = tagged('weapon').map((def) => def.damage);
   return {
-    guns: count('weapon'),
-    shields: count('shield') * balance.shieldPerGen,
+    guns: damages.length,
+    damages,
+    shields: tagged('shield').reduce((sum, def) => sum + def.shield, 0),
+    intercept: Math.min(balance.interceptMax, tagged('pointdefense').reduce((sum, def) => sum + def.intercept, 0)),
     thrust,
     mass,
     ratio,
@@ -75,9 +90,8 @@ export function sideStats(side, rules) {
 // The working modules a volley aimed at `aim` can hit, fewest hit points
 // left first (then by uid): [{ uid, type, hp, left }].
 export function targetsOf(side, aim, rules) {
-  const tag = AIM_TAGS[aim];
   return side.ship.modules
-    .filter((module) => !(module.uid in side.wrecked) && rules.modules.has(module.type) && hasTag(rules.modules.get(module.type), tag))
+    .filter((module) => !(module.uid in side.wrecked) && rules.modules.has(module.type) && aimedAt(rules.modules.get(module.type), aim))
     .map((module) => {
       const hp = rules.modules.get(module.type).stats.hp;
       return { uid: module.uid, type: module.type, hp, left: Math.max(0, hp - (side.damage[module.uid] ?? 0)) };
@@ -88,7 +102,7 @@ export function targetsOf(side, aim, rules) {
 // The chance each gun hits a target with these stats, evading or not.
 export function hitChance(target, evading, rules) {
   const { gunnery, evadeBonus } = rules.balance;
-  return within(gunnery - target.evasion - (evading ? evadeBonus : 0), rules);
+  return within(gunnery - target.evasion - target.intercept - (evading ? evadeBonus : 0), rules);
 }
 
 // The chance a ship gets away from another, by their thrust for mass.
@@ -110,7 +124,7 @@ export function lostShare(side, rules) {
   let lost = 0;
   for (const module of side.ship.modules) {
     const def = rules.modules.get(module.type);
-    if (!def || !AIMS.some((aim) => hasTag(def, AIM_TAGS[aim]))) continue;
+    if (!def || !AIMS.some((aim) => aimedAt(def, aim))) continue;
     total += def.stats.hp;
     lost += module.uid in side.wrecked ? def.stats.hp : Math.min(def.stats.hp, side.damage[module.uid] ?? 0);
   }
@@ -138,16 +152,17 @@ export function enemyOrder({ you, them, round, tactics }, rules) {
 
 // Every order the player could give this round, against the other ship's
 // order (intent), each with its odds and whether it can be given:
-// [{ order, ok, why, ... }]. Fire carries guns, chance, damage and its
-// targets; evade the chance the other ship's guns hit, and was (without
-// evading); flee and close their chance.
+// [{ order, ok, why, ... }]. Fire carries guns, chance, damages (each
+// gun's, as sideStats has them), the shields in the way and its targets;
+// evade the chance the other ship's guns hit, and was (without evading);
+// flee and close their chance.
 export function choicesFor(state, intent, rules) {
   const you = sideStats(state.you, rules);
   const them = sideStats(state.them, rules);
   const choices = AIMS.map((at) => {
     const targets = targetsOf(state.them, at, rules);
     const why = !you.guns ? 'Your guns are out.' : !targets.length ? `They have no working ${at === 'reactor' ? 'reactor' : at}.` : null;
-    return { order: { kind: 'fire', at }, ok: !why, why, guns: you.guns, chance: hitChance(them, intent.kind === 'evade', rules), damage: rules.balance.gunDamage, shields: them.shields, targets };
+    return { order: { kind: 'fire', at }, ok: !why, why, guns: you.guns, chance: hitChance(them, intent.kind === 'evade', rules), damages: you.damages, shields: them.shields, targets };
   });
   const theirs = intent.kind === 'fire' ? { chance: hitChance(you, true, rules), was: hitChance(you, false, rules) } : { chance: null, was: null };
   choices.push({ order: { kind: 'evade' }, ok: true, why: null, ...theirs });
@@ -236,16 +251,15 @@ export function playRound(state, order, rng, rules) {
 }
 
 // One ship's volley at a kind of module on the other: every working gun
-// fires once, at the chance shown. Returns { side (the target after it),
-// rng, chance, shots }.
+// fires once, at the chance shown, for its own damage. Returns { side (the
+// target after it), rng, chance, shots }.
 function volley(shooter, target, side, aim, evading, rng, rules) {
-  const { gunDamage } = rules.balance;
   const chance = hitChance(target, evading, rules);
   let r = rng;
   let hit = side;
   let shields = target.shields;
   const shots = [];
-  for (let gun = 0; gun < shooter.guns; gun++) {
+  for (const gunDamage of shooter.damages) {
     const p = percent(r, chance);
     r = p.state;
     if (!p.value) {

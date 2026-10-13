@@ -32,7 +32,10 @@ const NORMAL = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 //   noses     { x, y0, y1, length }: one per run of cells on the front
 //             column; x is the hull's front edge, y0 to y1 its span
 //   nozzles   { x, y, side } engine cells whose exhaust side faces space
-//   barrels   { x, y, side } weapon cells whose muzzle side faces space
+//   barrels   { x, y, side, heavy? } weapon cells whose muzzle side faces
+//             space: a gun one cell across has its pair of barrels there; a
+//             wider one (a cannon) has one heavy barrel, at the middle of
+//             those cells (x, y between cells), heavy: true
 //   collars   { x, y, side } an airlock's hatches: one in the middle of each
 //             side that faces space (builder.js joins())
 //   lights    { x, y, side: 'port' | 'starboard' } at the stern corners
@@ -121,7 +124,10 @@ export function traceHull(ship, defs) {
     const away = facingSide(def, module.rot);
     const out = away ? sideCells(def, module, away).filter(([x, y]) => isSpace(...step(x, y, away))) : [];
     if (hasTag(def, 'engine')) for (const [x, y] of out) hull.nozzles.push({ x, y, side: away });
-    if (hasTag(def, 'weapon')) for (const [x, y] of out) hull.barrels.push({ x, y, side: away });
+    if (hasTag(def, 'weapon') && out.length) {
+      if (sideCells(def, module, away).length === 1) hull.barrels.push({ x: out[0][0], y: out[0][1], side: away });
+      else hull.barrels.push({ x: (out[0][0] + out.at(-1)[0]) / 2, y: (out[0][1] + out.at(-1)[1]) / 2, side: away, heavy: true });
+    }
     if (hasTag(def, 'airlock')) {
       for (const side of SIDES) {
         const open = sideCells(def, module, side).filter(([x, y]) => isSpace(...step(x, y, side)));

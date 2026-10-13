@@ -9,11 +9,15 @@ test('the shipped data is valid', () => {
   assert.deepEqual(validateData(readData()), []);
 });
 
-test('the shipped data has the 12 v0.1 module types', () => {
-  const ids = readData().modules.modules.map((m) => m.id).sort();
-  assert.deepEqual(ids, [
+test("the shipped data has the 12 v0.1 module types, first, then M23e's nine", () => {
+  const ids = readData().modules.modules.map((m) => m.id);
+  assert.deepEqual(ids.slice(0, 12).sort(), [
     'airlock', 'armory', 'bridge', 'cargo', 'corridor', 'engine',
     'lifesupport', 'medbay', 'quarters', 'reactor', 'shield', 'weapon',
+  ]);
+  assert.deepEqual(ids.slice(12).sort(), [
+    'bunks', 'cannon', 'heavyengine', 'largehold', 'lightengine',
+    'pointdefense', 'shieldarray', 'smallreactor', 'surgery',
   ]);
 });
 
@@ -86,7 +90,7 @@ const cases = [
   ['encounter with a crew job for an enemy', (d) => (d.encounters.encounters[0].enemies[0] = 'medic'), /unknown enemy "medic"/],
   ['encounter with no enemies', (d) => (d.encounters.encounters[0].enemies = []), /enemies must be a list of 1 to 8/],
   ['misspelled encounter field', (d) => (d.encounters.encounters[0].enemy = ['pirate']), /unknown field "enemy"/],
-  ['ship preset with an unknown part', (d) => (d.ships.ships[0].parts.cannon = 2), /parts: unknown module "cannon"/],
+  ['ship preset with an unknown part', (d) => (d.ships.ships[0].parts.railgun = 2), /parts: unknown module "railgun"/],
   ['ship preset count back to front', (d) => (d.ships.ships[0].parts.engine = [3, 2]), /parts\.engine must be a whole number, or \[least, most\]/],
   ['ship preset on an unknown frame', (d) => (d.ships.ships[0].frame = 'barge'), /unknown frame "barge"/],
   ['ship preset with no crew', (d) => (d.ships.ships[0].crew = 0), /crew must be a whole number from 1/],
@@ -133,7 +137,7 @@ const cases = [
   ['misspelled launch field', (d) => (d.backgrounds.backgrounds[0].launch.escape = 'Gone.'), /launch: unknown field "escape"/],
   ['misspelled start field', (d) => (start(d).credit = 5), /start: unknown field "credit"/],
   ['start in debt', (d) => (start(d).credits = -5), /credits must be a whole number, 0 or more/],
-  ['start with an unknown part', (d) => (start(d).parts.cannon = 1), /start\.parts: unknown module "cannon"/],
+  ['start with an unknown part', (d) => (start(d).parts.railgun = 1), /start\.parts: unknown module "railgun"/],
   ['start with none of a part', (d) => (start(d).parts.engine = 0), /engine must be a whole number, 1 or more/],
   ['start crew with an enemy in it', (d) => (start(d).crew[0] = 'pirate'), /start\.crew: unknown job "pirate"/],
   ['start crew of six', (d) => start(d).crew.push('marine', 'marine', 'marine'), /crew must be a list of 1 to 5 crew jobs/],
@@ -222,6 +226,18 @@ const cases = [
   ['a look with a hat', (d) => (d.jobs.jobs[0].look.hat = 'cap'), /marine: look: unknown field "hat"/],
   ['a weapon drawn as long as a corridor', (d) => (d.weapons.weapons[0].held.length = 3), /rifle: held\.length must be a number from 0\.08 to 0\.6/],
   ['a weapon for three hands', (d) => (d.weapons.weapons[0].held.hands = 3), /rifle: held\.hands must be 1 or 2/],
+  // M23e: the catalog and part variants.
+  ['a part in no category', (d) => delete engine(d).category, /modules\.json engine: category must be one of command, power, engines, weapons, defense, crew, cargo, utility/],
+  ['a part in an unknown category', (d) => (engine(d).category = 'toys'), /engine: category must be one of command, power/],
+  ['a category with no parts', (d) => d.modules.categories.push({ id: 'science', name: 'Science' }), /category science: no part is in it/],
+  ['a category with no name', (d) => (d.modules.categories[0].name = ''), /category command: name must be a non-empty string/],
+  ['a gun with no damage', (d) => delete d.modules.modules.find((m) => m.id === 'cannon').damage, /cannon: damage must be a whole number from 1 to 100/],
+  ['damage on an engine', (d) => (engine(d).damage = 10), /engine: only a part tagged "weapon" has damage/],
+  ['a shield that holds nothing', (d) => (d.modules.modules.find((m) => m.id === 'shieldarray').shield = 0), /shieldarray: shield must be a whole number from 1 to 100/],
+  ['point defense that takes off half the odds', (d) => (d.modules.modules.find((m) => m.id === 'pointdefense').intercept = 60), /pointdefense: intercept must be a whole number from 1 to 50/],
+  ['an intercept on a gun', (d) => (d.modules.modules.find((m) => m.id === 'weapon').intercept = 5), /weapon: only a part tagged "pointdefense" has intercept/],
+  ['point defense with no most', (d) => delete d.balance.interceptMax, /interceptMax must be a whole number from 0 to 100/],
+  ['the old gun damage left in the balance', (d) => (d.balance.gunDamage = 15), /unknown number "gunDamage"/],
 ];
 
 test('the validator names each kind of mistake', () => {
@@ -250,5 +266,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 2 hull styles, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 9 kinds of sector node, 10 events\)/);
+  assert.match(run.stdout, /OK \(21 modules, 1 frame, 1 manufacturer, 2 hull styles, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 9 kinds of sector node, 10 events\)/);
 });

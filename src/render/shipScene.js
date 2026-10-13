@@ -170,14 +170,16 @@ function greebles(model, hull, shape) {
     cylinder(model, start, 0.17, (dx || dy) * 0.5, { axis: dx ? 'x' : 'y', r1: 0.32, fill: null, ends: 'nozzleFace', edge: 'propEdge' });
     glow(model, [sx + dx * 0.69, sy + dy * 0.69, 0.36], 0.4, palette.bpLine);
   }
-  for (const { x, y, side } of hull.barrels) {
+  // A pair of barrels for a gun a cell across, one heavy one for a wider gun.
+  for (const { x, y, side, heavy } of hull.barrels) {
     const [dx, dy] = STEP[side];
-    for (const off of [-0.1, 0.1]) {
+    const [half, length, z] = heavy ? [0.08, 1.4, [0.38, 0.52]] : [0.04, 1.2, [0.4, 0.48]];
+    for (const off of heavy ? [0] : [-0.1, 0.1]) {
       const [cx, cy] = [x + 0.5 + (dy ? off : 0), y + 0.5 + (dx ? off : 0)];
       const from = [cx + dx * 0.5, cy + dy * 0.5];
-      const to = [cx + dx * 1.2, cy + dy * 1.2];
-      const [u, v] = [dy ? 0.04 : 0, dx ? 0.04 : 0];
-      box(model, [Math.min(from[0], to[0]) - u, Math.min(from[1], to[1]) - v, 0.4], [Math.max(from[0], to[0]) + u, Math.max(from[1], to[1]) + v, 0.48], { fill: null, top: null, edge: 'propEdge' });
+      const to = [cx + dx * length, cy + dy * length];
+      const [u, v] = [dy ? half : 0, dx ? half : 0];
+      box(model, [Math.min(from[0], to[0]) - u, Math.min(from[1], to[1]) - v, z[0]], [Math.max(from[0], to[0]) + u, Math.max(from[1], to[1]) + v, z[1]], { fill: null, top: null, edge: 'propEdge' });
     }
   }
   for (const { x, y, side } of hull.collars) {

@@ -11,19 +11,19 @@ import { approachState, beginBoarding, giveOrder } from '../src/sim/encounter.js
 import { launch } from '../src/sim/launch.js';
 import { repairPrice } from '../src/sim/repair.js';
 import { beginRun, jump, linked } from '../src/sim/travel.js';
-import { approachText } from '../src/ui/campaign/approachText.js';
+import { approachText, damageText } from '../src/ui/campaign/approachText.js';
 import { boardingObjective, boardingOutcome } from '../src/ui/campaign/boardingText.js';
 import { continueText } from '../src/ui/campaign/hubText.js';
 import { nodeText, sectorText } from '../src/ui/campaign/sectorText.js';
 import { rules } from './battleKit.js';
-import { readyToLaunch } from './launchKit.js';
+import { CUTTER_SEED, readyToLaunch } from './launchKit.js';
 
 const onRun = (extra = {}) => beginRun(launch(readyToLaunch(extra), rules).campaign, rules).campaign;
 function atCutter(extra = {}) {
   const fresh = onRun(extra);
   const { sector } = fresh.run;
   const to = linked(sector, sector.start)[0];
-  const nodes = sector.nodes.map(({ event, hostile, ...node }) => (node.id === to ? { ...node, type: 'hostile', hostile: { ship: 'cutter', seed: 1 } } : node));
+  const nodes = sector.nodes.map(({ event, hostile, ...node }) => (node.id === to ? { ...node, type: 'hostile', hostile: { ship: 'cutter', seed: CUTTER_SEED } } : node));
   return jump({ ...fresh, run: { ...fresh.run, sector: { ...sector, nodes } } }, rules, to).campaign;
 }
 // Plays `pick`'s orders from campaign seeds up until the approach ends in
@@ -50,14 +50,14 @@ test('an approach: the two ships, their order, and every order with the odds the
   const intent = enemyOrder(state, rules);
   const choices = choicesFor(state, intent, rules);
   const evade = choices.find((c) => c.order.kind === 'evade');
-  assert.match(text.intent.text, new RegExp(`^The cutter fires at your engines: 2 guns, ${evade.was}% each \\(${evade.chance}% if you evade\\)\\.$`));
+  assert.match(text.intent.text, new RegExp(`^The cutter fires at your engines: 2 guns, ${evade.was}% each \\(${evade.chance}% if you evade\\), 15 damage a hit\\.$`));
   assert.equal(text.orders.length, 7);
   for (const order of text.orders) {
     const choice = choices.find((c) => c.order.kind === order.order.kind && c.order.at === order.order.at);
     assert.equal(order.ok, choice.ok);
     if (order.order.kind === 'fire' && order.ok) {
       assert.equal(order.small, `${choice.chance}% × ${choice.guns}`);
-      assert.match(order.text, new RegExp(`${choice.chance}% each to hit, ${rules.balance.gunDamage} damage a hit`));
+      assert.match(order.text, new RegExp(`${choice.chance}% each to hit, ${damageText(choice.damages)} damage a hit`));
     }
     if (order.order.kind === 'flee') assert.equal(order.small, `${choice.chance}%`);
   }
@@ -141,7 +141,7 @@ test('a boarding fight: the line under the round, how it ended, and Continue', (
 });
 
 test('the map: a hostile ship until it is met, the parts wrecked aboard, and what a station repairs', () => {
-  const node = { name: 'Mile Forty', type: 'hostile', hostile: { ship: 'cutter', seed: 1 } };
+  const node = { name: 'Mile Forty', type: 'hostile', hostile: { ship: 'cutter', seed: CUTTER_SEED } };
   assert.deepEqual(nodeText(node, rules), { name: 'Mile Forty', kind: 'Hostile ship: Pirate cutter', text: rules.nodeTypes.get('hostile').text });
   assert.equal(nodeText(node, rules, { done: true }).kind, 'Hostile ship, gone');
   const campaign = onRun({ credits: 500 });

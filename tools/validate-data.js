@@ -20,9 +20,15 @@ import { checkCampaignFiles, checkStartShips } from './validate-campaign.js';
 
 const SIDES = ['n', 'e', 's', 'w'];
 const STATS = ['power', 'mass', 'thrust', 'berths', 'lifeSupport', 'cargo', 'hp'];
-const MODULE_KEYS = ['id', 'name', 'glyph', 'manufacturer', 'size', 'rotates', 'facesSpace', 'stats', 'tags', 'interior', 'cost', 'heal'];
+const MODULE_KEYS = ['id', 'name', 'glyph', 'category', 'manufacturer', 'size', 'rotates', 'facesSpace', 'stats', 'tags', 'damage', 'shield', 'intercept', 'interior', 'cost', 'heal'];
 // What a med bay heals each of the wounded in a jump (medbay.js): up to this.
 const MAX_HEAL = 10;
+// What a part does in the approach phase (src/sim/approach.js), by the tag
+// that has it: a gun's damage a hit, what a shield holds a round, and what
+// point defense takes off the other ship's hit chance. Every part with the
+// tag has the number, and no other part does.
+const APPROACH_NUMBERS = { damage: ['weapon', 100], shield: ['shield', 100], intercept: ['pointdefense', 50] };
+const CATEGORY_KEYS = ['id', 'name'];
 const FRAME_KEYS = ['id', 'name', 'width', 'height', 'shape', 'maxModules', 'minThrustToMass'];
 // A hull style (src/render/hullShape.js checks the shapes it asks for).
 const HULL_KEYS = ['id', 'name', 'margin', 'corners', 'outer', 'stern', 'inner', 'steps', 'profile', 'stripe', 'smooth', 'roof', 'nose'];
@@ -78,10 +84,11 @@ const BALANCE = {
   scanRange: [1, 4],
   // The approach phase (src/sim/approach.js): its rounds, a gun's chance
   // against a ship that doesn't move and what a ship's thrust for its mass
-  // and evading take off it, the bounds on every chance, a hit's damage and
-  // what a shield generator holds a round, fleeing's and closing's chances
-  // and what thrust for mass moves them, a wrecked reactor's chance of
-  // blowing, the heat an approach with shots in it adds, and a repair's
+  // and evading take off it, the bounds on every chance, the most a ship's
+  // point defense takes off (a gun's damage, a shield's strength and each
+  // turret's cut are its part's, data/modules.json), fleeing's and closing's
+  // chances and what thrust for mass moves them, a wrecked reactor's chance
+  // of blowing, the heat an approach with shots in it adds, and a repair's
   // price, in percent of the part's cost (src/sim/repair.js). What a
   // station charges to patch up a hit point of the crew's (src/sim/patch.js).
   approachRounds: [1, 10],
@@ -90,8 +97,7 @@ const BALANCE = {
   evadeBonus: [0, 100],
   chanceMin: [0, 50],
   chanceMax: [50, 100],
-  gunDamage: [1, 100],
-  shieldPerGen: [0, 100],
+  interceptMax: [0, 100],
   fleeChance: [0, 100],
   fleePerThrust: [0, 200],
   closeChance: [0, 100],
@@ -148,6 +154,7 @@ const MAX_FRAME_SIZE = 32;
 export const KNOWN_TAGS = [
   'bridge', 'reactor', 'engine', 'corridor', 'airlock', 'quarters',
   'lifesupport', 'cargo', 'medbay', 'armory', 'weapon', 'shield',
+  'pointdefense',
 ];
 
 // Returns a list of problems as "where: what" strings. Empty means valid.
@@ -264,8 +271,20 @@ export function validateData(data) {
     }
   }
 
+  // The drawer's categories (M23e), each with a name, every one with parts.
+  const categories = listOf(moduleFile, 'categories', 'modules.json', fail);
+  const categoryIds = uniqueIds(categories, 'modules.json categories', fail);
+  categories.forEach((category, i) => {
+    const where = `modules.json category ${category.id ?? `#${i}`}`;
+    knownKeys(category, CATEGORY_KEYS, where, fail);
+    if (!isText(category.name)) fail(where, 'name must be a non-empty string');
+  });
+
   const modules = listOf(moduleFile, 'modules', 'modules.json', fail);
   uniqueIds(modules, 'modules.json', fail);
+  for (const id of categoryIds) {
+    if (!modules.some((def) => def.category === id)) fail(`modules.json category ${id}`, 'no part is in it');
+  }
   const glyphs = new Set();
   modules.forEach((def, i) => {
     const where = `modules.json ${def.id ?? `#${i}`}`;
@@ -281,6 +300,7 @@ export function validateData(data) {
       glyphs.add(def.glyph);
     }
     if (!makerIds.has(def.manufacturer)) fail(where, `unknown manufacturer "${def.manufacturer}"`);
+    if (!categoryIds.has(def.category)) fail(where, `category must be one of ${[...categoryIds].join(', ')}`);
     if (typeof def.rotates !== 'boolean') fail(where, 'rotates must be true or false');
     if (!isIntIn(def.cost, 0, Infinity)) fail(where, 'cost must be a whole number, 0 or more');
 
@@ -300,6 +320,13 @@ export function validateData(data) {
         if (!KNOWN_TAGS.includes(tag)) fail(where, `unknown tag "${tag}"`);
       }
       if (new Set(def.tags).size !== def.tags.length) fail(where, 'tags has duplicates');
+      for (const [key, [tag, max]] of Object.entries(APPROACH_NUMBERS)) {
+        if (!def.tags.includes(tag)) {
+          if (def[key] !== undefined) fail(where, `only a part tagged "${tag}" has ${key}`);
+        } else if (!isIntIn(def[key], 1, max)) {
+          fail(where, `${key} must be a whole number from 1 to ${max}`);
+        }
+      }
     }
   });
   for (const tag of REQUIRED_TAGS) {

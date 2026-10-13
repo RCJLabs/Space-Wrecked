@@ -15,7 +15,7 @@ import { initialState, reduce, saveData } from '../src/sim/root.js';
 import { beginRun, jump, jumpPlan, leavePlan, leaveSector, linked, reach } from '../src/sim/travel.js';
 import { withPart } from '../tools/startShip.js';
 import { rules } from './battleKit.js';
-import { readyToLaunch } from './launchKit.js';
+import { CUTTER_SEED, readyToLaunch } from './launchKit.js';
 
 const { balance } = rules;
 const onRun = (extra = {}) => beginRun(launch(readyToLaunch(extra), rules).campaign, rules).campaign;
@@ -113,7 +113,7 @@ function boardedWithFour() {
   const signed = hired(atStation({ credits: 500 }));
   const { sector } = signed.run;
   const to = linked(sector, signed.run.at).find((id) => sector.nodes[id].type !== 'station') ?? linked(sector, signed.run.at)[0];
-  const nodes = sector.nodes.map(({ event, hostile, ...node }) => (node.id === to ? { ...node, type: 'hostile', hostile: { ship: 'cutter', seed: 1 } } : node));
+  const nodes = sector.nodes.map(({ event, hostile, ...node }) => (node.id === to ? { ...node, type: 'hostile', hostile: { ship: 'cutter', seed: CUTTER_SEED } } : node));
   const met = jump({ ...signed, run: { ...signed.run, sector: { ...sector, nodes } } }, rules, to).campaign;
   for (let seed = 0; seed < 3000; seed++) {
     let at = { ...met, rng: seedFrom(seed) };
