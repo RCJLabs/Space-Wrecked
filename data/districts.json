@@ -23,7 +23,7 @@
         "dealer": "dutch",
         "pitch": "Dutch sells what the scavvers missed, and buys whatever you can carry in. Cash, no questions, no refunds.",
         "size": 4,
-        "parts": { "engine": 6, "reactor": 1, "quarters": 1, "lifesupport": 1, "corridor": 2, "airlock": 1, "cargo": 2, "medbay": 1, "armory": 1, "weapon": 1, "shield": 1 }
+        "parts": { "engine": 9, "reactor": 1, "quarters": 1, "lifesupport": 1, "corridor": 2, "airlock": 1, "cargo": 2, "medbay": 1, "armory": 1, "weapon": 1, "shield": 1, "lightengine": 1, "heavyengine": 1, "smallreactor": 1, "pointdefense": 1, "cannon": 1, "shieldarray": 1, "bunks": 1, "surgery": 1, "largehold": 1 }
       }
     }
   ]

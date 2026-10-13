@@ -185,7 +185,7 @@ const cases = [
   ['job paying odd credits', (d) => (job(d, 'rent').credits = [61, 90]), /multiples of 5/],
   ['act lifting off on nothing', (d) => (d.campaign.acts[0].liftOff = 0), /liftOff must be a number above 0, up to 4/],
   ['shop run by a stranger', (d) => (d.districts.districts[0].shop.dealer = 'nobody'), /dealer "nobody" isn't one of the district's clients/],
-  ['shop stocking more than its table has', (d) => (d.districts.districts[0].shop.size = 12), /a stock of 12 needs as many different parts/],
+  ['shop stocking more than its table has', (d) => (d.districts.districts[0].shop.parts = { engine: 3, reactor: 1 }), /a stock of 4 needs as many different parts/],
   ['shop selling an unknown part', (d) => (d.districts.districts[0].shop.parts.warpcore = 1), /shop parts: unknown module "warpcore"/],
   ['selling dearer than buying', (d) => (d.balance.sellPercent = 120), /sellPercent must be a whole number from 0 to 100|sellPercent must be at most buyPercent/],
   ['selling for more than the price', (d) => (d.balance.buyPercent = 40), /sellPercent must be at most buyPercent/],

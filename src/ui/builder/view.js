@@ -38,6 +38,7 @@ const REPLAY_MS = 9000; // a replay's steps share this long, each kept to 60-320
 const REPLAY_HOLD_MS = 900; // the finished ship stays this long before the replay ends
 const TILE_GAP = 6;
 const TABS = 56; // the drawer's tab row and the space under it
+const PICK = 56; // the Parts tab's picker row and the space over it
 
 // Mounts the builder in root and returns the screen's handle (resize, draw,
 // unmount, frameStats). source:
@@ -480,7 +481,9 @@ export function mountBuilder(root, source) {
   function layout() {
     if (!alive) return;
     const height = el.clientHeight;
-    const tile = Math.max(48, Math.min(64, Math.floor((height - TABS - 16 - 3 * TILE_GAP) / 4)));
+    // Three rows of tiles under the tabs and the picker: room for any one
+    // category's parts, or for the sheet of categories; All scrolls.
+    const tile = Math.max(48, Math.min(64, Math.floor((height - TABS - PICK - 16 - 2 * TILE_GAP) / 3)));
     el.style.setProperty('--tile', `${tile}px`);
     if (!frame || !derived) return;
     const r = board.getBoundingClientRect();

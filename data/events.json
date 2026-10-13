@@ -1,6 +1,6 @@
 {
   "drops": {
-    "salvage": { "corridor": 3, "armory": 2, "cargo": 2, "medbay": 1, "shield": 1, "weapon": 1, "engine": 1 }
+    "salvage": { "corridor": 3, "armory": 2, "cargo": 2, "medbay": 1, "shield": 1, "weapon": 1, "engine": 1, "lightengine": 1, "smallreactor": 1, "pointdefense": 1, "bunks": 1, "largehold": 1 }
   },
   "events": [
     {

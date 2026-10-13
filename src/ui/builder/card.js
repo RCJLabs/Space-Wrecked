@@ -1,5 +1,6 @@
 // The details a long press shows for a part: size, what has to face space,
-// stats, what it does for the crew on the run (quarters, life support and
+// stats, what it does in an approach (a gun's damage, a shield's strength,
+// point defense) and for the crew on the run (quarters, life support and
 // the med bay), and cost; and for a placed part, where it is and whether it
 // reaches the bridge.
 import { footprint } from '../../sim/modules.js';
@@ -25,6 +26,7 @@ export function cardFor(defs, def, placed = null) {
     STATS.filter(([key]) => ALWAYS.has(key) || def.stats[key] !== 0)
       .map(([key, label]) => `${label} ${key === 'power' ? signed(def.stats[key]) : def.stats[key]}`)
       .join(' · '),
+    ...approachLine(defs, def),
     ...runLine(defs, def),
     `Cost ${def.cost} · ${defs.manufacturers.get(def.manufacturer)?.name ?? def.manufacturer}`,
   ];
@@ -34,6 +36,15 @@ export function cardFor(defs, def, placed = null) {
     lines.push(`${where} · ${joined}`);
   }
   return { title: def.name, lines };
+}
+
+// What a part does in an approach (src/sim/approach.js), as a line, or
+// none: the numbers its part gives the rules, as the odds use them.
+function approachLine(defs, def) {
+  if (def.damage) return [`In an approach: ${def.damage} damage a hit, one shot a round.`];
+  if (def.shield) return [`In an approach: holds off ${def.shield} damage a round, from the first hits.`];
+  if (def.intercept) return [`In an approach: the other ship's guns hit ${def.intercept} in 100 less, up to ${defs.balance.interceptMax} with more turrets. Their volleys at your guns hit it too.`];
+  return [];
 }
 
 // What a part does for the crew on the run (src/sim/crew.js, medbay.js), as

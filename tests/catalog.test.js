@@ -12,6 +12,7 @@ import { DRAWN as PROPS } from '../src/render/props.js';
 import { buildShip } from '../src/sim/builder.js';
 import { newCampaign, partsNeeded } from '../src/sim/campaign.js';
 import { partLines } from '../src/sim/constraints.js';
+import { ALL, catalogOrder, catalogView, nextSize, SIZES } from '../src/ui/builder/catalog.js';
 import { rules } from './battleKit.js';
 
 const defs = [...rules.modules.values()];
@@ -70,4 +71,34 @@ test("every part is in one of the drawer's categories, in the order they are sho
   const ids = new Set(rules.categories.map((category) => category.id));
   for (const def of defs) assert.ok(ids.has(def.category), def.id);
   for (const category of rules.categories) assert.ok(defs.some((def) => def.category === category.id), `${category.id} has parts`);
+});
+
+test('the Parts tab: all the parts by category, base parts first; one category; a size; only those on hand', () => {
+  const order = catalogOrder(rules);
+  assert.deepEqual(order.slice(0, 6), ['bridge', 'reactor', 'smallreactor', 'engine', 'lightengine', 'heavyengine']);
+  assert.equal(order.length, rules.modules.size);
+  // All, at any size: every part, and each category's count.
+  const all = catalogView(rules);
+  assert.deepEqual([all.shown, all.empty], [order, null]);
+  assert.equal(all.counts[ALL], rules.modules.size);
+  for (const { id } of rules.categories) assert.equal(all.counts[id], defs.filter((def) => def.category === id).length, id);
+  // One category, then a size within it: the counts follow the size.
+  assert.deepEqual(catalogView(rules, { category: 'engines' }).shown, ['engine', 'lightengine', 'heavyengine']);
+  const medium = catalogView(rules, { category: 'engines', size: 'medium' });
+  assert.deepEqual(medium.shown, ['engine', 'heavyengine']);
+  assert.equal(medium.counts[ALL], defs.filter((def) => def.size[0] * def.size[1] > 2 && def.size[0] * def.size[1] <= 6).length);
+  assert.deepEqual(catalogView(rules, { size: 'large' }).shown, ['reactor', 'cargo', 'largehold']);
+  assert.deepEqual(catalogView(rules, { category: 'command', size: 'small' }), { shown: [], counts: catalogView(rules, { size: 'small' }).counts, empty: 'No parts that size here.' });
+  // Construction mode: only what is on hand.
+  const onHand = (type) => ({ engine: 3, quarters: 1, corridor: 2 })[type] ?? 0;
+  const stocked = catalogView(rules, { onHand });
+  assert.deepEqual(stocked.shown, ['engine', 'quarters', 'corridor']);
+  assert.deepEqual([stocked.counts.engines, stocked.counts.weapons], [1, 0]);
+  assert.equal(catalogView(rules, { category: 'weapons', onHand }).empty, 'Nothing on hand here.');
+  assert.equal(catalogView(rules, { onHand: () => 0 }).empty, 'Nothing on hand to fit.');
+  // The size filter goes round, a step a tap.
+  let size = SIZES[0].id;
+  const seen = [];
+  for (let i = 0; i < SIZES.length; i++) seen.push((size = nextSize(size)));
+  assert.deepEqual(seen, ['small', 'medium', 'large', 'any']);
 });

@@ -65,6 +65,17 @@ test('the details card lists size, what faces space, stats and where a placed pa
   assert.equal(quarters.lines.at(-1), 'At (4, 0) · no bridge yet');
 });
 
+test("the details card says what a gun, a shield and point defense do in an approach, from the part's own numbers (M23e)", () => {
+  const line = (type) => cardFor(defs, defs.modules.get(type)).lines[2];
+  assert.equal(line('weapon'), 'In an approach: 15 damage a hit, one shot a round.');
+  assert.equal(line('cannon'), 'In an approach: 30 damage a hit, one shot a round.');
+  assert.equal(line('shield'), 'In an approach: holds off 10 damage a round, from the first hits.');
+  assert.equal(line('shieldarray'), 'In an approach: holds off 25 damage a round, from the first hits.');
+  assert.equal(line('pointdefense'), `In an approach: the other ship's guns hit 10 in 100 less, up to ${defs.balance.interceptMax} with more turrets. Their volleys at your guns hit it too.`);
+  assert.equal(cardFor(defs, defs.modules.get('cannon')).lines[0], '2×1 squares · turns · barrel must face space');
+  assert.equal(cardFor(defs, defs.modules.get('surgery')).lines[2], 'On the run: heals each of the wounded 2 a jump, 3 with a medic aboard. Wrecked, it heals no one.');
+});
+
 test('the details card says what quarters, life support and the med bay do on the run', () => {
   const room = 'On the run: the ship carries as many crew as its berths and life support both cover. Recruits sign on at stations.';
   assert.equal(cardFor(defs, defs.modules.get('quarters')).lines[2], room);
