@@ -130,7 +130,9 @@ Done when: "every crew member has a helmet-badge portrait drawn in code from a l
   - **M14's saves check:** 10 of 10 at 905 × 370;
   - **M13's check:** 24 of 24 at 905 × 370;
   - **M8's fight sandbox checks:** a whole fight played by touch at each size, with no console errors; the orders column at each size, every order and crew button 48 px or more; all 8 extras, offline included, with no console errors;
-  - **M14's check:** 40 of 40 at 905 × 370, with a job of each kind played by touch. The count depends on the jobs dealt, from a new seed each run (48 in M23b).
+  - **M14's check:** 41 of 41 at 905 × 370, with a job of each kind played by touch. The count depends on the jobs dealt, from a new seed each run (48 in M23b).
+
+  After these, only a comment in `style.css` changed, and with it `sw.js`'s version. M23c's check passed 25 of 25 at 905 × 370 again, offline included.
 - **Found by the checks and the screenshots:**
   - **M19's check at 821 × 283:** "the crew and ship panels show whole" failed. The start crew's rows in the hangar's and map's crew panels had become two lines, a name with the job under it, where "Marine" alone had been one, and the crew panel ran off the screen. Under 320 px of height the rows are names alone now. 52 of 52 after.
   - **M23's check** asked for the start crew by their jobs ("Going: Engineer, Medic…") and for a v13 save to open as v14. Its copy (scratchpad `m23/verify23c.mjs`) reads the names from the save and asks for v14 or later. Nothing else in it changed.
