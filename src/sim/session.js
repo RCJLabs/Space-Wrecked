@@ -15,7 +15,8 @@
 // - A drag released on the grid places or moves at once. A part that can't
 //   go there stays as a ghost, and the notice says why.
 // Every change to the ship is a build command (applyCommand in builder.js),
-// the hull's style (build/hull) included, kept in the history. The session
+// the hull's style (build/hull), paint and trim included, kept in the
+// history. The session
 // also keeps the build log: every command that made the ship from an empty
 // frame, in order, which undo and redo keep exact and the replay plays back
 // (replay.js). Launch only goes ahead when every line of the flight
@@ -25,9 +26,18 @@
 // many of each part there are in all, on the ship and on hand. A part only
 // goes on while one is on hand, and taking one off puts it back, so undo and
 // redo keep the count too. Without a stock (the sandbox), parts are endless.
+// Styling pieces (styling.js, M23f) are endless either way.
+//
+// The session works on one layer at a time: the rooms (the plans) or the
+// styling (the Look, from outside). Taps pick out what is on its layer, and
+// the Turn and Delete buttons act on it; a piece picked from the Look tab
+// takes the session to the styling layer. A piece placed by a tap fits
+// itself to the hull where it can: turned the way it was, else another way
+// it takes (fitPiece), and Turn shows it the next way round.
 import { applyCommand, moduleAt, rotateModule, turnedPlacement } from './builder.js';
 import { flightChecklist } from './constraints.js';
 import { footprint } from './modules.js';
+import { fitPiece, nextTurn, pieceAt, pieceFootprint } from './styling.js';
 
 // Undo steps kept; older ones are dropped.
 export const HISTORY_LIMIT = 500;
@@ -38,7 +48,7 @@ export const EDGE_GRACE = 1;
 // stock: { [type]: count } of every part there is, on the ship or on hand,
 // or null for no limit.
 export function createSession(ship, log = [], stock = null) {
-  return { ship, log, stock, past: [], future: [], selected: null, armed: null, ghost: null, notice: null };
+  return { ship, log, stock, layer: 'rooms', past: [], future: [], selected: null, armed: null, ghost: null, notice: null };
 }
 
 // How many of a part are on hand to put on the ship: Infinity without a
@@ -79,6 +89,11 @@ export function reduceSession(session, action, defs) {
       return launch(session, defs, action.crew);
     case 'build/hull':
       return restyle(session, defs, action.style);
+    case 'build/paint':
+    case 'build/trim':
+      return paint(session, defs, action.type === 'build/paint' ? 'paint' : 'trim', action.color);
+    case 'build/layer':
+      return layer(session, action.layer);
     // A ship from elsewhere (another slot, a pasted blueprint, an imported
     // save) replaces this one with its log and stock, and the history
     // starts over.
@@ -108,19 +123,40 @@ export function snapPlacement(defs, frame, type, rot, px, py, grab) {
   };
 }
 
-// True if the placement's footprint covers cell (x, y).
+// True if the placement's footprint covers cell (x, y). It may be a part's
+// or a styling piece's.
 export function covers(defs, placement, x, y) {
-  const [w, h] = footprint(defs.modules.get(placement.type), placement.rot);
+  const [w, h] = sizeOf(defs, placement);
   return x >= placement.x && y >= placement.y && x < placement.x + w && y < placement.y + h;
 }
 
+// A placement's footprint, [w, h], a part's or a styling piece's.
+export function sizeOf(defs, { type, rot }) {
+  const piece = defs.styling?.get(type);
+  return piece ? pieceFootprint(piece, rot) : footprint(defs.modules.get(type), rot);
+}
+
+function isPiece(defs, type) {
+  return Boolean(defs.styling?.has(type));
+}
+
 // Picking the armed part again stops placing, unless toggle is false (a
-// checklist fix that picks the part for you).
+// checklist fix that picks the part for you). A styling piece takes the
+// session to the styling layer, a part to the rooms.
 function arm(session, defs, type, toggle) {
-  if (!defs.modules.has(type)) return session;
+  const piece = defs.styling?.get(type);
+  if (!piece && !defs.modules.has(type)) return session;
   if (session.armed?.type === type) return toggle ? { ...session, armed: null, ghost: null } : session;
-  if (partsLeft(session, type) < 1) return withNotice(session, 'bad', noneLeft(defs, type));
-  return { ...session, armed: { type, rot: 0 }, ghost: null, selected: null };
+  if (!piece && partsLeft(session, type) < 1) return withNotice(session, 'bad', noneLeft(defs, type));
+  return { ...session, layer: piece ? 'styling' : 'rooms', armed: { type, rot: piece ? piece.turns[0] : 0 }, ghost: null, selected: null };
+}
+
+// Works on the rooms or on the styling: what is picked out on the other
+// layer is let go.
+function layer(session, next) {
+  if (next !== 'rooms' && next !== 'styling') return session;
+  if (session.layer === next) return session;
+  return { ...session, layer: next, armed: null, ghost: null, selected: null };
 }
 
 function cancel(session) {
@@ -136,73 +172,99 @@ function tap(session, defs, px, py) {
   const y = Math.floor(py);
   if (armed) {
     if (ghost && covers(defs, ghost, x, y)) return place(session, defs, ghost);
-    const next = snapPlacement(defs, frame, armed.type, armed.rot, px, py);
+    const next = isPiece(defs, armed.type) ? pieceGhost(session, defs, armed.type, armed.rot, px, py) : snapPlacement(defs, frame, armed.type, armed.rot, px, py);
     if (!next) return ghost ? { ...session, ghost: null } : session;
-    if (ghost && ghost.x === next.x && ghost.y === next.y) return session;
+    if (ghost && ghost.x === next.x && ghost.y === next.y && ghost.rot === next.rot) return session;
     return { ...session, ghost: next };
   }
   if (ghost && covers(defs, ghost, x, y)) return moveTo(session, defs, ghost);
-  const uid = moduleAt(ship, defs, x, y);
+  const styling = session.layer === 'styling';
+  const uid = styling ? pieceAt(ship, defs, x, y) : moduleAt(ship, defs, x, y);
   if (uid !== null && uid === selected) return ghost ? { ...session, ghost: null } : { ...session, selected: null };
   if (uid !== null) return { ...session, selected: uid, ghost: null };
-  const module = ship.modules.find((m) => m.uid === selected);
-  if (!module || !defs.modules.has(module.type)) return session;
+  const item = (styling ? ship.styling ?? [] : ship.modules).find((m) => m.uid === selected);
+  if (!item || !(styling ? defs.styling?.has(item.type) : defs.modules.has(item.type))) return session;
   // Empty grid with a part selected: show the part there, to move it.
-  const next = snapPlacement(defs, frame, module.type, ghost?.rot ?? module.rot, px, py);
+  const next = styling ? pieceGhost(session, defs, item.type, ghost?.rot ?? item.rot, px, py, item.uid) : snapPlacement(defs, frame, item.type, ghost?.rot ?? item.rot, px, py);
   if (!next) return ghost ? { ...session, ghost: null } : session;
-  if (ghost && ghost.x === next.x && ghost.y === next.y) return session;
-  return { ...session, ghost: { ...next, uid: module.uid } };
+  if (ghost && ghost.x === next.x && ghost.y === next.y && ghost.rot === next.rot) return session;
+  return { ...session, ghost: { ...next, uid: item.uid } };
+}
+
+// Where a styling piece would go for a tap at (px, py): fitted to the hull
+// there (fitPiece), or null off the frame. It keeps the tapped cell, so a
+// turn can fit it again round the same spot.
+function pieceGhost(session, defs, type, rot, px, py, ignore = null) {
+  const frame = defs.frames.get(session.ship.frame);
+  if (px < -EDGE_GRACE || py < -EDGE_GRACE || px >= frame.width + EDGE_GRACE || py >= frame.height + EDGE_GRACE) return null;
+  const at = [Math.max(0, Math.min(frame.width - 0.01, px)), Math.max(0, Math.min(frame.height - 0.01, py))];
+  return { ...fitPiece(session.ship, defs, type, rot, ...at, { ignore }), at };
 }
 
 // Moves a selected part to its ghost. A move it can't make leaves the ghost
 // where it is, and the notice says why.
 function moveTo(session, defs, ghost) {
   const { uid, x, y, rot } = ghost;
-  const module = session.ship.modules.find((m) => m.uid === uid);
-  if (!module) return { ...session, ghost: null };
+  const item = itemOf(session.ship, uid);
+  if (!item) return { ...session, ghost: null };
   const command = { op: 'move', uid, x, y, rot };
   const result = applyCommand(session.ship, defs, command);
   if (!result.ok) return withNotice(session, 'bad', result.message);
   if (result.ship === session.ship) return { ...session, ghost: null };
-  const name = nameOf(defs, module.type);
-  return withNotice({ ...record(session, result.ship, command, `move ${name}`), selected: uid, ghost: null }, 'good', `Moved ${name}.`);
+  const name = nameOf(defs, item.type);
+  return withNotice({ ...record(session, result.ship, command, `move ${name}`), selected: uid, ghost: null }, 'good', `Moved ${name}.${cameOff(defs, result.removed)}`);
+}
+
+// A module or a styling piece by uid.
+function itemOf(ship, uid) {
+  return ship.modules.find((m) => m.uid === uid) ?? (ship.styling ?? []).find((p) => p.uid === uid) ?? null;
+}
+
+// What a room change took off with it, for its notice.
+function cameOff(defs, removed = []) {
+  if (!removed.length) return '';
+  return removed.length === 1 ? ` The ${nameOf(defs, removed[0].type)} came off.` : ` ${removed.length} styling pieces came off.`;
 }
 
 // Places a part from a confirmed ghost or a drop. A part placed while it is
 // armed stays armed for the next one, while there is one; otherwise the new
 // module is selected.
 function place(session, defs, placement) {
-  const def = defs.modules.get(placement.type);
+  const piece = defs.styling?.get(placement.type);
+  const def = piece ?? defs.modules.get(placement.type);
   if (!def) return session;
   const { type, x, y, rot } = placement;
-  if (partsLeft(session, type) < 1) return withNotice({ ...session, armed: null, ghost: null }, 'bad', noneLeft(defs, type));
+  if (!piece && partsLeft(session, type) < 1) return withNotice({ ...session, armed: null, ghost: null }, 'bad', noneLeft(defs, type));
   const result = applyCommand(session.ship, defs, { op: 'place', type, x, y, rot });
   if (!result.ok) {
-    const ghost = { type, x, y, rot };
-    return withNotice({ ...session, armed: { type, rot }, ghost, selected: null }, 'bad', result.message);
+    const ghost = { type, x, y, rot, ...(placement.at ? { at: placement.at } : {}) };
+    return withNotice({ ...session, layer: piece ? 'styling' : 'rooms', armed: { type, rot }, ghost, selected: null }, 'bad', result.message);
   }
   const next = record(session, result.ship, { op: 'place', uid: result.uid, type, x, y, rot }, `place ${def.name}`);
-  const stayArmed = session.armed?.type === type && partsLeft(next, type) > 0;
+  const stayArmed = session.armed?.type === type && (piece || partsLeft(next, type) > 0);
   return withNotice(
-    { ...next, armed: stayArmed ? { type, rot } : null, ghost: null, selected: stayArmed ? null : result.uid },
+    { ...next, layer: piece ? 'styling' : 'rooms', armed: stayArmed ? { type, rot } : null, ghost: null, selected: stayArmed ? null : result.uid },
     'good',
-    `Placed ${def.name}.`,
+    `Placed ${def.name}.${cameOff(defs, result.removed)}`,
   );
 }
 
 // rot: the turn it ends up with (a turned ghost's), or as it is.
 function move(session, defs, uid, x, y, rot) {
-  const module = session.ship.modules.find((m) => m.uid === uid);
-  if (!module) return session;
-  const command = { op: 'move', uid, x, y, rot: rot ?? module.rot };
+  const item = itemOf(session.ship, uid);
+  if (!item) return session;
+  const command = { op: 'move', uid, x, y, rot: rot ?? item.rot };
   const result = applyCommand(session.ship, defs, command);
   if (!result.ok) return withNotice(session, 'bad', result.message);
   if (result.ship === session.ship) return session.ghost?.uid === undefined ? session : { ...session, ghost: null };
-  return { ...record(session, result.ship, command, `move ${nameOf(defs, module.type)}`), selected: uid, ghost: null };
+  const next = { ...record(session, result.ship, command, `move ${nameOf(defs, item.type)}`), selected: uid, ghost: null };
+  return result.removed?.length ? withNotice(next, 'info', `Moved ${nameOf(defs, item.type)}.${cameOff(defs, result.removed)}`) : next;
 }
 
 function rotate(session, defs) {
   const { armed, ghost, ship, selected } = session;
+  const pieceType = armed?.type ?? ghost?.type ?? (ship.styling ?? []).find((p) => p.uid === selected)?.type;
+  if (pieceType && isPiece(defs, pieceType)) return turnPiece(session, defs);
   if (armed) {
     const def = defs.modules.get(armed.type);
     if (!def.rotates) return withNotice(session, 'bad', `${def.name} can't be rotated.`);
@@ -224,16 +286,45 @@ function rotate(session, defs) {
   if (!result.ok) return withNotice(session, 'bad', result.message);
   const { x, y, rot } = result.placement;
   const name = nameOf(defs, result.placement.type);
-  return record(session, result.ship, { op: 'move', uid: selected, x, y, rot }, `turn ${name}`);
+  const next = record(session, result.ship, { op: 'move', uid: selected, x, y, rot }, `turn ${name}`);
+  return result.removed?.length ? withNotice(next, 'info', `Turned ${name}.${cameOff(defs, result.removed)}`) : next;
+}
+
+// Turn for a styling piece: one being placed or moved shows its next turn
+// round the spot it was tapped at, fitted there if it can be; a placed one
+// takes the next turn that fits where it is, if any does.
+function turnPiece(session, defs) {
+  const { armed, ghost, ship, selected } = session;
+  if (armed || ghost) {
+    const type = (armed ?? ghost).type;
+    const def = defs.styling.get(type);
+    if (def.turns.length < 2) return withNotice(session, 'bad', `${def.name} doesn't turn.`);
+    const rot = nextTurn(def, (ghost ?? armed).rot);
+    const next = { ...session, ...(armed ? { armed: { ...armed, rot } } : {}) };
+    if (!ghost) return next;
+    const [gw, gh] = sizeOf(defs, ghost);
+    const at = ghost.at ?? [ghost.x + gw / 2, ghost.y + gh / 2];
+    return { ...next, ghost: { ...fitPiece(ship, defs, type, rot, ...at, { ignore: ghost.uid ?? null, turnsToo: false }), at, ...(ghost.uid === undefined ? {} : { uid: ghost.uid }) } };
+  }
+  const piece = (ship.styling ?? []).find((p) => p.uid === selected);
+  const def = defs.styling.get(piece.type);
+  const [w, h] = pieceFootprint(def, piece.rot);
+  const at = [piece.x + w / 2, piece.y + h / 2];
+  for (let rot = nextTurn(def, piece.rot); rot !== piece.rot; rot = nextTurn(def, rot)) {
+    const turned = fitPiece(ship, defs, piece.type, rot, ...at, { ignore: piece.uid, turnsToo: false });
+    const result = applyCommand(ship, defs, { op: 'move', uid: piece.uid, x: turned.x, y: turned.y, rot: turned.rot });
+    if (result.ok) return record(session, result.ship, { op: 'move', uid: piece.uid, x: turned.x, y: turned.y, rot: turned.rot }, `turn ${def.name}`);
+  }
+  return withNotice(session, 'bad', `The ${def.name} can't turn here.`);
 }
 
 function remove(session, defs) {
-  const module = session.ship.modules.find((m) => m.uid === session.selected);
-  if (!module) return session;
-  const result = applyCommand(session.ship, defs, { op: 'remove', uid: module.uid });
-  const name = nameOf(defs, module.type);
-  const next = record(session, result.ship, { op: 'remove', uid: module.uid }, `remove ${name}`);
-  return withNotice({ ...next, selected: null, ghost: null }, 'info', `Removed ${name}.`);
+  const item = itemOf(session.ship, session.selected);
+  if (!item) return session;
+  const result = applyCommand(session.ship, defs, { op: 'remove', uid: item.uid });
+  const name = nameOf(defs, item.type);
+  const next = record(session, result.ship, { op: 'remove', uid: item.uid }, `remove ${name}`);
+  return withNotice({ ...next, selected: null, ghost: null }, 'info', `Removed ${name}.${cameOff(defs, result.removed)}`);
 }
 
 function undo(session) {
@@ -261,6 +352,16 @@ function restyle(session, defs, style) {
   return withNotice(record(session, result.ship, command, `${name.toLowerCase()} hull`), 'good', `${name} hull.`);
 }
 
+// Paints the hull or its trim (data/styling.json), a step undo takes back.
+function paint(session, defs, op, color) {
+  const command = { op, color };
+  const result = applyCommand(session.ship, defs, command);
+  if (!result.ok) return withNotice(session, 'bad', result.message);
+  if (result.ship === session.ship) return session;
+  const name = (op === 'paint' ? defs.paints : defs.trims).get(color).name;
+  return withNotice(record(session, result.ship, command, `${name.toLowerCase()} ${op}`), 'good', `${name} ${op}.`);
+}
+
 // The launch itself is act 1's (M17); for now the check is the point: a
 // ship that fails any line can't go, and the notice names the first fix.
 function launch(session, defs, crew) {
@@ -276,7 +377,8 @@ function launch(session, defs, crew) {
 function focus(session, entry) {
   if (session.armed) return session.selected === null ? session : { ...session, selected: null };
   const uid = entry.command.uid;
-  const selected = session.ship.modules.some((m) => m.uid === uid) ? uid : null;
+  const onLayer = session.layer === 'styling' ? session.ship.styling ?? [] : session.ship.modules;
+  const selected = onLayer.some((m) => m.uid === uid) ? uid : null;
   return selected === session.selected ? session : { ...session, selected };
 }
 
@@ -297,7 +399,7 @@ function withNotice(session, tone, text) {
 }
 
 function nameOf(defs, type) {
-  return defs.modules.get(type)?.name ?? type;
+  return defs.modules.get(type)?.name ?? defs.styling?.get(type)?.name ?? type;
 }
 
 function noneLeft(defs, type) {

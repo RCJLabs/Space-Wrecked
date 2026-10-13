@@ -238,6 +238,18 @@ const cases = [
   ['an intercept on a gun', (d) => (d.modules.modules.find((m) => m.id === 'weapon').intercept = 5), /weapon: only a part tagged "pointdefense" has intercept/],
   ['point defense with no most', (d) => delete d.balance.interceptMax, /interceptMax must be a whole number from 0 to 100/],
   ['the old gun damage left in the balance', (d) => (d.balance.gunDamage = 15), /unknown number "gunDamage"/],
+  // M23f: styling.
+  ['a frame with no styling cap', (d) => delete d.frames.frames[0].maxStyling, /starter: maxStyling must be a whole number from 0 to 255/],
+  ['a piece named like a part', (d) => (d.styling.pieces[0].id = 'engine'), /styling\.json engine: id must differ from every module's/],
+  ['a piece in no group', (d) => (d.styling.pieces[0].group = 'hats'), /sweptwing: group must be one of wings, gear, sculpt/],
+  ['a piece too big', (d) => (d.styling.pieces[0].size = [5, 2]), /sweptwing: size must be \[w, h\], each 1 to 4 cells/],
+  ['a piece turned two ways at once', (d) => (d.styling.pieces[0].turns = [0, 0]), /sweptwing: turns must list different turns, each 0 to 7/],
+  ['a piece of an unknown shape', (d) => (d.styling.pieces.find((p) => p.id === 'wedge').shape = 'blob'), /wedge: shape must be one of wedge, curve/],
+  ['a standing piece with no model', (d) => d.styling.pieces.push({ id: 'banner', name: 'Banner', group: 'gear', size: [1, 1], turns: [0] }), /banner: a piece without a shape needs a model of its own/],
+  ['a group with no pieces', (d) => d.styling.groups.push({ id: 'decals', name: 'Decals' }), /group decals: every group must have pieces/],
+  ['a paint with no color', (d) => d.styling.paints.push({ id: 'gold', name: 'Gold' }), /styling\.json gold: has no color in src\/render\/palette\.js paints/],
+  ['no slate paint', (d) => (d.styling.paints = d.styling.paints.filter((p) => p.id !== 'slate')), /paints must have "slate": ships from before paint have it/],
+  ['no sky trim', (d) => (d.styling.trims = d.styling.trims.filter((p) => p.id !== 'sky')), /trims must have "sky"/],
 ];
 
 test('the validator names each kind of mistake', () => {
@@ -266,5 +278,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(21 modules, 1 frame, 1 manufacturer, 2 hull styles, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 9 kinds of sector node, 10 events\)/);
+  assert.match(run.stdout, /OK \(21 modules, 1 frame, 1 manufacturer, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 9 kinds of sector node, 10 events\)/);
 });

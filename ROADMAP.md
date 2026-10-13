@@ -531,12 +531,35 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
     - the cutter flies on an engine and one or two light engines, the corvette carries a pair of cannons half the time, and the hauler may carry a large hold. The corvette is mirrored, so any part that can't sit across its middle comes in pairs: a pair of shield arrays would hold 50 a round, more than the start ship's gun gets through, so it has none
 
   **Done when:** the nine parts are in `data/modules.json`, each with its own footprint, interior, model and icon. Each changes the approach, a fight or the voyage, shown by `tools/approach.js`, `tools/sim.js` or `tools/voyage.js` (Law 1), and none is worse than another part in every way (cost, size, mass, power, hit points and what it does). A gun's damage and a shield's strength come from its part, and point defense cuts the other ship's hit chance, every chance shown as rolled (Law 4). The drawer shows one category at a time or all, picked from a 48 px button, with a size filter, and in construction mode only the parts on hand; two taps to place as now, every button 48 px or more at the three sizes. The shop and the drop tables carry the new parts, and the enemy presets use some (the golden ships file updated on purpose). Old saves and blueprint codes still load, and the careful test player still crosses all five sectors fed in at least 24 of 30.
-- [ ] **M23f Styling pieces** (Law 1's styling line).
-  - styling as data (`data/styling.json`): wings, fins, spoilers, antennas, lights, hull plates, and shaped pieces (wedges and curved corners) to sculpt the outline, plus paint and trim colors
-  - placed in the builder on cells outside the ship's rooms, against the hull, never in front of an exhaust, a barrel or a hatch, with a cap of their own
-  - saved with the ship, carried by blueprint codes, shown everywhere a hull is drawn, and worn by enemy ships
+- [ ] **M23f Styling pieces** (Law 1's styling line). Evan's picks (2026-10-13), from mockups drawn by the game's renderer: Look mode; the 12 pieces in the mockup; paint as hull and trim swatches; a piece left with nothing to hold it comes off.
+  - styling as data (`data/styling.json`): 12 pieces in three groups, plus six paints and six trims:
+    - wings: swept wing, delta wing, tail fin, spoiler;
+    - gear: antenna, dish, floodlight, light strip, armor plate;
+    - sculpt: wedge, long wedge, curve.
+  - Look mode: the Hull button shows the ship from outside, and the drawer's first tab becomes Look, a picker of wings, gear, sculpt, paint, trim and the hull's style (which moves there from the Ship tab)
+  - placed from outside, two taps, on cells beside the hull against a room, never ahead of the bow or in the cell in front of an exhaust, a barrel or a hatch, at most 24 a ship; wedges and curves join the hull, which wraps them in its style
+  - a room change that leaves a piece with nothing to hold it takes the piece off in the same step; undo puts it back
+  - saved with the ship, carried by blueprint codes, shown everywhere a hull is drawn, and worn by enemy ships in their side's paint
 
-  **Done when (draft):** a player can place, move, turn and remove styling pieces and paint the hull in the builder, two taps each; they show on the blueprint and the solid hull wherever ships are drawn; no stat, rule or boarding map changes with them (tested); saves (a `SAVE_VERSION` bump) and blueprint codes (a new code version that still reads the old) carry them; and enemy ships wear some.
+  **Done when:**
+  - **Data:** the 12 pieces are in `data/styling.json`, each with its own model outside, its drawing on the plans and its icon; so are six paints and six trims.
+  - **Look mode:** the Hull button opens Look. The board shows the ship from outside, and the drawer's first tab picks from wings, gear, sculpt, paint, trim and hull style.
+  - **Placing:**
+    - a piece goes on from outside in two taps, on cells beside the hull and against a room;
+    - never ahead of the bow, and never in the cell in front of an exhaust, a barrel or a hatch;
+    - at most 24 a ship;
+    - it moves, turns (a wing flips sides) and comes off as a part does, undoable;
+    - paint and trim take one tap each, undoable.
+  - **Room changes:** one that leaves a piece with nothing to hold it takes the piece off in the same step; undo puts it back.
+  - **Sculpting:** wedges and curves join the hull, whose skin wraps them in the ship's style; the hull still covers every room and never cuts into one (tested).
+  - **Where it shows:** pieces and paint show wherever ships are drawn: the builder's plans and Hull view, the hangar, the lift-off and the Enemy ships sandbox.
+  - **Looks only:** no stat, rule or boarding map changes with them (tested).
+  - **Saves and codes:** saves (`SAVE_VERSION` 17: older ships have no pieces, in slate and sky) and blueprint codes (version 4, which still reads 1 to 3) carry them.
+  - **Enemy ships** wear their side's paint and some pieces, the same for the same seed, their layouts unchanged (golden).
+  - **Fit and budget:**
+    - every button is 48 px or more at the three sizes;
+    - the builder's default view keeps every cell 22 px or more on the cover screen;
+    - the hull views keep to the frame budget.
 - [ ] **M23g A second manufacturer** (§3: manufacturers are skins over the same part shapes; §5).
   - a second maker over every part: its own palette, trim and details on the same footprints, with small differences in stats and price
   - the shop and the drop tables carry both makers, and enemy ships wear their side's

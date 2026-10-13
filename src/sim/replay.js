@@ -1,7 +1,7 @@
 // Builds played back. A ship's build log is every command that made it from
 // an empty frame, in order (session.js keeps it as the player builds), so
 // replaying the log shows the build step by step: the timelapse. Pure.
-import { applyCommand, DEFAULT_HULL, newShip } from './builder.js';
+import { applyCommand, DEFAULT_HULL, DEFAULT_PAINT, DEFAULT_TRIM, newShip } from './builder.js';
 
 // The ship after each step: ships[0] is the empty frame, ships[n] the ship
 // after n commands. A command that no longer applies (content changed since
@@ -18,37 +18,46 @@ export function replay(log, defs, frameId) {
   return { ships, error: null };
 }
 
-// A log that builds the ship part by part in its build order, its hull's
-// style first unless it is the default. It only reproduces the ship exactly
-// when its uids run 1, 2, 3...: see renumbered.
+// A log that builds the ship part by part in its build order: its hull's
+// style, paint and trim first where they aren't the default, then its
+// parts, then its styling pieces. It only reproduces the ship exactly when
+// its uids run 1, 2, 3... that way: see renumbered.
 export function logFor(ship) {
-  const style = ship.hull && ship.hull !== DEFAULT_HULL ? [{ op: 'hull', style: ship.hull }] : [];
-  return [...style, ...ship.modules.map(({ uid, type, x, y, rot }) => ({ op: 'place', uid, type, x, y, rot }))];
+  const looks = [
+    ...(ship.hull && ship.hull !== DEFAULT_HULL ? [{ op: 'hull', style: ship.hull }] : []),
+    ...(ship.paint && ship.paint !== DEFAULT_PAINT ? [{ op: 'paint', color: ship.paint }] : []),
+    ...(ship.trim && ship.trim !== DEFAULT_TRIM ? [{ op: 'trim', color: ship.trim }] : []),
+  ];
+  const place = ({ uid, type, x, y, rot }) => ({ op: 'place', uid, type, x, y, rot });
+  return [...looks, ...ship.modules.map(place), ...(ship.styling ?? []).map(place)];
 }
 
-// The ship with its parts numbered 1, 2, 3... in build order.
+// The ship with its parts numbered 1, 2, 3... in build order, then its
+// styling pieces after them.
 export function renumbered(ship) {
   const modules = ship.modules.map((m, i) => (m.uid === i + 1 ? m : { ...m, uid: i + 1 }));
-  const nextUid = modules.length + 1;
-  if (modules.every((m, i) => m === ship.modules[i]) && ship.nextUid === nextUid) return ship;
-  return { ...ship, modules, nextUid };
+  const pieces = ship.styling ?? [];
+  const styling = pieces.map((p, i) => (p.uid === modules.length + i + 1 ? p : { ...p, uid: modules.length + i + 1 }));
+  const nextUid = modules.length + styling.length + 1;
+  if (modules.every((m, i) => m === ship.modules[i]) && styling.every((p, i) => p === pieces[i]) && ship.nextUid === nextUid) return ship;
+  return ship.styling === undefined ? { ...ship, modules, nextUid } : { ...ship, modules, styling, nextUid };
 }
 
 // True if replaying the log makes exactly this ship: the same hull style,
-// and the same parts, ids, places and turns in the same order (however a
-// save wrote its keys).
+// paint and trim, and the same parts and styling pieces, ids, places and
+// turns in the same order (however a save wrote its keys).
 export function logMatches(log, ship, defs) {
   const { ships, error } = replay(log, defs, ship.frame);
   if (error) return false;
   const built = ships.at(-1);
+  const same = (a, b) => a.length === b.length && a.every((m, i) => m.uid === b[i].uid && m.type === b[i].type && m.x === b[i].x && m.y === b[i].y && m.rot === b[i].rot);
   return (
     built.hull === ship.hull &&
+    built.paint === (ship.paint ?? DEFAULT_PAINT) &&
+    built.trim === (ship.trim ?? DEFAULT_TRIM) &&
     built.nextUid === ship.nextUid &&
-    built.modules.length === ship.modules.length &&
-    built.modules.every((m, i) => {
-      const n = ship.modules[i];
-      return m.uid === n.uid && m.type === n.type && m.x === n.x && m.y === n.y && m.rot === n.rot;
-    })
+    same(built.modules, ship.modules) &&
+    same(built.styling, ship.styling ?? [])
   );
 }
 
@@ -73,8 +82,11 @@ export function isCommand(value) {
   const whole = (n) => Number.isInteger(n);
   if (value.op === 'remove') return whole(value.uid) && value.uid > 0;
   if (value.op === 'hull') return typeof value.style === 'string' && value.style !== '';
+  if (value.op === 'paint' || value.op === 'trim') return typeof value.color === 'string' && value.color !== '';
   if (value.op !== 'place' && value.op !== 'move') return false;
   if (value.op === 'move' && !(whole(value.uid) && value.uid > 0)) return false;
   if (value.op === 'place' && value.uid !== undefined && !(whole(value.uid) && value.uid > 0)) return false;
-  return (value.op === 'move' || (typeof value.type === 'string' && value.type !== '')) && whole(value.x) && whole(value.y) && [0, 1, 2, 3].includes(value.rot);
+  // A styling piece turns 0 to 7 (styling.js); a module 0 to 3, which the
+  // command itself checks.
+  return (value.op === 'move' || (typeof value.type === 'string' && value.type !== '')) && whole(value.x) && whole(value.y) && whole(value.rot) && value.rot >= 0 && value.rot <= 7;
 }

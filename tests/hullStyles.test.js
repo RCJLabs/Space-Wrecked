@@ -5,8 +5,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { decodeBlueprint, encodeBlueprint, encodePlacements } from '../src/core/blueprint.js';
-import { makeSave, MIGRATIONS, parseSave } from '../src/core/save.js';
+import { BLUEPRINT_VERSION, decodeBlueprint, encodeBlueprint, encodePlacements } from '../src/core/blueprint.js';
+import { makeSave, MIGRATIONS, parseSave, SAVE_VERSION } from '../src/core/save.js';
 import { applyCommand, buildShip, DEFAULT_HULL, newShip } from '../src/sim/builder.js';
 import { newCampaign, refitShip } from '../src/sim/campaign.js';
 import { generateShip } from '../src/sim/gen/ship.js';
@@ -67,7 +67,7 @@ test("a ship's log keeps its style, and a log that doesn't is rebuilt", () => {
 test('blueprint codes carry the style from version 3; older codes open in the default style', () => {
   const plated = { ...example, hull: 'plated' };
   const code = encodeBlueprint(plated);
-  assert.match(code, /^wtb\.3\./);
+  assert.match(code, new RegExp(`^wtb\\.${BLUEPRINT_VERSION}\\.`));
   const back = decodeBlueprint(code, rules);
   assert.ok(back.ok, back.error);
   assert.deepEqual(back.ship, plated);
@@ -113,7 +113,7 @@ test('save version 16 gives every ship a style: the builder\'s, the campaign\'s 
   const data = saveData({ ...initialState(2), campaign: { ...campaign, ship: bare(campaign.ship) } });
   const opened = parseSave(JSON.stringify({ version: 15, data }));
   assert.ok(opened.ok, opened.error);
-  assert.equal(opened.save.version, 16);
+  assert.equal(opened.save.version, SAVE_VERSION);
   assert.equal(opened.save.data.campaign.ship.hull, 'rounded');
   const again = parseSave(JSON.stringify(makeSave(opened.save.data)));
   assert.deepEqual(again.save.data, opened.save.data, 'and stays that way');

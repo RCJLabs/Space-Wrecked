@@ -45,7 +45,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  16  hull styles: every ship's hull has a style (data/hulls.json): the
 //      builder's ships, the campaign's, and the hostile one in an approach
 //      (M23d)
-export const SAVE_VERSION = 16;
+//  17  styling: every ship has a paint, a trim and its styling pieces
+//      (data/styling.json): the same ships, and a boarding fight's (M23f)
+export const SAVE_VERSION = 17;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -222,7 +224,38 @@ export const MIGRATIONS = [
       return next;
     },
   },
+  // Every ship gets its looks: the ships from before are in the yard's
+  // slate and sky, with no styling pieces.
+  {
+    from: 16,
+    up: (data) =>
+      eachShip(data, (ship) => (isObject(ship) ? { ...ship, paint: ship.paint ?? 'slate', trim: ship.trim ?? 'sky', styling: ship.styling ?? [] } : ship)),
+  },
 ];
+
+// The save's data with fn applied to every ship in it: the builder's slots,
+// the campaign's ship, the hostile one in an approach under way, and the
+// one a boarding fight is on.
+function eachShip(data, fn) {
+  if (!isObject(data)) return data;
+  let next = data;
+  if (isObject(data.builds) && Array.isArray(data.builds.slots)) {
+    next = { ...next, builds: { ...data.builds, slots: data.builds.slots.map((slot) => (isObject(slot) ? { ...slot, ship: fn(slot.ship) } : slot)) } };
+  }
+  if (isObject(data.campaign)) {
+    let campaign = { ...data.campaign, ship: fn(data.campaign.ship) };
+    const approach = isObject(campaign.run) ? campaign.run.approach : null;
+    if (isObject(approach) && isObject(approach.them)) {
+      campaign = { ...campaign, run: { ...campaign.run, approach: { ...approach, them: { ...approach.them, ship: fn(approach.them.ship) } } } };
+    }
+    const boarding = isObject(campaign.fight) ? campaign.fight.boarding : null;
+    if (isObject(boarding) && boarding.ship !== undefined) {
+      campaign = { ...campaign, fight: { ...campaign.fight, boarding: { ...boarding, ship: fn(boarding.ship) } } };
+    }
+    next = { ...next, campaign };
+  }
+  return next;
+}
 
 const PREFIX = config.appId;
 
