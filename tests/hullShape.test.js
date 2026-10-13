@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { exteriorScene, HULL } from '../src/render/exterior.js';
 import { traceHull } from '../src/render/hull.js';
-import { hullBands, hullShape, MAX_NOSE, noseSurfaces, PLAIN, sidePoint, styleOf } from '../src/render/hullShape.js';
+import { CHORD, hullBands, hullShape, MAX_NOSE, noseSurfaces, PLAIN, sidePoint, styleOf } from '../src/render/hullShape.js';
 import { skins } from '../src/render/palette.js';
 import { buildShip } from '../src/sim/builder.js';
 import { generateShip } from '../src/sim/gen/ship.js';
@@ -112,6 +112,25 @@ test('no outer corner of the outline is a plain right angle: a nose takes over a
       }
     }
   }
+});
+
+test("a rounded corner takes the steps its size needs, up to its style's: pieces CHORD long or less", () => {
+  const style = rules.hulls.get('rounded');
+  const used = new Set();
+  for (const [name, ship] of fleet) {
+    for (const { levels, per } of hullShape(traceHull(ship, rules), style).loops) {
+      const count = levels[0].pts.length;
+      for (let at = 0; at < count; at += per) {
+        // A corner's pieces on every level, and how many it took: the same
+        // on all of them.
+        const pieces = levels.map(({ pts }) => Array.from({ length: per - 1 }, (_, k) => Math.hypot(pts[at + k + 1][0] - pts[at + k][0], pts[at + k + 1][1] - pts[at + k][1])));
+        const took = Math.max(...pieces.map((list) => list.filter((l) => l > 1e-9).length));
+        used.add(took);
+        if (took < style.steps) assert.ok(pieces.flat().every((l) => l <= CHORD + 1e-9), `${name}: a corner of ${took} pieces has one over ${CHORD}`);
+      }
+    }
+  }
+  assert.ok(used.has(style.steps) && [...used].some((n) => n > 0 && n < style.steps), `big corners take every step, small ones fewer (${[...used].sort()})`);
 });
 
 test('every band and nose surface is finite, and the same ship always gives the same shape', () => {

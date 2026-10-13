@@ -21,6 +21,9 @@ export const ROOFS = ['tinted', 'panels'];
 const MAX_CORNER = 3;
 const MAX_STEPS = 8;
 const MAX_POINTS = 12;
+// How long a rounded corner's pieces are, at most, in cells: a corner gets
+// the steps that takes, up to its style's.
+export const CHORD = 0.55;
 
 // A style a ship can be drawn in when content has none (a test's tiny
 // catalog): the outline as it is, upright.
@@ -135,30 +138,21 @@ function contours(runs, style) {
     const pinned = out(i - 1) === 0 || out(i) === 0;
     const turn = Math.acos(Math.max(-1, Math.min(1, dot(n1, n2))));
     const stern = atStern(prev) || atStern(next);
-    for (const level of levels) {
-      const { d } = level;
+    // The corner at a level d out: its point (flat), the two ends of its
+    // cut, or its arc.
+    const corner = (d) => {
       const miter = cross(next.v, n1, d * out(i - 1), next.v, n2, d * out(i));
-      const flat = () => {
-        for (let k = 0; k <= steps; k++) level.pts.push(miter);
-      };
-      if (pinned || d <= EPS || turn < EPS) {
-        flat();
-        continue;
-      }
+      if (pinned || d <= EPS || turn < EPS) return { flat: miter };
       // Each corner takes up to half of the runs either side of it.
       const before = cross(prev.v, at(i - 2).n, d * out(i - 2), prev.v, n1, d * out(i - 1));
       const after = cross(at(i + 1).v, n2, d * out(i), at(i + 1).v, at(i + 1).n, d * out(i + 1));
       const room = Math.min(len(sub(miter, before)), len(sub(after, miter))) / 2;
       const want = convex ? (stern ? style.stern : style.outer) : style.inner * (d / margin);
-      if (want <= EPS) {
-        flat();
-        continue;
-      }
+      if (want <= EPS) return { flat: miter };
       if (style.corners === 'cut') {
         // Cut square across. An outer cut stays clear of the cell's corner.
         const t = Math.min(want, room, convex ? ((2 * d) / Math.sin(turn)) * 0.97 : Infinity);
-        level.pts.push(add(miter, mul(u1, -t)), add(miter, mul(u2, t)));
-        continue;
+        return { cut: [add(miter, mul(u1, -t)), add(miter, mul(u2, t))] };
       }
       // Rounded: an arc tangent to both runs. An outer one stays clear of
       // the cell's corner; an inner one curves the other way.
@@ -170,11 +164,30 @@ function contours(runs, style) {
       let a2 = Math.atan2(sign * n2[1], sign * n2[0]);
       while (a2 - a1 > Math.PI) a2 -= 2 * Math.PI;
       while (a2 - a1 < -Math.PI) a2 += 2 * Math.PI;
-      for (let k = 0; k <= steps; k++) {
-        const a = a1 + ((a2 - a1) * k) / steps;
-        level.pts.push(add(c, [Math.cos(a) * r, Math.sin(a) * r]));
+      return { arc: { c, r, a1, a2 } };
+    };
+    const shapes = levels.map(({ d }) => corner(d));
+    // An arc takes the steps its widest level needs for pieces about CHORD
+    // long, up to the style's: a small corner looks as round in fewer, and
+    // costs fewer faces. Its last point repeats for the steps it doesn't
+    // take, pieces of no size that the bands leave out.
+    const widest = Math.max(0, ...shapes.map(({ arc }) => (arc ? arc.r * Math.abs(arc.a2 - arc.a1) : 0)));
+    const used = Math.min(steps, Math.max(1, Math.ceil(widest / CHORD - EPS)));
+    shapes.forEach(({ flat, cut, arc }, j) => {
+      const pts = levels[j].pts;
+      if (cut) {
+        pts.push(...cut);
+        return;
       }
-    }
+      for (let k = 0; k <= steps; k++) {
+        if (!arc) {
+          pts.push(flat);
+          continue;
+        }
+        const a = arc.a1 + ((arc.a2 - arc.a1) * Math.min(k, used)) / used;
+        pts.push(add(arc.c, [Math.cos(a) * arc.r, Math.sin(a) * arc.r]));
+      }
+    });
     for (let k = 0; k < steps; k++) nose.push(false);
     nose.push(isNose[i]); // the run after the corner
   }

@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { exteriorScene, HULL } from '../src/render/exterior.js';
 import { traceHull } from '../src/render/hull.js';
 import { skins } from '../src/render/palette.js';
+import { paintSolid, prepareSolid } from '../src/render/painter.js';
 import { placeFaces, shade, solidBox } from '../src/render/solid.js';
 import { buildShip, newShip } from '../src/sim/builder.js';
 import { indexDefs } from '../src/sim/defs.js';
@@ -68,4 +69,25 @@ test('light falls on faces turned toward it; lit panels ignore it', () => {
   const level = (rgb) => Number(rgb.match(/\d+/)[0]);
   assert.ok(level(up) > level(away));
   assert.equal(shade({ normal: [0, 0, -1], color: '#a8e8ff', emissive: true }), 'rgb(168, 232, 255)');
+});
+
+test("a curved surface's pieces are drawn grown by half a pixel, not outlined, so no seam shows between them", () => {
+  // A ctx that remembers what was drawn.
+  const calls = [];
+  const ctx = new Proxy({}, { get: (_, key) => (...args) => calls.push([key, ...args]), set: () => true });
+  const cam = { yaw: 0, pitch: Math.PI / 2, distance: 40, pivot: [0, 0], scale: 40, x: 100, y: 100 };
+  const square = (x, edge) => ({ pts: [[x, 0, 0], [x + 1, 0, 0], [x + 1, 1, 0], [x, 1, 0]], normal: [0, 0, 1], color: '#445566', edge });
+  const path = (from) => calls.slice(from).filter(([k]) => k === 'moveTo' || k === 'lineTo').map(([, x, y]) => [x, y]);
+  paintSolid(ctx, prepareSolid([square(0, '#000000')], shade), [], cam);
+  const plain = path(0);
+  assert.equal(calls.filter(([k]) => k === 'stroke').length, 1, 'an edge is an outline');
+  const from = calls.length;
+  paintSolid(ctx, prepareSolid([square(0, 'fill')], shade), [], cam);
+  const grown = path(from);
+  assert.equal(calls.slice(from).filter(([k]) => k === 'stroke').length, 0, 'no outline');
+  assert.equal(grown.length, 4);
+  const box = (pts) => [0, 1].map((k) => [Math.min(...pts.map((p) => p[k])), Math.max(...pts.map((p) => p[k]))]);
+  const [[x0, x1], [y0, y1]] = box(plain);
+  const [[gx0, gx1], [gy0, gy1]] = box(grown);
+  for (const d of [x0 - gx0, gx1 - x1, y0 - gy0, gy1 - y1]) assert.ok(Math.abs(d - 0.5) < 1e-9, `out by ${d}`);
 });

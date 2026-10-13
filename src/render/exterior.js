@@ -27,12 +27,14 @@ export function exteriorScene({ ship, defs, hull, skin }) {
   const edge = { edge: skin.edge };
   const wallTop = style.profile[style.profile.length - 2][1] * HULL;
 
-  // The shoulder and the side, with the livery band along the side.
+  // The shoulder and the side, with the livery band along the side. A
+  // plated shoulder's steps are outlined; the upright side is not (its
+  // corners show by their light), which spares the frame a stroke a piece.
   for (const { pts, outward, wall } of hullBands(shape, HULL)) {
     const middle = [0, 1].map((k) => pts.reduce((sum, p) => sum + p[k], 0) / 4);
     const inside = [middle[0] - outward[0] * 2, middle[1] - outward[1] * 2, HULL * 0.3];
     const normal = normalOf(pts, inside);
-    faces.push({ pts, normal, color: skin.hull, edge: curve });
+    faces.push({ pts, normal, color: skin.hull, edge: wall ? 'fill' : curve });
     if (!wall) continue;
     const [z0, z1] = style.stripe.map((h) => h * HULL);
     const [ox, oy] = [outward[0] * 0.006, outward[1] * 0.006];

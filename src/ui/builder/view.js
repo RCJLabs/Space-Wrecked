@@ -349,7 +349,7 @@ export function mountBuilder(root, source) {
       dirty = true;
       return;
     }
-    const hint = look === 'hull' ? { tone: 'info', text: `The ship from outside: a ${styleOf(defs, session.ship).name} hull, set in the Ship tab. Tap Hull to go back to the plans.` } : hintFor(session, defs, drag);
+    const hint = look === 'hull' ? { tone: 'info', text: `From outside: a ${styleOf(defs, session.ship).name} hull, set in the Ship tab. Tap Hull for the plans.` } : hintFor(session, defs, drag);
     setStatus(flash && !drag ? flash : hint);
     showOnBoard(session);
     dirty = true;
