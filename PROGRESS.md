@@ -150,7 +150,11 @@ The last clause changed during the session. As I first put it to Evan, the test 
   - **At 960 × 825 the cards filled the area** around a few rows. They now take the height of what they hold, up to the area, so their lists still scroll on short screens.
   - **The crew panel's opener measured 18 px tall.** Its tap area was a stretched pseudo-element, which a size check can't see. It is now a button over the whole panel.
 - **Found by the check:** `sw.js` didn't list M23's new files until `tools/precache.js` ran, so the game didn't load offline. The pre-commit hook runs it; I ran it by hand before the check.
-- **Found by the regressions:** the Squad button borrowed Leave her's class for its look. M22's check found the hidden Squad button where it looked for Leave her, at every size. Squad has a class of its own now, and everything ran again on the final code.
+- **Found by the regressions:** two clashes of class names. Each was fixed in the game, not in the check:
+  - **The Squad button** borrowed Leave her's class for its look, so M22's check found the hidden Squad button where it looked for Leave her, at every size.
+  - **The crew and squad cards** borrowed the event card's class for their frame, so M20's check found two event cards.
+
+  Each now has classes of its own and shares the looks through the stylesheet.
 
 ### Known issues
 

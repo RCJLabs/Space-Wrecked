@@ -14,10 +14,10 @@ import { icons } from '../icons.js';
 
 // tap(key): a Sign on or Let go button's tap; done(): Done.
 export function createCrewCard({ tap, done }) {
-  const el = node('section', 'sct-event sct-crew');
+  const el = node('section', 'sct-crew');
   el.setAttribute('aria-label', 'Crew');
   const title = node('h2');
-  const text = node('p', 'sct-event-text');
+  const text = node('p', 'sct-crew-text');
   const words = node('div', 'sct-crew-words');
   words.append(title, text);
   const doneButton = toolButton('sct-crew-done', icons.done, 'Done');

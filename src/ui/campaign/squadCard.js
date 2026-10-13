@@ -13,11 +13,11 @@ import { icons } from '../icons.js';
 
 // toggle(id): take crew member id, or leave them aboard; done(): Done.
 export function createSquadCard({ toggle, done }) {
-  const el = node('section', 'sct-event apr-squad');
+  const el = node('section', 'apr-squad');
   el.setAttribute('aria-label', 'Squad');
   const title = node('h2');
-  const text = node('p', 'sct-event-text');
-  const said = node('p', 'sct-event-said');
+  const text = node('p', 'sct-crew-text');
+  const said = node('p', 'apr-squad-said');
   said.dataset.tone = 'warn';
   const words = node('div', 'sct-crew-words');
   words.append(title, text, said);
