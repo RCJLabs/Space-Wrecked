@@ -10,9 +10,10 @@
 // part to add: a reactor for power, an engine for thrust, quarters for
 // berths. Then the layout. A layout that runs into a dead end starts over
 // from the parts, with the random numbers where they got to. Last, a
-// preset with wrecks gets some of its rooms wrecked: a derelict.
+// preset with wrecks gets some of its rooms wrecked: a derelict. Its hull
+// gets one of the styles at random (M23d).
 import { int, pick, seedFrom, shuffle } from '../../core/rng.js';
-import { layoutProblems } from '../builder.js';
+import { DEFAULT_HULL, layoutProblems } from '../builder.js';
 import { canLaunch, flightChecklist, partLines } from '../constraints.js';
 import { WRECKS } from '../mapFromShip.js';
 import { hasTag, interiorRows, placedCells } from '../modules.js';
@@ -39,7 +40,7 @@ export function generateShip(defs, presetId, seed) {
     // The layout checked every part as it went in; this is the whole ship,
     // and every room of it boarders can walk into.
     if (layoutProblems(ship, defs).length || !canLaunch(flightChecklist(ship, defs, preset.crew)) || !roomsOnFoot(ship, defs)) continue;
-    return { ok: true, ship, preset: preset.id, crew: preset.crew, wrecked: wreckRooms(defs, preset, ship, state) };
+    return { ok: true, ship: { ...ship, hull: hullStyle(defs, presetId, seed) }, preset: preset.id, crew: preset.crew, wrecked: wreckRooms(defs, preset, ship, state) };
   }
   return { ok: false, error: `No layout for a ${preset.name} in ${ATTEMPTS} tries.` };
 }
@@ -112,6 +113,14 @@ function wreckRooms(defs, preset, ship, state) {
 }
 
 // The ship moved to the middle of its frame.
+// The hull's style (data/hulls.json), one of them at random: from a roll of
+// its own, so the layout is what it was before ships had styles, and the
+// same seed always gives the same style.
+function hullStyle(defs, presetId, seed) {
+  const styles = [...(defs.hulls?.keys() ?? [])];
+  return styles.length ? pick(seedFrom(`hull ${presetId} ${seed}`), styles).value : DEFAULT_HULL;
+}
+
 function centered(ship, defs) {
   const frame = defs.frames.get(ship.frame);
   const cells = ship.modules.flatMap((m) => placedCells(defs.modules.get(m.type), m));

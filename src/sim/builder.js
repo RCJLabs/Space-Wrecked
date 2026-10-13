@@ -1,8 +1,10 @@
 // Ship layout rules on the shared grid: placing, moving and removing modules,
 // and checking a whole layout. A ship is plain data:
-//   { frame, modules: [{ uid, type, x, y, rot }], nextUid }
-// Every change is a command (see applyCommand), so a build can be replayed
-// step by step. Functions return new ships and never change their input.
+//   { frame, hull, modules: [{ uid, type, x, y, rot }], nextUid }
+// hull is its hull's style (data/hulls.json), which only changes how it
+// looks from outside (M23d). Every change is a command (see applyCommand),
+// so a build can be replayed step by step. Functions return new ships and
+// never change their input.
 //
 // Rooms join where they share a wall: each wall two rooms share gets one
 // doorway in its middle, and corridors side by side open into each other,
@@ -12,15 +14,23 @@ import { inFrame } from './frame.js';
 import { cellAt, createGrid, exteriorOf, inBounds, OPPOSITE, SIDES, step, withCells } from './grid.js';
 import { facingSide, footprint, hasTag, isRotation, placedCells, sideCells } from './modules.js';
 
-export function newShip(frameId) {
-  return { frame: frameId, modules: [], nextUid: 1 };
+// The hull style a ship has until the player picks another, and the one
+// ships saved before M23d were given.
+export const DEFAULT_HULL = 'rounded';
+
+export function newShip(frameId, hull = DEFAULT_HULL) {
+  return { frame: frameId, hull, modules: [], nextUid: 1 };
 }
 
 // True if value has a ship's shape: whole-number positions, quarter-turn
-// rotations, and unique uids below nextUid. Whether the parts exist and fit
-// is the layout rules' business, not this; a save only has to be readable.
+// rotations, unique uids below nextUid, and a hull style's name if it has
+// one. A ship has one from M23d on (save version 16 gives older ones the
+// default), but the migrations from before then check ships with this too,
+// so it can't insist. Whether the parts exist and fit is the layout rules'
+// business, not this; a save only has to be readable.
 export function isShipData(value) {
   if (!isRecord(value) || typeof value.frame !== 'string' || !value.frame || !Array.isArray(value.modules)) return false;
+  if (value.hull !== undefined && (typeof value.hull !== 'string' || !value.hull)) return false;
   if (!Number.isInteger(value.nextUid) || value.nextUid < 1) return false;
   const uids = new Set();
   for (const m of value.modules) {
@@ -125,6 +135,7 @@ export function rotateModule(ship, defs, uid) {
 //   { op: 'place', type, x, y, rot }   adds a module with the next uid
 //   { op: 'move', uid, x, y, rot }     moves or turns one
 //   { op: 'remove', uid }              takes one out
+//   { op: 'hull', style }              gives the hull a style
 // Returns { ok: true, ship, uid? } or { ok: false, rule, message }.
 export function applyCommand(ship, defs, command) {
   if (command.op === 'place') return placeModule(ship, defs, command);
@@ -133,6 +144,10 @@ export function applyCommand(ship, defs, command) {
     const next = removeModule(ship, command.uid);
     if (next === ship) return { ok: false, rule: 'missing', message: `There is no module ${command.uid}.` };
     return { ok: true, ship: next };
+  }
+  if (command.op === 'hull') {
+    if (!defs.hulls?.has(command.style)) return { ok: false, rule: 'hull', message: `There is no hull style "${command.style}".` };
+    return { ok: true, ship: ship.hull === command.style ? ship : { ...ship, hull: command.style } };
   }
   return { ok: false, rule: 'command', message: `Unknown build command "${command.op}".` };
 }

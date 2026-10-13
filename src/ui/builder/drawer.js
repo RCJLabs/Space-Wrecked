@@ -10,10 +10,10 @@ import { createSavesPanel } from './savesPanel.js';
 import { createShipPanel } from './shipPanel.js';
 
 // palette: the palette's handlers (see palette.js). onLaunch() (or null:
-// no Launch) and onFix(type) as in shipPanel.js; saves: the handlers in
-// savesPanel.js, or null for no Saves tab; leave: null, or { icon, label,
-// onTap }, a button at the end of the tabs.
-export function createDrawer(defs, { palette: paletteHandlers, onLaunch, onFix, saves: savesHandlers, leave }) {
+// no Launch), onFix(type) and onStyle(id) as in shipPanel.js; saves: the
+// handlers in savesPanel.js, or null for no Saves tab; leave: null, or
+// { icon, label, onTap }, a button at the end of the tabs.
+export function createDrawer(defs, { palette: paletteHandlers, onLaunch, onFix, onStyle, saves: savesHandlers, leave }) {
   const el = node('div', 'bld-drawer');
   const tabs = node('div', 'bld-tabs');
   tabs.setAttribute('role', 'tablist');
@@ -23,7 +23,8 @@ export function createDrawer(defs, { palette: paletteHandlers, onLaunch, onFix, 
   shipTab.append(badge);
   tabs.append(partsTab, shipTab);
   const parts = createPalette(defs, paletteHandlers);
-  const ship = createShipPanel({ onLaunch, onFix });
+  const styles = [...defs.hulls.values()].map(({ id, name }) => ({ id, name }));
+  const ship = createShipPanel({ onLaunch, onFix, styles, onStyle });
   el.append(tabs, parts.el, ship.el);
   const panels = { parts: [parts.el, partsTab], ship: [ship.el, shipTab] };
   const saves = savesHandlers ? createSavesPanel(savesHandlers) : null;

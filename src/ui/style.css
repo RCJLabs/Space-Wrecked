@@ -2217,6 +2217,26 @@ textarea {
   color: var(--c-space);
 }
 
+/* The hull's style (M23d): a button a style, the ship's own lit. */
+.bld-styles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+#ui .bld-style {
+  min-height: 48px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+#ui .bld-style[aria-pressed='true'] {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
 .bld-stats {
   display: grid;
   grid-template-columns: 1fr auto;

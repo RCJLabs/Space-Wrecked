@@ -1,5 +1,6 @@
 // The Ship tab: the flight checklist, with the fix for each failing line,
-// the Launch button and the ship's totals. A fix that adds a part is a
+// the Launch button, the hull's style (M23d: a button a style, one tap,
+// which undo takes back) and the ship's totals. A fix that adds a part is a
 // button that picks that part, unless there is none on hand (construction
 // mode). Launch is locked while any line is open: a tap on it then just
 // says what to fix. When it is ready, the first tap arms it and a second
@@ -28,15 +29,30 @@ const STAT_ROWS = [
 ];
 
 // onLaunch() asks the session to launch (null: no Launch button); onFix(type)
-// picks a part to add.
-export function createShipPanel({ onLaunch, onFix }) {
+// picks a part to add; styles are the hull's ([{ id, name }], from
+// data/hulls.json) and onStyle(id) gives the hull one.
+export function createShipPanel({ onLaunch, onFix, styles = [], onStyle }) {
   const el = node('div', 'bld-ship');
   const checks = node('ul', 'bld-checks');
   const launch = node('button', 'btn bld-launch');
   launch.type = 'button';
   launch.hidden = !onLaunch;
+  const looks = node('div', 'bld-styles');
+  looks.setAttribute('role', 'group');
+  looks.setAttribute('aria-label', 'Hull style');
+  const styleButtons = styles.map(({ id, name }) => {
+    const button = node('button', 'btn bld-style', name);
+    button.type = 'button';
+    button.dataset.style = id;
+    button.setAttribute('aria-pressed', 'false');
+    return button;
+  });
+  looks.append(...styleButtons);
+  const styleTaps = styleButtons.map((button) => onTap(button, () => onStyle?.(button.dataset.style)));
   const stats = node('dl', 'bld-stats');
-  el.append(node('h3', null, 'Flight check'), checks, launch, node('h3', null, 'Ship'), stats);
+  const hullTitle = node('h3', null, 'Hull');
+  hullTitle.hidden = looks.hidden = !styles.length;
+  el.append(node('h3', null, 'Flight check'), checks, launch, hullTitle, looks, node('h3', null, 'Ship'), stats);
 
   let open = 0; // lines still to pass
   let armedUntil = 0;
@@ -98,9 +114,10 @@ export function createShipPanel({ onLaunch, onFix }) {
   return {
     el,
     // lines from flightChecklist, totals from shipStats, and { crew,
-    // maxModules, onHand(type) }.
+    // maxModules, onHand(type), hull: the ship's style }.
     update(lines, totals, context) {
       onHand = context.onHand ?? (() => Infinity);
+      for (const button of styleButtons) button.setAttribute('aria-pressed', String(button.dataset.style === context.hull));
       for (const detach of fixTaps) detach();
       fixTaps = [];
       checks.replaceChildren(...lines.map(lineItem));
@@ -117,7 +134,7 @@ export function createShipPanel({ onLaunch, onFix }) {
     },
     dispose() {
       clearTimeout(timer);
-      for (const detach of [detachLaunch, ...fixTaps]) detach();
+      for (const detach of [detachLaunch, ...fixTaps, ...styleTaps]) detach();
       el.remove();
     },
   };

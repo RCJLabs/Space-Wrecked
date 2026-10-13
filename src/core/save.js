@@ -42,7 +42,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  14  recruits: the run keeps who has signed on at the sector's stations
 //      (M23)
 //  15  portraits: every crew member's look (looks.js) (M23c)
-export const SAVE_VERSION = 15;
+//  16  hull styles: every ship's hull has a style (data/hulls.json): the
+//      builder's ships, the campaign's, and the hostile one in an approach
+//      (M23d)
+export const SAVE_VERSION = 16;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -194,6 +197,29 @@ export const MIGRATIONS = [
         return { ...member, look };
       });
       return { ...data, campaign: { ...data.campaign, crew } };
+    },
+  },
+  // Every ship gets a hull style: the ships from before are Rounded, the
+  // only style there was a name for.
+  {
+    from: 15,
+    up: (data) => {
+      if (!isObject(data)) return data;
+      const styled = (ship) => (isObject(ship) && ship.hull === undefined ? { ...ship, hull: 'rounded' } : ship);
+      let next = data;
+      if (isObject(data.builds) && Array.isArray(data.builds.slots)) {
+        const slots = data.builds.slots.map((slot) => (isObject(slot) ? { ...slot, ship: styled(slot.ship) } : slot));
+        next = { ...next, builds: { ...data.builds, slots } };
+      }
+      if (isObject(data.campaign)) {
+        let campaign = { ...data.campaign, ship: styled(data.campaign.ship) };
+        const approach = isObject(campaign.run) ? campaign.run.approach : null;
+        if (isObject(approach) && isObject(approach.them)) {
+          campaign = { ...campaign, run: { ...campaign.run, approach: { ...approach, them: { ...approach.them, ship: styled(approach.them.ship) } } } };
+        }
+        next = { ...next, campaign };
+      }
+      return next;
     },
   },
 ];

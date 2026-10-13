@@ -145,7 +145,8 @@ export function prepareSolid(faces, shadeFace) {
     const n = face.pts.length;
     const mid = [0, 0, 0];
     for (const p of face.pts) for (let k = 0; k < 3; k++) mid[k] += p[k] / n;
-    return { pts: face.pts, normal: face.normal, mid, at: face.sortAt ?? mid, fill: shadeFace(face), edge: face.edge ?? null, bias: face.bias ?? 0 };
+    const fill = shadeFace(face);
+    return { pts: face.pts, normal: face.normal, mid, at: face.sortAt ?? mid, fill, edge: face.edge === 'fill' ? fill : face.edge ?? null, bias: face.bias ?? 0 };
   });
 }
 

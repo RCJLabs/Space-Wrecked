@@ -159,6 +159,7 @@ export function mountBuilder(root, source) {
           setLook('plans');
           act({ type: 'build/arm', moduleType: type, toggle: false });
         },
+        onStyle: (style) => act({ type: 'build/hull', style }),
         saves: slots && { ...slots.handlers, onReplay: () => (replaying ? stopReplay() : startReplay()) },
         leave: source.leave,
       });
@@ -313,7 +314,7 @@ export function mountBuilder(root, source) {
   function updateDrawer() {
     const session = store.getState();
     const onHand = (type) => partsLeft(session, type);
-    drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules, onHand });
+    drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules, onHand, hull: session.ship.hull });
     drawer.setStock(session.stock ? onHand : null);
   }
 

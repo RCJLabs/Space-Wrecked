@@ -1,44 +1,60 @@
-// The ship seen from outside: a solid hull raised from the outline
-// (hull.js), plated per module, with each module's roof fittings, the nose,
-// glowing nozzles, gun barrels, docking collars and running lights. Pure:
-// ship data in, { faces, glows } out (solid.js faces, mesh.js glows), in the
-// manufacturer's skin. This is how the ship looks anywhere but the builder.
+// The ship seen from outside: a solid hull raised from the outline in its
+// style (hullShape.js: the shoulder and side bands, the noses), plated per
+// module, with each module's roof fittings, glowing nozzles, gun barrels,
+// docking collars and running lights on the hull's skin, shaped to match
+// the style. Pure: ship data in, { faces, glows, exhausts } out (solid.js
+// faces, mesh.js glows; exhausts are where the engines' flames come out:
+// [{ at, dir }]), in the manufacturer's skin. This is how the ship looks
+// anywhere but the builder.
 import { footprint, interiorRows } from '../sim/modules.js';
+import { hullBands, hullShape, nearestSide, noseSurfaces, sidePoint, styleOf } from './hullShape.js';
 import { normalOf, placeFaces, plate, solidBox, solidCylinder, solidTube } from './solid.js';
 
 export const HULL = 0.8; // the hull's height
-const STRIPE = [0.3, 0.42]; // the livery band along the sides
 const STEP = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
+const NOZZLE_Z = HULL / 2;
 
 // input: { ship, defs, hull: traceHull(ship, defs), skin }
 export function exteriorScene({ ship, defs, hull, skin }) {
   const faces = [];
   const glows = [];
+  const exhausts = [];
+  if (!hull.cells.length) return { faces, glows, exhausts };
+  const style = styleOf(defs, ship);
+  const shape = hullShape(hull, style);
+  const round = style.corners === 'round';
+  const curve = style.smooth ? 'fill' : skin.edge;
   const edge = { edge: skin.edge };
+  const wallTop = style.profile[style.profile.length - 2][1] * HULL;
 
-  // The hull's sides, with the livery band along them.
-  for (const { a, b, normal } of hull.edges) {
-    const n = [normal[0], normal[1], 0];
-    faces.push({ pts: [[...a, 0], [...b, 0], [...b, HULL], [...a, HULL]], normal: n, color: skin.hull, ...edge });
-    const [ox, oy] = [normal[0] * 0.006, normal[1] * 0.006];
+  // The shoulder and the side, with the livery band along the side.
+  for (const { pts, outward, wall } of hullBands(shape, HULL)) {
+    const middle = [0, 1].map((k) => pts.reduce((sum, p) => sum + p[k], 0) / 4);
+    const inside = [middle[0] - outward[0] * 2, middle[1] - outward[1] * 2, HULL * 0.3];
+    const normal = normalOf(pts, inside);
+    faces.push({ pts, normal, color: skin.hull, edge: curve });
+    if (!wall) continue;
+    const [z0, z1] = style.stripe.map((h) => h * HULL);
+    const [ox, oy] = [outward[0] * 0.006, outward[1] * 0.006];
     const band = (p, z) => [p[0] + ox, p[1] + oy, z];
-    // Sorted as the wall it's painted on, a hair nearer, so it always
-    // follows its own wall and nothing else.
-    const sortAt = [(a[0] + b[0]) / 2 + normal[0] * 0.01, (a[1] + b[1]) / 2 + normal[1] * 0.01, HULL / 2];
-    faces.push({ pts: [band(a, STRIPE[0]), band(b, STRIPE[0]), band(b, STRIPE[1]), band(a, STRIPE[1])], normal: n, color: skin.livery, sortAt });
+    // Sorted as the side it's painted on, a hair nearer, so it always
+    // follows its own side and nothing else.
+    const sortAt = [middle[0] + outward[0] * 0.01, middle[1] + outward[1] * 0.01, (pts[0][2] + pts[3][2]) / 2];
+    faces.push({ pts: [band(pts[3], z0), band(pts[2], z0), band(pts[2], z1), band(pts[3], z1)], normal, color: skin.livery, sortAt });
   }
   // The roof: a plate per module in one of the skin's tints, and plain hull
-  // over pockets and fairings.
+  // over pockets and fairings. A plated hull frames each with a seam.
   for (const module of ship.modules) {
     const def = defs.modules.get(module.type);
     if (!def) continue;
     const [w, h] = footprint(def, module.rot);
     plate(faces, [module.x, module.y], [module.x + w, module.y + h], HULL, skin.plates[module.uid % skin.plates.length], { edge: skin.seam });
+    if (style.roof === 'panels') seams(faces, [module.x, module.y], [module.x + w, module.y + h], skin.seam);
   }
   for (const [x, y] of hull.pockets) plate(faces, [x, y], [x + 1, y + 1], HULL, skin.hull, { edge: skin.seam });
   for (const tri of hull.fairings) faces.push({ pts: tri.map(([x, y]) => [x, y, HULL]), normal: [0, 0, 1], color: skin.hull, edge: skin.seam });
 
-  for (const nose of hull.noses) noseFaces(faces, nose, skin);
+  for (const nose of shape.noses) noseFaces(faces, nose, skin, curve);
 
   // Each module's fittings on the roof.
   for (const module of ship.modules) {
@@ -46,17 +62,22 @@ export function exteriorScene({ ship, defs, hull, skin }) {
     if (!def) continue;
     const local = [];
     const lights = [];
-    (ROOFS[def.id] ?? fromTemplate)(local, skin, lights, def);
+    (ROOFS[def.id] ?? fromTemplate)(local, skin, lights, def, round);
     faces.push(...placeFaces(local, def, module));
     for (const g of lights) glows.push({ ...g, at: placeFaces([{ pts: [g.at], normal: [0, 0, 1] }], def, module)[0].pts[0] });
   }
 
-  // What sticks out of the hull.
+  // What sticks out of the hull, set on its skin: a nozzle in a housing,
+  // round or eight-sided as the hull's corners are.
+  const sides = round ? 12 : 8;
   for (const { x, y, side } of hull.nozzles) {
     const [dx, dy] = STEP[side];
-    const start = [x + 0.5 + dx * 0.48, y + 0.5 + dy * 0.48, HULL / 2];
-    solidTube(faces, start, [dx, dy], 0.5, 0.2, 0.33, skin.dark, { endColor: skin.flame, glowing: true });
-    glows.push({ at: [start[0] + dx * 0.85, start[1] + dy * 0.85, HULL / 2], r: 0.6, color: skin.flame });
+    const [sx, sy] = sidePoint(shape, [x + 0.5, y + 0.5], [dx, dy]);
+    solidTube(faces, [sx - dx * 0.04, sy - dy * 0.04, NOZZLE_Z], [dx, dy], 0.16, 0.34, 0.34, skin.dark, { segments: sides });
+    const start = [sx + dx * 0.1, sy + dy * 0.1, NOZZLE_Z];
+    solidTube(faces, start, [dx, dy], 0.42, 0.2, 0.31, skin.dark, { endColor: skin.flame, glowing: true });
+    glows.push({ at: [start[0] + dx * 0.78, start[1] + dy * 0.78, NOZZLE_Z], r: 0.6, color: skin.flame });
+    exhausts.push({ at: [start[0] + dx * 0.42, start[1] + dy * 0.42, NOZZLE_Z], dir: [dx, dy] });
   }
   for (const { x, y, side } of hull.barrels) {
     const [dx, dy] = STEP[side];
@@ -65,38 +86,58 @@ export function exteriorScene({ ship, defs, hull, skin }) {
       solidTube(faces, [cx + dx * 0.36, cy + dy * 0.36, HULL + 0.14], [dx, dy], 0.8, 0.05, 0.05, skin.metalHi, { segments: 6 });
     }
   }
+  // A docking collar at each hatch, out from the side below the shoulder.
+  const collarR = Math.min(0.17, wallTop / 2 - 0.02);
   for (const { x, y, side } of hull.collars) {
     const [dx, dy] = STEP[side];
-    const [cx, cy] = [x + 0.5 + dx * 0.5, y + 0.5 + dy * 0.5];
-    const a = [cx - Math.abs(dy) * 0.32 + Math.min(0, dx * 0.24), cy - Math.abs(dx) * 0.32 + Math.min(0, dy * 0.24)];
-    const b = [cx + Math.abs(dy) * 0.32 + Math.max(0, dx * 0.24), cy + Math.abs(dx) * 0.32 + Math.max(0, dy * 0.24)];
-    solidBox(faces, [...a, 0.1], [...b, HULL - 0.1], skin.dark, edge);
-    solidBox(faces, [a[0] + 0.03, a[1] + 0.03, HULL - 0.1], [b[0] - 0.03, b[1] - 0.03, HULL - 0.05], skin.livery);
+    const [sx, sy] = sidePoint(shape, [x + 0.5, y + 0.5], [dx, dy]);
+    const z = Math.max(collarR + 0.03, wallTop / 2);
+    solidTube(faces, [sx - dx * 0.06, sy - dy * 0.06, z], [dx, dy], 0.26, collarR + 0.06, collarR + 0.06, skin.dark, { segments: sides });
+    solidTube(faces, [sx + dx * 0.2, sy + dy * 0.2, z], [dx, dy], 0.05, collarR, collarR, skin.livery, { endColor: skin.dark, segments: sides });
   }
-  for (const light of hull.lights) {
-    glows.push({ at: [light.x, light.y, HULL + 0.03], r: 0.3, color: skin[light.side] });
+  // Running lights at the stern's corners, on the side.
+  const stern = Math.min(...hull.cells.map(([cx]) => cx));
+  const ys = hull.cells.filter(([cx]) => cx === stern).map(([, cy]) => cy);
+  const m = style.margin;
+  for (const [y, color] of [[Math.min(...ys) - m, skin.port], [Math.max(...ys) + 1 + m, skin.starboard]]) {
+    const [lx, ly] = nearestSide(shape, [stern - m, y]);
+    glows.push({ at: [lx, ly, wallTop + 0.03], r: 0.3, color });
   }
-  return { faces, glows };
+  return { faces, glows, exhausts };
 }
 
-// A nose: a wedge from the front of the hull to a point.
-function noseFaces(faces, { x, y0, y1, length }, skin) {
-  const mid = (y0 + y1) / 2;
-  const tip = [x + length, mid, HULL * 0.42];
-  const inside = [x - 0.4, mid, HULL / 2];
-  const [tl, tr, br, bl] = [[x, y0, HULL], [x, y1, HULL], [x, y1, 0], [x, y0, 0]];
-  for (const [pts, color] of [[[tl, tr, tip], skin.hull], [[tl, bl, tip], skin.hull], [[tr, br, tip], skin.hull], [[bl, br, tip], skin.hull]]) {
-    faces.push({ pts, normal: normalOf(pts, inside), color, edge: skin.edge });
+// A plated roof's seams: a dark frame inset in each module's plate.
+function seams(faces, [x0, y0], [x1, y1], color) {
+  const [i, t, z] = [0.07, 0.035, HULL + 0.002];
+  const strips = [
+    [[x0 + i, y0 + i], [x1 - i, y0 + i + t]],
+    [[x0 + i, y1 - i - t], [x1 - i, y1 - i]],
+    [[x0 + i, y0 + i], [x0 + i + t, y1 - i]],
+    [[x1 - i - t, y0 + i], [x1 - i, y1 - i]],
+  ];
+  for (const [a, b] of strips) plate(faces, a, b, z, color);
+}
+
+// A nose (hullShape.js): its surface, a blunt one's flat front in the dark
+// metal, and a forward window across the top of its first stretch.
+function noseFaces(faces, nose, skin, curve) {
+  for (const { pts, axis, front } of noseSurfaces(nose, HULL)) {
+    faces.push({ pts, normal: normalOf(pts, axis), color: front ? skin.dark : skin.hull, edge: front ? skin.edge : curve });
   }
-  // A forward window on the top.
-  const w = (y1 - y0) * 0.18;
-  const pane = [[x + 0.06, mid - w, HULL - 0.008], [x + length * 0.42, mid - w * 0.45, HULL * 0.79], [x + length * 0.42, mid + w * 0.45, HULL * 0.79], [x + 0.06, mid + w, HULL - 0.008]];
-  faces.push({ pts: pane.map(([px, py, pz]) => [px, py, pz + 0.01]), normal: normalOf([tl, tr, tip], inside), color: skin.glassLo, edge: skin.edge, bias: -0.04 });
+  if (nose.rings.length < 2) return;
+  const [first, second] = [nose.rings[0], nose.rings[1]].map((ring) => ring.map(([x, y, h]) => [x, y, h * HULL]));
+  // The section's top: from its last point (one side's top) to its first.
+  const [a, b] = [first[first.length - 1], first[0]];
+  const [c, d] = [second[0], second[second.length - 1]];
+  const lerp = (p, q, t) => p.map((v, k) => v + (q[k] - v) * t);
+  const pane = [lerp(a, b, 0.25), lerp(a, b, 0.75), lerp(d, c, 0.72), lerp(d, c, 0.28)];
+  const lift = pane.map(([x, y, z], k) => [x + (k < 2 ? 0.05 : -0.04), y, z + 0.012]);
+  faces.push({ pts: lift, normal: normalOf([a, b, c], [a[0] - 1, (a[1] + b[1]) / 2, 0]), color: skin.glassLo, edge: skin.edge, bias: -0.04 });
 }
 
 // Roof fittings by module id, in the module's unrotated frame (props.js
-// explains the frame): (faces, skin, glows, def) => void. Heights start at
-// the roof, HULL.
+// explains the frame): (faces, skin, glows, def, round) => void, round when
+// the hull's corners are. Heights start at the roof, HULL.
 const Z = HULL;
 const ROOFS = {
   bridge(f, k) {
@@ -140,10 +181,11 @@ const ROOFS = {
     for (const y of [0.32, 0.5, 0.68]) solidBox(f, [0.24, y - 0.035, Z + 0.1], [0.95, y + 0.035, Z + 0.13], k.metal);
     for (const x of [1.35, 1.7]) solidCylinder(f, [x, 0.5, Z], 0.15, 0.16, k.domeLo, { top: k.domeHi, edge: k.edge });
   },
-  weapon(f, k) {
+  // The turret: round on a rounded hull, eight-sided on a cut one.
+  weapon(f, k, glows, def, round) {
     solidCylinder(f, [0.5, 0.58, Z], 0.34, 0.08, k.metal, { edge: k.edge });
-    solidBox(f, [0.32, 0.38, Z + 0.08], [0.68, 0.78, Z + 0.26], k.domeLo, { edge: k.edge });
-    for (const x of [0.41, 0.59]) solidTube(f, [x, 0.38, Z + 0.17], [0, -1], 0.42, 0.05, 0.05, k.metalHi, { segments: 6 });
+    solidCylinder(f, [0.5, 0.58, Z + 0.08], 0.22, 0.16, k.domeLo, { top: k.domeHi, edge: k.edge, segments: round ? 14 : 8 });
+    for (const x of [0.41, 0.59]) solidTube(f, [x, 0.4, Z + 0.17], [0, -1], 0.44, 0.05, 0.05, k.metalHi, { segments: 6 });
   },
   cargo(f, k) {
     solidBox(f, [0.42, 0.42, Z], [2.58, 2.58, Z + 0.03], k.dark, { edge: k.edge });

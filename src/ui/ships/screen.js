@@ -207,9 +207,11 @@ export const shipsScreen = {
       const span = (i) => Math.max(...cells.map((c) => c[i])) - Math.min(...cells.map((c) => c[i])) + 1;
       const ready = canLaunch(flightChecklist(result.ship, defs, result.crew));
       const wrecks = Object.keys(result.wrecked).length;
+      // The hull's style is rolled with the ship (M23d).
+      const style = defs.hulls.get(result.ship.hull)?.name ?? result.ship.hull;
       setText(info, {
         tone: ready ? 'good' : 'bad',
-        text: `${result.ship.modules.length} parts · ${span(0)} × ${span(1)} cells · crew ${result.crew}${wrecks ? ` · ${wrecks} wrecked` : ''} · ${ready ? 'flight check passes' : 'flight check fails'}`,
+        text: `${result.ship.modules.length} parts · ${span(0)} × ${span(1)} cells · ${style} hull · crew ${result.crew}${wrecks ? ` · ${wrecks} wrecked` : ''} · ${ready ? 'flight check passes' : 'flight check fails'}`,
       });
       info.hidden = false;
     }
