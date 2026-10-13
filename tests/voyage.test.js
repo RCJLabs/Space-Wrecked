@@ -1,8 +1,10 @@
 // M19's Done when: from launch, a run crosses three sectors by jumping and
 // restocking at stations; supplies and heat move as data/balance.json says;
-// the same seed always gives the same sectors. And M20's: ten events play
-// from data, each outcome the one its roll falls in; the nodes pay the
-// run's way: over 30 runs from launch, the test player crosses all five
+// the same seed always gives the same sectors. M20's: ten events play from
+// data, each outcome the one its roll falls in. And M21's: hostile ships
+// are met and settled as encounter.js says, and the run still pays its way
+// with them about: over 30 runs from launch, the careful test player (no
+// long jumps: heat does nothing in act 2 until M24) crosses all five
 // sectors without going hungry in at least 24. Each voyage launches from a
 // test run of act 1 (tools/run.js) and is played by the test player in
 // tools/voyage.js.
@@ -16,6 +18,7 @@ import { rules } from './battleKit.js';
 const { balance } = rules;
 const RUNS = 30;
 const trips = Array.from({ length: RUNS }, (_, i) => voyage(rules, i + 1));
+const careful = Array.from({ length: RUNS }, (_, i) => voyage(rules, i + 1, { long: 'never' }));
 const SEEDS = [1, 2, 3];
 const clamp = (value, max) => Math.max(0, Math.min(max, value));
 
@@ -50,6 +53,29 @@ test('supplies and heat move as data/balance.json and data/events.json say, step
         assert.deepEqual([after, step.credits[1]], [supplies, step.credits[0]]);
         continue;
       }
+      if (step.kind === 'approach') {
+        // What the stand-ins settle a boarding with, and nothing else moved.
+        const { changes } = step;
+        const preset = rules.ships.get(step.ship);
+        const lostPart = changes.lost?.part ? 1 : 0;
+        assert.deepEqual([after, step.hp[1]], [supplies, step.hp[0]]);
+        assert.equal(step.credits[1] - step.credits[0], changes.credits);
+        assert.equal(step.parts[1] - step.parts[0], changes.parts.length - lostPart);
+        assert.equal(step.heat[1] - step.heat[0], changes.heat);
+        assert.ok(changes.heat === 0 || changes.heat === clamp(step.heat[0] + balance.approachHeat, HEAT_MAX) - step.heat[0]);
+        if (step.outcome === 'boarded' || step.outcome === 'destroyed') {
+          assert.ok(changes.credits >= preset.scrap[0] && changes.credits <= preset.scrap[1], `scrap ${changes.credits}`);
+          assert.equal(changes.parts.length, step.outcome === 'boarded' ? 1 : 0);
+        } else assert.equal(changes.parts.length, 0);
+        if (step.outcome === 'boardedBy') assert.ok(changes.lost !== null || step.credits[0] < 10, 'they take a part or half the credits');
+        else assert.equal(changes.lost, null);
+        continue;
+      }
+      if (step.kind === 'repair') {
+        assert.ok(step.repaired > 0 && step.credits[1] < step.credits[0]);
+        assert.deepEqual([after, step.heat[1]], [supplies, step.heat[0]]);
+        continue;
+      }
       if (step.kind === 'event') {
         // The outcome the roll falls in, with its effects as written.
         const choice = rules.events.get(step.event).choices.find((c) => c.id === step.choice);
@@ -76,18 +102,21 @@ test('supplies and heat move as data/balance.json and data/events.json say, step
       assert.equal(step.credits[1], step.credits[0]);
     }
   }
-  assert.deepEqual([...kinds].sort(), ['buy', 'event', 'jump', 'long', 'scan', 'sector'], 'every kind of step comes up');
+  assert.deepEqual([...kinds].sort(), ['approach', 'buy', 'event', 'jump', 'long', 'repair', 'scan', 'sector'], 'every kind of step comes up');
 });
 
-test('ten events play from data, and the nodes pay the run\'s way: 24 or more of 30 runs cross all five sectors fed', () => {
-  assert.ok(trips.every((trip) => trip.launched && trip.ended), 'every run launches and reaches the end of the charts');
+test('ten events play from data, hostile ships are met, and the run pays its way: 24 or more of 30 careful runs cross all five sectors fed', () => {
+  assert.ok([...trips, ...careful].every((trip) => trip.launched && trip.ended), 'every run launches and reaches the end of the charts');
   const played = new Set(trips.flatMap((trip) => trip.steps.filter((step) => step.kind === 'event').map((step) => step.event)));
   assert.equal(played.size, rules.events.size, `events played: ${[...played].join(', ')}`);
   assert.equal(rules.events.size, 10);
-  const fed = trips.filter((trip) => trip.tally.hungryJumps === 0).length;
+  const met = [...trips, ...careful].flatMap((trip) => trip.steps.filter((step) => step.kind === 'approach'));
+  assert.ok(met.length >= RUNS, `hostile ships met: ${met.length}`);
+  assert.ok(['escaped', 'boardedBy'].every((kind) => met.some((step) => step.outcome === kind)), `outcomes: ${[...new Set(met.map((step) => step.outcome))]}`);
+  const fed = careful.filter((trip) => trip.tally.hungryJumps === 0).length;
   assert.ok(fed >= 24, `fed all the way in ${fed} of ${RUNS}`);
   // What the nodes paid, on balance, in credits and supplies.
-  const paid = trips.map((trip) => trip.tally.eventCredits + balance.supplyPrice * trip.tally.eventSupplies).sort((a, b) => a - b);
+  const paid = careful.map((trip) => trip.tally.eventCredits + balance.supplyPrice * trip.tally.eventSupplies).sort((a, b) => a - b);
   assert.ok(paid[Math.floor(RUNS / 2)] > 0, `the median run comes out ahead at the nodes: ${paid}`);
   assert.ok(trips.every((trip) => trip.tally.scans > 0), 'every run scans');
 });

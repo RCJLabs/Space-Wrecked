@@ -5,6 +5,7 @@
 //
 //   node tools/validate-data.js
 import { pathToFileURL } from 'node:url';
+import { AIMS } from '../src/sim/approach.js';
 import { CAPTAIN_TRAITS } from '../src/sim/campaign.js';
 import { REQUIRED_TAGS } from '../src/sim/constraints.js';
 import { SITE_CHARS } from '../src/sim/gen/site.js';
@@ -66,6 +67,28 @@ const BALANCE = {
   longJumpHeat: [-100, 50],
   scanHeat: [0, 50],
   scanRange: [1, 4],
+  // The approach phase (src/sim/approach.js): its rounds, a gun's chance
+  // against a ship that doesn't move and what a ship's thrust for its mass
+  // and evading take off it, the bounds on every chance, a hit's damage and
+  // what a shield generator holds a round, fleeing's and closing's chances
+  // and what thrust for mass moves them, a wrecked reactor's chance of
+  // blowing, the heat an approach with shots in it adds, and a repair's
+  // price, in percent of the part's cost (src/sim/repair.js).
+  approachRounds: [1, 10],
+  gunnery: [0, 100],
+  evasionPerThrust: [0, 100],
+  evadeBonus: [0, 100],
+  chanceMin: [0, 50],
+  chanceMax: [50, 100],
+  gunDamage: [1, 100],
+  shieldPerGen: [0, 100],
+  fleeChance: [0, 100],
+  fleePerThrust: [0, 200],
+  closeChance: [0, 100],
+  closePerThrust: [0, 200],
+  blowChance: [0, 100],
+  approachHeat: [0, 50],
+  repairPercent: [0, 100],
 };
 const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', 'clip'];
 const RANGE_BANDS = ['close', 'mid', 'long'];
@@ -82,7 +105,10 @@ const TIP_KEYS = ['id', 'text'];
 const MAX_TIP = 200;
 const ENCOUNTER_KEYS = ['id', 'name', 'enemies'];
 // Ship presets (src/sim/gen/ship.js).
-const SHIP_KEYS = ['id', 'name', 'frame', 'crew', 'beam', 'symmetric', 'parts', 'wrecks'];
+const SHIP_KEYS = ['id', 'name', 'frame', 'crew', 'beam', 'symmetric', 'parts', 'wrecks', 'tactics', 'scrap'];
+// A hostile preset's tactics in the approach phase (src/sim/approach.js).
+const TACTIC_KEYS = ['aim', 'board', 'flee'];
+const MAX_SCRAP = 9999;
 const MAX_CREW = 20;
 // Squads of 3 to start, up to 5 later; 4 to 8 enemies (ROADMAP §4.3). Fewer
 // are allowed, for small tests.
@@ -253,7 +279,8 @@ export function validateData(data) {
   ships.forEach((ship, i) => checkShip(ship, `ships.json ${ship.id ?? `#${i}`}`, frameById, moduleIds, fail));
 
   const encounterById = new Map(encounters.filter((e) => Array.isArray(e.enemies)).map((e) => [e.id, e.enemies]));
-  const scripts = checkCampaignFiles(data, { jobIds, enemyIds, moduleIds, frameById, encounters: encounterById }, fail);
+  const presets = new Map(ships.filter((ship) => typeof ship?.id === 'string').map((ship) => [ship.id, ship]));
+  const scripts = checkCampaignFiles(data, { jobIds, enemyIds, moduleIds, frameById, encounters: encounterById, presets }, fail);
   // The starting ships are built only from content that checks out.
   if (!problems.length) checkStartShips(data, scripts, fail);
   return problems;
@@ -276,6 +303,8 @@ function checkShip(ship, where, frameById, moduleIds, fail) {
   if (!isRange(ship.beam, 1, across)) fail(where, `beam must be [least, most] cells across, from 1 to ${across}`);
   if (typeof ship.symmetric !== 'boolean') fail(where, 'symmetric must be true or false');
   if (ship.wrecks !== undefined && !isRange(ship.wrecks, 0, 99)) fail(where, 'wrecks must be [least, most] rooms');
+  if (ship.tactics !== undefined) checkTactics(ship.tactics, `${where} tactics`, fail);
+  if (ship.scrap !== undefined && !isRange(ship.scrap, 0, MAX_SCRAP)) fail(where, `scrap must be [least, most] credits, up to ${MAX_SCRAP}`);
   const { parts } = ship;
   if (!parts || typeof parts !== 'object' || Array.isArray(parts) || !Object.keys(parts).length) {
     fail(where, 'parts must be an object of module types and counts');
@@ -289,6 +318,24 @@ function checkShip(ship, where, frameById, moduleIds, fail) {
     else fail(where, `parts.${type} must be a whole number, or [least, most]`);
   }
   if (frame && most > frame.maxModules) fail(where, `parts: up to ${most}, but the ${frame.name} holds at most ${frame.maxModules}`);
+}
+
+// How a hostile preset plays the approach: the kinds of module it fires at,
+// first choice first, and, if it does either, the round it closes to board
+// from and the share of its approach hit points lost, in percent, at which
+// it runs.
+function checkTactics(tactics, where, fail) {
+  if (!tactics || typeof tactics !== 'object' || Array.isArray(tactics)) {
+    fail(where, 'must be an object');
+    return;
+  }
+  for (const key of Object.keys(tactics)) if (!TACTIC_KEYS.includes(key)) fail(where, `unknown field "${key}"`);
+  const { aim } = tactics;
+  if (!Array.isArray(aim) || !aim.length || !aim.every((kind) => AIMS.includes(kind)) || new Set(aim).size !== aim.length) {
+    fail(where, `aim must list kinds to fire at, each once: ${AIMS.join(', ')}`);
+  }
+  if (tactics.board !== undefined && !isIntIn(tactics.board, 1, 10)) fail(where, 'board must be the round it closes from, 1 to 10');
+  if (tactics.flee !== undefined && !isIntIn(tactics.flee, 1, 100)) fail(where, 'flee must be a share lost, in percent, from 1 to 100');
 }
 
 // A weapon: damage [least, most], an accuracy change at each range band, a

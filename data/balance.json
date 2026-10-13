@@ -35,5 +35,20 @@
   "jumpHeat": 3,
   "longJumpHeat": -10,
   "scanHeat": 2,
-  "scanRange": 2
+  "scanRange": 2,
+  "approachRounds": 3,
+  "gunnery": 70,
+  "evasionPerThrust": 25,
+  "evadeBonus": 20,
+  "chanceMin": 5,
+  "chanceMax": 95,
+  "gunDamage": 15,
+  "shieldPerGen": 10,
+  "fleeChance": 35,
+  "fleePerThrust": 50,
+  "closeChance": 30,
+  "closePerThrust": 50,
+  "blowChance": 30,
+  "approachHeat": 4,
+  "repairPercent": 25
 }

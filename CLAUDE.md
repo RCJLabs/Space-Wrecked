@@ -61,7 +61,7 @@ assets/
   img/          WebP only
   LOG.md        prompt, date, model and hand edits for every image
   LICENSES.md   every third-party file and its license
-tools/       sim.js, blueprint.js, precache.js, icons.js, serve.js, validate-data.js (with validate-campaign.js, validate-sectors.js, validate-events.js and checks.js), build-ship.js, battle-map.js, battle-log.js, gen-ship.js, jobs.js, run.js, sectors.js, voyage.js (with voyagePlan.js), data.js
+tools/       sim.js, blueprint.js, precache.js, icons.js, serve.js, validate-data.js (with validate-campaign.js, validate-sectors.js, validate-events.js and checks.js), build-ship.js, battle-map.js, battle-log.js, gen-ship.js, jobs.js, run.js, sectors.js, voyage.js (with voyagePlan.js), approach.js (with approachPlan.js), data.js
 tests/       node --test files; golden/ holds golden maps and replays
 ROADMAP.md
 PROGRESS.md

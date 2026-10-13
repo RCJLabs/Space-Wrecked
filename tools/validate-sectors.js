@@ -2,12 +2,15 @@
 // sector is laid out (gen/sector.js), its kinds of node, the mix the nodes
 // between roll their kind from, and the names they draw on. Every name a
 // sector can need is there, so none comes twice in a sector, nor a
-// sector's name twice in a run.
+// sector's name twice in a run. A kind of node with ships on it (hostile
+// ships, M21) lists the presets it can have, by weight, each from a sector
+// on: presets with tactics for the approach phase (data/ships.json).
 import { MAX_PLACE_NAME as MAX_NAME } from '../src/sim/runShape.js';
 import { isId, isIntIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 
 const SECTOR_KEYS = ['columns', 'rows', 'extraLinkChance', 'counts', 'mix', 'nodes', 'names'];
-const NODE_KEYS = ['id', 'name', 'names', 'events', 'text'];
+const NODE_KEYS = ['id', 'name', 'names', 'events', 'ships', 'text'];
+const SHIP_KEYS = ['ship', 'weight', 'from'];
 // The kinds every sector has: where the ship comes in, and where it jumps
 // on from. The generator places them itself.
 const FIXED = ['start', 'exit'];
@@ -15,10 +18,10 @@ const MAX_COLUMNS = 12;
 const MAX_ROWS = 4;
 const MAX_TEXT = 200;
 
-// acts: campaign.json's acts, for the number of sectors a run crosses.
-// Returns the node kinds that hold events (events: true), as a Set, for
-// validate-events.js.
-export function checkSectors(file, acts, fail) {
+// acts: campaign.json's acts, for the number of sectors a run crosses;
+// presets: the ship presets by id (ships.json). Returns the node kinds that
+// hold events (events: true), as a Set, for validate-events.js.
+export function checkSectors(file, acts, presets, fail) {
   const where = 'sectors.json';
   const holding = new Set();
   if (!isObject(file)) {
@@ -30,6 +33,7 @@ export function checkSectors(file, acts, fail) {
   if (!isRange(file.rows, 1, MAX_ROWS)) fail(where, `rows must be [least, most] nodes in a column, from 1 to ${MAX_ROWS}`);
   if (!isIntIn(file.extraLinkChance, 0, 100)) fail(where, 'extraLinkChance must be a whole number from 0 to 100');
 
+  const run = (acts ?? []).reduce((longest, act) => Math.max(longest, Number.isInteger(act?.sectors) ? act.sectors : 0), 0);
   const nodes = listOf(file, 'nodes', where, fail);
   const ids = uniqueIds(nodes, where, fail);
   for (const id of FIXED) if (!ids.has(id)) fail(where, `the "${id}" node kind is missing`);
@@ -51,6 +55,7 @@ export function checkSectors(file, acts, fail) {
     if (node.events !== undefined && node.events !== true) fail(at, 'events must be true, or left out');
     else if (node.events && FIXED.includes(node.id)) fail(at, 'the way in and the jump point hold no events');
     else if (node.events && isId(node.id)) holding.add(node.id);
+    if (node.ships !== undefined) checkShips(node, at, run, presets, fail);
   });
 
   // The kinds counted into a sector, each in a column of its own between
@@ -88,8 +93,34 @@ export function checkSectors(file, acts, fail) {
   }
 
   // A sector's name never comes twice in a run.
-  const run = (acts ?? []).reduce((longest, act) => Math.max(longest, Number.isInteger(act?.sectors) ? act.sectors : 0), 0);
   if (!Array.isArray(names.sectors)) fail(where, 'names.sectors must be a list');
   else if (names.sectors.length < run) fail(`${where} names.sectors`, `needs ${run} names for a run of ${run} sectors, has ${names.sectors.length}`);
   return holding;
+}
+
+// A kind of node with hostile ships on it: [{ ship, weight, from? }], the
+// presets it can have, each with tactics, by weight, from sector `from` on
+// (1 if left out). The first sector has to have one, and the kind holds no
+// events: meeting the ship is what happens there.
+function checkShips(node, at, run, presets, fail) {
+  if (node.events) fail(at, 'a kind with ships holds no events');
+  if (FIXED.includes(node.id)) fail(at, 'the way in and the jump point have no ships on them');
+  if (!Array.isArray(node.ships) || !node.ships.length) {
+    fail(at, 'ships must be a list of presets, by weight');
+    return;
+  }
+  node.ships.forEach((entry, i) => {
+    const where = `${at} ships #${i + 1}`;
+    if (!isObject(entry)) {
+      fail(where, 'must be an object');
+      return;
+    }
+    knownKeys(entry, SHIP_KEYS, where, fail);
+    const preset = presets.get(entry.ship);
+    if (!preset) fail(where, `unknown ship preset "${entry.ship}"`);
+    else if (!preset.tactics) fail(where, `the ${preset.name} has no tactics for the approach phase`);
+    if (!isIntIn(entry.weight, 1, 100)) fail(where, 'weight must be a whole number from 1 to 100');
+    if (entry.from !== undefined && !isIntIn(entry.from, 1, Math.max(1, run))) fail(where, `from must be a sector from 1 to ${Math.max(1, run)}`);
+  });
+  if (!node.ships.some((entry) => entry?.from === undefined || entry.from === 1)) fail(at, 'needs a ship for the first sector');
 }

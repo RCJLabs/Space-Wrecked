@@ -1,61 +1,61 @@
-Sector 1: Pay Dirt (seed 1), 15 nodes, 17 links
-   .  1!  4$  7x  9o 12d   .
-  0S  2o  5o   . 10x   . 14E
-   .  3o  6!  8$ 11t 13d   .
+Sector 1: Cold Storage (seed 1), 15 nodes, 17 links
+   .  1!  4$  7h  9o 12d   .
+  0S  2o  5o   . 10h   . 14E
+   .  3d  6t  8$ 11x 13d   .
 links: 0-1 0-2 0-3 1-4 2-5 3-6 4-7 5-8 6-8 7-9 8-11 8-10 9-12 10-13 11-13 12-14 13-14
   0 Way in (start) at 0.08, 0.5
-  1 The Gap (distress: stalled-miner) at 0.192, 0.223
-  2 Marker Twelve (empty) at 0.247, 0.547
-  3 Mile Forty (empty) at 0.208, 0.792
-  4 Last Chance Supply (station) at 0.356, 0.27
-  5 The Flats (empty) at 0.357, 0.499
-  6 Washout (distress: bad-beacon) at 0.34, 0.77
-  7 The Hollow (hazard: ion-storm) at 0.481, 0.288
-  8 Rest Stop Nine (station) at 0.476, 0.694
+  1 Scrap Heap (distress: stalled-miner) at 0.192, 0.223
+  2 Slag Field (empty) at 0.247, 0.547
+  3 Marker Twelve (derelict: dead-hauler) at 0.208, 0.792
+  4 Big Rita's (station) at 0.356, 0.27
+  5 The Long Dark (empty) at 0.357, 0.499
+  6 Nobody's Rock (trader: ration-barge) at 0.34, 0.77
+  7 Drift Four (hostile: cutter 493086551) at 0.481, 0.288
+  8 The Depot (station) at 0.476, 0.694
   9 Cinder Belt (empty) at 0.628, 0.189
-  10 Quiet Water (hazard: loose-rock) at 0.614, 0.492
-  11 Scrap Heap (trader: ration-barge) at 0.645, 0.81
-  12 The Long Dark (derelict: dead-hauler) at 0.763, 0.314
-  13 Old Beacon (derelict: gutted-tug) at 0.783, 0.749
+  10 Low Orbit (hostile: cutter 3730978585) at 0.614, 0.492
+  11 Static (hazard: ion-storm) at 0.645, 0.81
+  12 Dust Bank (derelict: gutted-tug) at 0.763, 0.314
+  13 Old Beacon (derelict: company-wreck) at 0.783, 0.749
   14 Jump point (exit) at 0.92, 0.5
 
-Sector 1: The Long Haul (seed 2), 13 nodes, 16 links
-   .  1!  4$  6t  8x 10x   .
+Sector 1: Graveyard Shift (seed 2), 13 nodes, 16 links
+   .  1!  4$  6x  8x 10h   .
   0S  2o   .   .   .   . 12E
-   .  3!  5o  7x  9d 11$   .
+   .  3x  5o  7h  9! 11$   .
 links: 0-1 0-2 0-3 1-4 2-5 3-5 4-6 5-7 4-7 6-8 7-9 6-9 8-10 9-11 10-12 11-12
   0 Way in (start) at 0.08, 0.5
-  1 The Long Dark (distress: lost-courier) at 0.21, 0.198
-  2 The Flats (empty) at 0.222, 0.538
-  3 Dust Bank (distress: bad-beacon) at 0.227, 0.78
-  4 Ruth's Canteen (station) at 0.376, 0.231
-  5 Nobody's Rock (empty) at 0.376, 0.665
-  6 Static (trader: ration-barge) at 0.519, 0.302
-  7 Tin Can Alley (hazard: ion-storm) at 0.48, 0.736
-  8 Old Beacon (hazard: loose-rock) at 0.667, 0.22
-  9 The Gap (derelict: dead-hauler) at 0.663, 0.643
-  10 Scrap Heap (hazard: loose-rock) at 0.763, 0.215
-  11 Last Chance Supply (station) at 0.805, 0.702
+  1 Mile Forty (distress: lost-courier) at 0.21, 0.198
+  2 The Long Dark (empty) at 0.222, 0.538
+  3 Old Beacon (hazard: ion-storm) at 0.227, 0.78
+  4 Union Hall Twelve (station) at 0.376, 0.231
+  5 Dust Bank (empty) at 0.376, 0.665
+  6 Static (hazard: loose-rock) at 0.519, 0.302
+  7 Nobody's Rock (hostile: cutter 2252366493) at 0.48, 0.736
+  8 Washout (hazard: ion-storm) at 0.667, 0.22
+  9 Marker Twelve (distress: bad-beacon) at 0.663, 0.643
+  10 The Gap (hostile: cutter 3645459587) at 0.763, 0.215
+  11 Ruth's Canteen (station) at 0.805, 0.702
   12 Jump point (exit) at 0.92, 0.5
 
-Sector 1: Tollway Nine (seed 3), 16 nodes, 19 links
-   .  1d  4t  6x  9! 12d   .
-  0S  2d   .  7! 10$ 13x 15E
-   .  3!  5$  8d 11! 14x   .
+Sector 1: Pay Dirt (seed 3), 16 nodes, 19 links
+   .  1!  4x  6h  9x 12!   .
+  0S  2!   .  7t 10$ 13h 15E
+   .  3!  5$  8d 11x 14h   .
 links: 0-1 0-2 0-3 1-4 2-5 3-5 1-5 4-6 5-8 5-7 6-9 7-10 8-11 9-12 10-13 11-14 12-15 13-15 14-15
   0 Way in (start) at 0.08, 0.5
-  1 Washout (derelict: dead-hauler) at 0.194, 0.215
-  2 Scrap Heap (derelict: gutted-tug) at 0.196, 0.527
-  3 Dust Bank (distress: stalled-miner) at 0.219, 0.778
-  4 Slag Field (trader: scrap-dealer) at 0.347, 0.298
-  5 Mac's Pumps (station) at 0.343, 0.646
-  6 Marker Twelve (hazard: loose-rock) at 0.499, 0.25
-  7 The Hollow (distress: bad-beacon) at 0.521, 0.482
-  8 Cinder Belt (derelict: company-wreck) at 0.511, 0.758
-  9 Drift Four (distress: lost-courier) at 0.641, 0.254
-  10 Rest Stop Nine (station) at 0.642, 0.451
-  11 Nobody's Rock (distress: stalled-miner) at 0.661, 0.761
-  12 Low Orbit (derelict: dead-hauler) at 0.795, 0.212
-  13 The Long Dark (hazard: ion-storm) at 0.792, 0.465
-  14 Static (hazard: loose-rock) at 0.772, 0.803
+  1 Static (distress: stalled-miner) at 0.194, 0.215
+  2 Tin Can Alley (distress: bad-beacon) at 0.196, 0.527
+  3 Washout (distress: lost-courier) at 0.219, 0.778
+  4 Marker Twelve (hazard: ion-storm) at 0.347, 0.298
+  5 Last Chance Supply (station) at 0.343, 0.646
+  6 The Long Dark (hostile: cutter 1245239539) at 0.499, 0.25
+  7 Quiet Water (trader: ration-barge) at 0.521, 0.482
+  8 Cinder Belt (derelict: gutted-tug) at 0.511, 0.758
+  9 Mile Forty (hazard: loose-rock) at 0.641, 0.254
+  10 Ruth's Canteen (station) at 0.642, 0.451
+  11 Nobody's Rock (hazard: ion-storm) at 0.661, 0.761
+  12 Dust Bank (distress: bad-beacon) at 0.795, 0.212
+  13 Slag Field (hostile: cutter 2370721335) at 0.792, 0.465
+  14 Drift Four (hostile: cutter 1679790942) at 0.772, 0.803
   15 Jump point (exit) at 0.92, 0.5

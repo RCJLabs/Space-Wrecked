@@ -6,26 +6,31 @@ import { emptyBuilds, reduceBuilds } from './builds.js';
 import { beginFight, captainProblem, newCampaign, refitShip, saveFight } from './campaign.js';
 import { endJob, takeJob, withBoard } from './contracts.js';
 import { buyPart, sellPart } from './economy.js';
+import { closeApproach, giveOrder } from './encounter.js';
 import { chooseEvent } from './events.js';
 import { makePayment } from './heat.js';
 import { launch } from './launch.js';
 import { beginRaid, endRaid } from './raid.js';
+import { repairShip } from './repair.js';
 import { defaultSettings, fightSettings, reduceSettings } from './settings.js';
 import { beginRun, buySupplies, jump, leaveSector, scan } from './travel.js';
 
 // The screen each place in a campaign is played on in act 1, and every
 // screen that shows the campaign: construction mode, the job board and the
 // shop are the hangar's; the launch plays between act 1 and act 2's sector
-// map; the stub stands in for act 3 until it is built.
+// map, and the approach phase on the run is played on its own screen; the
+// stub stands in for act 3 until it is built.
 export const PLACE_SCREENS = { hub: 'hub', fight: 'campaign-fight' };
-export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'sector', 'stub'];
+export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'sector', 'approach', 'stub'];
 
 // The screen a campaign is played on where it is now: its fight, or its
-// act's home: the hangar in act 1, the sector map on the run (act 2), and
-// the stub for the act after it, until it is built.
+// act's home: the hangar in act 1, the sector map on the run (act 2), or the
+// approach going on there, and the stub for the act after it, until it is
+// built.
 export function campaignScreen(campaign) {
   if (campaign.place === 'fight') return PLACE_SCREENS.fight;
-  return campaign.act === 1 ? PLACE_SCREENS.hub : campaign.act === 2 ? 'sector' : 'stub';
+  if (campaign.act === 2) return campaign.run?.approach ? 'approach' : 'sector';
+  return campaign.act === 1 ? PLACE_SCREENS.hub : 'stub';
 }
 
 export function initialState(seed) {
@@ -66,13 +71,21 @@ export function initialState(seed) {
 //                                  launch plays (launch.js)
 //   campaign/run/begin { rules }   the run's first sector, at the act's
 //                                  first visit home (travel.js)
-//   campaign/jump { to, rules }    a jump, or a long jump, to node `to`
+//   campaign/jump { to, rules }    a jump, or a long jump, to node `to`;
+//                                  a hostile ship there opens the approach
+//                                  and its screen
 //   campaign/supplies { count, rules }   supplies bought at a station
 //   campaign/sector/leave { rules }   on from the jump point into the next
 //                                  sector
 //   campaign/event/choose { choice, rules }   a choice made at the event
 //                                  open where the ship is (events.js)
 //   campaign/scan { rules }        a scan from where the ship is
+//   campaign/approach/order { order, rules }   the player's order for a
+//                                  round of the approach (encounter.js)
+//   campaign/approach/close        Carry on, once the approach is over:
+//                                  back to the sector map
+//   campaign/repair { rules }      the station repairs what the credits
+//                                  cover (repair.js)
 //   campaign/fight/begin { rules } the crew fights boarders at home (M15's
 //                                  raids will)
 //   campaign/fight/save { battle, log }   the fight after an order
@@ -141,7 +154,10 @@ export function reduce(state, action) {
     case 'campaign/supplies':
     case 'campaign/sector/leave':
     case 'campaign/event/choose':
-    case 'campaign/scan': {
+    case 'campaign/scan':
+    case 'campaign/approach/order':
+    case 'campaign/approach/close':
+    case 'campaign/repair': {
       const move = {
         'campaign/run/begin': (c) => beginRun(c, action.rules),
         'campaign/jump': (c) => jump(c, action.rules, action.to),
@@ -149,9 +165,15 @@ export function reduce(state, action) {
         'campaign/sector/leave': (c) => leaveSector(c, action.rules),
         'campaign/event/choose': (c) => chooseEvent(c, action.rules, action.choice),
         'campaign/scan': (c) => scan(c, action.rules),
+        'campaign/approach/order': (c) => giveOrder(c, action.rules, action.order),
+        'campaign/approach/close': (c) => closeApproach(c),
+        'campaign/repair': (c) => repairShip(c, action.rules),
       }[action.type];
       const done = state.campaign && move(state.campaign);
-      return done?.ok ? { ...state, campaign: done.campaign } : state;
+      if (!done?.ok) return state;
+      // Meeting a hostile ship, and putting the approach away, change screen.
+      const screen = action.type === 'campaign/jump' || action.type === 'campaign/approach/close' ? campaignScreen(done.campaign) : state.screen;
+      return { ...state, campaign: done.campaign, screen };
     }
     default: {
       if (action.type.startsWith('builds/')) {

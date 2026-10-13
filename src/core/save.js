@@ -34,7 +34,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      and where the ship is on it), null until the run begins (M19)
 //  11  events and scans: the run's events settled, its scans and the last
 //      event's result; sector nodes may carry an event (M20)
-export const SAVE_VERSION = 11;
+//  12  the approach phase: the campaign's wrecked modules, and the run's
+//      approach under way; sector nodes may carry a hostile ship (M21)
+export const SAVE_VERSION = 12;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -130,6 +132,17 @@ export const MIGRATIONS = [
       isObject(data) && isObject(data.campaign) && isObject(data.campaign.run)
         ? { ...data, campaign: { ...data.campaign, run: { ...data.campaign.run, done: [], scans: [], result: null } } }
         : data,
+  },
+  // The approach phase. The ship has nothing wrecked yet, and a run under
+  // way has no approach going on; its sector has no hostile ships, and the
+  // next one has them.
+  {
+    from: 11,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign)) return data;
+      const { run } = data.campaign;
+      return { ...data, campaign: { ...data.campaign, wrecks: {}, run: isObject(run) ? { ...run, approach: null } : run } };
+    },
   },
 ];
 

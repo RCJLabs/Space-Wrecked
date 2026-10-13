@@ -63,6 +63,7 @@ test("a new campaign starts in act 1 at the hangar, with its background's start"
     heat: 0,
     flags: {},
     ship,
+    wrecks: {},
     board: [],
     shop: null,
     spent: [],

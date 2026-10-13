@@ -67,7 +67,7 @@ const MAX_CREDITS = 9995;
 // checkStartShips.
 export function checkCampaignFiles(data, ids, fail) {
   checkActs(data.campaign, fail);
-  const holding = checkSectors(data.sectors, data.campaign?.acts, fail);
+  const holding = checkSectors(data.sectors, data.campaign?.acts, ids.presets ?? new Map(), fail);
   const covered = checkEvents(data.events, holding, ids.moduleIds, fail);
   for (const kind of holding) if (!covered.has(kind)) fail(`sectors.json node ${kind}`, 'holds events, but events.json has none of its kind');
   const maps = checkSiteMaps(data.sites, fail);

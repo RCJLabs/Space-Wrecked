@@ -7,9 +7,12 @@
 // node can be reached and the map reads at a glance. A set number of the
 // nodes between are of a kind the data counts (stations), each in a column
 // of its own; every other node between rolls its kind from the data's mix,
-// by weight (empty space, derelicts, distress calls, traders, hazards). A
-// node of a kind that holds events is given one of its kind
-// (data/events.json), none twice in a sector while the kind's events last.
+// by weight (empty space, derelicts, distress calls, traders, hazards,
+// hostile ships). A node of a kind that holds events is given one of its
+// kind (data/events.json), none twice in a sector while the kind's events
+// last. A node of a kind with ships on it is given one: a preset from the
+// kind's list, by weight among those that come this far into the run, and
+// the seed its ship is generated from when the ship meets it.
 // Nodes are named from their kind's list, none twice in a sector, and the
 // sector from its list, past the names to avoid (the sectors already
 // crossed). Pure and seeded: the same seed and index always give the same
@@ -17,6 +20,7 @@
 import { int, seedFrom, shuffle } from '../../core/rng.js';
 import { pickWeighted } from '../drops.js';
 
+const MAX_SEED = 0xffffffff;
 // Where nodes sit on the map, each from 0 to 1: this far from its edges.
 const MARGIN = 0.08;
 // How far a node may sit off the even spacing of its column, as a share of
@@ -25,8 +29,9 @@ const JITTER = { y: 0.18, x: 0.2 };
 
 // rules: indexDefs (sectors, nodeTypes); seed: a number or string; index:
 // the sector's place in the run, 1 up. Returns { index, name, nodes, links,
-// start, exit }: nodes [{ id, col, row, x, y, type, name, event? }] by id,
-// 0 up, column by column and top down; links [[a, b]] with a < b.
+// start, exit }: nodes [{ id, col, row, x, y, type, name, event?, hostile?
+// }] by id, 0 up, column by column and top down, hostile being { ship, seed
+// }; links [[a, b]] with a < b.
 export function generateSector(rules, seed, index, { avoid = [] } = {}) {
   const spec = rules.sectors;
   let rng = seedFrom(seed);
@@ -109,6 +114,17 @@ export function generateSector(rules, seed, index, { avoid = [] } = {}) {
     if (!pools.get(node.type)?.length) pools.set(node.type, mixed([...rules.events.values()].filter((event) => event.kind === node.type).map((event) => event.id)));
     const event = pools.get(node.type).shift();
     if (event) node.event = event;
+  }
+
+  // Hostile ships, for the kinds with ships on them.
+  for (const node of nodes) {
+    const ships = rules.nodeTypes.get(node.type)?.ships;
+    if (!ships) continue;
+    const table = Object.fromEntries(ships.filter((entry) => (entry.from ?? 1) <= index).map((entry) => [entry.ship, entry.weight]));
+    if (!Object.keys(table).length) continue;
+    const ship = pickWeighted(rng, table);
+    rng = ship.state;
+    node.hostile = { ship: ship.value, seed: roll(0, MAX_SEED) };
   }
 
   // Names: a kind with a list draws from it, none twice; one without is

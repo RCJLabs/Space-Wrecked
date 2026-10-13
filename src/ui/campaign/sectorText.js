@@ -1,11 +1,13 @@
 // Text for the sector map (sector.js): where the ship is on the run
 // (src/sim/travel.js), what the nodes hold as far as it is known, what a
 // jump to a node would take, what a station sells and what a scan would
-// show. The event card's words are eventText.js's. rules are the content
-// tables (src/sim/defs.js).
+// show, and what it would repair. The event card's words are eventText.js's,
+// and the approach screen's approachText.js's. rules are the content tables
+// (src/sim/defs.js).
 import { actOf } from '../../sim/campaign.js';
 import { withHeat } from '../../sim/heat.js';
-import { jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, supplyCapacity, supplyOffer } from '../../sim/travel.js';
+import { repairPlan, wrecksToRepair } from '../../sim/repair.js';
+import { holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, supplyCapacity, supplyOffer } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
 
 // What the sector map shows, for a campaign on the run:
@@ -19,9 +21,12 @@ import { actTitle, crewText, heatText } from './hubText.js';
 //   links        [{ a, b, near }]: near when it joins the node the ship is at
 //   here         the node the ship is at, as nodeText says it
 //   crew         as the hangar's
-//   hold         [[label, value]]: supplies and credits
+//   hold         [[label, value]]: supplies and credits, and the parts
+//                wrecked aboard, if any
 //   offer        what the station sells, or null away from one: { line,
 //                why, buys: [{ count, label, ask, text }] }
+//   repair       what the station would repair, or null away from one or
+//                with nothing wrecked: { ok, label, ask, text, why }
 //   leave        null away from the jump point; there { ok, last, label,
 //                ask, title, lines, tone }, last at the act's last
 //   scan         what a scan would show, or null when it would show nothing:
@@ -63,25 +68,53 @@ export function sectorText(campaign, rules) {
     hold: [
       ['Supplies', `${campaign.supplies} of ${supplyCapacity(campaign.ship, rules)}`],
       ['Credits', campaign.credits.toLocaleString('en')],
+      ...wrecksLine(campaign, rules),
     ],
     offer: offer.ok ? offerText(campaign, rules, offer) : null,
+    repair: offer.ok ? repairText(campaign, rules) : null,
     leave,
     scan: scanText(campaign, rules),
-    deciding: Boolean(openEvent(campaign, rules)),
+    deciding: Boolean(openEvent(campaign, rules) || campaign.run.approach),
     hint: sectorHint(campaign, rules, { each, offer, leave, known }),
   };
 }
 
 // A node: { name, kind, text }. kind is its kind's name, unless that is its
 // name, with its event's title until the event is settled ("Derelict: Dead
-// hauler"); text is its kind's words. Unknown, it says so.
+// hauler"), or its hostile ship's until it is met ("Hostile ship: Pirate
+// cutter"); text is its kind's words. Unknown, it says so.
 export function nodeText(node, rules, { known = true, done = false } = {}) {
   if (!known) return { name: node.name, kind: 'Unknown', text: 'Too far to make out. Come closer, or scan.' };
   const kind = rules.nodeTypes.get(node.type);
   const name = kind?.name ?? node.type;
   const event = node.event && !done ? rules.events.get(node.event) : null;
+  const ship = node.hostile && !done ? rules.ships.get(node.hostile.ship) : null;
   const what = name === node.name ? '' : name;
+  if (ship) return { name: node.name, kind: `${what}: ${ship.name}`, text: kind?.text ?? '' };
+  if (done && node.hostile) return { name: node.name, kind: `${what}, gone`, text: 'Nobody here now but the debris.' };
   return { name: node.name, kind: event ? `${what}: ${event.title}` : done && node.event ? `${what}, been and done` : what, text: kind?.text ?? '' };
+}
+
+// The parts wrecked aboard, as a holdings row, or none.
+function wrecksLine(campaign, rules) {
+  const wrecks = wrecksToRepair(campaign, rules);
+  return wrecks.length ? [['Wrecked', wrecks.map((wreck) => rules.modules.get(wreck.type)?.name ?? wreck.type).join(', ')]] : [];
+}
+
+// What the station would repair, two taps, or null with nothing wrecked.
+function repairText(campaign, rules) {
+  const plan = repairPlan(campaign, rules);
+  if (!plan.ok && !plan.wrecks) return null;
+  const name = (wreck) => `the ${(rules.modules.get(wreck.type)?.name ?? wreck.type).toLowerCase()}`;
+  if (!plan.ok) return { ok: false, label: 'Repair', ask: 'Repair?', text: plan.error, why: `${plan.error} You have ${campaign.credits}.` };
+  const all = plan.repairs.length === plan.wrecks.length;
+  return {
+    ok: true,
+    label: `Repair · ${plan.cost}`,
+    ask: `Repair for ${plan.cost}?`,
+    text: `${all ? 'Repairs' : 'Your credits cover'} ${plan.repairs.map(name).join(', ')} for ${plan.cost} credits${all ? '' : `, of ${plan.total} for everything`}. Tap again to repair.`,
+    why: null,
+  };
 }
 
 // What a scan would show from here: { label, ask, text }, or null.
@@ -157,8 +190,10 @@ function leaveText(campaign, rules) {
 
 // What to do next on the map, the most pressing first.
 function sectorHint(campaign, rules, { each, offer, leave, known }) {
-  const open = openEvent(campaign, rules);
-  if (open) return { tone: 'warn', text: `Decide first: ${open.event.title}.` };
+  const held = holdOf(campaign, rules);
+  if (held) return { tone: 'warn', text: held };
+  const wrecked = Object.keys(campaign.wrecks).length;
+  if (offer.ok && wrecked) return { tone: 'good', text: `Supplies and repairs here. ${wrecked === 1 ? 'A part is' : `${wrecked} parts are`} wrecked aboard.` };
   if (leave?.last) return { tone: 'info', text: 'The charts end here. The rest of the run comes in later updates.' };
   if (offer.ok && offer.room && offer.most) return { tone: 'good', text: `Supplies sell here. A jump eats ${each}.` };
   if (leave) return { tone: 'good', text: `Tap Jump on for sector ${campaign.run.sector.index + 1}.` };
