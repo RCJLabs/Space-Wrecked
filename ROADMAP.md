@@ -85,11 +85,15 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Frame shapes:** a frame can still cut cells out of its rectangle, for a special hull. The starter frame had a ship-shaped outline from M4 to M5b; it is open now.
 - **Module definitions** (`data/modules.json`) hold:
   - id, name, manufacturer, size in cells, and whether it rotates
-  - the side that must face space, if any: an engine's exhaust, a gun's barrel
+  - the drawer's category it sits in (M23e): command, power, engines, weapons, defense, crew, cargo or utility, in that order (the file's `categories`)
+  - the side that must face space, if any: an engine's exhaust, a gun's barrel, a point defense turret
   - stats: power, mass, thrust, crew berths, life support, cargo, hit points
   - tags such as bridge, reactor, engine, airlock or weapon mount
+  - what it does in an approach (M23e): a gun's `damage` a hit, a shield's strength (`shield`), a point defense turret's `intercept`; and a med bay's `heal`
   - an interior template at tile resolution: walls, floor, cover props, consoles
   - cost
+
+  The base parts come first in the file: the flight checklist's fixes name the first part that gives what is short, so act 1's goal and generated ships ask for an Engine, not a variant of one.
 - **Placement rules:**
   - in bounds, with no overlap
   - every module reachable from the bridge through shared walls: two rooms that share a wall get one doorway in its middle, and corridors side by side open into each other
@@ -107,6 +111,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Blueprint codes** are versioned, compact (base64url) and carry a checksum. A bad code fails with a message, never a crash.
 - **Build replay:** every placement is a command, and replaying the command list plays back a timelapse.
 - **Construction mode** (M13): in a campaign, the builder works on the campaign's ship with the parts the campaign has. A part goes on only while one is on hand, and one taken off goes back, undo and redo included. The palette shows only the parts on hand, with how many. A checklist fix whose part isn't on hand says so instead of picking it. Every change is saved through the campaign at once.
+- **The Parts drawer** (M23e): one category at a time or all, picked from a sheet that a 48 px button opens, each category with how many parts it holds; a size filter (any, small, medium, large) a tap a step. All lists the parts by category, the base part first. In construction mode only the parts on hand show, and the counts follow.
 - **Touch controls:**
   - drag from a palette drawer, with a ghost preview tinted valid or invalid
   - nothing lands from a single tap: a tap shows the part as a ghost, and a second tap on it places it
@@ -126,11 +131,11 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **As built in M21** (`src/sim/approach.js`, pure; the numbers in `data/balance.json`, each preset's tactics and scrap in `data/ships.json`):
   - **Who goes first:** each round the other ship's order is worked out from its tactics and shown first, and then the player gives one. The player answers it; the other ship never sees the player's order.
   - **The odds,** each kept within 5 to 95 (`chanceMin`, `chanceMax`):
-    - a gun hits at 70 (`gunnery`) less the target's evasion, and 20 less again (`evadeBonus`) while the target evades;
+    - a gun hits at 70 (`gunnery`) less the target's evasion and its point defense, and 20 less again (`evadeBonus`) while the target evades. Point defense (M23e) is each working turret's cut, 10, up to 20 in all (`interceptMax`);
     - evasion is 25 (`evasionPerThrust`) times the ship's thrust for its mass, from the engines still working;
     - fleeing works at 35% (`fleeChance`) and closing to board at 30% (`closeChance`), each moved 50 points for every point of thrust for mass the ship has over the other.
   - **A round** goes flights first (the player's first), then both volleys at once, each from the ship as it stood when the round began, then boardings. So a ship disabled by the volleys can't close.
-  - **Hits:** every working gun fires once. A hit does 15 (`gunDamage`), less what the target's shields still hold this round (10 a working generator, `shieldPerGen`), to the module of the kind aimed at with the fewest hit points left. A full hit wrecks an engine, a gun or a shield generator; a reactor takes two. A roll says whether a wrecked room burns, is open to vacuum or is full of rubble.
+  - **Hits:** every working gun fires once, in the order the guns were fitted. A hit does its gun's damage, less what the target's shields still hold this round (each working shield's strength, added up), to the module of the kind aimed at with the fewest hit points left. Since M23e the damage and the strength are each part's own, in `data/modules.json`: a weapon mount 15 and a cannon 30; a shield generator 10 and a shield array 25. A mount's full hit wrecks an engine, a gun or a shield generator, and a reactor takes two, or one cannon hit. A cannon's hit still wrecks a gun or an engine through a generator. Point defense turrets are shot at with the guns. A roll says whether a wrecked room burns, is open to vacuum or is full of rubble.
   - **Outcomes:** a ship with no working reactor or no working engine is disabled, and the other boards it; both disabled, they drift apart. A ship whose last reactor is wrecked blows up 30 times in 100 (`blowChance`), which leaves only scrap. The player's ship never blows. After 3 rounds (`approachRounds`) the ships part.
   - **Tactics** (data): what a ship fires at, first choice first; the round it closes to board from; and how much of its guns', engines', shields' and reactors' hit points it can lose before it runs. The pirate cutter fires at engines, then guns, closes from round 2 and runs at half lost. The patrol corvette fires at guns, then the reactor, never closes, and runs at 70% lost.
   - **The player's Board** can be given since M22 whenever the ship's engines work, at its odds: 49% for the start ship against the cutter in the checks (preset seed 1). In M21 it was shown but refused, because the stand-in that settled boardings couldn't tell a crew boarding a stronger ship from one boarding a wreck.
@@ -138,6 +143,11 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - **Damage stays.** The player's wrecked modules carry into the next approach and into the ship's boarding map (Law 2) until a station repairs them (§4.6). When an approach leaves no reactor or no engine working, the crew gets the first one going again, so the ship can always fly on.
   - **The screen:** both ships are drawn as their boarding maps, side by side and facing each other, so a wrecked room shows its hazard. It shows the other ship's order with its odds, the orders along the bottom with theirs (two taps to give one), and the last round, roll by roll. Every chance is shown before its roll, a last reactor's blow-up included. Since M22, an approach that ends in a boarding shows her crew and what winning and losing come to, with Board her and Leave her, or Fight them off, in the orders' place.
   - **Balance** (`tools/approach.js`, a test captain that looks ahead, 300 approaches for each row, M21): the launched start ship gets away about 60% of the time and is boarded about 18%. A weapon mount turns the cutter into a win (69% boarded, 17% boarded by it). A shield cuts the cutter's boardings from 18% to 12% and the corvette's from 19% to 3%. An engine cuts both to 7 or 8%. With or without a part, the start ship never boards a corvette: it is one to run from.
+  - **Balance since M23e,** with the presets carrying new parts (the cutter an engine and light engines, the corvette sometimes a pair of cannons): the start ship scores −11 against the cutter and −22 against the corvette (wins less losses in every 100). Each part added by itself, the change against the cutter and against the corvette:
+    - gun +75 and +2, cannon +84 and +12;
+    - shield +12 and +11, shield array +18 and +15, point defense +6 and +11 (losses 22% to 17%, and to 11%);
+    - engine +29 and +13, light engine +26 and +11, heavy engine +1 and +18 (the cutter can no longer close: 87% part);
+    - small reactor −1 and +9: no gain against the cutter, which never fires at reactors, and 9 fewer boardings in 100 against the corvette.
 
 ### 4.3 Squad battles
 
@@ -337,6 +347,8 @@ The v1.0 column is a set of targets, not commitments.
 
 **v0.1 module types:** bridge, reactor, engine, corridor, airlock, crew quarters, life support, cargo hold, med bay, armory, weapon mount, shield generator.
 
+**M23e's variants** (21 module types in all): light engine, heavy engine, small reactor, point defense, cannon, shield array, bunks, surgery and large hold.
+
 **v0.1 background** (M14, `data/backgrounds.json`): debt-bound miner. Con-Reg Recovery, the company's repo crews, hunt you by tracking your ship's registration. Act 1's district is the Tailings: six clients and four job sites (`data/districts.json`).
 
 ---
@@ -500,20 +512,23 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
   - wherever a hull is drawn: the builder's rim and hull view, the hangar, the lift-off, the enemy ships sandbox
 
   **Done when:** both styles are in data (`data/hulls.json`): Rounded, with rounded corners outside and in, a rounded shoulder and a bullet nose; and Plated, with cut corners, a stepped armor shoulder, panel seams on the roof and a blunt prow. In both, no outer corner of the outline is a plain right angle, and the hull covers every cell and never cuts into a room (tested). Nozzles, barrels and collars sit on the new skin, bevelled to match. The player picks the style in the builder, one tap, undoable, saved with the ship (`SAVE_VERSION` 16: older ships are Rounded) and carried by blueprint codes (version 3, which still reads 1 and 2). Every enemy ship gets one of the two at random, the same for the same seed, its layout unchanged (golden). The builder's rim and Hull view, the hangar, the lift-off and the Enemy ships sandbox all draw it. The builder's default view keeps every cell 22 px or more on the cover screen. The boarding maps don't change (golden), and the hull views keep to the frame budget at the three sizes.
-- [ ] **M23e Builder catalog and part variants** (§4.1, §5). Evan's picks (2026-10-13): the drawer as a picker, one category at a time; the nine parts below; enemy ships using some now; and Law 1 for variants as reworded in the Done when.
+- [x] **M23e Builder catalog and part variants** (§4.1, §5). Evan's picks (2026-10-13): the drawer as a picker, one category at a time; the nine parts below; enemy ships using some now; and Law 1 for variants as reworded in the Done when.
   - the parts drawer in categories (command, power, engines, weapons, defense, crew, cargo and utility): one category at a time, or all, picked from a 48 px button, with a size filter. The maker filter waits for a second maker (M23g)
   - nine new parts, each with its own footprint, interior, model and icon:
-    - **light engine:** half an engine's thrust for a third of its mass, cheap, wrecked by one hit
-    - **heavy engine:** about twice an engine's thrust, and two hits to wreck
-    - **point defense:** fires at incoming shots, cutting the other ship's hit chance
-    - **cannon:** a heavy gun whose hit goes through a shield and still wrecks a part
-    - **shield array:** holds more of a volley than a generator
-    - **small reactor:** half a reactor's power; as a spare, one wrecked reactor no longer disables the ship
-    - **bunks:** berths with their own air, so it makes room for crew by itself
-    - **surgery:** heals more a jump than a med bay
-    - **large hold:** twice a cargo hold's supplies
+    - **light engine** (2 × 1): half an engine's thrust for a third of its mass, cheap, wrecked by one hit. Thrust 6, mass 1, 8 hit points, 90 credits
+    - **heavy engine** (3 × 2): about twice an engine's thrust, and two hits to wreck. Thrust 26, mass 6, 30 hit points, 420 credits
+    - **point defense** (1 × 1, a turret facing space): fires at incoming shots, cutting the other ship's hit chance by 10, up to 20 with more turrets. Shot at with the guns. 120 credits
+    - **cannon** (2 × 1): a heavy gun whose hit goes through a shield and still wrecks a part. 30 damage a hit, one cannon hit wrecks an unshielded reactor. 240 credits
+    - **shield array** (2 × 2): holds more of a volley than a generator, 25 a round. Draws 4 power. 300 credits
+    - **small reactor** (2 × 2): half a reactor's power; as a spare, one wrecked reactor no longer disables the ship. Power 4, mass 2, 130 credits
+    - **bunks** (2 × 2): berths with their own air, so it makes room for crew by itself. 2 berths and 2 life support, 100 credits
+    - **surgery** (2 × 2): heals more a jump than a med bay: 2, 3 with a medic. 220 credits
+    - **large hold** (4 × 3): twice a cargo hold's supplies, 40. 140 credits
   - guns' damage and shields' strength per part, and point defense's cut to the other ship's odds, shown in the odds (Law 4)
-  - the shop, the drop tables and the enemy presets carry them
+  - the shop, the drop tables and the enemy presets carry them:
+    - Dutch's yard stocks all nine, its engines weighted up so act 1 runs as before;
+    - act 1's jobs drop them where they fit, and act 2's salvage the five cheaper ones;
+    - the cutter flies on an engine and one or two light engines, the corvette carries a pair of cannons half the time, and the hauler may carry a large hold. The corvette is mirrored, so any part that can't sit across its middle comes in pairs: a pair of shield arrays would hold 50 a round, more than the start ship's gun gets through, so it has none
 
   **Done when:** the nine parts are in `data/modules.json`, each with its own footprint, interior, model and icon. Each changes the approach, a fight or the voyage, shown by `tools/approach.js`, `tools/sim.js` or `tools/voyage.js` (Law 1), and none is worse than another part in every way (cost, size, mass, power, hit points and what it does). A gun's damage and a shield's strength come from its part, and point defense cuts the other ship's hit chance, every chance shown as rolled (Law 4). The drawer shows one category at a time or all, picked from a 48 px button, with a size filter, and in construction mode only the parts on hand; two taps to place as now, every button 48 px or more at the three sizes. The shop and the drop tables carry the new parts, and the enemy presets use some (the golden ships file updated on purpose). Old saves and blueprint codes still load, and the careful test player still crosses all five sectors fed in at least 24 of 30.
 - [ ] **M23f Styling pieces** (Law 1's styling line).
@@ -639,5 +654,9 @@ These ideas wait until v0.4 or later:
 - the crew card on the cover screen: past three aboard, its lists scroll under the head. A tighter row, or the head's words in the foot, would show four at once (raised in M23)
 - the approach screen with the ships' hulls: it draws both ships as their boarding maps, so M23d's curves and M23f's styling don't show there. A view of each ship's outside beside its map would (raised in planning, 2026-10-13)
 - a test player that weighs a recruit's mouth: M23's signs one on only with 10 jumps of supplies in the holds for the bigger crew, which the start ship's lockers never hold, so on the start ship it never hires (raised in M23)
+- an enemy that fits shield arrays and small reactors: the corvette is mirrored, so it would carry them in pairs, and a pair of arrays holds 50 a round. A gunship preset that isn't mirrored, or one array across a mirrored ship's middle, would bring them in (raised in M23e)
+- a checklist fix that offers a variant on hand: "Add Engine" asks for the base part even with a light engine on hand to fit (raised in M23e)
+- surgery against a med bay with a medic aboard: on the careful test player's voyages it patches 37 hit points against 44 over 30 runs, since a med bay already heals most wounds between fights. More wounds a voyage (M24's hunters) would show it more (raised in M23e)
+- a faster test suite: since M23e the Law 1 tests fly ten ships in the approach and seven fleets of 30 voyages, and `node --test` takes 1 min 45 s here (raised in M23e)
 
 Ideas that come up during a session go here, not into code.
