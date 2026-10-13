@@ -1,43 +1,44 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { palette } from '../src/render/palette.js';
-import { crewColor, ordersScene, UNIT_TOP, unitsScene } from '../src/render/units.js';
+import { colorsOf, crewColor, ordersScene, unitsScene } from '../src/render/units.js';
 import { edgeKey } from '../src/sim/mapFromShip.js';
 import { field, openMap, put, rules, wall } from './battleKit.js';
 
-const figure = (extra = {}) => ({ side: 'crew', status: 'active', at: [2.5, 3.5], facing: [1, 0], trim: palette.crewA, ...extra });
-const top = (faces) => Math.max(...faces.flatMap((f) => f.pts.map((p) => p[2])));
+const marine = rules.jobs.get('marine');
+const figure = (extra = {}) => ({ id: 'c1', side: 'crew', status: 'active', at: [2.5, 3.5], facing: [1, 0], trim: palette.crewA, look: marine.look, held: rules.weapons.get('rifle').held, pose: {}, ...extra });
 const colors = new Set(Object.values(palette));
+const top = (faces) => Math.max(...faces.flatMap((f) => f.pts.map((p) => p[2])));
 
-test('a unit is solid faces with unit normals, in palette colours, standing on its point', () => {
-  for (const unit of [figure(), figure({ side: 'enemy', trim: palette.enemyTrim, facing: [0, -1] }), figure({ status: 'down' }), figure({ status: 'dead' })]) {
-    const { faces } = unitsScene([unit]);
-    assert.ok(faces.length > 10);
-    for (const face of faces) {
-      assert.ok(face.pts.flat().every(Number.isFinite));
-      assert.ok(Math.abs(Math.hypot(...face.normal) - 1) < 1e-9);
-      assert.ok(colors.has(face.color), face.color);
-    }
-    const xs = faces.flatMap((f) => f.pts.map((p) => p[0]));
-    assert.ok(Math.min(...xs) >= 2 && Math.max(...xs) <= 3, 'within its tile');
+test('units are figures to draw: their look, weapon, colours and pose, standing where they stand', () => {
+  const unit = figure({ pose: { aim: 1 } });
+  const { figures } = unitsScene([unit, figure({ id: 'e1', side: 'enemy', trim: palette.enemyTrim })]);
+  assert.equal(figures.length, 2);
+  const [crew, enemy] = figures;
+  assert.deepEqual([crew.id, crew.at, crew.facing, crew.look, crew.held, crew.pose], [unit.id, unit.at, unit.facing, unit.look, unit.held, { aim: 1 }]);
+  assert.ok(Object.values(crew.colors).every((c) => colors.has(c)), 'palette colours only');
+  assert.equal(crew.colors.trim, palette.crewA);
+  assert.equal(crew.colors.suit, palette.crewSuit);
+  assert.equal(enemy.colors.suit, palette.enemySuit);
+  assert.equal(enemy.colors.visor, palette.enemyVisor);
+  assert.notEqual(crew.key, enemy.key, 'drawn apart');
+  assert.equal(unitsScene([figure()]).figures[0].key, unitsScene([figure({ at: [9.5, 1.5], pose: { aim: 1 } })]).figures[0].key, 'one look, one key wherever it stands');
+});
+
+test('down, stable, out or dead, a unit lies on the deck; out or dead, in grey', () => {
+  for (const status of ['down', 'stable', 'out', 'dead']) {
+    const [lying] = unitsScene([figure({ status, pose: { aim: 1 } })]).figures;
+    assert.deepEqual(lying.pose, { fall: 1 });
+    const gone = status === 'out' || status === 'dead';
+    assert.equal(lying.colors.suit, gone ? palette.fallen : palette.crewSuit);
+    if (gone) assert.ok(Object.values(colorsOf('crew', status, palette.crewA)).every((c) => [palette.fallen, palette.fallenTrim, palette.fallenDark, palette.figureEdge].includes(c)));
   }
 });
 
-test('standing, a unit is helmet-high and looks the way it faces; down, it lies on the deck', () => {
-  const { faces } = unitsScene([figure({ facing: [0, 1] })]);
-  assert.ok(Math.abs(top(faces) - UNIT_TOP) < 1e-9);
-  const visor = faces.find((f) => f.color === palette.visor);
-  assert.deepEqual(visor.normal, [0, 1, 0]);
-  assert.ok(visor.pts.every((p) => p[1] > 3.5), 'on the side it faces');
-  assert.ok(top(unitsScene([figure({ status: 'down' })]).faces) < 0.2);
-  assert.ok(faces.some((f) => f.color === palette.crewA), 'trimmed in its own colour');
-});
-
-test('the dead and those out of the fight lie grey; a unit just hit flashes', () => {
-  for (const status of ['dead', 'out']) assert.ok(unitsScene([figure({ status })]).faces.every((f) => f.color === palette.fallen));
-  const hit = unitsScene([figure({ flash: true })]).faces;
-  assert.ok(hit.filter((f) => f.color === palette.tracer).every((f) => f.emissive));
-  assert.ok(hit.filter((f) => f.color === palette.tracer).length > 20);
+test('a unit just hit flashes in the tracer colour', () => {
+  const [hit] = unitsScene([figure({ flash: true })]).figures;
+  assert.equal(hit.colors.suit, palette.tracer);
+  assert.equal(hit.colors.trim, palette.tracer);
 });
 
 test('each crew member has a trim of their own, round again after five', () => {

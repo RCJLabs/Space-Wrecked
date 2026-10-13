@@ -47,6 +47,20 @@ export const palette = {
   enemyVisor: '#ffb36b',
   gunmetal: '#262f42',
   fallen: '#4a5160',
+  // Figures (src/render/figures/): the slate under a skinsuit's plates, the
+  // dark of joints and soles, a dark visor's glass, lamps, the gun in hand
+  // and the outline round a figure, with the boarders' own where they
+  // differ; and the greys of the fallen.
+  crewUnder: '#4b5873',
+  enemyUnder: '#4d3337',
+  enemyDark: '#2a2630',
+  glass: '#16253f',
+  enemyGlass: '#2a1a1e',
+  lamp: '#fff1b8',
+  gun: '#2b3447',
+  figureEdge: 'rgba(4, 8, 18, 0.95)',
+  fallenTrim: '#5b6372',
+  fallenDark: '#2b303b',
   // Orders on a battle map: the tiles a unit can move to in one action or
   // in a dash, the path it would take, the cover where it would stop, the
   // enemies it can shoot, and shots in flight.

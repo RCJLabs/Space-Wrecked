@@ -24,12 +24,13 @@ A ship-first sandbox RPG in 3D: build a ship on a grid, run from a pursuer, and 
 ## Hard conventions
 
 - **Vanilla ES modules. No framework. No build step. No dependencies** without explicit approval. ZzFX (audio) is pre-approved for M35. `package.json` exists only for `"type": "module"` and scripts.
-- **Procedural art, drawn in code.** The game world is 3D, drawn by our own renderer on canvas (`src/render/`, no library); menus, panels and icons are SVG and DOM. The only image files allowed are WebP portraits, scenes and store art in `assets/img/`, each logged in `assets/LOG.md`, and PNG app icons generated from `icon.svg` by `tools/icons.js`. No sprite sheets, no emoji as art.
+- **Procedural art, drawn in code.** The game world is 3D, drawn by our own renderer on canvas (`src/render/`, no library); menus, panels and icons are SVG and DOM. The only image files allowed are WebP portraits, scenes and store art in `assets/img/`, each logged in `assets/LOG.md`, and PNG app icons generated from `icon.svg` by `tools/icons.js`. No sprite sheets, no emoji as art. (The fight keeps each figure our renderer draws for reuse, `src/render/figures/sprites.js`; that is a cache of our own drawings, not image files.)
 - **`SAVE_VERSION` gates all saves.** Never change the save schema without bumping `SAVE_VERSION` and writing a migration. Never reset player saves. (This is the Ascent rule.)
 - **Seeded RNG everywhere**, using `mulberry32` in `src/core/rng.js`. This covers battles, the approach phase, generators, loot and events. No bare `Math.random()` in game logic. RNG state is part of the save, so reloading never rerolls.
 - **All content is data** in `data/*.json`:
   - modules, hull frames, manufacturers, weapons, enemies, encounters, ship presets, the campaign's acts
   - crew jobs, traits, recruits' names, backgrounds (each with its start and pursuer), districts, the job sites' map templates
+  - how jobs, enemies and weapons look in a fight (`look` and `held`, checked against `src/render/figures/looks.js`)
   - mission and job templates (`data/contracts.json`), events, balance numbers
 
   Adding content never requires engine edits.
@@ -53,7 +54,7 @@ CNAME                       # spacewrecked.rcjlabs.com
 src/
   core/      rng, save, blueprint codes, store, events
   sim/       grid, builder rules, constraints, mapFromShip, battle, ai, approach, heat, campaign, economy, gen/
-  render/    3D camera, scenes and painters, part models, hull tracer, SVG icons, tweens, particles
+  render/    3D camera, scenes and painters, part models, figures (figures/), hull tracer, SVG icons, tweens, particles
   ui/        screens, panels, gestures
   platform/  storage, service worker registration, haptics, orientation
 data/        JSON content, including balance.json
@@ -72,7 +73,7 @@ PROGRESS.md
 - State flows one way: input, then action, then a sim function, then new state, then render. Renderers never mutate state.
 - Hit chance is computed in `src/sim/` and shown exactly. The number on screen is the number rolled against, including any forgiving-odds bonus.
 - Balance numbers live in `data/balance.json`. Before changing any, run `node tools/sim.js` and paste the summary into PROGRESS.md.
-- Parts and hulls are pure functions from ship data to 3D models: plain data (faces, lines, glows) in cells, z up. The painters project them through the orbit camera (`src/render/orbit.js`) onto `<canvas>`: the see-through blueprint is batched by style, solid views are depth-sorted with back faces dropped. Menus, panels and icons are DOM and SVG with CSS.
+- Parts, hulls and figures are pure functions from data to 3D models: plain data (faces, lines, glows) in cells, z up. The painters project them through the orbit camera (`src/render/orbit.js`) onto `<canvas>`: the see-through blueprint is batched by style, solid views are depth-sorted with back faces dropped. Menus, panels and icons are DOM and SVG with CSS.
 - Colors come from palette tokens in one file. Manufacturers are skins over the same part shapes.
 - Keep files small and named for what they do; no god modules.
 

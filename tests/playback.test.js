@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { applyEvent, durationOf, FLIGHT, FLOAT_MS, frameAt, makeTimeline, STEP_MS } from '../src/render/playback.js';
+import { applyEvent, durationOf, FLIGHT, FLOAT_MS, frameAt, makeTimeline, poseAt, STEP_MS } from '../src/render/playback.js';
 import { createBattle } from '../src/sim/battle.js';
 import { deploy } from '../src/sim/deploy.js';
 import { createFight, reduceFight } from '../src/sim/fight.js';
@@ -97,4 +97,23 @@ test('a new turn holds the board for its banner, and the view keeps whose turn i
   assert.deepEqual(frame.event, { type: 'turn', side: 'enemy', round: 1 });
   assert.ok(frame.progress > 0 && frame.progress < 0.01);
   assert.equal(frameAt(timeline, first.at + first.ms).view.side, 'enemy');
+});
+
+test('a unit strides through a walk, aims as it shoots or watches, and falls as it goes down', () => {
+  const unit = { id: 'c1', overwatch: false };
+  const at = (event, progress) => ({ event, progress });
+  assert.deepEqual(poseAt(unit, null), { aim: 0, stride: null, fall: 0 });
+  const walk = { type: 'move', unit: 'c1', path: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]] };
+  assert.equal(poseAt(unit, at(walk, 0)).stride, 0);
+  assert.equal(poseAt(unit, at(walk, 0.25)).stride, 0.5, 'a step to every tile, a stride to every two');
+  assert.equal(poseAt(unit, at(walk, 0.5)).stride, 0);
+  assert.equal(poseAt({ id: 'c2', overwatch: false }, at(walk, 0.25)).stride, null, 'only the walker walks');
+  assert.equal(poseAt(unit, at({ type: 'shot', unit: 'c1', target: 'e1' }, 0.2)).aim, 1);
+  assert.equal(poseAt(unit, at({ type: 'shot', unit: 'e1', target: 'c1' }, 0.2)).aim, 0, 'shot at is not aiming');
+  assert.equal(poseAt(unit, at({ type: 'overwatch', unit: 'c1' }, 0.1)).aim, 1, 'going on watch');
+  assert.equal(poseAt({ id: 'c1', overwatch: true }, null).aim, 1, 'on watch, aimed');
+  for (const type of ['down', 'dead']) {
+    assert.equal(poseAt(unit, at({ type, unit: 'c1' }, 0.5)).fall, 0.25, 'quicker as it goes');
+    assert.equal(poseAt(unit, at({ type, unit: 'c1' }, 1)).fall, 1);
+  }
 });

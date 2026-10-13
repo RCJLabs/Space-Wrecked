@@ -5,17 +5,20 @@
 // to the board. Never changes the map.
 //   board = createBattleBoard()
 //   board.setMap(input)          { map, skin, open } (see battleScene), or null
-//   board.setActors(input)       { faces, glows }: units and marks on the
-//                                deck (units.js), or null
+//   board.setActors(input)       { faces, glows, figures? }: marks on the
+//                                deck and the units' figures (units.js),
+//                                or null
 //   board.draw(ctx, cam, rect, overlay, { animating })
 //                                overlay(ctx), if given, draws on top
 //                                (labels, shots in flight); animating says
 //                                units are moving. True means this frame was
 //                                a rough one (the camera or units moved, on
-//                                a phone too slow for full frames): draw
+//                                a phone too slow for full frames, or some
+//                                figures still wait to be drawn): draw
 //                                again once it settles
 //   board.frameStats()           for the dev overlay (frameBudget.js)
 import { battleScene } from './battleScene.js';
+import { createFigureSprites } from './figures/sprites.js';
 import { createFrameBudget } from './frameBudget.js';
 import { paintLayer } from './layer.js';
 import { paintSolid, prepareSolid } from './painter.js';
@@ -34,7 +37,7 @@ export const BATTLE_VIEW = { yaw: -11 * deg, pitch: 60 * deg, distance: 40 };
 // Fold's cover screen, against 39 at the builder's angle). Twist to turn it.
 export const FIGHT_VIEW = { ...BATTLE_VIEW, yaw: 0 };
 
-const NONE = { faces: [], glows: [] };
+const NONE = { faces: [], glows: [], figures: [] };
 
 export function createBattleBoard() {
   let scene = null;
@@ -45,6 +48,8 @@ export function createBattleBoard() {
   const still = { canvas: null, cam: null, scene: null, actors: null, rect: null, ratio: 0 };
   const lowRes = { canvas: null };
   const budget = createFrameBudget();
+  // Figures are drawn once and kept, a drawing for each angle, pose and size.
+  const sprites = createFigureSprites();
   // Space behind the map doesn't move with it, so it is painted once per
   // size and pixel ratio.
   const backdrops = new Map();
@@ -59,7 +64,7 @@ export function createBattleBoard() {
       lastCam = null; // the next frame is a full one
     },
     setActors(input) {
-      actors = input ? { faces: prepareSolid(input.faces, shade), glows: input.glows } : NONE;
+      actors = input ? { faces: prepareSolid(input.faces, shade), glows: input.glows, figures: input.figures ?? [] } : NONE;
     },
     draw(ctx, cam, rect, overlay, { animating = false } = {}) {
       const moving = Boolean(cam && lastCam && cam !== lastCam) || animating;
@@ -73,8 +78,14 @@ export function createBattleBoard() {
         // draws canvas without its GPU fills the pixels.
         budget.measure(() => ctx.drawImage(paintLayer(still, rect, ratio, (g) => paint(g, cam, rect, ratio, true)), rect.x, rect.y, rect.w, rect.h));
         Object.assign(still, { cam, scene, actors, rect, ratio });
+        if (sprites.stale()) {
+          // Some figures showed an older drawing: draw again soon.
+          still.cam = null;
+          overlay?.(ctx);
+          return true;
+        }
       } else {
-        ctx.drawImage(paintLayer(lowRes, rect, 1, (g) => paint(g, cam, rect, 1, false)), rect.x, rect.y, rect.w, rect.h);
+        ctx.drawImage(paintLayer(lowRes, rect, 1, (g) => paint(g, cam, rect, ratio, false)), rect.x, rect.y, rect.w, rect.h);
         still.cam = null;
         overlay?.(ctx);
         return true;
@@ -85,11 +96,15 @@ export function createBattleBoard() {
     frameStats: () => budget.stats(),
   };
 
+  // ratio: the device pixels per CSS pixel figures are drawn at, those of
+  // a full frame even in a rough one.
   function paint(g, cam, rect, ratio, edges) {
-    g.drawImage(backdrop(rect, ratio, scene?.space ?? palette.space), rect.x, rect.y, rect.w, rect.h);
+    g.drawImage(backdrop(rect, g.getTransform().a, scene?.space ?? palette.space), rect.x, rect.y, rect.w, rect.h);
     if (!scene || !cam) return;
     const faces = actors.faces.length ? scene.faces.concat(actors.faces) : scene.faces;
-    paintSolid(g, faces, actors.glows.length ? scene.glows.concat(actors.glows) : scene.glows, cam, { edges });
+    sprites.frame();
+    const items = actors.figures.map((figure) => sprites.item(figure, ratio));
+    paintSolid(g, faces, actors.glows.length ? scene.glows.concat(actors.glows) : scene.glows, cam, { edges, items });
   }
 
   function backdrop(rect, ratio, color) {

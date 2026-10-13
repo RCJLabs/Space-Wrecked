@@ -5,6 +5,7 @@
 //
 //   node tools/validate-data.js
 import { pathToFileURL } from 'node:url';
+import { heldProblems, lookProblems } from '../src/render/figures/looks.js';
 import { AIMS } from '../src/sim/approach.js';
 import { CAPTAIN_TRAITS } from '../src/sim/campaign.js';
 import { REQUIRED_TAGS } from '../src/sim/constraints.js';
@@ -100,11 +101,13 @@ const BALANCE = {
   recruitOffer: [0, 4],
   squadSize: [1, 5],
 };
-const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', 'clip'];
+// A weapon's held shape and a fighter's look are how the fight draws them
+// (src/render/figures/looks.js).
+const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', 'clip', 'held'];
 const RANGE_BANDS = ['close', 'mid', 'long'];
 // Crew jobs and enemies are both fighters, with the same fields. A job
 // can also have a ship station effect (§4.5): what it adds aboard.
-const FIGHTER_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'weapon'];
+const FIGHTER_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'weapon', 'look'];
 const STATION_KEYS = ['heal'];
 const TILE_RULE_KEYS = ['walk', 'cover', 'blocksSight'];
 // Traits (src/sim/traits.js): what each can add to a fighter's numbers, up
@@ -424,11 +427,13 @@ function checkWeapon(weapon, where, fail) {
   if (!isIntIn(weapon.crit, 0, 100)) fail(where, 'crit must be a whole number from 0 to 100');
   if (!isIntIn(weapon.critDamage, 0, 99)) fail(where, 'critDamage must be a whole number from 0 to 99');
   if (!isIntIn(weapon.clip, 1, 99)) fail(where, 'clip must be a whole number from 1 to 99');
+  for (const problem of heldProblems(weapon.held)) fail(where, problem);
 }
 
-// A crew job or an enemy: what it brings to a battle. A job (job: true)
-// can also have a station effect: with a working med bay aboard, heal adds
-// to what it heals each of the wounded a jump (medbay.js).
+// A crew job or an enemy: what it brings to a battle, and its look. A job
+// (job: true) can also have a station effect: with a working med bay
+// aboard, heal adds to what it heals each of the wounded a jump
+// (medbay.js).
 function checkFighter(fighter, where, weaponIds, fail, { job = false } = {}) {
   for (const key of Object.keys(fighter)) {
     if (!FIGHTER_KEYS.includes(key) && !(job && key === 'station')) fail(where, `unknown field "${key}"`);
@@ -447,6 +452,7 @@ function checkFighter(fighter, where, weaponIds, fail, { job = false } = {}) {
     if (!isIntIn(fighter[key], min, max)) fail(where, `${key} must be a whole number from ${min} to ${max}`);
   }
   if (!weaponIds.has(fighter.weapon)) fail(where, `unknown weapon "${fighter.weapon}"`);
+  for (const problem of lookProblems(fighter.look)) fail(where, problem);
 }
 
 // What a kind of tile does in a battle: whether units can stand on it, the
