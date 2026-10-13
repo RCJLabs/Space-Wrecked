@@ -2035,7 +2035,7 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 0;
+  min-width: 48px;
   padding: 0 4px;
   font-size: 13px;
 }
@@ -2053,7 +2053,7 @@ textarea {
   align-items: center;
   justify-content: center;
   gap: 1px;
-  min-width: 0;
+  min-width: 48px;
   padding: 0 2px;
   border-color: var(--c-accent);
   color: var(--c-accent);
@@ -2481,10 +2481,15 @@ textarea {
 }
 
 /* Short screens (the Fold's cover screen in a browser tab): tools shrink to
-   the 48px minimum so all four fit under the dev button. */
+   the 48px minimum so all four fit under the dev button, and the tabs come
+   out to the drawer's edge so three of them fit at 48px or more. */
 @media (max-height: 320px) {
   .builder {
     --gap: 4px;
+  }
+
+  .bld-tabs {
+    padding-left: 8px;
   }
 
   #ui .bld-tool {
