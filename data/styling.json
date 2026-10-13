@@ -16,7 +16,7 @@
     { "id": "armorplate", "name": "Armor plate", "group": "gear", "size": [2, 1], "turns": [0, 1, 2, 3] },
     { "id": "wedge", "name": "Wedge", "group": "sculpt", "size": [1, 1], "shape": "wedge", "turns": [0, 1, 2, 3] },
     { "id": "longwedge", "name": "Long wedge", "group": "sculpt", "size": [2, 1], "shape": "wedge", "turns": [0, 1, 2, 3, 4, 5, 6, 7] },
-    { "id": "curve", "name": "Curve", "group": "sculpt", "size": [1, 1], "shape": "curve", "turns": [0, 1, 2, 3] }
+    { "id": "curve", "name": "Curve", "group": "sculpt", "size": [2, 1], "shape": "curve", "turns": [0, 1, 2, 3, 4, 5, 6, 7] }
   ],
   "paints": [
     { "id": "slate", "name": "Slate" },

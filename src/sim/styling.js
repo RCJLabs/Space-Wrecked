@@ -14,9 +14,11 @@
 //
 // Unturned, a piece is against the hull along its south side. One that
 // stands on the hull's side has a room beyond each cell of that side (its
-// mount). A shaped piece (`shape`: 'wedge' or 'curve') fills the corner of
-// its cells at their bottom left, its legs along its west and south sides:
-// one leg at least is against a room, and the slope faces open space.
+// mount). A shaped piece (`shape`) fills its cells below a line from the
+// top of its west side to the far end of its south side, those two sides
+// its legs: a wedge's line is straight, a curve's an S that leaves and
+// meets the hull level. One leg at least is against a room, and the slope
+// faces open space.
 //
 // Where a piece can go (pieceError): on open cells in the frame, beside the
 // hull, never on a room, in a gap the hull fills or on another piece; never
@@ -96,7 +98,7 @@ export function pieceDirection({ rot }, [dx, dy]) {
 }
 
 // How many pieces a curve's outline is drawn with, from leg to leg.
-export const CURVE_STEPS = 6;
+export const CURVE_STEPS = 8;
 
 // A shaped piece's outline on the grid: { region, rim }. region is the
 // solid's polygon, [x, y] points; rim is its outer side, the run from the
@@ -109,11 +111,12 @@ export function pieceShape(def, placement) {
   // the south leg, (w, h).
   const rim = [[0, 0]];
   if (def.shape === 'curve') {
-    // A quarter of an ellipse round the corner at (0, h): it leaves the
-    // west leg's top heading east and meets the south leg heading south.
+    // An S from level to level: it leaves the west leg's top heading east
+    // and comes down to the south leg's far end heading east again, so the
+    // hull flows on from it with no notch where the room beyond goes on.
     for (let i = 1; i < CURVE_STEPS; i++) {
-      const t = (i / CURVE_STEPS) * (Math.PI / 2);
-      rim.push([w * Math.sin(t), h - h * Math.cos(t)]);
+      const t = i / CURVE_STEPS;
+      rim.push([w * t, h * t * t * (3 - 2 * t)]);
     }
   }
   rim.push([w, h]);
@@ -229,6 +232,12 @@ function fitError(defs, def, placement, others, site) {
     // Its slope faces open space: nothing solid across its other sides.
     for (const [x, y] of keptOpen(def, placement)) {
       if (hull(x, y) || taken.has(key(x, y))) return { rule: 'open', message: `${def.name}'s slope has to face open space.` };
+    }
+    // A curve leaves its top heading along the hull: the hull mustn't go on
+    // up past it there, where the two would meet in a notch.
+    if (def.shape === 'curve') {
+      const [cx, cy] = piecePoint(def, placement, [-0.5, -0.5]).map(Math.floor);
+      if (hull(cx, cy)) return { rule: 'open', message: `${def.name} has to lead off the top of the hull, not run into it.` };
     }
   } else {
     const side = mountSide(placement.rot);
