@@ -2,6 +2,209 @@
 
 Newest entry first.
 
+## M23 Recruits, crew management, med bay healing (2026-10-13)
+
+**Status:** done, and the ROADMAP.md box is ticked. Evan said "Start the next milestone" and answered four questions before I settled the Done when:
+- refits get their own milestone after this one (M23b, now in ROADMAP.md §7);
+- a squad of 3, which the player picks;
+- the med bay heals 1 a jump, 2 with a medic aboard;
+- recruits come from stations, for a fee.
+
+No phone results have come back yet for M14 to M22.
+
+Done when: "recruits sign on at stations for a fee, two taps, up to the ship's berths and life support: each station offers 2, rolled from data (a name, a job, a trait), the same on every visit; before a boarding the player picks a squad of up to 3, the three healthiest unless changed, and the rest sit out; the crew card lists everyone's job, traits and hit points and lets anyone but the captain go, two taps; a working med bay heals each wounded crew member 1 hit point a jump, 2 with a medic aboard (a long jump counts 3), and a wrecked one heals nothing; the builder's part card says what quarters, life support and the med bay do on the run; and the careful test player, signing recruits on only while the holds would last 10 jumps with them aboard, still crosses all five sectors fed in at least 24 of 30, and with a med bay fitted patches fewer hit points than without (Law 1)."
+
+The last clause changed during the session. As I first put it to Evan, the test player hired "when its credits allow". That starved it (below), so it now hires only where the holds would last 10 jumps with the recruit aboard.
+- **Recruits:**
+  - `tests/crew.test.js`: a station offers 2 from the data, whatever the campaign's RNG holds, so the same on every visit. Signing one on takes the fee and a berth and leaves the other as it was.
+  - By touch: Sign on took two taps, the first changing nothing. The berths and life support stopped a fifth. After a quit and reopen the station offered the same recruit.
+- **The squad:**
+  - `tests/crew.test.js`: with four aboard, a boarding takes the picked squad, or else the healthiest three. Whoever sits out keeps their hit points through the fight.
+  - By touch: Squad picked who went, three at most and one at least. Board her took the pick, and Fight them off the healthiest.
+- **The crew card:** by touch, it lists everyone's job, traits and hit points. Let go took two taps and had no button for the captain. `tests/crewText.test.js` checks the words.
+- **The med bay:**
+  - `tests/crew.test.js`: 1 a jump, 2 with a medic aboard, 3 times that for a long jump, after hunger. A wrecked bay heals nothing.
+  - By touch: the Ship panel showed "Med bay 2 a jump", the jump picked said what it heals, and the jump healed the wounded marine 4 to 6.
+- **The part card:** `tests/builderText.test.js`, and by touch in the builder.
+- **The careful test player** (`tests/voyage.test.js`):
+  - Start ship: fed all the way in 26 of 30, signing no one on.
+  - With a cargo hold fitted: fed in 29 of 30, signing on in 15.
+  - With a med bay fitted: it patched 0 hit points at the median, against 9 without (Law 1).
+
+### Shipped
+
+- **Recruits** (`src/sim/recruits.js`; ROADMAP.md §4.5):
+  - **The offer:** each station offers 2 (`recruitOffer`). Each is a name from the new `data/recruits.json`, any job and one trait, at full health.
+  - **Rolled on its own:** the roll uses the campaign's seed, the sector and the station, not the campaign's RNG. A station offers the same recruits on every visit, and no other roll moves. A name already aboard is rolled again.
+  - **Signing on:** 50 credits (`recruitFee`), while the crew is under the ship's room. The room is its berths or its life support, the fewer (`src/sim/crew.js` `crewRoom`), which is 4 on the start ship. `run.hired` keeps who has signed on in the sector.
+  - **Letting go:** at a station, anyone but the captain, with nothing paid back. Neither can happen while an event or an approach holds the ship.
+- **The squad** (`src/sim/crew.js`, `src/sim/encounter.js`): a boarding takes up to 3 (`squadSize`), the crew ids the player picked or else the healthiest. Ties go by crew order. The fight lists who fought. The rest keep their hit points.
+- **The med bay** (`src/sim/medbay.js`, `src/sim/travel.js`):
+  - **The rate:** a working bay's `heal` (1, `data/modules.json`), plus the best job's `station.heal` aboard (the medic's 1, `data/jobs.json`).
+  - **When:** each jump heals each of the wounded that much, after hunger, up to their most. A long jump counts `longJumpFactor` (3), and leaving a sector counts as a jump.
+  - **What the plan says:** jump and leave plans carry `heal`, and the flags count `hpHealed`.
+- **Data:**
+  - `data/recruits.json` (new): 24 first names, 24 last.
+  - `data/balance.json`: `recruitFee` 50, `recruitOffer` 2, `squadSize` 3.
+  - `data/modules.json`: the med bay's `heal` 1.
+  - `data/jobs.json`: the medic's `station: { heal: 1 }`.
+  - **The validators** check all of these: name lengths and repeats, the ranges, `heal`, and a `station` on jobs only.
+- **The screens:**
+  - **The sector map** (`sector.js`):
+    - **The crew panel** opens the crew card (`crewCard.js`, words in `crewText.js`). A button lies over the whole panel. With recruits for hire and room, the panel lights and its heading says "Crew · 2 for hire".
+    - **The crew card** lies over the chart, as the event card does. It lists everyone aboard, then at a station who is for hire, side by side where they fit. It says the room and what the med bay heals.
+    - **Sign on and Let go** each take two taps. The first tap's words go in the foot: "Sign Rhea Oduya on for 50 credits. A crew of 4 eats 4 supplies a jump, and full holds last 7 jumps. Tap again to sign on."
+    - **The station's hint** names the recruits when nothing more pressing is there: "2 recruits want a berth here: tap Crew."
+    - **The Ship panel** shows "Med bay 2 a jump" while one works. A jump picked says "The med bay heals each of the wounded 2 on the way." when anyone is hurt.
+  - **The approach** (`approach.js`): when a boarding is due and more are aboard than a squad takes:
+    - Squad · 3 of 4 stands beside Board her, and opens the squad card (`squadCard.js`) over the ships;
+    - a tap takes someone or leaves them aboard, a pick spends nothing, and the card says why when a tap changes nothing;
+    - the column's last line says who goes and who sits out.
+  - **The builder's part card** (`src/ui/builder/card.js`) has a line for what quarters, life support and the med bay do on the run. The shop's two lines are as they were.
+- **`SAVE_VERSION` 14:** `run.hired`. From v13 it is empty. The shape checks catch a hire at a node not yet seen, or the same one twice.
+- **Tools:**
+  - **`node tools/voyage.js`** signs recruits on at stations (`hireWho` in `tools/voyagePlan.js`). It does so only with room aboard, the holds lasting `HIRE_JUMPS` (10) jumps with one more, and the fee leaving a holdful's price.
+  - **`--fit cargo,medbay`** fits parts to the launched ship first.
+  - **The summary** has a line for the crew signed on and the med bay's healing.
+  - **Each launch is worked out once** (`launchedAt`), so the voyage test runs its four sets of 30 in 48 s where it would take 130.
+- **Tests:** 569 in all, up from 551:
+  - the crew rules (`tests/crew.test.js`, 8): offers, signing on, letting go, the squad and the boarding, the med bay and leaving a sector, the actions and save v14;
+  - the words (`tests/crewText.test.js`, 7): the crew card at a station and away, a full ship and short credits, the station's hint, the med bay lines, the squad picker;
+  - the part card's run lines (`tests/builderText.test.js`);
+  - 7 more mistakes the validator names (`tests/data.test.js`);
+  - the voyage test's step checks for hires and healing, and two Done-when tests: recruits with a cargo hold, and the med bay against patching.
+- **Golden files:** none changed. The recruit rolls stand apart from the campaign's RNG.
+
+### Decisions made this session
+
+- **Evan's calls:**
+  - **Refits:** "Keep M23 tight, refits next". M23b Refits at stations follows in ROADMAP.md §7, and the refits line left §9.
+  - **Squad:** "Squad of 3, you pick".
+  - **Med bay:** "1 a jump, 2 with a medic aboard".
+  - **Recruits:** "Stations, for a fee".
+- **Mine,** with no word from Evan:
+  - **The offer:** 2 a station, each any job with one trait at full health. The fee is flat: 50, what a crew of 4 eats in 12 jumps.
+  - **The room is the berths or the life support, the fewer,** the flight checklist's two crew lines.
+  - **Letting go happens at stations only,** with nothing paid back, and never the captain.
+  - **The default squad is the most hit points,** crew order breaking ties. Whoever sits out keeps their hit points and heals with the rest. Sitting out doesn't heal any faster.
+  - **The pick isn't saved until the fight begins.** Fight them off takes the squad too, though it is one tap. The pick is on the approach screen, so a quit before the fight reopens with the healthiest.
+  - **The medic's station effect counts only with a working med bay.** The best bay and the best healer count; a second of either adds nothing. Healing comes after hunger, and a long jump counts 3, as its supplies do.
+  - **The test player's hiring rule** (`HIRE_JUMPS` 10), and with it the Done when's last clause:
+    - **First tried:** hiring whenever the fee left a holdful's price dropped the careful player from 26 of 30 fed to 19.
+    - **Why:** the start ship's 30 lockers last a crew of 4 only 7 jumps, and a station is sometimes further off than that.
+    - **The rule:** hire only where the holds last 10 jumps with the recruit aboard, which the lockers alone never do. The cargo set shows hiring, at 29 of 30 fed.
+  - **The crew card's way in is the crew panel,** lit while recruits are for hire, with the station's hint pointing there. The first tap's words go in the foot as the map's other two-tap orders do, so the card keeps its room for the lists. Done is the quiet button. Sign on's first tap and Board her are the bright ones.
+  - **The part card's run line sits after the stats,** so the shop's two-line summary is unchanged.
+
+### Verified here
+
+- `node --test`: 569 pass. `node tools/validate-data.js`: OK.
+- **`node tools/sim.js`** (run because `data/balance.json` changed; `recruitFee`, `recruitOffer` and `squadSize` aren't used in the harness's fights, so the summary is M11's):
+  ```
+  All               1,000  49% (46–52)           41%        10%  7 (5–11)           28
+  Shots: 23,504, 23.5 a fight. Hit: crew 57%, boarders 40%.
+  A fight: 1.8 crew go down, 0.9 bleed out, 2.8 boarders die.
+  ```
+- **`node tools/voyage.js --runs 30 --long never`** (campaign seeds 1 to 30, each launched from its act 1 test run; the Done when's careful player):
+  ```
+  start ship:
+  Sectors crossed: 5 (5 to 5); 30 of 30 reached the end of the charts; fed all the way in 26 of 30.
+  At stations: patched 9 (0 to 32) hit points for 18 (0 to 64) credits; 0 (0 to 1) repairs for 0 (0 to 50) credits. Crew at the end: 23 (3 to 26) hit points.
+  Crew: signed on 0 (0 to 0) for 0 (0 to 0) credits, 0 of 30 runs; 3 (3 to 3) aboard at the end. The med bay healed 0 (0 to 0) hit points.
+
+  --fit cargo:
+  Sectors crossed: 5 (5 to 5); 30 of 30 reached the end of the charts; fed all the way in 29 of 30.
+  Hostile ships: [...] Lost a boarding at home: 9 of 30; dragged past 40 rounds: 0.
+  Crew: signed on 0 (0 to 1) for 0 (0 to 50) credits, 15 of 30 runs; 3 (3 to 4) aboard at the end. The med bay healed 0 (0 to 0) hit points.
+
+  --fit medbay:
+  Sectors crossed: 5 (5 to 5); 30 of 30 reached the end of the charts; fed all the way in 26 of 30.
+  At stations: patched 0 (0 to 18) hit points for 0 (0 to 36) credits; 0 (0 to 2) repairs for 0 (0 to 100) credits. Crew at the end: 26 (25 to 26) hit points.
+  Crew: signed on 0 (0 to 0) for 0 (0 to 0) credits, 0 of 30 runs; 3 (3 to 3) aboard at the end. The med bay healed 12 (0 to 62) hit points.
+  ```
+  The start ship's numbers are M22's exactly: the recruits' rolls move nothing, and it signs no one on.
+- **M23's check** (scratchpad `m23/verify.mjs`), by touch at 905 × 370, 821 × 283 and 960 × 825: 36 of 36 at each size.
+  - **The crew panel:** at a station with the holds full, the panel is lit and says "Crew · 2 for hire". Its button covers the whole panel, so a tap low on the list opens the card. The chart under the card takes no taps.
+  - **The recruits:** the card names the station and lists both recruits, each with a job and a trait. The captain's row has no Let go. Every button is 48 px or more and reachable.
+  - **Sign on:**
+    - The first tap reads "Sign on for 50?", and the foot says "Sign Rhea Oduya on for 50 credits. A crew of 4 eats 4 supplies a jump, and full holds last 7 jumps. Tap again to sign on." Nothing is saved.
+    - The second tap signs her on for 50, at full health, and saves the hire.
+    - Then the other recruit can't sign on: "No room aboard: the berths and life support carry 4." The panel stops offering.
+  - **Quit and reopen:** the same recruit, Hana Varga, is still for hire.
+  - **Let go:** the first tap says what it leaves and changes nothing. The second lets her go with nothing paid back, and there is room again. Done puts the card away.
+  - **Away from a station:** no Sign on and no Let go, and the card says where crew come and go. A second tap on the panel puts the card away.
+  - **The med bay:**
+    - The Ship panel shows "Med bay 2 a jump", the jump picked says what it heals, and the jump healed the marine 4 to 6, exactly as the sim's jump does.
+    - A wrecked med bay has no row, and the card says it is wrecked.
+  - **The squad, four aboard, boarding her:**
+    - "Squad · 3 of 4", and "Going: Engineer, Medic and Rhea Oduya. Marine sits this one out: tap Squad to change who."
+    - The card has the healthiest three picked, each 48 px. A fourth pick says "A squad is 3 at most.", and leaving no one says "Pick someone to go."; picking saves nothing.
+    - Board her, two taps, began the fight with the three picked, and three crew units on the map.
+  - **Boarded with four aboard:** Squad is there too, and Fight them off took the healthiest three. With three aboard there is no Squad, and everyone goes.
+  - **The builder:** long presses on Crew quarters, Life support and Med bay show their run lines.
+  - **Saves and offline:** a v13 save opens as v14 with no one signed on and the recruits offered. Offline, with the server stopped, the crew card opens from the cache. No console errors or warnings.
+- **Regressions,** one after another, after the last change (the crew and squad cards' own classes, below):
+  - **M23's check again:** 36 of 36 at each size;
+  - **M20's check** (as adapted in M21): 32 of 32 at each size;
+  - **M22's check** (adapted, below): 35 of 35 at 905 × 370;
+  - **M18's check:** 43 of 43 at each size;
+  - **M17's check** (as adapted in M19): 37 of 37 at each size;
+  - **M16's check:** 29 of 29 at each size;
+  - **M15's check:** 30 of 30 at each size;
+  - **M14's saves check:** 10 of 10;
+  - **M13's check:** 24 of 24;
+  - **M8's fight sandbox checks:** the fight with no console errors; the orders column at each size, every order and crew button 48 px or more; all 8 extras, offline included, with no console errors;
+  - **M14's check:** 39 of 39 at 905 × 370, with a job of each kind played by touch. The count depends on the jobs dealt (40 in M22).
+- **Run before that change,** which touched only the two cards' classes and the styles they share:
+  - **M22's check:** 35 of 35 at 821 × 283 and 960 × 825;
+  - **M21's check** (adapted, below): 32 of 32 at each size;
+  - **M19's check** (as adapted in M22): 52 of 52 at each size.
+- **What changed in the old checks:** M22's and M21's (`m22/verify23.mjs`, `m21/verify23.mjs`) now ask that a v12 or v11 save opens as v13 or later, where they asked for v13. The runs are `m23/regress.sh` and `m23/regress2.sh`.
+- **Found and fixed by looking in Chromium,** at the three sizes, before the check was written:
+  - **The crew card's Done icon shrank** to a sliver beside the card's long words. Done is now a fixed size.
+  - **Two bright buttons:** Done was as bright as Sign on's first tap, and the squad card's Done as bright as Board her. Done is the quiet button now.
+  - **At 960 × 825 the cards filled the area** around a few rows. They now take the height of what they hold, up to the area, so their lists still scroll on short screens.
+  - **The crew panel's opener measured 18 px tall.** Its tap area was a stretched pseudo-element, which a size check can't see. It is now a button over the whole panel.
+- **Found by the check:** `sw.js` didn't list M23's new files until `tools/precache.js` ran, so the game didn't load offline. The pre-commit hook runs it; I ran it by hand before the check.
+- **Found by the regressions:** two clashes of class names. Each was fixed in the game, not in the check:
+  - **The Squad button** borrowed Leave her's class for its look, so M22's check found the hidden Squad button where it looked for Leave her, at every size.
+  - **The crew and squad cards** borrowed the event card's class for their frame, so M20's check found two event cards.
+
+  Each now has classes of its own and shares the looks through the stylesheet.
+
+### Known issues
+
+- **Most ships have room for one recruit and no med bay** until refits (M23b). The start ship launches with 4 berths and 4 life support for a crew of 3, and act 1 has no reason to fit a med bay yet.
+- **The test player signs no one on with the start ship,** whose lockers hold too little for a fourth mouth by its rule. Recruits show in its voyages only with a cargo hold fitted (§9).
+- **A cargo hold's mass gets the ship boarded more:** with one fitted, the careful player lost 9 boardings at home in 30 runs, against 6 without.
+- **The crew card scrolls** past three aboard at 905 × 370, and past two at 821 × 283. A row cut off at the bottom shows there is more (§9).
+- **At 821 × 283 with four aboard,** the Ship panel shows Supplies and the rest scrolls, since the crew panel always shows everyone.
+- **Recruits are a name, a job and a trait,** with no background or portrait yet (§4.5).
+- **The squad pick is forgotten on a quit** before the fight begins; it falls back to the healthiest.
+- **Heat from approaches and jumps does nothing yet,** as with all act 2 heat until M24.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Continue your M22 save.** It opens as v14, as it was.
+2. **At a station,** the Crew panel lights up with "Crew · 2 for hire". Tap anywhere on it.
+3. **Sign on:** tap Sign on to see what it costs in the foot, then tap again. With 4 aboard, the other recruit can't sign on and the card says why.
+4. **Leave the station and come back,** or quit and reopen: the same recruit waits there.
+5. **Let go:** two taps, anyone but the captain. There is room again afterwards.
+6. **Done,** or tap the panel again: back to the chart.
+7. **A boarding with four aboard:** Squad · 3 of 4 sits beside Board her. Pick who goes, then Board her. Does the fight have the three you picked?
+8. **The med bay** needs a ship that launched with one. If yours has one, check the Ship panel's "Med bay 2 a jump", the jump's line, and the crew healing as you go.
+9. **The builder:** long-press Crew quarters, Life support and Med bay in the parts drawer for the new run line.
+10. **Both screens,** the cover screen especially: the crew card with four aboard, and the squad card.
+11. **Tell me:**
+    - the fee, and whether 2 a station is right;
+    - whether the squad picker is quick enough before a boarding;
+    - whether a med bay is worth its space and power on your ship;
+    - and the M14 to M22 questions still open.
+
+### Next session
+
+**M23b Refits at stations.** Settle its Done when first. The draft is "at a station, construction mode opens with the parts on hand, so parts found, stripped or bought can be fitted; the ship can't jump while its flight checklist fails." Then M24 Heat v2.
+
 ## M22 Boarding both ways (2026-10-13)
 
 **Status:** done, and the ROADMAP.md box is ticked. Evan said "Start the next milestone". Before I settled the Done when, Evan answered two questions: salvage is parts and scrap, rolled; and the crew's wounds are patched at stations. I settled the rest from the draft and wrote it into ROADMAP.md §7. No phone results have come back yet for M14 to M21.

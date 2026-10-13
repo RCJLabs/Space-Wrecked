@@ -11,8 +11,10 @@
 //     unless it is a ship the crew disabled and the crew is too worn down
 //     to board her (voyagePlan.js boardIt), when it leaves her;
 //   - at a station, fill the holds, as far as the credits go, then patch up
-//     the crew, then repair, with what the credits cover beyond a holdful's
-//     price;
+//     the crew, then repair, then sign a recruit on where there is room
+//     (voyagePlan.js hireWho), with what the credits cover beyond a
+//     holdful's price;
+//   - fight a boarding with the healthiest squadSize of the crew (crew.js);
 //   - with --scan yes (the default), scan wherever a scan would show a
 //     node ahead; with --scan no, never;
 //   - from each node, plan every way on to the jump point, a link at a
@@ -29,16 +31,20 @@
 //   node tools/voyage.js --runs 20     seeds 1 to 20, summed up
 //   node tools/voyage.js --long never  no long jumps
 //   node tools/voyage.js --scan no     no scans
+//   node tools/voyage.js --fit medbay  a part fitted before the voyage (or a
+//                                      list, like --fit cargo,medbay)
 //   node tools/voyage.js --runs 20 --set supplyPrice=2
 //                                      a balance number changed for this run
 //                                      only (as many --set as you like)
 import { pathToFileURL } from 'node:url';
+import { maxHp } from '../src/sim/campaign.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { approachState, closeApproach, giveOrder } from '../src/sim/encounter.js';
 import { chooseEvent, partsOnHand } from '../src/sim/events.js';
 import { launch } from '../src/sim/launch.js';
 import { patchCrew } from '../src/sim/patch.js';
 import { raidLoss } from '../src/sim/raid.js';
+import { hireRecruit } from '../src/sim/recruits.js';
 import { repairShip } from '../src/sim/repair.js';
 import { beginRun, buySupplies, hereOf, jump, jumpSupplies, leavePlan, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer } from '../src/sim/travel.js';
 import { captainOrder } from './approachPlan.js';
@@ -46,7 +52,8 @@ import { fightBoarding } from './boarding.js';
 import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
-import { bestChoice, boardIt, nextJump } from './voyagePlan.js';
+import { withPart } from './startShip.js';
+import { bestChoice, boardIt, hireWho, nextJump } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
@@ -99,6 +106,9 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', label
     patchCredits: 0,
     repairs: 0,
     repairCredits: 0,
+    hired: 0,
+    hireCredits: 0,
+    healed: 0,
     heat: [launched.heat, null],
     hp: [hpOf(campaign), null],
   };
@@ -228,6 +238,19 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', label
       tally.repairCredits += fixed.plan.cost;
       lines.push(`   Repaired ${fixed.plan.repairs.map((repair) => repair.type).join(', ')} for ${fixed.plan.cost} credits: ${hold()}.`);
     }
+    // A recruit signed on, where there is room and the fee to spare.
+    const slot = offer.ok ? hireWho(campaign, defs) : null;
+    if (slot !== null) {
+      const before = campaign;
+      const signed = hireRecruit(campaign, defs, slot);
+      if (!signed.ok) throw new Error(signed.error);
+      campaign = signed.campaign;
+      const member = campaign.crew.at(-1);
+      record('hire', before, { name: member.name, job: member.job, traits: member.traits });
+      tally.hired += 1;
+      tally.hireCredits += signed.plan.fee;
+      lines.push(`   Signed on ${member.name} (${defs.jobs.get(member.job)?.name ?? member.job}) for ${signed.plan.fee} credits: a crew of ${campaign.crew.length}, ${hold()}.`);
+    }
     // A scan, where it would show a node ahead.
     const look = scans === 'yes' ? scanPlan(campaign, defs) : { ok: false };
     const { sector, at } = campaign.run;
@@ -249,7 +272,7 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', label
     if (!moved.ok) throw new Error(moved.error);
     campaign = moved.campaign;
     const { plan } = moved;
-    record(plan.kind, before, { hungry: plan.hungry, to: plan.kind === 'sector' ? null : campaign.run.at });
+    record(plan.kind, before, { hungry: plan.hungry, heal: plan.heal, max: before.crew.map((member) => maxHp(member, defs)), to: plan.kind === 'sector' ? null : campaign.run.at });
     tally.jumps += 1;
     if (plan.kind === 'long') tally.longJumps += 1;
     if (plan.hungry) tally.hungryJumps += 1;
@@ -267,22 +290,34 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', label
   }
   tally.heat[1] = campaign.heat;
   tally.hp[1] = hpOf(campaign);
+  tally.healed = campaign.flags.hpHealed ?? 0;
   const ended = leavePlan(campaign, defs).last === true;
   const where = ended ? `The charts end at sector ${campaign.run.sector.index}'s jump point` : `Stopped in sector ${campaign.run.sector.index}`;
   lines.push(
-    `${where}, ${tally.crossed} sectors crossed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits; boarded ${tally.boardings} (won ${tally.boardingsWon}), left ${tally.left}, fought off ${tally.defencesWon} of ${tally.defences}; salvage ${tally.salvaged} parts and ${tally.salvageCredits} credits, lost ${tally.partsLost} parts and ${tally.creditsLost} credits, ${tally.fightHp} hit points; patched ${tally.patchedHp} for ${tally.patchCredits} credits; ${tally.repairs} repairs for ${tally.repairCredits} credits. Heat ${tally.heat[0]} to ${tally.heat[1]}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
+    `${where}, ${tally.crossed} sectors crossed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits; boarded ${tally.boardings} (won ${tally.boardingsWon}), left ${tally.left}, fought off ${tally.defencesWon} of ${tally.defences}; salvage ${tally.salvaged} parts and ${tally.salvageCredits} credits, lost ${tally.partsLost} parts and ${tally.creditsLost} credits, ${tally.fightHp} hit points; patched ${tally.patchedHp} for ${tally.patchCredits} credits; ${tally.repairs} repairs for ${tally.repairCredits} credits; signed on ${tally.hired}, healed ${tally.healed} in the med bay. Heat ${tally.heat[0]} to ${tally.heat[1]}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
   );
   return { ended, steps, sectors, tally, lines, campaign };
 }
 
-// A voyage from campaign seed `seed`: act 1's test run to launch, then the
-// voyage. { launched, ...voyageFrom }, or { launched: false, lines } if the
-// test run stopped short.
-export function voyage(defs, seed, options = {}) {
+// Act 1's test run from campaign seed `seed`, and the launch: { ok: true,
+// campaign (launched), jobs } or { ok: false, line }. The slow half of a
+// voyage, so callers flying a seed more than once can keep it.
+export function launchedAt(defs, seed) {
   const act1 = runToLaunch(defs, seed);
   const lifted = act1.launched ? launch(act1.campaign, defs) : null;
-  if (!lifted?.ok) return { launched: false, lines: [`Campaign seed ${seed}: ${lifted?.error ?? act1.lines.at(-1)}`] };
-  return { launched: true, ...voyageFrom(defs, lifted.campaign, { ...options, label: `Campaign seed ${seed}, after ${act1.jobs} jobs. ` }) };
+  if (!lifted?.ok) return { ok: false, line: `Campaign seed ${seed}: ${lifted?.error ?? act1.lines.at(-1)}` };
+  return { ok: true, campaign: lifted.campaign, jobs: act1.jobs };
+}
+
+// A voyage from campaign seed `seed`: act 1's test run to launch (or
+// `lifted`, launchedAt's for the seed), then the voyage, with the parts in
+// fit (module types) fitted to the ship first. { launched, ...voyageFrom },
+// or { launched: false, lines } if the test run stopped short.
+export function voyage(defs, seed, options = {}, lifted = launchedAt(defs, seed)) {
+  const { fit = [], ...rest } = options;
+  if (!lifted.ok) return { launched: false, lines: [lifted.line] };
+  const ship = fit.reduce((fitted, type) => withPart(fitted, defs, type), lifted.campaign.ship);
+  return { launched: true, ...voyageFrom(defs, { ...lifted.campaign, ship }, { ...rest, label: `Campaign seed ${seed}, after ${lifted.jobs} jobs. ` }) };
 }
 
 // Voyages from seeds 1 to `runs`, summed up: { lines, results }.
@@ -300,12 +335,13 @@ export function manyVoyages(defs, runs, options = {}) {
   const hungryEarly = done.map((r) => early(r, (step) => step.hungry));
   const policy = options.long === 'never' ? 'never' : `when heat is at ${defs.balance.huntHeat} or over`;
   const lines = [
-    `${runs} voyages from launch, campaign seeds 1 to ${runs}, long jumps ${policy}, ${options.scans === 'no' ? 'no scans' : 'scanning'}. The median, then the least and most:`,
+    `${runs} voyages from launch, campaign seeds 1 to ${runs}, long jumps ${policy}, ${options.scans === 'no' ? 'no scans' : 'scanning'}${options.fit?.length ? `, fitted with ${options.fit.join(' and ')}` : ''}. The median, then the least and most:`,
     `Sectors crossed: ${spread(of('crossed'))}; ${done.filter((r) => r.ended).length} of ${done.length} reached the end of the charts; fed all the way in ${done.filter((r) => r.tally.hungryJumps === 0).length} of ${done.length}.`,
     `Jumps: ${spread(of('jumps'))}, long ${spread(of('longJumps'))}, hungry ${spread(of('hungryJumps'))}.`,
     `At the nodes: ${spread(of('events'))} events, ${spread(of('eventCredits'))} credits and ${spread(of('eventSupplies'))} supplies from them, ${spread(of('found'))} parts found, ${spread(of('sold'))} sold, ${spread(of('wounds'))} hit points lost; ${spread(of('scans'))} scans.`,
     `Hostile ships: ${spread(of('approaches'))} met, ${spread(of('approachesWon'))} disabled or blown up, ${spread(of('approachesLost'))} boarding us. Boarded her ${spread(of('boardings'))} times (won ${spread(of('boardingsWon'))}), left her ${spread(of('left'))}; fought off ${spread(of('defencesWon'))} of ${spread(of('defences'))} boardings. Salvage: ${spread(of('salvaged'))} parts and ${spread(of('salvageCredits'))} credits. Lost: ${spread(of('partsLost'))} parts and ${spread(of('creditsLost'))} credits; ${spread(of('fightHp'))} hit points in the fights. Lost a boarding at home: ${done.filter((r) => r.steps.some((step) => step.kind === 'boarding' && step.dir === 'you' && !step.won)).length} of ${done.length}; dragged past 40 rounds: ${done.reduce((sum, r) => sum + r.tally.dragged, 0)}.`,
     `At stations: patched ${spread(of('patchedHp'))} hit points for ${spread(of('patchCredits'))} credits; ${spread(of('repairs'))} repairs for ${spread(of('repairCredits'))} credits. Crew at the end: ${spread(done.map((r) => r.campaign.crew.reduce((sum, m) => sum + m.hp, 0)))} hit points.`,
+    `Crew: signed on ${spread(of('hired'))} for ${spread(of('hireCredits'))} credits, ${done.filter((r) => r.tally.hired > 0).length} of ${done.length} runs; ${spread(done.map((r) => r.campaign.crew.length))} aboard at the end. The med bay healed ${spread(of('healed'))} hit points.`,
     `In the first three sectors: restocked at ${spread(done.map((r) => early(r, (step) => step.kind === 'buy')))} stations; hungry on ${spread(hungryEarly)} jumps; fed all the way in ${hungryEarly.filter((n) => n === 0).length} of ${done.length}.`,
     `Supplies bought: ${spread(of('bought'))}, for ${spread(of('spent'))} credits. Launch credits: ${spread(done.map((r) => r.steps[0]?.credits[0] ?? 0))}.`,
     `Heat at launch: ${spread(done.map((r) => r.tally.heat[0]))}; at the end: ${spread(done.map((r) => r.tally.heat[1]))}.`,
@@ -331,7 +367,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const sets = args.flatMap((arg, i) => (arg === '--set' ? [setting(args[i + 1] ?? '')] : []));
   const made = sets.length ? rulesWith(readData(), sets) : { ok: true, rules: indexDefs(readData()) };
   if (!made.ok) throw new Error(made.error);
-  const options = { long: value('--long', 'heat'), scans: value('--scan', 'yes') };
+  const fit = value('--fit', '');
+  const options = { long: value('--long', 'heat'), scans: value('--scan', 'yes'), fit: fit ? fit.split(',') : [] };
   const runs = Number(value('--runs', 0));
   console.log((runs ? manyVoyages(made.rules, runs, options) : voyage(made.rules, Number(value('--seed', 1)), options)).lines.join('\n'));
 }

@@ -1,5 +1,6 @@
 // The campaign's content, for validate-data.js: its acts (campaign.json),
-// act 2's sectors (sectors.json, validate-sectors.js), the backgrounds a
+// act 2's sectors (sectors.json, validate-sectors.js) and the names its
+// recruits draw on (recruits.json), the backgrounds a
 // campaign starts from (backgrounds.json), act 1's
 // districts with their clients and job sites (districts.json), the sites'
 // map templates (sites.json) and the jobs (contracts.json).
@@ -20,6 +21,10 @@ const MAX_SECTORS = 20;
 // Lifting off takes thrust for each unit of mass: up to this many.
 const MAX_LIFT_OFF = 4;
 const BACKGROUND_KEYS = ['id', 'name', 'blurb', 'pursuer', 'launch', 'captains', 'district', 'start'];
+// Recruits' names (recruits.js): a first and a last name, each list of 2
+// or more, and each name short enough that the two fit a crew member's.
+const RECRUIT_KEYS = ['first', 'last'];
+const MAX_RECRUIT_NAMES = 200;
 // Names the captain's name field offers, each a name a captain can have.
 const MAX_CAPTAINS = 20;
 // The words as the ship lifts off (launch.js), and the pursuer's when it
@@ -70,6 +75,7 @@ export function checkCampaignFiles(data, ids, fail) {
   const holding = checkSectors(data.sectors, data.campaign?.acts, ids.presets ?? new Map(), fail);
   const covered = checkEvents(data.events, holding, ids.moduleIds, fail);
   for (const kind of holding) if (!covered.has(kind)) fail(`sectors.json node ${kind}`, 'holds events, but events.json has none of its kind');
+  checkRecruits(data.recruits, fail);
   const maps = checkSiteMaps(data.sites, fail);
   const districts = checkDistricts(data.districts, maps, ids, fail);
   const scripts = checkBackgrounds(data.backgrounds, districts, ids, fail);
@@ -77,6 +83,25 @@ export function checkCampaignFiles(data, ids, fail) {
   const hunters = Math.max(0, ...(data.backgrounds?.backgrounds ?? []).map((b) => (Array.isArray(b?.pursuer?.hunters) ? b.pursuer.hunters.length : 0)));
   checkContracts(data.contracts, districts, maps, { ...ids, hunters }, fail);
   return scripts;
+}
+
+// The names recruits draw on: lists of first and last names, none twice.
+function checkRecruits(file, fail) {
+  const where = 'recruits.json';
+  if (!isObject(file)) {
+    fail(where, 'must be an object of first and last names');
+    return;
+  }
+  knownKeys(file, RECRUIT_KEYS, where, fail);
+  const most = Math.floor((MAX_NAME - 1) / 2);
+  for (const key of RECRUIT_KEYS) {
+    const names = file[key];
+    if (!isListIn(names, 2, MAX_RECRUIT_NAMES) || !names.every((name) => isText(name) && name === name.trim() && name.length <= most)) {
+      fail(where, `${key} must be a list of 2 to ${MAX_RECRUIT_NAMES} names of up to ${most} letters`);
+    } else if (new Set(names).size !== names.length) {
+      fail(where, `${key} has a name twice`);
+    }
+  }
 }
 
 // Each starting ship builds part by part with the builder's rules, and its

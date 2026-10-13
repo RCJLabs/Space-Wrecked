@@ -1,0 +1,169 @@
+// Words for the crew on the run (M23): the crew card on the sector map
+// (crewCard.js), with who is aboard, the room the ship has, what the med
+// bay heals, and at a station the recruits for hire and letting crew go;
+// the crew panel's heading; what a first tap on the card says; and the
+// squad a boarding takes, for the approach screen's picker (approach.js).
+// rules are the content tables (src/sim/defs.js).
+import { maxHp } from '../../sim/campaign.js';
+import { crewRoom, defaultSquad } from '../../sim/crew.js';
+import { healRate } from '../../sim/medbay.js';
+import { dismissPlan, hirePlan, recruitOffer } from '../../sim/recruits.js';
+import { hereOf, onTheRun, supplyCapacity } from '../../sim/travel.js';
+
+// How a trait's numbers read: "aim +5", "hit points +2".
+const STAT_NAMES = { hp: 'hit points', aim: 'aim', defense: 'defense', mobility: 'mobility', armor: 'armor' };
+
+// The crew card:
+//   title    "Crew · 3 aboard, room for 4"
+//   text     the room, what the med bay heals, where crew come and go
+//   members  [{ id, name, about, traits, hp, max, dismiss }]: about is
+//            "Captain · Marine", or the job unless it is the name; dismiss
+//            { key, ok, label, ask, text, why } at a station, null elsewhere
+//            and for the captain
+//   hire     null away from a station, else { title, line, recruits: [{
+//            key, slot, name, about, traits, hp, max, ok, label, ask, text,
+//            why }] }: line says why no one can sign on, or that no one is
+//            left, or is null
+//   hint     { tone, text } for the foot while nothing has had a first tap
+export function crewCardText(campaign, rules) {
+  const room = crewRoom(campaign.ship, rules);
+  const atStation = onTheRun(campaign, rules) && hereOf(campaign)?.type === 'station';
+  const lines = [`The berths and life support carry ${room}.`, medbayLine(campaign, rules)];
+  if (!atStation) lines.push('Crew sign on and are let go at stations.');
+  const members = campaign.crew.map((member) => {
+    const job = jobName(member.job, rules);
+    const captain = member.id === campaign.captain;
+    return {
+      id: member.id,
+      name: member.name,
+      about: [captain ? 'Captain' : null, job === member.name ? null : job].filter(Boolean).join(' · '),
+      traits: traitsText(member.traits, rules),
+      hp: member.hp,
+      max: maxHp(member, rules),
+      dismiss: atStation && !captain ? dismissText(campaign, rules, member) : null,
+    };
+  });
+  const recruits = atStation ? recruitOffer(campaign, rules).map((recruit) => recruitText(campaign, rules, recruit)) : [];
+  const line = !recruits.length ? 'No one else is for hire here.' : (recruits.find((recruit) => !recruit.ok)?.why ?? null);
+  return {
+    title: `Crew · ${campaign.crew.length} aboard, room for ${room}`,
+    text: lines.join(' '),
+    members,
+    hire: atStation ? { title: `For hire at ${hereOf(campaign).name}`, line, recruits } : null,
+    hint: cardHint(atStation, recruits, members),
+  };
+}
+
+// The crew panel's heading: { text, hire }: "Crew", and at a station with
+// recruits for hire and room for them, how many (hire).
+export function crewHeading(campaign, rules) {
+  const offer = recruitOffer(campaign, rules);
+  const hire = offer.length > 0 && campaign.crew.length < crewRoom(campaign.ship, rules);
+  return { text: hire ? `Crew · ${offer.length} for hire` : 'Crew', hire };
+}
+
+// What the foot says after a first tap on the card's button keyed `armed`
+// ('hire:<slot>' or 'let:<id>'): { tone, text }, or null for any other key
+// or a button that can't be pressed.
+export function crewSaid(card, armed) {
+  if (!card || typeof armed !== 'string') return null;
+  const entry = [...(card.hire?.recruits ?? []), ...card.members.map((member) => member.dismiss).filter(Boolean)].find((each) => each.key === armed);
+  return entry?.ok ? { tone: 'warn', text: entry.text } : null;
+}
+
+// The squad picker, for a boarding: { show (more aboard than a squad
+// takes), size, label, line, title, text, members: [{ id, name, about, hp,
+// max, going }] }. line says who goes and who sits it out. picked: the crew
+// ids picked, or null for the default (crew.js).
+export function squadText(campaign, rules, picked = null) {
+  const size = rules.balance.squadSize;
+  const going = new Set(picked ?? defaultSquad(campaign.crew, rules));
+  const names = (keep) => listed(campaign.crew.filter((member) => going.has(member.id) === keep).map((member) => member.name));
+  const staying = campaign.crew.length - going.size;
+  return {
+    show: campaign.crew.length > size,
+    size,
+    label: `Squad · ${going.size} of ${campaign.crew.length}`,
+    line: `Going: ${names(true)}.${staying ? ` ${names(false)} ${staying === 1 ? 'sits' : 'sit'} this one out: tap Squad to change who.` : ''}`,
+    title: `Who goes: up to ${size}`,
+    text: 'Tap someone to take them or leave them aboard. The rest sit this one out.',
+    members: campaign.crew.map((member) => {
+      const job = jobName(member.job, rules);
+      return { id: member.id, name: member.name, about: job === member.name ? '' : job, hp: member.hp, max: maxHp(member, rules), going: going.has(member.id) };
+    }),
+  };
+}
+
+// What the med bay does for the crew, as a line.
+function medbayLine(campaign, rules) {
+  const rate = healRate(campaign, rules);
+  const hasBay = campaign.ship.modules.some((module) => rules.modules.get(module.type)?.heal);
+  if (rate) return `The med bay heals each of the wounded ${rate} a jump.`;
+  if (hasBay) return 'The med bay is wrecked: it heals no one until a station repairs it.';
+  return 'With no med bay aboard, wounds heal only when a station patches the crew.';
+}
+
+// A recruit for hire, as the card offers them.
+function recruitText(campaign, rules, recruit) {
+  const plan = hirePlan(campaign, rules, recruit.slot);
+  const fee = rules.balance.recruitFee;
+  const crew = campaign.crew.length + 1;
+  const each = rules.balance.jumpSupplies * crew;
+  const jumps = Math.floor(supplyCapacity(campaign.ship, rules) / Math.max(1, each));
+  return {
+    key: `hire:${recruit.slot}`,
+    slot: recruit.slot,
+    name: recruit.name,
+    about: jobName(recruit.job, rules),
+    traits: traitsText(recruit.traits, rules),
+    hp: recruit.hp,
+    max: recruit.hp,
+    ok: plan.ok,
+    label: `Sign on · ${fee}`,
+    ask: `Sign on for ${fee}?`,
+    text: `Sign ${recruit.name} on for ${fee} credits. A crew of ${crew} eats ${each} supplies a jump, and full holds last ${jumps} jumps. Tap again to sign on.`,
+    why: plan.ok ? null : plan.error,
+  };
+}
+
+// Letting a crew member go, as the card offers it.
+function dismissText(campaign, rules, member) {
+  const plan = dismissPlan(campaign, rules, member.id);
+  return {
+    key: `let:${member.id}`,
+    ok: plan.ok,
+    label: 'Let go',
+    ask: 'Let go?',
+    text: `Let ${member.name} go here, with nothing paid back: a crew of ${campaign.crew.length - 1}. Tap again to let them go.`,
+    why: plan.ok ? null : plan.error,
+  };
+}
+
+// What the foot says while the card is open and nothing has had a tap.
+function cardHint(atStation, recruits, members) {
+  if (!atStation) return { tone: 'info', text: 'Crew sign on and are let go at stations. Tap Done for the chart.' };
+  if (recruits.some((recruit) => recruit.ok)) return { tone: 'good', text: 'Tap Sign on to see what a recruit takes, and again to sign them on.' };
+  if (members.some((member) => member.dismiss?.ok)) return { tone: 'info', text: 'Tap Let go to see what it leaves, and again to let them go.' };
+  return { tone: 'info', text: 'Tap Done for the chart.' };
+}
+
+// "A", "A and B", "A, B and C".
+function listed(names) {
+  return names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+}
+
+function jobName(job, rules) {
+  return rules.jobs.get(job)?.name ?? job;
+}
+
+// "Steady hands: aim +5", traits joined.
+function traitsText(ids, rules) {
+  return ids
+    .map((id) => {
+      const trait = rules.traits.get(id);
+      if (!trait) return id;
+      const effects = Object.entries(trait.effects).map(([key, n]) => `${STAT_NAMES[key] ?? key} ${n > 0 ? '+' : '−'}${Math.abs(n)}`);
+      return `${trait.name}: ${effects.join(', ')}`;
+    })
+    .join('; ');
+}

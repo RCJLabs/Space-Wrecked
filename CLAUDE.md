@@ -29,7 +29,7 @@ A ship-first sandbox RPG in 3D: build a ship on a grid, run from a pursuer, and 
 - **Seeded RNG everywhere**, using `mulberry32` in `src/core/rng.js`. This covers battles, the approach phase, generators, loot and events. No bare `Math.random()` in game logic. RNG state is part of the save, so reloading never rerolls.
 - **All content is data** in `data/*.json`:
   - modules, hull frames, manufacturers, weapons, enemies, encounters, ship presets, the campaign's acts
-  - crew jobs, traits, backgrounds (each with its start and pursuer), districts, the job sites' map templates
+  - crew jobs, traits, recruits' names, backgrounds (each with its start and pursuer), districts, the job sites' map templates
   - mission and job templates (`data/contracts.json`), events, balance numbers
 
   Adding content never requires engine edits.

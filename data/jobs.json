@@ -2,6 +2,6 @@
   "jobs": [
     { "id": "marine", "name": "Marine", "hp": 10, "aim": 70, "defense": 0, "mobility": 4, "armor": 1, "weapon": "rifle" },
     { "id": "engineer", "name": "Engineer", "hp": 8, "aim": 65, "defense": 5, "mobility": 4, "armor": 0, "weapon": "shotgun" },
-    { "id": "medic", "name": "Medic", "hp": 8, "aim": 60, "defense": 10, "mobility": 5, "armor": 0, "weapon": "pistol" }
+    { "id": "medic", "name": "Medic", "hp": 8, "aim": 60, "defense": 10, "mobility": 5, "armor": 0, "weapon": "pistol", "station": { "heal": 1 } }
   ]
 }

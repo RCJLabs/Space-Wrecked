@@ -18,6 +18,8 @@ const MAX_CHANGE = 9999;
 const MAX_ROUNDS = 10;
 const MAX_CREW = 99;
 const MAX_HP = 999;
+// More recruits than a station offers (recruitOffer): the same kind of guard.
+const MAX_SLOT = 9;
 const MAX_SEED = 0xffffffff;
 const ID = /^[a-z][a-z0-9-]*$/;
 
@@ -25,7 +27,7 @@ const ID = /^[a-z][a-z0-9-]*$/;
 // null if it reads.
 export function runProblem(run) {
   if (!isRecord(run)) return 'is unreadable';
-  const { sector, at, seen, past, done, scans, result, approach } = run;
+  const { sector, at, seen, past, done, scans, result, approach, hired } = run;
   if (!isRecord(sector) || !isInt(sector.index, 1, 99) || !isName(sector.name)) return 'has an unreadable sector';
   const { nodes, links } = sector;
   if (!Array.isArray(nodes) || nodes.length < 2 || nodes.length > MAX_NODES) return 'has an unreadable map';
@@ -57,6 +59,10 @@ export function runProblem(run) {
   if (!isNodeList(scans) || !scans.every((id) => seen.includes(id))) return 'has unreadable scans';
   if (result !== null && !isResult(result, nodes, done)) return 'has an unreadable last event';
   if (approach !== null && !isApproach(approach, nodes, at, done)) return 'has an unreadable approach';
+  // The recruits signed on (recruits.js): at stations the ship has been to,
+  // each slot once.
+  const isHire = (h) => isRecord(h) && isNode(h.node) && seen.includes(h.node) && isInt(h.slot, 0, MAX_SLOT);
+  if (!Array.isArray(hired) || !hired.every(isHire) || new Set(hired.map((h) => `${h.node}:${h.slot}`)).size !== hired.length) return 'has unreadable recruits';
   return null;
 }
 

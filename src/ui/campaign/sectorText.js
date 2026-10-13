@@ -7,7 +7,10 @@
 import { actOf } from '../../sim/campaign.js';
 import { withHeat } from '../../sim/heat.js';
 import { maxHp } from '../../sim/campaign.js';
+import { crewRoom } from '../../sim/crew.js';
+import { healRate } from '../../sim/medbay.js';
 import { patchPlan } from '../../sim/patch.js';
+import { recruitOffer } from '../../sim/recruits.js';
 import { repairPlan, wrecksToRepair } from '../../sim/repair.js';
 import { holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, supplyCapacity, supplyOffer } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
@@ -23,8 +26,9 @@ import { actTitle, crewText, heatText } from './hubText.js';
 //   links        [{ a, b, near }]: near when it joins the node the ship is at
 //   here         the node the ship is at, as nodeText says it
 //   crew         as the hangar's
-//   hold         [[label, value]]: supplies and credits, and the parts
-//                wrecked aboard, if any
+//   hold         [[label, value]]: supplies and credits, what the med bay
+//                heals, if there is one working, and the parts wrecked
+//                aboard, if any
 //   offer        what the station sells, or null away from one: { line,
 //                why, buys: [{ count, label, ask, text }] }
 //   patch        what the station's medic would patch up, or null away
@@ -72,6 +76,7 @@ export function sectorText(campaign, rules) {
     hold: [
       ['Supplies', `${campaign.supplies} of ${supplyCapacity(campaign.ship, rules)}`],
       ['Credits', campaign.credits.toLocaleString('en')],
+      ...medbayRow(campaign, rules),
       ...wrecksLine(campaign, rules),
     ],
     offer: offer.ok ? offerText(campaign, rules, offer) : null,
@@ -98,6 +103,13 @@ export function nodeText(node, rules, { known = true, done = false } = {}) {
   if (ship) return { name: node.name, kind: `${what}: ${ship.name}`, text: kind?.text ?? '' };
   if (done && node.hostile) return { name: node.name, kind: `${what}, gone`, text: 'Nobody here now but the debris.' };
   return { name: node.name, kind: event ? `${what}: ${event.title}` : done && node.event ? `${what}, been and done` : what, text: kind?.text ?? '' };
+}
+
+// What a working med bay heals each of the wounded a jump, as a holdings
+// row, or none.
+function medbayRow(campaign, rules) {
+  const rate = healRate(campaign, rules);
+  return rate ? [['Med bay', `${rate} a jump`]] : [];
 }
 
 // The parts wrecked aboard, as a holdings row, or none.
@@ -164,7 +176,7 @@ export function jumpText(campaign, rules, id) {
   if (!plan.ok) return { ok: false, long: false, label: 'Jump', title: target.name, node, lines: [plan.error], tone: 'info', way: [] };
   const long = plan.kind === 'long';
   const label = long ? 'Long jump' : 'Jump';
-  const lines = [suppliesLine(campaign, rules, plan), heatLine(campaign, plan)];
+  const lines = [suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...healLine(campaign, rules, plan)];
   if (long) lines.push('A long jump passes the node between, and the pursuer loses the trail.');
   const between = long ? linked(sector, at).find((next) => linked(sector, next).includes(id)) : null;
   const way = long ? [at, between, id] : [at, id];
@@ -175,6 +187,12 @@ export function jumpText(campaign, rules, id) {
 function suppliesLine(campaign, rules, plan) {
   if (!plan.hungry) return `Eats ${plan.supplies} supplies: ${campaign.supplies - plan.supplies} left.`;
   return `Eats ${plan.supplies} supplies, and the ship has ${campaign.supplies}: the crew goes hungry, ${rules.balance.hungerHp} hit points each.`;
+}
+
+// What the med bay heals on the way, with anyone hurt: a line, or none.
+function healLine(campaign, rules, plan) {
+  const hurt = campaign.crew.some((member) => member.hp < maxHp(member, rules));
+  return plan.heal && hurt ? [`The med bay heals each of the wounded ${plan.heal} on the way.`] : [];
 }
 
 function heatLine(campaign, plan) {
@@ -206,7 +224,7 @@ function leaveText(campaign, rules) {
   const plan = leavePlan(campaign, rules);
   if (plan.last) return { ok: false, last: true, label: 'Jump on', ask: '', title: 'The end of the charts', lines: [actOf(campaign, rules)?.stub ?? plan.error], tone: 'info' };
   const next = campaign.run.sector.index + 1;
-  const lines = plan.ok ? [suppliesLine(campaign, rules, plan), heatLine(campaign, plan)] : [plan.error];
+  const lines = plan.ok ? [suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...healLine(campaign, rules, plan)] : [plan.error];
   return { ok: plan.ok, last: false, label: 'Jump on', ask: 'Jump on?', title: `On to sector ${next}`, lines, tone: plan.hungry ? 'bad' : 'info' };
 }
 
@@ -222,6 +240,8 @@ function sectorHint(campaign, rules, { each, offer, leave, known }) {
   if (offer.ok && hurt) return { tone: 'good', text: 'Supplies and a medic here. The crew is hurt.' };
   if (leave?.last) return { tone: 'info', text: 'The charts end here. The rest of the run comes in later updates.' };
   if (offer.ok && offer.room && offer.most) return { tone: 'good', text: `Supplies sell here. A jump eats ${each}.` };
+  const recruits = campaign.crew.length < crewRoom(campaign.ship, rules) ? recruitOffer(campaign, rules).length : 0;
+  if (recruits) return { tone: 'good', text: `${recruits === 1 ? 'A recruit wants' : `${recruits} recruits want`} a berth here: tap Crew.` };
   if (leave) return { tone: 'good', text: `Tap Jump on for sector ${campaign.run.sector.index + 1}.` };
   if (campaign.supplies < each) return { tone: 'bad', text: 'Short of supplies: the next jump goes hungry. Stations and traders sell them.' };
   const { sector, at } = campaign.run;

@@ -38,7 +38,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      approach under way; sector nodes may carry a hostile ship (M21)
 //  13  boarding fights: a fight may be a boarding, and an approach that
 //      ends in one has its fight due (M22)
-export const SAVE_VERSION = 13;
+//  14  recruits: the run keeps who has signed on at the sector's stations
+//      (M23)
+export const SAVE_VERSION = 14;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -163,6 +165,15 @@ export const MIGRATIONS = [
           run: outcome ? { ...run, approach: { ...approach, outcome } } : run,
         },
       };
+    },
+  },
+  // Recruits: no one has signed on in a run from before them.
+  {
+    from: 13,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign)) return data;
+      const { run } = data.campaign;
+      return isObject(run) ? { ...data, campaign: { ...data.campaign, run: { ...run, hired: [] } } } : data;
     },
   },
 ];

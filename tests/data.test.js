@@ -197,6 +197,14 @@ const cases = [
   ['a hostile preset with no party', (d) => delete d.ships.ships[1].party, /corvette: a preset with tactics needs a party/],
   ['salvage of half a part', (d) => (d.ships.ships[0].salvage = 1.5), /salvage must be the parts stripped from her/],
   ['patching for a fortune', (d) => (d.balance.patchPrice = 500), /patchPrice must be a whole number from 0 to 100/],
+  // M23: recruits, the squad and the med bay.
+  ['a squad of six', (d) => (d.balance.squadSize = 6), /squadSize must be a whole number from 1 to 5/],
+  ['a station offering a crowd', (d) => (d.balance.recruitOffer = 9), /recruitOffer must be a whole number from 0 to 4/],
+  ['a med bay that heals nothing', (d) => (d.modules.modules.find((m) => m.id === 'medbay').heal = 0), /medbay: heal must be the hit points it heals each of the wounded a jump, 1 to 10/],
+  ['a medic with an unknown station effect', (d) => (d.jobs.jobs.find((j) => j.id === 'medic').station = { cook: 1 }), /medic: station: unknown effect "cook"/],
+  ['a station effect on an enemy', (d) => (d.enemies.enemies[0].station = { heal: 1 }), /enemies\.json \w+: unknown field "station"/],
+  ['a recruit name twice', (d) => d.recruits.first.push(d.recruits.first[0]), /recruits\.json: first has a name twice/],
+  ['a recruit name too long for a crew member', (d) => d.recruits.last.push('Wolfeschlegelsteinhausen'), /recruits\.json: last must be a list of 2 to 200 names of up to 11 letters/],
 ];
 
 test('the validator names each kind of mistake', () => {

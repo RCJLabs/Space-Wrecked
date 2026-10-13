@@ -51,5 +51,8 @@
   "blowChance": 30,
   "approachHeat": 4,
   "repairPercent": 25,
-  "patchPrice": 2
+  "patchPrice": 2,
+  "recruitFee": 50,
+  "recruitOffer": 2,
+  "squadSize": 3
 }

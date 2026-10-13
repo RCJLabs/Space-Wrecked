@@ -17,6 +17,8 @@
 //            choice, outcome, roll, changes } (events.js)
 //   approach the approach phase going on where the ship is, against a
 //            hostile ship, or null (encounter.js)
+//   hired    the recruits signed on at the sector's stations: [{ node,
+//            slot }] (recruits.js)
 // campaign.supplies: what the ship carries, up to supplyCapacity.
 //
 // A jump goes to a linked node: each crew member eats jumpSupplies, and heat
@@ -24,10 +26,13 @@
 // longJumpFactor times the supplies, and heat changes by longJumpHeat, since
 // the pursuer loses the trail. A jump the supplies don't cover still goes:
 // they run out, and every crew member goes hungry, losing hungerHp hit
-// points, never the last. Stations sell supplies at supplyPrice each. From
+// points, never the last. A working med bay heals the wounded as the ship
+// jumps (medbay.js), a long jump as many jumps as the supplies it eats.
+// Stations sell supplies at supplyPrice each. From
 // the jump point, leaving the sector is a jump into the next one's way in,
 // rolled from the campaign's RNG as it is left. The flags count the jumps,
-// the long ones, the hungry ones, the supplies bought and the scans.
+// the long ones, the hungry ones, the hit points the med bay healed, the
+// supplies bought and the scans.
 //
 // An event open at the ship's node holds every jump and scan until it is
 // settled, and so does an approach until it is over and put away. Arriving
@@ -42,6 +47,7 @@ import { openApproach } from './encounter.js';
 import { tally } from './flags.js';
 import { generateSector } from './gen/sector.js';
 import { withHeat } from './heat.js';
+import { healCrew, healRate } from './medbay.js';
 
 const MAX_SEED = 0xffffffff;
 // The kinds of node on the charts: known before the ship gets near.
@@ -83,7 +89,7 @@ export function beginRun(campaign, rules) {
 
 // A run entering `sector`, with the sectors behind it.
 function freshRun(sector, past) {
-  return { sector, at: sector.start, seen: [sector.start], past, done: [], scans: [], result: null, approach: null };
+  return { sector, at: sector.start, seen: [sector.start], past, done: [], scans: [], result: null, approach: null, hired: [] };
 }
 
 // The event open at the ship's node: { node, event } (the event from
@@ -173,7 +179,8 @@ export function reach(sector, id) {
 
 // What a jump to node `to` takes, before it is made: { ok: true, kind:
 // 'jump' or 'long', supplies (what it eats), heat (its change), hungry (the
-// supplies don't cover it) }, or { ok: false, error }.
+// supplies don't cover it), heal (what the med bay heals each of the
+// wounded on the way) }, or { ok: false, error }.
 export function jumpPlan(campaign, rules, to) {
   const { run } = campaign;
   if (!run || !onTheRun(campaign, rules)) return { ok: false, error: 'Jumps are made from the ship, on the run.' };
@@ -186,8 +193,9 @@ export function jumpPlan(campaign, rules, to) {
   if (!links) return { ok: false, error: `${node.name} is too far: a jump reaches the next node, a long jump the one past it.` };
   const long = links === 2;
   const supplies = jumpSupplies(campaign, rules, long);
-  const { jumpHeat, longJumpHeat } = rules.balance;
-  return { ok: true, kind: long ? 'long' : 'jump', supplies, heat: long ? longJumpHeat : jumpHeat, hungry: campaign.supplies < supplies };
+  const { jumpHeat, longJumpHeat, longJumpFactor } = rules.balance;
+  const heal = healRate(campaign, rules) * (long ? longJumpFactor : 1);
+  return { ok: true, kind: long ? 'long' : 'jump', supplies, heat: long ? longJumpHeat : jumpHeat, hungry: campaign.supplies < supplies, heal };
 }
 
 // Jumps to node `to`, where a hostile ship opens the approach. Returns
@@ -223,10 +231,10 @@ export function buySupplies(campaign, rules, count) {
   return { ok: true, campaign: { ...campaign, supplies: campaign.supplies + count, credits: campaign.credits - cost, flags: tally(campaign.flags, { suppliesBought: count }) } };
 }
 
-// What leaving the sector from its jump point takes: a jump's supplies and
-// heat, into the next sector's way in. { ok: true, kind: 'sector',
-// supplies, heat, hungry } or { ok: false, error, last } (last: the act's
-// last sector, past which the charts end).
+// What leaving the sector from its jump point takes: a jump's supplies,
+// heat and healing, into the next sector's way in. { ok: true, kind:
+// 'sector', supplies, heat, hungry, heal } or { ok: false, error, last }
+// (last: the act's last sector, past which the charts end).
 export function leavePlan(campaign, rules) {
   const { run } = campaign;
   if (!run || !onTheRun(campaign, rules)) return { ok: false, error: 'Jumps are made from the ship, on the run.' };
@@ -235,7 +243,7 @@ export function leavePlan(campaign, rules) {
   if (run.at !== run.sector.exit) return { ok: false, error: 'The sector is left from its jump point.' };
   if (run.sector.index >= (actOf(campaign, rules)?.sectors ?? 0)) return { ok: false, last: true, error: 'The charts end at this jump point.' };
   const supplies = jumpSupplies(campaign, rules);
-  return { ok: true, kind: 'sector', supplies, heat: rules.balance.jumpHeat, hungry: campaign.supplies < supplies };
+  return { ok: true, kind: 'sector', supplies, heat: rules.balance.jumpHeat, hungry: campaign.supplies < supplies, heal: healRate(campaign, rules) };
 }
 
 // Leaves the sector into the next one. Returns { ok: true, campaign, plan }
@@ -250,11 +258,12 @@ export function leaveSector(campaign, rules) {
   return { ok: true, plan, campaign: { ...moved, rng, run: freshRun(sector, past) } };
 }
 
-// A jump's cost: supplies (and, short of them, hunger), heat, and the
-// flags' count.
+// A jump's cost: supplies (and, short of them, hunger), heat, what the med
+// bay heals on the way (after any hunger), and the flags' count.
 function spend(campaign, rules, plan) {
-  const crew = plan.hungry ? campaign.crew.map((member) => ({ ...member, hp: Math.max(1, member.hp - rules.balance.hungerHp) })) : campaign.crew;
-  const flags = tally(campaign.flags, { jumps: 1, longJumps: plan.kind === 'long' ? 1 : 0, hungryJumps: plan.hungry ? 1 : 0 });
+  const fed = plan.hungry ? campaign.crew.map((member) => ({ ...member, hp: Math.max(1, member.hp - rules.balance.hungerHp) })) : campaign.crew;
+  const { crew, healed } = plan.heal ? healCrew(fed, plan.heal, rules) : { crew: fed, healed: 0 };
+  const flags = tally(campaign.flags, { jumps: 1, longJumps: plan.kind === 'long' ? 1 : 0, hungryJumps: plan.hungry ? 1 : 0, hpHealed: healed });
   return { ...campaign, supplies: Math.max(0, campaign.supplies - plan.supplies), heat: withHeat(campaign.heat, plan.heat), crew, flags };
 }
 

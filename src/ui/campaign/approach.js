@@ -12,19 +12,24 @@
 // how it ended and what it came to, and the boarded ship's map is marked.
 // In the orders' place, Carry on goes back to the chart; or, for a boarding
 // (M22), Board her begins the fight and Leave her goes, each two taps, or
-// Fight them off begins it when she is the one boarding. Every round is
-// saved as it is played.
+// Fight them off begins it when she is the one boarding. With more aboard
+// than a squad takes (M23), Squad opens the squad card (squadCard.js) over
+// the ships, to pick who goes; the healthiest go unless the player picks.
+// Every round is saved as it is played.
 import { loadContent } from '../../platform/content.js';
 import { battleBoxes } from '../../render/battleScene.js';
 import { BATTLE_VIEW, createBattleBoard } from '../../render/battleView.js';
 import { fitOrbit } from '../../render/orbit.js';
 import { palette, skinFor } from '../../render/palette.js';
+import { squadProblem } from '../../sim/crew.js';
 import { mapFromShip } from '../../sim/mapFromShip.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { approachText } from './approachText.js';
+import { squadText } from './crewText.js';
 import { heatChip } from './hubParts.js';
+import { createSquadCard } from './squadCard.js';
 
 const ARM_MS = 3000; // an order waits this long for its second tap
 const MARGIN = 8; // pixels around each ship
@@ -78,11 +83,13 @@ export const approachScreen = {
     const fire = node('div', 'apr-fire');
     const moves = node('div', 'apr-moves');
     const carryButton = toolButton('apr-carry', icons.done, 'Carry on');
+    const squadButton = toolButton('apr-squad-open', icons.crew, 'Squad');
     const boardButton = toolButton('apr-board', icons.door, 'Board her');
     const leaveButton = toolButton('apr-leave', icons.jump, 'Leave her');
-    carryButton.hidden = boardButton.hidden = leaveButton.hidden = true;
-    foot.append(titleButton, fireLabel, fire, moves, boardButton, leaveButton, carryButton);
-    el.append(head, ships.you.area, ships.them.area, column, foot);
+    carryButton.hidden = squadButton.hidden = boardButton.hidden = leaveButton.hidden = true;
+    foot.append(titleButton, fireLabel, fire, moves, squadButton, boardButton, leaveButton, carryButton);
+    const squadCard = createSquadCard({ toggle: pickMember, done: () => openSquad(false) });
+    el.append(head, ships.you.area, ships.them.area, column, squadCard.el, foot);
     root.append(el);
 
     let defs = null;
@@ -90,6 +97,9 @@ export const approachScreen = {
     let shown = null;
     let armed = null; // the key of the order (or 'board', 'leave') that has had its first tap
     let stakes = null; // the boarding that is due, as the column says it
+    let squad = null; // the crew ids picked to go, or null for the healthiest
+    let squadOpen = false; // the squad card is up
+    let squadWhy = null; // why the last pick changed nothing
     let armTimer = 0;
     let settleTimer = 0;
     let dirty = true;
@@ -97,11 +107,13 @@ export const approachScreen = {
     const cleanups = [
       onTap(titleButton, () => game.dispatch({ type: 'screen/show', screen: 'title' })),
       onTap(carryButton, () => game.dispatch({ type: 'campaign/approach/close' })),
-      onTap(boardButton, () => decide('board', () => game.dispatch({ type: 'campaign/boarding/begin', rules: defs }))),
+      onTap(squadButton, () => openSquad(!squadOpen)),
+      onTap(boardButton, () => decide('board', () => game.dispatch({ type: 'campaign/boarding/begin', rules: defs, squad }))),
       onTap(leaveButton, () => decide('leave', () => game.dispatch({ type: 'campaign/approach/close' }))),
       () => clearTimeout(armTimer),
       () => clearTimeout(settleTimer),
       () => buttons.forEach((entry) => entry.detach()),
+      () => squadCard.detach(),
       game.subscribe((state) => alive && render(state.campaign)),
     ];
     const observer = new ResizeObserver(() => layout());
@@ -152,12 +164,22 @@ export const approachScreen = {
         if (stakes.leave) setButton(leaveButton, armed === 'leave' ? stakes.leave.ask : stakes.leave.label, armed === 'leave');
       }
 
+      // Who goes, when a boarding is due and not all can.
+      const pick = stakes ? squadText(campaign, defs, squad) : null;
+      if (!pick?.show) squadOpen = false;
+      squadButton.hidden = !pick?.show;
+      if (pick?.show) setText(squadButton.querySelector('span'), pick.label);
+      squadButton.setAttribute('aria-expanded', String(squadOpen));
+      squadButton.setAttribute('aria-label', pick?.show ? `${pick.label}: who goes` : 'Squad');
+      squadCard.show(squadOpen ? pick : null, squadWhy);
+
       // How it ended.
       out.hidden = !text.outcome;
       for (const side of SIDES) ships[side].area.dataset.boarded = String(text.outcome?.board === side);
       if (text.outcome) {
         setText(outTitle, text.outcome.title);
-        outLines.replaceChildren(...text.outcome.lines.map((line) => node('li', null, line)));
+        const lines = pick?.show ? [...text.outcome.lines, pick.line] : text.outcome.lines;
+        outLines.replaceChildren(...lines.map((line) => node('li', null, line)));
       }
       logHead.hidden = !text.last.length;
       log.replaceChildren(...text.last.map((line) => node('li', null, line)));
@@ -166,6 +188,26 @@ export const approachScreen = {
       setText(hint, picked ? picked.text : text.hint.text);
       hint.dataset.tone = picked ? 'warn' : text.hint.tone;
       hint.hidden = !hint.textContent;
+    }
+
+    // The squad card up or down.
+    function openSquad(open) {
+      if (!defs) return;
+      squadOpen = open;
+      squadWhy = null;
+      render(game.getState().campaign, true);
+    }
+
+    // A tap on someone in the squad card: takes them, or leaves them aboard,
+    // unless that would leave no one going or more than a squad takes.
+    function pickMember(id) {
+      const campaign = game.getState().campaign;
+      if (!defs || !campaign) return;
+      const going = squadText(campaign, defs, squad).members.filter((member) => member.going).map((member) => member.id);
+      const next = going.includes(id) ? going.filter((each) => each !== id) : [...going, id];
+      squadWhy = squadProblem(campaign.crew, next, defs);
+      if (!squadWhy) squad = next;
+      render(campaign, true);
     }
 
     // A tool button's words, and whether it waits for its second tap.
