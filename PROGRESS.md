@@ -143,7 +143,23 @@ The last clause changed during the session. As I first put it to Evan, the test 
   - **Boarded with four aboard:** Squad is there too, and Fight them off took the healthiest three. With three aboard there is no Squad, and everyone goes.
   - **The builder:** long presses on Crew quarters, Life support and Med bay show their run lines.
   - **Saves and offline:** a v13 save opens as v14 with no one signed on and the recruits offered. Offline, with the server stopped, the crew card opens from the cache. No console errors or warnings.
-- **Regressions:** the earlier milestones' checks were still running when this was first committed; their results follow in the next commit.
+- **Regressions,** one after another, after the last change (the crew and squad cards' own classes, below):
+  - **M23's check again:** 36 of 36 at each size;
+  - **M20's check** (as adapted in M21): 32 of 32 at each size;
+  - **M22's check** (adapted, below): 35 of 35 at 905 × 370;
+  - **M18's check:** 43 of 43 at each size;
+  - **M17's check** (as adapted in M19): 37 of 37 at each size;
+  - **M16's check:** 29 of 29 at each size;
+  - **M15's check:** 30 of 30 at each size;
+  - **M14's saves check:** 10 of 10;
+  - **M13's check:** 24 of 24;
+  - **M8's fight sandbox checks:** the fight with no console errors; the orders column at each size, every order and crew button 48 px or more; all 8 extras, offline included, with no console errors;
+  - **M14's check:** 39 of 39 at 905 × 370, with a job of each kind played by touch. The count depends on the jobs dealt (40 in M22).
+- **Run before that change,** which touched only the two cards' classes and the styles they share:
+  - **M22's check:** 35 of 35 at 821 × 283 and 960 × 825;
+  - **M21's check** (adapted, below): 32 of 32 at each size;
+  - **M19's check** (as adapted in M22): 52 of 52 at each size.
+- **What changed in the old checks:** M22's and M21's (`m22/verify23.mjs`, `m21/verify23.mjs`) now ask that a v12 or v11 save opens as v13 or later, where they asked for v13. The runs are `m23/regress.sh` and `m23/regress2.sh`.
 - **Found and fixed by looking in Chromium,** at the three sizes, before the check was written:
   - **The crew card's Done icon shrank** to a sliver beside the card's long words. Done is now a fixed size.
   - **Two bright buttons:** Done was as bright as Sign on's first tap, and the squad card's Done as bright as Board her. Done is the quiet button now.
