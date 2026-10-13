@@ -1,6 +1,7 @@
 // The details a long press shows for a part: size, what has to face space,
-// stats and cost, and for a placed part, where it is and whether it reaches
-// the bridge.
+// stats, what it does for the crew on the run (quarters, life support and
+// the med bay), and cost; and for a placed part, where it is and whether it
+// reaches the bridge.
 import { footprint } from '../../sim/modules.js';
 
 const STATS = [
@@ -24,6 +25,7 @@ export function cardFor(defs, def, placed = null) {
     STATS.filter(([key]) => ALWAYS.has(key) || def.stats[key] !== 0)
       .map(([key, label]) => `${label} ${key === 'power' ? signed(def.stats[key]) : def.stats[key]}`)
       .join(' · '),
+    ...runLine(defs, def),
     `Cost ${def.cost} · ${defs.manufacturers.get(def.manufacturer)?.name ?? def.manufacturer}`,
   ];
   if (placed) {
@@ -32,6 +34,19 @@ export function cardFor(defs, def, placed = null) {
     lines.push(`${where} · ${joined}`);
   }
   return { title: def.name, lines };
+}
+
+// What a part does for the crew on the run (src/sim/crew.js, medbay.js), as
+// a line, or none: a med bay's healing, with the best healer's job aboard
+// (the medic's, data/jobs.json); berths and life support, the crew's room.
+function runLine(defs, def) {
+  if (def.heal) {
+    const healer = [...defs.jobs.values()].reduce((best, job) => ((job.station?.heal ?? 0) > (best?.station?.heal ?? 0) ? job : best), null);
+    const more = healer?.station?.heal ? `, ${def.heal + healer.station.heal} with a ${healer.name.toLowerCase()} aboard` : '';
+    return [`On the run: heals each of the wounded ${def.heal} a jump${more}. Wrecked, it heals no one.`];
+  }
+  if (def.stats.berths || def.stats.lifeSupport) return ['On the run: the ship carries as many crew as its berths and life support both cover. Recruits sign on at stations.'];
+  return [];
 }
 
 function signed(n) {

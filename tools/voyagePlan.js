@@ -4,7 +4,7 @@
 //   supply   2: out here, supplies are dearer than at a station
 //   short    6 a supply while the holds hold less than BUFFER_JUMPS jumps'
 //            worth: a hungry jump costs the whole crew hit points
-//   hp       2: nothing heals in act 2 yet
+//   hp       2: wounds heal only at stations (patch.js) or with a med bay
 //   heat     0.3 a point: it does nothing in act 2 yet, but it will
 //   part     half what the shop pays for it: it has to be sold to be spent
 //   hostile  −30 for a hostile ship ahead: tools/approach.js has the start
@@ -16,14 +16,22 @@
 // whose kind is known is worth its event's best choice until settled, or a
 // hostile ship's worth until met; one still unknown, what the mix's kinds
 // are worth on average. It boards a ship it has disabled only with the crew
-// fit to (boardIt), and otherwise leaves her.
+// fit to (boardIt), and otherwise leaves her. It signs a recruit on (hireWho)
+// where there is room, the fee is left beyond a holdful's price, and the
+// holds would still last HIRE_JUMPS jumps with the recruit aboard: what the
+// lockers alone last the start crew (30 supplies, 3 aboard). On the lockers
+// alone a fourth mouth leaves 7 jumps, and a station is sometimes further
+// off than that, past a sector's jump point, where no plan can see.
 import { maxHp } from '../src/sim/campaign.js';
+import { crewRoom } from '../src/sim/crew.js';
 import { sellPriceOf } from '../src/sim/economy.js';
 import { choiceProblem } from '../src/sim/events.js';
+import { recruitOffer } from '../src/sim/recruits.js';
 import { jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity } from '../src/sim/travel.js';
 
 export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30 };
 const BUFFER_JUMPS = 4;
+export const HIRE_JUMPS = 10;
 
 // Whether to board a ship the player has disabled: with at least half the
 // crew's hit points between them; a crew worn down leaves her.
@@ -31,6 +39,20 @@ export function boardIt(campaign, rules) {
   const most = campaign.crew.reduce((sum, member) => sum + maxHp(member, rules), 0);
   const now = campaign.crew.reduce((sum, member) => sum + member.hp, 0);
   return now * 2 >= most;
+}
+
+// The recruit to sign on where the ship is, by slot, or null: with room
+// aboard, the holds lasting HIRE_JUMPS jumps with one more, and the fee left
+// beyond a holdful's price, the one whose job the crew has fewest of, the
+// most hit points then the first slot breaking ties.
+export function hireWho(campaign, rules) {
+  const offer = recruitOffer(campaign, rules);
+  if (!offer.length || campaign.crew.length >= crewRoom(campaign.ship, rules)) return null;
+  if (supplyCapacity(campaign.ship, rules) < HIRE_JUMPS * rules.balance.jumpSupplies * (campaign.crew.length + 1)) return null;
+  const reserve = supplyCapacity(campaign.ship, rules) * rules.balance.supplyPrice;
+  if (campaign.credits - rules.balance.recruitFee < reserve) return null;
+  const count = (job) => campaign.crew.filter((member) => member.job === job).length;
+  return [...offer].sort((a, b) => count(a.job) - count(b.job) || b.hp - a.hp || a.slot - b.slot)[0].slot;
 }
 
 // What a change in supplies is worth: the part of it below the buffer at

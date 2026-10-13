@@ -17,7 +17,9 @@ import { checkCampaignFiles, checkStartShips } from './validate-campaign.js';
 
 const SIDES = ['n', 'e', 's', 'w'];
 const STATS = ['power', 'mass', 'thrust', 'berths', 'lifeSupport', 'cargo', 'hp'];
-const MODULE_KEYS = ['id', 'name', 'glyph', 'manufacturer', 'size', 'rotates', 'facesSpace', 'stats', 'tags', 'interior', 'cost'];
+const MODULE_KEYS = ['id', 'name', 'glyph', 'manufacturer', 'size', 'rotates', 'facesSpace', 'stats', 'tags', 'interior', 'cost', 'heal'];
+// What a med bay heals each of the wounded in a jump (medbay.js): up to this.
+const MAX_HEAL = 10;
 const FRAME_KEYS = ['id', 'name', 'width', 'height', 'shape', 'maxModules', 'minThrustToMass'];
 // balance.json: each number's allowed range.
 const BALANCE = {
@@ -91,11 +93,19 @@ const BALANCE = {
   approachHeat: [0, 50],
   repairPercent: [0, 100],
   patchPrice: [0, 100],
+  // Crew on the run (src/sim/recruits.js, crew.js): what a recruit asks to
+  // sign on, how many a station offers, and the squad a boarding takes (up
+  // to MAX_SQUAD).
+  recruitFee: [0, 1000],
+  recruitOffer: [0, 4],
+  squadSize: [1, 5],
 };
 const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', 'clip'];
 const RANGE_BANDS = ['close', 'mid', 'long'];
-// Crew jobs and enemies are both fighters, with the same fields.
+// Crew jobs and enemies are both fighters, with the same fields. A job
+// can also have a ship station effect (§4.5): what it adds aboard.
 const FIGHTER_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'weapon'];
+const STATION_KEYS = ['heal'];
 const TILE_RULE_KEYS = ['walk', 'cover', 'blocksSight'];
 // Traits (src/sim/traits.js): what each can add to a fighter's numbers, up
 // or down, and how far.
@@ -189,7 +199,7 @@ export function validateData(data) {
   for (const enemy of enemies) {
     if (jobIds.has(enemy.id)) fail('enemies.json', `id "${enemy.id}" is also a job's`);
   }
-  jobs.forEach((job, i) => checkFighter(job, `jobs.json ${job.id ?? `#${i}`}`, weaponIds, fail));
+  jobs.forEach((job, i) => checkFighter(job, `jobs.json ${job.id ?? `#${i}`}`, weaponIds, fail, { job: true }));
   enemies.forEach((enemy, i) => checkFighter(enemy, `enemies.json ${enemy.id ?? `#${i}`}`, weaponIds, fail));
   const enemyIds = new Set(enemies.map((enemy) => enemy.id));
   checkTraits(data.traits, fail);
@@ -260,6 +270,7 @@ export function validateData(data) {
       checkInterior(def, tilesPerCell, tiles, where, fail);
     }
     if (def.facesSpace !== undefined) checkFacesSpace(def.facesSpace, where, fail);
+    if (def.heal !== undefined && !isIntIn(def.heal, 1, MAX_HEAL)) fail(where, `heal must be the hit points it heals each of the wounded a jump, 1 to ${MAX_HEAL}`);
     checkStats(def.stats, where, fail);
     if (!Array.isArray(def.tags)) {
       fail(where, 'tags must be a list');
@@ -415,10 +426,20 @@ function checkWeapon(weapon, where, fail) {
   if (!isIntIn(weapon.clip, 1, 99)) fail(where, 'clip must be a whole number from 1 to 99');
 }
 
-// A crew job or an enemy: what it brings to a battle.
-function checkFighter(fighter, where, weaponIds, fail) {
+// A crew job or an enemy: what it brings to a battle. A job (job: true)
+// can also have a station effect: with a working med bay aboard, heal adds
+// to what it heals each of the wounded a jump (medbay.js).
+function checkFighter(fighter, where, weaponIds, fail, { job = false } = {}) {
   for (const key of Object.keys(fighter)) {
-    if (!FIGHTER_KEYS.includes(key)) fail(where, `unknown field "${key}"`);
+    if (!FIGHTER_KEYS.includes(key) && !(job && key === 'station')) fail(where, `unknown field "${key}"`);
+  }
+  if (fighter.station !== undefined && job) {
+    const { station } = fighter;
+    if (!station || typeof station !== 'object' || Array.isArray(station) || !Object.keys(station).length) fail(where, `station must be an object of ${STATION_KEYS.join(', ')}`);
+    else {
+      for (const key of Object.keys(station)) if (!STATION_KEYS.includes(key)) fail(where, `station: unknown effect "${key}"`);
+      if (station.heal !== undefined && !isIntIn(station.heal, 1, MAX_HEAL)) fail(where, `station.heal must be a whole number from 1 to ${MAX_HEAL}`);
+    }
   }
   if (!isText(fighter.name)) fail(where, 'name must be a non-empty string');
   const ranges = { hp: [1, 99], aim: [0, 100], defense: [0, 100], mobility: [1, 20], armor: [0, 20] };

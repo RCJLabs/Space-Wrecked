@@ -12,6 +12,7 @@ import { makePayment } from './heat.js';
 import { launch } from './launch.js';
 import { beginRaid, endRaid } from './raid.js';
 import { patchCrew } from './patch.js';
+import { dismissCrew, hireRecruit } from './recruits.js';
 import { repairShip } from './repair.js';
 import { defaultSettings, fightSettings, reduceSettings } from './settings.js';
 import { beginRun, buySupplies, jump, leaveSector, scan } from './travel.js';
@@ -86,12 +87,17 @@ export function initialState(seed) {
 //   campaign/approach/close        Carry on, once the approach is over, or
 //                                  leave a ship the player disabled: back to
 //                                  the sector map
-//   campaign/boarding/begin { rules }   the boarding fight the approach
-//                                  ended in begins (encounter.js)
+//   campaign/boarding/begin { rules, squad }   the boarding fight the
+//                                  approach ended in begins (encounter.js),
+//                                  with the squad picked (crew ids), or the
+//                                  healthiest without one (crew.js)
 //   campaign/repair { rules }      the station repairs what the credits
 //                                  cover (repair.js)
 //   campaign/patch { rules }       the station patches up the crew, as far
 //                                  as the credits go (patch.js)
+//   campaign/hire { slot, rules }  the station's recruit in slot signs on
+//                                  (recruits.js)
+//   campaign/dismiss { id, rules }   crew member id is let go at a station
 //   campaign/fight/begin { rules } the crew fights boarders at home (M15's
 //                                  raids will)
 //   campaign/fight/save { battle, log }   the fight after an order
@@ -141,7 +147,7 @@ export function reduce(state, action) {
       const begin = {
         'campaign/job/take': (c) => takeJob(c, action.rules, action.index, setup),
         'campaign/raid/begin': (c) => beginRaid(c, action.rules, setup),
-        'campaign/boarding/begin': (c) => beginBoarding(c, action.rules, setup),
+        'campaign/boarding/begin': (c) => beginBoarding(c, action.rules, { ...setup, squad: action.squad ?? null }),
         'campaign/fight/begin': (c) => beginFight(c, action.rules, setup),
       }[action.type];
       const begun = state.campaign && begin(state.campaign);
@@ -168,7 +174,9 @@ export function reduce(state, action) {
     case 'campaign/approach/order':
     case 'campaign/approach/close':
     case 'campaign/repair':
-    case 'campaign/patch': {
+    case 'campaign/patch':
+    case 'campaign/hire':
+    case 'campaign/dismiss': {
       const move = {
         'campaign/run/begin': (c) => beginRun(c, action.rules),
         'campaign/jump': (c) => jump(c, action.rules, action.to),
@@ -180,6 +188,8 @@ export function reduce(state, action) {
         'campaign/approach/close': (c) => closeApproach(c),
         'campaign/repair': (c) => repairShip(c, action.rules),
         'campaign/patch': (c) => patchCrew(c, action.rules),
+        'campaign/hire': (c) => hireRecruit(c, action.rules, action.slot),
+        'campaign/dismiss': (c) => dismissCrew(c, action.rules, action.id),
       }[action.type];
       const done = state.campaign && move(state.campaign);
       if (!done?.ok) return state;

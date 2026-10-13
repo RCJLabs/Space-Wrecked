@@ -13,24 +13,28 @@
 // what nodes within reach hold, and at the jump point Jump on leads into
 // the next sector, each two taps, the first saying what it costs; past the
 // act's last jump point the charts end, for now. The crew and the holds are
-// on the right, heat by the act. The run begins, its first sector rolled,
+// on the right, heat by the act; a tap on the crew opens the crew card
+// (crewCard.js) over the chart, where recruits sign on at a station and
+// crew are let go, two taps each. The run begins, its first sector rolled,
 // the first time the map opens.
 //
 // Each node's button is its share of its column, so no two overlap and
 // each stays 48 px or more on the screens the game is for; its mark sits
-// where the sector puts the node. The words are sectorText.js's and
-// eventText.js's.
+// where the sector puts the node. The words are sectorText.js's,
+// eventText.js's and crewText.js's.
 import { loadContent } from '../../platform/content.js';
 import { palette } from '../../render/palette.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { createCrewCard } from './crewCard.js';
+import { crewCardText, crewHeading, crewSaid } from './crewText.js';
 import { createEventCard } from './eventCard.js';
 import { eventText, resultText } from './eventText.js';
 import { crewRows, heatChip, listRows, panel } from './hubParts.js';
 import { jumpText, sectorText } from './sectorText.js';
 
-const ARM_MS = 3000; // Jump on, Buy, Repair, Patch up and Scan wait this long for a second tap
+const ARM_MS = 3000; // Jump on, Buy, Repair, Patch up, Scan, Sign on and Let go wait this long for a second tap
 const SVG = 'http://www.w3.org/2000/svg';
 const MARKS = {
   start: icons.wayIn,
@@ -69,9 +73,21 @@ export const sectorScreen = {
     const ship = node('span', 'sct-ship');
     ship.innerHTML = icons.shipMark;
     const crewList = node('ul', 'hgr-crew');
+    // The crew panel opens the crew card: a button lies over the whole
+    // panel, so a tap anywhere on it does.
+    const crewHead = node('span', null, 'Crew');
+    const chevron = node('b', null, '›');
+    const crewTitle = node('h2');
+    crewTitle.append(crewHead, chevron);
+    crewTitle.setAttribute('aria-hidden', 'true');
+    const crewOpener = node('button', 'sct-crew-open');
+    crewOpener.type = 'button';
+    crewOpener.setAttribute('aria-expanded', 'false');
+    const crewPanel = node('section', 'hgr-panel sct-crew-panel');
+    crewPanel.append(crewTitle, crewList, crewOpener);
     const hold = node('dl', 'hgr-hold');
     const side = node('div', 'hgr-side');
-    side.append(panel('Crew', crewList), panel('Ship', hold));
+    side.append(crewPanel, panel('Ship', hold));
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const hint = node('p', 'hgr-hint', 'Loading…');
@@ -88,13 +104,18 @@ export const sectorScreen = {
         render(true);
       },
     });
-    el.append(head, info, map, side, card.el, foot);
+    const crewCard = createCrewCard({
+      tap: (key) => twoTaps(key, () => crewOrder(key)),
+      done: () => toggleCrew(false),
+    });
+    el.append(head, info, map, side, card.el, crewCard.el, foot);
     root.append(el);
 
     let defs = null;
     let alive = true;
     let picked = null; // the node picked on the map: its jump shows
-    let armed = null; // 'on', 'scan', or the supplies a Buy is for, after its first tap
+    let armed = null; // 'on', 'scan', 'repair', 'patch', the supplies a Buy is for, or a crew card button's key, after its first tap
+    let crewOpen = false; // the crew card is up
     let closed = null; // the result put away with Carry on (resultKey)
     let armTimer = 0;
     let shown = null; // the campaign last drawn
@@ -106,8 +127,10 @@ export const sectorScreen = {
       onTap(jumpButton, makeJump),
       onTap(onButton, () => twoTaps('on', () => game.dispatch({ type: 'campaign/sector/leave', rules: defs }))),
       onTap(scanButton, () => twoTaps('scan', () => game.dispatch({ type: 'campaign/scan', rules: defs }))),
+      onTap(crewOpener, () => toggleCrew(!crewOpen)),
       () => clearTimeout(armTimer),
       () => card.detach(),
+      () => crewCard.detach(),
       () => nodeButtons.forEach((entry) => entry.detach()),
       () => buyButtons.forEach((entry) => entry.detach()),
       game.subscribe(() => alive && render()),
@@ -156,20 +179,35 @@ export const sectorScreen = {
       card.show(event, result);
       const carded = Boolean(event || result);
       el.dataset.card = String(carded);
-      // Under the card, the panel and the chart take no taps or focus.
-      info.inert = carded;
-      map.inert = carded;
+      // The crew card, unless an event's is up; the crew panel opens it.
+      if (carded) crewOpen = false;
+      const crew = crewOpen ? crewCardText(campaign, defs) : null;
+      const crewAsk = crewSaid(crew, armed);
+      if (typeof armed === 'string' && armed.includes(':') && !crewAsk) disarm();
+      crewCard.show(crew, armed);
+      el.dataset.crew = String(crewOpen);
+      const heading = crewHeading(campaign, defs);
+      setText(crewHead, heading.text);
+      crewOpener.setAttribute('aria-label', heading.text);
+      crewOpener.disabled = carded;
+      crewOpener.setAttribute('aria-expanded', String(crewOpen));
+      crewPanel.dataset.open = String(crewOpen);
+      crewPanel.dataset.hire = String(heading.hire);
+      // Under either card, the panel and the chart take no taps or focus.
+      const covered = carded || crewOpen;
+      info.inert = covered;
+      map.inert = covered;
       if (carded) disarm();
 
       // Scan, while it would show something.
       const { scan } = text;
       if (!scan && armed === 'scan') disarm();
-      scanButton.hidden = !scan || carded;
+      scanButton.hidden = !scan || covered;
       setText(scanButton.querySelector('span'), armed === 'scan' ? scan.ask : 'Scan');
       scanButton.dataset.armed = String(armed === 'scan');
 
       // Jump, for the node picked; Jump on, at the jump point.
-      jumpButton.hidden = !plan || carded;
+      jumpButton.hidden = !plan || covered;
       if (plan) {
         jumpButton.disabled = !plan.ok;
         const mode = plan.long ? 'long' : 'jump';
@@ -182,8 +220,8 @@ export const sectorScreen = {
       }
       const { leave } = text;
       if (!leave?.ok && armed === 'on') disarm();
-      onButton.hidden = !leave || leave.last || carded;
-      if (carded) buys.hidden = true;
+      onButton.hidden = !leave || leave.last || covered;
+      if (covered) buys.hidden = true;
       onButton.disabled = !leave?.ok;
       setText(onButton.querySelector('span'), armed === 'on' ? leave.ask : 'Jump on');
       onButton.dataset.armed = String(armed === 'on');
@@ -192,7 +230,8 @@ export const sectorScreen = {
       if (typeof armed === 'number' && !buy) disarm();
       if (armed === 'repair' && !text.repair?.ok) disarm();
       if (armed === 'patch' && !text.patch?.ok) disarm();
-      const said = armed === 'on' ? { tone: leave.tone === 'bad' ? 'bad' : 'warn', text: `${leave.lines.join(' ')} Tap Jump on again.` }
+      const said = crew ? (crewAsk ?? crew.hint)
+        : armed === 'on' ? { tone: leave.tone === 'bad' ? 'bad' : 'warn', text: `${leave.lines.join(' ')} Tap Jump on again.` }
         : armed === 'scan' ? { tone: 'warn', text: scan.text }
         : armed === 'repair' ? { tone: 'warn', text: text.repair.text }
         : armed === 'patch' ? { tone: 'warn', text: text.patch.text }
@@ -365,7 +404,26 @@ export const sectorScreen = {
       render(true);
     }
 
-    // Jump on and Buy: the first tap says what it costs, the second does it.
+    // The crew card up or down: what was picked or had a first tap is put
+    // down either way.
+    function toggleCrew(open) {
+      if (!defs || !game.getState().campaign?.run) return;
+      crewOpen = open;
+      picked = null;
+      disarm();
+      render(true);
+    }
+
+    // A crew card button's second tap: 'hire:<slot>' signs a recruit on,
+    // 'let:<id>' lets a crew member go.
+    function crewOrder(key) {
+      const [kind, n] = key.split(':');
+      if (kind === 'hire') game.dispatch({ type: 'campaign/hire', slot: Number(n), rules: defs });
+      if (kind === 'let') game.dispatch({ type: 'campaign/dismiss', id: Number(n), rules: defs });
+    }
+
+    // Jump on, Buy and the crew card's buttons: the first tap says what it
+    // costs, the second does it.
     function twoTaps(which, act) {
       if (!defs) return;
       if (armed !== which) {

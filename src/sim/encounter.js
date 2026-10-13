@@ -56,6 +56,7 @@ import { int, pick } from '../core/rng.js';
 import { BOARDINGS, enemyOrder, playRound } from './approach.js';
 import { createBattle } from './battle.js';
 import { crewUnit, endFight } from './campaign.js';
+import { defaultSquad, squadMembers, squadProblem } from './crew.js';
 import { deploy } from './deploy.js';
 import { tally } from './flags.js';
 import { generateShip } from './gen/ship.js';
@@ -183,22 +184,28 @@ export function boardingDue(campaign, rules) {
     : { dir, ship: campaign.ship, wrecked: approach.you.wrecked, party, preset };
 }
 
-// Starts the boarding fight that is due: the whole crew against her party,
-// on the boarded ship's map with its wrecks. Its seed is the campaign's next
-// roll, and so is what a win pays. setup is what the settings make of the
-// fight (settings.js fightSettings): forgiving odds, and the difficulty.
-// Returns { ok: true, campaign } with the fight on, or { ok: false, error }.
-export function beginBoarding(campaign, rules, { forgiving = false, difficulty = 'normal' } = {}) {
+// Starts the boarding fight that is due: the squad (crew.js; the player's
+// pick, or the healthiest squadSize) against her party, on the boarded
+// ship's map with its wrecks. Its seed is the campaign's next roll, and so
+// is what a win pays. setup is what the settings make of the fight
+// (settings.js fightSettings): forgiving odds, and the difficulty; and the
+// squad picked, as crew ids, or null for the default. Returns { ok: true,
+// campaign } with the fight on, or { ok: false, error }.
+export function beginBoarding(campaign, rules, { forgiving = false, difficulty = 'normal', squad = null } = {}) {
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
   const due = boardingDue(campaign, rules);
   if (!due) return { ok: false, error: 'No one is boarding.' };
   if (!campaign.crew.length) return { ok: false, error: 'There is no one aboard to fight.' };
-  const unknown = campaign.crew.find((member) => !rules.jobs.has(member.job));
+  const ids = squad ?? defaultSquad(campaign.crew, rules);
+  const why = squadProblem(campaign.crew, ids, rules);
+  if (why) return { ok: false, error: why };
+  const members = squadMembers(campaign.crew, ids);
+  const unknown = members.find((member) => !rules.jobs.has(member.job));
   if (unknown) return { ok: false, error: `${unknown.name}'s job "${unknown.job}" is unknown.` };
   const map = mapFromShip(due.ship, rules, { wrecked: due.wrecked });
   if (!map) return { ok: false, error: 'There is no ship to fight on.' };
   // deploy puts its first list on the bridge and its second at the hatches.
-  const jobs = campaign.crew.map((member) => member.job);
+  const jobs = members.map((member) => member.job);
   const placed = due.dir === 'you' ? deploy(map, jobs, due.party, rules) : deploy(map, due.party, jobs, rules);
   if (!placed.ok) return { ok: false, error: `There isn't room aboard for ${jobs.length} crew and ${due.party.length} of hers.` };
   const units = due.dir === 'you' ? placed.units : [...placed.units.slice(due.party.length), ...placed.units.slice(0, due.party.length)];
@@ -206,11 +213,11 @@ export function beginBoarding(campaign, rules, { forgiving = false, difficulty =
   const { salvage, rng } = salvageFor(campaign.run.approach, due, afterSeed, rules);
   const bonus = enemyBonus(difficulty, rules.balance);
   const fighters = units.map((unit, i) => {
-    const member = campaign.crew[i];
+    const member = members[i];
     return member ? { ...unit, ...crewUnit(member, rules) } : { ...unit, bonus };
   });
   const { battle, events } = createBattle({ map, units: fighters, seed, options: { forgiving, press: due.dir === 'you' } }, rules);
-  const fight = { encounter: due.preset.party, seed, crew: campaign.crew.map((member) => member.id), battle, log: events, job: null, raid: false, boarding: { dir: due.dir, salvage } };
+  const fight = { encounter: due.preset.party, seed, crew: members.map((member) => member.id), battle, log: events, job: null, raid: false, boarding: { dir: due.dir, salvage } };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };
 }
 

@@ -712,6 +712,170 @@ textarea {
   }
 }
 
+/* The crew panel (sector.js): a button over the whole of it opens the
+   crew card. Recruits for hire light it. */
+.sct-crew-panel {
+  position: relative;
+}
+
+.sct-crew-panel[data-hire='true'],
+.sct-crew-panel[data-open='true'] {
+  border-color: var(--c-accent);
+}
+
+.sct-crew-panel h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.sct-crew-panel h2 b {
+  color: var(--c-accent);
+  font-size: 18px;
+  line-height: 0.6;
+}
+
+.sct-crew-panel[data-hire='true'] h2 span {
+  color: var(--c-accent);
+}
+
+#ui .sct-crew-open {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+}
+
+/* The crew card (crewCard.js) and the squad card (squadCard.js): the event
+   card's frame, as tall as what they hold and no taller than the room
+   under the head. Their head and Done stay put; the lists, side by side
+   where they fit, scroll under them. */
+.sct-crew,
+.apr-squad {
+  align-self: start;
+  max-height: 100%;
+}
+
+.sct-crew-head {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.sct-crew-words {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sct-crew-words h2 {
+  margin: 0 0 2px;
+}
+
+/* Done: the quiet way back, whole however long the words beside it. */
+#ui .sct-crew-done {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+}
+
+#ui .sct-crew-done svg {
+  flex: none;
+}
+
+.sct-crew-lists {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  align-content: start;
+  gap: 4px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.sct-crew-list[hidden] {
+  display: none;
+}
+
+.sct-crew-list h3 {
+  margin: 2px 0;
+  color: var(--c-ink-dim);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sct-crew-line {
+  margin: 0 0 2px;
+  color: var(--c-dash);
+  font-size: 13px;
+}
+
+.sct-crew-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sct-crew-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 3px 0;
+  border-top: 1px solid var(--c-line);
+  font-size: 13.5px;
+  line-height: 1.25;
+}
+
+.sct-crew-list li:first-child {
+  border-top: 0;
+}
+
+/* Traits wrap rather than lose their numbers. */
+.sct-crew-list .hgr-name small {
+  white-space: normal;
+}
+
+.sct-crew-hp {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+}
+
+.sct-crew-list li[data-wounded='true'] .hgr-hp span {
+  background: var(--c-dash);
+}
+
+#ui .sct-crew-act {
+  min-height: 48px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+/* A Sign on or Let go's first tap: what it does, waiting for a second. */
+#ui .sct-crew-act[data-armed='true'] {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
+@media (max-height: 320px) {
+  .sct-crew-list li {
+    min-height: 34px;
+    padding: 2px 0;
+    font-size: 12.5px;
+  }
+}
+
 .sct-name {
   margin: 0;
   font-size: 15px;
@@ -3203,7 +3367,8 @@ textarea {
 
 #ui .apr-carry,
 #ui .apr-board,
-#ui .apr-leave {
+#ui .apr-leave,
+#ui .apr-squad-open {
   flex: 1;
   display: flex;
   align-items: center;
@@ -3215,9 +3380,10 @@ textarea {
   color: var(--c-space);
 }
 
-/* Leaving her is the quiet choice beside boarding her; its first tap marks
-   it the way an order's does. */
-#ui .apr-leave {
+/* Leaving her is the quiet choice beside boarding her, as Squad is (M23);
+   Leave her's first tap marks it the way an order's does. */
+#ui .apr-leave,
+#ui .apr-squad-open {
   border-color: var(--c-line);
   background: transparent;
   color: var(--c-ink);
@@ -3228,6 +3394,64 @@ textarea {
   border-color: var(--c-dash);
   background: var(--c-dash);
   color: var(--c-space);
+}
+
+/* Squad (approach.js): the quiet button beside Board her, lit while its
+   card is up. */
+#ui .apr-squad-open[aria-expanded='true'] {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+
+/* The squad card (squadCard.js): the event card's frame over the two
+   ships, a button for each of the crew, ticked when they go. */
+.apr-squad-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  align-content: start;
+  gap: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#ui .apr-pick {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 2px 10px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.apr-pick-box {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--c-line);
+  border-radius: 6px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+#ui .apr-pick[aria-pressed='true'] {
+  border-color: var(--c-accent);
+  color: var(--c-ink);
+}
+
+#ui .apr-pick[aria-pressed='true'] .apr-pick-box {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
+.apr-pick[data-wounded='true'] .hgr-num {
+  color: var(--c-dash);
 }
 
 @media (max-height: 320px) {

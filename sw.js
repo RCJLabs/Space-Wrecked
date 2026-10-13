@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "f3a2fa427258";
+const VERSION = "a60b40c76b2f";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -19,6 +19,7 @@ const FILES = [
   "data/jobs.json",
   "data/manufacturers.json",
   "data/modules.json",
+  "data/recruits.json",
   "data/sectors.json",
   "data/ships.json",
   "data/sites.json",
@@ -82,6 +83,7 @@ const FILES = [
   "src/sim/constraints.js",
   "src/sim/contracts.js",
   "src/sim/cover.js",
+  "src/sim/crew.js",
   "src/sim/defs.js",
   "src/sim/deploy.js",
   "src/sim/drops.js",
@@ -102,12 +104,14 @@ const FILES = [
   "src/sim/launch.js",
   "src/sim/mapFromShip.js",
   "src/sim/mapText.js",
+  "src/sim/medbay.js",
   "src/sim/modules.js",
   "src/sim/moves.js",
   "src/sim/odds.js",
   "src/sim/patch.js",
   "src/sim/press.js",
   "src/sim/raid.js",
+  "src/sim/recruits.js",
   "src/sim/regrid.js",
   "src/sim/repair.js",
   "src/sim/replay.js",
@@ -137,6 +141,8 @@ const FILES = [
   "src/ui/campaign/captain.js",
   "src/ui/campaign/captainText.js",
   "src/ui/campaign/construction.js",
+  "src/ui/campaign/crewCard.js",
+  "src/ui/campaign/crewText.js",
   "src/ui/campaign/eventCard.js",
   "src/ui/campaign/eventText.js",
   "src/ui/campaign/fight.js",
@@ -151,6 +157,7 @@ const FILES = [
   "src/ui/campaign/sectorText.js",
   "src/ui/campaign/shop.js",
   "src/ui/campaign/shopText.js",
+  "src/ui/campaign/squadCard.js",
   "src/ui/campaign/stub.js",
   "src/ui/clipboard.js",
   "src/ui/dev/fps.js",

@@ -64,3 +64,14 @@ test('the details card lists size, what faces space, stats and where a placed pa
   assert.equal(quarters.lines[0], '2×3 squares · turns', 'size as placed');
   assert.equal(quarters.lines.at(-1), 'At (4, 0) · no bridge yet');
 });
+
+test('the details card says what quarters, life support and the med bay do on the run', () => {
+  const room = 'On the run: the ship carries as many crew as its berths and life support both cover. Recruits sign on at stations.';
+  assert.equal(cardFor(defs, defs.modules.get('quarters')).lines[2], room);
+  assert.equal(cardFor(defs, defs.modules.get('lifesupport')).lines[2], room);
+  const medbay = cardFor(defs, defs.modules.get('medbay')).lines;
+  assert.equal(medbay[2], 'On the run: heals each of the wounded 1 a jump, 2 with a medic aboard. Wrecked, it heals no one.');
+  assert.match(medbay[3], /^Cost /);
+  // The rest say nothing of the run.
+  assert.equal(cardFor(defs, defs.modules.get('reactor')).lines.length, 3);
+});
