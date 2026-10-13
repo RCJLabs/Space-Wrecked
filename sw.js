@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "e38041d068ad";
+const VERSION = "ef02255150bd";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -71,6 +71,11 @@ const FILES = [
   "src/render/parts/blueprint.js",
   "src/render/pick.js",
   "src/render/playback.js",
+  "src/render/portraits/badge.js",
+  "src/render/portraits/face.js",
+  "src/render/portraits/hair.js",
+  "src/render/portraits/marks.js",
+  "src/render/portraits/paths.js",
   "src/render/props.js",
   "src/render/shipScene.js",
   "src/render/shipView.js",
@@ -110,6 +115,7 @@ const FILES = [
   "src/sim/heat.js",
   "src/sim/jobAi.js",
   "src/sim/launch.js",
+  "src/sim/looks.js",
   "src/sim/mapFromShip.js",
   "src/sim/mapText.js",
   "src/sim/medbay.js",
@@ -178,6 +184,8 @@ const FILES = [
   "src/ui/gestures.js",
   "src/ui/icons.js",
   "src/ui/motion.js",
+  "src/ui/names.js",
+  "src/ui/portrait.js",
   "src/ui/screens.js",
   "src/ui/settings.js",
   "src/ui/settingsText.js",

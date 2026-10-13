@@ -10,6 +10,8 @@
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { shortNames } from '../names.js';
+import { portraitImg, portraitUrl } from '../portrait.js';
 
 // toggle(id): take crew member id, or leave them aboard; done(): Done.
 export function createSquadCard({ toggle, done }) {
@@ -42,17 +44,20 @@ export function createSquadCard({ toggle, done }) {
       setText(text, shown.text);
       setText(said, why ?? '');
       said.hidden = !why;
-      buttons = shown.members.map((member) => {
+      const short = shortNames(shown.members.map((member) => member.name));
+      buttons = shown.members.map((member, i) => {
         const button = node('button', 'btn apr-pick');
         button.type = 'button';
         button.setAttribute('aria-pressed', String(member.going));
         const box = node('span', 'apr-pick-box', member.going ? '✓' : '');
         box.setAttribute('aria-hidden', 'true');
         const who = node('span', 'hgr-name');
-        who.append(node('span', null, member.name));
+        who.append(node('span', null, short[i]));
+        who.title = member.name;
         if (member.about) who.append(node('small', null, member.about));
         button.dataset.wounded = String(member.hp < member.max);
-        button.append(box, who, node('span', 'hgr-num', `${member.hp}/${member.max}`));
+        const face = portraitImg('crew-face', portraitUrl(member.face.look, member.face.job, member.face.trim, 'face'));
+        button.append(box, face, who, node('span', 'hgr-num', `${member.hp}/${member.max}`));
         button.setAttribute('aria-label', `${member.name}, ${member.hp} of ${member.max} hit points: ${member.going ? 'going' : 'staying aboard'}`);
         return { button, detach: onTap(button, () => toggle(member.id)) };
       });

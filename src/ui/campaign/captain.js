@@ -1,17 +1,23 @@
 // Making a captain, the first screen of a new campaign: New game on the
-// title opens it. The background is fixed in v0.1 and only shown. The
-// captain's name comes filled in from the background's list, to keep or
-// change; their job is one of the crew's three; and two traits are picked
-// from data/traits.json, each tap showing what the trait is, and a third
-// tap dropping the first. Start begins the campaign, in place of any under
-// way (the title asked first); Title goes back with nothing changed.
+// title opens it. The background is fixed in v0.1, and only named under
+// the title. The captain's look (M23c) starts rolled: a tap on a layer
+// steps it to its next choice, and Roll rolls them all, the portrait
+// showing it in the helmet of the job picked. The name comes filled in
+// from the background's list, to keep or change; the job is one of the
+// crew's three; and two traits are picked from data/traits.json, each tap
+// showing what the trait is, and a third tap dropping the first. Start
+// begins the campaign, in place of any under way (the title asked first);
+// Title goes back with nothing changed.
 import { seedFrom } from '../../core/rng.js';
 import { loadContent } from '../../platform/content.js';
 import { drawStars, makeStarfield, paintBackdrop } from '../../render/starfield.js';
+import { crewColor } from '../../render/units.js';
 import { CAPTAIN_TRAITS, firstBackground } from '../../sim/campaign.js';
+import { rollLook, stepLook } from '../../sim/looks.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { portraitImg, portraitUrl } from '../portrait.js';
 import { panel } from './hubParts.js';
 import { captainText } from './captainText.js';
 
@@ -21,10 +27,12 @@ export const captainScreen = {
   mount(root, { store: game }) {
     const el = node('section', 'cap');
     const head = node('header', 'cap-head');
-    head.append(node('h1', null, 'Your captain'), node('p', 'cap-sub', 'Who leads the crew off this rock.'));
-    const bgName = node('p', 'cap-bg-name');
-    const bgBlurb = node('p', 'cap-bg-blurb');
-    const bgPursuer = node('p', 'cap-bg-pursuer');
+    const sub = node('p', 'cap-sub', 'Who leads the crew off this rock.');
+    head.append(node('h1', null, 'Your captain'), sub);
+    const face = portraitImg('cap-face', '');
+    const layers = node('div', 'cap-layers');
+    const look = node('div', 'cap-look');
+    look.append(face, layers);
     const nameInput = node('input', 'cap-name');
     Object.assign(nameInput, { type: 'text', maxLength: 24, autocomplete: 'off', spellcheck: false, enterKeyHint: 'done' });
     nameInput.setAttribute('autocapitalize', 'words');
@@ -42,12 +50,15 @@ export const captainScreen = {
     startButton.disabled = true;
     foot.append(backButton, hint, startButton);
     const traitsPanel = panel(`Traits · pick ${CAPTAIN_TRAITS}`, traitGrid, flavor);
-    el.append(head, panel('Background', bgName, bgBlurb, bgPursuer), panel('Captain', nameLabel, node('p', 'cap-label', 'Job'), jobRow, numbers), traitsPanel, foot);
+    el.append(head, panel('Look', look), panel('Captain', nameLabel, node('p', 'cap-label', 'Job'), jobRow, numbers), traitsPanel, foot);
     root.append(el);
 
     let alive = true;
     let defs = null;
-    const draft = { name: '', job: null, traits: [] };
+    const draft = { name: '', job: null, traits: [], look: null };
+    // Roll's own RNG, from the game's state as it stands: the game's
+    // rolls don't move.
+    let rolls = seedFrom(`captain look ${game.getState().rng}`);
     const cleanups = [
       onTap(backButton, () => game.dispatch({ type: 'screen/show', screen: 'title' })),
       onTap(startButton, start),
@@ -75,6 +86,7 @@ export const captainScreen = {
         // as it stands (nothing is rolled).
         draft.name = background.captains[game.getState().rng % background.captains.length];
         draft.job = background.start.crew[0];
+        roll();
         nameInput.value = draft.name;
         build();
         render();
@@ -83,12 +95,30 @@ export const captainScreen = {
         if (alive) setText(hint, `Couldn't load the game data: ${err.message}`);
       });
 
-    // The job and trait buttons, made once the content is in.
+    // The look's, job and trait buttons, made once the content is in.
     function build() {
       const text = captainText(defs, draft);
-      setText(bgName, text.background.name);
-      setText(bgBlurb, text.background.blurb);
-      setText(bgPursuer, `After you: ${text.background.pursuer}.`);
+      setText(sub, `${text.background.name}. After you: ${text.background.pursuer}.`);
+      sub.title = text.background.blurb;
+      const roller = toolButton('cap-roll', icons.again, 'Roll');
+      cleanups.push(onTap(roller, () => {
+        roll();
+        render();
+      }));
+      layers.replaceChildren(
+        ...text.look.map((layer) => {
+          const button = node('button', 'btn cap-layer');
+          button.type = 'button';
+          button.dataset.key = layer.key;
+          button.append(node('span', 'cap-layer-name', layer.label), node('span', 'cap-layer-value', layer.value));
+          cleanups.push(onTap(button, () => {
+            draft.look = stepLook(draft.look, layer.key);
+            render();
+          }));
+          return button;
+        }),
+        roller,
+      );
       jobRow.replaceChildren(
         ...text.jobs.map((job) => {
           const button = node('button', 'btn cap-job', job.name);
@@ -114,6 +144,15 @@ export const captainScreen = {
     function render() {
       if (!defs) return;
       const text = captainText(defs, draft);
+      const place = defs.backgrounds.get(firstBackground(defs)).start.crew.indexOf(draft.job);
+      const url = portraitUrl(draft.look, defs.jobs.get(draft.job)?.look, crewColor(Math.max(0, place)), 'bust');
+      if (face.getAttribute('src') !== url) face.src = url;
+      face.alt = `${draft.name.trim() || 'Your captain'}'s portrait`;
+      for (const button of layers.querySelectorAll('.cap-layer')) {
+        const layer = text.look.find((each) => each.key === button.dataset.key);
+        setText(button.querySelector('.cap-layer-value'), layer.value);
+        button.setAttribute('aria-label', `${layer.label}: ${layer.value}. Tap for the next.`);
+      }
       for (const button of jobRow.children) button.setAttribute('aria-pressed', String(button.dataset.id === draft.job));
       for (const button of traitGrid.children) button.setAttribute('aria-pressed', String(draft.traits.includes(button.dataset.id)));
       setText(numbers, text.captain);
@@ -126,6 +165,13 @@ export const captainScreen = {
     function pickJob(id) {
       draft.job = id;
       render();
+    }
+
+    // A new look, every layer rolled.
+    function roll() {
+      const next = rollLook(rolls);
+      draft.look = next.value;
+      rolls = next.state;
     }
 
     // A third trait drops the first picked.

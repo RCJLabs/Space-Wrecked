@@ -54,7 +54,7 @@ CNAME                       # spacewrecked.rcjlabs.com
 src/
   core/      rng, save, blueprint codes, store, events
   sim/       grid, builder rules, constraints, mapFromShip, battle, ai, approach, heat, campaign, economy, gen/
-  render/    3D camera, scenes and painters, part models, figures (figures/), hull tracer, SVG icons, tweens, particles
+  render/    3D camera, scenes and painters, part models, figures (figures/), portraits (portraits/), hull tracer, SVG icons, tweens, particles
   ui/        screens, panels, gestures
   platform/  storage, service worker registration, haptics, orientation
 data/        JSON content, including balance.json
@@ -73,7 +73,7 @@ PROGRESS.md
 - State flows one way: input, then action, then a sim function, then new state, then render. Renderers never mutate state.
 - Hit chance is computed in `src/sim/` and shown exactly. The number on screen is the number rolled against, including any forgiving-odds bonus.
 - Balance numbers live in `data/balance.json`. Before changing any, run `node tools/sim.js` and paste the summary into PROGRESS.md.
-- Parts, hulls and figures are pure functions from data to 3D models: plain data (faces, lines, glows) in cells, z up. The painters project them through the orbit camera (`src/render/orbit.js`) onto `<canvas>`: the see-through blueprint is batched by style, solid views are depth-sorted with back faces dropped. Menus, panels and icons are DOM and SVG with CSS.
+- Parts, hulls and figures are pure functions from data to 3D models: plain data (faces, lines, glows) in cells, z up. The painters project them through the orbit camera (`src/render/orbit.js`) onto `<canvas>`: the see-through blueprint is batched by style, solid views are depth-sorted with back faces dropped. Menus, panels and icons are DOM and SVG with CSS. Portraits are pure functions too, from a crew member's look (`src/sim/looks.js`, whose choices are drawings, so they live in code) to SVG text, shown as images.
 - Colors come from palette tokens in one file. Manufacturers are skins over the same part shapes.
 - Keep files small and named for what they do; no god modules.
 

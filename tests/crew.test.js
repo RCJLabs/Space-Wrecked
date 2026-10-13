@@ -63,7 +63,7 @@ test('signing on takes the fee and a free berth, and the rest of the offer stays
   const [first, second] = recruitOffer(campaign, rules);
   const after = hired(campaign, first.slot);
   const member = after.crew.at(-1);
-  assert.deepEqual(member, { id: 4, name: first.name, job: first.job, hp: first.hp, traits: first.traits });
+  assert.deepEqual(member, { id: 4, name: first.name, job: first.job, hp: first.hp, traits: first.traits, look: first.look });
   assert.equal(after.credits, 500 - balance.recruitFee);
   assert.equal(after.flags.recruitsHired, 1);
   assert.deepEqual(after.run.hired, [{ node: campaign.run.at, slot: first.slot }]);

@@ -6,12 +6,13 @@ import { takeJob, withBoard } from '../src/sim/contracts.js';
 import { beginRaid } from '../src/sim/raid.js';
 import { initialState, reduce, saveData } from '../src/sim/root.js';
 import { defaultSettings, enemyBonus, fightSettings, reduceSettings, settingsProblems } from '../src/sim/settings.js';
+import { LOOKS_APART, looksApart } from '../src/sim/looks.js';
 import { traitBonus } from '../src/sim/traits.js';
 import { rules } from './battleKit.js';
 
 const dell = { name: '  Dell Okafor ', job: 'engineer', traits: ['thick-skull', 'steady'] };
 
-test('a captain needs a name, one of the crew jobs and two different traits', () => {
+test('a captain needs a name, one of the crew jobs, two different traits, and a look if one is given', () => {
   assert.equal(captainProblem(dell, rules), null);
   const cases = [
     [{ ...dell, name: '   ' }, 'Give your captain a name.'],
@@ -21,19 +22,33 @@ test('a captain needs a name, one of the crew jobs and two different traits', ()
     [{ ...dell, traits: ['steady', 'steady'] }, 'Pick 2 traits.'],
     [{ ...dell, traits: ['steady', 'quick', 'patched'] }, 'Pick 2 traits.'],
     [{ ...dell, traits: ['steady', 'lucky'] }, 'There is no trait "lucky".'],
+    [{ ...dell, look: { face: 99 } }, 'Pick a look for your captain.'],
     [null, 'Give your captain a name.'],
   ];
   for (const [captain, why] of cases) assert.equal(captainProblem(captain, rules), why, JSON.stringify(captain));
 });
 
-test('the captain leads the crew in their job, named, with their traits; the rest are as they were', () => {
-  const campaign = newCampaign(rules, 77, { captain: dell });
+test('the captain leads the crew in their job, named, with their traits and look; the rest are named from the recruits\' names', () => {
+  const look = { face: 3, skin: 'tan', hair: 'crop', hairColor: 'black', eyes: 'brown', beard: 'none', mark: 'scar' };
+  const campaign = newCampaign(rules, 77, { captain: { ...dell, look } });
   assert.equal(campaign.captain, 2);
-  assert.deepEqual(campaign.crew, [
-    { id: 1, name: 'Marine', job: 'marine', traits: [], hp: 10 },
-    { id: 2, name: 'Dell Okafor', job: 'engineer', traits: ['thick-skull', 'steady'], hp: 10 },
-    { id: 3, name: 'Medic', job: 'medic', traits: [], hp: 8 },
-  ]);
+  assert.deepEqual(
+    campaign.crew.map(({ id, job, traits, hp }) => ({ id, job, traits, hp })),
+    [
+      { id: 1, job: 'marine', traits: [], hp: 10 },
+      { id: 2, job: 'engineer', traits: ['thick-skull', 'steady'], hp: 10 },
+      { id: 3, job: 'medic', traits: [], hp: 8 },
+    ],
+  );
+  assert.equal(campaign.crew[1].name, 'Dell Okafor');
+  assert.deepEqual(campaign.crew[1].look, look, 'the look picked');
+  for (const member of [campaign.crew[0], campaign.crew[2]]) {
+    const [first, last] = member.name.split(' ');
+    assert.ok(rules.recruits.first.includes(first) && rules.recruits.last.includes(last), member.name);
+    assert.ok(looksApart(member.look, look) >= LOOKS_APART, 'apart from the captain');
+  }
+  assert.ok(looksApart(campaign.crew[0].look, campaign.crew[2].look) >= LOOKS_APART);
+  assert.deepEqual(newCampaign(rules, 77, { captain: { ...dell, look } }), campaign, 'the same seed and captain, the same crew');
   assert.equal(maxHp(campaign.crew[1], rules), 10, "a thick skull's 2 on the engineer's 8");
   assert.deepEqual(campaignProblems(campaign), []);
   assert.deepEqual(traitBonus(['hothead', 'low-profile'], rules), { hp: 0, aim: 10, defense: 0, mobility: 0, armor: 0 }, 'effects add up, and cancel');

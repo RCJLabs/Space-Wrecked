@@ -133,6 +133,40 @@ export function skinFor(manufacturer) {
   return skins[manufacturer] ?? skins.yard;
 }
 
+// Portraits (src/render/portraits/): skin, hair and eye colors by the ids
+// in src/sim/looks.js, then the rest of a face and the card it is on.
+// Shadows and highlights are mixed toward `shadow` and `light`.
+export const portraitColors = {
+  skin: { porcelain: '#f6d7c3', fair: '#eec1a3', peach: '#e6b08c', sand: '#d59c78', olive: '#bd8a62', tan: '#a8704f', umber: '#8a5537', brown: '#6b3f28', deep: '#4a2b1c' },
+  hair: { black: '#16110e', darkBrown: '#3b2619', brown: '#6a4228', auburn: '#8f3f22', copper: '#b8612f', blond: '#d9b46a', platinum: '#e8e1cf', grey: '#a3a7ad', teal: '#38b6c2', magenta: '#d0478f', violet: '#7d5bd0' },
+  eyes: { brown: '#5a3a22', dark: '#2b1d14', hazel: '#7a6a3a', green: '#4f7a4a', blue: '#4a78a8', grey: '#7d8a96', amber: '#b07a2a' },
+  shadow: '#24120b',
+  light: '#fff4ea',
+  white: '#f4f1ea',
+  feature: '#1b120e',
+  pupil: '#120c0a',
+  lip: '#a8433f',
+  blush: '#e0706a',
+  scar: '#f3c2bd',
+  tattoo: '#1f5c6a',
+  steel: '#7d879b',
+  steelDark: '#2a3140',
+  steelLight: '#c4ccdb',
+  plate: '#4a5568',
+  implant: '#ff4d3d',
+  implantCore: '#fff0c9',
+  port: '#5fd3e8',
+  gold: '#ffd36b',
+  patch: '#1a1514',
+  card: '#101830',
+  cardLine: '#2a3552',
+  behind: '#0d1424',
+  edge: '#0b0f1a',
+  glassTint: '#5fa8d8',
+  glassDeep: '#0b1a33',
+  glare: '#ffffff',
+};
+
 export function applyCssVars(root = document.documentElement) {
   for (const [name, value] of Object.entries(palette)) {
     root.style.setProperty(`--c-${name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`, value);

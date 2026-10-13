@@ -8,6 +8,7 @@ import { fitOrbit } from '../../render/orbit.js';
 import { palette, skinFor } from '../../render/palette.js';
 import { BOARD_VIEW, boardBox, createBoard } from '../../render/shipView.js';
 import { node, setText } from '../fight/panels.js';
+import { shortNames } from '../names.js';
 
 const MARGIN = 10; // pixels around the ship
 const NO_MIN = [0, 0]; // the view fits the ship alone, however small
@@ -18,15 +19,17 @@ export function panel(title, ...children) {
   return el;
 }
 
-// The crew list's rows, from crewText (hubText.js): the name, with the job
-// under it when the name isn't the job's (the captain's), a bar for hit
-// points, and the numbers.
+// The crew list's rows, from crewText (hubText.js): the name cut short
+// (names.js), with the job under it when the name isn't the job's, a bar
+// for hit points, and the numbers. The crew card has the whole name.
 export function crewRows(crew) {
-  return crew.map(({ name, job, hp, max }) => {
+  const short = shortNames(crew.map(({ name }) => name));
+  return crew.map(({ name, job, hp, max }, i) => {
     const row = node('li');
     row.dataset.wounded = String(hp < max);
     const who = node('span', 'hgr-name');
-    who.append(node('span', null, name));
+    who.append(node('span', null, short[i]));
+    who.title = name;
     if (job) who.append(node('small', null, job));
     const bar = node('span', 'hgr-hp');
     const fill = node('span');

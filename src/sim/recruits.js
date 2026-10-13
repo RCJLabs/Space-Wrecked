@@ -1,9 +1,12 @@
 // Crew comings and goings on the run (ROADMAP §4.5, M23). Each station
 // offers recruitOffer recruits (data/balance.json): each a name from
-// data/recruits.json, a job and a trait, at full health. They are rolled
-// from the campaign's seed, the sector and the station rather than the
-// campaign's RNG, so a station offers the same recruits on every visit and
-// no other roll moves; one whose name is already aboard is rolled again.
+// data/recruits.json, a job, a trait and a look (looks.js, M23c), at full
+// health. They are rolled from the campaign's seed, the sector and the
+// station rather than the campaign's RNG, so a station offers the same
+// recruits on every visit and no other roll moves; one whose name is
+// already aboard is rolled again, and a look too close to one aboard or
+// offered before is rolled again. The look is rolled last, so it moves
+// none of the rest.
 // Signing one on costs recruitFee credits and needs room aboard (crew.js
 // crewRoom), and run.hired keeps who has signed on in this sector (travel.js).
 // At a station the crew can also let anyone go but the captain. Pure.
@@ -11,13 +14,14 @@ import { pick, seedFrom } from '../core/rng.js';
 import { maxHp } from './campaign.js';
 import { crewRoom } from './crew.js';
 import { tally } from './flags.js';
+import { rollLook } from './looks.js';
 import { hereOf, holdOf, onTheRun } from './travel.js';
 
 // Tries at a name not aboard before taking one that is.
 const NAME_TRIES = 20;
 
 // The recruits station `nodeId` in the ship's sector offers, hired or not:
-// [{ slot, name, job, traits, hp }].
+// [{ slot, name, job, traits, hp, look }].
 export function recruitsAt(campaign, rules, nodeId) {
   const { sector } = campaign.run;
   const { first, last } = rules.recruits;
@@ -25,6 +29,7 @@ export function recruitsAt(campaign, rules, nodeId) {
   const traits = [...rules.traits.keys()];
   if (!first.length || !last.length || !jobs.length) return [];
   const taken = new Set(campaign.crew.map((member) => member.name));
+  const looks = campaign.crew.map((member) => member.look);
   const recruits = [];
   for (let slot = 0; slot < (rules.balance.recruitOffer ?? 0); slot++) {
     // Each slot rolls on its own, so signing one on moves none of the rest.
@@ -39,8 +44,10 @@ export function recruitsAt(campaign, rules, nodeId) {
     taken.add(name);
     const job = pick(rng, jobs);
     const trait = traits.length ? pick(job.state, traits) : { value: null, state: job.state };
+    const look = rollLook(trait.state, looks).value;
+    looks.push(look);
     const member = { name, job: job.value, traits: trait.value ? [trait.value] : [] };
-    recruits.push({ slot, ...member, hp: maxHp(member, rules) });
+    recruits.push({ slot, ...member, hp: maxHp(member, rules), look });
   }
   return recruits;
 }
@@ -75,7 +82,7 @@ export function hireRecruit(campaign, rules, slot) {
   if (!plan.ok) return plan;
   const { recruit, fee } = plan;
   const id = Math.max(0, ...campaign.crew.map((member) => member.id)) + 1;
-  const member = { id, name: recruit.name, job: recruit.job, hp: recruit.hp, traits: [...recruit.traits] };
+  const member = { id, name: recruit.name, job: recruit.job, hp: recruit.hp, traits: [...recruit.traits], look: { ...recruit.look } };
   const { run } = campaign;
   return {
     ok: true,
