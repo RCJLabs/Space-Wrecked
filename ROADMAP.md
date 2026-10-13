@@ -478,7 +478,7 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
 
 **Looks and the catalog, before refits** (Evan's call after M23, 2026-10-13). The characters are still stand-ins, the ships look blocky, and the builder needs more to choose from. Evan asked for these before the milestones already planned. His answers: figures and portraits; hulls that are smoother on their own, plus shaped pieces to sculpt them; styling that isn't a module (Law 1); and part variants in size and stats, plus a second manufacturer. The rules stay on the square grid (§3), so the curves are on the outside: rooms and fights keep their square tiles. Each milestone keeps the fight and the hull views within the frame budget at the three screen sizes.
 
-- [ ] **M23b Character figures** (§4.3).
+- [x] **M23b Character figures** (§4.3).
   - figures drawn in code by our renderer: a helmet and visor, a suit, arms holding the weapon, legs
   - two suits, Evan's pick from five mockups (2026-10-13): the classic EVA and the skinsuit, worn by both sides for variety
   - the crew by job (marine, engineer, medic), each in their own trim; enemies by type (`data/enemies.json`), in their side's colors

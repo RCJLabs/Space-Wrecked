@@ -2,6 +2,189 @@
 
 Newest entry first.
 
+## M23b Character figures (2026-10-13)
+
+**Status:** done, and the ROADMAP.md box is ticked. The units in every fight are people in spacesuits now, in two suits Evan picked from two rounds of mockups.
+
+No phone results have come back yet for M14 to M23.
+
+**How the suits were picked:**
+- **Round one,** three styles on one skeleton: trooper, void suit, lean. Evan: "Try again. I want better looking spacesuits. Give me some mockups of the variants I could choose. Make the designs all completely different."
+- **Round two,** five designs: classic EVA, assault armor, skinsuit, industrial hardsuit and deep diver. Each was shown up close, at the fight camera's angle, and in the real fight at the cover screen's size. Evan: "Well do both classic Eva and skinsuit. Which should add variety to the game as well."
+- **So both sides wear both.** Each job and enemy type is in one suit, with a build, helmet, back and marks of its own.
+
+Done when: "every crew job and every enemy type has a figure of its own in one of the two suits, set in data, and told apart at the cover screen's tile size (each pair on a side differs in at least a fifth of their pixels there, seen from the front, the side and behind); a move walks, a shot aims and a unit that goes down falls; the fight keeps to the frame budget at the three sizes, holding the frame rate main holds in Chromium while the enemy's turn plays out; and the golden battle logs don't change (it is drawing only)."
+
+- **Told apart** (`tests/figures.test.js`): every figure is filled into pixels at the cover screen's size, 48 CSS px a cell at 2 device px each, from the front, behind and the side.
+  - The closest crew pair, the engineer and the medic, differ in 44% of their pixels, drawn in the same trim.
+  - The closest enemy pair, the scavver and the company guard from behind, differ in 33%.
+  - The same measure in Chromium, with the outline and smoothing: 47% and 27%.
+- **A move walks, a shot aims, a unit falls:**
+  - `tests/playback.test.js`: a stride to every two tiles, the walker only. A unit aims while it shoots and from the moment it goes on overwatch. It falls through a down or dead event, quicker as it goes.
+  - `tests/figures.test.js`, for every job and enemy type: the feet stride apart and come back together; aimed, the weapon reaches further ahead; fallen, the figure lies along the way it faced, under 0.45 cells high, its weapon on the deck.
+  - By touch in the Fight sandbox at the three sizes (`m23b/verify.mjs`, below): every unit is drawn where it stands. A walk makes new stride drawings, and its frames change as it goes. Overwatch changes the unit's figure.
+  - On video: a whole fight played by touch at 905 × 370, sent to Evan in the session. Units walk, aim, go down and lie grey.
+- **The frame budget:** Chromium on this machine, unthrottled, while the enemy's turn plays out. Old figures are main's, three runs at 905 × 370 and two at the other sizes; new figures are three runs at each size.
+
+  | Size | Frames a second, old / new | Slowest half second, old / new | Drawing a frame (median), old / new | Full frame (median), old / new |
+  | --- | --- | --- | --- | --- |
+  | 905 × 370 | 60 / 60 | 54–58 / 56–60 | 2.7–4.8 / 3.4–3.5 ms | 8.7–10.2 / 10.4–11.2 ms |
+  | 821 × 283 | 60 / 60 | 58–60 / 58–60 | 3.8–4.4 / 4.0–4.5 ms | 6.8–7.6 / 7.0–9.5 ms |
+  | 960 × 825 | 58 / 58–60 | 45–46 / 37–48 | 2.8–3.9 / 3.8–4.8 ms | 10.5–11.2 / 11.6–12.2 ms |
+
+  The worst full frame is a few ms dearer with the new figures, 14.5 to 19.9 ms against 10.3 to 18.8. A new figure drawing costs about 3 ms here and lands in some frames.
+- **Golden files:** none changed. `node --test` passes, the battle replays included.
+
+### Shipped
+
+- **Figures** (`src/render/figures/`, new):
+  - **`looks.js`:** what can be drawn:
+    - two suits, `eva` and `skinsuit`;
+    - three builds, light, standard and heavy;
+    - each suit's choice of helmet, back and marks;
+    - a weapon's held shape: its length, the height of its body, its bore, and one hand or two.
+
+    The validator checks the data against it.
+  - **`bones.js`:** a skeleton for each suit and build, in the figure's own frame. Two-bone arms reach the weapon and two-bone legs reach the deck. Poses:
+    - at the ready, the weapon across the body;
+    - aimed, at the shoulder;
+    - a pistol held low at the side, or out in both hands;
+    - the walk's stride;
+    - the hands letting go as it falls.
+  - **`eva.js`:** the classic EVA suit:
+    - a puffy suit, ringed at the joints, with a hard chest and its controls;
+    - helmets: `bubble` (a dark visor with a glint), `lamps` (and two lamps) or `bar` (a band of light);
+    - backs: `life`, `tools` (a mast and a tool rack), `tanks`, `junk` (scrap strapped on), `med` (a slim pack marked with a plus) or `none`;
+    - marks: `plain`, or `stripes` round the arms and legs.
+  - **`skinsuit.js`:** the skinsuit:
+    - slate under plates in the suit's color, with seams of light in the trim;
+    - helmets: `egg` (a visor that wraps round), `fin`, `crest` or `mirror` (a dark visor);
+    - backs: `spine`, `jump` (a jump pack, its nozzles lit) or `none`;
+    - marks: `seams`, or `plates` (shoulder plates in the trim).
+  - **`weapon.js`:** the weapon from its held shape: a stock, a body with a magazine and sight, and a barrel; a pistol is a body and a grip.
+  - **`figure.js`:**
+    - dresses the skeleton in its suit, turns it to face its way and stands it on its tile;
+    - falling, it tips over backward about the heels, which slide ahead so it ends lying on its own tile; it rests on its pack, never through the deck, and its weapon drops beside it;
+    - `detail` thins out round parts for small figures, but a helmet keeps its rings.
+  - **`shapes.js`:** boxes, rods, plates, tubes, rings, turned surfaces, balls and domes.
+  - **`sprites.js`:** each figure is drawn once and kept.
+    - **Why:** a figure is 400 to 700 faces. Drawn as faces, seven of them cost 20 to 50 ms a frame here, against 0.3 ms for the stand-ins.
+    - **What is kept:** a drawing in a canvas of its own for each look, colors, pose step, facing, viewing angle and size. It is reused until any of them changes.
+    - **Perspective:** each figure is seen from its own angle along the camera's ray to it. Its drawing is turned to the way up looks where it stands, and scaled to its size there.
+    - **Steps:** angles to 5.6° (3.75° above), sizes to 8%, the aim in quarters, the walk in eighths of a stride, the fall in tenths.
+    - **The outline** is the figure's drawing copied out a little all round and tinted, under the figure. Stroking its faces cost five times the painting.
+    - **The budget:** new drawings stop once 2 ms are spent in a frame. A figure waiting shows its last drawing, and the board draws again soon after.
+    - **Memory:** the oldest drawings go past 24 MB.
+- **The painter** (`src/render/painter.js`): `paintSolid` takes items, drawn whole in the depth order of the faces, so a wall in front of a figure still hides it. `drawOrder` gives that order.
+- **The board** (`src/render/battleView.js`) draws the actors' figures through the cache, at the full frame's pixel ratio even in a rough frame.
+- **Units** (`src/render/units.js`):
+  - `unitsScene` gives the figures to draw, with each unit's look, held shape, colors and pose. The stand-in boxes and cylinders are gone.
+  - `colorsOf` picks the colors:
+    - the crew pale, each trimmed in their own color;
+    - boarders rust and orange;
+    - the out and the dead grey;
+    - a unit just hit in the tracer's color.
+  - `UNIT_TOP` is 0.8, and the new `LYING_TOP` 0.36 sets the tap area and labels of a unit lying down.
+- **Playback** (`src/render/playback.js`): `poseAt(unit, frame)` gives a unit's pose at a frame.
+- **The fight** (`src/ui/fight/view.js`):
+  - each unit's figure carries its look, its weapon's held shape and its pose, in the steps it is drawn in, so the board draws again only when a step changes;
+  - a falling unit turns as it goes to the way it will lie: the crew along the ship, boarders across it.
+- **Palette** (`src/render/palette.js`): 10 tokens for the slate under a skinsuit, the boarders' darks, visor glass, lamps, the gun, the outline and the greys of the fallen.
+- **Data:**
+  - each job and enemy has a `look` (`data/jobs.json`, `data/enemies.json`), and each weapon a `held` shape (`data/weapons.json`);
+  - who wears what is in Decisions below;
+  - the validator checks both against `looks.js`.
+- **Docs:** ROADMAP.md (M23b's Done when and a Figures entry in §4.3) and CLAUDE.md (the figures folder, the looks in data, and the kept drawings beside the no-sprite-sheets rule).
+- **Tests:** 582 in all, up from 569:
+  - the figures (`tests/figures.test.js`, 12): every job and enemy in every pose is flat faces with unit normals in palette colors, within its tile, never through the deck; the visor looks the way the figure faces; aiming, walking and falling as above; every look its own and drawable, both suits on both sides; the kept drawings' steps, reuse, outline, budget and memory; the painter's items in depth order; told apart at the cover screen's size;
+  - the pose at a frame (`tests/playback.test.js`, 1);
+  - units as figures, lying and grey, and the hit's flash (`tests/units.test.js`, rewritten);
+  - 7 more mistakes the validator names (`tests/data.test.js`).
+
+### Decisions made this session
+
+- **Evan's calls:** two suits, the classic EVA and the skinsuit, for variety; from round two of the mockups, after round one was turned down.
+- **Mine:**
+  - **Who wears what** (data, quick to change):
+
+    | Who | Suit | Build | Helmet | Back | Marks | Weapon |
+    | --- | --- | --- | --- | --- | --- | --- |
+    | Marine | skinsuit | standard | fin | spine | plates | rifle |
+    | Engineer | EVA | standard | lamps | tools | stripes | shotgun |
+    | Medic | EVA | light | bubble | med | stripes | pistol |
+    | Pirate | skinsuit | standard | crest | none | plates | carbine |
+    | Pirate brute | skinsuit | heavy | egg | spine | plates | shotgun |
+    | Scavver | EVA | light | lamps | junk | plain | pistol |
+    | Claim jumper | skinsuit | light | fin | jump | seams | carbine |
+    | Company guard | EVA | standard | bar | life | stripes | rifle |
+    | Hired heavy | EVA | heavy | bar | tanks | plain | shotgun |
+    | Recovery agent | EVA | light | bubble | none | stripes | carbine |
+
+    The pirate, the jumper and the agent were the closest pair at first. Shoulder plates for the pirate, a fin for the jumper, and an EVA suit for the agent pulled them apart. The skinsuit's `mirror` helmet is unused for now.
+  - **The medic's mark is a plus in the crew's trim,** not a red cross on white, which is a protected emblem.
+  - **Enemies keep their side's colors** (ROADMAP's "in their side's colors"), so enemy types are told apart by shape alone.
+  - **Overwatch aims at once,** rather than raising the weapon over the event: animating it cost a repaint every frame for no gain.
+  - **Out of the five round-two designs,** the three not picked (assault armor, industrial hardsuit, deep diver) are in `src/render/figures.js` in commit 6c98737, the first on PR #37, if any is wanted later.
+
+### Verified here
+
+- `node --test`: 582 pass. `node tools/validate-data.js`: OK. `data/balance.json` didn't change, so `node tools/sim.js` wasn't needed.
+- **M23b's check** (scratchpad `m23b/verify.mjs`), by touch in the Fight sandbox at 905 × 370, 821 × 283 and 960 × 825: 8 of 8 at each size.
+  - Every unit's figure is drawn where it stands, in its side's colors, and an empty floor tile has none.
+  - A still board makes no new drawing in a second and a half.
+  - A walk of three or more tiles makes new stride drawings, its frames change as it goes, and the walker stands where it stopped.
+  - Overwatch changes the unit's figure: it aims.
+  - No console errors or warnings.
+- **The frame budget** (scratchpad `m23b/perf2.mjs`): the table above. In the Fight sandbox it ends the crew's turn three times and reads the dev overlay while each enemy turn plays out. Main's side runs from a worktree of `origin/main`.
+- **Told apart in Chromium** (scratchpad `m23b/apart.mjs`): the figures drawn by the game at the cover screen's size, outline and smoothing included, and measured as the test does.
+- **Regressions,** one after another, after the last change (the `sw.js` file list, below), at 905 × 370, 821 × 283 and 960 × 825 unless named:
+  - **M23's check:** 36 of 36 at each size;
+  - **M22's check** (as adapted in M23): 35 of 35 at each size;
+  - **M21's check** (as adapted in M23): 32 of 32 at each size;
+  - **M19's check** (as adapted in M22): 52 of 52 at each size;
+  - **M20's check** (as adapted in M21): 32 of 32 at each size;
+  - **M18's check:** 43 of 43 at each size;
+  - **M17's check** (as adapted in M19): 37 of 37 at each size;
+  - **M16's check:** 29 of 29 at each size;
+  - **M15's check:** 30 of 30 at each size;
+  - **M14's saves check:** 10 of 10;
+  - **M13's check:** 24 of 24;
+  - **M8's fight sandbox checks:** a whole fight played by touch at each size, with no console errors; the orders column at each size, every order and crew button 48 px or more; all 8 extras, offline included, with no console errors;
+  - **M14's check:** 48 of 48 at 905 × 370, with a job of each kind played by touch. The count depends on the jobs dealt (39 in M23).
+
+  None of the old checks needed changing.
+- **Found by the checks:** `sw.js` still listed the WIP commit's `src/render/figures.js` and not the new folder until `tools/precache.js` ran, so the service worker didn't install and the older checks failed at their offline steps. The pre-commit hook runs it. I ran it by hand and ran every check again.
+
+### Known issues
+
+- **Phone cost unknown.** A new figure drawing costs about 3 ms in headless Chromium. Each frame draws at most about one. Full frames are about 1 ms dearer at the median than main's, and up to a few ms at the worst.
+- **The first frame of a fight** draws every figure at once, about 30 ms here for ten.
+- **One long frame, not explained:** in the recorded fight, the dev overlay's worst gap read 233 ms early in the enemy's first turn. The timing runs, which don't record, never saw more than 50 ms. Recording may be the cause, but that isn't shown.
+- **While pinching or twisting the camera,** a figure can show a drawing a step off in angle or size for a frame or two.
+- **Enemy types share colors,** so they are told apart by shape: suit, build, helmet and pack. From behind, the scavver and the company guard are the closest.
+- **Lying figures in EVA suits rest on their packs,** up to about 0.4 cells high where the stand-ins lay at 0.15. Labels and the tap area for lying units moved up to suit.
+- **Only the poses above.** A hit is the old flash, and reloading, stabilizing and opening a door have no poses of their own.
+- **Kept drawings take up to 24 MB.**
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Any fight:** the Fight sandbox, a job or a boarding.
+2. **The figures:** do they look like spacesuits now? Can you tell the marine, engineer and medic apart, and each kind of enemy?
+3. **Walk:** order a move. Do the legs stride, and does it turn at corners?
+4. **Aim:** Overwatch raises the weapon at once. A shot aims it at the target.
+5. **Fall:** a unit going down tips over backward and lies on its tile; out or dead, it lies grey.
+6. **Smoothness:** the enemy's turn, the first frame of a fight, and pinching and twisting the camera. Turn on `?dev=1` for the frame line: "moving N full M rough".
+7. **Both screens,** and zoomed in, where the detail shows.
+8. **Tell me:**
+   - which looks to change (each is one line of data);
+   - whether the enemy types are easy enough to tell apart;
+   - any stutter;
+   - and the M14 to M23 questions still open.
+
+### Next session
+
+**M23c Portraits.** Settle its Done when first. The draft is "every crew member has a portrait, the same each time it is drawn; captain creation picks the captain's look; recruits come with theirs; looks are saved with the crew (a `SAVE_VERSION` bump, older crews given theirs from their ids, the same on every load); and the screens that show them keep their buttons 48 px or more."
+
 ## Plan: looks and the catalog before refits (2026-10-13)
 
 **Status:** planned; nothing is built yet. After M23 merged, Evan asked for better characters, sleeker ships and a bigger builder before the milestones already planned. ROADMAP.md §7 now has six milestones before refits, M23b to M23g. Refits at stations moves from M23b to M23h; the M23 entry below still calls it M23b.
