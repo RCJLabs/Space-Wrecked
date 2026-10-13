@@ -28,7 +28,16 @@ const job = (d, id) => d.contracts.jobs.find((j) => j.id === id);
 const event = (d, id) => d.events.events.find((e) => e.id === id);
 const small = (d) => Object.assign(d.frames.frames[0], { width: 4, height: 4 });
 const hostile = (d) => d.sectors.nodes.find((node) => node.id === 'hostile');
+const hull = (d) => d.hulls.hulls[0];
 const cases = [
+  ['hull style out over half a cell', (d) => (hull(d).margin = 0.6), /margin must be more than 0 and at most 0.5/],
+  ['hull style with corners of no kind', (d) => (hull(d).corners = 'blob'), /corners must be one of round, cut/],
+  ['hull profile going back up', (d) => (hull(d).profile[2] = [0.33, 0.99]), /profile must go out and down/],
+  ['hull profile not ending at the side', (d) => hull(d).profile.pop(), /profile must end with the side/],
+  ['hull nose longer than the camera keeps room for', (d) => (hull(d).nose.max = 3), /nose must have base and max \(at most 2.2 cells\)/],
+  ['hull nose rings growing', (d) => (hull(d).nose.rings[2] = [0.65, 0.99]), /nose rings must go forward and get smaller/],
+  ['misspelled hull field', (d) => (hull(d).margins = 0.5), /unknown field "margins"/],
+  ['no default hull style', (d) => (hull(d).id = 'smooth'), /there must be a "rounded" style/],
   ['duplicate id', (d) => d.modules.modules.push(structuredClone(d.modules.modules[0])), /duplicate id "bridge"/],
   ['unknown manufacturer', (d) => (d.modules.modules[0].manufacturer = 'acme'), /unknown manufacturer "acme"/],
   ['side facing space that is no side', (d) => (engine(d).facesSpace.side = 'x'), /facesSpace\.side must be one of n, e, s, w/],
@@ -241,5 +250,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 9 kinds of sector node, 10 events\)/);
+  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 2 hull styles, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 9 kinds of sector node, 10 events\)/);
 });

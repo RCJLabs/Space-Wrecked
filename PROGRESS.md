@@ -2,6 +2,189 @@
 
 Newest entry first.
 
+## M23d Sleek hulls (2026-10-13)
+
+**Status:** done, and the ROADMAP.md box is ticked. Hulls aren't boxes any more: every ship's hull wraps its rooms in one of two styles, Rounded or Plated. The player picks one in the builder; enemy ships roll one.
+
+One exception to flag first: in the Enemy ships sandbox at 960 × 825, the corvette and the hauler move at 2 to 13 fps under main's in headless Chromium (main manages 43 to 52 there). The builder's Hull view with a starter-sized ship, the hangar and the lift-off hold main's frame rate at all three sizes; a player's own ship as big as the corvette would cost in the Hull view what the sandbox's does. Details under Verified.
+
+No phone results have come back yet for M14 to M23c.
+
+**How the styles were picked:** first a shot of today's hulls everywhere one is drawn. Then one round of four mockups, drawn by the game's own renderer on the start ship and the three presets, outside and as the builder's rim, at the cover screen's size:
+- A, Rounded: soft corners, a rounded shoulder, a bullet nose;
+- B, Faceted: cut corners, one broad bevel, a sharp prow;
+- C, Streamlined: one smooth skin, a low sweeping shoulder, a needle nose;
+- D, Plated: cut corners, stepped armor, panel seams, a blunt prow.
+
+Evan: "A and D as the options. Enemy ships are randomized on those two. You can build either."
+
+Done when: "both styles are in data (`data/hulls.json`): Rounded, with rounded corners outside and in, a rounded shoulder and a bullet nose; and Plated, with cut corners, a stepped armor shoulder, panel seams on the roof and a blunt prow. In both, no outer corner of the outline is a plain right angle, and the hull covers every cell and never cuts into a room (tested). Nozzles, barrels and collars sit on the new skin, bevelled to match. The player picks the style in the builder, one tap, undoable, saved with the ship (`SAVE_VERSION` 16: older ships are Rounded) and carried by blueprint codes (version 3, which still reads 1 and 2). Every enemy ship gets one of the two at random, the same for the same seed, its layout unchanged (golden). The builder's rim and Hull view, the hangar, the lift-off and the Enemy ships sandbox all draw it. The builder's default view keeps every cell 22 px or more on the cover screen. The boarding maps don't change (golden), and the hull views keep to the frame budget at the three sizes."
+
+- **Both styles in data:** `data/hulls.json`, checked by `tools/validate-data.js` (`tests/data.test.js`, 8 cases).
+- **No plain right angle; every cell covered, no room cut into:** `tests/hullShape.test.js`.
+  - Covered: in both styles, every corner of every cell is inside the hull at every height of its profile.
+  - Corners: no outer corner of the outline turns 90° or more.
+  - The ships: the example, the launched start ship, four odd shapes (a lone cell, a forked bow, a ring round a pocket, a diagonal touch) and the three presets at three seeds.
+- **Nozzles, barrels and collars on the skin:**
+  - Nozzles and collars sit on the hull's side, out past their cells (`tests/hullShape.test.js`), in housings round or eight-sided to match the corners.
+  - Barrels ride the turret above the roof and reach past the side, as before.
+- **Picked in the builder, one tap, undoable, saved:**
+  - `tests/hullStyles.test.js`: the command, undo and redo, the log, the hangar's refit taking no parts.
+  - By touch: the Ship tab's Hull buttons, Plated in one tap, the Hull view and the plans drawn Plated, Undo back to the very same Rounded drawing, Redo, a reload.
+- **`SAVE_VERSION` 16:** a v15 save's ships (the builder's, the campaign's, an approach's enemy) open Rounded, the same on every load (`tests/hullStyles.test.js`; by touch too).
+- **Codes, version 3:** carry the style; version 1 and 2 codes open Rounded; an unknown style opens Rounded (`tests/hullStyles.test.js`; by touch, a copied code and an old one pasted).
+- **Enemy ships:** one of the two from their seed, the same every time, both seen over 20 seeds of each preset. The layouts are unchanged: `tests/golden/ships.txt` didn't change.
+- **Where it's drawn:** by touch, the builder's plans and Hull view, the hangar, the lift-off and the Enemy ships sandbox, which also names the style.
+- **Cells 22 px or more:** `tests/orbit.test.js`. The smallest on the cover screen is 23.2 px, with the camera's room grown for the widest margin and the longest nose.
+- **Boarding maps:** the golden maps and replays didn't change.
+- **Frame budget:** see Verified.
+
+### Shipped
+
+- **Hull styles as data** (`data/hulls.json`, new): Rounded and Plated. Each has:
+  - a margin: how far out from the rooms the side stands (0.5 and 0.45 cells);
+  - its corners: round or cut, their size outside (`outer`, and `stern` at the back), how much an inner corner eases (`inner`), and a rounded corner's most `steps`;
+  - a `profile` from the roof's edge out and down to the side, as [out, up] pairs;
+  - where the livery `stripe` runs on the side, whether its faces are `smooth` or outlined, and its `roof` (tinted plates, or panels with seams);
+  - its `nose`: length from a base plus a share of the front's width, up to a most, the tip's height, rings from the hull to the tip, and `blunt` for a flat front.
+
+  `tools/validate-data.js` checks them (`hullStyleProblems` in `src/render/hullShape.js`) and that "rounded", the default, is there.
+- **The ship's style** (`src/sim/builder.js`):
+  - a ship is `{ frame, hull, modules, nextUid }`, and `newShip` gives the default;
+  - the `hull` command, `{ op: 'hull', style }`, restyles it, and is refused for a style there's none of;
+  - the session's `build/hull` is one undoable step ("Plated hull.", "Undone: plated hull.");
+  - a ship's log (`replay.js`) starts with its style when it isn't the default.
+- **`SAVE_VERSION` 16** (`src/core/save.js`): every ship from before is Rounded: the builder's slots, the campaign's ship and an approach's enemy.
+- **Blueprint codes, version 3** (`src/core/blueprint.js`): the style after the frame. Version 1 and 2 codes open Rounded, and so does a style this version doesn't have.
+- **Enemy ships** (`src/sim/gen/ship.js`): a style picked from the seed on a stream of its own, so every layout is as it was.
+- **The hull's shape** (`src/render/hullShape.js`, new), pure geometry:
+  - the traced outline as loops of straight runs, moved out in contours, one per point of the profile;
+  - outer corners rounded or cut, never into a cell; inner corners eased more the further out;
+  - a rounded corner takes the steps its size needs, pieces 0.55 cells or shorter, up to its style's;
+  - a nose on each run of the front column, carried forward from the hull's section there in rings, to a tip or a blunt front;
+  - for the scenes: the bands of the shoulder and side, the nose's surfaces, and where a ray from a cell leaves the side.
+- **Drawing it:**
+  - **Outside** (`exterior.js`):
+    - the bands in the hull's color, the livery stripe on the side;
+    - each module's roof plate, Plated's framed by a seam;
+    - the nose, Plated's with a dark flat front, with a window;
+    - nozzles in housings, and turrets, round or eight-sided as the corners are;
+    - collars and the stern's running lights on the side.
+
+    The lift-off's flames come out of the new nozzles (`liftOff.js`).
+  - **The blueprint's rim** (`shipScene.js`): the bands see-through, lines along the roof's edge and the side, the nose's surfaces and rings.
+  - **The painter** (`painter.js`): a piece of a curved surface is drawn grown by half a pixel instead of outlined in its own color, which hides the seams for less than a stroke costs. Normals are by Newell's method (`solid.js`), so a band piece that narrows to a point lights right.
+  - **The camera's room** (`hull.js` `OVERHANG`) grows for the widest margin and the longest nose a style may have.
+- **The builder** (`shipPanel.js`, `drawer.js`, `view.js`, `style.css`):
+  - a Hull group in the Ship tab, under Launch, with a 48 px button a style and the ship's own lit;
+  - the Hull view's hint names the style and where it's set ("From outside: a Plated hull, set in the Ship tab. Tap Hull for the plans.").
+- **The Enemy ships sandbox** names each ship's style in its info line, and Builder copies the ship with its style.
+- **The drawer's tabs** are 48 px or more on short screens. Construction mode's Hangar was 45 px at 821 × 283, on main too.
+- **Docs:** ROADMAP.md §4.1's auto-hull and M23d's Done when; CLAUDE.md's content and layout lists.
+- **Tests:** 611 in all, up from 596:
+  - the hull styles (`tests/hullStyles.test.js`, 8);
+  - the hull's shape (`tests/hullShape.test.js`, 6);
+  - the grown pieces (`tests/exterior.test.js`);
+  - the data checks (8 cases in `tests/data.test.js`);
+  - the tests that built ships without a style now expect one.
+
+### Decisions made this session
+
+- **Evan's call:** A and D, Rounded and Plated, from four mockups; both buildable, enemy ships rolled between them.
+- **Mine:**
+  - **Older ships are Rounded,** the default, in saves and codes.
+  - **The style changes only the look.** Stats, rules and the boarding map stay the layout's (tested).
+  - **The picker sits in the Ship tab, under Launch.** On the cover screen it is below the fold, a swipe away; the Hull view's hint says where it is. Launch and the checklist keep the top.
+  - **Barrels kept their place:** they ride the turret above the roof and reach past the new side.
+  - **An enemy's style comes from its seed on a stream of its own,** so no layout and no golden file changed.
+  - **Frame cost:** the first build cost up to 2.4 times main's per Hull-view frame (Rounded, on the hauler: 17.2 ms against 7.3). Three changes brought it down, look kept:
+    - curved pieces grown by half a pixel instead of outlined in their own color;
+    - each corner only the steps its size needs;
+    - no outlines on Plated's upright side, its shoulder steps keeping theirs.
+
+### Verified here
+
+- `node --test`: 611 pass. `node tools/validate-data.js`: OK. `data/balance.json` didn't change. No golden file changed.
+- **M23d's check** (scratchpad `m23d/verify.mjs`), by touch at 905 × 370, 821 × 283 and 960 × 825: 25 of 25 at each size.
+  - **The builder:** the Ship tab's Hull buttons, 48 px or more, Rounded pressed. One tap on Plated, and the Hull view and the plans draw it Plated. The hint names it. The slot saves it, the log keeps the step, and the parts stay as they were. Undo gives back the very same Rounded drawing, pixel for pixel; Redo, and a reload, keep Plated.
+  - **Codes:** the copied code is `wtb.3.` and carries Plated. Pasted back, it opens Plated; a version 2 code opens Rounded.
+  - **Construction mode at the hangar:** Plated in one tap, saved with the campaign's ship at once, no parts taken, undo and redo. The hangar draws it, and the lift-off plays with it.
+  - **The Enemy ships sandbox:** for each preset, the style its seed gives is named on its first three seeds, and again when a seed comes round. Builder copies a Plated cutter with its style.
+  - **A v15 save** opens as v16, its ships Rounded, the hangar drawn as before.
+  - **Offline**, the builder draws the Plated ship.
+  - No console errors or warnings.
+- **Frame cost**, this branch against main on the same machine. This is headless Chromium drawing canvas in software, so the ratios mean more than the numbers.
+  - **Per frame**, the real drawing code timed in the page over a full turn of the camera, median ms on the cover screen:
+
+    | Ship | main | Rounded | Plated |
+    | --- | --- | --- | --- |
+    | Example (the builder's) | 4.1 | 5.2 | 5.6 |
+    | Start ship, launch-ready | 4.5 | 5.2 | 6.1 |
+    | Cutter | 4.4 | 5.9 | 7.2 |
+    | Corvette | 11.1 | 13.6 | 15.5 |
+    | Hauler | 7.5 | 9.7 | 11.7 |
+
+    The lift-off: 5.3 ms on main, 6.4 Rounded, 7.4 Plated. The plans' ship (the example): 7.2, 8.6, 7.8.
+  - **Faces:** the example has 479 on main, 739 Rounded and 619 Plated; the corvette 1,363, 2,034 and 1,767.
+  - **Frame rate in the app while moving:** a finger circling on the Hull view and on the sandbox's Hull look for three seconds, and the lift-off as it plays. The middle of the half-second windows:
+    - **905 × 370 and 821 × 283:** 60 fps everywhere, as on main, with the same odd dropped frame.
+    - **960 × 825, two runs:** here headless Chromium misses 60 on main too.
+      - Builder's Hull view: main 58 to 60; Rounded 58; Plated 60.
+      - Lift-off: main 39 to 42; Rounded 39 to 42; Plated 39 to 40.
+      - Sandbox cutter: main 52 to 54; Rounded 50 to 52; Plated 46 to 54.
+      - Sandbox corvette: main 43 to 46; Rounded 39 to 41; Plated 41.
+      - Sandbox hauler: main 52; Rounded 46; Plated 39 to 45.
+  - **The lift-off frame by frame** at 905 × 370, three runs each: main 5 frames late of 844, Rounded 11 of 847, Plated 15 of 849. Main had a 283 ms stall in one run; the machine's noise is of that order.
+- **Regressions,** one after another, after the last change, at 905 × 370, 821 × 283 and 960 × 825 unless named:
+  - **M23c's check** (adapted in M23d, below): 25 of 25 at each size;
+  - **M23's check** (as adapted in M23c): 36 of 36 at each size;
+  - **M23b's check:** 8 of 8 at each size, with the new normals;
+  - **M22's check** (as adapted in M23): 35 of 35 at each size;
+  - **M21's check** (as adapted in M23): 32 of 32 at each size;
+  - **M19's check** (as adapted in M22): 52 of 52 at each size;
+  - **M20's check** (as adapted in M21): 32 of 32 at each size;
+  - **M18's check:** 43 of 43 at each size;
+  - **M17's check** (as adapted in M19): 37 of 37 at each size;
+  - **M16's check:** 29 of 29 at each size;
+  - **M15's check:** 30 of 30 at each size;
+  - **M14's saves check:** 10 of 10 at 905 × 370;
+  - **M13's check:** 24 of 24 at 905 × 370;
+  - **M8's fight sandbox checks:** a whole fight played by touch at each size, with no console errors; the orders column at each size, every order and crew button 48 px or more; all 8 extras, offline included, with no console errors;
+  - **M14's check:** 48 of 48 at 905 × 370, with a job of each kind played by touch.
+- **Found by the checks and the measurements:**
+  - **The first build cost up to 2.4 times main's** per Hull-view frame. Brought down as under Decisions.
+  - **The picker is below the fold** on the cover screen: my first scripted tap missed it. It stays there; the check swipes to it as a player would, and the Hull view's hint points to it.
+  - **A ship saved without a style** (my test kit's) showed neither button pressed. The picker now lights the style the ship is drawn in.
+  - **The Hull view's hint was cut off** at 821 × 283. It's shorter now and fits at every size.
+  - **Construction mode's Hangar tab was 45 px wide** at 821 × 283, on main too. Fixed.
+  - **M23c's check** asked for exactly save version 15. Its copy (scratchpad `m23c/verify23d.mjs`) asks for 15 or later. Nothing else in it changed.
+
+### Known issues
+
+- **The Enemy ships sandbox at 960 × 825:** the corvette and the hauler move at 2 to 13 fps under main's in headless Chromium (39 to 46, against main's 43 to 52). What a player sees holds main's frame rate at all three sizes. A player's own big ship in the builder's Hull view would cost about what the sandbox's does. If the phone stutters there, the fix is to give the Hull view the plans' rough frames while it moves.
+- **The Hull picker is below the fold on the cover screen**, under Launch in the Ship tab: a swipe brings it up.
+- **Rounded's curves are facets:** a big corner takes 4 steps, a small one fewer, each lit flat. Up close they show.
+- **The tab row on short screens** starts 8 px left of the drawer's content, to fit three tabs at 48 px.
+- **The approach screen shows no hull:** it draws both ships as their boarding maps, as since M21. ROADMAP.md §9 has an outside view beside each map.
+- **Ships from before are Rounded,** whatever their seed would roll now; that includes an enemy in an approach under way. It doesn't show: the approach draws maps.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **The builder:** open the Ship tab, swipe down to Hull and tap Plated. Look at the plans' rim and the Hull view, then Undo and Redo. Is the picker easy enough to find?
+2. **The hangar:** Build, pick a style in the Ship tab, then tap Hangar: is the hull in the new style?
+3. **Launch:** the lift-off with the new hull. Do the flames come out of the nozzles?
+4. **The Enemy ships sandbox** (dev): turn the corvette and the hauler in the Hull look, on the unfolded screen above all. Smooth?
+5. **Both screens.**
+6. **Tell me:**
+   - which style you'd fly;
+   - anything to change in either: corner size, the shoulder, the nose, the seams;
+   - whether the Hull view turns smoothly;
+   - and the M14 to M23c questions still open.
+
+### Next session
+
+**M23e Builder catalog and part variants.** Settle its Done when first. The draft is "at least 8 new parts, each doing something in play that no other part does as well, shown by `tools/approach.js`, `tools/sim.js` or the voyage player (Law 1); the drawer sorts parts into categories and filters them, two taps to place as now, every button 48 px or more; the shop sells them and enemy ships use some; and old saves and blueprint codes still load."
+
 ## M23c Portraits (2026-10-13)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every crew member has a face now: a helmet badge, drawn in code from a look saved with them.

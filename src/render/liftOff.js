@@ -3,7 +3,7 @@
 // it flies away nose first, gathering speed, until it is out of sight.
 // Pure: the scene is made once from the ship (exterior.js), and each moment
 // of the sequence, the camera and the flames, comes from the time alone.
-import { exteriorScene, HULL } from './exterior.js';
+import { exteriorScene } from './exterior.js';
 import { prepareSolid } from './painter.js';
 import { shade } from './solid.js';
 
@@ -15,7 +15,6 @@ export const CLIMB = 2.2;
 export const AWAY = 4.2;
 export const END = 4.8;
 
-const STEP = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 const GROW = 0.14; // how much nearer the climb brings the ship
 // How much smaller the ship is when it is gone. Shrinking pulls it back
 // toward the middle as it flies off; under half, flying wins all the way.
@@ -27,12 +26,8 @@ const LIFT = 0.05; // of the view's height, the climb moves the ship up
 // engines' flames come out: { faces, glows, exhausts: [{ at, dir }], skin }.
 // input: { ship, defs, hull: traceHull(ship, defs), skin }.
 export function liftOffScene(input) {
-  const { faces, glows } = exteriorScene(input);
-  // The mouth of each nozzle (exterior.js draws them).
-  const exhausts = input.hull.nozzles.map(({ x, y, side }) => {
-    const [dx, dy] = STEP[side];
-    return { at: [x + 0.5 + dx * 0.98, y + 0.5 + dy * 0.98, HULL / 2], dir: [dx, dy] };
-  });
+  // exhausts: the mouth of each nozzle, on the hull's skin (exterior.js).
+  const { faces, glows, exhausts } = exteriorScene(input);
   return { faces: prepareSolid(faces, shade), glows, exhausts, skin: input.skin };
 }
 

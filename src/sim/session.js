@@ -15,10 +15,11 @@
 // - A drag released on the grid places or moves at once. A part that can't
 //   go there stays as a ghost, and the notice says why.
 // Every change to the ship is a build command (applyCommand in builder.js),
-// kept in the history. The session also keeps the build log: every command
-// that made the ship from an empty frame, in order, which undo and redo keep
-// exact and the replay plays back (replay.js). Launch only goes ahead when
-// every line of the flight checklist passes (constraints.js).
+// the hull's style (build/hull) included, kept in the history. The session
+// also keeps the build log: every command that made the ship from an empty
+// frame, in order, which undo and redo keep exact and the replay plays back
+// (replay.js). Launch only goes ahead when every line of the flight
+// checklist passes (constraints.js).
 //
 // In construction mode (a campaign's hangar), the session has a stock: how
 // many of each part there are in all, on the ship and on hand. A part only
@@ -76,6 +77,8 @@ export function reduceSession(session, action, defs) {
       return redo(session);
     case 'build/launch':
       return launch(session, defs, action.crew);
+    case 'build/hull':
+      return restyle(session, defs, action.style);
     // A ship from elsewhere (another slot, a pasted blueprint, an imported
     // save) replaces this one with its log and stock, and the history
     // starts over.
@@ -245,6 +248,17 @@ function redo(session) {
   if (!entry) return session;
   const next = { ...session, ship: entry.after, log: [...session.log, entry.command], past: [...session.past, entry], future: session.future.slice(0, -1), ghost: placing(session) };
   return withNotice(focus(next, entry), 'info', `Redone: ${entry.label}.`);
+}
+
+// Gives the hull another style (data/hulls.json), a step undo takes back.
+// It changes how the ship looks from outside, and nothing else.
+function restyle(session, defs, style) {
+  const command = { op: 'hull', style };
+  const result = applyCommand(session.ship, defs, command);
+  if (!result.ok) return withNotice(session, 'bad', result.message);
+  if (result.ship === session.ship) return session;
+  const name = defs.hulls.get(style).name;
+  return withNotice(record(session, result.ship, command, `${name.toLowerCase()} hull`), 'good', `${name} hull.`);
 }
 
 // The launch itself is act 1's (M17); for now the check is the point: a

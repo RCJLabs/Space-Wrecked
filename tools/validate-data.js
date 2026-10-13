@@ -6,13 +6,15 @@
 //   node tools/validate-data.js
 import { pathToFileURL } from 'node:url';
 import { heldProblems, lookProblems } from '../src/render/figures/looks.js';
+import { hullStyleProblems } from '../src/render/hullShape.js';
 import { AIMS } from '../src/sim/approach.js';
+import { DEFAULT_HULL } from '../src/sim/builder.js';
 import { CAPTAIN_TRAITS } from '../src/sim/campaign.js';
 import { REQUIRED_TAGS } from '../src/sim/constraints.js';
 import { SITE_CHARS } from '../src/sim/gen/site.js';
 import { TRAIT_STATS } from '../src/sim/traits.js';
 import { TIP_IDS } from '../src/ui/tipSteps.js';
-import { isIntIn, isListIn, isRange, isText, listOf, uniqueIds } from './checks.js';
+import { isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 import { readData } from './data.js';
 import { checkCampaignFiles, checkStartShips } from './validate-campaign.js';
 
@@ -22,6 +24,10 @@ const MODULE_KEYS = ['id', 'name', 'glyph', 'manufacturer', 'size', 'rotates', '
 // What a med bay heals each of the wounded in a jump (medbay.js): up to this.
 const MAX_HEAL = 10;
 const FRAME_KEYS = ['id', 'name', 'width', 'height', 'shape', 'maxModules', 'minThrustToMass'];
+// A hull style (src/render/hullShape.js checks the shapes it asks for).
+const HULL_KEYS = ['id', 'name', 'margin', 'corners', 'outer', 'stern', 'inner', 'steps', 'profile', 'stripe', 'smooth', 'roof', 'nose'];
+const NOSE_KEYS = ['base', 'perWidth', 'max', 'tip', 'blunt', 'rings'];
+const MAX_HULL_NAME = 16;
 // balance.json: each number's allowed range.
 const BALANCE = {
   startingCrew: [1, 100],
@@ -146,7 +152,7 @@ export const KNOWN_TAGS = [
 
 // Returns a list of problems as "where: what" strings. Empty means valid.
 export function validateData(data) {
-  const { modules: moduleFile, frames: frameFile, manufacturers: makerFile, balance, weapons: weaponFile, jobs: jobFile, enemies: enemyFile, tiles: tileFile, encounters: encounterFile, ships: shipFile } = data;
+  const { modules: moduleFile, frames: frameFile, manufacturers: makerFile, hulls: hullFile, balance, weapons: weaponFile, jobs: jobFile, enemies: enemyFile, tiles: tileFile, encounters: encounterFile, ships: shipFile } = data;
   const problems = [];
   const fail = (where, message) => problems.push(`${where}: ${message}`);
 
@@ -154,6 +160,18 @@ export function validateData(data) {
   const makerIds = uniqueIds(makers, 'manufacturers.json', fail);
   makers.forEach((maker, i) => {
     if (!isText(maker.name)) fail(`manufacturers.json #${i}`, 'name must be a non-empty string');
+  });
+
+  // Hull styles (M23d): ships saved before them have the default one.
+  const hulls = listOf(hullFile, 'hulls', 'hulls.json', fail);
+  const hullIds = uniqueIds(hulls, 'hulls.json', fail);
+  if (!hullIds.has(DEFAULT_HULL)) fail('hulls.json', `there must be a "${DEFAULT_HULL}" style: ships from before hull styles have it`);
+  hulls.forEach((hull, i) => {
+    const where = `hulls.json ${hull.id ?? `#${i}`}`;
+    knownKeys(hull, HULL_KEYS, where, fail);
+    if (isObject(hull.nose)) knownKeys(hull.nose, NOSE_KEYS, `${where} nose`, fail);
+    if (!isText(hull.name) || hull.name.length > MAX_HULL_NAME) fail(where, `name must be up to ${MAX_HULL_NAME} letters`);
+    for (const problem of hullStyleProblems(hull)) fail(where, problem);
   });
 
   const frames = listOf(frameFile, 'frames', 'frames.json', fail);
@@ -574,7 +592,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const count = (n, noun) => `${n} ${noun}${n === 1 ? '' : 's'}`;
   console.log(
     `validate-data: OK (${count(data.modules.modules.length, 'module')}, ${count(data.frames.frames.length, 'frame')}, ` +
-      `${count(data.manufacturers.manufacturers.length, 'manufacturer')}, ${count(data.weapons.weapons.length, 'weapon')}, ` +
+      `${count(data.manufacturers.manufacturers.length, 'manufacturer')}, ${count(data.hulls.hulls.length, 'hull style')}, ${count(data.weapons.weapons.length, 'weapon')}, ` +
       `${count(data.jobs.jobs.length, 'crew job')}, ${count(data.traits.traits.length, 'trait')}, ${data.enemies.enemies.length} enem${data.enemies.enemies.length === 1 ? 'y' : 'ies'}, ` +
       `${count(data.encounters.encounters.length, 'encounter')}, ${count(data.ships.ships.length, 'ship preset')}, ` +
       `${count(data.campaign.acts.length, 'act')}, ${count(data.backgrounds.backgrounds.length, 'background')}, ` +

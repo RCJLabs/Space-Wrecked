@@ -42,13 +42,17 @@ test("each ship builds again part by part, and every step keeps the builder's ru
     const built = ship.result.ship;
     const again = buildShip(defs, built.frame, built.modules);
     assert.deepEqual(again.rejected, [], name(ship));
-    assert.deepEqual(again.ship, built, name(ship));
+    assert.deepEqual({ ...again.ship, hull: built.hull }, built, name(ship));
     // Its build log replays in the builder, and every ship on the way has
     // each part joined to the bridge and nothing facing space blocked (the
     // airlock comes last, so that rule waits for it).
-    const { ships, error } = replay(logFor(built), defs, built.frame);
+    // A step that gives the hull its style (M23d) changes no part.
+    const log = logFor(built);
+    const { ships, error } = replay(log, defs, built.frame);
     assert.equal(error, null, name(ship));
+    assert.deepEqual(ships.at(-1), built, name(ship));
     for (const [i, partway] of ships.slice(1).entries()) {
+      if (log[i].op === 'hull') continue;
       assert.deepEqual(layoutProblems(partway, defs).filter((p) => p.rule !== 'airlock'), [], `${name(ship)}, step ${i + 1}`);
     }
   }

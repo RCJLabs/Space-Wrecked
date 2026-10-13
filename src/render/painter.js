@@ -139,13 +139,18 @@ function paintGlows(ctx, glows, project, cam) {
 }
 
 // Solid faces (solid.js), lit and ready to draw: made once per scene.
-// Each keeps its fill, its middle (for sorting and facing) and its bias.
+// Each keeps its fill, its middle (for sorting and facing) and its bias. A
+// face whose edge is 'fill' (a piece of a curved surface) has no outline:
+// it is drawn grown by half a pixel instead, which hides the seams between
+// the pieces as an outline in its own color would, for less than a stroke
+// costs.
 export function prepareSolid(faces, shadeFace) {
   return faces.map((face) => {
     const n = face.pts.length;
     const mid = [0, 0, 0];
     for (const p of face.pts) for (let k = 0; k < 3; k++) mid[k] += p[k] / n;
-    return { pts: face.pts, normal: face.normal, mid, at: face.sortAt ?? mid, fill: shadeFace(face), edge: face.edge ?? null, bias: face.bias ?? 0 };
+    const grow = face.edge === 'fill';
+    return { pts: face.pts, normal: face.normal, mid, at: face.sortAt ?? mid, fill: shadeFace(face), edge: grow ? null : face.edge ?? null, grow, bias: face.bias ?? 0 };
   });
 }
 
@@ -167,10 +172,14 @@ export function paintSolid(ctx, faces, glows, cam, { edges = true, items = [] } 
       continue;
     }
     ctx.beginPath();
-    for (let i = 0; i < face.pts.length; i++) {
-      const q = project(face.pts[i]);
-      if (i === 0) ctx.moveTo(q[0], q[1]);
-      else ctx.lineTo(q[0], q[1]);
+    if (face.grow) {
+      pathGrown(ctx, face.pts, project, 0.5);
+    } else {
+      for (let i = 0; i < face.pts.length; i++) {
+        const q = project(face.pts[i]);
+        if (i === 0) ctx.moveTo(q[0], q[1]);
+        else ctx.lineTo(q[0], q[1]);
+      }
     }
     ctx.closePath();
     ctx.fillStyle = face.fill;
@@ -181,6 +190,54 @@ export function paintSolid(ctx, faces, glows, cam, { edges = true, items = [] } 
     }
   }
   paintGlows(ctx, glows, project, cam);
+}
+
+// Traces a face's outline on the screen moved out by `by` pixels at every
+// side, its corners mitred (a sharp one no further out than 3 × by). Sides
+// of no length are passed over, and a face seen edge on is traced as it
+// is. Works in buffers kept from frame to frame, so a frame of curved
+// pieces makes no garbage.
+const SCREEN = { x: new Float64Array(32), y: new Float64Array(32), nx: new Float64Array(32), ny: new Float64Array(32) };
+function pathGrown(ctx, pts, project, by) {
+  const n = pts.length;
+  if (n > SCREEN.x.length) for (const key of Object.keys(SCREEN)) SCREEN[key] = new Float64Array(n * 2);
+  const { x, y, nx, ny } = SCREEN;
+  let area = 0;
+  for (let i = 0; i < n; i++) {
+    const q = project(pts[i]);
+    x[i] = q[0];
+    y[i] = q[1];
+  }
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    area += x[i] * y[j] - x[j] * y[i];
+  }
+  if (Math.abs(area) < 1e-6) {
+    for (let i = 0; i < n; i++) ctx.lineTo(x[i], y[i]);
+    return;
+  }
+  // Each side's outward normal; NaN for a side of no length.
+  const sign = area > 0 ? 1 : -1;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const dx = x[j] - x[i];
+    const dy = y[j] - y[i];
+    const length = Math.hypot(dx, dy);
+    nx[i] = length < 1e-6 ? NaN : (sign * dy) / length;
+    ny[i] = length < 1e-6 ? NaN : (-sign * dx) / length;
+  }
+  for (let i = 0; i < n; i++) {
+    let before = -1;
+    let after = -1;
+    for (let k = 1; k <= n && before < 0; k++) if (!Number.isNaN(nx[(i - k + n) % n])) before = (i - k + n) % n;
+    for (let k = 0; k < n && after < 0; k++) if (!Number.isNaN(nx[(i + k) % n])) after = (i + k) % n;
+    if (before < 0 || after < 0) {
+      ctx.lineTo(x[i], y[i]);
+      continue;
+    }
+    const scale = by / Math.max(1 + nx[before] * nx[after] + ny[before] * ny[after], 2 / 9);
+    ctx.lineTo(x[i] + (nx[before] + nx[after]) * scale, y[i] + (ny[before] + ny[after]) * scale);
+  }
 }
 
 // The faces that face the camera, and the items, back to front: [{ face }

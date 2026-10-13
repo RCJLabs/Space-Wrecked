@@ -116,7 +116,7 @@ test('save v15 keeps the looks; a v14 crew gets looks from its ids, apart and th
   for (const a of crew) for (const b of crew) if (a !== b) assert.ok(looksApart(a.look, b.look) >= LOOKS_APART);
   assert.deepEqual(up(v14), up(structuredClone(v14)), 'the same on every load');
   assert.deepEqual(crew.map((m) => m.look), v14crew.map((m, i) => crewLook(campaign.seed, m.id, crew.slice(0, i).map((c) => c.look))));
-  const loaded = migrate({ version: 14, data: v14 });
+  const loaded = migrate({ version: 14, data: v14 }, { target: 15 });
   assert.equal(loaded.version, 15);
   assert.deepEqual(loaded.data.campaign.crew, crew);
   assert.deepEqual(up({ ...v14, campaign: null }).campaign, null, 'no campaign, nothing to do');

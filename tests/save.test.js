@@ -213,12 +213,14 @@ const fineLog = [
   { op: 'place', uid: 1, type: 'bridge', x: 15, y: 5, rot: 0 },
   { op: 'place', uid: 2, type: 'corridor', x: 13, y: 5, rot: 0 },
 ];
+// ...and from save version 16 (M23d), with the default hull style.
+const fineStyled = { ...fine, hull: 'rounded' };
 
 test("an M3 save's ship (v1) becomes slot 1, numbered in build order, with a log that builds it", () => {
   const v1 = { version: 1, data: { settings: { fpsCap: 60 }, rng: 5, ship } };
   const result = parseSave(JSON.stringify(v1));
   assert.equal(result.ok, true, result.error);
-  assert.deepEqual(result.save.data, { settings: defaultSettings(), rng: 5, builds: { active: 0, slots: [{ name: 'Ship 1', ship: fine, log: fineLog }] }, campaign: null });
+  assert.deepEqual(result.save.data, { settings: defaultSettings(), rng: 5, builds: { active: 0, slots: [{ name: 'Ship 1', ship: fineStyled, log: fineLog }] }, campaign: null });
   const none = parseSave(JSON.stringify({ version: 1, data: { settings: { fpsCap: 60 }, rng: 5, ship: null } }));
   assert.deepEqual(none.save.data.builds, emptyBuilds(), 'no ship yet: no slots');
   assert.equal(importSave(craftSave(v1)).ok, true, 'an M3 export code imports too');
@@ -233,7 +235,7 @@ test("an M5 save (v2) moves every slot's ship and log to the fine grid", () => {
   const result = parseSave(JSON.stringify(v2));
   assert.equal(result.ok, true, result.error);
   const [first, second] = result.save.data.builds.slots;
-  assert.deepEqual(first, { name: 'Ship 1', ship: fine, log: fineLog });
+  assert.deepEqual(first, { name: 'Ship 1', ship: fineStyled, log: fineLog });
   assert.deepEqual(second.log.slice(2), [{ op: 'move', uid: 2, x: 13, y: 7, rot: 1 }, { op: 'move', uid: 2, x: 13, y: 5, rot: 0 }, { op: 'remove', uid: 2 }]);
   assert.equal(result.save.data.builds.active, 1);
   assert.equal(importSave(craftSave(v2)).ok, true, 'an M5 export code imports too');
@@ -279,6 +281,8 @@ test("validate refuses saved ships it can't read", () => {
     { active: 0, slots: [{ ...slot, log: undefined }] },
     { active: 0, slots: [{ ...slot, log: [{ op: 'teleport' }] }] },
     { active: 0, slots: [{ ...slot, ship: { ...tidy, frame: '' } }] },
+    { active: 0, slots: [{ ...slot, ship: { ...tidy, hull: '' } }] },
+    { active: 0, slots: [{ ...slot, ship: { ...tidy, hull: 7 } }] },
     { active: 0, slots: [{ ...slot, ship: { ...tidy, nextUid: 2 } }] },
     { active: 0, slots: [{ ...slot, ship: { ...tidy, modules: [{ uid: 1, type: 'bridge', x: 0.5, y: 0, rot: 0 }] } }] },
   ];
@@ -290,7 +294,8 @@ test('an M5b save (v3) loads with its ships and no campaign yet', () => {
   const v3 = { version: 3, data: { settings: { fpsCap: 60 }, rng: 5, builds } };
   const result = parseSave(JSON.stringify(v3));
   assert.equal(result.ok, true, result.error);
-  assert.deepEqual(result.save, { version: SAVE_VERSION, data: { settings: defaultSettings(), rng: 5, builds, campaign: null } });
+  const styled = { active: 0, slots: [{ name: 'Ship 1', ship: fineStyled, log: fineLog }] };
+  assert.deepEqual(result.save, { version: SAVE_VERSION, data: { settings: defaultSettings(), rng: 5, builds: styled, campaign: null } });
   assert.equal(importSave(craftSave(v3)).ok, true, 'an M5b export code imports too');
 });
 

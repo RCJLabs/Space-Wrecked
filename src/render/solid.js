@@ -2,7 +2,8 @@
 // normals, so the painter can drop the ones facing away, light the rest and
 // draw them back to front. A face is
 //   { pts: [[x, y, z], ...], normal: [x, y, z], color, edge?, emissive?, alpha?, bias? }
-// color is '#rrggbb'; edge is a stroke color for its outline; an emissive
+// color is '#rrggbb'; edge is a stroke color for its outline, or 'fill' for
+// its own lit color (which hides the seams of a curved surface); an emissive
 // face isn't shaded; alpha (0 to 1) lets what is behind it show through;
 // bias nudges its place in the draw order (negative is
 // nearer), and sortAt, a point, sorts it as if it were there (paint on a
@@ -95,15 +96,20 @@ export function placeFaces(faces, def, { x, y, rot }) {
   });
 }
 
-// The outward normal of a flat polygon, given a point inside the solid.
+// The outward normal of a polygon, given a point inside the solid. Newell's
+// method, so a corner given twice (a hull's band where it narrows to a
+// point, hullShape.js) is no trouble, and a polygon a little off flat gets
+// its average.
 export function normalOf(pts, inside) {
-  const [a, b, c] = pts;
-  const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-  const v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
-  let n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+  let n = [0, 0, 0];
+  for (let i = 0; i < pts.length; i++) {
+    const [a, b] = [pts[i], pts[(i + 1) % pts.length]];
+    n = [n[0] + (a[1] - b[1]) * (a[2] + b[2]), n[1] + (a[2] - b[2]) * (a[0] + b[0]), n[2] + (a[0] - b[0]) * (a[1] + b[1])];
+  }
   const len = Math.hypot(...n) || 1;
   n = n.map((k) => k / len);
-  const out = [a[0] - inside[0], a[1] - inside[1], a[2] - inside[2]];
+  const mid = [0, 1, 2].map((k) => pts.reduce((sum, p) => sum + p[k], 0) / pts.length);
+  const out = [mid[0] - inside[0], mid[1] - inside[1], mid[2] - inside[2]];
   return n[0] * out[0] + n[1] * out[1] + n[2] * out[2] < 0 ? n.map((k) => -k) : n;
 }
 

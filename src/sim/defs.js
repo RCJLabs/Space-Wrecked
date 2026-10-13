@@ -4,10 +4,10 @@
 // empty tables.
 
 // The content files, by name: data/<name>.json.
-export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'events', 'recruits', 'tips'];
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'hulls', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'events', 'recruits', 'tips'];
 
 export function indexDefs(files) {
-  const { modules, frames, manufacturers, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, events, recruits, tips } = files;
+  const { modules, frames, manufacturers, hulls, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, events, recruits, tips } = files;
   return {
     balance,
     tilesPerCell: modules.tilesPerCell,
@@ -15,6 +15,9 @@ export function indexDefs(files) {
     modules: byId(modules.modules),
     frames: byId(frames.frames),
     manufacturers: byId(manufacturers?.manufacturers),
+    // How a hull is shaped around the rooms (src/render/hullShape.js), by
+    // id: a ship's hull names one (builder.js).
+    hulls: byId(hulls?.hulls),
     // Battles: what each kind of tile does, the weapons, and who fights:
     // crew by their job, and enemies.
     tileRules: tiles?.tiles ?? {},

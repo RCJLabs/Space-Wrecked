@@ -1,34 +1,38 @@
 // Blueprint codes: a ship as a short line of text that players copy and
 // paste between devices. A code is
 //   wtb.<version>.<payload>.<checksum>
-// The payload is base64url bytes: the frame's id, the part types the ship
-// uses, then each part in build order as three bytes: its type, x, and
-// y × 4 + its quarter turns. Decoding rebuilds the ship through the
-// builder's placement rules, so a code can only make a ship the builder
-// could have made. Whitespace is ignored, so codes survive chat apps.
-// Decoding never throws: every way a code can be wrong has a message.
+// The payload is base64url bytes: the frame's id, the hull's style, the part
+// types the ship uses, then each part in build order as three bytes: its
+// type, x, and y × 4 + its quarter turns. Decoding rebuilds the ship
+// through the builder's placement rules, so a code can only make a ship the
+// builder could have made. Whitespace is ignored, so codes survive chat
+// apps. Decoding never throws: every way a code can be wrong has a message.
 //
 // Versions:
 //   1  M5, on the old grid
 //   2  M5b's fine grid, four cells to each old one. A version 1 code still
 //      opens: its parts move to the fine grid (regrid.js).
+//   3  the hull's style after the frame (M23d). A version 1 or 2 code opens
+//      in the default style, as older saves' ships do.
 import { config } from '../config.js';
-import { buildShip } from '../sim/builder.js';
+import { buildShip, DEFAULT_HULL } from '../sim/builder.js';
 import { regridPlacement } from '../sim/regrid.js';
 import { base64UrlToBytes, bytesToBase64Url, checksum } from './codec.js';
 
-export const BLUEPRINT_VERSION = 2;
+export const BLUEPRINT_VERSION = 3;
 const PREFIX = `${config.appId}b`;
 const SAVE_PREFIX = `${config.appId}.`;
 
-// The code for a ship: its frame and its parts in build order.
+// The code for a ship: its frame, its hull's style and its parts in build
+// order.
 export function encodeBlueprint(ship) {
-  return encodePlacements(ship.frame, ship.modules);
+  return encodePlacements(ship.frame, ship.modules, BLUEPRINT_VERSION, ship.hull);
 }
 
-// The code for a frame and placements [{ type, x, y, rot }], unchecked.
-// Tests use it to make codes the game would never make.
-export function encodePlacements(frameId, placements, version = BLUEPRINT_VERSION) {
+// The code for a frame and placements [{ type, x, y, rot }], unchecked, with
+// the hull's style from version 3. Tests use it to make codes the game
+// would never make.
+export function encodePlacements(frameId, placements, version = BLUEPRINT_VERSION, hull = DEFAULT_HULL) {
   const types = [...new Set(placements.map((p) => p.type))];
   const bytes = [];
   const text = (value) => {
@@ -37,6 +41,7 @@ export function encodePlacements(frameId, placements, version = BLUEPRINT_VERSIO
     bytes.push(chars.length, ...chars);
   };
   text(frameId);
+  if (version >= 3) text(hull);
   if (types.length > 255 || placements.length > 255) throw new RangeError('blueprint: too many parts');
   bytes.push(types.length);
   types.forEach(text);
@@ -68,9 +73,9 @@ export function decodeBlueprint(text, defs) {
   }
   const version = Number(versionText);
   if (version > BLUEPRINT_VERSION) return fail('This blueprint comes from a newer version of the game. Update the game, then try again.');
-  if (version !== BLUEPRINT_VERSION && version !== 1) return fail(`Blueprints of version ${version} can't be read.`);
+  if (version < 1) return fail(`Blueprints of version ${version} can't be read.`);
 
-  const read = unpack(payload);
+  const read = unpack(payload, version);
   if (!read) return fail("The code is damaged and can't be read.");
   if (!defs.frames.has(read.frame)) return fail(`This blueprint is for a hull this version of the game doesn't have ("${read.frame}").`);
   const unknown = [...new Set(read.placements.map((p) => p.type))].filter((type) => !defs.modules.has(type));
@@ -78,12 +83,15 @@ export function decodeBlueprint(text, defs) {
   const placements = version === 1 ? read.placements.map(regridPlacement) : read.placements;
   const { ship, rejected } = buildShip(defs, read.frame, placements);
   if (rejected.length) return fail(`This blueprint doesn't fit together: ${rejected[0].message}`);
-  return { ok: true, ship };
+  // A style this version doesn't have changes only the look: the ship
+  // opens in the default style.
+  const hull = defs.hulls?.has(read.hull) ? read.hull : DEFAULT_HULL;
+  return { ok: true, ship: hull === ship.hull ? ship : { ...ship, hull } };
 }
 
-// The payload's bytes as { frame, placements }, or null if they don't
-// follow the layout exactly.
-function unpack(payload) {
+// The payload's bytes as { frame, hull, placements }, or null if they don't
+// follow the layout of the code's version exactly.
+function unpack(payload, version) {
   let bytes;
   try {
     bytes = base64UrlToBytes(payload);
@@ -100,8 +108,9 @@ function unpack(payload) {
     return /^[a-z][a-z0-9-]*$/.test(value) ? value : null;
   };
   const frame = text();
+  const hull = version >= 3 ? text() : DEFAULT_HULL;
   const typeCount = byte();
-  if (frame === null || typeCount === null) return null;
+  if (frame === null || hull === null || typeCount === null) return null;
   const types = [];
   for (let i = 0; i < typeCount; i++) {
     const type = text();
@@ -116,7 +125,7 @@ function unpack(payload) {
     if (t >= types.length) return null;
     placements.push({ type: types[t], x, y: packed >> 2, rot: packed & 3 });
   }
-  return { frame, placements };
+  return { frame, hull, placements };
 }
 
 function fail(error) {

@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "ef02255150bd";
+const VERSION = "15ed0ccaf858";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -16,6 +16,7 @@ const FILES = [
   "data/enemies.json",
   "data/events.json",
   "data/frames.json",
+  "data/hulls.json",
   "data/jobs.json",
   "data/manufacturers.json",
   "data/modules.json",
@@ -60,6 +61,7 @@ const FILES = [
   "src/render/figures/weapon.js",
   "src/render/frameBudget.js",
   "src/render/hull.js",
+  "src/render/hullShape.js",
   "src/render/layer.js",
   "src/render/liftOff.js",
   "src/render/loop.js",

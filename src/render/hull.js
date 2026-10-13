@@ -5,13 +5,15 @@
 // cells (the board's world units); the 3D scenes raise it into walls. Ships
 // fly toward +x.
 import { spaceTest } from '../sim/builder.js';
+import { MAX_MARGIN, MAX_NOSE } from './hullShape.js';
 import { createGrid, exteriorOf, SIDES, step, withCells } from '../sim/grid.js';
 import { facingSide, hasTag, placedCells, sideCells } from '../sim/modules.js';
 
-// Room the camera keeps around the ship, in cells, for what sticks out of
-// the hull: nozzles at the stern, the nose at the front, barrels and collars
-// above and below.
-export const OVERHANG = { left: 1.1, right: 1.7, top: 0.7, bottom: 0.7 };
+// Room the camera keeps around the ship, in cells, for the hull round its
+// rooms and what sticks out of it (hullShape.js, exterior.js): the side
+// out to the widest margin a style has, nozzles at the stern, the longest
+// nose at the front, barrels and collars above and below.
+export const OVERHANG = { left: MAX_MARGIN + 1.1, right: MAX_NOSE + 0.2, top: MAX_MARGIN + 0.3, bottom: MAX_MARGIN + 0.3 };
 
 // The longest a nose gets, in cells.
 export const NOSE_MAX = 1.5;

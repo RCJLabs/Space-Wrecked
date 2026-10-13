@@ -4,6 +4,7 @@
 // (mesh.js) of named styles out, which the painter draws with the blueprint
 // styles. Units are cells, one per battle tile.
 import { footprint } from '../sim/modules.js';
+import { hullBands, hullShape, noseSurfaces, sidePoint, styleOf } from './hullShape.js';
 import { box, closed, createModel, cylinder, face, glow, mapModel, merge, polyline, rect } from './mesh.js';
 import { palette } from './palette.js';
 import { placeModel, propsModel } from './props.js';
@@ -27,7 +28,8 @@ export function blueprintScene(input) {
   const { ship, defs, doors, hull } = input;
   const model = createModel();
   const labels = [];
-  deckAndRim(model, hull);
+  const shape = hullShape(hull, styleOf(defs, ship));
+  deckAndRim(model, hull, shape);
 
   for (const module of ship.modules) {
     const def = defs.modules.get(module.type);
@@ -46,7 +48,7 @@ export function blueprintScene(input) {
       labels.push({ at: [(x0 + x1) / 2, (y0 + y1) / 2, WALL], text: def.name, tone: 'info' });
     }
   }
-  greebles(model, hull);
+  greebles(model, hull, shape);
   return { model, labels };
 }
 
@@ -79,21 +81,26 @@ export function gridModel(frame, margin = 8) {
   return model;
 }
 
-function deckAndRim(model, hull) {
+// The deck under the ship, and the hull round it in its style (hullShape.js):
+// the shoulder and side as see-through bands, lines along the roof's edge,
+// the top of the side and the base, and the noses, ring by ring.
+function deckAndRim(model, hull, shape) {
   for (const [x, y] of [...hull.cells, ...hull.pockets]) face(model, 'deck', [[x, y, 0], [x + 1, y, 0], [x + 1, y + 1, 0], [x, y + 1, 0]]);
   for (const tri of hull.fairings) face(model, 'deck', tri.map(([x, y]) => [x, y, 0]));
-  for (const { a, b } of hull.edges) {
-    face(model, 'rimFace', [[...a, 0], [...b, 0], [...b, RIM], [...a, RIM]]);
-    polyline(model, 'rimTop', [[...a, RIM], [...b, RIM]]);
-    polyline(model, 'rimBase', [[...a, 0], [...b, 0]]);
+  for (const band of hullBands(shape, RIM)) face(model, 'rimFace', band.pts);
+  for (const { levels } of shape.loops) {
+    const [roof, side, base] = [levels[0], levels[levels.length - 2], levels[levels.length - 1]];
+    polyline(model, 'rimTop', closed(roof.pts.map((p) => [...p, roof.h * RIM])));
+    if (side !== roof) polyline(model, 'rimTop', closed(side.pts.map((p) => [...p, side.h * RIM])));
+    polyline(model, 'rimBase', closed(base.pts.map((p) => [...p, 0])));
   }
-  for (const nose of hull.noses) {
-    const mid = (nose.y0 + nose.y1) / 2;
-    const tip = [nose.x + nose.length, mid, RIM * 0.45];
-    const base = [[nose.x, nose.y0, 0], [nose.x, nose.y0, RIM], [nose.x, nose.y1, RIM], [nose.x, nose.y1, 0]];
-    for (let i = 0; i < 4; i++) {
-      face(model, 'noseFace', [base[i], base[(i + 1) % 4], tip]);
-      polyline(model, i === 0 || i === 3 ? 'rimBase' : 'rimTop', [base[i], tip]);
+  for (const nose of shape.noses) {
+    const rings = nose.rings.map((ring) => ring.map(([x, y, h]) => [x, y, h * RIM]));
+    for (const { pts } of noseSurfaces(nose, RIM)) face(model, 'noseFace', pts);
+    for (const ring of rings.slice(1)) polyline(model, 'rimTop', closed(ring));
+    if (nose.tip) {
+      const tip = [nose.tip[0], nose.tip[1], nose.tip[2] * RIM];
+      for (const p of rings[rings.length - 1]) polyline(model, p[2] > tip[2] ? 'rimTop' : 'rimBase', [p, tip]);
     }
   }
 }
@@ -153,14 +160,15 @@ function wallRun(model, doors, spans, t0, t1, point) {
   piece(from, t1, post, false);
 }
 
-// What sticks out of the hull: nozzles with their exhaust, gun barrels and
-// docking collars.
-function greebles(model, hull) {
+// What sticks out of the hull, on its side: nozzles with their exhaust,
+// gun barrels and docking collars.
+function greebles(model, hull, shape) {
   for (const { x, y, side } of hull.nozzles) {
     const [dx, dy] = STEP[side];
-    const start = [x + 0.5 + dx * 0.48, y + 0.5 + dy * 0.48, 0.36];
+    const [sx, sy] = sidePoint(shape, [x + 0.5, y + 0.5], [dx, dy]);
+    const start = [sx + dx * 0.02, sy + dy * 0.02, 0.36];
     cylinder(model, start, 0.17, (dx || dy) * 0.5, { axis: dx ? 'x' : 'y', r1: 0.32, fill: null, ends: 'nozzleFace', edge: 'propEdge' });
-    glow(model, [x + 0.5 + dx * 1.15, y + 0.5 + dy * 1.15, 0.36], 0.4, palette.bpLine);
+    glow(model, [sx + dx * 0.69, sy + dy * 0.69, 0.36], 0.4, palette.bpLine);
   }
   for (const { x, y, side } of hull.barrels) {
     const [dx, dy] = STEP[side];
@@ -174,11 +182,11 @@ function greebles(model, hull) {
   }
   for (const { x, y, side } of hull.collars) {
     const [dx, dy] = STEP[side];
-    const [cx, cy] = [x + 0.5 + dx * 0.5, y + 0.5 + dy * 0.5];
-    const [along, out] = [0.34, 0.22];
-    const a = [cx - (dy ? along : 0) + Math.min(0, dx * out), cy - (dx ? along : 0) + Math.min(0, dy * out)];
-    const b = [cx + (dy ? along : 0) + Math.max(0, dx * out), cy + (dx ? along : 0) + Math.max(0, dy * out)];
-    box(model, [...a, 0], [...b, 0.4], { fill: 'propFace', edge: 'propEdge' });
+    const [cx, cy] = sidePoint(shape, [x + 0.5, y + 0.5], [dx, dy]);
+    const [across, out] = [0.3, 0.22];
+    const a = [cx - (dy ? across : 0) + Math.min(0, dx * out), cy - (dx ? across : 0) + Math.min(0, dy * out)];
+    const b = [cx + (dy ? across : 0) + Math.max(0, dx * out), cy + (dx ? across : 0) + Math.max(0, dy * out)];
+    box(model, [...a, 0], [...b, 0.3], { fill: 'propFace', edge: 'propEdge' });
   }
 }
 

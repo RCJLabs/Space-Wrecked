@@ -1,7 +1,7 @@
 // Builds played back. A ship's build log is every command that made it from
 // an empty frame, in order (session.js keeps it as the player builds), so
 // replaying the log shows the build step by step: the timelapse. Pure.
-import { applyCommand, newShip } from './builder.js';
+import { applyCommand, DEFAULT_HULL, newShip } from './builder.js';
 
 // The ship after each step: ships[0] is the empty frame, ships[n] the ship
 // after n commands. A command that no longer applies (content changed since
@@ -18,10 +18,12 @@ export function replay(log, defs, frameId) {
   return { ships, error: null };
 }
 
-// A log that builds the ship part by part in its build order. It only
-// reproduces the ship exactly when its uids run 1, 2, 3...: see renumbered.
+// A log that builds the ship part by part in its build order, its hull's
+// style first unless it is the default. It only reproduces the ship exactly
+// when its uids run 1, 2, 3...: see renumbered.
 export function logFor(ship) {
-  return ship.modules.map(({ uid, type, x, y, rot }) => ({ op: 'place', uid, type, x, y, rot }));
+  const style = ship.hull && ship.hull !== DEFAULT_HULL ? [{ op: 'hull', style: ship.hull }] : [];
+  return [...style, ...ship.modules.map(({ uid, type, x, y, rot }) => ({ op: 'place', uid, type, x, y, rot }))];
 }
 
 // The ship with its parts numbered 1, 2, 3... in build order.
@@ -32,13 +34,15 @@ export function renumbered(ship) {
   return { ...ship, modules, nextUid };
 }
 
-// True if replaying the log makes exactly this ship: the same parts, ids,
-// places and turns in the same order (however a save wrote its keys).
+// True if replaying the log makes exactly this ship: the same hull style,
+// and the same parts, ids, places and turns in the same order (however a
+// save wrote its keys).
 export function logMatches(log, ship, defs) {
   const { ships, error } = replay(log, defs, ship.frame);
   if (error) return false;
   const built = ships.at(-1);
   return (
+    built.hull === ship.hull &&
     built.nextUid === ship.nextUid &&
     built.modules.length === ship.modules.length &&
     built.modules.every((m, i) => {
@@ -68,6 +72,7 @@ export function isCommand(value) {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
   const whole = (n) => Number.isInteger(n);
   if (value.op === 'remove') return whole(value.uid) && value.uid > 0;
+  if (value.op === 'hull') return typeof value.style === 'string' && value.style !== '';
   if (value.op !== 'place' && value.op !== 'move') return false;
   if (value.op === 'move' && !(whole(value.uid) && value.uid > 0)) return false;
   if (value.op === 'place' && value.uid !== undefined && !(whole(value.uid) && value.uid > 0)) return false;
