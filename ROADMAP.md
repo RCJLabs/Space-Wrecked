@@ -43,7 +43,7 @@ The game has three acts, and the home moves at each gate.
 
 Every act runs the same mission loop: hub, travel, node, mission, aftermath, then push on or regroup.
 
-**Launch** (M17, `src/sim/launch.js`): once every flight check passes, Launch at the hangar ends act 1. The ship lifts off, and the campaign moves on to act 2 with its ship, crew, credits, parts and heat. The hangar's job board, shop, payments and raids stay behind. A raid at the door doesn't stop it: the pursuer finds an empty hangar. From M19 act 2's home is the sector map (§4.7): the run crosses the act's sectors by jumps, eating supplies (§4.6). Since M20 the nodes along the way hold events: derelicts, distress calls, traders and hazards. Past the last sector's jump point the charts end, for now, with the stub's words.
+**Launch** (M17, `src/sim/launch.js`): once every flight check passes, Launch at the hangar ends act 1. The ship lifts off, and the campaign moves on to act 2 with its ship, crew, credits, parts and heat. The hangar's job board, shop, payments and raids stay behind. A raid at the door doesn't stop it: the pursuer finds an empty hangar. From M19 act 2's home is the sector map (§4.7): the run crosses the act's sectors by jumps, eating supplies (§4.6). Since M20 the nodes along the way hold events: derelicts, distress calls, traders and hazards. Since M21 some hold hostile ships, met in the approach phase (§4.2). Past the last sector's jump point the charts end, for now, with the stub's words.
 
 Act length targets (proposed, to check in play): act 1 under an hour, act 2 the longest, act 3 open-ended.
 
@@ -123,6 +123,21 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - one side is disabled and boarded
   - a ship is destroyed, which leaves only scrap
 - Damaged modules carry into the boarding map as wrecked rooms: fire, vacuum or rubble.
+- **As built in M21** (`src/sim/approach.js`, pure; the numbers in `data/balance.json`, each preset's tactics and scrap in `data/ships.json`):
+  - **Who goes first:** each round the other ship's order is worked out from its tactics and shown first, and then the player gives one. The player answers it; the other ship never sees the player's order.
+  - **The odds,** each kept within 5 to 95 (`chanceMin`, `chanceMax`):
+    - a gun hits at 70 (`gunnery`) less the target's evasion, and 20 less again (`evadeBonus`) while the target evades;
+    - evasion is 25 (`evasionPerThrust`) times the ship's thrust for its mass, from the engines still working;
+    - fleeing works at 35% (`fleeChance`) and closing to board at 30% (`closeChance`), each moved 50 points for every point of thrust for mass the ship has over the other.
+  - **A round** goes flights first (the player's first), then both volleys at once, each from the ship as it stood when the round began, then boardings. So a ship disabled by the volleys can't close.
+  - **Hits:** every working gun fires once. A hit does 15 (`gunDamage`), less what the target's shields still hold this round (10 a working generator, `shieldPerGen`), to the module of the kind aimed at with the fewest hit points left. A full hit wrecks an engine, a gun or a shield generator; a reactor takes two. A roll says whether a wrecked room burns, is open to vacuum or is full of rubble.
+  - **Outcomes:** a ship with no working reactor or no working engine is disabled, and the other boards it; both disabled, they drift apart. A ship whose last reactor is wrecked blows up 30 times in 100 (`blowChance`), which leaves only scrap. The player's ship never blows. After 3 rounds (`approachRounds`) the ships part.
+  - **Tactics** (data): what a ship fires at, first choice first; the round it closes to board from; and how much of its guns', engines', shields' and reactors' hit points it can lose before it runs. The pirate cutter fires at engines, then guns, closes from round 2 and runs at half lost. The patrol corvette fires at guns, then the reactor, never closes, and runs at 70% lost.
+  - **The player's Board** is shown with its odds but can't be given until M22's boarding fights (`PLAYER_CLOSES`). The stand-in below can't tell a crew boarding a stronger ship from one boarding a wreck, so until then the player boards only a disabled ship.
+  - **Stand-ins until M22** (`src/sim/encounter.js`): when the player boards, the crew strips one working part, picked by a roll, and the preset's scrap in credits (cutter 10 to 25, corvette 20 to 40); a ship that blew up leaves only the scrap. When the other crew boards, it takes what a lost raid takes (§4.4): the dearest part on hand, or half the credits.
+  - **Damage stays.** The player's wrecked modules carry into the next approach and into the ship's boarding map (Law 2) until a station repairs them (§4.6). When an approach leaves no reactor or no engine working, the crew gets the first one going again, so the ship can always fly on.
+  - **The screen:** both ships are drawn as their boarding maps, side by side and facing each other, so a wrecked room shows its hazard. It shows the other ship's order with its odds, the orders along the bottom with theirs (two taps to give one), and the last round, roll by roll. Every chance is shown before its roll, a last reactor's blow-up included.
+  - **Balance** (`tools/approach.js`, a test captain that looks ahead, 300 approaches for each row, M21): the launched start ship gets away about 60% of the time and is boarded about 18%. A weapon mount turns the cutter into a win (69% boarded, 17% boarded by it). A shield cuts the cutter's boardings from 18% to 12% and the corvette's from 19% to 3%. An engine cuts both to 7 or 8%. With or without a part, the start ship never boards a corvette: it is one to run from.
 
 ### 4.3 Squad battles
 
@@ -194,6 +209,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - Heat goes along when the ship launches (M17), raid or no raid, into act 2.
 - **Act 2 so far** (M19, `src/sim/travel.js`): a jump adds 3 heat and a long jump takes 10 off (`jumpHeat`, `longJumpHeat`), from 0 to 100. Nothing in act 2 reads heat yet: the hunters at nodes, regrouping and transponders are M24. Leaving a sector is a jump. Without long jumps, heat is at or near 100 by the end of the third sector (87 to 100 over 30 test runs, M19).
   - Since M20 a scan adds 2 heat (`scanHeat`), and some event choices add or take heat: stripping a company wreck with its transponder still pinging (+8), cracking a courier pod open (+10), tossing a stalled miner a crate (−4), running dark in the rocks (−6). M20's test player ends act 2 at heat 79 at the median (45 to 100); with no long jumps, 100 (97 to 100).
+  - Since M21 an approach adds 4 heat (`approachHeat`) if a gun fired in it. M21's test player weighs what a long jump passes by, so it takes fewer (3 at the median, against M20's 7), and ends act 2 at heat 100 (87 to 100).
 - **In act 3**, heat decays slowly, distance from pursuer space lowers what you gain, and raid frequency follows heat.
 
 ### 4.5 Characters
@@ -217,6 +233,8 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - **Tuning** (M19's test player, `tools/voyage.js`, 30 launches from M16's test runs): 12 lockers at 3 credits starved every run, since 12 supplies don't reach from one station to the next. At 24 and 1 credit, a careful player with no long jumps crosses three sectors without going hungry in 18 of 30 runs, and all five in 8. The runs that go hungry launched with few credits: launch money is median 50 (0 to 220), and act 2 pays nothing until M20's nodes. M20 retunes this once nodes pay.
   - **Retuned in M20,** when the nodes began to pay (M20's test player, the same 30 launches, long jumps at heat 50 or over; with no long jumps in brackets): with M19's 24 lockers and 1 or 2 stations a sector, 12 of 30 runs crossed all five sectors fed (15), though the nodes paid the median run over 100 credits. Money wasn't the problem: the holds ran dry between supply stops. Two stations in every sector alone made 17 (24); 30 lockers alone, 14 (20); doubling the traders' weight alone, 12 (18). Both, 30 lockers and 2 stations a sector: 25 of 30 (24), and 21 with no scans.
 - **What the nodes pay** (M20, `data/events.json`): credits and supplies from derelicts and distress calls, and parts from derelicts; supplies sold cheap, and parts bought, by traders; and a cost at hazards, in hit points or supplies. Each choice's chances are shown and rolled as shown (§4.7). M20's test player settles 11 events a run at the median (5 to 13): 130 credits and 8 supplies from them, 3 parts found, 6 hit points lost. Act 2 still has nothing else to spend credits on; the median run ends with about 100 (180 with no long jumps).
+- **Repairs** (M21, `src/sim/repair.js`): a module wrecked in an approach stays wrecked until a station repairs it, for a quarter of its cost (`repairPercent` 25) in steps of 5 credits: a gun or a shield generator 35, an engine or a reactor 50. Repair, on the sector map at a station, takes two taps and repairs what the credits cover, the cheapest first.
+- **What hostile ships pay and take** (M21): boarding one pays a part stripped from it and its scrap; being boarded costs what a lost raid takes (§4.2). M21's test player, with no long jumps, meets 2 a run at the median (0 to 4), boards none, and loses something to one in 11 of 30 runs, never more than 55 credits or 2 parts. It still crosses all five sectors fed in 25 of 30 (24 in M20). With long jumps from heat 50 it does so in 21 of 30 (25 in M20).
 - **Act 1 target:** launch in under an hour. M16's test player (`tools/run.js`) launches after 7 jobs at the median (3 to 14 over 50 runs), in 26 to 92 minutes at the slow pace, every run under an hour at the quick pace. The target before M16 was 8 to 12 jobs, but 12 jobs can't fit in an hour at Gate 2's 5 to 8 minutes a fight; M16 tuned for the hour. The engine's price moves it. Check in play.
 
 ### 4.7 Generators (all seeded)
@@ -247,7 +265,8 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Act 2's sectors** (M19 and M20, `src/sim/gen/sector.js`, pure; `data/sectors.json`) are node maps in 7 columns: the way in alone in the first, the jump point alone in the last, and 2 or 3 nodes in each column between.
   - **Links** join each node to the next column by its height in its column, so none cross and every node can be reached both ways. Between any two columns, 35% of the time (`extraLinkChance`), one link more is added where it crosses nothing.
   - **Stations**, 2 a sector since M20 (1 or 2 in M19), each stand in a column of their own.
-  - **The other nodes** roll their kind from the data's mix, by weight: empty space 3, derelict 2, distress call 2, trader 1, hazard 2 (M20). A node of a kind that holds events gets one of its kind from `data/events.json`, none twice in a sector while the kind's events last.
+  - **The other nodes** roll their kind from the data's mix, by weight: empty space 3, derelict 2, distress call 2, trader 1, hazard 2 (M20), hostile ship 2 (M21). A node of a kind that holds events gets one of its kind from `data/events.json`, none twice in a sector while the kind's events last.
+  - **A hostile ship** (M21) is a preset by weight and a seed: a pirate cutter 3, and from the third sector a patrol corvette 1. The ship is generated from them (M10) when the ship meets it, and saved whole with the approach.
   - **Names** come from the data's lists, none twice in a sector, and no sector's name twice in a run.
   - **A jump** goes to a linked node, and a long jump to one two links away. Either can go back as well as on. From the jump point, leaving is a jump into the next sector's way in. Act 2 has 5 sectors (`sectors` in `data/campaign.json`).
   - **Rolls:** each sector is rolled from the campaign's RNG as the ship enters it, and saved whole. The same seed always gives the same sector (golden file `tests/golden/sectors.txt`).
@@ -257,18 +276,20 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - **Its outcomes** each have a chance in 100. One roll from 0 to 99 picks the outcome whose share it falls in, so the odds shown are the odds rolled (Law 4).
   - **Effects:** credits; supplies, up to what the holds take; heat; a wound, hit points off one crew member picked by a roll or off everyone, never the last one; a part, given or from a drop table; and selling parts on hand, the dearest first, at the shop's price.
   - **After:** the run keeps the events settled and the last one's result until the next jump. The validator checks every event, so adding one needs no engine edits.
+- **Hostile ships** (M21, `src/sim/encounter.js`, pure): arriving at a node with one opens the approach (§4.2), which holds every jump and scan until it is over. Each order plays a round with the campaign's RNG. When it ends, the stand-ins settle it, the node is done, and the approach stays on screen with its outcome until Carry on.
 
 ### 4.8 Saves
 
 - `SAVE_VERSION` gates all saves, with a migration for every bump. Never reset player saves.
 - Every change to the campaign is saved as it happens (M12): at the hub, as a fight begins, after every order in a fight, and as it ends. This list first named the start of each player turn; saving only there would let a player quit after a miss, reopen to the same roll and spend it on another shot.
 - A saved fight holds its battle whole, the map and its RNG state included, so a game update between quitting and reopening can't move a wall under a unit.
-- The game reopens at the title, and Continue goes back to where the campaign was: the hub, or the fight as it stood. Past act 1 that is the sector map (M19); the stub stays for act 3. The lift-off is only a screen: launching saves the campaign in act 2 at once, so quitting during it reopens past it.
+- The game reopens at the title, and Continue goes back to where the campaign was: the hub, or the fight as it stood. Past act 1 that is the sector map (M19), or an approach as it stood (M21); the stub stays for act 3. The lift-off is only a screen: launching saves the campaign in act 2 at once, so quitting during it reopens past it.
 - The RNG state is part of the save.
 - Settings can export and import a save as text. A TWA shares Chrome's storage, so clearing Chrome's data wipes saves; the export is the player's backup. Since M18, Settings has Export, Copy and Import; Import checks the code, and a second tap replaces the save.
 - The settings themselves (difficulty, forgiving odds, motion, frame rate, tips and the tips put away) are part of the save (v9, M18).
 - The run (v10, M19): the supplies, and the sector the ship is in, saved whole with where it is, where it has been and the sectors behind it. A v9 campaign gets no supplies and no run; the run begins when the map first opens, holds full.
 - Events and scans (v11, M20): the events settled in the sector, the scans made, and the last event's result; a node's event is saved with its sector. A v10 run carries on with nothing settled or scanned. Its sector keeps its nodes as they were, with no events, and the next sector has them.
+- The approach phase (v12, M21): the ship's wrecked modules, and the approach under way, round by round, with the other ship saved whole; a node's hostile ship is saved with its sector. A v11 campaign has nothing wrecked and no approach. Its sector keeps its nodes, with no hostile ships, and the next sector has them.
 - The builder keeps up to six ships in slots, each with the build log its replay plays back. A single ship travels between devices as a blueprint code.
 
 ---
@@ -412,10 +433,13 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
   - scanning: what a node holds is unknown until the ship is near or scans it
 
   **Done when:** ten events play from `data/events.json`, each choice's odds shown and rolled as shown; scanning shows what a node holds before the ship gets there; and the nodes pay the run's way: over 30 test runs from launch, the test player, picking nodes for what they hold, crosses all five sectors without going hungry in at least 24 (M19, with nothing at the nodes: 8).
-- [ ] **M21 Approach phase** (§4.2).
+- [x] **M21 Approach phase** (§4.2).
+  - hostile ships at nodes, met in the approach phase: up to 3 rounds of fire, evade, flee or board, against the other ship's tactics
+  - damage that stays: wrecked modules carry into the boarding map and the next approach until a station repairs them, for credits
+  - stand-ins for the boarding fights until M22: boarding strips a part and takes scrap; boarded, you lose what a lost raid takes
 
-  **Done when (draft):** a hostile ship at a node fights the approach phase to one of its outcomes with the odds shown, and its damage carries into the boarding map as wrecked rooms.
-- [ ] **M22 Boarding both ways.** Boarded, the fight is on your own layout (Law 2); boarding, it is on the enemy's generated ship (M10). Salvage after.
+  **Done when:** hostile ships at nodes fight the approach phase to an outcome (escape, disabled and boarded, or destroyed), every roll at the odds shown; in `tools/approach.js`, a weapon mount, a shield or an engine added to the launched start ship each does better against at least one hostile preset and worse against none (Law 1); damage carries into the boarding map as wrecked rooms and stays until a station repairs it; a stand-in settles boardings until M22; and the careful test player (no long jumps) still crosses all five sectors fed in at least 24 of 30.
+- [ ] **M22 Boarding both ways.** Boarded, the fight is on your own layout (Law 2), wrecked rooms and all; boarding, it is on the enemy's generated ship (M10). It replaces M21's stand-ins, and the player's Board order opens against a ship that can still fight. Salvage after.
 
   **Done when (draft):** both directions play out from the approach phase, and every boarding leaves parts, salvage or wounds behind (Law 3).
 - [ ] **M23 Recruits, crew management, med bay healing.**
@@ -467,6 +491,7 @@ A Capacitor build; a paid version with a web demo; optional cloud saves on Base4
 | Players build chokepoint fortresses | Balance runs show defenders always win. AI against AI on the example ship, the crew of 3 wins 64% (58–70) against 4 boarders (`tools/sim.js`, M11). With the airlock moved under the bridge it wins 83% | Enemies breach walls and choose entry points; corridors stay two tiles wide. Since M9 the AI breaches doors: it opens one and shoots through, which overwatch can't punish |
 | Fights stall in standoffs | AI-against-AI fights reach the round limit. The harness's 1,000 fights in M11 stalled on 24% of cutters, 9% of corvettes and 5% of haulers, and none on the example ship. Both sides hold on overwatch either side of a chokepoint. Boarders never attack a crew that holds the bridge: with a crew that only ends its turn, 5 of 5 fights reached 60 rounds on the example ship and on the campaign's start ship (M12). A campaign fight can't be left until one side wins, so there the player has to go to them. On jobs (M14) the AI waits behind a closed door as the crew's AI would: `tools/jobs.js` plays the crew with a player that pushes in and opens doors, and then every job ends. Raiders press on (M15, `src/sim/press.js`): of 360 raids played out on three ships, one went past 60 rounds | Candidates, Evan's call: boarders press on as raiders do, cutting through walls, ships with a second way round. `tools/sim.js` reports the stalls ("No winner") |
 | A raid's odds swing with the ship's layout | The AI crew against four raiders wins 11 of 60 on the example ship, 22 on the start ship and 39 once it has an engine (M15) | Candidates, Evan's call after the phone: three raiders, or raiders scaled to the ship; cover on the hangar deck; the crew choosing where to stand |
+| Hostile ships are only a cost | M21's test player, flying the start ship as act 1 leaves it, boards none in 30 runs and loses something to one in 11 | A gun fitted before launch turns the cutter into a win (§4.2); refits in act 2 (§9); M22's boarding fights and what they pay |
 | Percentage misses feel unfair | Testers complain about high-odds misses | Clearer cover display, the forgiving-odds setting, the math always shown |
 | 3D on canvas runs slowly on mid-range phones | Dropped frames turning or zooming the board (M4), or in battles (M8) | Rough half-resolution frames while the camera moves or units walk, only on a phone too slow for full ones (the frame budget, after M6: they blurred zooming on the Fold); cache the still board, and in a fight redraw it only when something on it changed (M8); fewer lines, cap the pixel ratio. Past that: three.js (MIT, one vendored file, no build step), with Evan's approval |
 | Lost saves | Reports after Chrome data is cleared | Persistent storage request, export and import, migrations |
@@ -515,8 +540,12 @@ These ideas wait until v0.4 or later:
 - names on the sector map: M19 names a node in the left panel when it is picked. Every name on the chart would crowd it at 7 columns on the cover screen (raised in M19)
 - tips for the run: what a jump costs, long jumps, stations and hunger (raised in M19)
 - a scanner part: scanning comes from the ship as such since M20. A sensor module that lengthens `scanRange` would tie scanning to the build, as Law 1 asks (raised in M20)
-- more for credits to buy in act 2: M20's runs end with about 100 unspent. Repairs, recruits (M23) and bribes (M24) are the likely sinks (raised in M20)
-- events that start a fight: M20's events settle with a roll. Ambushes and boardings at nodes come with M21 and M22 (raised in M20)
-- refits in act 2: parts found at the nodes can only be sold, at a scrap dealer, since construction mode stays in act 1's hangar. Refitting at stations, or between jumps, would make them worth fitting (raised in M20)
+- more for credits to buy in act 2: M20's runs end with about 100 unspent. Repairs came in M21; recruits (M23) and bribes (M24) are the likely sinks to come (raised in M20)
+- events that start a fight: M20's events settle with a roll. M21 put hostile ships on nodes of their own; a distress call that turns out to be a trap would join the two (raised in M20)
+- refits in act 2: parts found at the nodes can only be sold, at a scrap dealer, since construction mode stays in act 1's hangar. Refitting at stations, or between jumps, would make them worth fitting (raised in M20). It matters more since M21: a part stripped from a boarded ship can't be fitted either
+- shots in the approach: M21 shows a hit as the wrecked room's hazard and a line in the log. Tracers, a flash on the module hit and a shudder would make a round read at a glance (raised in M21)
+- an answer to the corvette besides running: the start ship never boards one, with or without a part (M21). M22's Board order may be it; a toll to pay a patrol off is another (raised in M21)
+- scrap by what is left: a boarded ship pays its preset's scrap whatever the volleys broke (raised in M21)
+- repairs away from stations: an engineer patching a wreck between jumps, or salvage as the stock repairs use (§4.6) (raised in M21)
 
 Ideas that come up during a session go here, not into code.

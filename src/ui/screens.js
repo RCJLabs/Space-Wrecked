@@ -1,6 +1,7 @@
 // Maps state.screen to a screen module: the title and its settings, making
 // a captain, the campaign's screens (src/sim/root.js CAMPAIGN_SCREENS) and
 // the dev sandboxes.
+import { approachScreen } from './campaign/approach.js';
 import { captainScreen } from './campaign/captain.js';
 import { constructionScreen } from './campaign/construction.js';
 import { campaignFightScreen } from './campaign/fight.js';
@@ -25,6 +26,7 @@ const screens = {
   'campaign-fight': campaignFightScreen,
   launch: launchScreen,
   sector: sectorScreen,
+  approach: approachScreen,
   stub: stubScreen,
 };
 

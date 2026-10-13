@@ -1,16 +1,18 @@
 // The sector map: act 2's home, on the run (src/sim/travel.js). The
 // sector's nodes stand on a chart in the middle, linked column to column
 // from the way in to the jump point, each marked with what it holds once
-// that is known (stations, derelicts, distress calls, traders, hazards),
-// and with a ? until then. The ship's node is marked, and the nodes a jump
-// reaches are ringed: solid for a jump, dashed for a long one. A tap on a
-// node shows on the left what the jump there takes, and a second tap, or
-// Jump, makes it: one tap never moves the ship. An event where the ship
-// arrives opens its card (eventCard.js) over the chart, and nothing moves
-// until a choice is made. At a station Buy sells supplies, Scan shows what
-// nodes within reach hold, and at the jump point Jump on leads into the
-// next sector, each two taps, the first saying what it costs; past the
-// act's last jump point the charts end, for now. The crew and the holds
+// that is known (stations, derelicts, distress calls, traders, hazards,
+// hostile ships), and with a ? until then. The ship's node is marked, and
+// the nodes a jump reaches are ringed: solid for a jump, dashed for a long
+// one. A tap on a node shows on the left what the jump there takes, and a
+// second tap, or Jump, makes it: one tap never moves the ship. An event
+// where the ship arrives opens its card (eventCard.js) over the chart, and
+// nothing moves until a choice is made; a hostile ship there opens the
+// approach screen (approach.js). At a station Buy sells supplies and Repair
+// fixes what an approach wrecked, Scan shows what nodes within reach hold,
+// and at the jump point Jump on leads into the next sector, each two taps,
+// the first saying what it costs; past the act's last jump point the
+// charts end, for now. The crew and the holds
 // are on the right, heat by the act. The run begins, its first sector
 // rolled, the first time the map opens.
 //
@@ -28,7 +30,7 @@ import { eventText, resultText } from './eventText.js';
 import { crewRows, heatChip, listRows, panel } from './hubParts.js';
 import { jumpText, sectorText } from './sectorText.js';
 
-const ARM_MS = 3000; // Jump on, Buy and Scan wait this long for a second tap
+const ARM_MS = 3000; // Jump on, Buy, Repair and Scan wait this long for a second tap
 const SVG = 'http://www.w3.org/2000/svg';
 const MARKS = {
   start: icons.wayIn,
@@ -38,6 +40,7 @@ const MARKS = {
   distress: icons.distress,
   trader: icons.tag,
   hazard: icons.hazard,
+  hostile: icons.hostile,
   unknown: icons.unknown,
 };
 
@@ -184,8 +187,10 @@ export const sectorScreen = {
 
       const buy = typeof armed === 'number' ? text.offer?.buys.find((entry) => entry.count === armed) : null;
       if (typeof armed === 'number' && !buy) disarm();
+      if (armed === 'repair' && !text.repair?.ok) disarm();
       const said = armed === 'on' ? { tone: leave.tone === 'bad' ? 'bad' : 'warn', text: `${leave.lines.join(' ')} Tap Jump on again.` }
         : armed === 'scan' ? { tone: 'warn', text: scan.text }
+        : armed === 'repair' ? { tone: 'warn', text: text.repair.text }
         : buy ? { tone: 'warn', text: buy.text }
         : plan ? planHint(plan)
         : result ? { tone: 'info', text: 'Carry on to the chart.' }
@@ -294,6 +299,16 @@ export const sectorScreen = {
         button.setAttribute('aria-label', `Buy ${entry.count} supplies`);
         return { button, detach: onTap(button, () => twoTaps(entry.count, () => game.dispatch({ type: 'campaign/supplies', count: entry.count, rules: defs }))) };
       });
+      // Repairs, for what an approach wrecked.
+      const { repair } = text;
+      if (repair) {
+        const button = toolButton('sct-buy sct-repair', icons.build, armed === 'repair' ? repair.ask : repair.label);
+        button.dataset.armed = String(armed === 'repair');
+        button.disabled = !repair.ok;
+        button.setAttribute('aria-label', repair.ok ? repair.text.replace(' Tap again to repair.', '') : repair.why);
+        buyButtons.push({ button, detach: onTap(button, () => twoTaps('repair', () => game.dispatch({ type: 'campaign/repair', rules: defs }))) });
+        if (!repair.ok) infoLines.append(lineItem(repair.why, 'bad'));
+      }
       buys.replaceChildren(...buyButtons.map((entry) => entry.button));
       buys.hidden = !buyButtons.length;
       setText(infoText, here.text);

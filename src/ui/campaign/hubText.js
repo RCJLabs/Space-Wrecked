@@ -149,8 +149,10 @@ export function continueText(campaign, rules) {
   const { fight, run } = campaign;
   const what = fight?.raid ? 'The raid' : fight?.job ? rules?.contracts.jobs.get(fight.job.contract)?.title ?? 'On a job' : 'In a fight';
   const kind = fight?.raid ? 'The raid' : fight?.job ? 'A job' : 'A fight';
+  const approach = run?.approach;
+  const facing = approach && (approach.outcome ? `${approach.enemy.name}, over` : `${approach.enemy.name}, round ${approach.round}`);
   const at = fight
     ? fight.battle.winner ? `${kind} just ended` : `${what}, round ${fight.battle.round}`
-    : run ? `Sector ${run.sector.index} · ${run.sector.name}` : rules && actOf(campaign, rules)?.home;
+    : facing ?? (run ? `Sector ${run.sector.index} · ${run.sector.name}` : rules && actOf(campaign, rules)?.home);
   return at ? `Act ${campaign.act} · ${at}` : `Act ${campaign.act}`;
 }

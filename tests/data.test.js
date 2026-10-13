@@ -27,6 +27,7 @@ const twist = (d, id) => d.contracts.twists.find((t) => t.id === id);
 const job = (d, id) => d.contracts.jobs.find((j) => j.id === id);
 const event = (d, id) => d.events.events.find((e) => e.id === id);
 const small = (d) => Object.assign(d.frames.frames[0], { width: 4, height: 4 });
+const hostile = (d) => d.sectors.nodes.find((node) => node.id === 'hostile');
 const cases = [
   ['duplicate id', (d) => d.modules.modules.push(structuredClone(d.modules.modules[0])), /duplicate id "bridge"/],
   ['unknown manufacturer', (d) => (d.modules.modules[0].manufacturer = 'acme'), /unknown manufacturer "acme"/],
@@ -180,6 +181,17 @@ const cases = [
   ['job drop weighted at nothing', (d) => (job(d, 'scrap').drops.parts.engine = 0), /engine's weight must be a whole number from 1 to 100/],
   ['job drops with nothing in them', (d) => (job(d, 'repo').drops.parts = {}), /with at least one/],
   ['job pitch with a word that can\'t be filled in', (d) => (job(d, 'rent').pitch = 'Pay {rent}.'), /"\{rent\}" can't be filled in: use \{client\}, \{site\}/],
+  // M21: the approach phase.
+  ['tactics aiming at the bridge', (d) => (d.ships.ships[0].tactics.aim = ['bridge']), /cutter tactics: aim must list kinds to fire at/],
+  ['tactics boarding in round 0', (d) => (d.ships.ships[0].tactics.board = 0), /board must be the round it closes from/],
+  ['tactics with an unknown field', (d) => (d.ships.ships[0].tactics.taunt = true), /cutter tactics: unknown field "taunt"/],
+  ['scrap that is not a range', (d) => (d.ships.ships[0].scrap = 20), /scrap must be \[least, most\] credits/],
+  ['hostile ships of an unknown preset', (d) => (hostile(d).ships[0].ship = 'dreadnought'), /unknown ship preset "dreadnought"/],
+  ['hostile ships with no tactics', (d) => hostile(d).ships.push({ ship: 'hauler', weight: 1 }), /the Derelict hauler has no tactics/],
+  ['hostile ships none of them in the first sector', (d) => (hostile(d).ships = [{ ship: 'corvette', weight: 1, from: 2 }]), /needs a ship for the first sector/],
+  ['hostile ships from past the last sector', (d) => (hostile(d).ships[1].from = 9), /from must be a sector from 1 to 5/],
+  ['a kind with ships and events', (d) => (hostile(d).events = true), /a kind with ships holds no events/],
+  ['approach rounds of none', (d) => (d.balance.approachRounds = 0), /approachRounds must be a whole number from 1 to 10/],
 ];
 
 test('the validator names each kind of mistake', () => {
@@ -208,5 +220,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 8 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 8 kinds of sector node, 10 events\)/);
+  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 8 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 9 kinds of sector node, 10 events\)/);
 });

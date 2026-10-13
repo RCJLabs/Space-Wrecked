@@ -2,6 +2,223 @@
 
 Newest entry first.
 
+## M21 Approach phase (2026-10-13)
+
+**Status:** done, and the ROADMAP.md box is ticked. Evan said "Start the next milestone". Before I settled the Done when, Evan answered two questions: boardings run now, settled by a stand-in until M22; and repairs happen at stations. I settled the rest myself from the draft and wrote it into ROADMAP.md §7. I changed two of its lines during the session, once the numbers were in: the Law 1 test, and which test player the voyage guard uses (Decisions, below). No phone results have come back yet for M14 to M20.
+
+Done when: "hostile ships at nodes fight the approach phase to an outcome (escape, disabled and boarded, or destroyed), every roll at the odds shown; in `tools/approach.js`, a weapon mount, a shield or an engine added to the launched start ship each does better against at least one hostile preset and worse against none (Law 1); damage carries into the boarding map as wrecked rooms and stays until a station repairs it; a stand-in settles boardings until M22; and the careful test player (no long jumps) still crosses all five sectors fed in at least 24 of 30."
+- **Hostile ships fight to an outcome:**
+  - `tests/approach.test.js` and `tests/encounter.test.js` play approaches to getting away, boarding either way, blowing up, parting, and the other ship running.
+  - `tests/voyage.test.js`'s 60 voyages meet at least 30 hostile ships, with escapes and boardings by them among the outcomes.
+  - By touch, an approach played to its end and Carry on went back to the chart.
+- **Every roll at the odds shown:**
+  - Over 1,500 seeds, every shot rolls against the chance shown before the round, hits when the roll is under it, and lands within 4 points of it.
+  - Every flight and boarding rolls at the chance shown before the round, the other ship's included: its order shows its chance. A last reactor's blow-up rolls at the 30% that Fire at their reactor shows.
+  - The screen's numbers are the rules' (`tests/approachText.test.js`).
+  - By touch, Fire showed "49% × 1", and its volley rolled against 49.
+- **Law 1** (`tests/approach.test.js`, 120 approaches a row): each of the three parts scores at least 10 points better against one preset, and no more than 3 worse against either. The 300-approach table is below.
+- **Damage carries and stays:**
+  - After a round that wrecks rooms on both ships, both boarding maps have each wrecked room's hazard on every tile.
+  - The player's wrecks stay after the approach and come into the next. A station repairs them (`tests/encounter.test.js`).
+  - By touch, the boarded cutter's map was marked, and a station's Repair took two taps.
+- **The stand-in:** `tests/encounter.test.js`. By touch, a boarding said "Stripped: an Engine. Scrap: 20 credits."
+- **The careful test player:** 25 of 30 runs crossed all five sectors fed (24 needed).
+
+### Shipped
+
+- **Hostile ships at nodes** (`data/sectors.json`): a new kind of node, weight 2 in the mix. Each has a preset by weight and a seed: a pirate cutter 3, and from the third sector a patrol corvette 1. The ship is generated from them (M10) when met.
+- **The approach phase** (`src/sim/approach.js`, pure; ROADMAP.md §4.2 has the rules in full):
+  - **Rounds:** up to 3. The other ship's order comes first and is shown; then the player fires at their guns, engines, shields or reactor, evades, flees or boards.
+  - **Odds:** guns against evasion, which comes from thrust for mass. Fleeing and closing are moved by the difference in thrust for mass. Every chance is kept within 5 to 95.
+  - **Hits:** shields soak up hits first. A hit lands on the module of the kind aimed at with the fewest hit points left, and a wrecked module's room burns, opens to vacuum or fills with rubble.
+  - **Outcomes:** no working reactor or engine means disabled and boarded. The other ship's last reactor going can blow it up (30%); the player's ship never blows.
+  - **Tactics** (`data/ships.json`): what each preset aims at, the round it closes to board from, and the share lost at which it runs.
+  - **The player's Board** is shown with its odds, but refused until M22 ("Boarding a ship that can still fight comes with the boarding fights.").
+- **In the run** (`src/sim/encounter.js`):
+  - **Opening:** arriving at a hostile node opens the approach, which holds jumps, scans and leaving. Each order plays a round with the campaign's RNG, saved.
+  - **The end:**
+    - Boarding them: one working part, picked by a roll, and the preset's scrap (cutter 10 to 25, corvette 20 to 40). Destroying them: the scrap alone.
+    - Boarded: what a lost raid takes (M15's `raidLoss`).
+    - Heat +4 if a gun fired.
+    - The node is settled, and the flags count the approach, won or lost. They count repairs too.
+  - **Wrecks stay** in `campaign.wrecks` and come into the next approach. If none is left working, the crew gets the first reactor and the first engine going again, so a run can't be stranded.
+- **Repairs** (`src/sim/repair.js`): at a station, a quarter of the part's cost in steps of 5 credits (a gun or shield 35, an engine or reactor 50). The cheapest are repaired first, as far as the credits go.
+- **The approach screen** (`src/ui/campaign/approach.js`, words in `approachText.js`):
+  - **The ships:** both drawn as their boarding maps, side by side, the other turned to face yours. A wrecked room shows its hazard as it happens.
+  - **The column:** words only, and it may scroll. It shows:
+    - their order with its odds ("The cutter fires at your engines: 2 guns, 40% each (20% if you evade).");
+    - what the order you tapped would do;
+    - the last round, roll by roll ("Your gun at their engines, 49%: 21 hit. Their Engine wrecked, full of rubble.").
+  - **The orders:** along the bottom, each 48 px or more with its odds. The first tap spells an order out and stands down after 3 s; the second gives it. One that can't be given says why.
+  - **The end:** how it ended and what it came to, the boarded ship's map marked, and Carry on.
+- **The sector map:**
+  - hostile nodes have their own mark, a raider's hull in the crosshairs;
+  - a picked node names its ship ("Hostile ship: Pirate cutter"), and "Hostile ship, gone" once met;
+  - the Ship panel lists what is wrecked aboard;
+  - at a station with wrecks, Repair sits beside the supplies (two taps).
+  - The title's Continue names an approach ("Act 2 · Pirate cutter, round 2").
+- **`SAVE_VERSION` 12:**
+  - **New fields:** the campaign's wrecks, and the run's approach (the other ship saved whole); a node can carry a hostile ship.
+  - **From v11:** a campaign has nothing wrecked and no approach. Its sector keeps its nodes, and the next sector has hostile ships.
+  - **Shape checks:** the run's and campaign's cover the new fields.
+- **Balance** (`data/balance.json`):
+  - `approachRounds` 3, `gunnery` 70, `evasionPerThrust` 25, `evadeBonus` 20;
+  - `chanceMin` 5, `chanceMax` 95;
+  - `gunDamage` 15, `shieldPerGen` 10;
+  - `fleeChance` 35, `fleePerThrust` 50, `closeChance` 30, `closePerThrust` 50;
+  - `blowChance` 30, `approachHeat` 4, `repairPercent` 25.
+- **Tools:**
+  - **`node tools/approach.js`** (new; with `--runs` and `--set`): the launched start ship against each hostile preset, and again with a weapon mount, a shield or an engine added. Its test captain (`tools/approachPlan.js`) looks ahead: it plays each order out 16 times on shared seeds, scoring a win +1 and a loss −1.
+  - **`node tools/voyage.js`:**
+    - meets hostile ships with that captain;
+    - repairs at stations with the credits left beyond a holdful's price;
+    - counts a hostile node as −30 credits on its routes;
+    - takes a long jump only if the way on from there is fed and worth as much.
+    - The summary adds a line for hostile ships.
+  - **The validators** check tactics, scrap, and a node kind's ships (presets with tactics, weights, the sector each comes from).
+  - **`tools/sectors.js`** marks hostile nodes `h`.
+- **Tests:** 539 in all, up from 517:
+  - the rules (`tests/approach.test.js`, 10): odds, rolls as shown, shields and targets, the round's order, blowing up, tactics, Board refused, wrecked rooms on the map, Law 1;
+  - the run (`tests/encounter.test.js`, 7): opening and holding, orders, the stand-ins, wrecks kept and jury-rigged, repairs, save v12, through the game's actions;
+  - the screen's words (`tests/approachText.test.js`, 5), every number on it the one rolled;
+  - the voyage test's step checks for approaches and repairs, and the Done when (`tests/voyage.test.js`).
+- **Golden files:** `tests/golden/sectors.txt` changed on purpose. The nodes' places and links are as before. Their kinds and names changed with the new mix, and hostile nodes list their preset and seed.
+
+### Decisions made this session
+
+- **Evan's calls:**
+  - **Boarding before M22:** "Run, with a stand-in". Hostile ships are at nodes now, and a stand-in settles boardings until the fights come.
+  - **Repairs:** "Repair at stations". Wrecks stay until a station repairs them for credits, two taps.
+- **Mine,** with no word from Evan:
+  - **The Law 1 line changed.** It said each part should improve the start ship against every preset. A weapon mount against the corvette scores only 1 point better at 300 approaches (7 at 120): the start ship can't board a corvette with or without it. It now reads "better against at least one, worse against none". The test allows 3 points of noise in "worse".
+  - **The guard uses the careful player.** With long jumps from heat 50, the test player crossed fed in 21 of 30, against M20's 25. Over seeds 1 to 60, with long jumps: 43 with hostile ships, 48 without. With no long jumps: 52 with them, 49 without. So the guard is the careful player's 24 of 30, and the long-jump number is a known issue. My reading of the cause, not measured: hostile ships take mix weight from nodes that pay, and a long jump passes nodes by.
+  - **The player can't Board a ship that can still fight.** The stand-in can't tell a crew boarding a stronger ship from one boarding a wreck. In the harness, closing on a cutter at full strength was a free win.
+  - **Their order is shown first,** with its odds. The player answers it, and the other ship never reads the player's order.
+  - **A round goes flights, volleys, then boardings.** Both volleys use the ships as they stood when the round began, so neither side's shots come first. Boarding comes after the volleys, so a volley that disables a closing ship stops it.
+  - **The player's ship never blows up, and is never stranded.** Nothing in act 2 can end a run yet, and a ship with no engine couldn't leave its node. The crew gets one reactor and one engine going after each approach.
+  - **Numbers**, tuned with `tools/approach.js`:
+    - **Fleeing was made harder.** The first numbers let the start ship get away about 60% of the time each round, 94% by the third, so few approaches came to anything.
+    - **A hit does 15,** so a hit that no shield soaks up wrecks an engine, a gun or a shield generator, and a reactor takes two. I measured the other values again at the end, with every other number as it is now, over 100 approaches a row. At 10 or 12 a wreck takes two hits: nothing was boarded or destroyed, and a weapon mount did worse against the cutter than no part (−9 against −7).
+  - **The test captain looks ahead.** A captain with fixed rules of thumb won nothing with one or two guns. A gun also made it fight where it should have run, so the gun scored worse than no part. The look-ahead captain plays each order out and takes the best.
+  - **A cutter from sector 1, a corvette only from sector 3,** so the stronger ship comes later in the run.
+  - **Heat +4 for an approach where a gun fired.** A clean escape adds none.
+  - **Every chance is shown before its roll,** the other ship's flight and a last reactor's blow-up included. Both were missing until I wrote this entry (below).
+
+### Verified here
+
+- `node --test`: 539 pass. `node tools/validate-data.js`: OK, with 3 ship presets and 9 kinds of sector node.
+- **`node tools/sim.js`:** the approach's numbers aren't used in boarding fights, so the summary is M11's:
+  ```
+  All               1,000  49% (46–52)           41%        10%  7 (5–11)           28
+  Shots: 23,504, 23.5 a fight. Hit: crew 57%, boarders 40%.
+  A fight: 1.8 crew go down, 0.9 bleed out, 2.8 boarders die.
+  ```
+- **`node tools/approach.js`** (300 approaches a row; the score is wins less losses in every 100):
+  ```
+  Ship      Against              escaped      fled   boarded boardedBy destroyed    adrift    parted   Score
+  start     Pirate cutter            56%        0%        3%       18%        0%        0%       23%     -15
+  start     Patrol corvette          62%        0%        0%       19%        0%        0%       19%     -19
+  +weapon   Pirate cutter             1%        0%       69%       17%        6%        1%        6%      58
+  +weapon   Patrol corvette          32%        0%        0%       18%        0%        0%       50%     -18
+  +shield   Pirate cutter            56%        0%       13%       12%        0%        0%       19%       1
+  +shield   Patrol corvette          44%        0%        0%        3%        0%        0%       53%      -3
+  +engine   Pirate cutter            24%        0%       20%        8%        0%        0%       48%      13
+  +engine   Patrol corvette          74%        0%        0%        7%        0%        0%       18%      -7
+  ```
+  At 120 (the test's run), start −16 and −19; +weapon 67 and −12; +shield 11 and −3; +engine 16 and −8.
+- **The start ship against them** (preset seeds 1 and 2): it has 1 gun, no shields and evasion 30, so their guns hit it 40% of the time. A cutter has 2 guns and evasion 21: the start ship hits it 49% and flees from it 54%. A corvette has 2 to 4 guns, 20 of shields and evasion 18 to 20.
+- **`node tools/voyage.js --runs 30`** (campaign seeds 1 to 30, each launched from its act 1 test run):
+  ```
+  long jumps when heat is at 50 or over, scanning (the default):
+  Sectors crossed: 5 (5 to 5); 30 of 30 reached the end of the charts; fed all the way in 21 of 30.
+  Jumps: 31 (29 to 33), long 3 (1 to 5), hungry 0 (0 to 6).
+  At the nodes: 12 (7 to 17) events, 150 (60 to 445) credits and 8 (-3 to 40) supplies from them, 4 (0 to 7) parts found, 1 (0 to 3) sold, 6 (0 to 16) hit points lost; 16 (13 to 19) scans.
+  Hostile ships: 0 (0 to 4) met, 0 (0 to 0) won, 0 (0 to 1) lost (boarded), 0 (0 to 0) credits from them, 0 (0 to 1) parts lost; 0 (0 to 1) repairs for 0 (0 to 50) credits. Lost one or more: 3 of 30.
+  In the first three sectors: restocked at 3 (1 to 5) stations; hungry on 0 (0 to 6) jumps; fed all the way in 24 of 30.
+  Heat at launch: 48 (24 to 49); at the end: 100 (87 to 100).
+
+  --long never (the Done when's careful player):
+  Sectors crossed: 5 (5 to 5); 30 of 30 reached the end of the charts; fed all the way in 25 of 30.
+  Jumps: 34 (34 to 34), long 0 (0 to 0), hungry 0 (0 to 4).
+  At the nodes: 12 (8 to 18) events, 122 (32 to 445) credits and 9 (-6 to 43) supplies from them, 4 (1 to 7) parts found, 0 (0 to 3) sold, 6 (3 to 16) hit points lost; 18 (15 to 20) scans.
+  Hostile ships: 2 (0 to 4) met, 0 (0 to 0) won, 0 (0 to 2) lost (boarded), 0 (-55 to 0) credits from them, 0 (0 to 2) parts lost; 0 (0 to 2) repairs for 0 (0 to 85) credits. Lost one or more: 11 of 30.
+  Heat at the end: 100 (97 to 100).
+
+  --scan no:
+  Sectors crossed: 5 (5 to 5); 30 of 30 reached the end of the charts; fed all the way in 24 of 30.
+  Hostile ships: 1 (0 to 3) met, 0 (0 to 0) won, 0 (0 to 3) lost (boarded), 0 (-45 to 0) credits from them, 0 (0 to 2) parts lost; 0 (0 to 2) repairs for 0 (0 to 100) credits. Lost one or more: 8 of 30.
+  ```
+- **M21's check** (scratchpad `m21/verify.mjs`), by touch at 905 × 370, 821 × 283 and 960 × 825: 32 of 32 at each size.
+  - **The chart:** the hostile mark; a picked node says "Hostile ship: Pirate cutter"; the jump opens the approach, saved.
+  - **The screen:**
+    - the head "Hostile ship · Pirate cutter", "Round 1 of 3";
+    - their order: "The cutter fires at your engines: 2 guns, 40% each (20% if you evade).";
+    - seven orders, with shields and Board not given;
+    - every button 48 px or more and reachable at its middle;
+    - room for both ships.
+  - **Orders:**
+    - A first tap spells the order out and changes nothing; left alone, it stands down.
+    - Board says why not.
+    - Two taps fire at the odds shown, and the log gives the round roll by roll.
+  - **Quit and reopen:** Continue says "Act 2 · Pirate cutter, round 2", and the approach is as it was.
+  - **Its end:** played out, then Carry on: back on the chart, the node settled and marked done.
+  - **A boarding:** Fire at her reactor first gives the blow-up's odds ("If their last reactor is wrecked, the cutter blows apart 30% of the time, leaving only scrap."). Then: "The cutter is dead in space: you board her.", her map marked, the stand-in's lines, her wrecks in her boarding map.
+  - **A station:**
+    - "Repair · 50", and the Ship panel lists the wreck;
+    - a first tap gives the price, and the second repairs, saved, and Repair goes;
+    - the map's buttons all 48 px or more.
+  - **Saves and offline:** a v11 save opens on the map as v12. Offline, with the server stopped, the approach opens from the cache. No console errors or warnings.
+- **Regressions,** one after another:
+  - **M20's check** (adapted, below): 32 of 32 at each size;
+  - **M19's check** (adapted again, below): 52 of 52 at each size. Its crossing by the sim meets four hostile ships: three escapes and one boarding by them;
+  - **M18's check:** 43 of 43 at each size;
+  - **M17's check** (as adapted in M19): 37 of 37 at each size;
+  - **M16's check:** 29 of 29 at each size. At 821 × 283 it timed out once, while three browser checks ran at once; run again alone, it passed;
+  - **M15's check:** 30 of 30 at 905 × 370 and 821 × 283;
+  - still running at this commit: M15's at 960 × 825, M14's saves check, M13's, M8's, M18's column check and M14's long check.
+- **What changed in the old checks:**
+  - **M20's check** (`m20/verify21.mjs`) reads save version "11 or later": a v10 save now opens as v12.
+  - **M19's check** (`m19/verify21.mjs`) plays out any approach a jump lands on (Flee, or Evade when it can't), by touch and in its crossing by the sim. At a station it picks the supply buttons, not Repair, and takes either station hint.
+- **Found and fixed by looking in Chromium,** at the three sizes, before the check was written:
+  - **Orders clipped at 821 × 283.** The orders first sat in the right-hand column, which ran out of height on the short screen. They moved to a full-width bar along the bottom, and the column holds words only.
+  - **An armed order's question was cut off** in its button. It now asks in a word ("Engines?").
+  - **The outcome's title came out in capitals** from the column's heading style. The title has its own rule now.
+- **Found while writing this entry:** two rolls had no odds shown before them. The other ship's flight said only "The cutter is running.", and Fire at their reactor didn't mention the 30% blow-up. Both are shown now. The test named for flights and boardings checked no boarding roll. It now checks the other ship's boarding and flight, and the screen's numbers are tested against the rolls. M21's check reads the reactor's words by touch.
+
+### Known issues
+
+- **Hostile ships are mostly a cost.** The careful test player boards none in 30 runs and loses something to one in 11, at most 55 credits or 2 parts. A gun fitted in act 1 turns the cutter into a win (69% boarded), but nothing in the game says so, and act 2 has no refits (§9).
+- **The start ship never boards a corvette,** with or without a part. Running is the answer for now (62% get away). §9 has a toll as another.
+- **Board can't be ordered until M22.** It shows its odds and says why.
+- **The stand-ins:** a boarding is settled by a roll among the working parts, with no fight. A crew's wounds don't come into it.
+- **The long-jump test player** crosses fed in 21 of 30 (25 in M20). The careful player is the guard.
+- **Hits are only words and room tints.** The boarding maps are small on the cover screen, so a wreck's hazard is easy to miss. No shots are drawn (§9).
+- **The log can scroll** in the column on the 283 px-tall screen, after a round with many shots.
+- **Heat from approaches does nothing yet,** as with all act 2 heat until M24. Most runs end act 2 at 100.
+- **An M20 save's current sector has no hostile ships.** The next sector has them.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Continue your M20 save,** or launch a new one. The sector you were in has no hostile ships; jump on to the next.
+2. **A hostile ship:** its node has a hull in crosshairs. Tap it: the left panel names the ship.
+3. **The approach:** jump to it. Read their order, then tap an order to see its odds and tap it again to give it. Watch the rooms on both ships as hits land.
+4. **Board:** tap it. It shows its odds and says why it can't be given yet.
+5. **Quit mid-approach and reopen:** Continue names the ship and the round, and the screen comes back as it was.
+6. **The end:** read how it ended and what changed, then Carry on. The node fades.
+7. **A wreck:** if a part was wrecked, a station's Repair fixes it in two taps.
+8. **Both screens:** do the two ships read, are the orders easy to hit, and does the column fit?
+9. **Tell me:**
+   - whether the approach is worth playing, or just a toll;
+   - whether getting away about 60% of the time is right;
+   - whether 3 rounds is right;
+   - whether the stand-in reads as a stand-in;
+   - repair prices;
+   - and the M14 to M20 questions still open.
+
+### Next session
+
+**M22 Boarding both ways.** Settle its Done when first. The draft is "both directions play out from the approach phase, and every boarding leaves parts, salvage or wounds behind (Law 3)". It replaces M21's stand-ins and turns on the player's Board (`PLAYER_CLOSES` in `src/sim/approach.js`). The boarding maps already carry the wrecks (`mapFromShip`).
+
 ## M20 Node types, events and scanning (2026-10-12)
 
 **Status:** done, and the ROADMAP.md box is ticked. Evan said "Start the next milestone". M19's notes said to settle M20's Done when with Evan first. I settled it myself at the start of the session, from the draft, and wrote it into ROADMAP.md §7. No phone results have come back yet for M14 to M19.

@@ -27,6 +27,9 @@
 //   heat     the pursuer's meter, 0 to HEAT_MAX (§4.4)
 //   flags    { [name]: true, a number or a short text }: what has happened
 //   ship     the ship (builder.js)
+//   wrecks   { [uid]: 'fire' | 'vacuum' | 'rubble' }: the ship's modules
+//            wrecked in approaches (encounter.js), until a station repairs
+//            them (repair.js)
 //   board    the jobs on offer at the hangar (contracts.js): [] until one
 //            is rolled, and from launch on
 //   shop     the shop's stock (economy.js): [{ part, price }], null until
@@ -54,7 +57,7 @@ import { buildShip, isShipData } from './builder.js';
 import { flightChecklist, partLines } from './constraints.js';
 import { deploy } from './deploy.js';
 import { MAX_STOCK } from './economy.js';
-import { mapFromShip } from './mapFromShip.js';
+import { mapFromShip, WRECKS } from './mapFromShip.js';
 import { runProblem } from './runShape.js';
 import { enemyBonus } from './settings.js';
 import { traitBonus } from './traits.js';
@@ -114,6 +117,7 @@ export function newCampaign(rules, seed, { background = firstBackground(rules), 
     heat: 0,
     flags: {},
     ship,
+    wrecks: {},
     board: [],
     shop: null,
     spent: [],
@@ -292,6 +296,7 @@ export function campaignProblems(value) {
     wrong('flags are unreadable');
   }
   if (!isShipData(value.ship)) wrong('ship is unreadable');
+  else if (!isWrecks(value.wrecks, value.ship)) wrong('wrecks are unreadable');
   if (!Array.isArray(value.board) || value.board.length > MAX_BOARD || !value.board.every(isJob)) wrong('job board is unreadable');
   if (value.shop !== null && !(Array.isArray(value.shop) && value.shop.length <= MAX_STOCK && value.shop.every(isStockItem))) wrong("shop's stock is unreadable");
   if (!Array.isArray(value.spent) || value.spent.length > MAX_SPENT || !value.spent.every(isId) || new Set(value.spent).size !== value.spent.length) wrong('jobs done once are unreadable');
@@ -323,6 +328,12 @@ function fightProblem(fight, crew) {
   if (fight.battle.units.filter((unit) => unit.side === 'crew').length !== fight.crew.length) return "doesn't match its crew";
   if (!Array.isArray(fight.log) || !fight.log.every((event) => isRecord(event) && typeof event.type === 'string')) return 'has an unreadable log';
   return null;
+}
+
+// The ship's wrecked modules: each a module it has, with how it is wrecked.
+function isWrecks(wrecks, ship) {
+  const uids = new Set(ship.modules.map((module) => String(module.uid)));
+  return isRecord(wrecks) && Object.entries(wrecks).every(([uid, wreck]) => uids.has(uid) && WRECKS.includes(wreck));
 }
 
 // A job on the board (contracts.js): its ids, seed and pay.

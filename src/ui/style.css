@@ -770,8 +770,8 @@ textarea {
   color: var(--c-space);
 }
 
-/* The first tap of Jump on, Buy or Scan: what it costs, waiting for a
-   second. */
+/* The first tap of Jump on, Buy, Repair or Scan: what it costs, waiting
+   for a second. */
 #ui .sct-on[data-armed='true'],
 #ui .sct-scan[data-armed='true'],
 #ui .sct-buy[data-armed='true'] {
@@ -848,6 +848,7 @@ textarea {
 .sct-node[data-type='distress'] .sct-dot,
 .sct-node[data-type='trader'] .sct-dot,
 .sct-node[data-type='hazard'] .sct-dot,
+.sct-node[data-type='hostile'] .sct-dot,
 .sct-node[data-type='unknown'] .sct-dot {
   width: 28px;
   height: 28px;
@@ -857,6 +858,7 @@ textarea {
 .sct-node[data-type='distress'] .sct-dot svg,
 .sct-node[data-type='trader'] .sct-dot svg,
 .sct-node[data-type='hazard'] .sct-dot svg,
+.sct-node[data-type='hostile'] .sct-dot svg,
 .sct-node[data-type='unknown'] .sct-dot svg {
   width: 17px;
   height: 17px;
@@ -880,6 +882,12 @@ textarea {
 .sct-node[data-type='hazard'] .sct-dot {
   border-color: var(--c-bad);
   color: var(--c-bad);
+}
+
+.sct-node[data-type='hostile'] .sct-dot {
+  border-color: var(--c-bad);
+  background: var(--c-bad);
+  color: var(--c-space);
 }
 
 .sct-node[data-type='unknown'] .sct-dot {
@@ -2979,6 +2987,237 @@ textarea {
 
 #rotate small {
   color: var(--c-ink-dim);
+}
+
+/* The approach screen (approach.js): the two ships side by side, each
+   drawn as its boarding map on the canvas behind its hole, with its name and
+   numbers over it; the words in the right-hand column, which scrolls if it
+   has to; Title and the orders along the bottom, the full width, so no
+   order is ever hidden. */
+.apr {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(200px, 28%);
+}
+
+.apr .hgr-head {
+  grid-row: 1;
+}
+
+.apr-round {
+  margin: 0;
+  color: var(--c-dash);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.apr-ship {
+  grid-row: 2;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid transparent;
+  border-radius: 12px;
+}
+
+.apr-you {
+  grid-column: 1;
+}
+
+.apr-them {
+  grid-column: 2;
+}
+
+/* The boarded ship's map, once it is over: the map the boarding comes to. */
+.apr-ship[data-boarded='true'] {
+  border-color: var(--c-dash);
+  box-shadow: 0 0 0 1px var(--c-dash) inset;
+}
+
+.apr-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+}
+
+.apr-stats {
+  margin: 0;
+  color: var(--c-ink-dim);
+  font-size: 12px;
+  line-height: 1.25;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+}
+
+/* Empty: the canvas shows the ship through it. */
+.apr-hole {
+  flex: 1;
+  min-height: 0;
+}
+
+.apr-side {
+  grid-column: 3;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.apr-side h2 {
+  margin: 4px 0 0;
+}
+
+.apr-side h2:first-child {
+  margin-top: 0;
+}
+
+.apr-intent {
+  margin: 0;
+  color: var(--c-dash);
+}
+
+.apr-said {
+  margin: 0;
+  color: var(--c-ink-dim);
+}
+
+.apr-said[data-tone='warn'] {
+  color: var(--c-ink);
+}
+
+.apr-said[data-tone='bad'] {
+  color: var(--c-bad);
+}
+
+.apr-side .apr-out-title {
+  margin: 2px 0 0;
+  color: var(--c-ink);
+  font-size: 15px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.apr-out-lines,
+.apr-log {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12.5px;
+}
+
+.apr-log {
+  color: var(--c-ink-dim);
+}
+
+.apr-foot {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+}
+
+.apr-fire-label {
+  flex: none;
+  align-self: center;
+  width: 3.2em;
+  color: var(--c-ink-dim);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.apr-fire,
+.apr-moves {
+  flex: 4 1 0;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+}
+
+.apr-moves {
+  flex: 3 1 0;
+  padding-left: 6px;
+  border-left: 1px solid var(--c-line);
+}
+
+#ui .apr-order {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  min-height: 48px;
+  padding: 2px 4px;
+  font-size: 14px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+#ui .apr-order span,
+#ui .apr-order small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#ui .apr-order small {
+  color: var(--c-ink-dim);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* An order that can't be given: still tappable, to say why. */
+#ui .apr-order[data-ok='false'] {
+  opacity: 0.5;
+}
+
+#ui .apr-order[data-armed='true'] {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
+#ui .apr-order[data-armed='true'] small {
+  color: var(--c-space);
+}
+
+#ui .apr-carry {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
+@media (max-height: 320px) {
+  .apr-stats {
+    font-size: 11px;
+  }
+
+  .apr-side {
+    gap: 2px;
+  }
+
+  .apr-side h2 {
+    margin: 2px 0 0;
+    font-size: 11px;
+  }
+
+  .apr-intent,
+  .apr-said {
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  #ui .apr-order {
+    font-size: 13px;
+  }
 }
 
 @media (orientation: portrait) {

@@ -25,7 +25,8 @@ import { int } from '../core/rng.js';
 import { pickWeighted } from './drops.js';
 import { sellPriceOf } from './economy.js';
 import { withHeat } from './heat.js';
-import { openEvent, supplyCapacity, tally } from './travel.js';
+import { tally } from './flags.js';
+import { openEvent, supplyCapacity } from './travel.js';
 
 export const EFFECTS = ['credits', 'supplies', 'heat', 'wound', 'part', 'drop', 'sell'];
 export const NEEDS = ['credits', 'supplies', 'parts'];
