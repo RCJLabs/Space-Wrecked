@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "ad74c257bdeb";
+const VERSION = "9dfa2ece3fc5";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -50,6 +50,7 @@ const FILES = [
   "src/render/canvas.js",
   "src/render/exterior.js",
   "src/render/fightLabels.js",
+  "src/render/figures.js",
   "src/render/frameBudget.js",
   "src/render/hull.js",
   "src/render/layer.js",

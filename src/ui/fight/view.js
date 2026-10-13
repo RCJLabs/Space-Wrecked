@@ -427,7 +427,7 @@ export function mountFight(root, source) {
     const at = walking ? walking.at : [u.x + 0.5, u.y + 0.5];
     const facing = walking ? walking.facing : shooting ? [shooting.to[0] - shooting.from[0], shooting.to[1] - shooting.from[1]] : lookOf(u, battle);
     const length = Math.hypot(...facing) || 1;
-    return { side: u.side, status: u.status, at, facing: [facing[0] / length, facing[1] / length], trim: colors.get(u.id) ?? palette.enemyTrim, flash: frame?.hit === u.id };
+    return { side: u.side, kind: u.kind, status: u.status, at, facing: [facing[0] / length, facing[1] / length], trim: colors.get(u.id) ?? palette.enemyTrim, flash: frame?.hit === u.id };
   }
 
   // Standing, a unit looks at the nearest enemy still up; lying down, it

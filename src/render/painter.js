@@ -145,7 +145,7 @@ export function prepareSolid(faces, shadeFace) {
     const n = face.pts.length;
     const mid = [0, 0, 0];
     for (const p of face.pts) for (let k = 0; k < 3; k++) mid[k] += p[k] / n;
-    return { pts: face.pts, normal: face.normal, mid, at: face.sortAt ?? mid, fill: shadeFace(face), edge: face.edge ?? null, bias: face.bias ?? 0 };
+    return { pts: face.pts, normal: face.normal, mid, at: face.sortAt ?? mid, fill: shadeFace(face), edge: face.edge ?? null, bias: face.bias ?? 0, group: face.group ?? null, anchor: face.anchor ?? null, halo: face.halo ?? null };
   });
 }
 
@@ -162,13 +162,15 @@ export function paintSolid(ctx, faces, glows, cam, { edges = true } = {}) {
     const [mx, my, mz] = face.mid;
     const [nx, ny, nz] = face.normal;
     if ((eye[0] - mx) * nx + (eye[1] - my) * ny + (eye[2] - mz) * nz <= 0) continue;
-    shown.push({ face, depth: project(face.at)[2] + face.bias });
+    const own = project(face.at)[2] + face.bias;
+    shown.push({ face, own, depth: face.anchor ? project(face.anchor)[2] : own });
   }
-  shown.sort((a, b) => b.depth - a.depth);
+  // A group's faces (a figure) sort together at its anchor, then among
+  // themselves.
+  shown.sort((a, b) => b.depth - a.depth || (a.face.group ?? 0) - (b.face.group ?? 0) || b.own - a.own);
   const zoom = Math.max(0.85, Math.min(1.6, cam.scale / 60));
   ctx.lineJoin = 'round';
-  ctx.lineWidth = 0.9 * zoom;
-  for (const { face } of shown) {
+  const trace = (face) => {
     ctx.beginPath();
     for (let i = 0; i < face.pts.length; i++) {
       const q = project(face.pts[i]);
@@ -176,12 +178,33 @@ export function paintSolid(ctx, faces, glows, cam, { edges = true } = {}) {
       else ctx.lineTo(q[0], q[1]);
     }
     ctx.closePath();
-    ctx.fillStyle = face.fill;
-    ctx.fill();
-    if (edges && face.edge) {
-      ctx.strokeStyle = face.edge;
-      ctx.stroke();
+  };
+  for (let i = 0; i < shown.length; ) {
+    // A group with a halo is stroked thick first, then filled: what shows
+    // of the strokes is its outline.
+    const { group, halo } = shown[i].face;
+    let end = i + 1;
+    if (group != null) while (end < shown.length && shown[end].face.group === group) end++;
+    if (edges && halo) {
+      ctx.strokeStyle = halo;
+      ctx.lineWidth = 2.6 * zoom;
+      for (let k = i; k < end; k++) {
+        trace(shown[k].face);
+        ctx.stroke();
+      }
     }
+    ctx.lineWidth = 0.9 * zoom;
+    for (let k = i; k < end; k++) {
+      const { face } = shown[k];
+      trace(face);
+      ctx.fillStyle = face.fill;
+      ctx.fill();
+      if (edges && face.edge) {
+        ctx.strokeStyle = face.edge;
+        ctx.stroke();
+      }
+    }
+    i = end;
   }
   paintGlows(ctx, glows, project, cam);
 }
