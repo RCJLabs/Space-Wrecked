@@ -2160,6 +2160,63 @@ textarea {
   font-size: min(11px, calc(var(--tile) * 0.22));
 }
 
+/* The Look tab (M23f): how many styling pieces the ship has, of its
+   frame's most, where the Parts tab has its size filter. */
+.bld-tally {
+  flex: none;
+  width: var(--tile);
+  min-height: 48px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: 1px solid var(--c-line);
+  border-radius: 10px;
+  font-size: min(11.5px, calc(var(--tile) * 0.22));
+  line-height: 1.15;
+}
+
+.bld-tally small {
+  color: var(--c-ink-dim);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* A paint's or a trim's tile: its color as a chip; the trim's a stripe. */
+.bld-chip {
+  flex: none;
+  width: calc(var(--tile) * 0.5);
+  height: calc(var(--tile) * 0.3);
+  border: 1px solid rgb(255 255 255 / 0.25);
+  border-radius: 5px;
+}
+
+.bld-chip-trim {
+  height: calc(var(--tile) * 0.14);
+  border-radius: 3px;
+}
+
+/* On the sheet: a few of a group's colors side by side. */
+.bld-chips {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  height: calc(var(--tile) * 0.3);
+  align-items: center;
+}
+
+.bld-chips i {
+  width: calc(var(--tile) * 0.09);
+  height: 100%;
+  border-radius: 2px;
+}
+
+.bld-chips-trim i {
+  height: 40%;
+}
+
 /* The sheet of categories: tiles the part tiles' size, three across. */
 .bld-sheet,
 .bld-palette {
@@ -2321,26 +2378,6 @@ textarea {
 }
 
 #ui .bld-launch[data-state='armed'] {
-  border-color: var(--c-accent);
-  background: var(--c-accent);
-  color: var(--c-space);
-}
-
-/* The hull's style (M23d): a button a style, the ship's own lit. */
-.bld-styles {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
-  gap: 6px;
-  margin-bottom: 4px;
-}
-
-#ui .bld-style {
-  min-height: 48px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-#ui .bld-style[aria-pressed='true'] {
   border-color: var(--c-accent);
   background: var(--c-accent);
   color: var(--c-space);

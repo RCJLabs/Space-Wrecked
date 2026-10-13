@@ -289,14 +289,17 @@ export function nextTurn(def, rot) {
 // The placement of a piece under point (px, py) that fits there, trying
 // `rot` first: each spot of its footprint that covers the cell under the
 // point, the one centred nearest the point first; then the piece's other
-// turns the same way (unless `turnsToo` is false). If none fits, the first
-// try, for a ghost that says why. `site` as in pieceError.
-export function fitPiece(ship, defs, type, rot, px, py, { ignore = null, turnsToo = true, site = null } = {}) {
+// turns the same way (unless `turnsToo` is false). Failing those, any spot
+// that comes within `reach` cells of the point, the nearest first (so a
+// tap on the hull finds its side). If none fits, the first try, for a
+// ghost that says why. `site` as in pieceError.
+export function fitPiece(ship, defs, type, rot, px, py, { ignore = null, turnsToo = true, site = null, reach = 0 } = {}) {
   const def = defs.styling.get(type);
   const frame = defs.frames.get(ship.frame);
   const here = site ?? hullSite(ship, defs);
   const [cx, cy] = [Math.floor(px), Math.floor(py)];
   const turns = turnsToo ? [rot, ...rotations(def.turns, rot)] : [rot];
+  const fits = (placement) => !pieceError(ship, defs, placement, ignore, here);
   let first = null;
   for (const turn of turns) {
     const [w, h] = pieceFootprint(def, turn);
@@ -311,8 +314,23 @@ export function fitPiece(ship, defs, type, rot, px, py, { ignore = null, turnsTo
     for (const { x, y } of spots) {
       const placement = { type, x, y, rot: turn };
       first ??= placement;
-      if (!pieceError(ship, defs, placement, ignore, here)) return placement;
+      if (fits(placement)) return placement;
     }
+  }
+  if (reach > 0) {
+    const near = [];
+    for (const turn of turns) {
+      const [w, h] = pieceFootprint(def, turn);
+      for (let y = Math.max(0, cy - h + 1 - reach); y <= Math.min(frame.height - h, cy + reach); y++) {
+        for (let x = Math.max(0, cx - w + 1 - reach); x <= Math.min(frame.width - w, cx + reach); x++) {
+          // How far the point is from the footprint (none inside it).
+          const gap = Math.hypot(Math.max(x - px, 0, px - (x + w)), Math.max(y - py, 0, py - (y + h)));
+          if (gap <= reach) near.push({ placement: { type, x, y, rot: turn }, gap, far: Math.hypot(x + w / 2 - px, y + h / 2 - py) });
+        }
+      }
+    }
+    near.sort((a, b) => a.gap - b.gap || a.far - b.far);
+    for (const { placement } of near) if (fits(placement)) return placement;
   }
   return first;
 }

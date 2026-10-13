@@ -43,6 +43,9 @@ import { fitPiece, nextTurn, pieceAt, pieceFootprint } from './styling.js';
 export const HISTORY_LIMIT = 500;
 // How far off the frame, in cells, a tap or drag still lands on it.
 export const EDGE_GRACE = 1;
+// How far, in cells, a styling piece looks round a tap for a spot that fits
+// when none covers the tapped cell: a tap on the hull's roof by its side.
+export const PIECE_REACH = 1;
 
 // log: the commands that built `ship` from an empty frame (see replay.js).
 // stock: { [type]: count } of every part there is, on the ship or on hand,
@@ -96,9 +99,9 @@ export function reduceSession(session, action, defs) {
       return layer(session, action.layer);
     // A ship from elsewhere (another slot, a pasted blueprint, an imported
     // save) replaces this one with its log and stock, and the history
-    // starts over.
+    // starts over, on the same layer.
     case 'build/load':
-      return action.ship === session.ship ? session : createSession(action.ship, action.log ?? [], action.stock ?? null);
+      return action.ship === session.ship ? session : { ...createSession(action.ship, action.log ?? [], action.stock ?? null), layer: session.layer };
     default:
       return session;
   }
@@ -191,14 +194,20 @@ function tap(session, defs, px, py) {
   return { ...session, ghost: { ...next, uid: item.uid } };
 }
 
-// Where a styling piece would go for a tap at (px, py): fitted to the hull
-// there (fitPiece), or null off the frame. It keeps the tapped cell, so a
-// turn can fit it again round the same spot.
-function pieceGhost(session, defs, type, rot, px, py, ignore = null) {
-  const frame = defs.frames.get(session.ship.frame);
+// Where a styling piece would go for a tap or a finger at (px, py): fitted
+// to the hull there, or as near as PIECE_REACH (fitPiece), or null off the
+// frame. It keeps the point, so a turn can fit it again round the same
+// spot. ignore: a piece being moved; site: hullSite(ship, defs), if the
+// caller has it (a drag asks again at every cell).
+export function snapPiece(ship, defs, type, rot, px, py, { ignore = null, site = null } = {}) {
+  const frame = defs.frames.get(ship.frame);
   if (px < -EDGE_GRACE || py < -EDGE_GRACE || px >= frame.width + EDGE_GRACE || py >= frame.height + EDGE_GRACE) return null;
   const at = [Math.max(0, Math.min(frame.width - 0.01, px)), Math.max(0, Math.min(frame.height - 0.01, py))];
-  return { ...fitPiece(session.ship, defs, type, rot, ...at, { ignore }), at };
+  return { ...fitPiece(ship, defs, type, rot, ...at, { ignore, site, reach: PIECE_REACH }), at };
+}
+
+function pieceGhost(session, defs, type, rot, px, py, ignore = null) {
+  return snapPiece(session.ship, defs, type, rot, px, py, { ignore });
 }
 
 // Moves a selected part to its ghost. A move it can't make leaves the ghost
@@ -304,7 +313,7 @@ function turnPiece(session, defs) {
     if (!ghost) return next;
     const [gw, gh] = sizeOf(defs, ghost);
     const at = ghost.at ?? [ghost.x + gw / 2, ghost.y + gh / 2];
-    return { ...next, ghost: { ...fitPiece(ship, defs, type, rot, ...at, { ignore: ghost.uid ?? null, turnsToo: false }), at, ...(ghost.uid === undefined ? {} : { uid: ghost.uid }) } };
+    return { ...next, ghost: { ...fitPiece(ship, defs, type, rot, ...at, { ignore: ghost.uid ?? null, turnsToo: false, reach: PIECE_REACH }), at, ...(ghost.uid === undefined ? {} : { uid: ghost.uid }) } };
   }
   const piece = (ship.styling ?? []).find((p) => p.uid === selected);
   const def = defs.styling.get(piece.type);

@@ -195,6 +195,20 @@ test('a piece fits itself to the hull where it is tapped, and Turn shows it the 
   assert.deepEqual([session.layer, session.selected, session.armed], ['rooms', null, null]);
 });
 
+test('a tap on the hull by its side finds the side; a ship loaded from elsewhere opens on the same layer', () => {
+  const onRoom = fitPiece(start, rules, 'antenna', 0, 12.5, 5.2);
+  assert.equal(pieceError(start, rules, onRoom).rule, 'room', 'nothing fits on the room itself');
+  const near = fitPiece(start, rules, 'antenna', 0, 12.5, 5.2, { reach: 1 });
+  assert.deepEqual([near.x, near.y, near.rot, pieceError(start, rules, near)], [12, 4, 0, null]);
+  assert.deepEqual(fitPiece(start, rules, 'antenna', 0, 12.5, 6.5, { reach: 1 }), P('antenna', 12, 6, 0), 'out of reach, the first try says why');
+  let session = createSession(start, logFor(start));
+  session = reduceSession(session, { type: 'build/arm', moduleType: 'antenna' }, rules);
+  session = reduceSession(session, { type: 'build/tap', x: 12.5, y: 5.2 }, rules);
+  assert.deepEqual([session.ghost.x, session.ghost.y, session.ghost.rot], [12, 4, 0]);
+  session = reduceSession(session, { type: 'build/load', ship: { ...start } }, rules);
+  assert.deepEqual([session.layer, session.armed, session.past.length], ['styling', null, 0]);
+});
+
 test('build logs replay looks and pieces, and a ship renumbers with its pieces after its parts', () => {
   const dressed = applyCommand(dress(start, DRESSED), rules, { op: 'paint', color: 'bone' }).ship;
   const tidy = renumbered(dressed);

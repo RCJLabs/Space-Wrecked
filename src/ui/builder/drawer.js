@@ -1,32 +1,36 @@
-// The drawer on the left of the builder, with up to three tabs: Parts (the
-// palette), Ship (the flight check, Launch and the totals) and Saves (the
-// ships kept in slots, codes and the replay). The Ship tab carries a badge:
-// how many checks are still open, or a tick when the ship can launch. In
-// construction mode there is no Saves tab: the way back to the hangar takes
-// its place.
+// The drawer on the left of the builder, with up to three tabs. The first
+// is Parts (the palette) while the board shows the plans, and Look (the
+// styling pieces, paint, trim and the hull's style, M23f) while it shows the
+// hull from outside. Then Ship (the flight check, Launch and the totals) and
+// Saves (the ships kept in slots, codes and the replay). The Ship tab
+// carries a badge: how many checks are still open, or a tick when the ship
+// can launch. In construction mode there is no Saves tab: the way back to
+// the hangar takes its place.
 import { onTap } from '../gestures.js';
+import { createLookPanel } from './lookPanel.js';
 import { createPalette } from './palette.js';
 import { createSavesPanel } from './savesPanel.js';
 import { createShipPanel } from './shipPanel.js';
 
-// palette: the palette's handlers (see palette.js). onLaunch() (or null:
-// no Launch), onFix(type) and onStyle(id) as in shipPanel.js; saves: the
-// handlers in savesPanel.js, or null for no Saves tab; leave: null, or
-// { icon, label, onTap }, a button at the end of the tabs.
-export function createDrawer(defs, { palette: paletteHandlers, onLaunch, onFix, onStyle, saves: savesHandlers, leave }) {
+// palette: the palette's handlers (see palette.js); look: the Look tab's
+// (lookPanel.js). onLaunch() (or null: no Launch) and onFix(type) as in
+// shipPanel.js; saves: the handlers in savesPanel.js, or null for no Saves
+// tab; leave: null, or { icon, label, onTap }, a button at the end of the
+// tabs.
+export function createDrawer(defs, { palette: paletteHandlers, look: lookHandlers, onLaunch, onFix, saves: savesHandlers, leave }) {
   const el = node('div', 'bld-drawer');
   const tabs = node('div', 'bld-tabs');
   tabs.setAttribute('role', 'tablist');
-  const partsTab = tab('Parts');
+  const firstTab = tab('Parts');
   const shipTab = tab('Ship');
   const badge = node('span', 'bld-badge');
   shipTab.append(badge);
-  tabs.append(partsTab, shipTab);
+  tabs.append(firstTab, shipTab);
   const parts = createPalette(defs, paletteHandlers);
-  const styles = [...defs.hulls.values()].map(({ id, name }) => ({ id, name }));
-  const ship = createShipPanel({ onLaunch, onFix, styles, onStyle });
-  el.append(tabs, parts.el, ship.el);
-  const panels = { parts: [parts.el, partsTab], ship: [ship.el, shipTab] };
+  const look = createLookPanel(defs, lookHandlers);
+  const ship = createShipPanel({ onLaunch, onFix });
+  el.append(tabs, parts.el, look.el, ship.el);
+  const panels = { parts: [parts.el, firstTab], ship: [ship.el, shipTab] };
   const saves = savesHandlers ? createSavesPanel(savesHandlers) : null;
   if (saves) {
     const savesTab = tab('Saves');
@@ -44,23 +48,39 @@ export function createDrawer(defs, { palette: paletteHandlers, onLaunch, onFix, 
     tabs.append(button);
     detach.push(onTap(button, leave.onTap));
   }
+  let mode = 'plans';
+  let showing = 'parts';
   show('parts');
 
   function show(name) {
+    showing = name;
     for (const [key, [panel, button]] of Object.entries(panels)) {
-      panel.hidden = key !== name;
+      panel.hidden = key !== name || (key === 'parts' && mode === 'hull');
       button.setAttribute('aria-selected', String(key === name));
     }
+    look.el.hidden = name !== 'parts' || mode !== 'hull';
   }
 
   return {
     el,
     show,
     saves,
-    setArmed: parts.setArmed,
+    // The board's look: the plans give the first tab to Parts, the hull to
+    // Look.
+    setMode(next) {
+      if (next === mode) return;
+      mode = next;
+      firstTab.querySelector('span').textContent = mode === 'hull' ? 'Look' : 'Parts';
+      show(showing);
+    },
+    setArmed(type) {
+      parts.setArmed(defs.modules.has(type) ? type : null);
+      look.setArmed(defs.styling.has(type) ? type : null);
+    },
     setStock: parts.setStock,
     update(lines, totals, context) {
       ship.update(lines, totals, context);
+      look.update(context.ship);
       const open = lines.filter((line) => line.ok !== true).length;
       badge.textContent = open ? String(open) : '✓';
       badge.dataset.tone = open ? 'bad' : 'good';
@@ -69,6 +89,7 @@ export function createDrawer(defs, { palette: paletteHandlers, onLaunch, onFix, 
     dispose() {
       for (const off of detach) off();
       parts.dispose();
+      look.dispose();
       ship.dispose();
       saves?.dispose();
       el.remove();

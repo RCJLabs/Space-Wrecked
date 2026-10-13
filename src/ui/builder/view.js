@@ -6,23 +6,29 @@
 // Input -> session action (src/sim/session.js) -> new session -> redraw.
 // A drag or pinch in progress is input, so it lives here until it ends in
 // an action; the session itself only changes through its store.
+//
+// The board shows the plans, where the rooms go, or the hull from outside,
+// where it is styled (M23f's Look): the session's layer, rooms or styling.
+// The Hull button and the drawer's Look tab change it.
 import { createStore } from '../../core/store.js';
 import { loadContent } from '../../platform/content.js';
+import { HULL } from '../../render/exterior.js';
 import { traceHull } from '../../render/hull.js';
-import { styleOf } from '../../render/hullShape.js';
+import { lookOverlay, pieceBox } from '../../render/lookOverlay.js';
 import { clampOrbit, fitOrbit, panOrbit, pinchOrbit, project, turnOrbit, unproject, zoomOrbit } from '../../render/orbit.js';
 import { palette, skinFor } from '../../render/palette.js';
 import { partIconSvg } from '../../render/parts/blueprint.js';
-import { hitsGhost, pickModule } from '../../render/pick.js';
+import { hitsGhost, pickBox, pickModule } from '../../render/pick.js';
+import { pieceIconSvg } from '../../render/pieces.js';
 import { BOARD_VIEW, boardBox, createBoard, yardBox } from '../../render/shipView.js';
 import { layoutProblems, openings, placementError, removeModule } from '../../sim/builder.js';
 import { canLaunch, flightChecklist, shipStats } from '../../sim/constraints.js';
-import { footprint } from '../../sim/modules.js';
 import { replay } from '../../sim/replay.js';
-import { createSession, partsLeft, reduceSession, snapPlacement } from '../../sim/session.js';
+import { createSession, partsLeft, reduceSession, sizeOf, snapPiece, snapPlacement } from '../../sim/session.js';
+import { hullSite, pieceError } from '../../sim/styling.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
-import { cardFor } from './card.js';
+import { cardFor, pieceCard } from './card.js';
 import { createDrawer } from './drawer.js';
 import { flightSummary, hintFor } from './hints.js';
 
@@ -93,19 +99,20 @@ export function mountBuilder(root, source) {
   let slots = null; // the source's Saves tab, if it has one
   let derived = null; // per ship: { doors, hull, loose, flagged, problems, lines, totals, ready }
   let plans = null; // the 3D board's scenes
-  let shown = { ship: null, ghost: null, hull: null, saves: null }; // what the board and Saves tab were last given
+  let shown = { ship: null, ghost: null, hull: null, marks: null, saves: null }; // what the board and Saves tab were last given
+  let boxes = null; // { ship, items }: where each styling piece stands, to pick it from outside
   let rect = null;
   let yard = null; // the whole frame: how far the camera pans
   let yardFit = null;
   let fit = null; // the view Fit returns to: the ship, refitted as it changes
   let limits = null;
   let camera = null;
-  let drag = null; // { kind: 'part' | 'ghost' | 'module' | 'pan', ... }
+  let drag = null; // { kind: 'part' | 'ghost' | 'placed' | 'pan', piece?, ... }
   let pinch = null;
   let dirty = true;
   let alive = true;
   let deleteMode = 'delete';
-  let look = 'plans'; // the board shows the plans, or the hull from outside
+  let look = 'plans'; // the board shows the plans, or the hull from outside (the session's layer)
   let flash = null; // a notice shown until NOTICE_MS passes or the session changes
   let flashTimer = 0;
   let settleTimer = 0;
@@ -155,18 +162,35 @@ export function mountBuilder(root, source) {
           dragEnd: endDrag,
           dragCancel: cancelDrag,
         },
+        look: {
+          piece: {
+            tap: (type) => {
+              stopReplay();
+              setLook('hull');
+              act({ type: 'build/arm', moduleType: type });
+            },
+            longPress: (type) => openCard(pieceCard(defs.styling.get(type)), 'left'),
+            dragStart: startPartDrag,
+            dragMove: moveDrag,
+            dragEnd: endDrag,
+            dragCancel: cancelDrag,
+          },
+          onPaint: (color) => act({ type: 'build/paint', color }),
+          onTrim: (color) => act({ type: 'build/trim', color }),
+          onStyle: (style) => act({ type: 'build/hull', style }),
+        },
         onLaunch: source.launch ? () => act({ type: 'build/launch', crew: crew() }) : null,
         onFix: (type) => {
           drawer.show('parts');
           setLook('plans');
           act({ type: 'build/arm', moduleType: type, toggle: false });
         },
-        onStyle: (style) => act({ type: 'build/hull', style }),
         saves: slots && { ...slots.handlers, onReplay: () => (replaying ? stopReplay() : startReplay()) },
         leave: source.leave,
       });
       el.prepend(drawer.el);
       cleanups.push(() => drawer.dispose());
+      followLayer(store.getState());
       updateDrawer();
       layout();
       sync();
@@ -179,17 +203,17 @@ export function mountBuilder(root, source) {
   cleanups.push(
     attachGestures(board, {
       tap(x, y) {
-        if (stopReplay() || !ready() || look === 'hull') return;
+        if (stopReplay() || !ready()) return;
         const point = pointAt(x, y);
         if (point) act({ type: 'build/tap', x: point[0], y: point[1] });
       },
       longPress(x, y) {
-        if (!stopReplay() && ready() && look === 'plans') openCardAt(x, y);
+        if (!stopReplay() && ready()) openCardAt(x, y);
       },
       dragStart(x0, y0) {
         if (stopReplay() || !ready()) return false;
         closeCard();
-        drag = look === 'hull' ? { kind: 'pan', x: x0, y: y0 } : startBoardDrag(x0, y0);
+        drag = startBoardDrag(x0, y0);
         return true;
       },
       dragMove: moveDrag,
@@ -276,6 +300,7 @@ export function mountBuilder(root, source) {
       if (rect) refit(false);
     }
     if (session.ship !== prev.ship || session.stock !== prev.stock) updateDrawer();
+    followLayer(session);
     source.onSession(session, prev);
     // A new notice shows for a while; any other change replaces it with
     // the hint for what is on screen now.
@@ -316,7 +341,7 @@ export function mountBuilder(root, source) {
   function updateDrawer() {
     const session = store.getState();
     const onHand = (type) => partsLeft(session, type);
-    drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules, onHand, hull: styleOf(defs, session.ship).id });
+    drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules, onHand, ship: session.ship });
     drawer.setStock(session.stock ? onHand : null);
   }
 
@@ -327,8 +352,9 @@ export function mountBuilder(root, source) {
     drawer.setArmed(session.armed?.type ?? null);
     undoButton.disabled = !session.past.length;
     redoButton.disabled = !session.future.length;
-    const target = session.armed?.type ?? session.ship.modules.find((m) => m.uid === session.selected)?.type;
-    turnButton.disabled = !target || !defs.modules.get(target).rotates;
+    const target = session.armed?.type ?? selectedOf(session)?.type;
+    const piece = defs.styling.get(target);
+    turnButton.disabled = !target || !(piece ? piece.turns.length > 1 : defs.modules.get(target)?.rotates);
     const mode = session.armed ? 'done' : 'delete';
     if (mode !== deleteMode) {
       deleteMode = mode;
@@ -350,8 +376,7 @@ export function mountBuilder(root, source) {
       dirty = true;
       return;
     }
-    const hint = look === 'hull' ? { tone: 'info', text: `From outside: a ${styleOf(defs, session.ship).name} hull, set in the Ship tab. Tap Hull for the plans.` } : hintFor(session, defs, drag);
-    setStatus(flash && !drag ? flash : hint);
+    setStatus(flash && !drag ? flash : hintFor(session, defs, drag));
     showOnBoard(session);
     dirty = true;
   }
@@ -388,7 +413,7 @@ export function mountBuilder(root, source) {
     if (!replaying) return false;
     clearTimeout(replaying.timer);
     replaying = null;
-    shown = { ship: null, ghost: undefined, hull: null, saves: null };
+    shown = { ship: null, ghost: undefined, hull: null, marks: null, saves: null };
     sync();
     return true;
   }
@@ -398,39 +423,57 @@ export function mountBuilder(root, source) {
     const hull = traceHull(ship, defs);
     plans.setShip({ ship, defs, frame, doors: openings(ship, defs), hull, selected: null, lifted: null, flagged: new Set() });
     plans.setGhost(null);
+    plans.setMarks(null);
     if (look === 'hull') plans.setHull({ ship, defs, hull, skin: skinFor('yard') });
   }
 
-  // Shows the plans (where the ship is built) or the hull from outside.
-  // The hull is only to look at: going there puts down the part in hand
-  // and the selection, and picking a part comes back to the plans.
+  // Shows the plans (where the rooms are built) or the hull from outside
+  // (where it is styled): the session's layer, which lets go of what was
+  // picked out on the other one. Picking a part comes back to the plans,
+  // and a styling piece goes outside.
   function setLook(next) {
+    store.dispatch({ type: 'build/layer', layer: next === 'hull' ? 'styling' : 'rooms' });
+  }
+
+  // Brings the board, the Hull button and the drawer's first tab in line
+  // with the session's layer.
+  function followLayer(session) {
+    const next = session.layer === 'styling' ? 'hull' : 'plans';
     if (next === look) return;
     look = next;
     hullButton.setAttribute('aria-pressed', String(look === 'hull'));
-    if (look === 'hull') {
-      closeCard();
-      store.dispatch({ type: 'build/cancel' });
-    }
+    drawer.setMode(look);
+    closeCard();
     if (replaying) showReplayStep(); // a replay carries on in either look
-    sync();
   }
 
-  // Gives the board what changed: the ship scene when the ship or what is
-  // picked out on it changes, the ghost when the part being placed moves.
+  // Gives the board what changed in the look on show. On the plans: the
+  // ship scene when the ship or what is picked out on it changes, the ghost
+  // when the part being placed moves. Outside: the hull when the ship
+  // changes, the marks when the piece being placed moves or another is
+  // picked out.
   function showOnBoard(session) {
+    if (look === 'hull') {
+      if (shown.hull !== session.ship) {
+        plans.setHull({ ship: session.ship, defs, hull: derived.hull, skin: skinFor('yard') });
+        shown.hull = session.ship;
+      }
+      const ghost = ghostOf(session);
+      const marks = [session.ship, session.selected, ghost && [ghost.placement.type, ghost.placement.x, ghost.placement.y, ghost.placement.rot, ghost.ok].join()];
+      if (!shown.marks || marks.some((v, i) => v !== shown.marks[i])) {
+        plans.setMarks(lookOverlay({ ship: session.ship, defs, hull: derived.hull, ghost, selected: session.selected }));
+        shown.marks = marks;
+      }
+      return;
+    }
     // A part being moved (dragged, or shown where a tap would put it) is
     // drawn as its dashed outline where it stands.
-    const lifted = drag?.kind === 'module' ? drag.uid : session.ghost?.uid ?? null;
+    const lifted = drag?.kind === 'placed' ? drag.uid : session.ghost?.uid ?? null;
     const ship = { ship: session.ship, derived, selected: session.selected, lifted };
     const before = shown.ship;
     if (!before || before.ship !== ship.ship || before.derived !== derived || before.selected !== ship.selected || before.lifted !== lifted) {
       plans.setShip({ ship: session.ship, defs, frame, doors: derived.doors, hull: derived.hull, selected: session.selected, lifted, flagged: derived.flagged });
       shown.ship = ship;
-    }
-    if (look === 'hull' && shown.hull !== session.ship) {
-      plans.setHull({ ship: session.ship, defs, hull: derived.hull, skin: skinFor('yard') });
-      shown.hull = session.ship;
     }
     const ghost = ghostOf(session);
     const key = ghost && [ghost.placement.type, ghost.placement.x, ghost.placement.y, ghost.placement.rot, ghost.ok, ghost.blockers.join(' ')].join();
@@ -440,36 +483,74 @@ export function mountBuilder(root, source) {
     }
   }
 
-  // The part being placed or moved: the drag's, or the session's ghost (a
-  // part being moved doesn't block itself).
+  // The part or piece being placed or moved: the drag's, or the session's
+  // ghost.
   function ghostOf(session) {
     if (drag && drag.kind !== 'pan') {
       return drag.placement ? { placement: drag.placement, ok: !drag.error, blockers: drag.blockers } : null;
     }
     const { ghost } = session;
     if (!ghost) return null;
-    const error = placementError(ghost.uid === undefined ? session.ship : removeModule(session.ship, ghost.uid), defs, ghost);
+    const error = errorAt(session.ship, ghost, ghost.uid ?? null);
     return { placement: ghost, ok: !error, blockers: error?.uids ?? [] };
   }
 
-  // The deck point a finger at (x, y) means. A part being placed or a room
-  // under the finger counts even where the deck under it is something else
-  // (a room's front wall stands over the deck behind it).
+  // Why a part or a styling piece can't go at a placement, or null if it
+  // can. uid: one being moved, which doesn't block itself; site: hullSite,
+  // for a piece, if the caller has it.
+  function errorAt(ship, placement, uid, site = null) {
+    if (defs.styling.has(placement.type)) return pieceError(ship, defs, placement, uid, site);
+    return placementError(uid === null ? ship : removeModule(ship, uid), defs, placement);
+  }
+
+  // What is picked out on the session's layer: a module, or a piece.
+  function selectedOf(session) {
+    const items = session.layer === 'styling' ? session.ship.styling ?? [] : session.ship.modules;
+    return items.find((item) => item.uid === session.selected) ?? null;
+  }
+
+  // The point on the grid a finger at (x, y) means. On the plans, it is
+  // on the deck; outside, halfway up the hull's side, where pieces go. A
+  // part being placed or a room under the finger counts even where the
+  // deck under it is something else (a room's front wall stands over the
+  // deck behind it), and outside, a piece.
   function pointAt(x, y) {
     const session = store.getState();
-    const deck = unproject(camera, x, y);
+    const deck = deckAt(x, y);
+    if (session.layer === 'styling') {
+      if (session.ghost && onGhostPiece(session.ghost, x, y)) return on(session.ghost, deck);
+      const uid = pickBox(camera, pieceBoxes(session.ship), x, y);
+      if (uid !== null) return on(session.ship.styling.find((p) => p.uid === uid), deck);
+      return deck;
+    }
     if (session.ghost && hitsGhost(camera, defs, session.ghost, x, y)) return on(session.ghost, deck);
     const uid = pickModule(camera, defs, session.ship.modules, x, y);
     if (uid !== null) return on(session.ship.modules.find((m) => m.uid === uid), deck);
     return deck;
   }
 
-  // The deck point if it is on the placement, else the placement's middle.
+  function deckAt(x, y) {
+    return unproject(camera, x, y, look === 'hull' ? HULL / 2 : 0);
+  }
+
+  // The point if it is on the placement, else the placement's middle.
   function on(placement, deck) {
-    const [w, h] = footprint(defs.modules.get(placement.type), placement.rot);
+    const [w, h] = sizeOf(defs, placement);
     const { x, y } = placement;
     if (deck && deck[0] >= x && deck[1] >= y && deck[0] < x + w && deck[1] < y + h) return deck;
     return [x + w / 2, y + h / 2];
+  }
+
+  // Where each styling piece stands, worked out once a ship, and whether a
+  // finger is on the piece being placed.
+  function pieceBoxes(ship) {
+    if (boxes?.ship !== ship) boxes = { ship, items: (ship.styling ?? []).map((piece) => ({ uid: piece.uid, box: pieceBox({ ship, defs, hull: derived.hull }, piece) })) };
+    return boxes.items;
+  }
+
+  function onGhostPiece(ghost, x, y) {
+    const ship = store.getState().ship;
+    return pickBox(camera, [{ uid: 0, box: pieceBox({ ship, defs, hull: derived.hull }, ghost) }], x, y) !== null;
   }
 
   function setStatus(message) {
@@ -521,29 +602,42 @@ export function mountBuilder(root, source) {
 
   function startBoardDrag(x0, y0) {
     const session = store.getState();
-    const deck = unproject(camera, x0, y0);
+    const deck = deckAt(x0, y0);
     const { ghost } = session;
+    if (session.layer === 'styling') {
+      // A piece fits itself to the hull wherever the finger is, so it isn't
+      // held at a point the way a part is.
+      const piece = selectedOf(session);
+      const lift = (item) => ({ kind: item.uid === undefined ? 'ghost' : 'placed', piece: true, uid: item.uid, type: item.type, rot: item.rot, site: hullSite(session.ship, defs), placement: null });
+      if (deck && ghost && onGhostPiece(ghost, x0, y0)) return lift(ghost);
+      if (deck && piece && pickBox(camera, pieceBoxes(session.ship).filter((item) => item.uid === piece.uid), x0, y0) !== null) return lift(piece);
+      return { kind: 'pan', x: x0, y: y0 };
+    }
     if (deck && ghost && hitsGhost(camera, defs, ghost, x0, y0)) {
       const grab = [deck[0] - ghost.x, deck[1] - ghost.y];
       // A part being moved: dragging its ghost moves the part, turned as the ghost is.
-      if (ghost.uid !== undefined) return { kind: 'module', uid: ghost.uid, type: ghost.type, rot: ghost.rot, grab, placement: null };
+      if (ghost.uid !== undefined) return { kind: 'placed', uid: ghost.uid, type: ghost.type, rot: ghost.rot, grab, placement: null };
       return { kind: 'ghost', type: ghost.type, rot: ghost.rot, grab, placement: null };
     }
-    const module = session.ship.modules.find((m) => m.uid === session.selected);
+    const module = selectedOf(session);
     if (deck && module && pickModule(camera, defs, [module], x0, y0) !== null) {
       const grab = [deck[0] - module.x, deck[1] - module.y];
-      return { kind: 'module', uid: module.uid, type: module.type, rot: module.rot, grab, placement: null };
+      return { kind: 'placed', uid: module.uid, type: module.type, rot: module.rot, grab, placement: null };
     }
     return { kind: 'pan', x: x0, y: y0 };
   }
 
+  // A part dragged from the Parts tab, or a styling piece from the Look
+  // tab.
   function startPartDrag(type, x, y) {
     if (!ready()) return;
     closeCard();
-    setLook('plans');
-    const { armed } = store.getState();
-    drag = { kind: 'part', type, rot: armed?.type === type ? armed.rot : 0, grab: null, placement: null };
-    dragChip.innerHTML = partIconSvg(defs.modules.get(type), Math.round(camera.scale));
+    const piece = defs.styling.get(type);
+    setLook(piece ? 'hull' : 'plans');
+    const { armed, ship } = store.getState();
+    const rot = armed?.type === type ? armed.rot : piece ? piece.turns[0] : 0;
+    drag = { kind: 'part', type, rot, grab: null, placement: null, ...(piece ? { piece: true, site: hullSite(ship, defs) } : {}) };
+    dragChip.innerHTML = piece ? pieceIconSvg(piece, Math.round(camera.scale)) : partIconSvg(defs.modules.get(type), Math.round(camera.scale));
     moveDrag(x, y);
   }
 
@@ -556,15 +650,20 @@ export function mountBuilder(root, source) {
       return;
     }
     const onBoard = x >= rect.x && y >= rect.y && x < rect.x + rect.w && y < rect.y + rect.h;
-    const deck = onBoard ? unproject(camera, x, y) : null;
-    const next = deck ? snapPlacement(defs, frame, drag.type, drag.rot, deck[0], deck[1], drag.grab) : null;
+    const deck = onBoard ? deckAt(x, y) : null;
+    const ship = store.getState().ship;
+    const uid = drag.kind === 'placed' ? drag.uid : null;
+    const next = !deck
+      ? null
+      : drag.piece
+        ? snapPiece(ship, defs, drag.type, drag.rot, deck[0], deck[1], { ignore: uid, site: drag.site })
+        : snapPlacement(defs, frame, drag.type, drag.rot, deck[0], deck[1], drag.grab);
     const prev = drag.placement;
     // Check and redraw only when the snapped spot changes.
-    if (!drag.checked || (next === null) !== (prev === null) || (next && (next.x !== prev.x || next.y !== prev.y))) {
+    if (!drag.checked || (next === null) !== (prev === null) || (next && (next.x !== prev.x || next.y !== prev.y || next.rot !== prev.rot))) {
       drag.checked = true;
       drag.placement = next;
-      const ship = store.getState().ship;
-      const error = next && placementError(drag.kind === 'module' ? removeModule(ship, drag.uid) : ship, defs, next);
+      const error = next && errorAt(ship, next, uid, drag.site);
       drag.error = error?.message ?? null;
       drag.blockers = error?.uids ?? [];
       sync();
@@ -581,8 +680,9 @@ export function mountBuilder(root, source) {
     dragChip.hidden = true;
     sync();
     if (ended.kind === 'pan' || !ended.placement) return;
-    const { x: px, y: py } = ended.placement;
-    if (ended.kind === 'module') act({ type: 'build/move', uid: ended.uid, x: px, y: py, rot: ended.rot });
+    // A piece may have turned to fit where it was let go.
+    const { x: px, y: py, rot } = ended.placement;
+    if (ended.kind === 'placed') act({ type: 'build/move', uid: ended.uid, x: px, y: py, rot });
     else act({ type: 'build/drop', placement: ended.placement });
   }
 
@@ -599,6 +699,16 @@ export function mountBuilder(root, source) {
     const session = store.getState();
     // The card opens on the half of the board away from the finger.
     const side = x < rect.x + rect.w / 2 ? 'right' : 'left';
+    if (session.layer === 'styling') {
+      if (session.ghost && onGhostPiece(session.ghost, x, y)) {
+        openCard(pieceCard(defs.styling.get(session.ghost.type)), side);
+        return;
+      }
+      const uid = pickBox(camera, pieceBoxes(session.ship), x, y);
+      const piece = (session.ship.styling ?? []).find((p) => p.uid === uid);
+      if (piece) openCard(pieceCard(defs.styling.get(piece.type), piece), side);
+      return;
+    }
     if (session.ghost && hitsGhost(camera, defs, session.ghost, x, y)) {
       openCard(cardFor(defs, defs.modules.get(session.ghost.type)), side);
       return;

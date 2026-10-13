@@ -2,8 +2,9 @@
 // stats, what it does in an approach (a gun's damage, a shield's strength,
 // point defense) and for the crew on the run (quarters, life support and
 // the med bay), and cost; and for a placed part, where it is and whether it
-// reaches the bridge.
+// reaches the bridge. For a styling piece (M23f), pieceCard.
 import { footprint } from '../../sim/modules.js';
+import { pieceFootprint } from '../../sim/styling.js';
 
 const STATS = [
   ['power', 'Power'],
@@ -58,6 +59,23 @@ function runLine(defs, def) {
   }
   if (def.stats.berths || def.stats.lifeSupport) return ['On the run: the ship carries as many crew as its berths and life support both cover. Recruits sign on at stations.'];
   return [];
+}
+
+// A styling piece's card: its size and turns, where it goes, and that it
+// is only looks; for a placed one, where it is.
+export function pieceCard(def, placed = null) {
+  const [w, h] = pieceFootprint(def, placed?.rot ?? def.turns[0]);
+  const flips = def.turns.some((rot) => rot >= 4);
+  const turns = def.turns.length === 2 && flips ? 'flips to either side' : def.turns.length > 1 ? `turns${flips ? ' and flips' : ''}` : "doesn't turn";
+  const lines = [
+    `${w}×${h} squares · ${turns}`,
+    def.shape
+      ? `Shapes the hull: a room all along one straight side, its ${def.shape === 'curve' ? 'curved' : 'sloped'} side to open space.`
+      : 'Goes beside the hull, its root all along a room\'s side.',
+    'Looks only: no mass, power or cost, and no parts used. A room change that leaves it nothing to hold it takes it off.',
+  ];
+  if (placed) lines.push(`At (${placed.x}, ${placed.y})`);
+  return { title: def.name, lines };
 }
 
 function signed(n) {

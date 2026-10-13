@@ -35,6 +35,25 @@ export function hitsGhost(cam, defs, ghost, sx, sy) {
   return inside(convexHull(corners), sx, sy);
 }
 
+// The uid of the front-most of `items`, { uid, box: [x0, y0, z0, x1, y1,
+// z1] }, whose box is under screen point (sx, sy), or null: styling pieces
+// seen from outside (lookOverlay.js pieceBox).
+export function pickBox(cam, items, sx, sy) {
+  let best = null;
+  let nearest = Infinity;
+  for (const { uid, box } of items) {
+    if (!box) continue;
+    const corners = boxCorners(cam, box[0], box[1], box[3], box[4], box[2], box[5]);
+    if (!inside(convexHull(corners), sx, sy)) continue;
+    const depth = Math.min(...corners.map((c) => c[2]));
+    if (depth < nearest) {
+      nearest = depth;
+      best = uid;
+    }
+  }
+  return best;
+}
+
 function boxCorners(cam, x0, y0, x1, y1, z0, z1) {
   const corners = [];
   for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) corners.push(project(cam, x, y, z));
