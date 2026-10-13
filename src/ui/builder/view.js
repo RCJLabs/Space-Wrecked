@@ -9,6 +9,7 @@
 import { createStore } from '../../core/store.js';
 import { loadContent } from '../../platform/content.js';
 import { traceHull } from '../../render/hull.js';
+import { styleOf } from '../../render/hullShape.js';
 import { clampOrbit, fitOrbit, panOrbit, pinchOrbit, project, turnOrbit, unproject, zoomOrbit } from '../../render/orbit.js';
 import { palette, skinFor } from '../../render/palette.js';
 import { partIconSvg } from '../../render/parts/blueprint.js';
@@ -314,7 +315,7 @@ export function mountBuilder(root, source) {
   function updateDrawer() {
     const session = store.getState();
     const onHand = (type) => partsLeft(session, type);
-    drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules, onHand, hull: session.ship.hull });
+    drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules, onHand, hull: styleOf(defs, session.ship).id });
     drawer.setStock(session.stock ? onHand : null);
   }
 
@@ -348,7 +349,7 @@ export function mountBuilder(root, source) {
       dirty = true;
       return;
     }
-    const hint = look === 'hull' ? { tone: 'info', text: 'The ship from outside. Tap Hull to go back to the plans.' } : hintFor(session, defs, drag);
+    const hint = look === 'hull' ? { tone: 'info', text: `The ship from outside: a ${styleOf(defs, session.ship).name} hull, set in the Ship tab. Tap Hull to go back to the plans.` } : hintFor(session, defs, drag);
     setStatus(flash && !drag ? flash : hint);
     showOnBoard(session);
     dirty = true;
