@@ -174,8 +174,12 @@ Done when: "hostile ships at nodes fight the approach phase to an outcome (escap
   - **M18's check:** 43 of 43 at each size;
   - **M17's check** (as adapted in M19): 37 of 37 at each size;
   - **M16's check:** 29 of 29 at each size. At 821 × 283 it timed out once, while three browser checks ran at once; run again alone, it passed;
-  - **M15's check:** 30 of 30 at 905 × 370 and 821 × 283;
-  - still running at this commit: M15's at 960 × 825, M14's saves check, M13's, M8's, M18's column check and M14's long check.
+  - **M18's column check:** 15 of 15 at each size;
+  - **M15's check:** 30 of 30 at each size;
+  - **M14's check** (a job of each kind played by touch, over 15 minutes): still running at this commit;
+  - **M14's saves check:** 10 of 10, v4 saves migrated through to v12;
+  - **M13's check:** 24 of 24;
+  - **M8's fight sandbox checks:** the fight and the orders column pass with no console errors. The extras pass all 8 of their checks, offline with the server stopped included, also with no console errors. Their wrecked bridge, set on fire on the Battle map, burns the crew in the fight.
 - **What changed in the old checks:**
   - **M20's check** (`m20/verify21.mjs`) reads save version "11 or later": a v10 save now opens as v12.
   - **M19's check** (`m19/verify21.mjs`) plays out any approach a jump lands on (Flee, or Evade when it can't), by touch and in its crossing by the sim. At a station it picks the supply buttons, not Repair, and takes either station hint.
