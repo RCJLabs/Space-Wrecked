@@ -2,6 +2,167 @@
 
 Newest entry first.
 
+## M23c Portraits (2026-10-13)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every crew member has a face now: a helmet badge, drawn in code from a look saved with them.
+
+No phone results have come back yet for M14 to M23b.
+
+**How the style was picked:** one round of five mockups, each a completely different style with the same eight crew, up close, at the game's sizes and in place:
+- A, Flat;
+- B, Ink (comic book);
+- C, Facet (low poly);
+- D, Helmet badge;
+- E, Holo (a crew manifest).
+
+Evan: "D helmet badge. Go with recommendations on the rest". So:
+- the captain's look is picked layer by layer and can be rolled;
+- the start crew get names in new games, and old saves keep theirs;
+- scars and implants earned in play wait (ROADMAP.md §9).
+
+Done when: "every crew member has a helmet-badge portrait drawn in code from a look saved with them (face, skin, hair, hair color, eyes, beard and a mark), through the helmet their job wears in a fight, the same each time it is drawn; captain creation steps through each layer and rolls; recruits come with theirs, rolled with them, the same on every visit; new games name the start crew from the recruits' names and give them looks from the campaign's seed; saves carry the looks (`SAVE_VERSION` 15: older crews get theirs from their ids, the same on every load, their names kept); two crew aboard always differ in at least two layers; portraits show on the crew card (crew and recruits), the squad card, the fight's crew buttons and captain creation, with every button there 48 px or more at the three sizes; and the golden battle logs don't change."
+
+- **A portrait from a look, the same each time:**
+  - `tests/portraits.test.js`: every helmet the two suits have draws a well-formed badge, close up and as a face. The same look draws the same SVG every time, and every choice in every layer draws its own way.
+  - By touch, the crew card's, the squad card's and the fight buttons' images are exactly what the game draws from each crew member's saved look. After a quit and reopen they are the same.
+- **Through the helmet their job wears:** the marine's skinsuit fin, the engineer's EVA lamps, the medic's EVA bubble, from `data/jobs.json`. By touch, each job picked at captain creation shows a different helmet.
+- **Captain creation steps each layer and rolls:** by touch, a tap on each of the 7 layers steps it to its next choice and the portrait follows. Roll rolls a new look. Start saves v15 with the look shown. `tests/looks.test.js` steps every layer round to where it began.
+- **Recruits come with theirs:**
+  - `tests/looks.test.js`: the look is rolled after the name, job and trait, the same on every visit, apart from the crew and each other, and kept when they sign on.
+  - By touch, a recruit signed on kept the look offered.
+- **New games name the start crew:**
+  - `tests/campaign.test.js`: names from `data/recruits.json`, a look each, the same from the same seed.
+  - `tests/looks.test.js`, over 200 seeds: a first name each, and looks apart.
+  - By touch, the start crew were named from the list.
+- **Saves:** `SAVE_VERSION` 15.
+  - `tests/looks.test.js`: a v14 crew gets looks from the campaign's seed and their ids, apart and the same on every load, names kept. A crew member without a look, or with one that can't be drawn, is caught.
+  - By touch, a v14 save opened as v15 with "Marine, Engineer, Medic" as they were, the same looks on the next load, and their portraits on the crew card.
+- **Two layers apart:** `tests/looks.test.js`. Six crew rolled together over 300 seeds; the start crew of 200 new games; recruits against the crew; and migrated crews.
+- **Where portraits show, buttons 48 px or more:** by touch at 905 × 370, 821 × 283 and 960 × 825: captain creation, the crew card, the squad card and the fight's crew buttons, every button 48 px or more and reachable.
+- **Golden files:** none changed. `node --test` passes, the battle replays included.
+
+### Shipped
+
+- **Looks** (`src/sim/looks.js`, new): a look is a face (12 shapes) and an id in each of six layers:
+  - skin, 9;
+  - hair, 10;
+  - hair color, 11;
+  - eyes, 7;
+  - beard, 5;
+  - mark, 10: none, scar, freckles, tattoo, ports, a cyber eye, a jaw plate, an earring, an eye patch, or lines.
+
+  The choices are drawings, so they live in code, where the sim rolls them and the save's migration can reach them.
+  - `rollLook` rolls one, seeded, with weights: about half have no beard and no mark, and dyed hair is rare.
+  - It rolls again, up to 20 times, if the look is less than `LOOKS_APART` (2) layers from anyone's.
+  - `crewLook` gives a look from the campaign's seed and an id.
+  - `stepLook` steps a layer.
+  - `isLook` is the save's shape check.
+- **The campaign** (`src/sim/campaign.js`):
+  - New games name the start crew from `data/recruits.json`, a first name each and none the captain's. Each gets a look from the seed, the captain's first.
+  - The captain brings the look picked.
+  - Nothing moves the campaign's RNG.
+  - The crew's shape check wants a look.
+- **Recruits** (`src/sim/recruits.js`) roll a look last, from their own stream, apart from the crew aboard and the recruits before them. Signing on copies it.
+- **`SAVE_VERSION` 15** (`src/core/save.js`): every crew member gets a look from the campaign's seed and their id, apart from those before them. Names stay.
+- **Portraits** (`src/render/portraits/`, new), pure SVG text:
+  - **`face.js`:** the face model, its 12 shapes set by hand, then the head, eyes, brows, nose and mouth, lit from the upper left.
+  - **`hair.js`:** 10 hair styles as a cap and what falls behind or stands up, and 4 beards.
+  - **`marks.js`:** the 9 marks.
+  - **`badge.js`:** `portraitSvg` puts the face behind the helmet on an ID card in the trim, close up (`bust`) or closer (`face`).
+    - EVA suits: a ball of glass on a neck ring (`bubble`, `lamps`, `bar`).
+    - Skinsuits: a close shell with the face and hairline behind the visor (`egg`, `fin`, `crest`, `mirror`), its shell in the suit's color as on the figure.
+  - **Colors:** `portraitColors` in `src/render/palette.js`.
+- **The screens:**
+  - **`src/ui/portrait.js`** (new) shows a portrait as an image from a data URL, so the SVG's ids stay its own. Each drawing is kept, up to 120.
+  - **Captain creation** (`captain.js`):
+    - the background is a line under the title;
+    - the Look panel holds the portrait in the picked job's helmet, a button a layer with its choice ("Hair / Side part"), and Roll;
+    - on the open screen the portrait stands big over the buttons.
+  - **The crew card** (`crewCard.js`): a portrait each, aboard and for hire, the recruits in the trim of the place they would take.
+  - **The squad card** (`squadCard.js`): a portrait in each pick, and the name cut short.
+  - **The fight's crew buttons** (`panels.js`, `view.js`): the portrait beside the name, cut short, and hit points, with the state under them, in a column as wide as before. Campaign fights give each unit its crew member's look (`lookOf`); the Fight sandbox rolls the same three each time.
+  - **The hangar's and map's crew panels** (`hubParts.js`) show the names cut short. On screens under 320 px tall they drop the job line too, so the panels show whole (`style.css`).
+  - **Short names** (`src/ui/names.js`, new) for the fight's buttons, the squad card and the crew panels: a first name each. Where two share one, the initial of the rest is added ("Quill P.", "Quill A."); where the initials match too, the whole names show. The crew card, the log and the hints keep whole names.
+- **Words** (`captainText.js`): every layer and choice in words, in the game's US spelling ("Hair color", "Gray").
+- **Docs:**
+  - ROADMAP.md: M23c's Done when, §4.5's portraits as built, and §9's scars earned in play;
+  - CLAUDE.md: the portraits folder and the rule.
+- **Tests:** 596 in all, up from 582:
+  - the looks (`tests/looks.test.js`, 7);
+  - the portraits (`tests/portraits.test.js`, 4);
+  - the short names (`tests/names.test.js`, 2), over 500 crews drawn from the recruits' names too;
+  - the look's words (`tests/captainText.test.js`);
+  - the tests that named the start crew by their jobs now read the names.
+
+### Decisions made this session
+
+- **Evan's calls:**
+  - the helmet badge, from five mockups;
+  - "recommendations on the rest": the captain's look stepped or rolled, the start crew named in new games, scars earned in play later.
+- **Mine:**
+  - **The fight's crew column kept its width.** I told Evan it would grow about 20 px. Measured, that takes the cover screen's smallest fight tile from 48.3 px to 46.7, under the 48 px rule. The portrait is 28 px instead, beside the name.
+  - **The look's choices are code,** in `src/sim/looks.js`. The save's migration runs without the content files and has to roll looks, and every choice is a drawing anyway.
+  - **Short names** on the fight's buttons, the squad card and the hangar's and map's crew panels, where whole names were cut off ("Fen …", "Quill P…"). The start crew never share a first name. Recruits can share one with someone aboard, because they avoid only whole names, so those two show an initial. On screens under 320 px tall the panels drop the job line as well; the crew card has it.
+  - **The hairline shows through a skinsuit's visor,** so a marine's hair color and fringe read. Under the shell the rest of the hair is hidden.
+  - **The Fight sandbox's crew** get the same three rolled looks every time.
+
+### Verified here
+
+- `node --test`: 596 pass. `node tools/validate-data.js`: OK. `data/balance.json` didn't change.
+- **M23c's check** (scratchpad `m23c/verify.mjs`), by touch at 905 × 370, 821 × 283 and 960 × 825: 25 of 25 at each size. It covers:
+  - what the Done when's bullets above say;
+  - two crew sharing a first name, told apart on the map's crew panel, the squad card and the fight's buttons ("Quill P.", "Quill A.");
+  - offline: the portraits still draw with the network off;
+  - no console errors or warnings.
+- **Recruits as they were:** over 25 campaigns, every station of the first sector, 99 of 100 recruits have the same name, job and trait as on main. The other drew a name a start crew member now has, and was rolled again, as M23's rule says.
+- **The fight's tiles:** the smallest at the opening view is 48.3 px at 905 × 370, as on main.
+- **Regressions,** one after another, after the last change (the short names, below), at 905 × 370, 821 × 283 and 960 × 825 unless named:
+  - **M23's check** (as adapted in M23c, below): 36 of 36 at each size;
+  - **M23b's check:** 8 of 8 at each size;
+  - **M22's check** (as adapted in M23): 35 of 35 at each size;
+  - **M21's check** (as adapted in M23): 32 of 32 at each size;
+  - **M19's check** (as adapted in M22): 52 of 52 at each size;
+  - **M20's check** (as adapted in M21): 32 of 32 at each size;
+  - **M18's check:** 43 of 43 at each size;
+  - **M17's check** (as adapted in M19): 37 of 37 at each size;
+  - **M16's check:** 29 of 29 at each size;
+  - **M15's check:** 30 of 30 at each size;
+  - **M14's saves check:** 10 of 10 at 905 × 370;
+  - **M13's check:** 24 of 24 at 905 × 370;
+  - **M8's fight sandbox checks:** a whole fight played by touch at each size, with no console errors; the orders column at each size, every order and crew button 48 px or more; all 8 extras, offline included, with no console errors;
+  - **M14's check:** 40 of 40 at 905 × 370, with a job of each kind played by touch. The count depends on the jobs dealt, from a new seed each run (48 in M23b).
+- **Found by the checks and the screenshots:**
+  - **M19's check at 821 × 283:** "the crew and ship panels show whole" failed. The start crew's rows in the hangar's and map's crew panels had become two lines, a name with the job under it, where "Marine" alone had been one, and the crew panel ran off the screen. Under 320 px of height the rows are names alone now. 52 of 52 after.
+  - **M23's check** asked for the start crew by their jobs ("Going: Engineer, Medic…") and for a v13 save to open as v14. Its copy (scratchpad `m23/verify23c.mjs`) reads the names from the save and asks for v14 or later. Nothing else in it changed.
+  - **The last screenshots:** the squad card cut names off at 905 × 370 ("Fen …", "Quill P…"), with the portrait taking room. Recruits avoid only whole names aboard, so a fight could also show two "Fen" buttons. Fixed with the short names, and M23c's check gained the case. Every check above ran after it.
+
+### Known issues
+
+- **Hair hides under a skinsuit:** a marine shows only the hairline and color, so stepping Hair changes little you can see on one.
+- **The 12 face shapes are close at 28 to 40 px.** Skin, hair, beard and marks do the telling apart there; the faces differ most at captain creation's size.
+- **Trims can differ between the crew card and a fight.** The card trims by place in the crew; a fight trims by place in the squad, as since M23.
+- **Captain creation at 821 × 283:** the Look panel scrolls, as the others do there, with Mark and Roll below the fold.
+- **Short screens drop the jobs from the side panels:** at 821 × 283 the hangar's and map's crew panels show names alone. The crew card has the jobs.
+- **One recruit in 100 changed** from main's, because the start crew now draw names from the same list.
+- **Old saves keep crew named by their jobs.** Only new games name the start crew.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **New game:** step each layer, Roll, and switch jobs: does the helmet follow? Start.
+2. **The hangar:** first names in the crew panel.
+3. **Act 2, at a station:** the crew card's portraits, a recruit signed on, and the squad card before a boarding. A recruit sharing a first name with someone aboard shows an initial ("Quill A.").
+4. **A fight:** the crew buttons with portraits. Are the faces readable at that size?
+5. **Both screens,** captain creation especially.
+6. **Tell me:**
+   - anything to change in the badge: the card, the glass, the trim;
+   - whether faces read in the fight;
+   - whether captain creation is clear;
+   - and the M14 to M23b questions still open.
+
+### Next session
+
+**M23d Sleek hulls.** Settle its Done when first. The draft is "no outer corner of a hull is a plain right angle; the start ship and the three presets show curved noses and sloped edges outside the builder; the hull still covers every cell and never cuts into a room; the boarding maps don't change (golden); and the hull views keep to the frame budget at the three sizes."
+
 ## M23b Character figures (2026-10-13)
 
 **Status:** done, and the ROADMAP.md box is ticked. The units in every fight are people in spacesuits now, in two suits Evan picked from two rounds of mockups.

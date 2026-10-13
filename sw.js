@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "85acd71a9cef";
+const VERSION = "d1a6896829c4";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -184,6 +184,7 @@ const FILES = [
   "src/ui/gestures.js",
   "src/ui/icons.js",
   "src/ui/motion.js",
+  "src/ui/names.js",
   "src/ui/portrait.js",
   "src/ui/screens.js",
   "src/ui/settings.js",

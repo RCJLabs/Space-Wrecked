@@ -306,6 +306,14 @@ textarea {
   font-size: 0.82em;
 }
 
+/* Short screens: the side panels' crew rows are first names alone, a line
+   each, so the panels show whole. The crew card has the jobs. */
+@media (max-height: 320px) {
+  .hgr-side .hgr-name small {
+    display: none;
+  }
+}
+
 .hgr-hp {
   height: 6px;
   border-radius: 3px;

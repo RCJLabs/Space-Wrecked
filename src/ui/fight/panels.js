@@ -10,6 +10,7 @@
 // Reload, not a job's Grab or Hack.
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { shortNames } from '../names.js';
 import { portraitImg } from '../portrait.js';
 import { stateText } from './hints.js';
 
@@ -49,14 +50,15 @@ export function createCrewBar({ onSelect, onEnd }) {
     },
   };
 
-  // A button a unit: their portrait beside their name (the first name of
-  // two) and hit points, and their state under them.
+  // A button a unit: their portrait beside their name, cut short
+  // (names.js), and hit points, and their state under them.
   function build(units, colors, faces, key) {
     for (const row of rows.values()) row.detach();
     rows = new Map();
     built = key;
     list.replaceChildren();
-    for (const unit of units) {
+    const short = shortNames(units.map((unit) => unit.name));
+    for (const [i, unit] of units.entries()) {
       const button = node('button', 'btn fgt-unit');
       button.type = 'button';
       button.style.setProperty('--trim', colors.get(unit.id));
@@ -65,7 +67,7 @@ export function createCrewBar({ onSelect, onEnd }) {
       bar.append(fill);
       const state = node('span', 'fgt-state');
       const who = node('span', 'fgt-who');
-      who.append(node('span', 'fgt-name', unit.name.split(' ')[0]), bar);
+      who.append(node('span', 'fgt-name', short[i]), bar);
       const top = node('span', 'fgt-top');
       if (faces.get(unit.id)) top.append(portraitImg('fgt-face', faces.get(unit.id)));
       top.append(who);
