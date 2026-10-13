@@ -1,12 +1,12 @@
 // The approach phase's balance harness (ROADMAP §4.2): the launched start
 // ship against each hostile preset, many times, with the test player giving
 // its orders (tools/approachPlan.js) and the preset its tactics. It reports
-// how the approaches end, and the same again with a weapon mount, a shield
-// generator or an engine added to the start ship, each by itself: Law 1
-// says every one of them should change how it goes.
+// how the approaches end, and the same again with each part that fights in
+// an approach added to the start ship by itself (ADDED): Law 1 says every
+// one of them should change how it goes.
 //   node tools/approach.js              300 approaches a preset per ship
 //   node tools/approach.js --runs 1000
-//   node tools/approach.js --set gunDamage=12   (any balance number)
+//   node tools/approach.js --set gunnery=65   (any balance number)
 // Every approach is seeded: the enemy ship is preset seed 1 up, and its
 // rolls are seeded by the same number, so a run is the same every time and
 // each ship meets the same enemies on the same rolls.
@@ -21,8 +21,10 @@ import { launchedShip, withPart } from './startShip.js';
 
 export { launchedShip, withPart } from './startShip.js';
 
-// The parts tried one at a time on the launched ship.
-export const ADDED = ['weapon', 'shield', 'engine'];
+// The parts tried one at a time on the launched ship: v0.1's gun, shield
+// and engine, and M23e's variants of them, the point defense turret and the
+// small reactor (a spare).
+export const ADDED = ['weapon', 'shield', 'engine', 'cannon', 'pointdefense', 'shieldarray', 'lightengine', 'heavyengine', 'smallreactor'];
 // How an outcome counts for the player.
 const WINS = ['boarded', 'destroyed'];
 const LOSSES = ['boardedBy'];
@@ -82,8 +84,8 @@ export function runApproaches(rules, { runs = 300 } = {}) {
 // The rows as a table.
 export function approachText(rules, rows) {
   const pct = (n, of) => `${Math.round((100 * n) / of)}%`.padStart(5);
-  const head = `${'Ship'.padEnd(10)}${'Against'.padEnd(18)}${OUTCOMES.map((kind) => kind.padStart(10)).join('')}${'Score'.padStart(8)}`;
-  const lines = rows.map((row) => `${row.ship.padEnd(10)}${rules.ships.get(row.preset).name.padEnd(18)}${OUTCOMES.map((kind) => pct(row.outcomes[kind], row.runs).padStart(10)).join('')}${String(row.score).padStart(8)}`);
+  const head = `${'Ship'.padEnd(14)}${'Against'.padEnd(18)}${OUTCOMES.map((kind) => kind.padStart(10)).join('')}${'Score'.padStart(8)}`;
+  const lines = rows.map((row) => `${row.ship.padEnd(14)}${rules.ships.get(row.preset).name.padEnd(18)}${OUTCOMES.map((kind) => pct(row.outcomes[kind], row.runs).padStart(10)).join('')}${String(row.score).padStart(8)}`);
   return [
     `${rows[0]?.runs ?? 0} approaches a preset for each ship: the launched start ship, and it with one part more. The test player against each preset's tactics.`,
     head,

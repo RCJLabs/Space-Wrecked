@@ -105,6 +105,12 @@ test('engines get nozzles and guns get barrels only where the way out faces spac
   const half = traceHull(ship([at('corridor', 0, 1), at('engine', 1, 1), at('corridor', 4, 0), at('weapon', 4, 1)]), defs);
   assert.deepEqual(half.nozzles, [{ x: 1, y: 2, side: 'w' }], 'a part behind half the exhaust');
   assert.deepEqual(half.barrels, [], 'a part in front of the gun');
+  // A gun two cells across (M23e's cannon) has one heavy barrel, at the
+  // middle of its muzzle side; turned, it points the way it faces.
+  const cannon = traceHull(ship([at('cannon', 2, 1)]), defs);
+  assert.deepEqual(cannon.barrels, [{ x: 2.5, y: 1, side: 'n', heavy: true }]);
+  const east = traceHull(ship([at('cannon', 2, 1, 1)]), defs);
+  assert.deepEqual(east.barrels, [{ x: 2, y: 1.5, side: 'e', heavy: true }]);
 });
 
 test('airlocks get a docking collar at the hatch on each side open to space', () => {

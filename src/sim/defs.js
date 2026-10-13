@@ -13,6 +13,9 @@ export function indexDefs(files) {
     tilesPerCell: modules.tilesPerCell,
     tiles: modules.tiles,
     modules: byId(modules.modules),
+    // The builder's drawer sorts parts into these, in this order (M23e):
+    // [{ id, name }], each module naming one as its category.
+    categories: modules.categories ?? [],
     frames: byId(frames.frames),
     manufacturers: byId(manufacturers?.manufacturers),
     // How a hull is shaped around the rooms (src/render/hullShape.js), by

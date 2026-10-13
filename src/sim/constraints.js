@@ -148,15 +148,14 @@ function layoutLine(ship, defs) {
   return failing('layout', `${first.message.replace(/\.$/, '')}${more}`, fix);
 }
 
-// The part that gives the most of a stat, the cheapest on a tie, or null.
+// The part a fix asks for to give a stat: the first in data/modules.json
+// that gives it, or null. The base parts come first there, so the fixes,
+// act 1's goal (campaign.js partsNeeded) and the parts a generated ship is
+// topped up with (gen/ship.js) name the part the shop stocks most of, not
+// a variant (M23e).
 function bestSource(defs, stat) {
-  let best = null;
-  for (const def of defs.modules.values()) {
-    const amount = def.stats[stat];
-    if (amount <= 0) continue;
-    if (!best || amount > best.stats[stat] || (amount === best.stats[stat] && def.cost < best.cost)) best = def;
-  }
-  return best;
+  for (const def of defs.modules.values()) if (def.stats[stat] > 0) return def;
+  return null;
 }
 
 // "Add Reactor (+8 power)", or "Add 2 × Engine (+12 thrust each)".

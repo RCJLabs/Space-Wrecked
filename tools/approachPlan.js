@@ -73,7 +73,8 @@ export function quickOrder(state, rules) {
 // module of a kind on the other ship; Infinity if they can't.
 function roundsToWreck(state, fire, at, rules) {
   if (!fire?.ok) return Infinity;
-  const perRound = Math.max(0, (fire.guns * fire.chance * fire.damage) / 100 - fire.shields);
+  const damage = fire.damages.reduce((sum, each) => sum + each, 0);
+  const perRound = Math.max(0, (fire.chance * damage) / 100 - fire.shields);
   if (!perRound) return Infinity;
   const left = targetsOf(state.them, at, rules).reduce((sum, target) => sum + target.left, 0);
   return left / perRound;

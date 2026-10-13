@@ -6,6 +6,12 @@ import { newCampaign, refitShip } from '../src/sim/campaign.js';
 import { withBoard } from '../src/sim/contracts.js';
 import { rules } from './battleKit.js';
 
+// The pirate cutter (data/ships.json) the approach and boarding tests meet:
+// preset seed 3, with two guns and one reactor, so the start ship's one gun
+// can disable her. Seed 1's had those until M23e's light engines changed
+// what the cutter rolls; its seed 1 now has three guns and two reactors.
+export const CUTTER_SEED = 3;
+
 export function readyToLaunch(extra = {}) {
   let campaign = { ...withBoard(newCampaign(rules, 5), rules), parts: { quarters: 1, lifesupport: 1, engine: 3, corridor: 2 }, credits: 140, heat: 30 };
   let { ship } = campaign;

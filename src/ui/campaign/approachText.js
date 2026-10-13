@@ -4,7 +4,7 @@
 // fight it ended in, if any (boardingText.js). The rules are
 // src/sim/approach.js's, played by src/sim/encounter.js. rules are the
 // content tables (src/sim/defs.js).
-import { AIM_TAGS, AIMS, choicesFor, closeChance, fleeChance, sideStats } from '../../sim/approach.js';
+import { AIMS, choicesFor, closeChance, fleeChance, sideStats } from '../../sim/approach.js';
 import { approachIntent, approachState } from '../../sim/encounter.js';
 import { boardingStakes } from './boardingText.js';
 import { actTitle, heatText } from './hubText.js';
@@ -51,25 +51,37 @@ export function approachText(campaign, rules) {
   };
 }
 
-// A side's name, numbers and wrecks.
+// A side's name, numbers and wrecks. Point defense shows only on a ship
+// that has some: what it takes off the other ship's hit chance, as evasion
+// does.
 function sideText(name, side, rules) {
   const stats = sideStats(side, rules);
-  const count = (aim) => {
-    const all = side.ship.modules.filter((module) => rules.modules.get(module.type)?.tags.includes(AIM_TAGS[aim]));
+  const count = (tag) => {
+    const all = side.ship.modules.filter((module) => rules.modules.get(module.type)?.tags.includes(tag));
     const working = all.filter((module) => !(module.uid in side.wrecked));
-    return `${working.length} of ${all.length}`;
+    return { all: all.length, text: `${working.length} of ${all.length}` };
   };
+  const turrets = count('pointdefense');
   return {
     name,
     stats: [
-      ['Guns', count('weapons')],
+      ['Guns', count('weapon').text],
+      ...(turrets.all ? [['Point defense', stats.intercept ? String(stats.intercept) : 'out']] : []),
       ['Shields', stats.shields ? `${stats.shields} a round` : 'none'],
-      ['Engines', count('engines')],
-      ['Reactor', count('reactor')],
+      ['Engines', count('engine').text],
+      ['Reactor', count('reactor').text],
       ['Evasion', String(stats.evasion)],
     ],
     wrecked: side.wrecked,
   };
+}
+
+// Each gun's damage a hit, in words: "15", or "30, 15 and 15", biggest
+// first.
+export function damageText(damages) {
+  const sorted = [...damages].sort((a, b) => b - a);
+  if (sorted.every((damage) => damage === sorted[0])) return String(sorted[0] ?? 0);
+  return `${sorted.slice(0, -1).join(', ')} and ${sorted.at(-1)}`;
 }
 
 // The other ship's order, as the player reads it before giving theirs, with
@@ -84,7 +96,7 @@ function intentText(intent, state, theirName, rules) {
     const guns = `${theirs.guns} gun${theirs.guns === 1 ? '' : 's'}`;
     return {
       short: `Fires at your ${AIM_NAMES[intent.at]}`,
-      text: `${they} fires at your ${AIM_NAMES[intent.at]}: ${guns}, ${evade.was}% each (${evade.chance}% if you evade).`,
+      text: `${they} fires at your ${AIM_NAMES[intent.at]}: ${guns}, ${evade.was}% each (${evade.chance}% if you evade), ${damageText(theirs.damages)} damage a hit.`,
     };
   }
   if (intent.kind === 'close') {
@@ -115,7 +127,7 @@ function ordersText(state, intent, theirName, rules) {
         ok: choice.ok,
         why: choice.why,
         ask: `${capital(name)}?`,
-        text: `Fire at their ${name}: your ${guns}, ${choice.chance}% each to hit, ${choice.damage} damage a hit${shields}.${blow} Tap again to fire.`,
+        text: `Fire at their ${name}: your ${guns}, ${choice.chance}% each to hit, ${damageText(choice.damages)} damage a hit${shields}.${blow} Tap again to fire.`,
       });
     } else if (order.kind === 'evade') {
       const against = choice.chance === null ? 'Their guns are quiet this round.' : `Their guns hit ${choice.chance}% instead of ${choice.was}%.`;

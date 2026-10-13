@@ -21,13 +21,13 @@ import { repairPlan, repairPrice, repairShip } from '../src/sim/repair.js';
 import { initialState, reduce, saveData } from '../src/sim/root.js';
 import { beginRun, jump, jumpPlan, leavePlan, linked, scanPlan } from '../src/sim/travel.js';
 import { rules } from './battleKit.js';
-import { readyToLaunch } from './launchKit.js';
+import { CUTTER_SEED, readyToLaunch } from './launchKit.js';
 
 const { balance } = rules;
 const onRun = (extra = {}) => beginRun(launch(readyToLaunch(extra), rules).campaign, rules).campaign;
 // A run whose first node on holds a pirate cutter (preset seed `seed`), and
 // no other node holds anything: { campaign, to }.
-function hostileAhead(extra = {}, seed = 1) {
+function hostileAhead(extra = {}, seed = CUTTER_SEED) {
   const fresh = onRun(extra);
   const { sector } = fresh.run;
   const to = linked(sector, sector.start)[0];
@@ -35,7 +35,7 @@ function hostileAhead(extra = {}, seed = 1) {
   return { campaign: { ...fresh, run: { ...fresh.run, sector: { ...sector, nodes } } }, to };
 }
 // The campaign at the cutter, its approach open.
-const atCutter = (extra = {}, seed = 1) => {
+const atCutter = (extra = {}, seed = CUTTER_SEED) => {
   const { campaign, to } = hostileAhead(extra, seed);
   return jump(campaign, rules, to).campaign;
 };
@@ -66,7 +66,7 @@ test('arriving where a hostile ship is opens the approach, which holds jumps, sc
   assert.equal(campaign.run.approach, null);
   const there = jump(campaign, rules, to).campaign;
   const { approach } = there.run;
-  const made = generateShip(rules, 'cutter', 1);
+  const made = generateShip(rules, 'cutter', CUTTER_SEED);
   assert.deepEqual(approach.enemy, { ship: 'cutter', name: 'Pirate cutter', crew: made.crew });
   assert.deepEqual(approach.them, { ship: made.ship, damage: {}, wrecked: made.wrecked });
   assert.deepEqual([approach.node, approach.round, approach.fired, approach.last, approach.outcome], [to, 1, false, null, null]);

@@ -118,6 +118,79 @@ const DRAWINGS = {
     box(m, [0.14, 0.18, 0], [0.42, 0.82, 0.32], PROP); // capacitors
     box(m, [0.52, 0.28, 0], [0.76, 0.82, 0.24], PROP);
   },
+  // M23e's variants, each told apart from the part it varies.
+  lightengine(m) {
+    cylinder(m, [0.14, 0.5, 0.3], 0.26, 0.92, { ...CAN, axis: 'x' }); // the slim turbine
+    cylinder(m, [0.24, 0.5, 0.3], 0.11, 0.03, { axis: 'x', ends: 'coreFace', edge: 'coreEdge' });
+    polyline(m, 'propFine', [[1.06, 0.5, 0.2], [1.38, 0.5, 0.2]]); // fuel line
+    box(m, [1.38, 0.36, 0], [1.6, 0.64, 0.28], PROP); // valve
+  },
+  heavyengine(m) {
+    for (const y of [0.56, 1.44]) {
+      cylinder(m, [0.16, y, 0.42], 0.38, 1.66, { ...CAN, axis: 'x', ribs: 6 }); // twin turbines
+      cylinder(m, [0.3, y, 0.42], 0.18, 0.03, { axis: 'x', ends: 'coreFace', edge: 'coreEdge' });
+    }
+    box(m, [1.9, 0.32, 0], [2.12, 1.68, 0.56], PROP); // manifold
+    for (const y of [0.64, 1, 1.36]) polyline(m, 'propFine', [[2.12, y, 0.22], [2.38, y, 0.22]]); // fuel lines
+    box(m, [2.38, 0.56, 0], [2.82, 1.44, 0.4], PROP); // valve block
+  },
+  smallreactor(m) {
+    cylinder(m, [1.38, 1.38, 0], 0.48, 0.44, { ...CAN, ribs: 6 }); // housing
+    for (const [dx, dy] of [[1, -1], [-1, 1]]) {
+      const d = Math.SQRT1_2;
+      polyline(m, 'propEdge', [[1.38 + dx * 0.48 * d, 1.38 + dy * 0.48 * d, 0.38], [1.38 + dx * 0.62 * d, 1.38 + dy * 0.62 * d, 0]]);
+    }
+    cylinder(m, [1.38, 1.38, 0], 0.2, 0.78, CORE); // the core
+    glow(m, [1.38, 1.38, 0.82], 0.42, palette.bpGlow);
+    box(m, [0.18, 0.12, 0], [0.8, 0.34, 0.36], PROP); // its control panel
+    rect(m, [0.24, 0.17], [0.74, 0.29], 0.361, { fill: 'glass' });
+  },
+  pointdefense(m) {
+    cylinder(m, [0.5, 0.62, 0], 0.24, 0.18, CAN); // turret ring
+    cylinder(m, [0.5, 0.62, 0.18], 0.14, 0.1, { fill: null, ends: 'glass', edge: 'propEdge' }); // the tracking eye
+    for (const x of [0.38, 0.5, 0.62]) box(m, [x - 0.025, 0.08, 0.22], [x + 0.025, 0.46, 0.26], { fill: null, top: null, edge: 'propEdge' }); // three barrels
+  },
+  cannon(m) {
+    box(m, [0.12, 0.18, 0], [0.6, 0.84, 0.52], PROP); // shell hopper
+    polyline(m, 'propFine', [[0.6, 0.5, 0.3], [0.72, 0.56, 0.3]]); // the feed
+    cylinder(m, [1, 0.62, 0], 0.34, 0.24, { ...CAN, ribs: 6 }); // turret ring
+    box(m, [0.84, 0.36, 0.24], [1.16, 0.78, 0.5], PROP); // breech
+    box(m, [0.93, 0.02, 0.32], [1.07, 0.36, 0.44], { fill: null, top: null, edge: 'propEdge' }); // the one heavy barrel
+    box(m, [1.48, 0.3, 0], [1.86, 0.72, 0.38], PROP); // the loader's console
+    rect(m, [1.54, 0.36], [1.8, 0.52], 0.381, { fill: 'glass' });
+  },
+  shieldarray(m) {
+    cylinder(m, [1.28, 1.22, 0], 0.42, 0.24, { ...CAN, ribs: 6 }); // emitter base
+    cylinder(m, [1.28, 1.22, 0.24], 0.1, 0.72, { fill: null, ends: 'glass', edge: 'propEdge', ribs: 3 });
+    for (const [z, r] of [[0.84, 0.62], [1, 0.44], [1.14, 0.26]]) circle(m, 'fieldRing', [1.28, 1.22, z], r);
+    glow(m, [1.28, 1.22, 1.14], 0.5, palette.bpLine);
+    box(m, [0.16, 1.28, 0], [0.38, 1.86, 0.4], PROP); // capacitor bank
+    box(m, [0.44, 1.38, 0], [0.66, 1.86, 0.32], PROP);
+  },
+  bunks(m) {
+    for (const y of [0.16, 1.12]) {
+      box(m, [1.12, y, 0], [1.88, y + 0.72, 0.17], PROP); // bunk
+      box(m, [1.12, y, 0.4], [1.88, y + 0.72, 0.46], PROP); // and the one above
+    }
+    box(m, [0.16, 0.66, 0], [0.64, 1.34, 0.42], PROP); // its own air: a scrubber
+    circle(m, 'propFine', [0.4, 1, 0.421], 0.18);
+  },
+  surgery(m) {
+    box(m, [1.18, 0.22, 0], [1.84, 0.8, 0.3], PROP); // the operating table
+    polyline(m, 'propEdge', [[1.9, 0.92, 0], [1.9, 0.92, 0.7], [1.66, 0.64, 0.7], [1.6, 0.56, 0.56]]); // the surgeon's arm
+    glow(m, [1.51, 0.51, 0.62], 0.22, palette.bpGlow);
+    box(m, [1.22, 1.26, 0], [1.82, 1.72, 0.4], PROP); // console
+    rect(m, [1.3, 1.34], [1.74, 1.48], 0.401, { fill: 'glass' });
+    rect(m, [0.4, 0.84], [0.6, 1.4], 0.005, { fill: 'glass', edge: 'propFine' }); // the cross
+    rect(m, [0.22, 1.02], [0.78, 1.22], 0.005, { fill: 'glass', edge: 'propFine' });
+  },
+  largehold(m) {
+    for (const [x, y] of [[0.52, 0.52], [3.48, 0.52], [0.52, 2.48], [3.48, 2.48]]) box(m, [x - 0.32, y - 0.32, 0], [x + 0.32, y + 0.32, 0.56], PROP);
+    for (const [x, y] of [[3.48, 0.52], [0.52, 2.48]]) box(m, [x - 0.24, y - 0.24, 0.56], [x + 0.24, y + 0.24, 0.92], PROP); // stacked
+    box(m, [1.3, 0.8, 0], [2.7, 2.2, 0.04], { fill: null, top: 'propFace', edge: 'propFine' }); // cargo lift
+    for (const y of [1.62, 1.38]) polyline(m, 'floorMark', [[1.72, y + 0.14, 0.041], [2, y - 0.14, 0.041], [2.28, y + 0.14, 0.041]]);
+    for (const y of [0.18, 2.82]) polyline(m, 'floorMark', [[1, y, 0.005], [3, y, 0.005]]); // the gantry's rails
+  },
 };
 
 // Module ids with a drawing of their own, for tests.
