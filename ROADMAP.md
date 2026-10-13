@@ -22,7 +22,7 @@
 
 **Laws (test every feature against these):**
 
-- **Law 1: Every module changes something outside the builder.** That can be the battle map, the approach phase, travel range, crew or the colony. A module that only changes a number on the builder screen gets cut.
+- **Law 1: Every module changes something outside the builder.** That can be the battle map, the approach phase, travel range, crew or the colony. A module that only changes a number on the builder screen gets cut. Styling (M23f) isn't a module: wings, fins, antennas, lights, hull plates, paint and trim change how the ship looks and nothing else, never a stat, a rule or the boarding map, so this law doesn't cut them (Evan's call, 2026-10-13).
 - **Law 2: The ship you build is the map you defend.** Boarding maps always come from the actual layout, damage included.
 - **Law 3: Every battle feeds the ship or the run.** It leaves behind salvage, parts, wounds, heat or crew. No battle ends with nothing changed.
 - **Law 4: Odds are visible and honest.** The hit chance on screen is the number rolled against. Rolls are seeded and the RNG state is saved, so reloading never rerolls.
@@ -469,7 +469,45 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
   - the med bay: 1 hit point a jump to each of the wounded, 2 with a medic aboard
 
   **Done when:** recruits sign on at stations for a fee, two taps, up to the ship's berths and life support: each station offers 2, rolled from data (a name, a job, a trait), the same on every visit; before a boarding the player picks a squad of up to 3, the three healthiest unless changed, and the rest sit out; the crew card lists everyone's job, traits and hit points and lets anyone but the captain go, two taps; a working med bay heals each wounded crew member 1 hit point a jump, 2 with a medic aboard (a long jump counts 3), and a wrecked one heals nothing; the builder's part card says what quarters, life support and the med bay do on the run; and the careful test player, signing recruits on only while the holds would last 10 jumps with them aboard, still crosses all five sectors fed in at least 24 of 30, and with a med bay fitted patches fewer hit points than without (Law 1). (As first agreed, it hired "when its credits allow"; on the start ship's lockers that starved it, below.)
-- [ ] **M23b Refits at stations** (from §9; Evan's call in M23). Act 2 has no refits yet: a part found at a node or stripped from a boarded ship can only be sold, and most ships launch with room for one recruit and no med bay.
+
+**Looks and the catalog, before refits** (Evan's call after M23, 2026-10-13). The characters are still stand-ins, the ships look blocky, and the builder needs more to choose from. Evan asked for these before the milestones already planned. His answers: figures and portraits; hulls that are smoother on their own, plus shaped pieces to sculpt them; styling that isn't a module (Law 1); and part variants in size and stats, plus a second manufacturer. The rules stay on the square grid (§3), so the curves are on the outside: rooms and fights keep their square tiles. Each milestone keeps the fight and the hull views within the frame budget at the three screen sizes.
+
+- [ ] **M23b Character figures** (§4.3).
+  - figures drawn in code by our renderer: helmet and visor, armored body, arms holding the weapon, legs
+  - the crew by job (marine, engineer, medic), each in their own trim; enemies by type (`data/enemies.json`), in their side's colors
+  - poses: standing, aiming as they shoot, walking through a move, down, and out or dead
+
+  **Done when (draft):** every crew job and every enemy type has a figure of its own, told apart at the cover screen's tile size; a move walks, a shot aims and a unit that goes down falls; the fight keeps to the frame budget at the three sizes; and the golden battle logs don't change (it is drawing only).
+- [ ] **M23c Portraits** (§4.5).
+  - portraits drawn in code (SVG) in layers: face and head, skin, hair, eyes, brows, mouth, and marks such as scars and implants
+  - each crew member's look saved with them: the captain's picked at creation, a recruit's rolled with them, the start crew's from their seed
+  - shown on the crew card, the fight's crew buttons, captain creation and the recruits for hire
+
+  **Done when (draft):** every crew member has a portrait, the same each time it is drawn; captain creation picks the captain's look; recruits come with theirs; looks are saved with the crew (a `SAVE_VERSION` bump, older crews given theirs from their ids, the same on every load); and the screens that show them keep their buttons 48 px or more.
+- [ ] **M23d Sleek hulls** (§4.1, auto-hull).
+  - the hull traced with curves and diagonals: outer corners rounded or cut, a curved nose, sloped top edges and a tapered stern, on every ship without the player doing anything
+  - the parts that show outside bevelled: engine nacelles, turrets and collars
+  - wherever a hull is drawn: the builder's rim and hull view, the hangar, the lift-off, the enemy ships sandbox
+
+  **Done when (draft):** no outer corner of a hull is a plain right angle; the start ship and the three presets show curved noses and sloped edges outside the builder; the hull still covers every cell and never cuts into a room; the boarding maps don't change (golden); and the hull views keep to the frame budget at the three sizes.
+- [ ] **M23e Builder catalog and part variants** (§4.1, §5).
+  - the parts drawer in categories (command, power, engines, weapons, defense, crew, cargo and utility) with filters (on hand, by maker, by size)
+  - size and stat variants of today's parts, such as a light and a heavy engine, a light and a heavy gun mount, bunks, a small reactor and a large hold, each with its own footprint, interior, model and icon
+  - the shop, the drop tables and the enemy presets carry them
+
+  **Done when (draft):** at least 8 new parts, each doing something in play that no other part does as well, shown by `tools/approach.js`, `tools/sim.js` or the voyage player (Law 1); the drawer sorts parts into categories and filters them, two taps to place as now, every button 48 px or more; the shop sells them and enemy ships use some; and old saves and blueprint codes still load.
+- [ ] **M23f Styling pieces** (Law 1's styling line).
+  - styling as data (`data/styling.json`): wings, fins, spoilers, antennas, lights, hull plates, and shaped pieces (wedges and curved corners) to sculpt the outline, plus paint and trim colors
+  - placed in the builder on cells outside the ship's rooms, against the hull, never in front of an exhaust, a barrel or a hatch, with a cap of their own
+  - saved with the ship, carried by blueprint codes, shown everywhere a hull is drawn, and worn by enemy ships
+
+  **Done when (draft):** a player can place, move, turn and remove styling pieces and paint the hull in the builder, two taps each; they show on the blueprint and the solid hull wherever ships are drawn; no stat, rule or boarding map changes with them (tested); saves (a `SAVE_VERSION` bump) and blueprint codes (a new code version that still reads the old) carry them; and enemy ships wear some.
+- [ ] **M23g A second manufacturer** (§3: manufacturers are skins over the same part shapes; §5).
+  - a second maker over every part: its own palette, trim and details on the same footprints, with small differences in stats and price
+  - the shop and the drop tables carry both makers, and enemy ships wear their side's
+
+  **Done when (draft):** every part, M23e's included, comes from both makers, told apart at a glance in the builder and outside it; each maker's versions differ in play somewhere (Law 1); the shop sells both; and old saves and blueprint codes load with the first maker's parts.
+- [ ] **M23h Refits at stations** (from §9; Evan's call in M23, numbered M23b until the looks came first). Act 2 has no refits yet: a part found at a node or stripped from a boarded ship can only be sold, and most ships launch with room for one recruit and no med bay.
 
   **Done when (draft):** at a station, construction mode opens with the parts on hand, so parts found, stripped or bought can be fitted; the ship can't jump while its flight checklist fails.
 - [ ] **M24 Heat v2: hunters, regrouping, transponders** (§4.4's act 2 rules).
@@ -518,7 +556,7 @@ A Capacitor build; a paid version with a web demo; optional cloud saves on Base4
 | Players build chokepoint fortresses | Balance runs show defenders always win. AI against AI on the example ship, the crew of 3 wins 64% (58–70) against 4 boarders (`tools/sim.js`, M11). With the airlock moved under the bridge it wins 83% | Enemies breach walls and choose entry points; corridors stay two tiles wide. Since M9 the AI breaches doors: it opens one and shoots through, which overwatch can't punish |
 | Fights stall in standoffs | AI-against-AI fights reach the round limit. The harness's 1,000 fights in M11 stalled on 24% of cutters, 9% of corvettes and 5% of haulers, and none on the example ship. Both sides hold on overwatch either side of a chokepoint. Boarders never attack a crew that holds the bridge: with a crew that only ends its turn, 5 of 5 fights reached 60 rounds on the example ship and on the campaign's start ship (M12). A campaign fight can't be left until one side wins, so there the player has to go to them. On jobs (M14) the AI waits behind a closed door as the crew's AI would: `tools/jobs.js` plays the crew with a player that pushes in and opens doors, and then every job ends. Raiders press on (M15, `src/sim/press.js`): of 360 raids played out on three ships, one went past 60 rounds. In boarding fights (M22) the side aboard the other's ship presses on: of 1,000 played out by the AI, 5 went past 60 rounds. The test player's boardings have both sides press on after 40 rounds (`tools/boarding.js`), and none of its 30-run voyages needed it | Candidates, Evan's call: boarders press on as raiders do, cutting through walls, ships with a second way round. `tools/sim.js` reports the stalls ("No winner") |
 | A raid's odds swing with the ship's layout | The AI crew against four raiders wins 11 of 60 on the example ship, 22 on the start ship and 39 once it has an engine (M15) | Candidates, Evan's call after the phone: three raiders, or raiders scaled to the ship; cover on the hangar deck; the crew choosing where to stand |
-| Hostile ships are only a cost | M21's test player, flying the start ship as act 1 leaves it, boards none in 30 runs and loses something to one in 11. M22's careful test player never closes to board and disabled no ship in 30 runs, so it boarded none; it fought off 6 of the 12 that boarded it, and the other 6 each took a part | A gun fitted before launch turns the cutter into a win (§4.2); refits in act 2 (M23b); since M22, Board (49% against the cutter in the checks), then a fight the AI wins about half the time, for a part and scrap |
+| Hostile ships are only a cost | M21's test player, flying the start ship as act 1 leaves it, boards none in 30 runs and loses something to one in 11. M22's careful test player never closes to board and disabled no ship in 30 runs, so it boarded none; it fought off 6 of the 12 that boarded it, and the other 6 each took a part | A gun fitted before launch turns the cutter into a win (§4.2); refits in act 2 (M23h); since M22, Board (49% against the cutter in the checks), then a fight the AI wins about half the time, for a part and scrap |
 | Percentage misses feel unfair | Testers complain about high-odds misses | Clearer cover display, the forgiving-odds setting, the math always shown |
 | 3D on canvas runs slowly on mid-range phones | Dropped frames turning or zooming the board (M4), or in battles (M8) | Rough half-resolution frames while the camera moves or units walk, only on a phone too slow for full ones (the frame budget, after M6: they blurred zooming on the Fold); cache the still board, and in a fight redraw it only when something on it changed (M8); fewer lines, cap the pixel ratio. Past that: three.js (MIT, one vendored file, no build step), with Evan's approval |
 | Lost saves | Reports after Chrome data is cleared | Persistent storage request, export and import, migrations |
@@ -578,6 +616,7 @@ These ideas wait until v0.4 or later:
 - starting clear of hazards: deployment takes the tiles nearest the bridge or the hatches whatever is on them, so a crew member can start a boarding fight in a burning room and burn on the first turn (raised in M22)
 - recruits with more to them: a background and a portrait (§4.5), and a price that rises with their traits. M23's are a name, a job and a trait, at one fee (raised in M23)
 - the crew card on the cover screen: past three aboard, its lists scroll under the head. A tighter row, or the head's words in the foot, would show four at once (raised in M23)
+- the approach screen with the ships' hulls: it draws both ships as their boarding maps, so M23d's curves and M23f's styling don't show there. A view of each ship's outside beside its map would (raised in planning, 2026-10-13)
 - a test player that weighs a recruit's mouth: M23's signs one on only with 10 jumps of supplies in the holds for the bigger crew, which the start ship's lockers never hold, so on the start ship it never hires (raised in M23)
 
 Ideas that come up during a session go here, not into code.

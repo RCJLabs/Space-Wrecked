@@ -2,6 +2,45 @@
 
 Newest entry first.
 
+## Plan: looks and the catalog before refits (2026-10-13)
+
+**Status:** planned; nothing is built yet. After M23 merged, Evan asked for better characters, sleeker ships and a bigger builder before the milestones already planned. ROADMAP.md §7 now has six milestones before refits, M23b to M23g. Refits at stations moves from M23b to M23h; the M23 entry below still calls it M23b.
+
+**What Evan asked for:**
+1. **Characters:** they are stand-ins, not characters yet; better character models.
+2. **Ships:** in the builder, the shop and enemy ships they look blocky, with too many straight lines and right angles. More curves and diagonal edges, to look more futuristic.
+3. **The builder:** categories and filters, parts that are only for looks, and more variants of today's parts.
+
+**Evan's calls:**
+- **Looks-only parts:** "Styling pieces, Law 1 kept". Styling attaches outside the ship's rooms, has no stats, never changes the boarding map, has a cap of its own and is saved with the ship. Law 1 now says styling isn't a module (ROADMAP.md §1).
+- **Curves:** "Both". Every hull gets smoother on its own, and shaped styling pieces sculpt it further.
+- **Characters:** "3D figures plus portraits".
+- **Variants:** "Both". Size and stat variants of the parts, and a second manufacturer.
+
+**What I flagged:**
+- **Law 1 as written would cut looks-only parts.** Settled above.
+- **The curves are on the outside only.** The rules stay on the square grid (§3) and the ship is the boarding map (Law 2), so rooms and fights keep their square tiles. The approach screen draws both ships as their boarding maps, so it stays square (ROADMAP.md §9).
+- **More faces for the painter to sort every frame.** Each milestone keeps the fight and the hull views within the frame budget at the three sizes. In M23's regressions the fight drew in about 4 ms of its 16 at 905 × 370.
+
+**The order, one a session:**
+1. M23b Character figures
+2. M23c Portraits
+3. M23d Sleek hulls
+4. M23e Builder catalog and part variants
+5. M23f Styling pieces
+6. M23g A second manufacturer
+7. M23h Refits at stations, then M24 Heat v2
+
+The Done whens in ROADMAP.md §7 are drafts, to settle as each milestone starts.
+
+### What to test on the phone
+
+Nothing new: M23's list below still stands.
+
+### Next session
+
+**M23b Character figures.** Settle its Done when first. The draft is "every crew job and every enemy type has a figure of its own, told apart at the cover screen's tile size; a move walks, a shot aims and a unit that goes down falls; the fight keeps to the frame budget at the three sizes; and the golden battle logs don't change (it is drawing only)."
+
 ## M23 Recruits, crew management, med bay healing (2026-10-13)
 
 **Status:** done, and the ROADMAP.md box is ticked. Evan said "Start the next milestone" and answered four questions before I settled the Done when:
