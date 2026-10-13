@@ -137,7 +137,17 @@ Done when: "a boarding, either way, is fought from the approach on the right map
   - **M21's check** (adapted, below): 32 of 32 at each size;
   - **M19's check** (adapted again, below): 52 of 52 at each size;
   - **M20's check** (as adapted in M21): 32 of 32 at each size;
-  - **M18's check:** 43 of 43 at 905 × 370. The other sizes, and M17's to M8's checks, were still running when this was first pushed.
+  - **M18's check:** 43 of 43 at each size;
+  - **M17's check** (as adapted in M19): 37 of 37 at each size;
+  - **M16's check:** 29 of 29 at each size;
+  - **M15's check:** 30 of 30 at each size;
+  - **M14's check:** 40 of 40 at 905 × 370, with a job of each kind (clear, hack, grab) played by touch. The count depends on the jobs dealt (39 in M21). The container restarted while it ran in the regression script, and it passed when run again on its own;
+  - **M14's saves check:** 10 of 10, v4 saves opened and saved again as v13;
+  - **M13's check:** 24 of 24;
+  - **M8's fight sandbox checks:**
+    - the fight passes with no console errors;
+    - the orders column passes at each size: five orders clear of the dev tools, each 48 px or more;
+    - the extras pass all 8 of their checks, offline with the server stopped included, with no console errors.
 - **What changed in the old checks:**
   - **M21's check** (`m21/verify22.mjs`) finds Board given, at its odds, where it was refused. Its boarding shows the stakes and Board her where the stand-in's lines and Carry on were. A v11 save opens as v13.
   - **M19's check** (`m19/verify22.mjs`) carries on past a boarding that an approach on its way ends in. In its crossing by the sim, the AI fights it. By touch, it leaves a disabled ship, or taps Fight them off and ends turns until the end panel. In these runs its touch crossing met no boarding.
