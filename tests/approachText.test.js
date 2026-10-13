@@ -1,15 +1,18 @@
-// The approach screen's words (src/ui/campaign/approachText.js), and the
-// sector map's for hostile ships and repairs (sectorText.js): every odds the
-// screen shows is the one the rules roll against.
+// The approach screen's words (src/ui/campaign/approachText.js), the
+// boarding fights' (boardingText.js), and the sector map's for hostile
+// ships, repairs and patching up (sectorText.js): every odds the screen
+// shows is the one the rules roll against.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { seedFrom } from '../src/core/rng.js';
 import { AIMS, choicesFor, closeChance, enemyOrder, fleeChance, sideStats, targetsOf } from '../src/sim/approach.js';
-import { approachState, giveOrder } from '../src/sim/encounter.js';
+import { maxHp } from '../src/sim/campaign.js';
+import { approachState, beginBoarding, giveOrder } from '../src/sim/encounter.js';
 import { launch } from '../src/sim/launch.js';
 import { repairPrice } from '../src/sim/repair.js';
 import { beginRun, jump, linked } from '../src/sim/travel.js';
 import { approachText } from '../src/ui/campaign/approachText.js';
+import { boardingObjective, boardingOutcome } from '../src/ui/campaign/boardingText.js';
 import { continueText } from '../src/ui/campaign/hubText.js';
 import { nodeText, sectorText } from '../src/ui/campaign/sectorText.js';
 import { rules } from './battleKit.js';
@@ -59,7 +62,8 @@ test('an approach: the two ships, their order, and every order with the odds the
     if (order.order.kind === 'flee') assert.equal(order.small, `${choice.chance}%`);
   }
   const board = text.orders.find((order) => order.key === 'close');
-  assert.deepEqual([board.ok, board.why], [false, 'Boarding a ship that can still fight comes with the boarding fights.']);
+  assert.deepEqual([board.ok, board.why], [true, null]);
+  assert.match(board.text, /^Close to board the cutter: \d+% to grapple on, after the volleys, then a fight with her crew aboard her\./);
   assert.equal(text.orders.find((order) => order.key === 'fire-shields').why, 'They have no working shields.');
   assert.deepEqual(text.last, []);
   assert.equal(continueText(campaign, rules), 'Act 2 · Pirate cutter, round 1');
@@ -98,21 +102,42 @@ test('their flight, and the blow-up a last reactor risks, show their odds before
   assert.ok(!text.orders.find((order) => order.key === 'fire-engines').text.includes('blows apart'));
 });
 
-test('how it ended, and what it came to', () => {
+test('how it ended, and the boarding fight it ended in', () => {
   const boarded = approachText(endingIn('boarded', () => ({ kind: 'fire', at: 'reactor' }), { credits: 50 }), rules);
-  assert.equal(boarded.outcome.title, 'The cutter is dead in space: you board her.');
+  const cutter = rules.ships.get('cutter');
+  assert.equal(boarded.outcome.title, 'The cutter is dead in space.');
   assert.equal(boarded.outcome.board, 'them');
-  assert.ok(boarded.outcome.lines.some((line) => line.startsWith('Stripped: ')));
-  assert.ok(boarded.outcome.lines.some((line) => /^Scrap: \d+ credits\.$/.test(line)));
+  assert.ok(boarded.outcome.lines.includes('Her crew: Pirate ×3, Pirate brute.'), boarded.outcome.lines.join(' | '));
+  assert.ok(boarded.outcome.lines.includes(`Win aboard her: strip 1 part off her, and her scrap, ${cutter.scrap[0]} to ${cutter.scrap[1]} credits.`));
+  assert.ok(boarded.outcome.lines.includes('Lose: the crew is beaten back to your ship, hurt.'));
+  assert.deepEqual([boarded.outcome.boarding.begin.label, boarded.outcome.boarding.leave.label, boarded.hint.text], ['Board her', 'Leave her', 'Board her, or leave her.']);
   assert.deepEqual([boarded.orders, boarded.intent, boarded.round], [[], null, 'Over']);
   const lost = approachText(endingIn('boardedBy', () => ({ kind: 'evade' }), { parts: { armory: 1 } }), rules);
   assert.equal(lost.outcome.board, 'you');
-  assert.ok(lost.outcome.lines.includes('They take the Armory you had on hand.'));
+  assert.ok(lost.outcome.lines.includes('Lose: they take the Armory you have on hand.'), lost.outcome.lines.join(' | '));
+  assert.deepEqual([lost.outcome.boarding.begin.label, lost.outcome.boarding.leave, lost.hint.tone], ['Fight them off', null, 'bad']);
   const escaped = approachText(endingIn('escaped', () => ({ kind: 'flee' })), rules);
-  assert.deepEqual([escaped.outcome.title, escaped.outcome.board], ['You got away.', null]);
+  assert.deepEqual([escaped.outcome.title, escaped.outcome.board, escaped.outcome.boarding, escaped.hint.text], ['You got away.', null, null, 'Carry on to the chart.']);
   const parted = endingIn('parted', () => ({ kind: 'evade' }));
   assert.equal(approachText(parted, rules).outcome.title, 'The cutter breaks off, and the ships part.');
   assert.equal(continueText(parted, rules), 'Act 2 · Pirate cutter, over');
+});
+
+test('a boarding fight: the line under the round, how it ended, and Continue', () => {
+  const aboard = beginBoarding(endingIn('boarded', () => ({ kind: 'fire', at: 'reactor' })), rules).campaign;
+  const { battle, boarding } = aboard.fight;
+  assert.deepEqual(boardingObjective(battle, aboard), { title: 'Aboard the cutter', progress: '4 of hers left', done: false, deadline: null });
+  assert.equal(continueText(aboard, rules), `Act 2 · Aboard the Pirate cutter, round ${battle.round}`);
+  const parts = boarding.salvage.parts.map((type) => rules.modules.get(type).name);
+  const won = boardingOutcome({ ...battle, winner: 'crew' }, aboard, rules);
+  assert.deepEqual([won.tone, won.title], ['good', 'The cutter is yours']);
+  assert.ok(parts.every((name) => won.text.includes(name)) && won.text.endsWith(`Scrap: ${boarding.salvage.credits} credits.`), won.text);
+  assert.deepEqual(boardingOutcome({ ...battle, winner: 'enemy' }, aboard, rules), { tone: 'bad', title: 'Beaten back', text: 'The crew falls back to your ship, hurt. Nothing taken.' });
+  const home = beginBoarding(endingIn('boardedBy', () => ({ kind: 'evade' }), { parts: { armory: 1 } }), rules).campaign;
+  assert.deepEqual(boardingObjective(home.fight.battle, home), { title: 'Boarders', progress: '4 left', done: false, deadline: null });
+  assert.equal(continueText(home, rules), `Act 2 · Boarders from the Pirate cutter, round ${home.fight.battle.round}`);
+  assert.deepEqual(boardingOutcome({ ...home.fight.battle, winner: 'crew' }, home, rules), { tone: 'good', title: 'Boarders thrown off', text: `Their gear: ${home.fight.boarding.salvage.credits} credits of scrap.` });
+  assert.deepEqual(boardingOutcome({ ...home.fight.battle, winner: 'enemy' }, home, rules), { tone: 'bad', title: 'Overrun', text: 'They took the Armory.' });
 });
 
 test('the map: a hostile ship until it is met, the parts wrecked aboard, and what a station repairs', () => {
@@ -131,4 +156,24 @@ test('the map: a hostile ship until it is met, the parts wrecked aboard, and wha
   assert.equal(sectorText({ ...wrecked, credits: 0 }, rules).repair.ok, false);
   assert.equal(sectorText({ ...wrecked, wrecks: {} }, rules).repair, null);
   assert.equal(sectorText({ ...wrecked, run: campaign.run }, rules).repair, null, 'away from a station');
+});
+
+test("the station's medic: Patch up with its price, two taps, and the hint", () => {
+  const campaign = onRun({ credits: 500 });
+  const station = campaign.run.sector.nodes.find((n) => n.type === 'station').id;
+  const crew = campaign.crew.map((m, i) => ({ ...m, hp: i === 0 ? 1 : m.hp }));
+  const hurt = { ...campaign, crew, run: { ...campaign.run, at: station, seen: [...campaign.run.seen, station] } };
+  const missing = maxHp(crew[0], rules) - 1;
+  const cost = missing * rules.balance.patchPrice;
+  const text = sectorText(hurt, rules);
+  assert.deepEqual([text.patch.ok, text.patch.label, text.patch.ask], [true, `Patch up · ${cost}`, `Patch for ${cost}?`]);
+  assert.equal(text.patch.text, `Patches up ${crew[0].name} 1 to ${maxHp(crew[0], rules)} for ${cost} credits. Tap again to patch up.`);
+  assert.equal(text.hint.text, 'Supplies and a medic here. The crew is hurt.');
+  const short = sectorText({ ...hurt, credits: 3 * rules.balance.patchPrice }, rules).patch;
+  assert.equal(short.text, `Your credits cover ${crew[0].name} 1 to 4 for ${3 * rules.balance.patchPrice} credits, of ${cost} to heal everyone. Tap again to patch up.`);
+  assert.equal(sectorText({ ...hurt, crew: campaign.crew }, rules).patch, null, 'no one hurt');
+  const broke = sectorText({ ...hurt, credits: 0 }, rules).patch;
+  assert.deepEqual([broke.ok, broke.label], [false, 'Patch up']);
+  const engine = campaign.ship.modules.find((m) => m.type === 'engine').uid;
+  assert.equal(sectorText({ ...hurt, wrecks: { [engine]: 'fire' } }, rules).hint.text, 'Supplies, repairs and a medic here. A part is wrecked aboard, and the crew is hurt.');
 });

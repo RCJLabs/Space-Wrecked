@@ -99,9 +99,10 @@ export function checkSectors(file, acts, presets, fail) {
 }
 
 // A kind of node with hostile ships on it: [{ ship, weight, from? }], the
-// presets it can have, each with tactics, by weight, from sector `from` on
-// (1 if left out). The first sector has to have one, and the kind holds no
-// events: meeting the ship is what happens there.
+// presets it can have, each with tactics and a party for the boardings, by
+// weight, from sector `from` on (1 if left out). The first sector has to
+// have one, and the kind holds no events: meeting the ship is what happens
+// there.
 function checkShips(node, at, run, presets, fail) {
   if (node.events) fail(at, 'a kind with ships holds no events');
   if (FIXED.includes(node.id)) fail(at, 'the way in and the jump point have no ships on them');
@@ -119,6 +120,7 @@ function checkShips(node, at, run, presets, fail) {
     const preset = presets.get(entry.ship);
     if (!preset) fail(where, `unknown ship preset "${entry.ship}"`);
     else if (!preset.tactics) fail(where, `the ${preset.name} has no tactics for the approach phase`);
+    else if (!preset.party) fail(where, `the ${preset.name} has no party for the boarding fights`);
     if (!isIntIn(entry.weight, 1, 100)) fail(where, 'weight must be a whole number from 1 to 100');
     if (entry.from !== undefined && !isIntIn(entry.from, 1, Math.max(1, run))) fail(where, `from must be a sector from 1 to ${Math.max(1, run)}`);
   });

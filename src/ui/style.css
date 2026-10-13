@@ -770,8 +770,26 @@ textarea {
   color: var(--c-space);
 }
 
-/* The first tap of Jump on, Buy, Repair or Scan: what it costs, waiting
-   for a second. */
+/* A station selling three things or more (sector.js): the foot's buttons
+   without their icons, so the hint keeps room. */
+#ui .sct .hgr-foot[data-crowded='true'] .btn {
+  padding: 0 12px;
+}
+
+#ui .sct .hgr-foot[data-crowded='true'] .btn svg {
+  display: none;
+}
+
+/* The hint at most three lines, so the foot stays a button high. */
+.sct .hgr-hint {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+/* The first tap of Jump on, Buy, Repair, Patch up or Scan: what it costs,
+   waiting for a second. */
 #ui .sct-on[data-armed='true'],
 #ui .sct-scan[data-armed='true'],
 #ui .sct-buy[data-armed='true'] {
@@ -3183,7 +3201,9 @@ textarea {
   color: var(--c-space);
 }
 
-#ui .apr-carry {
+#ui .apr-carry,
+#ui .apr-board,
+#ui .apr-leave {
   flex: 1;
   display: flex;
   align-items: center;
@@ -3192,6 +3212,21 @@ textarea {
   min-height: 48px;
   border-color: var(--c-accent);
   background: var(--c-accent);
+  color: var(--c-space);
+}
+
+/* Leaving her is the quiet choice beside boarding her; its first tap marks
+   it the way an order's does. */
+#ui .apr-leave {
+  border-color: var(--c-line);
+  background: transparent;
+  color: var(--c-ink);
+}
+
+#ui .apr-board[data-armed='true'],
+#ui .apr-leave[data-armed='true'] {
+  border-color: var(--c-dash);
+  background: var(--c-dash);
   color: var(--c-space);
 }
 

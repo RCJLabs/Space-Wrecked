@@ -8,13 +8,13 @@
 // second tap, or Jump, makes it: one tap never moves the ship. An event
 // where the ship arrives opens its card (eventCard.js) over the chart, and
 // nothing moves until a choice is made; a hostile ship there opens the
-// approach screen (approach.js). At a station Buy sells supplies and Repair
-// fixes what an approach wrecked, Scan shows what nodes within reach hold,
-// and at the jump point Jump on leads into the next sector, each two taps,
-// the first saying what it costs; past the act's last jump point the
-// charts end, for now. The crew and the holds
-// are on the right, heat by the act. The run begins, its first sector
-// rolled, the first time the map opens.
+// approach screen (approach.js). At a station Buy sells supplies, Repair
+// fixes what an approach wrecked and Patch up heals the crew; Scan shows
+// what nodes within reach hold, and at the jump point Jump on leads into
+// the next sector, each two taps, the first saying what it costs; past the
+// act's last jump point the charts end, for now. The crew and the holds are
+// on the right, heat by the act. The run begins, its first sector rolled,
+// the first time the map opens.
 //
 // Each node's button is its share of its column, so no two overlap and
 // each stays 48 px or more on the screens the game is for; its mark sits
@@ -30,7 +30,7 @@ import { eventText, resultText } from './eventText.js';
 import { crewRows, heatChip, listRows, panel } from './hubParts.js';
 import { jumpText, sectorText } from './sectorText.js';
 
-const ARM_MS = 3000; // Jump on, Buy, Repair and Scan wait this long for a second tap
+const ARM_MS = 3000; // Jump on, Buy, Repair, Patch up and Scan wait this long for a second tap
 const SVG = 'http://www.w3.org/2000/svg';
 const MARKS = {
   start: icons.wayIn,
@@ -145,6 +145,9 @@ export const sectorScreen = {
       hold.replaceChildren(...listRows(text.hold));
       drawMap(run, text, plan);
       showInfo(text, plan);
+      // A station selling three things or more crowds the foot: its buttons
+      // go without icons there, so the hint keeps room.
+      foot.dataset.crowded = String((text.offer?.buys.length ?? 0) + (text.repair ? 1 : 0) + (text.patch ? 1 : 0) >= 3);
 
       // An event open here takes the card, and holds everything else; once
       // settled, the card shows what happened until Carry on.
@@ -188,9 +191,11 @@ export const sectorScreen = {
       const buy = typeof armed === 'number' ? text.offer?.buys.find((entry) => entry.count === armed) : null;
       if (typeof armed === 'number' && !buy) disarm();
       if (armed === 'repair' && !text.repair?.ok) disarm();
+      if (armed === 'patch' && !text.patch?.ok) disarm();
       const said = armed === 'on' ? { tone: leave.tone === 'bad' ? 'bad' : 'warn', text: `${leave.lines.join(' ')} Tap Jump on again.` }
         : armed === 'scan' ? { tone: 'warn', text: scan.text }
         : armed === 'repair' ? { tone: 'warn', text: text.repair.text }
+        : armed === 'patch' ? { tone: 'warn', text: text.patch.text }
         : buy ? { tone: 'warn', text: buy.text }
         : plan ? planHint(plan)
         : result ? { tone: 'info', text: 'Carry on to the chart.' }
@@ -308,6 +313,16 @@ export const sectorScreen = {
         button.setAttribute('aria-label', repair.ok ? repair.text.replace(' Tap again to repair.', '') : repair.why);
         buyButtons.push({ button, detach: onTap(button, () => twoTaps('repair', () => game.dispatch({ type: 'campaign/repair', rules: defs }))) });
         if (!repair.ok) infoLines.append(lineItem(repair.why, 'bad'));
+      }
+      // Patching up, for the crew's wounds.
+      const { patch } = text;
+      if (patch) {
+        const button = toolButton('sct-buy sct-patch', icons.stabilize, armed === 'patch' ? patch.ask : patch.label);
+        button.dataset.armed = String(armed === 'patch');
+        button.disabled = !patch.ok;
+        button.setAttribute('aria-label', patch.ok ? patch.text.replace(' Tap again to patch up.', '') : patch.why);
+        buyButtons.push({ button, detach: onTap(button, () => twoTaps('patch', () => game.dispatch({ type: 'campaign/patch', rules: defs }))) });
+        if (!patch.ok) infoLines.append(lineItem(patch.why, 'bad'));
       }
       buys.replaceChildren(...buyButtons.map((entry) => entry.button));
       buys.hidden = !buyButtons.length;

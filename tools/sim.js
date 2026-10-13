@@ -25,6 +25,10 @@
 //                                        rounds stop with no winner
 //   node tools/sim.js --seed balance     the seed every fight's seeds come from
 //   node tools/sim.js --json             the report as JSON
+//   node tools/sim.js --boardings        boardings both ways instead (M22,
+//                                        tools/boarding.js): the squad at home
+//                                        and aboard each hostile preset's ship,
+//                                        the fights spread over the rows
 //
 // Each fight gets its own seed; on a preset, its own generated ship too.
 import { readFileSync } from 'node:fs';
@@ -44,7 +48,7 @@ import { readData } from './data.js';
 import { validateData } from './validate-data.js';
 
 const PLAYERS = { ai: aiAction, scripted: scriptedAction };
-export const DEFAULTS = { fights: 1000, ships: null, sets: [], crew: 'ai', boarders: 'ai', rounds: 30, seed: 'balance', encounter: null, compare: false, json: false };
+export const DEFAULTS = { fights: 1000, ships: null, sets: [], crew: 'ai', boarders: 'ai', rounds: 30, seed: 'balance', encounter: null, compare: false, json: false, boardings: false };
 // Shown hit chances, grouped for the check that shots land as often as shown.
 const BANDS = [[0, 19], [20, 39], [40, 59], [60, 79], [80, 100]];
 
@@ -66,6 +70,7 @@ export function parseArgs(argv) {
     else if (arg === '--encounter') options.encounter = value();
     else if (arg === '--compare') options.compare = true;
     else if (arg === '--json') options.json = true;
+    else if (arg === '--boardings') options.boardings = true;
     else throw new Error(`Unknown option "${arg}".`);
   }
   if (options.compare && !options.sets.length) throw new Error('--compare needs a --set to compare with.');
@@ -330,6 +335,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const data = readData();
   const changed = rulesWith(data, options.sets);
   if (!changed.ok) fail(changed.error);
+  if (options.boardings) {
+    const { boardingRows, boardingText, runBoardings } = await import('./boarding.js');
+    const perRow = Math.max(1, Math.round(options.fights / boardingRows(changed.rules).length));
+    const started = performance.now();
+    const rows = runBoardings(changed.rules, { fights: perRow, seed: options.seed, rounds: options.rounds });
+    console.log(options.json ? JSON.stringify(rows, null, 2) : boardingText(rows, options));
+    if (!options.json) console.log(`\n${commas(perRow * rows.length)} fights in ${((performance.now() - started) / 1000).toFixed(1)} s.`);
+    process.exit(0);
+  }
   let ships;
   try {
     ships = shipsFor(options.ships, changed.rules);

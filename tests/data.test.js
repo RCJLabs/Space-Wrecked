@@ -192,6 +192,11 @@ const cases = [
   ['hostile ships from past the last sector', (d) => (hostile(d).ships[1].from = 9), /from must be a sector from 1 to 5/],
   ['a kind with ships and events', (d) => (hostile(d).events = true), /a kind with ships holds no events/],
   ['approach rounds of none', (d) => (d.balance.approachRounds = 0), /approachRounds must be a whole number from 1 to 10/],
+  // M22: boarding both ways.
+  ['a boarding party that is no encounter', (d) => (d.ships.ships[0].party = 'navy'), /cutter: party: unknown encounter "navy"/],
+  ['a hostile preset with no party', (d) => delete d.ships.ships[1].party, /corvette: a preset with tactics needs a party/],
+  ['salvage of half a part', (d) => (d.ships.ships[0].salvage = 1.5), /salvage must be the parts stripped from her/],
+  ['patching for a fortune', (d) => (d.balance.patchPrice = 500), /patchPrice must be a whole number from 0 to 100/],
 ];
 
 test('the validator names each kind of mistake', () => {
@@ -220,5 +225,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 8 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 9 kinds of sector node, 10 events\)/);
+  assert.match(run.stdout, /OK \(12 modules, 1 frame, 1 manufacturer, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 9 kinds of sector node, 10 events\)/);
 });

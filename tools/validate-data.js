@@ -73,7 +73,8 @@ const BALANCE = {
   // what a shield generator holds a round, fleeing's and closing's chances
   // and what thrust for mass moves them, a wrecked reactor's chance of
   // blowing, the heat an approach with shots in it adds, and a repair's
-  // price, in percent of the part's cost (src/sim/repair.js).
+  // price, in percent of the part's cost (src/sim/repair.js). What a
+  // station charges to patch up a hit point of the crew's (src/sim/patch.js).
   approachRounds: [1, 10],
   gunnery: [0, 100],
   evasionPerThrust: [0, 100],
@@ -89,6 +90,7 @@ const BALANCE = {
   blowChance: [0, 100],
   approachHeat: [0, 50],
   repairPercent: [0, 100],
+  patchPrice: [0, 100],
 };
 const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', 'clip'];
 const RANGE_BANDS = ['close', 'mid', 'long'];
@@ -105,10 +107,12 @@ const TIP_KEYS = ['id', 'text'];
 const MAX_TIP = 200;
 const ENCOUNTER_KEYS = ['id', 'name', 'enemies'];
 // Ship presets (src/sim/gen/ship.js).
-const SHIP_KEYS = ['id', 'name', 'frame', 'crew', 'beam', 'symmetric', 'parts', 'wrecks', 'tactics', 'scrap'];
+const SHIP_KEYS = ['id', 'name', 'frame', 'crew', 'beam', 'symmetric', 'parts', 'wrecks', 'tactics', 'scrap', 'party', 'salvage'];
 // A hostile preset's tactics in the approach phase (src/sim/approach.js).
 const TACTIC_KEYS = ['aim', 'board', 'flee'];
 const MAX_SCRAP = 9999;
+// The most parts a boarding crew strips off a ship it wins (encounter.js).
+const MAX_SALVAGE = 5;
 const MAX_CREW = 20;
 // Squads of 3 to start, up to 5 later; 4 to 8 enemies (ROADMAP §4.3). Fewer
 // are allowed, for small tests.
@@ -280,6 +284,13 @@ export function validateData(data) {
 
   const encounterById = new Map(encounters.filter((e) => Array.isArray(e.enemies)).map((e) => [e.id, e.enemies]));
   const presets = new Map(ships.filter((ship) => typeof ship?.id === 'string').map((ship) => [ship.id, ship]));
+  // A hostile preset's crew fights the boardings (encounter.js): its party
+  // is an encounter, and one with tactics has to have one.
+  for (const ship of presets.values()) {
+    const where = `ships.json ${ship.id}`;
+    if (ship.party !== undefined && !encounterById.has(ship.party)) fail(where, `party: unknown encounter "${ship.party}"`);
+    if (ship.tactics !== undefined && ship.party === undefined) fail(where, 'a preset with tactics needs a party for the boarding fights');
+  }
   const scripts = checkCampaignFiles(data, { jobIds, enemyIds, moduleIds, frameById, encounters: encounterById, presets }, fail);
   // The starting ships are built only from content that checks out.
   if (!problems.length) checkStartShips(data, scripts, fail);
@@ -290,7 +301,9 @@ export function validateData(data) {
 // carry (berths and life support), how many cells across it should be (its
 // beam), whether it is mirrored about its middle row, its parts bow to stern
 // (each a count, or [least, most]) and, for a derelict, how many rooms are
-// wrecked.
+// wrecked. A hostile one also has its tactics in the approach phase, its
+// scrap in credits, the party that fights its boardings and the parts a
+// crew that wins aboard her strips off (salvage).
 function checkShip(ship, where, frameById, moduleIds, fail) {
   for (const key of Object.keys(ship)) {
     if (!SHIP_KEYS.includes(key)) fail(where, `unknown field "${key}"`);
@@ -305,6 +318,7 @@ function checkShip(ship, where, frameById, moduleIds, fail) {
   if (ship.wrecks !== undefined && !isRange(ship.wrecks, 0, 99)) fail(where, 'wrecks must be [least, most] rooms');
   if (ship.tactics !== undefined) checkTactics(ship.tactics, `${where} tactics`, fail);
   if (ship.scrap !== undefined && !isRange(ship.scrap, 0, MAX_SCRAP)) fail(where, `scrap must be [least, most] credits, up to ${MAX_SCRAP}`);
+  if (ship.salvage !== undefined && !isIntIn(ship.salvage, 0, MAX_SALVAGE)) fail(where, `salvage must be the parts stripped from her, 0 to ${MAX_SALVAGE}`);
   const { parts } = ship;
   if (!parts || typeof parts !== 'object' || Array.isArray(parts) || !Object.keys(parts).length) {
     fail(where, 'parts must be an object of module types and counts');

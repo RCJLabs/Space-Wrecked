@@ -6,11 +6,12 @@ import { emptyBuilds, reduceBuilds } from './builds.js';
 import { beginFight, captainProblem, newCampaign, refitShip, saveFight } from './campaign.js';
 import { endJob, takeJob, withBoard } from './contracts.js';
 import { buyPart, sellPart } from './economy.js';
-import { closeApproach, giveOrder } from './encounter.js';
+import { beginBoarding, closeApproach, endBoarding, giveOrder } from './encounter.js';
 import { chooseEvent } from './events.js';
 import { makePayment } from './heat.js';
 import { launch } from './launch.js';
 import { beginRaid, endRaid } from './raid.js';
+import { patchCrew } from './patch.js';
 import { repairShip } from './repair.js';
 import { defaultSettings, fightSettings, reduceSettings } from './settings.js';
 import { beginRun, buySupplies, jump, leaveSector, scan } from './travel.js';
@@ -82,16 +83,22 @@ export function initialState(seed) {
 //   campaign/scan { rules }        a scan from where the ship is
 //   campaign/approach/order { order, rules }   the player's order for a
 //                                  round of the approach (encounter.js)
-//   campaign/approach/close        Carry on, once the approach is over:
-//                                  back to the sector map
+//   campaign/approach/close        Carry on, once the approach is over, or
+//                                  leave a ship the player disabled: back to
+//                                  the sector map
+//   campaign/boarding/begin { rules }   the boarding fight the approach
+//                                  ended in begins (encounter.js)
 //   campaign/repair { rules }      the station repairs what the credits
 //                                  cover (repair.js)
+//   campaign/patch { rules }       the station patches up the crew, as far
+//                                  as the credits go (patch.js)
 //   campaign/fight/begin { rules } the crew fights boarders at home (M15's
 //                                  raids will)
 //   campaign/fight/save { battle, log }   the fight after an order
-//   campaign/fight/end { rules }   back to the hub once the fight is won or
-//                                  lost: a job's pay and heat, and a new
-//                                  board; or what a raid cost
+//   campaign/fight/end { rules }   back to the hub (or the run) once the
+//                                  fight is won or lost: a job's pay and
+//                                  heat, and a new board; what a raid cost;
+//                                  or what a boarding came to
 export function reduce(state, action) {
   switch (action.type) {
     case 'save/restore':
@@ -128,11 +135,13 @@ export function reduce(state, action) {
     }
     case 'campaign/job/take':
     case 'campaign/raid/begin':
+    case 'campaign/boarding/begin':
     case 'campaign/fight/begin': {
       const setup = fightSettings(state.settings);
       const begin = {
         'campaign/job/take': (c) => takeJob(c, action.rules, action.index, setup),
         'campaign/raid/begin': (c) => beginRaid(c, action.rules, setup),
+        'campaign/boarding/begin': (c) => beginBoarding(c, action.rules, setup),
         'campaign/fight/begin': (c) => beginFight(c, action.rules, setup),
       }[action.type];
       const begun = state.campaign && begin(state.campaign);
@@ -141,7 +150,8 @@ export function reduce(state, action) {
     case 'campaign/fight/save':
       return withCampaign(state, state.campaign && saveFight(state.campaign, action.battle, action.log));
     case 'campaign/fight/end': {
-      const end = state.campaign?.fight?.raid ? endRaid : endJob;
+      const fight = state.campaign?.fight;
+      const end = fight?.raid ? endRaid : fight?.boarding ? endBoarding : endJob;
       const next = withCampaign(state, state.campaign && end(state.campaign, action.rules));
       return next === state ? state : { ...next, screen: campaignScreen(next.campaign) };
     }
@@ -157,7 +167,8 @@ export function reduce(state, action) {
     case 'campaign/scan':
     case 'campaign/approach/order':
     case 'campaign/approach/close':
-    case 'campaign/repair': {
+    case 'campaign/repair':
+    case 'campaign/patch': {
       const move = {
         'campaign/run/begin': (c) => beginRun(c, action.rules),
         'campaign/jump': (c) => jump(c, action.rules, action.to),
@@ -168,6 +179,7 @@ export function reduce(state, action) {
         'campaign/approach/order': (c) => giveOrder(c, action.rules, action.order),
         'campaign/approach/close': (c) => closeApproach(c),
         'campaign/repair': (c) => repairShip(c, action.rules),
+        'campaign/patch': (c) => patchCrew(c, action.rules),
       }[action.type];
       const done = state.campaign && move(state.campaign);
       if (!done?.ok) return state;

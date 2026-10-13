@@ -8,6 +8,7 @@
     { "id": "strikebreakers", "name": "Strikebreakers", "enemies": ["heavy", "guard", "guard", "heavy"] },
     { "id": "regulars", "name": "Last Whistle regulars", "enemies": ["scavver", "jumper", "heavy", "jumper"] },
     { "id": "recovery", "name": "Con-Reg Recovery", "enemies": ["agent", "heavy", "agent"] },
-    { "id": "raid", "name": "Recovery task force", "enemies": ["agent", "heavy", "agent", "guard"] }
+    { "id": "raid", "name": "Recovery task force", "enemies": ["agent", "heavy", "agent", "guard"] },
+    { "id": "patrol", "name": "Patrol crew", "enemies": ["guard", "heavy", "guard"] }
   ]
 }

@@ -1,10 +1,12 @@
 // Words for the approach screen (approach.js): the two ships, the other
 // ship's order for the round, every order the player can give with its
-// odds, what the last round came to, and how it ended. The rules are
+// odds, what the last round came to, and how it ended, with the boarding
+// fight it ended in, if any (boardingText.js). The rules are
 // src/sim/approach.js's, played by src/sim/encounter.js. rules are the
 // content tables (src/sim/defs.js).
 import { AIM_TAGS, AIMS, choicesFor, closeChance, fleeChance, sideStats } from '../../sim/approach.js';
 import { approachIntent, approachState } from '../../sim/encounter.js';
+import { boardingStakes } from './boardingText.js';
 import { actTitle, heatText } from './hubText.js';
 
 // What each kind of module is called, aimed at.
@@ -24,7 +26,8 @@ const WRECK_WORDS = { fire: 'on fire', vacuum: 'open to vacuum', rubble: 'full o
 //   last                the last round, as lines, or []
 //   outcome             null while it goes on, else { title, lines, board
 //                       ('you' or 'them': the ship that is boarded, or
-//                       null) }
+//                       null), boarding (the fight that is due:
+//                       boardingText.js boardingStakes, or null) }
 //   hint                { tone, text }
 export function approachText(campaign, rules) {
   const state = approachState(campaign, rules);
@@ -44,7 +47,7 @@ export function approachText(campaign, rules) {
     orders: intent ? ordersText(state, intent, theirName, rules) : [],
     last: approach.last ? roundLines(approach.last, state, theirName, rules) : [],
     outcome,
-    hint: outcome ? { tone: 'info', text: 'Carry on to the chart.' } : approach.last ? { tone: 'info', text: '' } : { tone: 'info', text: 'Tap an order to see its odds; tap it again to give it.' },
+    hint: outcome ? outcomeHint(outcome) : approach.last ? { tone: 'info', text: '' } : { tone: 'info', text: 'Tap an order to see its odds; tap it again to give it.' },
   };
 }
 
@@ -120,7 +123,7 @@ function ordersText(state, intent, theirName, rules) {
     } else if (order.kind === 'flee') {
       out.push({ key: 'flee', order, label: 'Flee', small: choice.ok ? `${choice.chance}%` : '–', ok: choice.ok, why: choice.why, ask: 'Flee?', text: `Flee: ${choice.chance}% to get away before anyone fires. Tap again to run.` });
     } else {
-      out.push({ key: 'close', order, label: 'Board', small: choice.ok ? `${choice.chance}%` : '–', ok: choice.ok, why: choice.why, ask: 'Board?', text: `Close to board the ${theirName}: ${choice.chance}% to grapple on. Tap again to close.` });
+      out.push({ key: 'close', order, label: 'Board', small: choice.ok ? `${choice.chance}%` : '–', ok: choice.ok, why: choice.why, ask: 'Board?', text: `Close to board the ${theirName}: ${choice.chance}% to grapple on, after the volleys, then a fight with her crew aboard her. Tap again to close.` });
     }
   }
   return out;
@@ -164,20 +167,20 @@ function outcomeText(approach, campaign, rules) {
   const lines = [];
   let title;
   let board = null;
+  const stakes = boardingStakes(campaign, rules);
   if (kind === 'escaped') title = 'You got away.';
   else if (kind === 'fled') title = `The ${name} ran.`;
   else if (kind === 'parted') title = `The ${name} breaks off, and the ships part.`;
   else if (kind === 'adrift') title = 'Both ships drift, dead. The crews patch up and part.';
   else if (kind === 'destroyed') title = `The ${name} blows apart.`;
   else if (kind === 'boarded') {
-    title = `The ${name} is dead in space: you board her.`;
+    title = how === 'closed' ? `You grapple onto the ${name}.` : `The ${name} is dead in space.`;
     board = 'them';
-    lines.push('The boarding fight comes in a later update. For now the crew strips what it can.');
   } else {
     title = how === 'closed' ? `The ${name} grapples on and boards you.` : `Dead in space: the ${name} boards you.`;
     board = 'you';
-    lines.push('The boarding fight comes in a later update. For now they take what they came for.');
   }
+  if (stakes) lines.push(...stakes.lines);
   const found = changes.parts.map((type) => `${article(partName(type))} ${partName(type)}`);
   if (found.length) lines.push(`Stripped: ${found.join(', ')}.`);
   if (changes.credits > 0) lines.push(`Scrap: ${changes.credits} credits.`);
@@ -187,7 +190,13 @@ function outcomeText(approach, campaign, rules) {
   const wrecked = Object.keys(campaign.wrecks).map((uid) => partName(campaign.ship.modules.find((module) => module.uid === Number(uid))?.type));
   if (changes.patched.length) lines.push(`The crew gets ${changes.patched.map((uid) => `the ${partName(campaign.ship.modules.find((module) => module.uid === uid)?.type).toLowerCase()}`).join(' and ')} going again.`);
   if (wrecked.length) lines.push(`Wrecked aboard until a station repairs it: ${wrecked.join(', ')}.`);
-  return { title, lines, board };
+  return { title, lines, board, boarding: stakes };
+}
+
+// What to do once it is over: carry on, or fight the boarding it ended in.
+function outcomeHint(outcome) {
+  if (!outcome.boarding) return { tone: 'info', text: 'Carry on to the chart.' };
+  return outcome.boarding.leave ? { tone: 'warn', text: 'Board her, or leave her.' } : { tone: 'bad', text: 'They are coming aboard: fight them off.' };
 }
 
 // "Pirate cutter" -> "cutter": the ship as the words call it after the

@@ -6,6 +6,8 @@
 // giving the later rounds' orders by quickOrder, and picks the order that
 // comes out best on average: a boarding or a ship blown up counts 1, being
 // boarded −1, and anything else 0. The game's own dice are never touched.
+// It never closes to board: it boards only a ship it has disabled, since a
+// boarding is a fight (encounter.js), not the win these scores count it as.
 import { seedFrom } from '../src/core/rng.js';
 import { choicesFor, enemyOrder, playRound, targetsOf } from '../src/sim/approach.js';
 
@@ -15,7 +17,7 @@ const SCORES = { boarded: 1, destroyed: 1, boardedBy: -1 };
 // The player's order for the round: { kind, at? }.
 export function captainOrder(state, rules) {
   const intent = enemyOrder(state, rules);
-  const orders = choicesFor(state, intent, rules).filter((choice) => choice.ok).map((choice) => choice.order);
+  const orders = choicesFor(state, intent, rules).filter((choice) => choice.ok && choice.order.kind !== 'close').map((choice) => choice.order);
   if (orders.length === 1) return orders[0];
   let best = null;
   for (const order of orders) {

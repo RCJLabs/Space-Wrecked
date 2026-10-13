@@ -189,12 +189,17 @@ test("the other ship's tactics: fire at what it aims at, close from its round, r
   assert.deepEqual(enemyOrder(hurt, rules), { kind: 'flee' });
 });
 
-test("the player can't close to board a ship that can still fight, until the boarding fights", () => {
+test('the player can close to board a ship that can still fight, at the odds shown, unless the engines are out', () => {
   const close = choicesFor(fresh(), { kind: 'fire', at: 'engines' }, rules).find((c) => c.order.kind === 'close');
-  assert.equal(close.ok, false);
-  assert.match(close.why, /boarding fights/);
-  assert.equal(typeof close.chance, 'number', 'its odds still show');
-  assert.deepEqual(playRound(fresh(), { kind: 'close' }, seedFrom(1), rules), { ok: false, error: close.why });
+  assert.deepEqual([close.ok, close.why], [true, null]);
+  const { played } = seedWhere(fresh(), { kind: 'close' }, (p) => p.outcome?.kind === 'boarded');
+  const roll = played.events.find((e) => e.kind === 'close' && e.side === 'you');
+  assert.deepEqual([roll.chance, roll.ok, played.outcome.how], [close.chance, true, 'closed']);
+  // With no engine working, it can't close.
+  const stuck = { ...fresh(), you: side(you, Object.fromEntries(uidsOf(you, 'engine').map((uid) => [uid, 'fire']))) };
+  const refused = choicesFor(stuck, { kind: 'fire', at: 'engines' }, rules).find((c) => c.order.kind === 'close');
+  assert.deepEqual([refused.ok, refused.why], [false, 'Your engines are out.']);
+  assert.deepEqual(playRound(stuck, { kind: 'close' }, seedFrom(1), rules), { ok: false, error: 'Your engines are out.' });
   assert.equal(playRound(fresh(), { kind: 'fire', at: 'nowhere' }, seedFrom(1), rules).ok, false);
   assert.equal(isOrder({ kind: 'fire', at: 'shields' }), true);
   assert.equal(isOrder({ kind: 'flee', at: 'shields' }), false);

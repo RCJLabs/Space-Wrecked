@@ -36,7 +36,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      event's result; sector nodes may carry an event (M20)
 //  12  the approach phase: the campaign's wrecked modules, and the run's
 //      approach under way; sector nodes may carry a hostile ship (M21)
-export const SAVE_VERSION = 12;
+//  13  boarding fights: a fight may be a boarding, and an approach that
+//      ends in one has its fight due (M22)
+export const SAVE_VERSION = 13;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -142,6 +144,25 @@ export const MIGRATIONS = [
       if (!isObject(data) || !isObject(data.campaign)) return data;
       const { run } = data.campaign;
       return { ...data, campaign: { ...data.campaign, wrecks: {}, run: isObject(run) ? { ...run, approach: null } : run } };
+    },
+  },
+  // Boarding fights. A fight under way is none, and an approach that ended
+  // before them was settled by its stand-in: no boarding fight is due.
+  {
+    from: 12,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign)) return data;
+      const { fight, run } = data.campaign;
+      const approach = isObject(run) ? run.approach : null;
+      const outcome = isObject(approach) && isObject(approach.outcome) ? { ...approach.outcome, boarding: null } : null;
+      return {
+        ...data,
+        campaign: {
+          ...data.campaign,
+          fight: isObject(fight) ? { ...fight, boarding: null } : fight,
+          run: outcome ? { ...run, approach: { ...approach, outcome } } : run,
+        },
+      };
     },
   },
 ];

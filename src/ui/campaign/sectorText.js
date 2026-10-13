@@ -1,11 +1,13 @@
 // Text for the sector map (sector.js): where the ship is on the run
 // (src/sim/travel.js), what the nodes hold as far as it is known, what a
 // jump to a node would take, what a station sells and what a scan would
-// show, and what it would repair. The event card's words are eventText.js's,
+// show, and what it would repair and patch up. The event card's words are eventText.js's,
 // and the approach screen's approachText.js's. rules are the content tables
 // (src/sim/defs.js).
 import { actOf } from '../../sim/campaign.js';
 import { withHeat } from '../../sim/heat.js';
+import { maxHp } from '../../sim/campaign.js';
+import { patchPlan } from '../../sim/patch.js';
 import { repairPlan, wrecksToRepair } from '../../sim/repair.js';
 import { holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, supplyCapacity, supplyOffer } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
@@ -25,6 +27,8 @@ import { actTitle, crewText, heatText } from './hubText.js';
 //                wrecked aboard, if any
 //   offer        what the station sells, or null away from one: { line,
 //                why, buys: [{ count, label, ask, text }] }
+//   patch        what the station's medic would patch up, or null away
+//                from one or with no one hurt: { ok, label, ask, text, why }
 //   repair       what the station would repair, or null away from one or
 //                with nothing wrecked: { ok, label, ask, text, why }
 //   leave        null away from the jump point; there { ok, last, label,
@@ -72,6 +76,7 @@ export function sectorText(campaign, rules) {
     ],
     offer: offer.ok ? offerText(campaign, rules, offer) : null,
     repair: offer.ok ? repairText(campaign, rules) : null,
+    patch: offer.ok ? patchText(campaign, rules) : null,
     leave,
     scan: scanText(campaign, rules),
     deciding: Boolean(openEvent(campaign, rules) || campaign.run.approach),
@@ -99,6 +104,23 @@ export function nodeText(node, rules, { known = true, done = false } = {}) {
 function wrecksLine(campaign, rules) {
   const wrecks = wrecksToRepair(campaign, rules);
   return wrecks.length ? [['Wrecked', wrecks.map((wreck) => rules.modules.get(wreck.type)?.name ?? wreck.type).join(', ')]] : [];
+}
+
+// What the station's medic would patch up, two taps, or null with no one
+// hurt.
+function patchText(campaign, rules) {
+  const plan = patchPlan(campaign, rules);
+  if (!plan.ok && plan.total === undefined) return null;
+  if (!plan.ok) return { ok: false, label: 'Patch up', ask: 'Patch up?', text: plan.error, why: `${plan.error} You have ${campaign.credits}.` };
+  const all = plan.cost === plan.total;
+  const who = plan.heals.map((heal) => `${heal.name} ${heal.from} to ${heal.to}`).join(', ');
+  return {
+    ok: true,
+    label: `Patch up · ${plan.cost}`,
+    ask: `Patch for ${plan.cost}?`,
+    text: `${all ? 'Patches up' : 'Your credits cover'} ${who} for ${plan.cost} credits${all ? '' : `, of ${plan.total} to heal everyone`}. Tap again to patch up.`,
+    why: null,
+  };
 }
 
 // What the station would repair, two taps, or null with nothing wrecked.
@@ -193,7 +215,11 @@ function sectorHint(campaign, rules, { each, offer, leave, known }) {
   const held = holdOf(campaign, rules);
   if (held) return { tone: 'warn', text: held };
   const wrecked = Object.keys(campaign.wrecks).length;
-  if (offer.ok && wrecked) return { tone: 'good', text: `Supplies and repairs here. ${wrecked === 1 ? 'A part is' : `${wrecked} parts are`} wrecked aboard.` };
+  const hurt = campaign.crew.some((member) => member.hp < maxHp(member, rules));
+  const parts = wrecked === 1 ? 'A part is' : `${wrecked} parts are`;
+  if (offer.ok && wrecked && hurt) return { tone: 'good', text: `Supplies, repairs and a medic here. ${parts} wrecked aboard, and the crew is hurt.` };
+  if (offer.ok && wrecked) return { tone: 'good', text: `Supplies and repairs here. ${parts} wrecked aboard.` };
+  if (offer.ok && hurt) return { tone: 'good', text: 'Supplies and a medic here. The crew is hurt.' };
   if (leave?.last) return { tone: 'info', text: 'The charts end here. The rest of the run comes in later updates.' };
   if (offer.ok && offer.room && offer.most) return { tone: 'good', text: `Supplies sell here. A jump eats ${each}.` };
   if (leave) return { tone: 'good', text: `Tap Jump on for sector ${campaign.run.sector.index + 1}.` };

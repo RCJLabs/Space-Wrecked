@@ -14,18 +14,17 @@
 // A round plays out in order: flights (the player's first), then both
 // volleys at once, each from the ship as it stood when the round began, then
 // boardings (the player's first), so a ship disabled by the volleys can't
-// close. Every working gun fires once. A hit does
-// gunDamage, less what the target's shields still hold this round
-// (shieldPerGen for each working generator), to the module of the kind aimed
-// at that has the fewest hit points left. A module whose damage reaches its
-// hit points is wrecked: by a roll its room is on fire, open to vacuum or
-// full of rubble, which is how it comes to the boarding map (mapFromShip.js).
-// A ship with no working reactor or no working engine is disabled, and the
-// other boards it. Until the boarding fights (M22), the player boards only a
-// ship that is disabled: closing to board one that can still fight back is
-// shown, but can't be ordered (PLAYER_CLOSES). A ship whose last reactor is
-// wrecked blows up blowChance times in 100, which leaves only scrap; the
-// player's ship never blows. After the last round, the ships part.
+// close. Every working gun fires once. A hit does gunDamage, less what the
+// target's shields still hold this round (shieldPerGen for each working
+// generator), to the module of the kind aimed at that has the fewest hit
+// points left. A module whose damage reaches its hit points is wrecked: by a
+// roll its room is on fire, open to vacuum or full of rubble, which is how it
+// comes to the boarding map (mapFromShip.js). A ship with no working reactor
+// or no working engine is disabled, and the other boards it; either side can
+// also close to board one that can still fight. A boarding is a fight on the
+// boarded ship's map (encounter.js). A ship whose last reactor is wrecked
+// blows up blowChance times in 100, which leaves only scrap; the player's
+// ship never blows. After the last round, the ships part.
 //
 // Pure. A side is { ship, damage, wrecked }: the ship's plain data
 // (builder.js), the hit points each module has lost in this approach
@@ -40,15 +39,13 @@ import { hasTag } from './modules.js';
 export const AIM_TAGS = { weapons: 'weapon', engines: 'engine', shields: 'shield', reactor: 'reactor' };
 export const AIMS = Object.keys(AIM_TAGS);
 export const ORDERS = ['fire', 'evade', 'flee', 'close'];
-// Whether the player can close to board a ship that isn't disabled. M22's
-// boarding fights turn it on; until then a boarding is settled by a stand-in
-// (encounter.js) that can't tell a crew that boards a stronger one.
-export const PLAYER_CLOSES = false;
-const NO_CLOSING = 'Boarding a ship that can still fight comes with the boarding fights.';
 // How an approach can end: the player gets away, the other ship gets away,
 // the player boards it, it boards the player, it blows up, both are
 // disabled and drift apart, or the last round passes.
 export const OUTCOMES = ['escaped', 'fled', 'boarded', 'boardedBy', 'destroyed', 'adrift', 'parted'];
+// The outcomes that are boardings, and whose ship the fight is on: 'them'
+// when the player boards her, 'you' when she boards the player.
+export const BOARDINGS = { boarded: 'them', boardedBy: 'you' };
 
 // A side's numbers, from the modules it has working: { guns, shields (what
 // they hold in a round), thrust, mass, ratio (thrust for mass), evasion,
@@ -155,8 +152,7 @@ export function choicesFor(state, intent, rules) {
   const theirs = intent.kind === 'fire' ? { chance: hitChance(you, true, rules), was: hitChance(you, false, rules) } : { chance: null, was: null };
   choices.push({ order: { kind: 'evade' }, ok: true, why: null, ...theirs });
   choices.push({ order: { kind: 'flee' }, ok: you.moving, why: you.moving ? null : 'Your engines are out.', chance: fleeChance(you, them, rules) });
-  const closing = !PLAYER_CLOSES ? NO_CLOSING : you.moving ? null : 'Your engines are out.';
-  choices.push({ order: { kind: 'close' }, ok: !closing, why: closing, chance: closeChance(you, them, rules) });
+  choices.push({ order: { kind: 'close' }, ok: you.moving, why: you.moving ? null : 'Your engines are out.', chance: closeChance(you, them, rules) });
   return choices;
 }
 

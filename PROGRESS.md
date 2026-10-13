@@ -2,6 +2,184 @@
 
 Newest entry first.
 
+## M22 Boarding both ways (2026-10-13)
+
+**Status:** done, and the ROADMAP.md box is ticked. Evan said "Start the next milestone". Before I settled the Done when, Evan answered two questions: salvage is parts and scrap, rolled; and the crew's wounds are patched at stations. I settled the rest from the draft and wrote it into ROADMAP.md §7. No phone results have come back yet for M14 to M21.
+
+Done when: "a boarding, either way, is fought from the approach on the right map (boarded: your own ship's, wrecked rooms and all, Law 2; boarding: her generated ship's, with hers); the player's Board order works against a ship that can still fight, at the odds shown; every boarding fight leaves parts, credits or wounds behind (Law 3), and the stand-ins are gone; stations patch the crew for credits, two taps; played by the AI at full health, the start crew beats a cutter's crew at least 40% of the time either way (`tools/sim.js --boardings`); and the careful test player still crosses all five sectors fed in at least 24 of 30, now fighting its boardings with the AI and patching at stations."
+- **Fought from the approach, on the right map:**
+  - `tests/encounter.test.js`: an approach that ends in a boarding, either way, leaves its fight due. The fight is on the boarded ship's map with its wrecks, her crew on her bridge or at the player's hatches. Through the game's actions, it begins from the approach, saves as it goes and ends back on the map.
+  - By touch: Board her opened the fight on her map, identical to her ship's boarding map with her wrecks. Fight them off opened it on the player's own map with the player's wrecks.
+- **The Board order:** `tests/approach.test.js` and `tests/encounter.test.js` close on a ship that can still fight, at the odds shown; with the engines out it can't be given. By touch, Board showed 49%, and two taps grappled onto the cutter with the close rolled against 49.
+- **Something left behind (Law 3):** `tests/encounter.test.js` covers each case: her salvage and scrap, her boarders' gear, what a raid takes, or wounds alone. By touch, the end panels said "The cutter is yours: Stripped: a Bridge. Scrap: 13 credits." and "Overrun: They took the Armory.", and Continue paid out or took exactly what the sim's ending does. The stand-ins are gone from the code.
+- **Patching:** `tests/patch.test.js`, 4 tests. By touch, Patch up · 12 took two taps.
+- **The 40% guard:** `tests/boarding.test.js` passes at 100 fights a row. `node tools/sim.js --boardings` at 250 a row: 52% at home, 51% aboard her.
+- **The careful test player:** 26 of 30 runs crossed all five sectors fed (24 needed). It fought 12 boardings with the AI and patched the crew in 28 of 30 runs.
+
+### Shipped
+
+- **Boarding fights** (`src/sim/encounter.js`; ROADMAP.md §4.2 and §4.3 have the rules):
+  - **Due:** an approach that ends in a boarding, either way, leaves its fight due (`outcome.boarding`). The approach stays on screen until the fight is over.
+  - **Boarding her** (Board her): the fight is on her generated ship's map with her wrecks. Her crew, the preset's party, starts on her bridge and plays the AI. The player's crew comes in at her hatches.
+  - **Boarded** (Fight them off): the fight is on the player's own map with its wrecks. The crew starts on the bridge, and her boarders come in at the hatches, pressing on as raiders do.
+  - **Who fights:** the whole crew, wounds and all, and it moves first.
+  - **Leave her:** a ship the player disabled or grappled can be left, two taps. A ship boarding the player's can't: "They are boarding: fight them off."
+  - **What a fight comes to:**
+    - **Won aboard her:** her salvage, 1 working part from a cutter or 2 from a corvette, by rolls and never corridors, plus her scrap.
+    - **Won at home:** her scrap's worth in credits.
+    - **Lost at home:** what a lost raid takes, the dearest part on hand or half the credits.
+    - **Lost aboard her:** nothing.
+
+    The crew keeps its wounds either way. What a win pays is rolled when the fight begins, so the end panel can show it and a reload can't change it. The flags count boardings won and lost.
+- **The Board order** (`src/sim/approach.js`): M21's `PLAYER_CLOSES` is gone. Board can be given whenever the engines work, at the close chance shown (49% for the start ship against the cutter in the checks, preset seed 1).
+- **Patching** (`src/sim/patch.js`): at a station, 2 credits a hit point (`patchPrice`). It heals one hit point at a time, to whoever has fewest left, as far as the credits go.
+- **Data:**
+  - `data/ships.json`: each hostile preset's `party` and `salvage`. The cutter has the M8 boarders and 1 part; the corvette has a new patrol and 2.
+  - `data/encounters.json`: the patrol, two Company guards and a Hired heavy.
+  - `data/balance.json`: `patchPrice` 2.
+- **The screens:**
+  - **The approach** (`approach.js`, words in `approachText.js` and the new `boardingText.js`): an approach that ends in a boarding lists her crew and what winning and losing come to ("Win aboard her: strip 1 part off her, and her scrap, 10 to 25 credits."). The buttons depend on who is boarding:
+    - Board her and Leave her, each two taps, the first saying what it means;
+    - or Fight them off, one tap, since there is no choice.
+  - **The fight:** the line under the round ("Aboard the cutter · 4 of hers left", "Boarders · 4 left"), and an end panel that says what it came to.
+  - **The title's Continue** names a boarding: "Act 2 · Aboard the Pirate cutter, round 1".
+  - **The sector map:** at a station with the crew hurt, Patch up sits with the supplies and Repair, two taps.
+    - **A station with three services or more** drops the icons from its foot's buttons. The hint is held to three lines, so the foot stays one button high.
+- **`SAVE_VERSION` 13:**
+  - **New fields:** a fight's `boarding` (its direction and what a win pays), and an approach outcome's `boarding`.
+  - **From v12:** no fight is a boarding, and an approach that ended was settled by its stand-in, so no fight is due from it.
+  - **Shape checks** cover both fields, and a boarding fight with no approach that ended in it is caught.
+- **Tools:**
+  - **`tools/boarding.js`** (new) plays boarding fights out by the AI. The side aboard the other's ship presses on, and the side at home plays the AI.
+    - **`node tools/sim.js --boardings`** prints the start crew at full health against each preset's party, both ways. It works with `--fights` and `--set`.
+    - **The test player's fights:** after 40 rounds both sides press on, so a standoff can't hold a voyage up.
+  - **`tools/startShip.js`** (new) has the launched start ship, moved out of `tools/approach.js`. Loading it through `approach.js` deadlocked an import cycle.
+  - **`node tools/voyage.js`:**
+    - fights the boardings it meets with the AI;
+    - boards a ship only with at least half the crew's hit points, and leaves it otherwise;
+    - patches at stations before repairs, with the credits beyond a holdful's price.
+    - The summary has lines for boardings and patching.
+  - **The validators** check each preset's party and salvage, that a preset with tactics has a party, and `patchPrice`.
+- **Tests:** 551 in all, up from 539:
+  - the run (`tests/encounter.test.js`, 12): due fights, maps and deployment, what each outcome comes to, leaving, the Board order, saves v12 and v13, and a boarding fight through the game's actions;
+  - patching (`tests/patch.test.js`, 4);
+  - the 40% guard (`tests/boarding.test.js`);
+  - the screen's words (`tests/approachText.test.js`, 7): the stakes, the line under the round, the end panels, Patch up;
+  - the voyage test's step checks for boardings and patching. Its Done when needs boardings at home both won and lost.
+- **Golden files:** none changed.
+
+### Decisions made this session
+
+- **Evan's calls:**
+  - **Salvage:** "Parts and scrap, rolled". A won boarding strips the preset's count of parts by rolls, and takes the scrap.
+  - **Wounds:** "Stations patch the crew". In act 2 the crew patches up at stations for credits until M23's med bay.
+- **Mine,** with no word from Evan:
+  - **Her crew is data:** each preset's `party`. The cutter has the M8 boarders. For the corvette I first tried the M14 guards, but they made it easier than the cutter (74% and 71% for the crew). The patrol of three, with a heavy, gives 38% and 32%.
+  - **Who presses on:** whoever is aboard the other's ship, as raiders do. Her boarders press on in the player's ship. Aboard her, her crew holds its ground with the AI, which suits a crew defending its own ship.
+  - **The whole crew fights, and moves first,** as in a raid.
+  - **Salvage is rolled when the fight begins,** so the end panel can show it, and quitting and reopening can't reroll it.
+  - **Losing aboard her takes nothing.** The crew is beaten back to the player's ship, hurt. Losing at home costs what a lost raid takes.
+  - **Leaving:** the player can leave a ship they disabled or grappled. A ship boarding theirs has to be fought off.
+  - **The patch price is 2 credits a hit point,** cheaper than a repair (a start crew at 2 hit points each costs 40). Patching heals the most hurt first. It happens at stations only, until M23.
+  - **The test player boards only with at least half the crew's hit points,** and patches before it repairs. Its fights use the harness's players, with both sides pressing on after 40 rounds.
+  - **A v12 save's settled boardings stay settled.** Its stand-in already paid out or took.
+  - **The crowded station foot:** with three services or more, the foot's buttons drop their icons, and the hint is held to three lines. The patch text is shorter too. "Patches up Engineer 2 to 8 for 12 credits." replaces "Patches up the crew: Engineer 2 to 8, 6 hit points for 12 credits." (below).
+
+### Verified here
+
+- `node --test`: 551 pass. `node tools/validate-data.js`: OK, with 9 encounters.
+- **`node tools/sim.js`** (run because `data/balance.json` changed; `patchPrice` isn't used in fights, so the summary is M11's):
+  ```
+  All               1,000  49% (46–52)           41%        10%  7 (5–11)           28
+  Shots: 23,504, 23.5 a fight. Hit: crew 57%, boarders 40%.
+  A fight: 1.8 crew go down, 0.9 bleed out, 2.8 boarders die.
+  ```
+- **`node tools/sim.js --boardings`** (250 fights a row; rounds and hit points left are medians, in fights with a winner):
+  ```
+  Fight                                         Fights  Crew wins  Stalled  Rounds  Crew hp left
+  At home, boarded by a pirate cutter's crew       250        52%        0       6             2
+  Boarding a pirate cutter                         250        51%        2       7             1
+  At home, boarded by a patrol corvette's crew     250        38%        1       5             0
+  Boarding a patrol corvette                       250        32%        2       7             0
+  ```
+- **`node tools/voyage.js --runs 30`** (campaign seeds 1 to 30, each launched from its act 1 test run):
+  ```
+  --long never (the Done when's careful player):
+  Sectors crossed: 5 (5 to 5); 30 of 30 reached the end of the charts; fed all the way in 26 of 30.
+  Hostile ships: 2 (0 to 5) met, 0 (0 to 0) disabled or blown up, 0 (0 to 2) boarding us. Boarded her 0 (0 to 0) times (won 0 (0 to 0)), left her 0 (0 to 0); fought off 0 (0 to 2) of 0 (0 to 2) boardings. Salvage: 0 (0 to 0) parts and 0 (0 to 42) credits. Lost: 0 (0 to 1) parts and 0 (0 to 0) credits; 0 (0 to 31) hit points in the fights. Lost a boarding at home: 6 of 30; dragged past 40 rounds: 0.
+  At stations: patched 9 (0 to 32) hit points for 18 (0 to 64) credits; 0 (0 to 1) repairs for 0 (0 to 50) credits. Crew at the end: 23 (3 to 26) hit points.
+  Heat at the end: 100 (97 to 100).
+
+  long jumps when heat is at 50 or over, scanning (the default):
+  Sectors crossed: 5 (5 to 5); 30 of 30 reached the end of the charts; fed all the way in 20 of 30.
+  Hostile ships: 0 (0 to 4) met, 0 (0 to 0) disabled or blown up, 0 (0 to 1) boarding us. [...] Lost a boarding at home: 2 of 30; dragged past 40 rounds: 0.
+  At stations: patched 6 (0 to 35) hit points for 12 (0 to 70) credits; 0 (0 to 1) repairs for 0 (0 to 50) credits. Crew at the end: 26 (7 to 26) hit points.
+
+  --scan no:
+  Sectors crossed: 5 (5 to 5); 30 of 30 reached the end of the charts; fed all the way in 22 of 30.
+  ```
+  Over the careful player's 30 runs: 47 hostile ships met, 12 boardings by them, 6 fought off (104 credits of scrap in all) and 6 lost, each costing a part; 192 hit points lost in the fights, and 324 patched for 648 credits.
+- **M22's check** (scratchpad `m22/verify.mjs`), by touch at 905 × 370, 821 × 283 and 960 × 825: 35 of 35 at each size.
+  - **The Board order:**
+    - It can be given, at 49%. Of the seven orders, only shields can't be given, since the ship has none.
+    - A first tap shows the odds and changes nothing.
+    - Two taps grapple on, at the odds shown. The column says "You grapple onto the cutter.", with her crew and the stakes and no stand-in lines, and offers Board her and Leave her but no Carry on.
+  - **Two taps each:** Leave her's first tap explains and changes nothing. Board her's first tap takes over the wait, and the wait stands down when left alone. Leave her twice: back on the chart, no fight, the node settled.
+  - **Board her, two taps:** the fight is on her map, identical to her ship's boarding map with her wrecks, and saved. The whole crew faces her four, with "Aboard the cutter · 4 of hers left" under the round. Every fight button is 48 px or more and reachable.
+  - **Quit and reopen:** Continue says "Act 2 · Aboard the Pirate cutter, round 1", and the fight is as it was.
+  - **Fight them off:** the column says "Lose: they take the Armory you have on hand." and has no Leave. One tap opens the fight on the player's own map with its wrecks, with "Boarders · 4 left" under the round.
+  - **The end panels:**
+    - "The cutter is yours: Stripped: a Bridge. Scrap: 13 credits." Continue goes back to the chart with +13 credits and the bridge on hand. The saved campaign is exactly the sim's `endBoarding`, wounds and all.
+    - "Overrun: They took the Armory." Continue takes the armory.
+  - **Patch up:** four services at a station, the foot 48 px high and every button 48 px or more and reachable. The first tap says "Patches up Engineer 2 to 8 for 12 credits. Tap again to patch up." and changes nothing. The second patches, and Patch up goes.
+  - **Saves and offline:** a v12 save at a boarding its stand-in settled opens as v13, with Carry on and no Board her. Offline, with the server stopped, a boarding fight opens from the cache. No console errors or warnings.
+- **Regressions,** one after another:
+  - **M21's check** (adapted, below): 32 of 32 at each size;
+  - **M19's check** (adapted again, below): 52 of 52 at each size;
+  - **M20's check** (as adapted in M21): 32 of 32 at each size;
+  - **M18's check:** 43 of 43 at 905 × 370. The other sizes, and M17's to M8's checks, were still running when this was first pushed.
+- **What changed in the old checks:**
+  - **M21's check** (`m21/verify22.mjs`) finds Board given, at its odds, where it was refused. Its boarding shows the stakes and Board her where the stand-in's lines and Carry on were. A v11 save opens as v13.
+  - **M19's check** (`m19/verify22.mjs`) carries on past a boarding that an approach on its way ends in. In its crossing by the sim, the AI fights it. By touch, it leaves a disabled ship, or taps Fight them off and ends turns until the end panel. In these runs its touch crossing met no boarding.
+  - **The regression script** (`m22/regress.sh`) runs the adapted copies. M21's script named the older files, though M21's results came from the adapted ones.
+- **Found and fixed by looking in Chromium,** at the three sizes, before the check was written: **the station foot at 821 × 283.**
+  - **The failure:** with the supplies short, a wreck and the crew hurt, the foot held Title, the hint, Buy 3, Fill up, Repair, Patch up and Scan. The hint was squeezed to one word a line and the foot grew to 165 px. With Patch up armed it reached 255 px, and the chart shrank to 2 px tall.
+  - **The fix:** a crowded foot drops its icons, and the hint is held to three lines. Now the foot is 48 px at every size and in every armed state, and the smallest node on the chart is 62 px.
+- **Found while running the suite:** the validator's command-line test counted 8 encounters; the patrol makes 9.
+
+### Known issues
+
+- **The test player never boards hers.** It never closes to board, and it disabled no ship in 30 runs. The voyages say nothing about what Board is worth (§9).
+- **Hostile ships are still mostly a cost** for the start ship as act 1 leaves it: the careful player lost 6 of the 12 boardings at home, each costing a part.
+- **The corvette's crew is hard:** the start crew beats it 38% of the time at home and 32% aboard her, played by the AI.
+- **A crew member can start in fire.** Deployment takes the tiles nearest the bridge or the hatches whatever is on them, so one can start in a burning room and burn on the first turn (§9).
+- **Salvage can only be sold.** Act 2 has no refits, and the roll can strip any working part but a corridor, a bridge included (§9).
+- **The long-jump test player** crosses fed in 20 of 30 (21 in M21). The careful player is the guard.
+- **A boarding fight can't be left** until one side wins, like every campaign fight.
+- **Heat from approaches does nothing yet,** as with all act 2 heat until M24.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Continue your M21 save.** It opens as v13. An approach that was over stays settled: Carry on.
+2. **Board:** at a hostile ship, tap Board to see its odds, and tap again. If it grapples on, the column lists her crew and what winning and losing come to.
+3. **Board her:** two taps. The fight is on her ship, her wrecked rooms burning, with "Aboard the cutter · 4 of hers left" under the round.
+4. **Leave her** instead, two taps: back on the chart.
+5. **Boarded:** Fight them off, one tap. The fight is on your own ship, with your wrecks.
+6. **Quit mid-boarding and reopen:** Continue names the ship and the round.
+7. **The end:** the panel says what it paid or took, and Continue goes back to the chart. Check the Ship panel and the crew's hit points.
+8. **Patch up** at a station: two taps. On the cover screen, with Repair and the supplies there too, does the foot read without its icons?
+9. **Both screens:** the boarding maps, the fight on her ship, and the end panels.
+10. **Tell me:**
+    - whether boarding a ship that can still fight is worth the risk;
+    - how long and how hard the boarding fights feel;
+    - the patch price;
+    - whether salvage should be picked rather than rolled;
+    - and the M14 to M21 questions still open.
+
+### Next session
+
+**M23 Recruits, crew management, med bay healing.** Settle its Done when first. The draft is "recruits join at stations up to the ship's berths, and a med bay heals the wounded over jumps." M22's patching at stations is the stopgap a med bay replaces or works beside.
+
 ## M21 Approach phase (2026-10-13)
 
 **Status:** done, and the ROADMAP.md box is ticked. Evan said "Start the next milestone". Before I settled the Done when, Evan answered two questions: boardings run now, settled by a stand-in until M22; and repairs happen at stations. I settled the rest myself from the draft and wrote it into ROADMAP.md §7. I changed two of its lines during the session, once the numbers were in: the Law 1 test, and which test player the voyage guard uses (Decisions, below). No phone results have come back yet for M14 to M20.

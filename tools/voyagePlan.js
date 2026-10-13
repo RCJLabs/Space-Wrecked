@@ -8,18 +8,30 @@
 //   heat     0.3 a point: it does nothing in act 2 yet, but it will
 //   part     half what the shop pays for it: it has to be sold to be spent
 //   hostile  −30 for a hostile ship ahead: tools/approach.js has the start
-//            ship boarded by about one in five, which costs the dearest
-//            part on hand or half the credits, and repairs after
+//            ship boarded by about one in five, which is a fight the crew
+//            loses about half the time (tools/sim.js --boardings), and loses
+//            the dearest part on hand or half the credits; and wounds and
+//            repairs after
 // A choice is worth what its outcomes are, each at its chance. A node
 // whose kind is known is worth its event's best choice until settled, or a
 // hostile ship's worth until met; one still unknown, what the mix's kinds
-// are worth on average.
+// are worth on average. It boards a ship it has disabled only with the crew
+// fit to (boardIt), and otherwise leaves her.
+import { maxHp } from '../src/sim/campaign.js';
 import { sellPriceOf } from '../src/sim/economy.js';
 import { choiceProblem } from '../src/sim/events.js';
 import { jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity } from '../src/sim/travel.js';
 
 export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30 };
 const BUFFER_JUMPS = 4;
+
+// Whether to board a ship the player has disabled: with at least half the
+// crew's hit points between them; a crew worn down leaves her.
+export function boardIt(campaign, rules) {
+  const most = campaign.crew.reduce((sum, member) => sum + maxHp(member, rules), 0);
+  const now = campaign.crew.reduce((sum, member) => sum + member.hp, 0);
+  return now * 2 >= most;
+}
 
 // What a change in supplies is worth: the part of it below the buffer at
 // WORTH.short each, the rest at WORTH.supply; gains only as far as the
