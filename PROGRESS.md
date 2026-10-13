@@ -176,7 +176,7 @@ Done when: "hostile ships at nodes fight the approach phase to an outcome (escap
   - **M16's check:** 29 of 29 at each size. At 821 × 283 it timed out once, while three browser checks ran at once; run again alone, it passed;
   - **M18's column check:** 15 of 15 at each size;
   - **M15's check:** 30 of 30 at each size;
-  - **M14's check** (a job of each kind played by touch, over 15 minutes): still running at this commit;
+  - **M14's check:** 39 of 39 at 905 × 370, with a job of each kind played by touch. As in M19 and M20, the count depends on the jobs dealt (41 in M20);
   - **M14's saves check:** 10 of 10, v4 saves migrated through to v12;
   - **M13's check:** 24 of 24;
   - **M8's fight sandbox checks:** the fight and the orders column pass with no console errors. The extras pass all 8 of their checks, offline with the server stopped included, also with no console errors. Their wrecked bridge, set on fire on the Battle map, burns the crew in the fight.
