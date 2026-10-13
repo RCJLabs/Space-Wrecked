@@ -41,14 +41,16 @@
 //            then the sector the ship is in, where on its map, and the
 //            sectors behind it (travel.js, runShape.js)
 //   fight    null, or the fight on now: { encounter, seed, crew, battle,
-//            log, job, raid }. crew is who fights, by id, in the battle's
-//            order (c1, c2...). battle and log are the fight as it stands
-//            (battle.js, fight.js), saved after every order: the start of
-//            each of the crew's turns is saved, and so is every order in
-//            between. job is the job it is, off the board (contracts.js),
-//            or null. raid is true for the pursuer's raid on the hangar
-//            (raid.js). Neither is a fight at home against boarders
-//            (beginFight), which no screen starts any more.
+//            log, job, raid, boarding }. crew is who fights, by id, in the
+//            battle's order (c1, c2...). battle and log are the fight as it
+//            stands (battle.js, fight.js), saved after every order: the
+//            start of each of the crew's turns is saved, and so is every
+//            order in between. job is the job it is, off the board
+//            (contracts.js), or null. raid is true for the pursuer's raid
+//            on the hangar (raid.js). boarding is a boarding fight's, from
+//            an approach (encounter.js), or null. None of them is a fight at
+//            home against boarders (beginFight), which no screen starts any
+//            more.
 import { int, isState } from '../core/rng.js';
 import { actOf } from './acts.js';
 import { battleProblem } from './battleShape.js';
@@ -82,6 +84,9 @@ export const MAX_BOARD = 12;
 export const MAX_SPENT = 100;
 // More parts than any ship could need at once (partsNeeded).
 const MAX_NEEDED = 40;
+// More parts than a boarding crew strips off a ship: a guard on what a save
+// can hold.
+const MAX_SALVAGE = 20;
 // Who boards the ship in a fight (data/encounters.json).
 export const FIGHT_ENCOUNTER = 'boarders';
 const MAX_SEED = 0xffffffff;
@@ -239,7 +244,7 @@ export function beginFight(campaign, rules, { forgiving = false, difficulty = 'n
     return member ? { ...unit, ...crewUnit(member, rules) } : { ...unit, bonus };
   });
   const { battle, events } = createBattle({ map, units, seed, options: { forgiving } }, rules);
-  const fight = { encounter: FIGHT_ENCOUNTER, seed, crew: campaign.crew.map((member) => member.id), battle, log: events, job: null, raid: false };
+  const fight = { encounter: FIGHT_ENCOUNTER, seed, crew: campaign.crew.map((member) => member.id), battle, log: events, job: null, raid: false, boarding: null };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };
 }
 
@@ -301,16 +306,15 @@ export function campaignProblems(value) {
   if (value.shop !== null && !(Array.isArray(value.shop) && value.shop.length <= MAX_STOCK && value.shop.every(isStockItem))) wrong("shop's stock is unreadable");
   if (!Array.isArray(value.spent) || value.spent.length > MAX_SPENT || !value.spent.every(isId) || new Set(value.spent).size !== value.spent.length) wrong('jobs done once are unreadable');
   if (!isInt(value.supplies, 0, MAX_SUPPLIES)) wrong('supplies are invalid');
-  if (value.run !== null) {
-    const why = runProblem(value.run);
-    if (why) wrong(`run ${why}`);
-    else if (value.act === 1) wrong('run has begun before launch');
-  }
+  const runWhy = value.run === null ? null : runProblem(value.run);
+  if (runWhy) wrong(`run ${runWhy}`);
+  else if (value.run !== null && value.act === 1) wrong('run has begun before launch');
   if ((value.place === 'fight') !== isRecord(value.fight) || (value.place !== 'fight' && value.fight !== null)) {
     wrong("fight doesn't match where the player is");
   } else if (value.fight !== null) {
     const why = fightProblem(value.fight, Array.isArray(value.crew) ? value.crew : []);
     if (why) wrong(`fight ${why}`);
+    else if (value.fight.boarding && !runWhy && value.run?.approach?.outcome?.boarding !== 'due') wrong('boarding fight has no approach that ended in it');
   }
   return problems;
 }
@@ -323,6 +327,7 @@ function fightProblem(fight, crew) {
   }
   if (fight.job !== null && !isJob(fight.job)) return 'has an unreadable job';
   if (typeof fight.raid !== 'boolean' || (fight.raid && fight.job !== null)) return 'is unreadable';
+  if (fight.boarding !== null && !(isBoarding(fight.boarding) && !fight.raid && fight.job === null)) return 'has an unreadable boarding';
   const battle = battleProblem(fight.battle);
   if (battle) return battle;
   if (fight.battle.units.filter((unit) => unit.side === 'crew').length !== fight.crew.length) return "doesn't match its crew";
@@ -334,6 +339,16 @@ function fightProblem(fight, crew) {
 function isWrecks(wrecks, ship) {
   const uids = new Set(ship.modules.map((module) => String(module.uid)));
   return isRecord(wrecks) && Object.entries(wrecks).every(([uid, wreck]) => uids.has(uid) && WRECKS.includes(wreck));
+}
+
+// A boarding fight's (encounter.js): which way it goes, and what a win
+// pays, rolled as it began.
+function isBoarding(boarding) {
+  const { salvage } = boarding ?? {};
+  return (
+    isRecord(boarding) && (boarding.dir === 'them' || boarding.dir === 'you') && isRecord(salvage) &&
+    Array.isArray(salvage.parts) && salvage.parts.length <= MAX_SALVAGE && salvage.parts.every(isId) && isInt(salvage.credits, 0, Number.MAX_SAFE_INTEGER)
+  );
 }
 
 // A job on the board (contracts.js): its ids, seed and pay.

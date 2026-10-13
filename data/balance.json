@@ -50,5 +50,6 @@
   "closePerThrust": 50,
   "blowChance": 30,
   "approachHeat": 4,
-  "repairPercent": 25
+  "repairPercent": 25,
+  "patchPrice": 2
 }

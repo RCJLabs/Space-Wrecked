@@ -46,7 +46,7 @@ export function beginRaid(campaign, rules, { forgiving = false, difficulty = 'no
     ...raiders.map((kind, i) => ({ kind, x: placed.raiders[i][0], y: placed.raiders[i][1], bonus })),
   ];
   const { battle, events } = createBattle({ map, units, seed, options: { forgiving, press: true } }, rules);
-  const fight = { encounter: pursuer.raiders, seed, crew: campaign.crew.map((member) => member.id), battle, log: events, job: null, raid: true };
+  const fight = { encounter: pursuer.raiders, seed, crew: campaign.crew.map((member) => member.id), battle, log: events, job: null, raid: true, boarding: null };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };
 }
 

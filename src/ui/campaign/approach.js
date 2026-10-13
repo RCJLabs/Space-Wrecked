@@ -9,8 +9,10 @@
 // fire at their guns, engines, shields or reactor, evade, flee, or board.
 // A tap shows what an order does and its odds in full, a second gives it;
 // an order that can't be given says why. Once it is over, the column says
-// how it ended and what it came to, the boarded ship's map is marked, and
-// Carry on, in the orders' place, goes back to the chart. Every round is
+// how it ended and what it came to, and the boarded ship's map is marked.
+// In the orders' place, Carry on goes back to the chart; or, for a boarding
+// (M22), Board her begins the fight and Leave her goes, each two taps, or
+// Fight them off begins it when she is the one boarding. Every round is
 // saved as it is played.
 import { loadContent } from '../../platform/content.js';
 import { battleBoxes } from '../../render/battleScene.js';
@@ -76,15 +78,18 @@ export const approachScreen = {
     const fire = node('div', 'apr-fire');
     const moves = node('div', 'apr-moves');
     const carryButton = toolButton('apr-carry', icons.done, 'Carry on');
-    carryButton.hidden = true;
-    foot.append(titleButton, fireLabel, fire, moves, carryButton);
+    const boardButton = toolButton('apr-board', icons.door, 'Board her');
+    const leaveButton = toolButton('apr-leave', icons.jump, 'Leave her');
+    carryButton.hidden = boardButton.hidden = leaveButton.hidden = true;
+    foot.append(titleButton, fireLabel, fire, moves, boardButton, leaveButton, carryButton);
     el.append(head, ships.you.area, ships.them.area, column, foot);
     root.append(el);
 
     let defs = null;
     let alive = true;
     let shown = null;
-    let armed = null; // the key of the order that has had its first tap
+    let armed = null; // the key of the order (or 'board', 'leave') that has had its first tap
+    let stakes = null; // the boarding that is due, as the column says it
     let armTimer = 0;
     let settleTimer = 0;
     let dirty = true;
@@ -92,6 +97,8 @@ export const approachScreen = {
     const cleanups = [
       onTap(titleButton, () => game.dispatch({ type: 'screen/show', screen: 'title' })),
       onTap(carryButton, () => game.dispatch({ type: 'campaign/approach/close' })),
+      onTap(boardButton, () => decide('board', () => game.dispatch({ type: 'campaign/boarding/begin', rules: defs }))),
+      onTap(leaveButton, () => decide('leave', () => game.dispatch({ type: 'campaign/approach/close' }))),
       () => clearTimeout(armTimer),
       () => clearTimeout(settleTimer),
       () => buttons.forEach((entry) => entry.detach()),
@@ -132,10 +139,18 @@ export const approachScreen = {
       // Their order, and the player's.
       intentHead.hidden = intent.hidden = !text.intent;
       if (text.intent) setText(intent, text.intent.text);
-      if (armed && !text.orders.some((order) => order.key === armed && order.ok)) disarm();
+      stakes = text.outcome?.boarding ?? null;
+      const choosing = armed === 'board' || armed === 'leave';
+      if (armed && (choosing ? !stakes || (armed === 'leave' && !stakes.leave) : !text.orders.some((order) => order.key === armed && order.ok))) disarm();
       showOrders(text.orders);
       fireLabel.hidden = fire.hidden = moves.hidden = Boolean(text.outcome);
-      carryButton.hidden = !text.outcome;
+      carryButton.hidden = !text.outcome || Boolean(stakes);
+      boardButton.hidden = !stakes;
+      leaveButton.hidden = !stakes?.leave;
+      if (stakes) {
+        setButton(boardButton, armed === 'board' ? stakes.begin.ask : stakes.begin.label, armed === 'board');
+        if (stakes.leave) setButton(leaveButton, armed === 'leave' ? stakes.leave.ask : stakes.leave.label, armed === 'leave');
+      }
 
       // How it ended.
       out.hidden = !text.outcome;
@@ -147,10 +162,38 @@ export const approachScreen = {
       logHead.hidden = !text.last.length;
       log.replaceChildren(...text.last.map((line) => node('li', null, line)));
 
-      const picked = text.orders.find((order) => order.key === armed);
+      const picked = armed === 'board' ? stakes.begin : armed === 'leave' ? stakes.leave : text.orders.find((order) => order.key === armed);
       setText(hint, picked ? picked.text : text.hint.text);
       hint.dataset.tone = picked ? 'warn' : text.hint.tone;
       hint.hidden = !hint.textContent;
+    }
+
+    // A tool button's words, and whether it waits for its second tap.
+    function setButton(button, label, waiting) {
+      setText(button.querySelector('span'), label);
+      button.dataset.armed = String(waiting);
+    }
+
+    // Board her or leave her: the first tap says what it means, the second
+    // does it. With no choice (she is boarding), one tap begins the fight.
+    function decide(key, act) {
+      if (!defs || !stakes) return;
+      if (key === 'board' && !stakes.leave) {
+        act();
+        return;
+      }
+      if (armed !== key) {
+        armed = key;
+        clearTimeout(armTimer);
+        armTimer = setTimeout(() => {
+          disarm();
+          if (alive) render(game.getState().campaign, true);
+        }, ARM_MS);
+        render(game.getState().campaign, true);
+        return;
+      }
+      disarm();
+      act();
     }
 
     function showShip(side, words, ship) {

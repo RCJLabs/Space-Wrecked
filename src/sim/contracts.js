@@ -175,7 +175,7 @@ export function takeJob(campaign, rules, index, setup = {}) {
     return { ok: false, error: `That job can't start: ${err.message}.` };
   }
   const { encounter } = rules.contracts.jobs.get(job.contract);
-  const fight = { encounter, seed: job.seed, crew: campaign.crew.map((member) => member.id), battle: started.battle, log: started.events, job, raid: false };
+  const fight = { encounter, seed: job.seed, crew: campaign.crew.map((member) => member.id), battle: started.battle, log: started.events, job, raid: false, boarding: null };
   return { ok: true, campaign: { ...campaign, place: 'fight', fight } };
 }
 

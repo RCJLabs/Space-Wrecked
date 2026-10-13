@@ -147,9 +147,10 @@ export function jobsText(flags, none = 'None yet') {
 // its name. On the run, the sector says where.
 export function continueText(campaign, rules) {
   const { fight, run } = campaign;
-  const what = fight?.raid ? 'The raid' : fight?.job ? rules?.contracts.jobs.get(fight.job.contract)?.title ?? 'On a job' : 'In a fight';
-  const kind = fight?.raid ? 'The raid' : fight?.job ? 'A job' : 'A fight';
   const approach = run?.approach;
+  const boarding = fight?.boarding && approach ? (fight.boarding.dir === 'them' ? `Aboard the ${approach.enemy.name}` : `Boarders from the ${approach.enemy.name}`) : null;
+  const what = fight?.raid ? 'The raid' : fight?.job ? rules?.contracts.jobs.get(fight.job.contract)?.title ?? 'On a job' : boarding ?? 'In a fight';
+  const kind = fight?.raid ? 'The raid' : fight?.job ? 'A job' : fight?.boarding ? 'A boarding' : 'A fight';
   const facing = approach && (approach.outcome ? `${approach.enemy.name}, over` : `${approach.enemy.name}, round ${approach.round}`);
   const at = fight
     ? fight.battle.winner ? `${kind} just ended` : `${what}, round ${fight.battle.round}`

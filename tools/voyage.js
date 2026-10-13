@@ -7,8 +7,12 @@
 // voyagePlan.js's):
 //   - at an event, make the choice worth most;
 //   - meeting a hostile ship, give the orders tools/approachPlan.js gives;
-//   - at a station, fill the holds, as far as the credits go, then repair
-//     what the credits cover beyond a holdful's price;
+//     then fight any boarding it ends in with the AI (tools/boarding.js),
+//     unless it is a ship the crew disabled and the crew is too worn down
+//     to board her (voyagePlan.js boardIt), when it leaves her;
+//   - at a station, fill the holds, as far as the credits go, then patch up
+//     the crew, then repair, with what the credits cover beyond a holdful's
+//     price;
 //   - with --scan yes (the default), scan wherever a scan would show a
 //     node ahead; with --scan no, never;
 //   - from each node, plan every way on to the jump point, a link at a
@@ -33,13 +37,16 @@ import { indexDefs } from '../src/sim/defs.js';
 import { approachState, closeApproach, giveOrder } from '../src/sim/encounter.js';
 import { chooseEvent, partsOnHand } from '../src/sim/events.js';
 import { launch } from '../src/sim/launch.js';
+import { patchCrew } from '../src/sim/patch.js';
+import { raidLoss } from '../src/sim/raid.js';
 import { repairShip } from '../src/sim/repair.js';
 import { beginRun, buySupplies, hereOf, jump, jumpSupplies, leavePlan, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer } from '../src/sim/travel.js';
 import { captainOrder } from './approachPlan.js';
+import { fightBoarding } from './boarding.js';
 import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
-import { bestChoice, nextJump } from './voyagePlan.js';
+import { bestChoice, boardIt, nextJump } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
@@ -47,8 +54,9 @@ const MAX_JUMPS = 100; // a voyage still going after this many stops
 
 // A voyage from a launched campaign (act 2, the run not yet begun) to the
 // end of the charts: { ended, steps, sectors, tally, lines, campaign }.
-// steps: every jump, purchase, event, approach, repair and scan with what it
-// moved, [before, after]; sectors: each sector as the ship entered it.
+// steps: every jump, purchase, event, approach, boarding, patch, repair and
+// scan with what it moved, [before, after]; sectors: each sector as the ship
+// entered it.
 export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', label = '' } = {}) {
   if (!LONG_POLICIES.includes(long)) throw new Error(`--long is one of ${LONG_POLICIES.join(', ')}`);
   if (!SCAN_POLICIES.includes(scans)) throw new Error(`--scan is one of ${SCAN_POLICIES.join(', ')}`);
@@ -76,7 +84,19 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', label
     approachesWon: 0,
     approachesLost: 0,
     approachCredits: 0,
+    boardings: 0,
+    boardingsWon: 0,
+    defences: 0,
+    defencesWon: 0,
+    left: 0,
+    dragged: 0,
+    salvageCredits: 0,
+    salvaged: 0,
     partsLost: 0,
+    creditsLost: 0,
+    fightHp: 0,
+    patchedHp: 0,
+    patchCredits: 0,
     repairs: 0,
     repairCredits: 0,
     heat: [launched.heat, null],
@@ -142,15 +162,40 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', label
       }
       const { outcome, round } = campaign.run.approach;
       const { changes } = outcome;
-      campaign = closeApproach(campaign).campaign;
-      record('approach', before, { ship: enemy.ship, outcome: outcome.kind, how: outcome.how ?? null, rounds: round, changes, wrecks: Object.keys(campaign.wrecks).length });
+      record('approach', before, { ship: enemy.ship, outcome: outcome.kind, how: outcome.how ?? null, rounds: round, changes, boarding: outcome.boarding, wrecks: Object.keys(campaign.wrecks).length });
       tally.approaches += 1;
       if (outcome.kind === 'boarded' || outcome.kind === 'destroyed') tally.approachesWon += 1;
       if (outcome.kind === 'boardedBy') tally.approachesLost += 1;
       tally.approachCredits += changes.credits;
-      if (changes.lost?.part) tally.partsLost += 1;
-      tally.found += changes.parts.length;
       lines.push(`   ${enemy.name}: ${outcome.kind}${outcome.how ? ` (${outcome.how})` : ''} in round ${round}, ${Object.keys(campaign.wrecks).length} wrecked aboard. ${hold()}.`);
+      // Its boarding, if it ended in one: fought, or a disabled ship left.
+      if (outcome.boarding === 'due' && (outcome.kind === 'boardedBy' || boardIt(campaign, defs))) {
+        const ready = campaign;
+        const fought = fightBoarding(campaign, defs);
+        campaign = fought.campaign;
+        const lost = !fought.won && fought.dir === 'you' ? raidLoss(ready, defs) : null;
+        const step = record('boarding', ready, { ship: enemy.ship, dir: fought.dir, won: fought.won, rounds: fought.rounds, salvage: fought.salvage, lost, dragged: fought.dragged });
+        if (fought.dir === 'them') tally.boardings += 1;
+        else tally.defences += 1;
+        if (fought.won && fought.dir === 'them') tally.boardingsWon += 1;
+        if (fought.won && fought.dir === 'you') tally.defencesWon += 1;
+        if (fought.won) {
+          tally.salvageCredits += fought.salvage.credits;
+          tally.salvaged += fought.salvage.parts.length;
+        }
+        if (lost?.part) tally.partsLost += 1;
+        tally.creditsLost += lost?.credits ?? 0;
+        if (fought.dragged) tally.dragged += 1;
+        tally.fightHp += step.hp[0].reduce((a, b) => a + b, 0) - step.hp[1].reduce((a, b) => a + b, 0);
+        const way = fought.dir === 'them' ? 'Boarded her' : 'Fought off her boarders';
+        lines.push(`   ${way}: ${fought.won ? 'won' : 'lost'} in round ${fought.rounds}, crew ${hpOf(campaign)}. ${hold()}.`);
+      } else {
+        if (outcome.boarding === 'due') {
+          tally.left += 1;
+          lines.push(`   Left her: the crew is too worn down to board (${hpOf(campaign)}).`);
+        }
+        campaign = closeApproach(campaign).campaign;
+      }
     }
     const offer = supplyOffer(campaign, defs);
     const count = offer.ok ? Math.min(offer.room, offer.most) : 0;
@@ -163,8 +208,17 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', label
       tally.spent += before.credits - campaign.credits;
       lines.push(`   Bought ${count} supplies at ${hereOf(campaign).name} for ${before.credits - campaign.credits} credits: ${hold()}.`);
     }
-    // Repairs, with what is left beyond a holdful's price.
+    // Patching up, then repairs, with what is left beyond a holdful's price.
     const reserve = supplyCapacity(campaign.ship, defs) * defs.balance.supplyPrice;
+    const patched = offer.ok && campaign.credits > reserve ? patchCrew({ ...campaign, credits: campaign.credits - reserve }, defs) : { ok: false };
+    if (patched.ok) {
+      const before = campaign;
+      campaign = { ...patched.campaign, credits: patched.campaign.credits + reserve };
+      record('patch', before, { patched: patched.plan.hp });
+      tally.patchedHp += patched.plan.hp;
+      tally.patchCredits += patched.plan.cost;
+      lines.push(`   Patched up ${patched.plan.hp} hit points for ${patched.plan.cost} credits: crew ${hpOf(campaign)}, ${hold()}.`);
+    }
     const fixed = offer.ok && campaign.credits > reserve ? repairShip({ ...campaign, credits: campaign.credits - reserve }, defs) : { ok: false };
     if (fixed.ok) {
       const before = campaign;
@@ -216,7 +270,7 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', label
   const ended = leavePlan(campaign, defs).last === true;
   const where = ended ? `The charts end at sector ${campaign.run.sector.index}'s jump point` : `Stopped in sector ${campaign.run.sector.index}`;
   lines.push(
-    `${where}, ${tally.crossed} sectors crossed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits, ${tally.partsLost} parts lost; ${tally.repairs} repairs for ${tally.repairCredits} credits. Heat ${tally.heat[0]} to ${tally.heat[1]}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
+    `${where}, ${tally.crossed} sectors crossed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits; boarded ${tally.boardings} (won ${tally.boardingsWon}), left ${tally.left}, fought off ${tally.defencesWon} of ${tally.defences}; salvage ${tally.salvaged} parts and ${tally.salvageCredits} credits, lost ${tally.partsLost} parts and ${tally.creditsLost} credits, ${tally.fightHp} hit points; patched ${tally.patchedHp} for ${tally.patchCredits} credits; ${tally.repairs} repairs for ${tally.repairCredits} credits. Heat ${tally.heat[0]} to ${tally.heat[1]}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
   );
   return { ended, steps, sectors, tally, lines, campaign };
 }
@@ -250,7 +304,8 @@ export function manyVoyages(defs, runs, options = {}) {
     `Sectors crossed: ${spread(of('crossed'))}; ${done.filter((r) => r.ended).length} of ${done.length} reached the end of the charts; fed all the way in ${done.filter((r) => r.tally.hungryJumps === 0).length} of ${done.length}.`,
     `Jumps: ${spread(of('jumps'))}, long ${spread(of('longJumps'))}, hungry ${spread(of('hungryJumps'))}.`,
     `At the nodes: ${spread(of('events'))} events, ${spread(of('eventCredits'))} credits and ${spread(of('eventSupplies'))} supplies from them, ${spread(of('found'))} parts found, ${spread(of('sold'))} sold, ${spread(of('wounds'))} hit points lost; ${spread(of('scans'))} scans.`,
-    `Hostile ships: ${spread(of('approaches'))} met, ${spread(of('approachesWon'))} won, ${spread(of('approachesLost'))} lost (boarded), ${spread(of('approachCredits'))} credits from them, ${spread(of('partsLost'))} parts lost; ${spread(of('repairs'))} repairs for ${spread(of('repairCredits'))} credits. Lost one or more: ${done.filter((r) => r.tally.approachesLost > 0).length} of ${done.length}.`,
+    `Hostile ships: ${spread(of('approaches'))} met, ${spread(of('approachesWon'))} disabled or blown up, ${spread(of('approachesLost'))} boarding us. Boarded her ${spread(of('boardings'))} times (won ${spread(of('boardingsWon'))}), left her ${spread(of('left'))}; fought off ${spread(of('defencesWon'))} of ${spread(of('defences'))} boardings. Salvage: ${spread(of('salvaged'))} parts and ${spread(of('salvageCredits'))} credits. Lost: ${spread(of('partsLost'))} parts and ${spread(of('creditsLost'))} credits; ${spread(of('fightHp'))} hit points in the fights. Lost a boarding at home: ${done.filter((r) => r.steps.some((step) => step.kind === 'boarding' && step.dir === 'you' && !step.won)).length} of ${done.length}; dragged past 40 rounds: ${done.reduce((sum, r) => sum + r.tally.dragged, 0)}.`,
+    `At stations: patched ${spread(of('patchedHp'))} hit points for ${spread(of('patchCredits'))} credits; ${spread(of('repairs'))} repairs for ${spread(of('repairCredits'))} credits. Crew at the end: ${spread(done.map((r) => r.campaign.crew.reduce((sum, m) => sum + m.hp, 0)))} hit points.`,
     `In the first three sectors: restocked at ${spread(done.map((r) => early(r, (step) => step.kind === 'buy')))} stations; hungry on ${spread(hungryEarly)} jumps; fed all the way in ${hungryEarly.filter((n) => n === 0).length} of ${done.length}.`,
     `Supplies bought: ${spread(of('bought'))}, for ${spread(of('spent'))} credits. Launch credits: ${spread(done.map((r) => r.steps[0]?.credits[0] ?? 0))}.`,
     `Heat at launch: ${spread(done.map((r) => r.tally.heat[0]))}; at the end: ${spread(done.map((r) => r.tally.heat[1]))}.`,

@@ -19,7 +19,9 @@
         "engine": [2, 3]
       },
       "tactics": { "aim": ["engines", "weapons"], "board": 2, "flee": 50 },
-      "scrap": [10, 25]
+      "scrap": [10, 25],
+      "party": "boarders",
+      "salvage": 1
     },
     {
       "id": "corvette",
@@ -42,7 +44,9 @@
         "engine": [2, 4]
       },
       "tactics": { "aim": ["weapons", "reactor"], "flee": 70 },
-      "scrap": [20, 40]
+      "scrap": [20, 40],
+      "party": "patrol",
+      "salvage": 2
     },
     {
       "id": "hauler",

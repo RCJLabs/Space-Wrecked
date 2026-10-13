@@ -1,7 +1,7 @@
 // What a saved run (travel.js) must look like, for the save's checks
 // (campaign.js campaignProblems). Shape only: whether its node kinds are
 // the content's is the rules' business. Pure.
-import { isOrder, OUTCOMES } from './approach.js';
+import { BOARDINGS, isOrder, OUTCOMES } from './approach.js';
 import { isShipData } from './builder.js';
 import { WRECKS } from './mapFromShip.js';
 
@@ -83,9 +83,11 @@ function isSide(side) {
   );
 }
 
-// How an approach ended, and what it came to.
+// How an approach ended, and what it came to: a boarding fight still due,
+// for a boarding.
 function isOutcome(outcome) {
   if (!isRecord(outcome) || !OUTCOMES.includes(outcome.kind) || !(outcome.how === undefined || outcome.how === 'closed' || outcome.how === 'disabled')) return false;
+  if (!(outcome.boarding === null || (outcome.boarding === 'due' && outcome.kind in BOARDINGS))) return false;
   const { changes } = outcome;
   const isLoss = (lost) => lost === null || (isRecord(lost) && (isId(lost.part) || isInt(lost.credits, 0, MAX_CHANGE)));
   return (

@@ -13,37 +13,19 @@
 import { pathToFileURL } from 'node:url';
 import { seedFrom } from '../src/core/rng.js';
 import { OUTCOMES, playRound } from '../src/sim/approach.js';
-import { buildShip } from '../src/sim/builder.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { captainOrder } from './approachPlan.js';
 import { readData } from './data.js';
-import { fitPart } from './run.js';
 import { rulesWith, setting } from './sim.js';
+import { launchedShip, withPart } from './startShip.js';
 
-// What the start ship gets in act 1 to launch: the parts on hand at the
-// start, and the three engines lifting off takes.
-const LAUNCH_PARTS = ['quarters', 'lifesupport', 'engine', 'engine', 'engine'];
+export { launchedShip, withPart } from './startShip.js';
+
 // The parts tried one at a time on the launched ship.
 export const ADDED = ['weapon', 'shield', 'engine'];
 // How an outcome counts for the player.
 const WINS = ['boarded', 'destroyed'];
 const LOSSES = ['boardedBy'];
-
-// The launched start ship: the background's start ship, with LAUNCH_PARTS
-// fitted where the test runs fit them (run.js fitPart).
-export function launchedShip(rules) {
-  const { start } = rules.backgrounds.values().next().value;
-  let { ship } = buildShip(rules, start.ship.frame, start.ship.placements);
-  for (const type of LAUNCH_PARTS) ship = withPart(ship, rules, type);
-  return ship;
-}
-
-// The ship with one part more, fitted.
-export function withPart(ship, rules, type) {
-  const fitted = fitPart(ship, rules, type);
-  if (!fitted) throw new Error(`No room for a ${type} on the ship.`);
-  return fitted.ship;
-}
 
 // The ships the harness flies: the launched start ship, and it with each of
 // ADDED: [{ name, ship }].
