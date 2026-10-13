@@ -153,22 +153,19 @@ export function prepareSolid(faces, shadeFace) {
 // the camera, then glows. Without a depth buffer this is the painter's
 // algorithm: right for the ship's simple shapes, which don't pass through
 // each other. With edges false, outlines are left out: a quicker frame,
-// for while the camera moves.
-export function paintSolid(ctx, faces, glows, cam, { edges = true } = {}) {
+// for while the camera moves. items are drawn in the same order, each as a
+// whole at its point: [{ at: [x, y, z], draw(ctx, cam) }] (figures, drawn
+// once and kept, figures/sprites.js).
+export function paintSolid(ctx, faces, glows, cam, { edges = true, items = [] } = {}) {
   const project = projector(cam);
-  const eye = eyeOf(cam);
-  const shown = [];
-  for (const face of faces) {
-    const [mx, my, mz] = face.mid;
-    const [nx, ny, nz] = face.normal;
-    if ((eye[0] - mx) * nx + (eye[1] - my) * ny + (eye[2] - mz) * nz <= 0) continue;
-    shown.push({ face, depth: project(face.at)[2] + face.bias });
-  }
-  shown.sort((a, b) => b.depth - a.depth);
   const zoom = Math.max(0.85, Math.min(1.6, cam.scale / 60));
   ctx.lineJoin = 'round';
   ctx.lineWidth = 0.9 * zoom;
-  for (const { face } of shown) {
+  for (const { face, item } of drawOrder(faces, cam, items)) {
+    if (item) {
+      item.draw(ctx, cam);
+      continue;
+    }
     ctx.beginPath();
     for (let i = 0; i < face.pts.length; i++) {
       const q = project(face.pts[i]);
@@ -184,6 +181,22 @@ export function paintSolid(ctx, faces, glows, cam, { edges = true } = {}) {
     }
   }
   paintGlows(ctx, glows, project, cam);
+}
+
+// The faces that face the camera, and the items, back to front: [{ face }
+// or { item }].
+export function drawOrder(faces, cam, items = []) {
+  const project = projector(cam);
+  const eye = eyeOf(cam);
+  const shown = [];
+  for (const face of faces) {
+    const [mx, my, mz] = face.mid;
+    const [nx, ny, nz] = face.normal;
+    if ((eye[0] - mx) * nx + (eye[1] - my) * ny + (eye[2] - mz) * nz <= 0) continue;
+    shown.push({ face, depth: project(face.at)[2] + face.bias });
+  }
+  for (const item of items) shown.push({ item, depth: project(item.at)[2] });
+  return shown.sort((a, b) => b.depth - a.depth);
 }
 
 const LABEL_FONT = "600 10.5px ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace";

@@ -7,7 +7,7 @@
 import { project } from './orbit.js';
 import { palette, rgba } from './palette.js';
 import { FLIGHT, FLOAT_MS } from './playback.js';
-import { UNIT_TOP } from './units.js';
+import { LYING_TOP, UNIT_TOP } from './units.js';
 
 const SMALL = "600 9.5px ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace";
 const BADGE = "700 11px ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace";
@@ -43,7 +43,7 @@ export function paintFightLabels(ctx, cam, rect, { units = [], badges = [], mark
 // word for its state.
 function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, overwatch, bleed, selected }) {
   const standing = status === 'active';
-  const [sx, sy] = project(cam, x, y, standing ? UNIT_TOP + 0.16 : 0.3);
+  const [sx, sy] = project(cam, x, y, standing ? UNIT_TOP + 0.16 : LYING_TOP + 0.14);
   const seg = (BAR_W - (maxHp - 1)) / maxHp;
   const [x0, y0] = [Math.round(sx - BAR_W / 2), Math.round(sy)];
   ctx.fillStyle = rgba(palette.space, 0.78);

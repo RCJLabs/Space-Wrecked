@@ -180,6 +180,12 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **The log:** every action returns the events it caused, and the same setup, seed and actions always give the same events (`src/sim/battle.js`; the example battle in `tests/golden/` is replayed by the tests).
 - **Giving orders** (M8, `src/sim/fight.js`): a tap never spends an action. A tap on a tile shows the move (its path, one action or a dash, and the cover where it stops), and a second tap on it makes it. A tap on an enemy, or Shoot, shows the shot with its odds part by part, and Fire or a second tap takes it. Overwatch, Reload, Stabilize and Open door are buttons, and on a job Grab and Hack, shown only when there is a crate or the terminal in reach; End turn takes a second tap while anyone can still act. A job's objective shows under the round, and its crates and terminal are tagged on the board. The board opens square to the ship, where tiles are biggest, and every enemy is shown (no fog of war); those the selected unit can see show the hit chance. No button sits over the board (M18): Title, Log and Fit head the orders' column on the right, since Chrome takes a tap on a tile beside a button for the button.
 - **The enemy's turn** is worked out at once by the rules and then played out on the board, event by event: walks, shots that land or fly wide with the damage over the unit hit, doors opening, whose turn it is. Skip goes to the end.
+- **Figures** (M23b, `src/render/figures/`): units are people in spacesuits, drawn by our renderer.
+  - **Two suits**, Evan's pick from five mockups: the classic EVA (puffy, ringed joints, a pack and a bubble helmet) and the skinsuit (close-fitting, lines of light, plates and an egg of a helmet). Both sides wear both.
+  - **Looks are data:** each job and enemy type has a `look` (its suit, build, helmet, back and marks), and each weapon a `held` shape. The validator checks them against what can be drawn (`src/render/figures/looks.js`).
+  - **Colors:** the crew are pale, each trimmed in their own color; boarders are rust with orange trim. The out and the dead lie grey.
+  - **Poses:** at the ready, aiming (while shooting and on overwatch), walking (a stride to every two tiles), falling as they go down or die, and lying.
+  - **Drawn once and kept** (`src/render/figures/sprites.js`): a figure is hundreds of faces, so each is drawn into a small canvas the first time it is seen at an angle, in a pose and at a size, then reused. These are drawings our renderer makes at run time, not image files. Each frame draws at most about one new drawing; a figure waiting for its new pose shows its last one.
 - **The enemy AI** (M9, `src/sim/ai.js`, pure and with no random numbers) plays the enemy's turns. It plays a unit at a time and scores every plan the unit could make:
   - stay, move or dash, then shoot, overwatch or nothing;
   - or breach: open a door beside it and shoot or watch through, which draws no overwatch fire.
@@ -472,12 +478,14 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
 
 **Looks and the catalog, before refits** (Evan's call after M23, 2026-10-13). The characters are still stand-ins, the ships look blocky, and the builder needs more to choose from. Evan asked for these before the milestones already planned. His answers: figures and portraits; hulls that are smoother on their own, plus shaped pieces to sculpt them; styling that isn't a module (Law 1); and part variants in size and stats, plus a second manufacturer. The rules stay on the square grid (§3), so the curves are on the outside: rooms and fights keep their square tiles. Each milestone keeps the fight and the hull views within the frame budget at the three screen sizes.
 
-- [ ] **M23b Character figures** (§4.3).
-  - figures drawn in code by our renderer: helmet and visor, armored body, arms holding the weapon, legs
+- [x] **M23b Character figures** (§4.3).
+  - figures drawn in code by our renderer: a helmet and visor, a suit, arms holding the weapon, legs
+  - two suits, Evan's pick from five mockups (2026-10-13): the classic EVA and the skinsuit, worn by both sides for variety
   - the crew by job (marine, engineer, medic), each in their own trim; enemies by type (`data/enemies.json`), in their side's colors
+  - each job's and enemy type's look is data: its suit, build, helmet, back and marks; each weapon's held shape too
   - poses: standing, aiming as they shoot, walking through a move, down, and out or dead
 
-  **Done when (draft):** every crew job and every enemy type has a figure of its own, told apart at the cover screen's tile size; a move walks, a shot aims and a unit that goes down falls; the fight keeps to the frame budget at the three sizes; and the golden battle logs don't change (it is drawing only).
+  **Done when:** every crew job and every enemy type has a figure of its own in one of the two suits, set in data, and told apart at the cover screen's tile size (each pair on a side differs in at least a fifth of their pixels there, seen from the front, the side and behind); a move walks, a shot aims and a unit that goes down falls; the fight keeps to the frame budget at the three sizes, holding the frame rate main holds in Chromium while the enemy's turn plays out; and the golden battle logs don't change (it is drawing only).
 - [ ] **M23c Portraits** (§4.5).
   - portraits drawn in code (SVG) in layers: face and head, skin, hair, eyes, brows, mouth, and marks such as scars and implants
   - each crew member's look saved with them: the captain's picked at creation, a recruit's rolled with them, the start crew's from their seed

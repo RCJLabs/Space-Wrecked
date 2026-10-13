@@ -16,12 +16,13 @@ import { loadContent } from '../../platform/content.js';
 import { battleBoxes } from '../../render/battleScene.js';
 import { createBattleBoard, FIGHT_VIEW } from '../../render/battleView.js';
 import { paintFightLabels } from '../../render/fightLabels.js';
+import { steppedPose } from '../../render/figures/sprites.js';
 import { clampOrbit, fitOrbit, panOrbit, pinchOrbit, project, turnOrbit, unproject, zoomOrbit } from '../../render/orbit.js';
 import { palette, skinFor } from '../../render/palette.js';
 import { objectiveDone } from '../../sim/battle.js';
 import { convexHull, inside } from '../../render/pick.js';
-import { frameAt, makeTimeline } from '../../render/playback.js';
-import { crewColor, ordersScene, UNIT_TOP, unitsScene } from '../../render/units.js';
+import { frameAt, makeTimeline, poseAt } from '../../render/playback.js';
+import { crewColor, LYING_TOP, ordersScene, UNIT_TOP, unitsScene } from '../../render/units.js';
 import { describeEvent } from '../../sim/battleLog.js';
 import { canAct, createFight, ordersFor, reduceFight, selectedUnit } from '../../sim/fight.js';
 import { tileText } from '../battle/tileText.js';
@@ -392,7 +393,7 @@ export function mountFight(root, source) {
     // The figures and marks are made again only when something in them
     // changed: a banner or words rising leave the board's last frame as
     // it was.
-    const key = [battle, orders ? fight : null, frame?.moving?.id, ...(frame?.moving?.at ?? []), frame?.shot?.shooter, frame?.shot?.target, frame?.hit];
+    const key = [battle, orders ? fight : null, frame?.moving?.id, ...(frame?.moving?.at ?? []), frame?.shot?.shooter, frame?.shot?.target, frame?.hit, ...figures.map((f) => `${f.pose.aim},${f.pose.fall}`)];
     if (!actorsKey || key.length !== actorsKey.length || key.some((value, i) => value !== actorsKey[i])) {
       actorsKey = key;
       const marks = orders
@@ -406,7 +407,7 @@ export function mountFight(root, source) {
           aimed: aimed && [aimed.x, aimed.y],
         })
         : { faces: [] };
-      mapView.setActors({ faces: [...unitsScene(figures).faces, ...marks.faces], glows: [] });
+      mapView.setActors({ faces: marks.faces, glows: [], figures: unitsScene(figures).figures });
     }
     labels = {
       units: battle.units.map((u, i) => ({ at: figures[i].at, status: u.status, hp: u.hp, maxHp: u.maxHp, color: colors.get(u.id) ?? palette.enemyTrim, overwatch: u.overwatch, bleed: u.bleed, selected: u.id === orders?.unit.id })),
@@ -419,15 +420,27 @@ export function mountFight(root, source) {
     dirty = true;
   }
 
-  // A unit as the board draws it: where it stands (or walks) and the way
-  // it faces.
+  // A unit as the board draws it: where it stands (or walks), the way it
+  // faces, its look and weapon, and its pose (playback.js). Falling, it
+  // turns as it goes to the way it will lie.
   function figure(u, battle, frame) {
     const walking = frame?.moving?.id === u.id ? frame.moving : null;
     const shooting = frame?.shot?.shooter === u.id ? frame.shot : null;
     const at = walking ? walking.at : [u.x + 0.5, u.y + 0.5];
-    const facing = walking ? walking.facing : shooting ? [shooting.to[0] - shooting.from[0], shooting.to[1] - shooting.from[1]] : lookOf(u, battle);
+    // In the steps it is drawn in, so frames between steps reuse the last.
+    const pose = steppedPose(poseAt(u, frame));
+    let facing = walking ? walking.facing : shooting ? [shooting.to[0] - shooting.from[0], shooting.to[1] - shooting.from[1]] : lookOf(u, battle);
+    if (pose.fall > 0) facing = turned(facing, lookOf({ ...u, status: 'down' }, battle), pose.fall);
     const length = Math.hypot(...facing) || 1;
-    return { side: u.side, status: u.status, at, facing: [facing[0] / length, facing[1] / length], trim: colors.get(u.id) ?? palette.enemyTrim, flash: frame?.hit === u.id };
+    const kind = defs.jobs.get(u.kind) ?? defs.enemies.get(u.kind);
+    return { id: u.id, side: u.side, status: u.status, at, facing: [facing[0] / length, facing[1] / length], trim: colors.get(u.id) ?? palette.enemyTrim, flash: frame?.hit === u.id, look: kind?.look, held: defs.weapons.get(u.weapon)?.held, pose };
+  }
+
+  // A way t of the turn from `from` to `to`, the short way round.
+  function turned(from, to, t) {
+    const [a, b] = [Math.atan2(from[1], from[0]), Math.atan2(to[1], to[0])];
+    const turn = Math.atan2(Math.sin(b - a), Math.cos(b - a));
+    return [Math.cos(a + turn * t), Math.sin(a + turn * t)];
   }
 
   // Standing, a unit looks at the nearest enemy still up; lying down, it
@@ -464,7 +477,7 @@ export function mountFight(root, source) {
     for (const u of store.getState().battle.units) {
       if (u.status === 'dead') continue;
       const corners = [];
-      for (const x of [u.x + 0.22, u.x + 0.78]) for (const y of [u.y + 0.22, u.y + 0.78]) for (const z of [0, u.status === 'active' ? UNIT_TOP : 0.16]) corners.push(project(camera, x, y, z));
+      for (const x of [u.x + 0.22, u.x + 0.78]) for (const y of [u.y + 0.22, u.y + 0.78]) for (const z of [0, u.status === 'active' ? UNIT_TOP : LYING_TOP]) corners.push(project(camera, x, y, z));
       if (!inside(convexHull(corners), sx, sy)) continue;
       const depth = Math.min(...corners.map((c) => c[2]));
       if (depth < nearest) {

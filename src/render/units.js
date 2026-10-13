@@ -1,20 +1,23 @@
 // Units and orders on a battle map in 3D, drawn with the map's own scene
-// (battleScene.js): solid faces that the painter sorts with the walls, so a
-// wall in front of a unit hides its legs. Pure: plain data in,
-// { faces, glows } out. Units are tiles, z up.
+// (battleScene.js), sorted with the walls by the painter, so a wall in
+// front of a unit hides it. Pure: plain data in, plain data out. Units are
+// tiles, z up.
 //
-// Units are figures in suits, facing where they look: the crew pale, each
-// trimmed in a color of their own, and boarders in rust. Down, stable, out
-// or dead, they lie on the deck. Orders are marks on the deck: the tiles the
-// selected unit can move to (in one action or a dash), the path of the move
-// being shown and the cover where it would stop, a ring under the selected
-// unit, and rings under the enemies it can shoot.
+// Units are figures in their suits (figures/figure.js), facing where they
+// look: the crew pale, each trimmed in a color of their own, and boarders in
+// rust. Down or stable they lie on the deck in their colors; out or dead,
+// in grey. Each is drawn once and kept (figures/sprites.js), so the scene
+// gives them as figures, not faces. Orders are marks on the deck: the tiles
+// the selected unit can move to (in one action or a dash), the path of the
+// move being shown and the cover where it would stop, a ring under the
+// selected unit, and rings under the enemies it can shoot.
 import { coverOnSide } from '../sim/cover.js';
 import { SIDES } from '../sim/grid.js';
 import { palette, rgba } from './palette.js';
-import { plate, solidCylinder } from './solid.js';
+import { plate } from './solid.js';
 
-export const UNIT_TOP = 0.69; // the top of a standing unit's helmet
+export const UNIT_TOP = 0.8; // the top of a standing unit's helmet, near enough
+export const LYING_TOP = 0.36; // and of a unit lying on the deck
 const CREW_TRIMS = ['crewA', 'crewB', 'crewC', 'crewD', 'crewE'];
 const DECK = 0.01; // marks lie this far above the deck, rings and paths a little higher
 const COVER_H = { half: 0.28, full: 0.5 };
@@ -24,61 +27,54 @@ export function crewColor(index) {
   return palette[CREW_TRIMS[index % CREW_TRIMS.length]];
 }
 
-// units: [{ side, status, at: [x, y], facing: [fx, fy], trim, flash }],
-// where `at` is the point it stands on (a tile's middle, or between two
-// while it walks), facing a unit vector, trim its color, and flash true
-// for the moment a shot hits it.
+// units: [{ id, side, status, at: [x, y], facing: [fx, fy], trim, flash,
+// look, held, pose }], where `at` is the point it stands on (a tile's
+// middle, or between two while it walks), facing a unit vector, trim its
+// color, flash true for the moment a shot hits it, look and held its kind's
+// and its weapon's (figures/looks.js), and pose { aim, stride, fall }
+// (figure.js). Returns { figures } for figures/sprites.js, each { id, at,
+// facing, look, held, colors, pose, key }.
 export function unitsScene(units) {
-  const faces = [];
-  for (const unit of units) {
-    if (unit.status === 'active') standing(faces, unit);
-    else lying(faces, unit);
-  }
-  return { faces, glows: [] };
-}
-
-function standing(out, { side, at: [cx, cy], facing: [fx, fy], trim, flash }) {
-  const lit = flash ? { emissive: true } : {};
-  const suit = flash ? palette.tracer : side === 'crew' ? palette.crewSuit : palette.enemySuit;
-  solidCylinder(out, [cx, cy, 0], 0.17, 0.42, suit, { segments: 8, ...lit });
-  solidCylinder(out, [cx, cy, 0.42], 0.19, 0.1, flash ? palette.tracer : trim, { segments: 8, ...lit });
-  solidCylinder(out, [cx, cy, 0.52], 0.11, UNIT_TOP - 0.52, suit, { segments: 8, ...lit });
-  // The visor, on the side it faces.
-  const [ax, ay] = [-fy * 0.075, fx * 0.075];
-  const [vx, vy] = [cx + fx * 0.113, cy + fy * 0.113];
-  out.push({
-    pts: [[vx - ax, vy - ay, 0.57], [vx + ax, vy + ay, 0.57], [vx + ax, vy + ay, 0.65], [vx - ax, vy - ay, 0.65]],
-    normal: [fx, fy, 0],
-    color: side === 'crew' ? palette.visor : palette.enemyVisor,
-    emissive: true,
-    bias: -0.02,
+  const figures = units.map(({ id, side, status, at, facing, trim, flash, look, held, pose = {} }) => {
+    const colors = colorsOf(side, status, trim, flash);
+    const lying = status !== 'active';
+    return {
+      id,
+      at,
+      facing,
+      look,
+      held,
+      colors,
+      pose: lying ? { fall: 1 } : pose,
+      key: `${JSON.stringify(look ?? null)}${JSON.stringify(held ?? null)}${Object.values(colors).join()}`,
+    };
   });
-  orientedBox(out, [cx + fx * 0.1, cy + fy * 0.1], [fx, fy], 0.36, 0.07, 0.29, 0.36, palette.gunmetal);
+  return { figures };
 }
 
-// On the deck: hurt (down or stable) in suit and trim, or grey once out of
-// the fight or dead.
-function lying(out, { side, status, at: [cx, cy], facing: [fx, fy], trim }) {
+// A figure's colors (figures/figure.js) and the outline round it: its
+// side's, its trim, grey once out of the fight or dead, and the tracer's
+// flash for the moment a shot hits it.
+export function colorsOf(side, status, trim, flash = false) {
   const gone = status === 'dead' || status === 'out';
-  const suit = gone ? palette.fallen : side === 'crew' ? palette.crewSuit : palette.enemySuit;
-  orientedBox(out, [cx - fx * 0.3, cy - fy * 0.3], [fx, fy], 0.44, 0.26, 0, 0.12, suit);
-  orientedBox(out, [cx - fx * 0.04, cy - fy * 0.04], [fx, fy], 0.09, 0.28, 0, 0.13, gone ? palette.fallen : trim);
-  orientedBox(out, [cx + fx * 0.16, cy + fy * 0.16], [fx, fy], 0.15, 0.18, 0, 0.15, suit);
-}
-
-// A box lying along the deck from `start` in direction [fx, fy] (a unit
-// vector) for `length`, `width` across, from z0 up to z1: its top and four
-// sides.
-function orientedBox(out, [sx, sy], [fx, fy], length, width, z0, z1, color) {
-  const [ax, ay] = [(-fy * width) / 2, (fx * width) / 2];
-  const [ex, ey] = [sx + fx * length, sy + fy * length];
-  const [a, b, c, d] = [[sx + ax, sy + ay], [ex + ax, ey + ay], [ex - ax, ey - ay], [sx - ax, sy - ay]];
-  const side = (p, q, normal) => out.push({ pts: [[...p, z0], [...q, z0], [...q, z1], [...p, z1]], normal, color });
-  out.push({ pts: [[...a, z1], [...b, z1], [...c, z1], [...d, z1]], normal: [0, 0, 1], color });
-  side(a, b, [-fy, fx, 0]);
-  side(d, c, [fy, -fx, 0]);
-  side(b, c, [fx, fy, 0]);
-  side(a, d, [-fx, -fy, 0]);
+  if (gone) {
+    const grey = palette.fallenDark;
+    return { suit: palette.fallen, trim: palette.fallenTrim, dark: grey, under: grey, visor: grey, glass: grey, lamp: grey, gun: grey, outline: palette.figureEdge };
+  }
+  const crew = side === 'crew';
+  const colors = {
+    suit: crew ? palette.crewSuit : palette.enemySuit,
+    trim,
+    dark: crew ? palette.gunmetal : palette.enemyDark,
+    under: crew ? palette.crewUnder : palette.enemyUnder,
+    visor: crew ? palette.visor : palette.enemyVisor,
+    glass: crew ? palette.glass : palette.enemyGlass,
+    lamp: palette.lamp,
+    gun: palette.gun,
+    outline: palette.figureEdge,
+  };
+  if (flash) Object.assign(colors, { suit: palette.tracer, trim: palette.tracer, under: palette.tracer });
+  return colors;
 }
 
 // orders: {

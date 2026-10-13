@@ -205,6 +205,14 @@ const cases = [
   ['a station effect on an enemy', (d) => (d.enemies.enemies[0].station = { heal: 1 }), /enemies\.json \w+: unknown field "station"/],
   ['a recruit name twice', (d) => d.recruits.first.push(d.recruits.first[0]), /recruits\.json: first has a name twice/],
   ['a recruit name too long for a crew member', (d) => d.recruits.last.push('Wolfeschlegelsteinhausen'), /recruits\.json: last must be a list of 2 to 200 names of up to 11 letters/],
+  // M23b: figures.
+  ['a job with no look', (d) => delete d.jobs.jobs[0].look, /jobs\.json marine: look must be \{ suit, build, helmet, back, marks \}/],
+  ['an enemy in a suit nobody makes', (d) => (d.enemies.enemies[0].look.suit = 'kimono'), /enemies\.json pirate: look\.suit must be one of eva, skinsuit/],
+  ['a helmet from the other suit', (d) => (d.jobs.jobs.find((j) => j.id === 'engineer').look.helmet = 'fin'), /engineer: look\.helmet for a eva suit must be one of bubble, lamps, bar/],
+  ['an enemy of no build', (d) => (d.enemies.enemies[1].look.build = 'huge'), /brute: look\.build must be one of light, standard, heavy/],
+  ['a look with a hat', (d) => (d.jobs.jobs[0].look.hat = 'cap'), /marine: look: unknown field "hat"/],
+  ['a weapon drawn as long as a corridor', (d) => (d.weapons.weapons[0].held.length = 3), /rifle: held\.length must be a number from 0\.08 to 0\.6/],
+  ['a weapon for three hands', (d) => (d.weapons.weapons[0].held.hands = 3), /rifle: held\.hands must be 1 or 2/],
 ];
 
 test('the validator names each kind of mistake', () => {

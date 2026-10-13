@@ -92,6 +92,20 @@ export function frameAt(timeline, t) {
   return frame;
 }
 
+// How a unit stands at a frame: { aim, stride, fall } (figures/figure.js).
+// It aims while it shoots, and from the moment it goes on overwatch until
+// its watch ends; strides through a walk, a stride to every two tiles; and
+// falls as it goes down or dies, quicker as it goes.
+export function poseAt(unit, frame) {
+  const pose = { aim: unit.overwatch ? 1 : 0, stride: null, fall: 0 };
+  const event = frame?.event;
+  if (!event || event.unit !== unit.id) return pose;
+  if (event.type === 'move') pose.stride = ((frame.progress * (event.path.length - 1)) / 2) % 1;
+  if (event.type === 'shot' || event.type === 'overwatch') pose.aim = 1;
+  if (event.type === 'down' || event.type === 'dead') pose.fall = frame.progress ** 2;
+  return pose;
+}
+
 // Where a walk is, `progress` of the way along its path: a point between
 // tile middles, and the way it faces.
 function along(path, progress) {
