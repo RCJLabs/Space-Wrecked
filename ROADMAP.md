@@ -573,7 +573,7 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
     - every button is 48 px or more at the three sizes;
     - the builder's default view keeps every cell 22 px or more on the cover screen;
     - the hull views keep to the frame budget.
-- [ ] **M23g A second manufacturer** (§3: manufacturers are skins over the same part shapes; §5). Evan's picks (2026-10-14), from mockups drawn by the game's renderer: Bastion Arms; a maker's rooms in its own color on the plans; the side that fits it flies it.
+- [x] **M23g A second manufacturer** (§3: manufacturers are skins over the same part shapes; §5). Evan's picks (2026-10-14), from mockups drawn by the game's renderer: Bastion Arms; a maker's rooms in its own color on the plans; the side that fits it flies it.
   - **Bastion Arms** (`data/manufacturers.json`), tough and heavy: a version of every part on the Yard part's footprint, interior and fittings (`base` in `data/modules.json`), with half again the hit points, a quarter more mass (at least 1) and a slightly higher price
   - told apart at a glance: on the plans its rooms are amber, and so are its icons in the drawer; outside, its fittings are gunmetal with orange hazard chevrons, and its engines burn orange, all under the ship's own paint
   - the drawer puts each part's Bastion version beside it, and the category sheet picks a maker (any, Yard or Bastion)
