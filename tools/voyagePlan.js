@@ -57,7 +57,12 @@
 // day, and the way from there to the best world it knows of, so a survey
 // never leaves it hungry or out of reach of that world. Then it settles the
 // best world its supplies reach (bestWorld).
+// At the colony (M26) it gives the ship's parts one at a time (nextGift):
+// a part that beds or breathes for the crew first, while any can go, then
+// the rest, each in the ship's order, until the flight checks let no more
+// go.
 import { canRefit, maxHp, refitShip } from '../src/sim/campaign.js';
+import { shipParts } from '../src/sim/colony.js';
 import { crewRoom } from '../src/sim/crew.js';
 import { sellPriceOf } from '../src/sim/economy.js';
 import { choiceProblem } from '../src/sim/events.js';
@@ -405,6 +410,15 @@ export function restNow(campaign, rules, heat) {
   if (heat === 'manage') return null;
   const missing = campaign.crew.reduce((sum, member) => sum + maxHp(member, rules) - member.hp, 0);
   return missing >= REST_HP * campaign.crew.length ? plan : null;
+}
+
+// The ship's part the player gives the colony next: one that gives beds
+// or air, if any can go, else the first that can. A uid, or null once the
+// flight checks (or the room) let no more go.
+export function nextGift(campaign, rules) {
+  const ready = shipParts(campaign, rules).filter((part) => part.ok);
+  const housing = ready.find((part) => part.gives.beds > 0 || part.gives.air > 0);
+  return (housing ?? ready[0])?.uid ?? null;
 }
 
 // What a world is worth to the player as a colony: soil, water and ore a

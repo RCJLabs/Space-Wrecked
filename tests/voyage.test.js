@@ -18,7 +18,10 @@
 // keeps them off, the careful player still crossing fed in 24 of 30. And
 // M25's: past the last sector's jump point it enters the system past the
 // charts, surveys while its supplies allow and settles the world it scores
-// best, in every run, which ends the voyage and the act.
+// best, in every run, which ends the voyage and the act. And M26's: it
+// founds the colony, giving every useful part the flight checks let go,
+// beds and air first; the ship still passes every flight check counting
+// nobody aboard, and every building is powered, in every run.
 // Each voyage launches from a test run of act 1 (tools/run.js) and is
 // played by the test player in tools/voyage.js. The voyages before M23h's
 // fly as fitted, with no refits, so each compares one part's difference.
@@ -27,10 +30,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { FACED } from '../src/sim/approach.js';
-import { HEAT_MAX, maxHp } from '../src/sim/campaign.js';
+import { HEAT_MAX, maxHp, shipChecklist } from '../src/sim/campaign.js';
+import { colonyStats, donate, shipParts } from '../src/sim/colony.js';
 import { outcomeFor } from '../src/sim/events.js';
-import { launchedAt, manyVoyages, voyage } from '../tools/voyage.js';
-import { bestWorld, FIT_ORDER, systemMove } from '../tools/voyagePlan.js';
+import { foundColony, launchedAt, manyVoyages, voyage } from '../tools/voyage.js';
+import { bestWorld, FIT_ORDER, nextGift, systemMove } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 
 const { balance } = rules;
@@ -386,4 +390,50 @@ test('past the charts: the careful player crosses all five sectors, enters the s
   const summary = manyVoyages(rules, 2, { refit: 'no' }).lines.join('\n');
   assert.match(summary, /2 of 2 entered the system past the charts, 2 settled a world/);
   assert.match(summary, /The system: surveyed all 3 worlds in \d+ runs, 2 in \d+, 1 in \d+, none in \d+\. Settled a surveyed world in \d+ of 2/);
+});
+
+test('the colony: the careful player founds it in every run, giving every useful part the flight checks let go, beds and air first; the ship still flies with nobody aboard, and every building is powered (M26)', () => {
+  const housing = (type) => {
+    const { stats } = rules.modules.get(type);
+    return stats.berths > 0 || stats.lifeSupport > 0;
+  };
+  for (const [i, trip] of refitting.entries()) {
+    const seed = i + 1;
+    const { campaign } = trip;
+    const { colony } = trip.tally;
+    assert.ok(colony && campaign.colony, `seed ${seed} founds the colony`);
+    assert.deepEqual(campaign.colony.buildings.map((b) => b.type), colony.given, `seed ${seed}: the buildings are the parts given, in order`);
+    // Nothing is left aboard that could be given.
+    assert.deepEqual(shipParts(campaign, rules).filter((part) => part.ok), [], `seed ${seed}: every part the checks let go is given`);
+    // The ship still flies, counting nobody aboard, and every building is
+    // powered.
+    assert.ok(shipChecklist(campaign, rules).every((line) => line.ok === true), `seed ${seed}: the ship passes every flight check`);
+    const stats = colonyStats(campaign, rules);
+    assert.ok(stats.buildings.every((b) => b.powered), `seed ${seed}: every building powered`);
+    assert.deepEqual([colony.flies, colony.dark], [true, 0]);
+    // Beds and air first: played again from the landing, whenever it gave
+    // anything else, nothing that beds or breathes could go. And the same
+    // landing founds the same colony.
+    let state = trip.landed;
+    for (const type of colony.given) {
+      const ready = shipParts(state, rules).filter((part) => part.ok);
+      if (!housing(type)) assert.equal(ready.some((part) => housing(part.type)), false, `seed ${seed}: ${type} given while beds or air could go`);
+      const uid = nextGift(state, rules);
+      assert.equal(state.ship.modules.find((m) => m.uid === uid).type, type);
+      state = donate(state, rules, uid).campaign;
+    }
+    assert.equal(nextGift(state, rules), null);
+    assert.deepEqual(foundColony(trip.landed, rules), { campaign, colony }, `seed ${seed}: the same colony again`);
+    // The report says what it gave, the colony's power, beds and air, and
+    // who sleeps aboard.
+    assert.ok(trip.lines.some((line) => line.startsWith('   Founded the colony: gave ')), `seed ${seed} says what it gave`);
+  }
+  // Air in every colony; the colonies that can give their quarters house
+  // everyone (13 of 30 when this was measured, M26).
+  const colonies = refitting.map((trip) => trip.tally.colony);
+  assert.ok(colonies.every((colony) => colony.air >= colony.crew), 'air for everyone in every colony');
+  const housed = colonies.filter((colony) => colony.aboard === 0).length;
+  assert.ok(housed >= 10, `everyone housed in ${housed} of ${RUNS}`);
+  const summary = manyVoyages(rules, 2, { refit: 'no' }).lines.join('\n');
+  assert.match(summary, /The colony: founded in 2 of 2, \d+ \(\d+ to \d+\) parts given: /);
 });
