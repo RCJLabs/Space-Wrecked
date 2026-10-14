@@ -34,7 +34,7 @@ Done when (ROADMAP.md, M25):
 
 How each is met:
 - **The system:** `tests/system.test.js`. Over 300 seeds: the way in and 3 worlds, the links exactly 0–1, 0–2, 0–3, 1–2 and 2–3, no jump point, no kind or name twice, every number within its kind's ranges, and over the seeds every number in every range and every distance from the lanes. Jump on from the act's last jump point rolls the system from the campaign's RNG (the same as `generateSystem` at that seed); past it nothing is charted. Golden file `tests/golden/systems.txt` (new; `tools/sectors.js --system`, `--golden`). By touch: two taps on Jump on reach "The system · The Quiet Star", its three worlds named with their kinds.
-- **Known from afar:** `tests/system.test.js` (every node known on arrival, a scan shows nothing) and `tests/sectorText.test.js` (each world's kind on the chart, not surveyed; picked, its kind and words, and "Not surveyed: a day in orbit shows what it is worth."; surveyed, "Soil 1 · Water 0 · Ore 2 · Danger 1, each of 3." and the lanes' words). By touch: the marks dashed until surveyed, then solid.
+- **Known from afar:** `tests/system.test.js` (every node known on arrival, a scan shows nothing) and `tests/sectorText.test.js` (each world's kind on the chart, not surveyed; picked, its kind and words, and "Not surveyed: a day in orbit shows what it is worth."; surveyed, its four numbers, each of 3, and the lanes' words). By touch: the marks dashed until surveyed, then solid, and "Soil 1 · Water 0 · Ore 2 · Danger 1, each of 3." with "Far from any lane: hard to reach, and harder to find." in the left panel.
 - **Survey:** `tests/system.test.js`: 3 supplies and heat +2, the world added to the run's surveys, once a world; at the most heat the hunters find the ship, the survey made all the same, and the screen changes to the approach; held by them, no survey or settling; refused away from a world, off the run, or short ("A day's survey eats 3 supplies, and the holds have 2."). By touch: two taps, supplies 24 to 21, heat 14 to 16, the numbers and lanes in the left panel.
 - **Settle:** `tests/system.test.js`: act 3, the colony's world exactly the node's (name, kind, numbers, surveyed), the ship, crew, captain, credits, parts, heat, supplies, wrecks and run unchanged; surveyed first, the colony says so; refused away from a world, off the run, and while the hunters hold the ship; settled once. By touch: two taps on Settle here, the campaign in act 3 at once.
 - **The landing:** `tests/liftOff.test.js` (the landing is the lift-off's moments backwards: out of sight at first, in from the right, down onto the pad, the engines out) and `tests/launchText.test.js` (the world and its kind's landing words; act 3's stub with the run's record and the world, surveyed or not; Continue's words). `tests/system.test.js`: Settle here shows the landing, and Continue on the title the stub. By touch: the landing, Skip to its end, Continue to the stub; a quit and reopen comes back to the stub.
@@ -54,7 +54,7 @@ How each is met:
 - **The chart** (`sector.js`, `sectorText.js`, `style.css`, `icons.js`, `palette.js`): "The system · name"; a world's mark with its name and kind beside it, dashed until surveyed; Survey and Settle here in the foot, two taps each, with what they take and the hunters' odds; the world's kind, words, numbers and lanes in the left panel, picked or there; the system's words at its way in; hints for the system; Jump on's "On to the system past the charts".
 - **The landing** (`landing.js`, new; `liftOff.js` `landingAt`): the lift-off backwards, with Skip and Continue, the world's name and kind, and its kind's landing words. **The stub** (`stub.js`, `launchText.js`): act 3's, with the run's record and the world in a card under the ship. **The title's Continue** (`hubText.js`).
 - **Tools:** `voyage.js` plays the system and settles, with report lines for the system, each survey, the world settled and the act's record, and a summary line over many voyages; `voyagePlan.js` (`worldScore`, `bestWorld`, `systemMove`: Decisions); `sectors.js --system`.
-- **Tests:** `tests/system.test.js` (13, new), M25's voyage test and checks on every survey and settling in the fleets, the landing's in `tests/liftOff.test.js`, the system's words in `tests/sectorText.test.js`, the landing's and act 3's stub's in `tests/launchText.test.js`, 2 bad-data cases; the campaign, hunt, travel and data tests brought up to date. `raidsText` (act 1's raids on the old stub) and its test are gone with it.
+- **Tests:** `tests/system.test.js` (13, new), M25's voyage test and checks on every survey and settling in the fleets, the landing's in `tests/liftOff.test.js`, the system's words in `tests/sectorText.test.js`, the landing's and act 3's stub's in `tests/launchText.test.js`, 12 bad-data cases; the campaign, hunt, travel and data tests brought up to date. `raidsText` (act 1's raids on the old stub) and its test are gone with it.
 - **Docs:** ROADMAP.md: M25's Done when (settled at the start), §2, §4.4 (surveys' heat, the system's hunters), §4.7 (the system), §4.8 (v19), and §9.
 
 Decisions made along the way, not asked (each easy to change):
@@ -70,7 +70,7 @@ Decisions made along the way, not asked (each easy to change):
 ### Known issues
 
 - **The hunters past the charts.** Each survey and jump there adds 2 heat and nothing sheds it, so the careful test player managing heat meets the hunters there in 9 runs of 30 (11 times), and in 10 of 30 over the whole act, against M24's 6 crossing the sectors. M24's test still holds on the sectors. Whether to cool the system is Evan's call (§9).
-- **Supplies past the charts:** no station is there. Managing heat, the careful test player surveys all three worlds in 15 runs of 30, two in 10, one in 4 and none in 1. Ignoring heat, 8 runs arrive with less than a jump's supplies, and its runs fed all the way fall from 23 of 30 to 20.
+- **Supplies past the charts:** no station is there. Managing heat, the careful test player surveys all three worlds in 15 runs of 30, two in 10, one in 4 and none in 1. Ignoring heat, 8 runs arrive with less than a jump's supplies, and each goes hungry once there; 3 of them were fed until then, so its runs fed all the way fall from 23 of 30 to 20 (across the sectors, still 23).
 - **The landing is against the stars,** not over the world: the lift-off backwards, as the Done when says (§9).
 - **The worlds' numbers do nothing yet:** they are rolled, shown and saved for M26 to M29. The test player's score is a guess until then.
 - **On the cover screen the stub's ship is small,** with the world's card under it.
@@ -95,7 +95,7 @@ The quickest way there: play a run to the fifth sector, or ask me for a save cod
 
 ### Verified here
 
-- `node --test`: 706 pass. `node tools/validate-data.js`: OK ("5 kinds of world"). Golden files: `tests/golden/systems.txt` is new; `tests/golden/sectors.txt` was rewritten by the same tool and came out unchanged.
+- `node --test`: 705 pass, in about 94 s. `node tools/validate-data.js`: OK ("5 kinds of world"). Golden files: `tests/golden/systems.txt` is new; `tests/golden/sectors.txt` was rewritten by the same tool and came out unchanged.
 - **The test player, 30 voyages** (`node tools/voyage.js --runs 30`, managing heat):
   - every run crosses 5 sectors, enters the system and settles; fed all the way in 25 of 30;
   - surveys: 3 worlds in 15, 2 in 10, 1 in 4, none in 1; settled a world it surveyed in 29, the system's best (all its numbers known) in 26; by kind: ice 10, jungle 8, ocean 5, barren rock 5, desert 2; never hungry in the system;
@@ -140,7 +140,18 @@ The quickest way there: play a run to the fifth sector, or ask me for a save cod
 
   1,000 fights in 37.7 s (38 ms a fight).
   ```
-- **Every earlier milestone's browser check:** running at the time of writing; the result goes here.
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named:
+  - M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 40 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 40, and M8's extras.
+
+  Two copies were adapted, not the game, for what M25 changes on purpose:
+  - M24's takes its v17 save back as v19 (it pinned v18);
+  - M19's reads "On to the system past the charts" at the last jump point, where it read the end of the charts, and its walk across the act stops at that jump point, which leads on now. The first pass of the copy walked on into the system and stopped with "no route from 0 to null", a fault of the check, not the game.
+
+  The copies that make saves the way main did in M24 open them from a checkout of the M23h merge (v17), as in M24. M14 ran 40 checks (46 in M24): its count follows the jobs its run plays.
 
 ## M24 Heat v2: hunters, regrouping, transponders (2026-10-14)
 
