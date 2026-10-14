@@ -50,7 +50,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  18  heat on the run: the run keeps whether the transponder has been
 //      swapped in its sector, and an approach whether it is the pursuer's
 //      hunters (M24)
-export const SAVE_VERSION = 18;
+//  19  the worlds past the charts: the run keeps the worlds it has
+//      surveyed, and the campaign the colony, once a world is settled
+//      (M25)
+export const SAVE_VERSION = 19;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -243,6 +246,16 @@ export const MIGRATIONS = [
       const { run } = data.campaign;
       const approach = isObject(run.approach) ? { ...run.approach, hunt: false } : run.approach;
       return { ...data, campaign: { ...data.campaign, run: { ...run, swapped: false, approach } } };
+    },
+  },
+  // The worlds past the charts (M25). No save reached them before: a run
+  // has surveyed nothing, and no campaign has settled a world.
+  {
+    from: 18,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign)) return data;
+      const { run } = data.campaign;
+      return { ...data, campaign: { ...data.campaign, colony: null, run: isObject(run) ? { ...run, surveyed: [] } : run } };
     },
   },
 ];

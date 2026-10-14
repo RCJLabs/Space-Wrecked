@@ -135,8 +135,8 @@ const BALANCE = {
   // Heat on the run (src/sim/hunt.js, regroup.js): the chance the
   // pursuer's hunters wait where a jump comes out, from huntHeat, and the
   // task force's from raidHeat (certain at the most heat); a day's rest's
-  // hit points and heat, and the heat a day hidden in a nebula sheds; and a
-  // transponder swap's heat and price.
+  // hit points and heat, and the heat a day hidden in a nebula sheds; a
+  // transponder swap's heat and price; and a day surveying a world (M25).
   huntChance: [0, 100],
   taskForceChance: [0, 100],
   regroupHp: [0, 20],
@@ -144,6 +144,7 @@ const BALANCE = {
   hideHeat: [-100, 0],
   swapHeat: [-100, 0],
   swapPrice: [0, 1000],
+  surveyHeat: [0, 50],
 };
 // A weapon's held shape and a fighter's look are how the fight draws them
 // (src/render/figures/looks.js).
@@ -794,6 +795,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       `${count(data.encounters.encounters.length, 'encounter')}, ${count(data.ships.ships.length, 'ship preset')}, ` +
       `${count(data.campaign.acts.length, 'act')}, ${count(data.backgrounds.backgrounds.length, 'background')}, ` +
       `${count(data.districts.districts.length, 'district')}, ${count(data.sites.maps.length, 'site map')}, ` +
-      `${count(data.contracts.jobs.length, 'job template')}, ${count(data.sectors.nodes.length, 'kind')} of sector node, ${count(data.events.events.length, 'event')})`,
+      `${count(data.contracts.jobs.length, 'job template')}, ${count(data.sectors.nodes.length, 'kind')} of sector node, ${count(data.worlds.kinds.length, 'kind')} of world, ${count(data.events.events.length, 'event')})`,
   );
 }

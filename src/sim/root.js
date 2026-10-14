@@ -16,6 +16,8 @@ import { dismissCrew, hireRecruit } from './recruits.js';
 import { regroup } from './regroup.js';
 import { repairShip } from './repair.js';
 import { defaultSettings, fightSettings, reduceSettings } from './settings.js';
+import { settle } from './settle.js';
+import { survey } from './survey.js';
 import { swapTransponder } from './transponder.js';
 import { beginRun, buySupplies, jump, leaveSector, scan } from './travel.js';
 
@@ -23,12 +25,13 @@ import { beginRun, buySupplies, jump, leaveSector, scan } from './travel.js';
 // screen that shows the campaign: construction mode, the job board and the
 // shop are the hangar's; the launch plays between act 1 and act 2's sector
 // map, and the approach phase on the run is played on its own screen; the
-// stub stands in for act 3 until it is built.
+// landing plays between act 2 and act 3 (M25), and the stub stands in for
+// act 3 until it is built.
 export const PLACE_SCREENS = { hub: 'hub', fight: 'campaign-fight' };
-export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'sector', 'approach', 'stub'];
+export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'sector', 'approach', 'landing', 'stub'];
 // The moves on the run that can open an approach (a hostile ship, or the
 // pursuer's hunters) or put one away, and so change the screen.
-const SCREEN_CHANGES = ['campaign/jump', 'campaign/sector/leave', 'campaign/regroup', 'campaign/approach/close'];
+const SCREEN_CHANGES = ['campaign/jump', 'campaign/sector/leave', 'campaign/regroup', 'campaign/survey', 'campaign/approach/close'];
 
 // The screen a campaign is played on where it is now: its fight, or its
 // act's home: the hangar in act 1, the sector map on the run (act 2), or the
@@ -95,6 +98,11 @@ export function initialState(seed) {
 //                                  approach and its screen
 //   campaign/swap { rules }        the transponder swapped at a station
 //                                  (transponder.js)
+//   campaign/survey { rules }      a day surveying the world the ship is at
+//                                  (survey.js, M25); the hunters may find
+//                                  it, as when regrouping
+//   campaign/settle { rules }      the world the ship is at settled: act 2
+//                                  ends, and the landing plays (settle.js)
 //   campaign/approach/order { order, rules }   the player's order for a
 //                                  round of the approach (encounter.js)
 //   campaign/approach/close        Carry on, once the approach is over, or
@@ -178,6 +186,10 @@ export function reduce(state, action) {
       const launched = state.campaign && launch(state.campaign, action.rules);
       return launched?.ok ? { ...state, campaign: launched.campaign, screen: 'launch' } : state;
     }
+    case 'campaign/settle': {
+      const settled = state.campaign && settle(state.campaign, action.rules);
+      return settled?.ok ? { ...state, campaign: settled.campaign, screen: 'landing' } : state;
+    }
     case 'campaign/run/begin':
     case 'campaign/jump':
     case 'campaign/supplies':
@@ -186,6 +198,7 @@ export function reduce(state, action) {
     case 'campaign/scan':
     case 'campaign/regroup':
     case 'campaign/swap':
+    case 'campaign/survey':
     case 'campaign/approach/order':
     case 'campaign/approach/close':
     case 'campaign/repair':
@@ -201,6 +214,7 @@ export function reduce(state, action) {
         'campaign/scan': (c) => scan(c, action.rules),
         'campaign/regroup': (c) => regroup(c, action.rules),
         'campaign/swap': (c) => swapTransponder(c, action.rules),
+        'campaign/survey': (c) => survey(c, action.rules),
         'campaign/approach/order': (c) => giveOrder(c, action.rules, action.order),
         'campaign/approach/close': (c) => closeApproach(c),
         'campaign/repair': (c) => repairShip(c, action.rules),

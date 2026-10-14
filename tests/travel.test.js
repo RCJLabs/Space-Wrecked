@@ -119,7 +119,7 @@ test('stations sell supplies up to the room in the holds and the credits', () =>
   assert.equal(buySupplies(run, rules, 1).ok, false, 'away from a station');
 });
 
-test('the jump point leads on into the next sector, named afresh, up to the act\'s last', () => {
+test('the jump point leads on into the next sector, named afresh, and from the act\'s last into the system past the charts', () => {
   const run = onRun({ heat: 10 });
   assert.match(leavePlan(run, rules).error, /left from its jump point/);
   const exit = at(run, run.run.sector.exit);
@@ -133,9 +133,10 @@ test('the jump point leads on into the next sector, named afresh, up to the act\
   assert.equal(campaign.supplies, exit.supplies - 3);
   assert.equal(campaign.heat, 10 + balance.jumpHeat);
   assert.deepEqual(campaignProblems(campaign), []);
+  // From the act's last (M25): on into the system (system.test.js).
   const sectors = rules.acts.get(2).sectors;
   const last = { ...exit, run: { ...exit.run, sector: { ...exit.run.sector, index: sectors } } };
-  assert.deepEqual([leavePlan(last, rules).ok, leavePlan(last, rules).last], [false, true]);
+  assert.deepEqual([leavePlan(last, rules).ok, leavePlan(last, rules).kind], [true, 'system']);
 });
 
 test('a run saves and reads back the same; a v9 save gets no supplies and no run yet; a broken run is caught', () => {

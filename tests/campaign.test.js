@@ -81,6 +81,7 @@ test("a new campaign starts in act 1 at the hangar, with its background's start"
     spent: [],
     supplies: 0,
     run: null,
+    colony: null,
     fight: null,
   });
   assert.deepEqual(actOf(campaign, rules), { act: 1, name: 'Homeworld', hub: 'hangar', home: 'The hangar', heals: true, liftOff: 1 });

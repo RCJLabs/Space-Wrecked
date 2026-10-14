@@ -3,6 +3,7 @@
 // the content's is the rules' business. Pure.
 import { BOARDINGS, isOrder, OUTCOMES } from './approach.js';
 import { isShipData } from './builder.js';
+import { LANES, MAX_RATING, RATINGS } from './gen/system.js';
 import { WRECKS } from './mapFromShip.js';
 
 // A sector's nodes, and the names of places in it: sector names and node
@@ -27,8 +28,8 @@ const ID = /^[a-z][a-z0-9-]*$/;
 // null if it reads.
 export function runProblem(run) {
   if (!isRecord(run)) return 'is unreadable';
-  const { sector, at, seen, past, done, scans, result, approach, hired, swapped } = run;
-  if (!isRecord(sector) || !isInt(sector.index, 1, 99) || !isName(sector.name)) return 'has an unreadable sector';
+  const { sector, at, seen, past, done, scans, result, approach, hired, swapped, surveyed } = run;
+  if (!isRecord(sector) || !isInt(sector.index, 1, 99) || !isName(sector.name) || !(sector.system === undefined || sector.system === true)) return 'has an unreadable sector';
   const { nodes, links } = sector;
   if (!Array.isArray(nodes) || nodes.length < 2 || nodes.length > MAX_NODES) return 'has an unreadable map';
   const readable = nodes.every(
@@ -42,7 +43,8 @@ export function runProblem(run) {
       isId(node.type) &&
       isName(node.name) &&
       (node.event === undefined || isId(node.event)) &&
-      (node.hostile === undefined || (isRecord(node.hostile) && isId(node.hostile.ship) && isInt(node.hostile.seed, 0, MAX_SEED))),
+      (node.hostile === undefined || (isRecord(node.hostile) && isId(node.hostile.ship) && isInt(node.hostile.seed, 0, MAX_SEED))) &&
+      (node.world === undefined || (sector.system === true && isWorld(node.world))),
   );
   if (!readable) return 'has an unreadable map';
   const isNode = (id) => isInt(id, 0, nodes.length - 1);
@@ -50,7 +52,9 @@ export function runProblem(run) {
     return 'has unreadable links';
   }
   if (new Set(links.map((link) => link.join('-'))).size !== links.length) return 'has a link twice';
-  if (!isNode(sector.start) || !isNode(sector.exit) || sector.start === sector.exit) return 'has no way in or no jump point';
+  // The system past the charts (M25) has no jump point: the run ends there.
+  const exit = sector.system ? sector.exit === null : isNode(sector.exit) && sector.exit !== sector.start;
+  if (!isNode(sector.start) || !exit) return 'has no way in or no jump point';
   if (!isNode(at)) return 'is nowhere on its map';
   if (!Array.isArray(seen) || !seen.every(isNode) || new Set(seen).size !== seen.length || !seen.includes(at)) return 'has an unreadable route';
   if (!Array.isArray(past) || past.length > MAX_PAST || !past.every(isName)) return 'has unreadable past sectors';
@@ -64,7 +68,17 @@ export function runProblem(run) {
   const isHire = (h) => isRecord(h) && isNode(h.node) && seen.includes(h.node) && isInt(h.slot, 0, MAX_SLOT);
   if (!Array.isArray(hired) || !hired.every(isHire) || new Set(hired.map((h) => `${h.node}:${h.slot}`)).size !== hired.length) return 'has unreadable recruits';
   if (typeof swapped !== 'boolean') return 'has an unreadable transponder';
+  // The worlds surveyed in the system (survey.js): worlds the ship has been
+  // to, each once.
+  if (!isNodeList(surveyed) || !surveyed.every((id) => seen.includes(id) && nodes[id].world)) return 'has unreadable surveys';
   return null;
+}
+
+// A world in the system past the charts (gen/system.js): its kind, its
+// numbers for act 3, and how far it lies from the lanes. The colony keeps
+// one too (campaign.js), with its name and whether it was surveyed.
+export function isWorld(world) {
+  return isRecord(world) && isId(world.kind) && RATINGS.every((rating) => isInt(world[rating], 0, MAX_RATING)) && isInt(world.lanes, 1, LANES);
 }
 
 // The approach going on (encounter.js): where the ship is, against the

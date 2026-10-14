@@ -63,7 +63,7 @@ import { deploy } from './deploy.js';
 import { crewLook, isLook } from './looks.js';
 import { MAX_STOCK } from './economy.js';
 import { mapFromShip, WRECKS } from './mapFromShip.js';
-import { runProblem } from './runShape.js';
+import { isWorld, runProblem } from './runShape.js';
 import { enemyBonus } from './settings.js';
 import { traitBonus } from './traits.js';
 
@@ -71,6 +71,8 @@ export { actOf } from './acts.js';
 
 export const PLACES = ['hub', 'fight'];
 export const ACTS = 3;
+// The act of the colony, whose world the run settles (M25).
+export const COLONY_ACT = 3;
 export const HEAT_MAX = 100;
 export const MAX_CREW = 20;
 export const MAX_NAME = 24;
@@ -130,6 +132,9 @@ export function newCampaign(rules, seed, { background = firstBackground(rules), 
     spent: [],
     supplies: 0,
     run: null,
+    // The colony (act 3): the world settled at the end of the run (M25,
+    // settle.js), and what is built on it from M26 on.
+    colony: null,
     fight: null,
   };
 }
@@ -378,6 +383,9 @@ export function campaignProblems(value) {
   const runWhy = value.run === null ? null : runProblem(value.run);
   if (runWhy) wrong(`run ${runWhy}`);
   else if (value.run !== null && value.act === 1) wrong('run has begun before launch');
+  // The colony is the act after the run's: it has its world from settling.
+  if (value.colony !== null && !isColony(value.colony)) wrong('colony is unreadable');
+  else if ((value.colony !== null) !== (value.act >= COLONY_ACT)) wrong("colony doesn't match the act");
   if ((value.place === 'fight') !== isRecord(value.fight) || (value.place !== 'fight' && value.fight !== null)) {
     wrong("fight doesn't match where the player is");
   } else if (value.fight !== null) {
@@ -402,6 +410,13 @@ function fightProblem(fight, crew) {
   if (fight.battle.units.filter((unit) => unit.side === 'crew').length !== fight.crew.length) return "doesn't match its crew";
   if (!Array.isArray(fight.log) || !fight.log.every((event) => isRecord(event) && typeof event.type === 'string')) return 'has an unreadable log';
   return null;
+}
+
+// The colony (settle.js): the world settled, with its name and whether it
+// was surveyed.
+function isColony(colony) {
+  const world = colony?.world;
+  return isRecord(colony) && isWorld(world) && typeof world.name === 'string' && world.name.trim() !== '' && world.name.length <= MAX_NAME && typeof world.surveyed === 'boolean';
 }
 
 // The ship's wrecked modules: each a module it has, with how it is wrecked.

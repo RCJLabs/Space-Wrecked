@@ -212,12 +212,12 @@ test('a v17 save carries on: its run has swapped nothing in its sector, and an a
   const upped = step.up({ ...saveData(initialState(3)), campaign: { ...met, run: { ...oldRun, approach: oldApproach } } });
   assert.equal(upped.campaign.run.approach.hunt, false);
   assert.deepEqual(campaignProblems(upped.campaign), []);
-  // Through the front door: a v17 save opens at v18.
+  // Through the front door: a v17 save opens at the version now.
   const text = JSON.stringify({ version: 17, data: { ...saveData(initialState(3)), campaign: { ...run, run: v17run } } });
   const opened = parseSave(text);
   assert.equal(opened.ok, true, opened.error);
   assert.equal(opened.save.version, SAVE_VERSION);
-  assert.equal(SAVE_VERSION, 18);
+  assert.ok(SAVE_VERSION >= 18);
   // A run that can't say whether it swapped is caught.
   assert.match(campaignProblems({ ...run, run: v17run }).join(' '), /transponder/);
   assert.deepEqual(JSON.parse(JSON.stringify(makeSave(saveData({ ...initialState(1), campaign: run })))).data.campaign.run.swapped, false);

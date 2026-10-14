@@ -1,0 +1,29 @@
+System 6: The Outer Hold (seed 1), 4 nodes, 5 links
+   .  1w
+  0S  2w
+   .  3w
+links: 0-1 0-2 0-3 1-2 2-3
+  0 Way in (start) at 0.08, 0.5
+  1 Glasswater (world: jungle, soil 2 water 2 ore 1 danger 3, lanes 3) at 0.685, 0.194
+  2 Tarn (world: ocean, soil 1 water 3 ore 1 danger 2, lanes 1) at 0.685, 0.522
+  3 Cairn (world: ice, soil 0 water 2 ore 1 danger 0, lanes 1) at 0.685, 0.799
+
+System 6: The Last Harbor (seed 2), 4 nodes, 5 links
+   .  1w
+  0S  2w
+   .  3w
+links: 0-1 0-2 0-3 1-2 2-3
+  0 Way in (start) at 0.08, 0.5
+  1 Brightstone (world: jungle, soil 2 water 3 ore 1 danger 2, lanes 2) at 0.685, 0.207
+  2 Hollowmere (world: desert, soil 0 water 1 ore 2 danger 1, lanes 3) at 0.685, 0.526
+  3 Long Winter (world: ocean, soil 0 water 3 ore 0 danger 2, lanes 2) at 0.685, 0.754
+
+System 6: The Outer Hold (seed 3), 4 nodes, 5 links
+   .  1w
+  0S  2w
+   .  3w
+links: 0-1 0-2 0-3 1-2 2-3
+  0 Way in (start) at 0.08, 0.5
+  1 Tarn (world: jungle, soil 3 water 3 ore 0 danger 3, lanes 1) at 0.685, 0.209
+  2 Wren (world: ocean, soil 1 water 3 ore 0 danger 1, lanes 3) at 0.685, 0.509
+  3 Driftmoor (world: ice, soil 0 water 3 ore 2 danger 1, lanes 1) at 0.685, 0.769

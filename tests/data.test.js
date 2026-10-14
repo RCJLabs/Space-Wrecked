@@ -287,6 +287,18 @@ const cases = [
   ['a kind charted as a word', (d) => (nodeKind(d, 'station').charted = 'yes'), /node station: charted must be true, or left out/],
   ['a way in safe from the hunters', (d) => (nodeKind(d, 'start').safe = true), /node start: the way in and the jump point are on the charts, and never safe/],
   ['a nebula safe twice over', (d) => (nodeKind(d, 'nebula').safe = true), /node nebula: a place to hide is safe already/],
+  // M25: the worlds past the charts.
+  ['a survey that cools the ship', (d) => (d.balance.surveyHeat = -2), /surveyHeat must be a whole number from 0 to 50/],
+  ['a system of one world', (d) => (d.worlds.system.worlds = 1), /worlds.json system: worlds must be a whole number from 2 to 5/],
+  ['a system with no words', (d) => (d.worlds.system.text = ''), /worlds.json system: text must be a non-empty string/],
+  ['a world kind with too rich a soil', (d) => (d.worlds.kinds[0].soil = [0, 4]), /worlds.json kind ocean: soil must be \[least, most\], from 0 to 3/],
+  ['a world kind with its danger backwards', (d) => (d.worlds.kinds[0].danger = [2, 1]), /worlds.json kind ocean: danger must be \[least, most\]/],
+  ['a world kind with a stray field', (d) => (d.worlds.kinds[0].gold = [1, 2]), /worlds.json kind ocean: unknown field "gold"/],
+  ['fewer kinds of world than a system has worlds', (d) => (d.worlds.kinds = d.worlds.kinds.slice(0, 2)), /worlds.json: needs 3 kinds of world, one for each world in a system; has 2/],
+  ['a world name twice', (d) => (d.worlds.names.worlds[1] = d.worlds.names.worlds[0]), /worlds.json names.worlds: has a name twice/],
+  ['too few world names for a system', (d) => (d.worlds.names.worlds = ['Harrow', 'Tarn']), /worlds.json names.worlds: needs 3 names/],
+  ['a line missing from the lanes', (d) => d.worlds.lanes.pop(), /worlds.json: lanes must be 3 lines/],
+  ['no node kind for the worlds to stand on', (d) => (d.sectors.nodes = d.sectors.nodes.filter((node) => node.id !== 'world')), /sectors.json: the "world" node kind is missing/],
 ];
 
 function pursuerRun(d) {
@@ -323,5 +335,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(42 modules, 1 frame, 2 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 5 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 10 kinds of sector node, 10 events\)/);
+  assert.match(run.stdout, /OK \(42 modules, 1 frame, 2 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 5 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 11 kinds of sector node, 5 kinds of world, 10 events\)/);
 });

@@ -9,6 +9,7 @@
     { "id": "exit", "name": "Jump point", "text": "The way on to the next sector. Jump from here and this one is behind you." },
     { "id": "station", "name": "Station", "names": "stations", "charted": true, "safe": true, "text": "A tired station selling supplies by the crate. Cash only, and the coffee is extra." },
     { "id": "nebula", "name": "Nebula", "names": "nebulae", "charted": true, "hides": true, "text": "A cloud of charged dust where sensors see nothing, theirs included. A good place to sit tight." },
+    { "id": "world", "name": "World", "charted": true, "text": "A world past the charts, where a colony could take root." },
     { "id": "empty", "name": "Empty space", "names": "places", "text": "Rock, dust and nobody. Nothing to stop for." },
     { "id": "derelict", "name": "Derelict", "names": "places", "events": true, "text": "Something dead and drifting, with whatever it carried still aboard." },
     { "id": "distress", "name": "Distress call", "names": "places", "events": true, "text": "Someone on the emergency band, asking for help. Or saying they are." },
