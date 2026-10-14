@@ -105,3 +105,46 @@ test("saves and codes keep their versions: old ones load with the Yard's parts, 
   assert.ok(loaded.ok, loaded.error);
   assert.deepEqual(loaded.save.data.campaign.parts, { 'bastion-engine': 1, corridor: 2 });
 });
+
+test("the patrol's corvettes carry Bastion's parts for most of theirs, mirrored pairs alike, their layouts as they were", async () => {
+  const { generateShip } = await import('../src/sim/gen/ship.js');
+  const noMakers = { ...rules, ships: new Map([...rules.ships].map(([id, preset]) => [id, { ...preset, makers: undefined }])) };
+  let bastion = 0;
+  let parts = 0;
+  for (let seed = 1; seed <= 40; seed++) {
+    const made = generateShip(rules, 'corvette', seed);
+    const plain = generateShip(noMakers, 'corvette', seed);
+    assert.ok(made.ok && plain.ok);
+    assert.deepEqual(made, generateShip(rules, 'corvette', seed), 'the same seed, the same makers');
+    // The same parts in the same places; only some types are Bastion's.
+    assert.deepEqual(made.ship.modules.map((m) => ({ ...m, type: baseOf(rules.modules.get(m.type)) })), plain.ship.modules);
+    assert.deepEqual([made.ship.styling, made.ship.hull, made.wrecked], [plain.ship.styling, plain.ship.hull, plain.wrecked]);
+    const makerOf = (m) => rules.modules.get(m.type).manufacturer;
+    // A part and its mirror image are one maker's.
+    const rows = made.ship.modules.flatMap((m) => [m.y, m.y + (m.rot % 2 ? rules.modules.get(m.type).size[0] : rules.modules.get(m.type).size[1]) - 1]);
+    const across = Math.min(...rows) + Math.max(...rows);
+    for (const m of made.ship.modules) {
+      const h = (m.rot % 2 ? rules.modules.get(m.type).size[0] : rules.modules.get(m.type).size[1]);
+      const twin = made.ship.modules.find((o) => o !== m && baseOf(rules.modules.get(o.type)) === baseOf(rules.modules.get(m.type)) && o.x === m.x && o.y === across - m.y - h + 1);
+      if (twin) assert.equal(makerOf(twin), makerOf(m), `corvette ${seed}: ${m.type} and its mirror`);
+    }
+    bastion += made.ship.modules.filter((m) => makerOf(m) === 'bastion').length;
+    parts += made.ship.modules.length;
+  }
+  assert.ok(bastion / parts > 0.65 && bastion / parts < 0.95, `${bastion} of ${parts} Bastion's`);
+  // The other sides fly the Yard's.
+  for (const id of ['cutter', 'hauler']) {
+    for (let seed = 1; seed <= 10; seed++) assert.ok(generateShip(rules, id, seed).ship.modules.every((m) => rules.modules.get(m.type).manufacturer === 'yard'), `${id} ${seed}`);
+  }
+});
+
+test("Bastion's mass counts in thrust for mass, lift-off included: the launched start ship made by Bastion needs another engine to lift off", async () => {
+  const { launchedShip, madeBy } = await import('../tools/approach.js');
+  const { flightChecklist } = await import('../src/sim/constraints.js');
+  const yard = launchedShip(rules);
+  const bastion = madeBy(yard, rules, 'bastion');
+  assert.ok(bastion.modules.every((m) => rules.modules.get(m.type).manufacturer === 'bastion'));
+  const failing = (ship) => flightChecklist(ship, rules, 3, { liftOff: rules.acts.get(1).liftOff }).filter((line) => line.ok !== true);
+  assert.deepEqual(failing(yard), []);
+  assert.deepEqual(failing(bastion).map((line) => [line.text, line.add]), [['Thrust 36 for mass 43: 0.84, needs 1.00 to lift off', 'engine']]);
+});

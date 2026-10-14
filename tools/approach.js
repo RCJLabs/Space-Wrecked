@@ -3,7 +3,10 @@
 // its orders (tools/approachPlan.js) and the preset its tactics. It reports
 // how the approaches end, and the same again with each part that fights in
 // an approach added to the start ship by itself (ADDED): Law 1 says every
-// one of them should change how it goes.
+// one of them should change how it goes. And with each maker's version of
+// every part on the start ship (M23g): its hit points and its mass should
+// change it too. For each, the parts its volleys wreck on the player's ship
+// in an approach, on average, and the ship's evasion.
 //   node tools/approach.js              300 approaches a preset per ship
 //   node tools/approach.js --runs 1000
 //   node tools/approach.js --set gunnery=65   (any balance number)
@@ -12,8 +15,9 @@
 // each ship meets the same enemies on the same rolls.
 import { pathToFileURL } from 'node:url';
 import { seedFrom } from '../src/core/rng.js';
-import { OUTCOMES, playRound } from '../src/sim/approach.js';
+import { OUTCOMES, playRound, sideStats } from '../src/sim/approach.js';
 import { generateShip } from '../src/sim/gen/ship.js';
+import { versionBy } from '../src/sim/makers.js';
 import { captainOrder } from './approachPlan.js';
 import { readData } from './data.js';
 import { rulesWith, setting } from './sim.js';
@@ -29,11 +33,22 @@ export const ADDED = ['weapon', 'shield', 'engine', 'cannon', 'pointdefense', 's
 const WINS = ['boarded', 'destroyed'];
 const LOSSES = ['boardedBy'];
 
-// The ships the harness flies: the launched start ship, and it with each of
-// ADDED: [{ name, ship }].
+// The ships the harness flies: the launched start ship, it with each of
+// ADDED, and it with every part by each maker but the first (M23g, named
+// 'start <maker>'): [{ name, ship }].
 export function harnessShips(rules) {
   const base = launchedShip(rules);
-  return [{ name: 'start', ship: base }, ...ADDED.map((type) => ({ name: `+${type}`, ship: withPart(base, rules, type) }))];
+  const makers = [...rules.manufacturers.keys()].slice(1);
+  return [
+    { name: 'start', ship: base },
+    ...ADDED.map((type) => ({ name: `+${type}`, ship: withPart(base, rules, type) })),
+    ...makers.map((maker) => ({ name: `start ${maker}`, ship: madeBy(base, rules, maker) })),
+  ];
+}
+
+// The ship with every part the maker makes as its version, where it is.
+export function madeBy(ship, rules, maker) {
+  return { ...ship, modules: ship.modules.map((module) => ({ ...module, type: versionBy(rules, module.type, maker) })) };
 }
 
 // The presets with tactics: the hostile ones.
@@ -64,18 +79,26 @@ export function playApproach(rules, ship, presetId, seed, { order = captainOrder
 }
 
 // Every ship against every hostile preset, `runs` times each: [{ ship,
-// preset, outcomes: { [kind]: count }, runs, wins, losses, score }], score
-// being wins less losses for every 100 approaches.
+// preset, outcomes: { [kind]: count }, runs, wins, losses, score, wrecked,
+// evasion }], score being wins less losses for every 100 approaches,
+// wrecked the parts wrecked on the player's ship in all of them, and
+// evasion the ship's at the start.
 export function runApproaches(rules, { runs = 300 } = {}) {
   const rows = [];
   const enemies = new Map(hostilePresets(rules).map((preset) => [preset, Array.from({ length: runs }, (_, i) => generateShip(rules, preset, i + 1))]));
   for (const { name, ship } of harnessShips(rules)) {
+    const { evasion } = sideStats({ ship, damage: {}, wrecked: {} }, rules);
     for (const preset of hostilePresets(rules)) {
       const outcomes = Object.fromEntries(OUTCOMES.map((kind) => [kind, 0]));
-      for (let seed = 1; seed <= runs; seed++) outcomes[playApproach(rules, ship, preset, seed, { made: enemies.get(preset)[seed - 1] }).outcome.kind] += 1;
+      let wrecked = 0;
+      for (let seed = 1; seed <= runs; seed++) {
+        const played = playApproach(rules, ship, preset, seed, { made: enemies.get(preset)[seed - 1] });
+        outcomes[played.outcome.kind] += 1;
+        wrecked += Object.keys(played.you.wrecked).length;
+      }
       const wins = WINS.reduce((sum, kind) => sum + outcomes[kind], 0);
       const losses = LOSSES.reduce((sum, kind) => sum + outcomes[kind], 0);
-      rows.push({ ship: name, preset, outcomes, runs, wins, losses, score: Math.round((100 * (wins - losses)) / runs) });
+      rows.push({ ship: name, preset, outcomes, runs, wins, losses, score: Math.round((100 * (wins - losses)) / runs), wrecked, evasion });
     }
   }
   return rows;
@@ -84,13 +107,13 @@ export function runApproaches(rules, { runs = 300 } = {}) {
 // The rows as a table.
 export function approachText(rules, rows) {
   const pct = (n, of) => `${Math.round((100 * n) / of)}%`.padStart(5);
-  const head = `${'Ship'.padEnd(14)}${'Against'.padEnd(18)}${OUTCOMES.map((kind) => kind.padStart(10)).join('')}${'Score'.padStart(8)}`;
-  const lines = rows.map((row) => `${row.ship.padEnd(14)}${rules.ships.get(row.preset).name.padEnd(18)}${OUTCOMES.map((kind) => pct(row.outcomes[kind], row.runs).padStart(10)).join('')}${String(row.score).padStart(8)}`);
+  const head = `${'Ship'.padEnd(15)}${'Against'.padEnd(18)}${OUTCOMES.map((kind) => kind.padStart(10)).join('')}${'Score'.padStart(8)}${'Wrecked'.padStart(9)}${'Evasion'.padStart(9)}`;
+  const lines = rows.map((row) => `${row.ship.padEnd(15)}${rules.ships.get(row.preset).name.padEnd(18)}${OUTCOMES.map((kind) => pct(row.outcomes[kind], row.runs).padStart(10)).join('')}${String(row.score).padStart(8)}${(row.wrecked / row.runs).toFixed(2).padStart(9)}${String(row.evasion).padStart(9)}`);
   return [
-    `${rows[0]?.runs ?? 0} approaches a preset for each ship: the launched start ship, and it with one part more. The test player against each preset's tactics.`,
+    `${rows[0]?.runs ?? 0} approaches a preset for each ship: the launched start ship, it with one part more, and it with every part by another maker. The test player against each preset's tactics.`,
     head,
     ...lines,
-    'Score: wins (boarded, destroyed) less losses (boardedBy), in every 100.',
+    "Score: wins (boarded, destroyed) less losses (boardedBy), in every 100. Wrecked: the player's parts wrecked in an approach, on average. Evasion: the ship's.",
   ].join('\n');
 }
 

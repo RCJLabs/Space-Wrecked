@@ -152,7 +152,7 @@ const TIP_KEYS = ['id', 'text'];
 const MAX_TIP = 200;
 const ENCOUNTER_KEYS = ['id', 'name', 'enemies'];
 // Ship presets (src/sim/gen/ship.js).
-const SHIP_KEYS = ['id', 'name', 'frame', 'crew', 'beam', 'symmetric', 'parts', 'wrecks', 'tactics', 'scrap', 'party', 'salvage', 'look'];
+const SHIP_KEYS = ['id', 'name', 'frame', 'crew', 'beam', 'symmetric', 'parts', 'makers', 'wrecks', 'tactics', 'scrap', 'party', 'salvage', 'look'];
 const LOOK_KEYS = ['paint', 'trim', 'pieces'];
 // A hostile preset's tactics in the approach phase (src/sim/approach.js).
 const TACTIC_KEYS = ['aim', 'board', 'flee'];
@@ -376,6 +376,7 @@ export function validateData(data) {
   const frameById = new Map(frames.map((frame) => [frame.id, frame]));
   ships.forEach((ship, i) => checkShip(ship, `ships.json ${ship.id ?? `#${i}`}`, frameById, moduleIds, fail));
   ships.forEach((ship, i) => ship?.look !== undefined && checkLook(ship.look, `ships.json ${ship.id ?? `#${i}`}`, data.styling, frameById.get(ship.frame), fail));
+  ships.forEach((ship, i) => ship?.makers !== undefined && checkMakers(ship.makers, `ships.json ${ship.id ?? `#${i}`}`, makerIds, fail));
 
   const encounterById = new Map(encounters.filter((e) => Array.isArray(e.enemies)).map((e) => [e.id, e.enemies]));
   const presets = new Map(ships.filter((ship) => typeof ship?.id === 'string').map((ship) => [ship.id, ship]));
@@ -529,6 +530,23 @@ function checkLook(look, where, styling, frame, fail) {
     else fail(where, `look.pieces.${type} must be a whole number, or [least, most]`);
   }
   if (frame && most > frame.maxStyling) fail(where, `look.pieces: up to ${most}, but the ${frame.name} takes at most ${frame.maxStyling}`);
+}
+
+// Who makes a generated ship's parts (M23g): for each maker, the chance in
+// 100 that a part, or a mirrored pair, is its version (src/sim/gen/ship.js
+// makersOf); the rest are the base parts. Together no more than 100.
+function checkMakers(makers, where, makerIds, fail) {
+  if (!isObject(makers)) {
+    fail(where, 'makers must be an object of manufacturers and chances in 100');
+    return;
+  }
+  let sum = 0;
+  for (const [id, chance] of Object.entries(makers)) {
+    if (!makerIds.has(id)) fail(where, `makers: unknown manufacturer "${id}"`);
+    if (isIntIn(chance, 1, 100)) sum += chance;
+    else fail(where, `makers.${id} must be a chance in 100, from 1 to 100`);
+  }
+  if (sum > 100) fail(where, `makers: the chances add up to ${sum}, more than 100`);
 }
 
 // How a hostile preset plays the approach: the kinds of module it fires at,

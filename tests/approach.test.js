@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { seedFrom } from '../src/core/rng.js';
-import { AIMS, choicesFor, closeChance, enemyOrder, fleeChance, hitChance, isOrder, lostShare, playRound, sideStats, targetsOf } from '../src/sim/approach.js';
+import { AIMS, choicesFor, closeChance, enemyOrder, fleeChance, hitChance, isOrder, lostShare, OUTCOMES, playRound, sideStats, targetsOf } from '../src/sim/approach.js';
 import { shipStats } from '../src/sim/constraints.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { cellAt } from '../src/sim/grid.js';
@@ -293,7 +293,7 @@ test("point defense takes its intercept off the other ship's hit chance, up to i
 // against a ship that fires at reactors, and its mass costs a little against
 // one that doesn't.
 const FIGHTING = ['weapons', 'defense', 'engines'];
-test('Law 1: each part an approach plays with, added to the launched start ship, changes how it goes; the guns, shields and engines do worse against no preset', () => {
+test("Law 1: each part an approach plays with, added to the launched start ship, changes how it goes; the guns, shields and engines do worse against no preset; Bastion's versions change it too", () => {
   const rows = runApproaches(rules, { runs: 120 });
   const row = (ship, preset) => rows.find((r) => r.ship === ship && r.preset === preset);
   for (const part of ADDED) {
@@ -311,6 +311,15 @@ test('Law 1: each part an approach plays with, added to the launched start ship,
   for (const part of ['weapon', 'shield', 'engine']) {
     assert.ok(hostilePresets(rules).some((preset) => row(`+${part}`, preset).score - row('start', preset).score >= 10), part);
   }
+  // M23g: the start ship with Bastion's version of every part. Its mass
+  // costs evasion against every preset; its hit points lose it half the
+  // parts or fewer to some preset's volleys; and the approaches end
+  // differently, by a tenth of them or more against some preset.
+  const runs = row('start', 'cutter').runs;
+  const [yard, bastion] = [(preset) => row('start', preset), (preset) => row('start bastion', preset)];
+  assert.ok(hostilePresets(rules).every((preset) => bastion(preset).evasion < yard(preset).evasion), 'Bastion evades less');
+  assert.ok(hostilePresets(rules).some((preset) => bastion(preset).wrecked * 2 <= yard(preset).wrecked), 'Bastion loses fewer parts');
+  assert.ok(hostilePresets(rules).some((preset) => OUTCOMES.some((kind) => Math.abs(bastion(preset).outcomes[kind] - yard(preset).outcomes[kind]) >= runs / 10)), 'Bastion fares differently');
   // The same seeds always play out the same.
   assert.deepEqual(runApproaches(rules, { runs: 5 }), runApproaches(rules, { runs: 5 }));
 });

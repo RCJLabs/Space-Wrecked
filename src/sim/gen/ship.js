@@ -10,14 +10,16 @@
 // part to add: a reactor for power, an engine for thrust, quarters for
 // berths. Then the layout. A layout that runs into a dead end starts over
 // from the parts, with the random numbers where they got to. Last, a
-// preset with wrecks gets some of its rooms wrecked: a derelict. Its hull
-// gets one of the styles at random (M23d), and it wears its side's look:
-// paint, trim and styling pieces (look.js, M23f).
+// preset with wrecks gets some of its rooms wrecked: a derelict. Its parts
+// may be other makers' versions (M23g, makersOf), its hull gets one of the
+// styles at random (M23d), and it wears its side's look: paint, trim and
+// styling pieces (look.js, M23f).
 import { int, pick, seedFrom, shuffle } from '../../core/rng.js';
 import { DEFAULT_HULL, layoutProblems } from '../builder.js';
 import { canLaunch, flightChecklist, partLines } from '../constraints.js';
+import { versionBy } from '../makers.js';
 import { WRECKS } from '../mapFromShip.js';
-import { hasTag, interiorRows, placedCells } from '../modules.js';
+import { footprint, hasTag, interiorRows, placedCells } from '../modules.js';
 import { layOutShip, roomsOnFoot } from './layout.js';
 import { dressShip } from './look.js';
 
@@ -42,7 +44,7 @@ export function generateShip(defs, presetId, seed) {
     // The layout checked every part as it went in; this is the whole ship,
     // and every room of it boarders can walk into.
     if (layoutProblems(ship, defs).length || !canLaunch(flightChecklist(ship, defs, preset.crew)) || !roomsOnFoot(ship, defs)) continue;
-    const dressed = dressShip(defs, preset, { ...ship, hull: hullStyle(defs, presetId, seed) }, seed);
+    const dressed = dressShip(defs, preset, { ...makersOf(defs, preset, ship, seed), hull: hullStyle(defs, presetId, seed) }, seed);
     return { ok: true, ship: dressed, preset: preset.id, crew: preset.crew, wrecked: wreckRooms(defs, preset, ship, state) };
   }
   return { ok: false, error: `No layout for a ${preset.name} in ${ATTEMPTS} tries.` };
@@ -113,6 +115,45 @@ function wreckRooms(defs, preset, ship, state) {
     wrecked[room.uid] = wreck.value;
   }
   return wrecked;
+}
+
+// Who made each part (M23g): for each part, or each mirrored pair of a
+// symmetric ship, the preset's makers (data/ships.json makers, each a
+// chance in 100) roll for it, and a maker's version takes its place; the
+// rest stay the base part. From a roll of its own, so the layout and the
+// look are what they were before ships had makers: the parts keep their
+// places and only their types change. A version heavy enough to leave the
+// ship failing the flight checklist stays the base part.
+function makersOf(defs, preset, ship, seed) {
+  const chances = Object.entries(preset.makers ?? {});
+  if (!chances.length) return ship;
+  let state = seedFrom(`makers ${preset.id} ${seed}`);
+  const rows = ship.modules.flatMap((m) => placedCells(defs.modules.get(m.type), m).map(([, y]) => y));
+  const across = preset.symmetric ? Math.min(...rows) + Math.max(...rows) : null;
+  const rolled = new Set();
+  let made = ship;
+  for (const module of ship.modules) {
+    if (rolled.has(module.uid)) continue;
+    const roll = int(state, 1, 100);
+    state = roll.state;
+    const group = [module.uid, across === null ? null : twinOf(defs, ship, module, across)?.uid].filter((uid) => uid !== undefined && uid !== null);
+    for (const uid of group) rolled.add(uid);
+    let sum = 0;
+    const maker = chances.find(([, chance]) => roll.value <= (sum += chance))?.[0];
+    if (!maker) continue;
+    const tried = { ...made, modules: made.modules.map((m) => (group.includes(m.uid) ? { ...m, type: versionBy(defs, m.type, maker) } : m)) };
+    if (canLaunch(flightChecklist(tried, defs, preset.crew))) made = tried;
+  }
+  return made;
+}
+
+// A part's mirror across the middle row (y + y' = across over its rows),
+// the same part turned to match, or null: a part on the middle row is its
+// own.
+function twinOf(defs, ship, module, across) {
+  const [, h] = footprint(defs.modules.get(module.type), module.rot);
+  const y = across - module.y - h + 1;
+  return ship.modules.find((m) => m !== module && m.type === module.type && m.x === module.x && m.y === y) ?? null;
 }
 
 // The ship moved to the middle of its frame.

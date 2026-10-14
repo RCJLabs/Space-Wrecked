@@ -31,6 +31,13 @@ export function versionAtHand(defs, type, count) {
   return versionsOf(defs, type).find((version) => count(version) > 0) ?? type;
 }
 
+// A maker's version of a part (the part itself if it is the maker's, or
+// the maker makes none, or no maker is given).
+export function versionBy(defs, type, maker) {
+  if (!maker) return type;
+  return versionsOf(defs, type).find((version) => defs.modules.get(version)?.manufacturer === maker) ?? type;
+}
+
 // Each base part's versions, kept for each part table.
 const groups = new WeakMap();
 function groupsOf(defs) {
