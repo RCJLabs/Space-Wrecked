@@ -9,22 +9,26 @@ test('the shipped data is valid', () => {
   assert.deepEqual(validateData(readData()), []);
 });
 
-test("the shipped data has the 12 v0.1 module types, first, then M23e's nine", () => {
-  const ids = readData().modules.modules.map((m) => m.id);
+test("the shipped data has the 12 v0.1 module types, first, then M23e's nine, then Bastion's version of each (M23g)", () => {
+  const modules = readData().modules.modules;
+  const ids = modules.map((m) => m.id);
   assert.deepEqual(ids.slice(0, 12).sort(), [
     'airlock', 'armory', 'bridge', 'cargo', 'corridor', 'engine',
     'lifesupport', 'medbay', 'quarters', 'reactor', 'shield', 'weapon',
   ]);
-  assert.deepEqual(ids.slice(12).sort(), [
+  assert.deepEqual(ids.slice(12, 21).sort(), [
     'bunks', 'cannon', 'heavyengine', 'largehold', 'lightengine',
     'pointdefense', 'shieldarray', 'smallreactor', 'surgery',
   ]);
+  assert.deepEqual(modules.slice(21).map((m) => m.base), ids.slice(0, 21), 'every part, M23e\'s included, in the same order');
+  for (const m of modules.slice(21)) assert.ok(m.manufacturer === 'bastion' && m.id === `bastion-${m.base}` && m.name.startsWith('Bastion '), m.id);
 });
 
 // Each case breaks one thing in a copy of the real data and expects the
 // validator to name it. The starter frame is an open yard, so the shape
 // cases cut a small frame of their own.
 const engine = (d) => d.modules.modules.find((m) => m.id === 'engine');
+const version = (d) => d.modules.modules.find((m) => m.id === 'bastion-engine');
 const start = (d) => d.backgrounds.backgrounds[0].start;
 const district = (d) => d.districts.districts[0];
 const twist = (d, id) => d.contracts.twists.find((t) => t.id === id);
@@ -44,6 +48,19 @@ const cases = [
   ['no default hull style', (d) => (hull(d).id = 'smooth'), /there must be a "rounded" style/],
   ['duplicate id', (d) => d.modules.modules.push(structuredClone(d.modules.modules[0])), /duplicate id "bridge"/],
   ['unknown manufacturer', (d) => (d.modules.modules[0].manufacturer = 'acme'), /unknown manufacturer "acme"/],
+  // M23g: makers, and their versions of the parts.
+  ['a maker with no short name', (d) => delete d.manufacturers.manufacturers[1].short, /bastion: short must be a name of up to 8 letters/],
+  ['a maker with no card line', (d) => (d.manufacturers.manufacturers[1].blurb = ''), /bastion: blurb must be a non-empty string/],
+  ['a mark nobody draws', (d) => (d.manufacturers.manufacturers[1].mark = 'stars'), /bastion: mark must be one of chevrons/],
+  ['a maker with no skin', (d) => d.manufacturers.manufacturers.push({ id: 'kestrel', name: 'Kestrel Dynamics', short: 'Kestrel', blurb: 'Light.' }), /kestrel: has no skin in src\/render\/palette\.js/],
+  ['a misspelled maker field', (d) => (d.manufacturers.manufacturers[1].colour = 'grey'), /bastion: unknown field "colour"/],
+  ['a version with a shape of its own', (d) => (version(d).size = [3, 3]), /bastion-engine: unknown field "size"/],
+  ['a version of nothing', (d) => (version(d).base = 'galley'), /base "galley" must be a part earlier in the file/],
+  ['a version of a version', (d) => (d.modules.modules.at(-1).base = 'bastion-engine'), /base "bastion-engine" must be a part earlier in the file that isn't a version itself/],
+  ['a version by its base part\'s maker', (d) => (version(d).manufacturer = 'yard'), /a version is by another maker than its base part's \("yard"\)/],
+  ['two versions by one maker', (d) => d.modules.modules.push({ ...structuredClone(version(d)), id: 'bastion-engine-two' }), /bastion has a version of engine already/],
+  ['a version with a stat in pieces', (d) => (version(d).stats.hp = 22.5), /bastion-engine: stats\.hp must be a whole number, 1 or more/],
+  ['a version with a stat nobody has', (d) => (version(d).stats.armor = 2), /bastion-engine: unknown stat "armor"/],
   ['side facing space that is no side', (d) => (engine(d).facesSpace.side = 'x'), /facesSpace\.side must be one of n, e, s, w/],
   ['side facing space with no name', (d) => (engine(d).facesSpace.what = ''), /facesSpace\.what must name what faces space/],
   ['side facing space as a bare string', (d) => (engine(d).facesSpace = 'w'), /facesSpace must be \{ side, what \}/],
@@ -58,7 +75,7 @@ const cases = [
   ['misspelled field', (d) => (d.modules.modules[0].rotate = true), /unknown field "rotate"/],
   ['size too big', (d) => (d.modules.modules[0].size = [5, 1]), /size must be \[width, height\]/],
   ['glyph used twice', (d) => (d.modules.modules[1].glyph = 'B'), /glyph "B" is already used/],
-  ['no bridge', (d) => d.modules.modules.forEach((m) => (m.tags = m.tags.filter((t) => t !== 'bridge'))), /no module is tagged "bridge"/],
+  ['no bridge', (d) => d.modules.modules.forEach((m) => m.tags && (m.tags = m.tags.filter((t) => t !== 'bridge'))), /no module is tagged "bridge"/],
   ['frame too narrow', (d) => (d.frames.frames[0].width = 0), /width must be an integer from 1/],
   ['bad tilesPerCell', (d) => (d.modules.tilesPerCell = 0), /tilesPerCell must be an integer/],
   ['manufacturers not a list', (d) => (d.manufacturers.manufacturers = {}), /"manufacturers" must be a list/],
@@ -283,5 +300,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(21 modules, 1 frame, 1 manufacturer, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 9 kinds of sector node, 10 events\)/);
+  assert.match(run.stdout, /OK \(42 modules, 1 frame, 2 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 9 kinds of sector node, 10 events\)/);
 });

@@ -4,11 +4,12 @@
 // docking collars and running lights on the hull's skin, shaped to match
 // the style. Pure: ship data in, { faces, glows, exhausts } out (solid.js
 // faces, mesh.js glows; exhausts are where the engines' flames come out:
-// [{ at, dir }]), in the manufacturer's skin. This is how the ship looks
-// anywhere but the builder.
-import { footprint, interiorRows } from '../sim/modules.js';
+// [{ at, dir }]), in the manufacturer's skin: the hull in the ship's paint
+// and trim, each part's fittings in its own maker's (M23g). This is how the
+// ship looks anywhere but the builder.
+import { footprint, interiorRows, placedCells } from '../sim/modules.js';
 import { hullBands, hullShape, nearestSide, noseSurfaces, sidePoint, styleOf } from './hullShape.js';
-import { paintSkin } from './palette.js';
+import { fittingsOf, paintSkin } from './palette.js';
 import { pieceScene } from './pieces.js';
 import { normalOf, placeFaces, plate, solidBox, solidCylinder, solidTube } from './solid.js';
 
@@ -66,21 +67,35 @@ export function exteriorScene({ ship, defs, hull, skin: base }) {
 
   for (const nose of shape.noses) noseFaces(faces, nose, skin, curve);
 
-  // Each module's fittings on the roof.
+  // Each module's fittings on the roof, in its maker's colors, over its
+  // maker's mark. A maker's version has its base part's fittings.
+  const kits = new Map();
+  const kitOf = (maker) => {
+    if (!kits.has(maker)) kits.set(maker, { ...skin, ...fittingsOf(maker) });
+    return kits.get(maker);
+  };
+  const makerAt = new Map();
   for (const module of ship.modules) {
     const def = defs.modules.get(module.type);
     if (!def) continue;
+    for (const [x, y] of placedCells(def, module)) makerAt.set(`${x},${y}`, def.manufacturer);
+    const kit = kitOf(def.manufacturer);
     const local = [];
     const lights = [];
-    (ROOFS[def.id] ?? fromTemplate)(local, skin, lights, def, round);
+    MARKS[defs.manufacturers?.get(def.manufacturer)?.mark]?.(local, kit, def);
+    (ROOFS[def.base ?? def.id] ?? fromTemplate)(local, kit, lights, def, round);
     faces.push(...placeFaces(local, def, module));
     for (const g of lights) glows.push({ ...g, at: placeFaces([{ pts: [g.at], normal: [0, 0, 1] }], def, module)[0].pts[0] });
   }
+  // The kit of the part whose cell (x, y) is: a heavy gun's barrel stands
+  // between two of its cells.
+  const kitAt = (x, y) => kitOf(makerAt.get(`${Math.floor(x)},${Math.floor(y)}`));
 
   // What sticks out of the hull, set on its skin: a nozzle in a housing,
   // round or eight-sided as the hull's corners are.
   const sides = round ? 12 : 8;
   for (const { x, y, side } of hull.nozzles) {
+    const skin = kitAt(x, y);
     const [dx, dy] = STEP[side];
     const [sx, sy] = sidePoint(shape, [x + 0.5, y + 0.5], [dx, dy]);
     solidTube(faces, [sx - dx * 0.04, sy - dy * 0.04, NOZZLE_Z], [dx, dy], 0.16, 0.34, 0.34, skin.dark, { segments: sides });
@@ -90,6 +105,7 @@ export function exteriorScene({ ship, defs, hull, skin: base }) {
     exhausts.push({ at: [start[0] + dx * 0.42, start[1] + dy * 0.42, NOZZLE_Z], dir: [dx, dy] });
   }
   for (const { x, y, side, heavy } of hull.barrels) {
+    const skin = kitAt(x, y);
     const [dx, dy] = STEP[side];
     if (heavy) {
       solidTube(faces, [x + 0.5 + dx * 0.36, y + 0.5 + dy * 0.36, HULL + 0.18], [dx, dy], 1, 0.09, 0.08, skin.metalHi, { segments: sides });
@@ -103,6 +119,7 @@ export function exteriorScene({ ship, defs, hull, skin: base }) {
   // A docking collar at each hatch, out from the side below the shoulder.
   const collarR = Math.min(0.17, wallTop / 2 - 0.02);
   for (const { x, y, side } of hull.collars) {
+    const skin = kitAt(x, y);
     const [dx, dy] = STEP[side];
     const [sx, sy] = sidePoint(shape, [x + 0.5, y + 0.5], [dx, dy]);
     const z = Math.max(collarR + 0.03, wallTop / 2);
@@ -307,6 +324,27 @@ const ROOFS = {
 
 // Module ids with roof fittings of their own, for tests.
 export const ROOFED = Object.keys(ROOFS);
+
+// A maker's mark on its parts' roofs (M23g; data/manufacturers.json names
+// one), in the part's unrotated frame, under its fittings:
+// (faces, kit, def) => void.
+const MARK_Z = HULL + 0.004;
+const MARKS = {
+  // Hazard chevrons across the part's far end: a dark band, orange slants.
+  chevrons(f, k, def) {
+    const [w, h] = def.size;
+    const [x0, x1, y0, y1] = [0.08, w - 0.08, h - 0.17, h - 0.07];
+    const n = Math.max(2, Math.round(w * 2));
+    const step = (x1 - x0) / n;
+    f.push({ pts: [[x0, y0, MARK_Z], [x1, y0, MARK_Z], [x1, y1, MARK_Z], [x0, y1, MARK_Z]], normal: [0, 0, 1], color: k.markDark });
+    for (let i = 0; i < n; i++) {
+      const a = x0 + step * i;
+      const pts = [[a, y1], [a + step * 0.5, y1], [Math.min(x1, a + step), y0], [a + step * 0.5, y0]];
+      f.push({ pts: pts.map(([x, y]) => [x, y, MARK_Z + 0.002]), normal: [0, 0, 1], color: k.mark });
+    }
+  },
+};
+export const MARKED = Object.keys(MARKS);
 
 // Roof fittings from the interior template: machinery under raised plates,
 // consoles as lit panels.

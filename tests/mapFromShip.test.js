@@ -247,7 +247,7 @@ test('with two tiles a cell, each cell is 2 × 2 tiles and doors take the middle
   const double = (row) => [...row].map((c) => c + c).join('');
   const fine = indexDefs({
     ...data,
-    modules: { ...data.modules, tilesPerCell: 2, modules: data.modules.modules.map((def) => ({ ...def, interior: def.interior.flatMap((row) => [double(row), double(row)]) })) },
+    modules: { ...data.modules, tilesPerCell: 2, modules: data.modules.modules.map((def) => (def.interior ? { ...def, interior: def.interior.flatMap((row) => [double(row), double(row)]) } : def)) },
   });
   // A bridge with a corridor at its side and an airlock under it.
   const { ship: built } = buildShip(fine, 'starter', [at('bridge', 10, 5), at('corridor', 13, 5), at('airlock', 10, 7)]);

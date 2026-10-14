@@ -12,7 +12,9 @@ export function indexDefs(files) {
     balance,
     tilesPerCell: modules.tilesPerCell,
     tiles: modules.tiles,
-    modules: byId(modules.modules),
+    // The parts, each maker's versions filled in from their base parts
+    // (M23g, withBases).
+    modules: byId(withBases(modules.modules)),
     // The builder's drawer sorts parts into these, in this order (M23e):
     // [{ id, name }], each module naming one as its category.
     categories: modules.categories ?? [],
@@ -78,4 +80,18 @@ export function indexDefs(files) {
 
 function byId(list = []) {
   return new Map(list.map((item) => [item.id, item]));
+}
+
+// A maker's version of a part (M23g) names the part it is a version of as
+// `base` and holds only what it changes: its id, maker, name, price and
+// some stats. It takes the rest from its base: footprint, interior, tags,
+// category, glyph and what it does in an approach; its stats go over the
+// base's. A version whose base isn't a part of the list is left as it is,
+// for the validator to name.
+export function withBases(list = []) {
+  const bases = new Map(list.filter((def) => def?.base === undefined).map((def) => [def?.id, def]));
+  return list.map((def) => {
+    const base = def?.base !== undefined && bases.get(def.base);
+    return base ? { ...base, ...def, stats: { ...base.stats, ...def.stats } } : def;
+  });
 }

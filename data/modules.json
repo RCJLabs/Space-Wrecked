@@ -304,6 +304,174 @@
       "tags": ["cargo"],
       "interior": ["h..h", "....", "h..h"],
       "cost": 140
+    },
+    {
+      "id": "bastion-bridge",
+      "base": "bridge",
+      "manufacturer": "bastion",
+      "name": "Bastion bridge",
+      "stats": { "mass": 5, "hp": 30 },
+      "cost": 130
+    },
+    {
+      "id": "bastion-reactor",
+      "base": "reactor",
+      "manufacturer": "bastion",
+      "name": "Bastion reactor",
+      "stats": { "mass": 8, "hp": 45 },
+      "cost": 220
+    },
+    {
+      "id": "bastion-engine",
+      "base": "engine",
+      "manufacturer": "bastion",
+      "name": "Bastion engine",
+      "stats": { "mass": 4, "hp": 23 },
+      "cost": 220
+    },
+    {
+      "id": "bastion-corridor",
+      "base": "corridor",
+      "manufacturer": "bastion",
+      "name": "Bastion corridor",
+      "stats": { "mass": 2, "hp": 15 },
+      "cost": 10
+    },
+    {
+      "id": "bastion-airlock",
+      "base": "airlock",
+      "manufacturer": "bastion",
+      "name": "Bastion airlock",
+      "stats": { "mass": 2, "hp": 18 },
+      "cost": 45
+    },
+    {
+      "id": "bastion-quarters",
+      "base": "quarters",
+      "manufacturer": "bastion",
+      "name": "Bastion crew quarters",
+      "stats": { "mass": 4, "hp": 23 },
+      "cost": 90
+    },
+    {
+      "id": "bastion-lifesupport",
+      "base": "lifesupport",
+      "manufacturer": "bastion",
+      "name": "Bastion life support",
+      "stats": { "mass": 3, "hp": 18 },
+      "cost": 100
+    },
+    {
+      "id": "bastion-cargo",
+      "base": "cargo",
+      "manufacturer": "bastion",
+      "name": "Bastion cargo hold",
+      "stats": { "mass": 4, "hp": 38 },
+      "cost": 65
+    },
+    {
+      "id": "bastion-medbay",
+      "base": "medbay",
+      "manufacturer": "bastion",
+      "name": "Bastion med bay",
+      "stats": { "mass": 4, "hp": 23 },
+      "cost": 120
+    },
+    {
+      "id": "bastion-armory",
+      "base": "armory",
+      "manufacturer": "bastion",
+      "name": "Bastion armory",
+      "stats": { "mass": 3, "hp": 23 },
+      "cost": 100
+    },
+    {
+      "id": "bastion-weapon",
+      "base": "weapon",
+      "manufacturer": "bastion",
+      "name": "Bastion weapon mount",
+      "stats": { "mass": 3, "hp": 23 },
+      "cost": 145
+    },
+    {
+      "id": "bastion-shield",
+      "base": "shield",
+      "manufacturer": "bastion",
+      "name": "Bastion shield generator",
+      "stats": { "mass": 3, "hp": 18 },
+      "cost": 155
+    },
+    {
+      "id": "bastion-lightengine",
+      "base": "lightengine",
+      "manufacturer": "bastion",
+      "name": "Bastion light engine",
+      "stats": { "mass": 2, "hp": 12 },
+      "cost": 100
+    },
+    {
+      "id": "bastion-heavyengine",
+      "base": "heavyengine",
+      "manufacturer": "bastion",
+      "name": "Bastion heavy engine",
+      "stats": { "mass": 8, "hp": 45 },
+      "cost": 460
+    },
+    {
+      "id": "bastion-smallreactor",
+      "base": "smallreactor",
+      "manufacturer": "bastion",
+      "name": "Bastion small reactor",
+      "stats": { "mass": 3, "hp": 23 },
+      "cost": 145
+    },
+    {
+      "id": "bastion-pointdefense",
+      "base": "pointdefense",
+      "manufacturer": "bastion",
+      "name": "Bastion point defense",
+      "stats": { "mass": 2, "hp": 15 },
+      "cost": 130
+    },
+    {
+      "id": "bastion-cannon",
+      "base": "cannon",
+      "manufacturer": "bastion",
+      "name": "Bastion cannon",
+      "stats": { "mass": 5, "hp": 30 },
+      "cost": 265
+    },
+    {
+      "id": "bastion-shieldarray",
+      "base": "shieldarray",
+      "manufacturer": "bastion",
+      "name": "Bastion shield array",
+      "stats": { "mass": 5, "hp": 30 },
+      "cost": 330
+    },
+    {
+      "id": "bastion-bunks",
+      "base": "bunks",
+      "manufacturer": "bastion",
+      "name": "Bastion bunks",
+      "stats": { "mass": 3, "hp": 18 },
+      "cost": 110
+    },
+    {
+      "id": "bastion-surgery",
+      "base": "surgery",
+      "manufacturer": "bastion",
+      "name": "Bastion surgery",
+      "stats": { "mass": 4, "hp": 23 },
+      "cost": 240
+    },
+    {
+      "id": "bastion-largehold",
+      "base": "largehold",
+      "manufacturer": "bastion",
+      "name": "Bastion large hold",
+      "stats": { "mass": 6, "hp": 45 },
+      "cost": 155
     }
   ]
 }

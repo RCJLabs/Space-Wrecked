@@ -570,11 +570,31 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
     - every button is 48 px or more at the three sizes;
     - the builder's default view keeps every cell 22 px or more on the cover screen;
     - the hull views keep to the frame budget.
-- [ ] **M23g A second manufacturer** (§3: manufacturers are skins over the same part shapes; §5).
-  - a second maker over every part: its own palette, trim and details on the same footprints, with small differences in stats and price
-  - the shop and the drop tables carry both makers, and enemy ships wear their side's
+- [ ] **M23g A second manufacturer** (§3: manufacturers are skins over the same part shapes; §5). Evan's picks (2026-10-14), from mockups drawn by the game's renderer: Bastion Arms; a maker's rooms in its own color on the plans; the side that fits it flies it.
+  - **Bastion Arms** (`data/manufacturers.json`), tough and heavy: a version of every part on the Yard part's footprint, interior and fittings (`base` in `data/modules.json`), with half again the hit points, a quarter more mass (at least 1) and a slightly higher price
+  - told apart at a glance: on the plans its rooms are amber, and so are its icons in the drawer; outside, its fittings are gunmetal with orange hazard chevrons, and its engines burn orange, all under the ship's own paint
+  - the drawer puts each part's Bastion version beside it, and the category sheet picks a maker (any, Yard or Bastion)
+  - each maker's version is a part of its own (`bastion-engine`), so saves and codes, which name parts by id, keep their versions; act 1's goal and the shop's "needed" lines count either maker's part
+  - the shop and the drop tables carry both makers; the patrol's corvettes carry Bastion's parts, so boarding one strips them
 
-  **Done when (draft):** every part, M23e's included, comes from both makers, told apart at a glance in the builder and outside it; each maker's versions differ in play somewhere (Law 1); the shop sells both; and old saves and blueprint codes load with the first maker's parts.
+  **Done when:**
+  - **Data:** Bastion Arms is in `data/manufacturers.json`, and every part, M23e's included, has a Bastion version in `data/modules.json` on its Yard part's footprint, interior, fittings and icon, with more hit points and more mass. None is worse than another part in every way (M23e's test).
+  - **Law 1:** `tools/approach.js` shows the start ship with Bastion's parts faring differently against the hostile presets than with the Yard's: losing fewer parts to their volleys, and evading less. Its mass counts in thrust for mass, lift-off included.
+  - **At a glance:**
+    - on the plans and in the drawer, Bastion's rooms and icons are amber;
+    - outside, its parts' fittings, marks and flames are its own wherever ships are drawn: the Hull view, the hangar, the lift-off and the Enemy ships sandbox.
+  - **The drawer:**
+    - each part's Bastion version sits beside it;
+    - the category sheet picks a maker;
+    - construction mode shows the parts on hand of either maker;
+    - every button is 48 px or more at the three sizes.
+  - **Where they come from:**
+    - the shop sells both makers, and the drop tables carry Bastion's, with act 1 running as before (`tools/run.js`);
+    - act 1's goal and the shop's "needed" lines count either maker's part.
+  - **Enemy ships:** the patrol's corvettes carry Bastion's parts for most of theirs, rolled from the ship's seed. Their layouts and boarding maps are unchanged (the golden ships file is updated on purpose, for the part names).
+  - **Saves and codes:** old saves and blueprint codes load with the Yard's parts, and neither version number changes (tested).
+  - **Voyage:** the careful test player still crosses all five sectors fed in at least 24 of 30.
+  - **Budget:** the hull views keep to the frame budget.
 - [ ] **M23h Refits at stations** (from §9; Evan's call in M23, numbered M23b until the looks came first). Act 2 has no refits yet: a part found at a node or stripped from a boarded ship can only be sold, and most ships launch with room for one recruit and no med bay.
 
   **Done when (draft):** at a station, construction mode opens with the parts on hand, so parts found, stripped or bought can be fitted; the ship can't jump while its flight checklist fails.

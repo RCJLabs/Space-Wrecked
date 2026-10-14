@@ -2,7 +2,16 @@
   "manufacturers": [
     {
       "id": "yard",
-      "name": "Yard standard"
+      "name": "Yard standard",
+      "short": "Yard",
+      "blurb": "What every yard builds and every hangar stocks."
+    },
+    {
+      "id": "bastion",
+      "name": "Bastion Arms",
+      "short": "Bastion",
+      "blurb": "Built to take a beating: tougher than the yard's, and heavier.",
+      "mark": "chevrons"
     }
   ]
 }

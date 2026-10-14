@@ -15,11 +15,12 @@ function scene(ship, extra = {}, frame = defs.frames.get(ship.frame)) {
 }
 const count = (model, kind, style) => model[kind].filter((p) => p.style === style).length;
 
-test('every module type has fittings, drawn for it or made from its interior', () => {
+test("every module type has fittings, drawn for it or made from its interior; a maker's version has its base part's", () => {
   for (const def of defs.modules.values()) {
     const model = propsModel(def);
     assert.ok(model.faces.length + model.lines.length > 0, def.id);
-    assert.ok(DRAWN.includes(def.id), `${def.id} has a drawing of its own`);
+    assert.ok(DRAWN.includes(def.base ?? def.id), `${def.id} has a drawing of its own, or its base part's`);
+    if (def.base) assert.deepEqual(model, propsModel(defs.modules.get(def.base)), `${def.id} is fitted as its base part is`);
   }
   const made = { ...defs.modules.get('armory'), id: 'galley', interior: ['#c', 'hH'] };
   assert.ok(propsModel(made).faces.length > 0, 'a new type draws from its template');
@@ -105,12 +106,15 @@ test('building a scene changes nothing it was given', () => {
   assert.deepEqual(ship, copy);
 });
 
-test('every part has a blueprint icon for the drawer, new types included', async () => {
+test("every part has a blueprint icon for the drawer, new types included; a maker's version in its maker's line", async () => {
   const { DRAWN: drawnIcons, partIconSvg } = await import('../src/render/parts/blueprint.js');
+  const { planLine } = await import('../src/render/palette.js');
   const closesEveryTag = (svg) => (svg.match(/<[a-z]+[^>]*[^/]>/g) ?? []).length === (svg.match(/<\/[a-z]+>/g) ?? []).length;
   for (const def of defs.modules.values()) {
     const svg = partIconSvg(def);
-    assert.ok(drawnIcons.includes(def.id), def.id);
+    assert.ok(drawnIcons.includes(def.base ?? def.id), def.id);
+    assert.ok(svg.includes(`stroke="${planLine(def.manufacturer)}"`), `${def.id} is drawn in ${def.manufacturer}'s line`);
+    if (def.base) assert.notEqual(planLine(def.manufacturer), planLine(defs.modules.get(def.base).manufacturer), `${def.id}'s line isn't its base part's`);
     assert.match(svg, /^<svg aria-hidden="true" xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
     assert.ok(closesEveryTag(svg), def.id);
   }
