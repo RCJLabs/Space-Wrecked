@@ -112,6 +112,13 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Build replay:** every placement is a command, and replaying the command list plays back a timelapse.
 - **Construction mode** (M13): in a campaign, the builder works on the campaign's ship with the parts the campaign has. A part goes on only while one is on hand, and one taken off goes back, undo and redo included. The palette shows only the parts on hand, with how many. A checklist fix whose part isn't on hand says so instead of picking it. Every change is saved through the campaign at once.
 - **The Parts drawer** (M23e): one category at a time or all, picked from a sheet that a 48 px button opens, each category with how many parts it holds; a size filter (any, small, medium, large) a tap a step. All lists the parts by category, the base part first. In construction mode only the parts on hand show, and the counts follow.
+- **Styling** (M23f, `data/styling.json`): pieces that change how a ship looks and nothing else (§1, Law 1), kept apart from its rooms, with its paint and trim (six of each):
+  - wings (swept and delta wings, a tail fin, a spoiler), gear (an antenna, a dish, a floodlight, a light strip, an armor plate) and sculpt (a wedge, a long wedge, a curve);
+  - a piece goes on open cells beside the hull, its root all along a room's side, never ahead of the bow or in the cell in front of an exhaust, a barrel or a hatch, and at most the frame's `maxStyling` (24) a ship;
+  - a wedge or a curve has a room all along one leg and its slope to open space; the hull's skin wraps it in the ship's style;
+  - a room change that leaves a piece nothing to hold it takes the piece off in the same step;
+  - the Look tab places them: the Hull button turns the board outside, and the drawer's first tab picks from wings, gear, sculpt, paint, trim and the hull's style. Pieces go on in two taps, or a drag, fitted to the hull where the finger is; paint, trim and style take one tap. Pieces are free, in construction mode too;
+  - enemy presets wear their side's look (`look` in `data/ships.json`): paint, trim and pieces put on at random where they fit, in mirrored pairs on a symmetric ship, from a roll of their own.
 - **Touch controls:**
   - drag from a palette drawer, with a ghost preview tinted valid or invalid
   - nothing lands from a single tap: a tap shows the part as a ghost, and a second tap on it places it
@@ -323,6 +330,9 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - The approach phase (v12, M21): the ship's wrecked modules, and the approach under way, round by round, with the other ship saved whole; a node's hostile ship is saved with its sector. A v11 campaign has nothing wrecked and no approach. Its sector keeps its nodes, with no hostile ships, and the next sector has them.
 - Boarding fights (v13, M22): a fight can be a boarding, saved with its direction and what a win pays, and an approach that ended in one has its fight due. A v12 approach was settled by its stand-in, so no fight is due from it.
 - Recruits (v14, M23): the recruits signed on in the sector (`run.hired`, by station and slot), so a station's offer stays as it was after a hire. A v13 run has signed no one on. The squad picked for a boarding isn't saved until the fight begins, which lists who fights.
+- Portraits (v15, M23c): every crew member's look. A v14 crew gets one from its ids, the same on every load.
+- Hull styles (v16, M23d): every ship's style. A v15 ship is Rounded.
+- Styling (v17, M23f): every ship's paint, trim and styling pieces: the builder's slots, the campaign's ship, the other ship in an approach and the one a boarding is fought on. A v16 ship is in the yard's colors, slate and sky, with no pieces.
 - The builder keeps up to six ships in slots, each with the build log its replay plays back. A single ship travels between devices as a blueprint code.
 
 ---
@@ -531,7 +541,7 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
     - the cutter flies on an engine and one or two light engines, the corvette carries a pair of cannons half the time, and the hauler may carry a large hold. The corvette is mirrored, so any part that can't sit across its middle comes in pairs: a pair of shield arrays would hold 50 a round, more than the start ship's gun gets through, so it has none
 
   **Done when:** the nine parts are in `data/modules.json`, each with its own footprint, interior, model and icon. Each changes the approach, a fight or the voyage, shown by `tools/approach.js`, `tools/sim.js` or `tools/voyage.js` (Law 1), and none is worse than another part in every way (cost, size, mass, power, hit points and what it does). A gun's damage and a shield's strength come from its part, and point defense cuts the other ship's hit chance, every chance shown as rolled (Law 4). The drawer shows one category at a time or all, picked from a 48 px button, with a size filter, and in construction mode only the parts on hand; two taps to place as now, every button 48 px or more at the three sizes. The shop and the drop tables carry the new parts, and the enemy presets use some (the golden ships file updated on purpose). Old saves and blueprint codes still load, and the careful test player still crosses all five sectors fed in at least 24 of 30.
-- [ ] **M23f Styling pieces** (Law 1's styling line). Evan's picks (2026-10-13), from mockups drawn by the game's renderer: Look mode; the 12 pieces in the mockup; paint as hull and trim swatches; a piece left with nothing to hold it comes off.
+- [x] **M23f Styling pieces** (Law 1's styling line). Evan's picks (2026-10-13), from mockups drawn by the game's renderer: Look mode; the 12 pieces in the mockup; paint as hull and trim swatches; a piece left with nothing to hold it comes off.
   - styling as data (`data/styling.json`): 12 pieces in three groups, plus six paints and six trims:
     - wings: swept wing, delta wing, tail fin, spoiler;
     - gear: antenna, dish, floodlight, light strip, armor plate;
@@ -633,7 +643,7 @@ These ideas wait until v0.4 or later:
 - black box derelicts and zero-g drift
 - a daily anomaly and a blueprint gallery
 - named companions with loyalty quests
-- paint and decals
+- decals: a name or a number on the hull, and a side's emblem. M23f brought paint and trim (raised before M4; narrowed in M23f)
 - vibration on hits
 - closing doors in battle, and locked doors: since M7 a unit can open a door beside it, but not shut one (raised in M7: defenders sealing a breach)
 - fog of war: since M8 every enemy is always shown; hiding those no one in the crew can see would make scouting matter (raised in M7, decided against for now in M8)
@@ -681,5 +691,8 @@ These ideas wait until v0.4 or later:
 - a checklist fix that offers a variant on hand: "Add Engine" asks for the base part even with a light engine on hand to fit (raised in M23e)
 - surgery against a med bay with a medic aboard: on the careful test player's voyages it patches 37 hit points against 44 over 30 runs, since a med bay already heals most wounds between fights. More wounds a voyage (M24's hunters) would show it more (raised in M23e)
 - a faster test suite: since M23e the Law 1 tests fly ten ships in the approach and seven fleets of 30 voyages, and `node --test` takes 1 min 45 s here (raised in M23e)
+- the far side in the Look: the builder looks at the ship from the south, so a piece on the north side is half hidden behind the hull. Pieces being placed and picked out are drawn over it; turning the camera to the side being styled would show the piece itself (raised in M23f)
+- enemy looks placed with an eye: their pieces go anywhere they fit, so a cutter's wing can sit by the bow. Wings aft and gear on top would read better, and sculpt (slopes at their steps) would sleek them (raised in M23f)
+- the plans' rough frames for the outside views while the camera moves: at 960 × 825 a dressed ship turns a few frames a second slower than a bare one, and the lift-off of the start ship in 13 pieces slower than main's (raised in M23f, after M23d)
 
 Ideas that come up during a session go here, not into code.
