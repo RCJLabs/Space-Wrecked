@@ -2967,17 +2967,25 @@ textarea {
   left: 8px;
   right: 80px;
   display: flex;
+  flex-wrap: wrap; /* more presets than fit: the seed buttons go below */
   align-items: center;
   gap: 6px;
 }
 
-.shp-presets {
+.shp-presets,
+.shp-seeds {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
 }
 
+.shp-seeds {
+  flex-wrap: nowrap;
+}
+
 #ui .shp-button {
-  padding: 0 12px;
+  padding: 0 10px;
   background: var(--c-panel);
   font-size: 13px;
   white-space: nowrap;

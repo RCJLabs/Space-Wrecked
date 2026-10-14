@@ -26,7 +26,7 @@ import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 
 const MARGIN = 14; // pixels around the ship when the view is fitted
-const TOP = 60; // the preset and seed buttons along the top...
+const TOP = 60; // the preset and seed buttons along the top, at least (they wrap to a second row when they don't fit)...
 const BOTTOM = 64; // ...and the tools along the bottom, which the fitted ship keeps clear of
 const MAX_ZOOM = 3; // times the fitted scale
 const MIN_ZOOM = 0.6;
@@ -53,7 +53,10 @@ export const shipsScreen = {
     const prevButton = iconButton(icons.prev, 'The seed before');
     const seedChip = node('p', 'shp-seed');
     const nextButton = iconButton(icons.next, 'The next seed');
-    top.append(presets, prevButton, seedChip, nextButton);
+    // The seed buttons as one, so they wrap below the presets together.
+    const seeds = node('div', 'shp-seeds');
+    seeds.append(prevButton, seedChip, nextButton);
+    top.append(presets, seeds);
     const lines = node('div', 'shp-lines');
     const info = node('p', 'shp-info');
     const status = node('p', 'shp-status');
@@ -283,7 +286,8 @@ export const shipsScreen = {
       const boxes = kept.look === 'map' ? battleBoxes(map) : null;
       box = boxes ? boxes.all : boardBox(frameOf(), made.hull, NO_MIN);
       const target = boxes ? boxes.fit : box;
-      const clear = { x: rect.x, y: rect.y + TOP, w: rect.w, h: Math.max(48, rect.h - TOP - BOTTOM) };
+      const below = Math.max(TOP, top.getBoundingClientRect().bottom - rect.y + 8);
+      const clear = { x: rect.x, y: rect.y + below, w: rect.w, h: Math.max(48, rect.h - below - BOTTOM) };
       fit = fitOrbit({ ...view, pivot: middle(target) }, clear, target, MARGIN);
       limits = { min: fit.scale * MIN_ZOOM, max: fit.scale * MAX_ZOOM };
       setCamera(fit);
