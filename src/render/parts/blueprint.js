@@ -2,11 +2,12 @@
 // how the builder shows it. One function per module type draws it in its own
 // unrotated frame (art.js); the rest of the cell is left clear so the board's
 // paper shows through. A type without a drawing here gets one from its
-// interior template.
+// interior template. A maker's version (M23g) has its base part's drawing,
+// in its maker's line (palette.js planLine).
 //
 // Labels aren't drawn here: they stay upright while parts turn, so the board
 // writes them. Drawings keep the lower part of a cell light for that.
-import { palette, rgba } from '../palette.js';
+import { palette, planLine, rgba } from '../palette.js';
 import { circle, line, num, path, rect } from '../svg.js';
 import { frameOf, INSET, partDocument, templateDrawing, weight } from './art.js';
 
@@ -14,9 +15,9 @@ import { frameOf, INSET, partDocument, templateDrawing, weight } from './art.js'
 export function blueprintSvg(def, scale) {
   const { W, H } = frameOf(def);
   const lw = weight(scale, 1.3);
-  const k = look(lw);
+  const k = look(lw, planLine(def.manufacturer));
   const room = rect(INSET, INSET, W - 2 * INSET, H - 2 * INSET, { rx: 4, fill: palette.bpPaper, ...k.S });
-  const draw = DRAWINGS[def.id];
+  const draw = DRAWINGS[def.base ?? def.id];
   const content = draw ? draw(k, W, H) : templateDrawing(def, { stroke: k.thin, fill: k.S, dark: k.S, screen: k.glass, hatch: k.dashed });
   return partDocument(def, scale, room + content);
 }
@@ -27,17 +28,17 @@ export function partIconSvg(def, cell = 26) {
   return blueprintSvg(def, { px: cell, ratio: 1 }).replace('<svg ', '<svg aria-hidden="true" ');
 }
 
-function look(lw) {
-  const stroke = { stroke: palette.bpLine, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' };
+function look(lw, line) {
+  const stroke = { stroke: line, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' };
   return {
     lw,
     S: { fill: 'none', 'stroke-width': lw, ...stroke },
     thin: { fill: 'none', 'stroke-width': lw * 0.65, ...stroke },
     heavy: { fill: 'none', 'stroke-width': lw * 2.6, ...stroke },
-    glass: { fill: rgba(palette.bpLine, 0.18), 'stroke-width': lw * 0.8, ...stroke },
+    glass: { fill: rgba(line, 0.18), 'stroke-width': lw * 0.8, ...stroke },
     dashed: { fill: 'none', 'stroke-width': lw * 0.75, 'stroke-dasharray': `${lw * 4} ${lw * 3}`, ...stroke },
     glow: { fill: palette.bpGlow, opacity: 0.9 },
-    field: { fill: rgba(palette.bpLine, 0.35) },
+    field: { fill: rgba(line, 0.35) },
   };
 }
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // A test run of act 1 (M16's Done when): from New game until every line of
 // the flight checklist passes and the ship can launch. A test player does
-// what a careful player would. At the hangar, in this order:
+// what a careful player would, taking any maker's version of a part the
+// checklist asks for (M23g). At the hangar, in this order:
 //   - fit each part on hand the checklist needs, where it touches the most
 //     of the ship (fitPart);
 //   - sell the parts on hand it doesn't need;
@@ -39,6 +40,7 @@ import { buyPart, priceOf, sellPart, sellPriceOf } from '../src/sim/economy.js';
 import { cellAt, SIDES, step } from '../src/sim/grid.js';
 import { jobHeat, makePayment, paymentFor, raidDue } from '../src/sim/heat.js';
 import { jobAction } from '../src/sim/jobAi.js';
+import { baseOf, countOfAny, versionAtHand } from '../src/sim/makers.js';
 import { placedCells } from '../src/sim/modules.js';
 import { pressAction } from '../src/sim/press.js';
 import { beginRaid, endRaid } from '../src/sim/raid.js';
@@ -96,9 +98,15 @@ export function fitPart(ship, defs, type) {
 // at the test crew's odds on it.
 function jobWorth(job, campaign, defs, needed) {
   const contract = defs.contracts.jobs.get(job.contract);
-  const part = job.part ? (needed[job.part] ? priceOf(job.part, defs) : sellPriceOf(job.part, defs)) ?? 0 : 0;
+  const part = job.part ? (needOf(needed, job.part, defs) ? priceOf(job.part, defs) : sellPriceOf(job.part, defs)) ?? 0 : 0;
   const odds = (JOB_ODDS[job.contract] ?? MISSION_ODDS[contract.mission] ?? 0.5) * (TWIST_ODDS[job.twist] ?? 1);
   return Math.min(0.95, odds) * (job.credits + part);
+}
+
+// How many of a part the checklist still asks for, any maker's version
+// counting as the part (needed is partsNeeded's, by base part).
+function needOf(needed, type, defs) {
+  return needed[baseOf(defs.modules.get(type) ?? { id: type })] ?? 0;
 }
 
 // A run from New game to launch: { launched, jobs, raids, minutes: [quick,
@@ -131,12 +139,16 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
     say(`   A payment on the debt ${why}: heat ${before} to ${campaign.heat}, ${campaign.credits} credits left.`);
   };
 
-  // A visit to the hangar: fit, sell, buy, and face or head off a raid.
+  // A visit to the hangar: fit, sell, buy, and face or head off a raid. Any
+  // maker's version of a part on hand is the part.
+  const count = (type) => campaign.parts[type] ?? 0;
+  const have = (type) => countOfAny(defs, type, count);
   const atHub = () => {
     for (;;) {
       const needed = partsNeeded(campaign, defs);
-      const type = Object.keys(needed).find((t) => campaign.parts[t]);
-      if (!type) break;
+      const part = Object.keys(needed).find((t) => have(t));
+      if (!part) break;
+      const type = versionAtHand(defs, part, count);
       const fitted = fitPart(campaign.ship, defs, type);
       const next = fitted ? refitShip(campaign, fitted.ship) : campaign;
       if (next === campaign) {
@@ -150,16 +162,16 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
     if (canLaunch(shipChecklist(campaign, defs))) return;
     const needed = partsNeeded(campaign, defs);
     let traded = false;
-    for (const [type, count] of Object.entries(campaign.parts)) {
-      if (needed[type]) continue;
-      for (let n = 0; n < count; n++) campaign = sellPart(campaign, defs, type).campaign;
-      tally.sold += count;
+    for (const [type, held] of Object.entries(campaign.parts)) {
+      if (needOf(needed, type, defs)) continue;
+      for (let n = 0; n < held; n++) campaign = sellPart(campaign, defs, type).campaign;
+      tally.sold += held;
       traded = true;
-      say(`   Sold ${count} × ${name(type)}: ${campaign.credits} credits.`);
+      say(`   Sold ${held} × ${name(type)}: ${campaign.credits} credits.`);
     }
     for (let index = 0; index < campaign.shop.length; ) {
       const item = campaign.shop[index];
-      const short = (needed[item.part] ?? 0) - (campaign.parts[item.part] ?? 0);
+      const short = needOf(needed, item.part, defs) - have(item.part);
       const bought = short > 0 && campaign.credits >= item.price ? buyPart(campaign, defs, index) : null;
       if (!bought?.ok) {
         index += 1;
@@ -172,9 +184,9 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
     }
     if (traded) tally.shopVisits += 1;
     const after = partsNeeded(campaign, defs);
-    if (Object.keys(after).some((type) => !campaign.parts[type] && campaign.credits >= (priceOf(type, defs) ?? Infinity) && !campaign.shop.some((item) => item.part === type))) tally.waited += 1;
+    if (Object.keys(after).some((type) => !have(type) && campaign.credits >= (priceOf(type, defs) ?? Infinity) && !campaign.shop.some((item) => needOf({ [type]: 1 }, item.part, defs)))) tally.waited += 1;
     // What was bought goes on now.
-    if (Object.keys(needed).some((type) => campaign.parts[type])) atHub();
+    if (Object.keys(needed).some((type) => have(type))) atHub();
   };
 
   while (!canLaunch(shipChecklist(campaign, defs))) {

@@ -6,7 +6,7 @@
 // the engine's exhaust faces west.
 // placeModel turns and moves it onto the ship. A module type without a
 // drawing here gets one from its interior template, so new content draws
-// without an engine edit.
+// without an engine edit; a maker's version (M23g) has its base part's.
 import { footprint, interiorRows } from '../sim/modules.js';
 import { box, circle, closed, createModel, cylinder, glow, mapModel, polyline, rect } from './mesh.js';
 import { palette } from './palette.js';
@@ -19,7 +19,7 @@ const CAN = { fill: null, ends: 'propFace', edge: 'propEdge' };
 // The module's fittings as a model, unrotated.
 export function propsModel(def) {
   const model = createModel();
-  const draw = DRAWINGS[def.id];
+  const draw = DRAWINGS[def.base ?? def.id];
   if (draw) draw(model, def);
   else fromTemplate(model, def);
   return model;

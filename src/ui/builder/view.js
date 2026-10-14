@@ -23,6 +23,7 @@ import { pieceIconSvg } from '../../render/pieces.js';
 import { BOARD_VIEW, boardBox, createBoard, yardBox } from '../../render/shipView.js';
 import { layoutProblems, openings, placementError, removeModule } from '../../sim/builder.js';
 import { canLaunch, flightChecklist, shipStats } from '../../sim/constraints.js';
+import { countOfAny, versionAtHand } from '../../sim/makers.js';
 import { replay } from '../../sim/replay.js';
 import { createSession, partsLeft, reduceSession, sizeOf, snapPiece, snapPlacement } from '../../sim/session.js';
 import { hullSite, pieceError } from '../../sim/styling.js';
@@ -180,10 +181,12 @@ export function mountBuilder(root, source) {
           onStyle: (style) => act({ type: 'build/hull', style }),
         },
         onLaunch: source.launch ? () => act({ type: 'build/launch', crew: crew() }) : null,
+        // A fix asks for a part, and any maker's version on hand will do.
         onFix: (type) => {
           drawer.show('parts');
           setLook('plans');
-          act({ type: 'build/arm', moduleType: type, toggle: false });
+          const session = store.getState();
+          act({ type: 'build/arm', moduleType: versionAtHand(defs, type, session.stock && ((version) => partsLeft(session, version))), toggle: false });
         },
         saves: slots && { ...slots.handlers, onReplay: () => (replaying ? stopReplay() : startReplay()) },
         leave: source.leave,
@@ -341,7 +344,9 @@ export function mountBuilder(root, source) {
   function updateDrawer() {
     const session = store.getState();
     const onHand = (type) => partsLeft(session, type);
-    drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules, onHand, ship: session.ship });
+    // The checklist's fixes ask for a part: any maker's version will do.
+    const ofAny = (type) => countOfAny(defs, type, onHand);
+    drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules, onHand: ofAny, ship: session.ship });
     drawer.setStock(session.stock ? onHand : null);
   }
 
@@ -361,7 +366,7 @@ export function mountBuilder(root, source) {
       setToolFace(deleteButton, mode === 'done' ? icons.done : icons.remove, mode === 'done' ? 'Done' : 'Delete');
     }
     deleteButton.disabled = mode === 'delete' && session.selected === null;
-    const summary = flightSummary(session.ship, defs, derived.lines, (type) => partsLeft(session, type));
+    const summary = flightSummary(session.ship, defs, derived.lines, (type) => countOfAny(defs, type, (version) => partsLeft(session, version)));
     layoutChip.hidden = !summary;
     if (summary) setText(layoutChip, summary);
     // The Saves tab only changes with the slots, the ship or the replay;

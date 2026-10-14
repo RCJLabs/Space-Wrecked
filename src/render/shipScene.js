@@ -2,11 +2,13 @@
 // with its walls and doorways, the fittings inside, and what the player is
 // doing (the selection, a part being placed). Pure: ship data in, models
 // (mesh.js) of named styles out, which the painter draws with the blueprint
-// styles. Units are cells, one per battle tile.
-import { footprint } from '../sim/modules.js';
+// styles. Units are cells, one per battle tile. A maker's parts are drawn in
+// its own line where it has one (M23g, blueprintStyles.js makerStyle).
+import { footprint, placedCells } from '../sim/modules.js';
+import { makerStyle } from './blueprintStyles.js';
 import { hullBands, hullShape, noseSurfaces, sidePoint, styleOf } from './hullShape.js';
 import { box, closed, createModel, cylinder, face, glow, mapModel, merge, polyline, rect } from './mesh.js';
-import { palette, skinFor } from './palette.js';
+import { planLine, skinFor } from './palette.js';
 import { pieceScene } from './pieces.js';
 import { placeModel, propsModel } from './props.js';
 
@@ -43,7 +45,7 @@ export function blueprintScene(input) {
       continue;
     }
     const mine = doors.filter((d) => d.uid === module.uid);
-    merge(model, room(def, module, mine));
+    merge(model, inLine(room(def, module, mine), def.manufacturer));
     if (input.flagged?.has(module.uid)) rect(model, [x0, y0], [x1, y1], 0.006, { edge: 'flagEdge' });
     if (module.uid === input.selected) {
       rect(model, [x0, y0], [x1, y1], 0.01, { fill: 'selectFace', edge: 'selectEdge' });
@@ -51,8 +53,26 @@ export function blueprintScene(input) {
       labels.push({ at: [(x0 + x1) / 2, (y0 + y1) / 2, WALL], text: def.name, tone: 'info' });
     }
   }
-  greebles(model, hull, shape);
+  greebles(model, hull, shape, makerAt(ship, defs));
   return { model, labels };
+}
+
+// A room's model in its maker's line: its styles swapped for the maker's
+// copies (glows keep their color).
+function inLine(model, maker) {
+  const restyle = (item) => ({ ...item, style: makerStyle(item.style, maker) });
+  return { ...model, faces: model.faces.map(restyle), lines: model.lines.map(restyle) };
+}
+
+// The maker of the part on each cell, by "x,y": what sticks out of the hull
+// for a part is drawn in its line.
+function makerAt(ship, defs) {
+  const at = new Map();
+  for (const module of ship.modules) {
+    const def = defs.modules.get(module.type);
+    if (def) for (const [x, y] of placedCells(def, module)) at.set(`${x},${y}`, def.manufacturer);
+  }
+  return (x, y) => at.get(`${Math.floor(x)},${Math.floor(y)}`);
 }
 
 // A part being placed, drawn apart from the ship so a drag rebuilds only
@@ -184,17 +204,20 @@ function wallRun(model, doors, spans, t0, t1, point) {
 }
 
 // What sticks out of the hull, on its side: nozzles with their exhaust,
-// gun barrels and docking collars.
-function greebles(model, hull, shape) {
+// gun barrels and docking collars, each in the line of the part it is for
+// (makerOf(x, y): the maker of the part on that cell).
+function greebles(model, hull, shape, makerOf) {
   for (const { x, y, side } of hull.nozzles) {
+    const maker = makerOf(x, y);
     const [dx, dy] = STEP[side];
     const [sx, sy] = sidePoint(shape, [x + 0.5, y + 0.5], [dx, dy]);
     const start = [sx + dx * 0.02, sy + dy * 0.02, 0.36];
-    cylinder(model, start, 0.17, (dx || dy) * 0.5, { axis: dx ? 'x' : 'y', r1: 0.32, fill: null, ends: 'nozzleFace', edge: 'propEdge' });
-    glow(model, [sx + dx * 0.69, sy + dy * 0.69, 0.36], 0.4, palette.bpLine);
+    cylinder(model, start, 0.17, (dx || dy) * 0.5, { axis: dx ? 'x' : 'y', r1: 0.32, fill: null, ends: makerStyle('nozzleFace', maker), edge: makerStyle('propEdge', maker) });
+    glow(model, [sx + dx * 0.69, sy + dy * 0.69, 0.36], 0.4, planLine(maker));
   }
   // A pair of barrels for a gun a cell across, one heavy one for a wider gun.
   for (const { x, y, side, heavy } of hull.barrels) {
+    const edge = makerStyle('propEdge', makerOf(x, y));
     const [dx, dy] = STEP[side];
     const [half, length, z] = heavy ? [0.08, 1.4, [0.38, 0.52]] : [0.04, 1.2, [0.4, 0.48]];
     for (const off of heavy ? [0] : [-0.1, 0.1]) {
@@ -202,16 +225,17 @@ function greebles(model, hull, shape) {
       const from = [cx + dx * 0.5, cy + dy * 0.5];
       const to = [cx + dx * length, cy + dy * length];
       const [u, v] = [dy ? half : 0, dx ? half : 0];
-      box(model, [Math.min(from[0], to[0]) - u, Math.min(from[1], to[1]) - v, z[0]], [Math.max(from[0], to[0]) + u, Math.max(from[1], to[1]) + v, z[1]], { fill: null, top: null, edge: 'propEdge' });
+      box(model, [Math.min(from[0], to[0]) - u, Math.min(from[1], to[1]) - v, z[0]], [Math.max(from[0], to[0]) + u, Math.max(from[1], to[1]) + v, z[1]], { fill: null, top: null, edge });
     }
   }
   for (const { x, y, side } of hull.collars) {
+    const maker = makerOf(x, y);
     const [dx, dy] = STEP[side];
     const [cx, cy] = sidePoint(shape, [x + 0.5, y + 0.5], [dx, dy]);
     const [across, out] = [0.3, 0.22];
     const a = [cx - (dy ? across : 0) + Math.min(0, dx * out), cy - (dx ? across : 0) + Math.min(0, dy * out)];
     const b = [cx + (dy ? across : 0) + Math.max(0, dx * out), cy + (dx ? across : 0) + Math.max(0, dy * out)];
-    box(model, [...a, 0], [...b, 0.3], { fill: 'propFace', edge: 'propEdge' });
+    box(model, [...a, 0], [...b, 0.3], { fill: makerStyle('propFace', maker), edge: makerStyle('propEdge', maker) });
   }
 }
 

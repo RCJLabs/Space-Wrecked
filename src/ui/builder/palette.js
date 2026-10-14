@@ -1,8 +1,11 @@
 // The palette, on the drawer's Parts tab (M23e, Evan's pick B): a row with
 // the category picker and the size filter, over the tiles of the parts they
-// pick (catalog.js says which). The picker opens a sheet of the categories,
-// all of them and each by itself, with how many parts each would show; a
-// tap on one picks it and closes the sheet. The size filter goes Any,
+// pick (catalog.js says which). The picker opens a sheet: first the makers
+// (M23g), any or one, then the categories, all of them and each by itself,
+// each with how many parts it would show. A tap on a maker picks it and
+// leaves the sheet open; a tap on a category picks it and closes the
+// sheet. The picker names the maker picked under the category. The size
+// filter goes Any,
 // Small, Medium, Large and round again, a tap a step. Tap a part's tile to
 // pick the part for tap placement, drag it onto the grid to place it
 // directly, long-press it for details. If the tiles don't fit, up and down
@@ -25,18 +28,32 @@ export function createPalette(defs, handlers) {
   pick.type = 'button';
   pick.setAttribute('aria-expanded', 'false');
   const pickName = node('span', 'bld-pick-name');
+  const pickMaker = node('small', 'bld-pick-maker');
   const pickCount = node('small', 'bld-pick-count');
-  pick.append(pickName, pickCount, node('span', 'bld-pick-arrow', '▾'));
+  pick.append(node('span', 'bld-pick-text', pickName, pickMaker), pickCount, node('span', 'bld-pick-arrow', '▾'));
   const sizeButton = node('button', 'btn bld-size');
   sizeButton.type = 'button';
   const sizeName = node('b');
   sizeButton.append(node('small', null, 'Size'), sizeName);
   row.append(pick, sizeButton);
 
-  // The sheet of categories: All, then each in data order, its first part's
-  // icon on it.
+  // The sheet: the makers, any and each in data order, each with its first
+  // part's icon in its line; then the categories, All and each in data
+  // order, each with its first part's icon.
   const sheet = node('div', 'bld-sheet');
   sheet.hidden = true;
+  const makers = [{ id: ALL, short: 'Any maker' }, ...defs.manufacturers.values()];
+  const makerChoices = new Map();
+  for (const { id, short } of makers) {
+    const choice = node('button', 'btn bld-cat bld-maker');
+    choice.type = 'button';
+    choice.dataset.maker = id;
+    const first = [...defs.modules.values()].find((def) => def.manufacturer === id);
+    if (first) choice.innerHTML = partIconSvg(first, Math.min(ICON_HEIGHT / first.size[1], ICON_WIDTH / first.size[0]));
+    choice.append(node('span', null, short), node('small', 'bld-cat-count'));
+    sheet.append(choice);
+    makerChoices.set(id, choice);
+  }
   const categories = [{ id: ALL, name: 'All' }, ...defs.categories];
   const choices = new Map();
   for (const { id, name } of categories) {
@@ -78,12 +95,13 @@ export function createPalette(defs, handlers) {
   el.append(row, sheet, grid);
 
   let category = ALL;
+  let maker = ALL;
   let size = SIZES[0].id;
   let stock = null;
   let open = false;
 
   function render() {
-    const view = catalogView(defs, { category, size, onHand: stock });
+    const view = catalogView(defs, { category, size, onHand: stock, maker });
     const shown = new Set(view.shown);
     for (const [type, tile] of tiles) {
       tile.hidden = !shown.has(type);
@@ -96,11 +114,18 @@ export function createPalette(defs, handlers) {
     empty.hidden = !view.empty;
     empty.textContent = view.empty ?? '';
     const name = categories.find((c) => c.id === category).name;
+    const by = maker === ALL ? null : defs.manufacturers.get(maker);
     pickName.textContent = name;
+    pickMaker.textContent = by?.short ?? '';
+    pickMaker.hidden = !by;
     pickCount.textContent = String(view.counts[category]);
-    pick.setAttribute('aria-label', `Parts: ${name}, ${view.counts[category]} shown. Pick a category`);
+    pick.setAttribute('aria-label', `Parts: ${name}${by ? ` by ${by.name}` : ''}, ${view.counts[category]} shown. Pick a maker or a category`);
     sizeName.textContent = SIZES.find((step) => step.id === size).name;
     sizeButton.setAttribute('aria-label', `Size: ${sizeName.textContent}. Tap for the next size`);
+    for (const [id, choice] of makerChoices) {
+      choice.setAttribute('aria-pressed', String(id === maker));
+      choice.querySelector('.bld-cat-count').textContent = String(view.makers[id]);
+    }
     for (const [id, choice] of choices) {
       choice.setAttribute('aria-pressed', String(id === category));
       choice.querySelector('.bld-cat-count').textContent = String(view.counts[id]);
@@ -126,6 +151,12 @@ export function createPalette(defs, handlers) {
       size = nextSize(size);
       render();
     }),
+    ...[...makerChoices].map(([id, choice]) =>
+      onTap(choice, () => {
+        maker = id;
+        render();
+      }),
+    ),
     ...[...choices].map(([id, choice]) =>
       onTap(choice, () => {
         category = id;
@@ -185,9 +216,11 @@ export function createPalette(defs, handlers) {
   };
 }
 
-function node(tag, className, text) {
+// An element; its content is a text, or other elements.
+function node(tag, className, ...content) {
   const el = document.createElement(tag);
   if (className) el.className = className;
-  if (text !== undefined) el.textContent = text;
+  if (content.length === 1 && typeof content[0] === 'string') el.textContent = content[0];
+  else if (content.length) el.append(...content.filter((part) => part !== undefined));
   return el;
 }

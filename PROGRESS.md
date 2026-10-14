@@ -2,6 +2,208 @@
 
 Newest entry first.
 
+## M23g A second manufacturer (2026-10-14)
+
+**Status:** done, and the ROADMAP.md box is ticked. Bastion Arms makes a version of every part: tough and heavy, on the Yard part's footprint, interior and fittings. Its parts are amber on the plans and in the drawer, and outside they wear gunmetal fittings, orange hazard chevrons and orange flames under the ship's own paint. The patrol's corvettes fly them.
+
+Some of this changes what was there before, not only adds to it:
+- **The Parts tab has twice the parts.** Each part has its Bastion version beside it, so All lists 42. The category sheet's first row picks a maker: any, Yard or Bastion.
+- **Act 1's goal and the shop count either maker's part.** A Bastion engine on hand is an engine to the goal, the shop's "Needed for launch" line and the Ship tab's fix button. The fix arms whichever maker's part is on hand.
+- **Saves and codes keep their versions** (17 and 4). A maker's version is a part of its own (`bastion-engine`), and both name parts by id. Every older ship's parts are the Yard's.
+- **The patrol's corvettes are tougher and heavier.** Each part rolls Bastion's version four times in five, keeping it only while the ship still passes its flight checklist: 73% of their parts are Bastion's over 100 ships. The golden ships file names them, and the layouts are unchanged. A corvette takes about 4 ms longer to generate (27.5 ms against 23.1 on main, on this machine).
+- **Dutch's yard and the drops carry Bastion's parts,** with act 1 and the voyage as before (Verified).
+
+No phone results have come back yet for M14 to M23f.
+
+**How it was picked:** mockups drawn by the game's renderer from a scratch copy:
+- three candidate makers outside on the start ship: Kestrel Dynamics (light), Bastion Arms (tough) and Scrapline (cheap);
+- four ways to show a maker on the plans: its rooms in its color, its floors tinted, an emblem in each room, its floors hatched;
+- the drawer in the real builder at 821 × 283;
+- each maker on the paint nearest its colors.
+
+Evan took the recommended answer each time: "Bastion Arms", "Rooms in its color" and, for the enemy ships, "The side that fits it".
+
+Done when (ROADMAP.md, M23g):
+- **Data:** "Bastion Arms is in `data/manufacturers.json`, and every part, M23e's included, has a Bastion version in `data/modules.json` on its Yard part's footprint, interior, fittings and icon, with more hit points and more mass. None is worse than another part in every way (M23e's test)."
+- **Law 1:** "`tools/approach.js` shows the start ship with Bastion's parts faring differently against the hostile presets than with the Yard's: losing fewer parts to their volleys, and evading less. Its mass counts in thrust for mass, lift-off included."
+- **At a glance:** "on the plans and in the drawer, Bastion's rooms and icons are amber; outside, its parts' fittings, marks and flames are its own wherever ships are drawn: the Hull view, the hangar, the lift-off and the Enemy ships sandbox."
+- **The drawer:** "each part's Bastion version sits beside it; the category sheet picks a maker; construction mode shows the parts on hand of either maker; every button is 48 px or more at the three sizes."
+- **Where they come from:** "the shop sells both makers, and the drop tables carry Bastion's, with act 1 running as before (`tools/run.js`); act 1's goal and the shop's "needed" lines count either maker's part."
+- **Enemy ships:** "the patrol's corvettes carry Bastion's parts for most of theirs, rolled from the ship's seed. Their layouts and boarding maps are unchanged (the golden ships file is updated on purpose, for the part names)."
+- **Saves and codes:** "old saves and blueprint codes load with the Yard's parts, and neither version number changes (tested)."
+- **Voyage:** "the careful test player still crosses all five sectors fed in at least 24 of 30."
+- **Budget:** "the hull views keep to the frame budget."
+
+How each is met:
+- **Data:** `tests/makers.test.js`:
+  - every part has a Bastion version with its base part's shape (size, turns, what faces space, tags, interior, category, glyph and what it does in an approach), more hit points and more mass, the same power, thrust, berths, life support and cargo, and no lower price;
+  - a version takes its base's fields and lays its own stats over them.
+
+  `tests/catalog.test.js` runs M23e's "worse in every way" check over all 42 parts. `tests/scene.test.js` gives each version its base's fittings and icon. The validator checks versions and makers.
+- **Law 1:** `tools/approach.js` now also flies the launched start ship with every part Bastion's (`start bastion`), with two new columns: the player's parts wrecked per approach and the ship's evasion. Results are in the table under Verified. `tests/approach.test.js` asserts the same over 120 approaches each:
+  - Bastion's ship evades less against every preset;
+  - it loses half the parts or fewer to some preset;
+  - its outcomes differ by a tenth or more against some preset.
+
+  `tests/makers.test.js`: the start ship made by Bastion can't lift off ("Thrust 36 for mass 43: 0.84, needs 1.00 to lift off"), and its fix asks for an engine.
+- **At a glance:**
+  - `tests/scene.test.js`: a Bastion engine's room, fittings and nozzles are drawn in Bastion's amber styles on the plans, the rest in the blueprint's blue, with each maker's copy drawn right after its own style; every icon is in its maker's line.
+  - `tests/exterior.test.js`: a Bastion part's fittings, chevrons and flames are Bastion's, at rest and in the lift-off; the hull keeps the ship's paint.
+  - By touch, below: the plans, the Hull view and the Enemy ships sandbox. The hangar and the lift-off draw through the same scene, and the frame-rate runs played the lift-off with Bastion's engines without an error.
+- **The drawer:**
+  - `tests/catalog.test.js`: the order, a maker's filter and its counts, and construction mode's parts on hand of either maker.
+  - By touch at the three sizes, below.
+- **Where they come from:**
+  - Dutch's yard stocks six of Bastion's parts: its engine (weight 2), reactor, gun, shield, cannon and armory;
+  - the picket job drops Bastion's gun and shield;
+  - act 2's salvage table has Bastion's armory, shield and gun;
+  - boarding a corvette strips its parts, mostly Bastion's.
+
+  Act 1 and the voyage are measured under Verified. `tests/makers.test.js` covers the goal lines, the shop's needed line and offer, and the buy hint.
+- **Enemy ships:** `tests/makers.test.js`, over 40 corvettes:
+  - the same seed gives the same makers;
+  - with the makers taken out, the same parts are in the same places, with the same styling, hull and wrecks;
+  - a part and its mirror image are one maker's;
+  - between 65% and 95% of the parts are Bastion's;
+  - cutters and haulers stay the Yard's.
+
+  The golden ships file is the same once the `bastion-` prefix is dropped: 56 part names changed.
+- **Saves and codes:** `tests/makers.test.js`:
+  - `SAVE_VERSION` is still 17 and codes still version 4;
+  - the example ship's code as main made it opens with the Yard's parts;
+  - a ship with Bastion's parts round-trips through a code;
+  - a campaign with them fitted and on hand saves and loads.
+
+  By touch: a save and a code made by main open.
+- **Voyage:** `tests/voyage.test.js` passes: 26 of 30 careful runs cross fed (main: 25).
+- **Budget:** frame rates under Verified.
+
+### Shipped
+
+- **Data:**
+  - `data/manufacturers.json`: Bastion Arms (`short`, `blurb`, `mark: chevrons`);
+  - `data/modules.json`: 21 versions (`base`, `manufacturer`, `name`, `stats` of mass and hit points, `cost`):
+
+    | Rule | Bastion's |
+    | --- | --- |
+    | Hit points | half again (engine 15 to 23, reactor 30 to 45) |
+    | Mass | a quarter more, at least 1 (engine 3 to 4, reactor 6 to 8, corridor 1 to 2) |
+    | Price | a tenth more, to the nearest 5 (engine 200 to 220; corridor 10, unchanged) |
+
+- **The sim:**
+  - `defs.js` `withBases` fills each version in from its base part;
+  - `src/sim/makers.js` (`baseOf`, `versionsOf`, `countOfAny`, `versionAtHand`, `versionBy`) is how the goal, the shop, the fix buttons, the tips and the test players count either maker's part;
+  - `gen/ship.js` `makersOf` rolls a preset's makers on a stream of its own, mirrored pairs alike, keeping each version only while the ship still passes its flight checklist (`makers` in `data/ships.json`: the corvette's `bastion: 80`).
+- **Drawing:**
+  - `palette.js`: Bastion's skin, with its fittings (`FITTINGS`, `fittingsOf`) and its line on the plans (`planLine`);
+  - `exterior.js`: each part's fittings in its maker's kit, the chevrons (`MARKS`), and the nozzles, barrels and collars of a part in its kit, found by the cell they stand on; each exhaust carries its flame's color into the lift-off;
+  - `blueprintStyles.js`: a copy of the room styles for each maker with a line of its own, drawn right after the style it copies; `shipScene.js` restyles a maker's rooms and greebles;
+  - `parts/blueprint.js`: icons in the maker's line;
+  - `props.js` and the roofs look a version's drawing up by its base.
+- **The builder:**
+  - `catalog.js`: the order and the maker filter;
+  - `palette.js` (ui): the maker row and the picker's second line;
+  - `card.js`: a version's card adds its maker's line and "Next to the Yard's: …";
+  - `view.js`: fixes arm the version on hand.
+- **Tools:**
+  - `tools/approach.js`: the `start bastion` row, and the Wrecked and Evasion columns;
+  - `tools/run.js`: the act 1 test player takes either maker's part;
+  - the validator checks versions, makers and presets' `makers`.
+- **Docs:**
+  - ROADMAP.md §4.1 (versions, Manufacturers, the drawer, the hull's skin), §4.8 (no save bump), M23g's box, five ideas in §9;
+  - CLAUDE.md's content and layout lists.
+
+Decisions made along the way, not asked (each easy to change):
+- **A maker's version is a part of its own** (`bastion-engine`), not a maker field on each placed part. No save or code bump was needed, and a third maker is data plus a skin.
+- **Outside, a maker's colors go on its parts' fittings, marks and flames;** the roof plating keeps the ship's paint, so painting a ship still works.
+- **The sheet keeps open after a maker is picked,** so a maker and a category take one trip.
+- **Bastion's numbers:** hit points ×1.5, mass ×1.25 (at least +1), price ×1.1. Bastion's corridor costs the same as the Yard's (10).
+- **No Bastion engine in act 1's job drops.** A Bastion engine dropped by the scrap job and fitted cost the careful player about one fed voyage in 15 (42 of 60 against 46 without it), from its mass. The shop's Bastion engine (weight 2 against the Yard's 9) costs nothing measurable.
+
+### Known issues
+
+- **The all-Bastion start ship scores lower in the approach** than the Yard's against both presets (−20 against −11 versus the cutter; −18 against −16 versus the corvette). It wrecks far less against the cutter but evades less. The harness's score counts only boardings, not repair bills or a boarding map's wrecked rooms, so it undersells hit points.
+- **Against the corvette, Bastion's start ship loses as many parts as the Yard's** (0.96 an approach against 0.93), while evading less (21 against 30). Both face the same corvettes, mostly Bastion's now.
+- **Paint can hide Bastion:** on graphite its gunmetal fittings fade; the chevrons and orange flames still show.
+- **Inside, on a boarding map,** every part is drawn in the Yard's skin (§9).
+- **A placed part's maker can't be swapped in place** (§9).
+- **The test suite takes about 1 min 45 s here.**
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **The Parts tab** in the dev Builder: scroll All. Does each Bastion part read at a glance beside the Yard's?
+2. **The maker row:** open the category sheet, tap Bastion, then Engines. Is the picker's second line clear enough, folded and unfolded?
+3. **Place a Bastion engine and long-press it:** is the "Next to the Yard's" line useful?
+4. **Plans and outside:** do the amber rooms read against the blue on the cover screen? Do the chevrons and orange flames read outside, on a few paints?
+5. **The Enemy ships sandbox:** step through corvettes. Do they look like the patrol's?
+6. **A campaign:** buy or find a Bastion part. Does the goal count it, and does the Ship tab's fix pick it?
+7. **Tell me:**
+   - whether Bastion's trade (tougher, heavier, dearer) feels worth it;
+   - whether the patrol should be tougher still, or less;
+   - and the M14 to M23f questions still open.
+
+### Next session
+
+**M23h Refits at stations.** Settle its Done when first. The draft is "at a station, construction mode opens with the parts on hand, so parts found, stripped or bought can be fitted; the ship can't jump while its flight checklist fails."
+
+### Verified here
+
+- `node --test`: 653 pass. `node tools/validate-data.js`: OK (42 modules, 2 manufacturers). The golden maps and battle logs didn't change; the golden ships file did, on purpose: 56 part names on the corvettes, the same layouts.
+- **M23g's browser check by touch:** 20 of 20 at each of 905 × 370, 821 × 283 and 960 × 825. It covers:
+  - the Parts tab: 42 tiles, each Bastion version beside its part, its icon in amber;
+  - the maker row: Any 42, Yard 21, Bastion 21; a maker keeps the sheet open and a category closes it; the picker reads "Engines / Bastion 3";
+  - a Bastion engine in two taps, saved as `bastion-engine`, and its card;
+  - the plans and outside;
+  - the copied code, still version 4; a code and a save made by main open with the Yard's parts;
+  - the hangar's goal: "Add 3 × Engine (+12 thrust each): 3 on hand, Bastion engine 220 at Dutch's yard";
+  - the shop: "Bastion engine · Needed";
+  - construction mode: the makers counted on hand, and the Ship tab's fix arming a Bastion engine, placed in two taps;
+  - the corvette in the Enemy ships sandbox (19 of its 27 parts Bastion's), copied to the builder;
+  - offline, the drawer's 42 icons; no console errors.
+- **Every earlier milestone's browser check** passes, run one after another on the final code, at the three sizes unless named:
+  - M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 47, and M8's extras.
+
+  M23e's copy was adapted, not the game. The maker buttons share the category buttons' look (`bld-cat`), so the check counted them as categories (23 of 27 at each size). And each Bastion version now sits beside its part in the lists it reads. The game keeps the two rows apart by their own buttons. M14 ran 47 checks (48 in M23f): one runs only when a won job drops a part, and the new drop tables changed which jobs do.
+- **Act 1** (`tools/run.js --runs 100`, the same seeds):
+
+  | | Ready | Jobs (median, range) | Jobs in all | Quick minutes | Slow minutes |
+  | --- | --- | --- | --- | --- | --- |
+  | main | 100 | 6 (3 to 15) | 645 | 27 (12 to 58) | 44 (21 to 93) |
+  | M23g | 100 | 6 (3 to 15) | 641 | 27 (12 to 58) | 44 (21 to 93) |
+
+  With a Bastion engine in the scrap job's drops as well (before it was taken out), 649 jobs and a slowest run of 76 quick minutes.
+- **The careful voyage** (`tools/voyage.js --long never`): fed all the way in 26 of 30 (main 25). Over 60 seeds: 46 (main 44). With a Bastion engine in the scrap job's drops: 42 of 60, and 22 of 30, which failed the Done when; so it isn't there.
+- **The approach** (`tools/approach.js`, 300 approaches a preset):
+
+  | Ship | Against | Escaped | Boarded her | Boarded by | Destroyed | Parted | Score | Wrecked | Evasion |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | start (Yard) | cutter | 29% | 8% | 22% | 2% | 39% | −11 | 0.87 | 30 |
+  | start (Yard) | corvette | 73% | 0% | 16% | 0% | 11% | −16 | 0.93 | 30 |
+  | start, all Bastion | cutter | 59% | 1% | 21% | 0% | 19% | −20 | 0.21 | 21 |
+  | start, all Bastion | corvette | 49% | 0% | 18% | 0% | 33% | −18 | 0.96 | 21 |
+
+- **Generated corvettes,** 100 seeds: 73% of their parts Bastion's (bridge 84%, corridors 82%, reactors 77%, engines 74%, cannons 63%, guns 50%, airlocks 45%: the later a part rolls, the less mass is left for it). 27.5 ms a ship against 23.1 on main; cutters and haulers unchanged.
+- **Faces drawn:** the example ship outside, 739 faces all the Yard's and 792 all Bastion's; on the plans, 357 lines either way. Corvette seed 1: 2,090 faces.
+- **Frame rate** (fps while a finger circles: lowest / middle of the half-second windows), main against this branch:
+
+  | View | 905 × 370 | 960 × 825 | 905 × 370, CPU 4× slower |
+  | --- | --- | --- | --- |
+  | Builder plans, Yard (main) | 60 / 60 | 60 / 60 | 37 / 43, 47 / 54 |
+  | Builder plans, Yard (here) | 60 / 60 | 60 / 60 | 36 / 40, 42 / 46 |
+  | Builder plans, Bastion | 60 / 60 | 60 / 60 | 36 / 40, 45 / 50 |
+  | Builder Hull, Yard (main) | 60 / 60 | 60 / 60 | 34 / 39, 33 / 41 |
+  | Builder Hull, Bastion | 60 / 60 | 60 / 60 | 33 / 38, 38 / 39 |
+  | Corvette 1 (main) | 60 / 60 | 56 / 60 | 25 / 26, 23 / 28 |
+  | Corvette 1 (Bastion's) | 60 / 60 | 56 / 60 | 23 / 25, 25 / 30 |
+  | Lift-off (main) | 60 / 60 | 54 / 60, 50 / 58 | 16 to 24 / 18 to 25 (5 runs) |
+  | Lift-off (Bastion's engines) | 60 / 60 | 35 / 56, 48 / 60 | 12 to 21 / 21 to 22 (5 runs) |
+
+  The 4× column's builder and corvette rows are two runs each. Two lift-off runs here had one slow window (35 at 960 × 825, 12 with the CPU slowed); three more runs of the lift-off alone didn't repeat it (18 to 20, against main's 16 to 21).
+
 ## M23f Styling pieces (2026-10-14)
 
 **Status:** done, and the ROADMAP.md box is ticked. A ship can be styled now: wings, fins, antennas, a dish, lights, plates, and wedges and curves that reshape the hull, in one of six paints with one of six trims. None of it changes a stat, a rule or a boarding map. Enemy ships wear their side's look.

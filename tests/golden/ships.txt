@@ -72,33 +72,33 @@ EERRRLQQQ.WKK.
 EERRR.QQQ.....
 EERRR.........
 EE............
-  1 bridge at (17, 5), turned 1
-  2 corridor at (16, 6), turned 2
-  3 corridor at (15, 6), turned 0
-  4 corridor at (14, 6), turned 1
+  1 bastion-bridge at (17, 5), turned 1
+  2 bastion-corridor at (16, 6), turned 2
+  3 bastion-corridor at (15, 6), turned 0
+  4 bastion-corridor at (14, 6), turned 1
   5 corridor at (13, 6), turned 2
-  6 shield at (15, 5), turned 0
-  7 shield at (15, 7), turned 2
+  6 bastion-shield at (15, 5), turned 0
+  7 bastion-shield at (15, 7), turned 2
   8 medbay at (11, 5), turned 1
   9 armory at (13, 5), turned 0
   10 armory at (13, 7), turned 2
-  11 quarters at (11, 3), turned 0
-  12 quarters at (11, 8), turned 2
-  13 lifesupport at (10, 4), turned 3
-  14 lifesupport at (10, 7), turned 1
-  15 reactor at (7, 2), turned 2
-  16 reactor at (7, 8), turned 0
-  17 reactor at (7, 5), turned 3
+  11 bastion-quarters at (11, 3), turned 0
+  12 bastion-quarters at (11, 8), turned 2
+  13 bastion-lifesupport at (10, 4), turned 3
+  14 bastion-lifesupport at (10, 7), turned 1
+  15 bastion-reactor at (7, 2), turned 2
+  16 bastion-reactor at (7, 8), turned 0
+  17 bastion-reactor at (7, 5), turned 3
   18 engine at (5, 3), turned 0
   19 engine at (5, 8), turned 0
   20 engine at (5, 1), turned 0
   21 engine at (5, 10), turned 0
-  22 cannon at (16, 4), turned 0
-  23 cannon at (16, 8), turned 2
-  24 weapon at (15, 4), turned 0
-  25 weapon at (15, 8), turned 2
-  26 airlock at (5, 5), turned 0
-  27 airlock at (5, 7), turned 2
+  22 bastion-cannon at (16, 4), turned 0
+  23 bastion-cannon at (16, 8), turned 2
+  24 bastion-weapon at (15, 4), turned 0
+  25 bastion-weapon at (15, 8), turned 2
+  26 bastion-airlock at (5, 5), turned 0
+  27 bastion-airlock at (5, 7), turned 2
 Wrecked: none
 
 Patrol corvette, seed 2: 27 parts, 17 × 9 cells, crew 6
@@ -111,29 +111,29 @@ EERRRRRRLMMXXSSBB
 EERRRA.WLQQQK....
 EERRRA...QQQK....
 EE...............
-  1 bridge at (18, 5), turned 1
-  2 corridor at (17, 6), turned 1
-  3 corridor at (16, 6), turned 1
-  4 corridor at (15, 6), turned 2
-  5 corridor at (14, 6), turned 1
-  6 shield at (16, 5), turned 0
-  7 shield at (16, 7), turned 2
+  1 bastion-bridge at (18, 5), turned 1
+  2 bastion-corridor at (17, 6), turned 1
+  3 bastion-corridor at (16, 6), turned 1
+  4 bastion-corridor at (15, 6), turned 2
+  5 bastion-corridor at (14, 6), turned 1
+  6 bastion-shield at (16, 5), turned 0
+  7 bastion-shield at (16, 7), turned 2
   8 medbay at (12, 5), turned 1
-  9 armory at (14, 5), turned 0
-  10 armory at (14, 7), turned 2
-  11 quarters at (12, 3), turned 2
-  12 quarters at (12, 8), turned 0
-  13 lifesupport at (11, 4), turned 1
-  14 lifesupport at (11, 7), turned 3
-  15 reactor at (8, 5), turned 1
-  16 reactor at (5, 3), turned 2
-  17 reactor at (5, 7), turned 0
-  18 engine at (3, 4), turned 0
-  19 engine at (3, 7), turned 0
+  9 bastion-armory at (14, 5), turned 0
+  10 bastion-armory at (14, 7), turned 2
+  11 bastion-quarters at (12, 3), turned 2
+  12 bastion-quarters at (12, 8), turned 0
+  13 bastion-lifesupport at (11, 4), turned 1
+  14 bastion-lifesupport at (11, 7), turned 3
+  15 bastion-reactor at (8, 5), turned 1
+  16 bastion-reactor at (5, 3), turned 2
+  17 bastion-reactor at (5, 7), turned 0
+  18 bastion-engine at (3, 4), turned 0
+  19 bastion-engine at (3, 7), turned 0
   20 engine at (3, 2), turned 0
   21 engine at (3, 9), turned 0
-  22 cannon at (15, 3), turned 1
-  23 cannon at (15, 8), turned 1
+  22 bastion-cannon at (15, 3), turned 1
+  23 bastion-cannon at (15, 8), turned 1
   24 weapon at (10, 4), turned 0
   25 weapon at (10, 8), turned 2
   26 airlock at (8, 3), turned 1
@@ -150,31 +150,31 @@ EERRRRRRLMMXXSSBB
 EERRRAA.LQQQ.KKW.
 EERRR....QQQ.....
 EE...............
-  1 bridge at (18, 5), turned 1
+  1 bastion-bridge at (18, 5), turned 1
   2 corridor at (17, 6), turned 3
   3 corridor at (16, 6), turned 1
-  4 corridor at (15, 6), turned 3
-  5 corridor at (14, 6), turned 0
+  4 bastion-corridor at (15, 6), turned 3
+  5 bastion-corridor at (14, 6), turned 0
   6 shield at (16, 5), turned 0
   7 shield at (16, 7), turned 2
-  8 medbay at (12, 5), turned 1
+  8 bastion-medbay at (12, 5), turned 1
   9 armory at (14, 5), turned 0
   10 armory at (14, 7), turned 2
-  11 quarters at (12, 3), turned 2
-  12 quarters at (12, 8), turned 0
-  13 lifesupport at (11, 4), turned 1
-  14 lifesupport at (11, 7), turned 3
-  15 reactor at (8, 5), turned 2
-  16 reactor at (5, 3), turned 2
-  17 reactor at (5, 7), turned 0
+  11 bastion-quarters at (12, 3), turned 2
+  12 bastion-quarters at (12, 8), turned 0
+  13 bastion-lifesupport at (11, 4), turned 1
+  14 bastion-lifesupport at (11, 7), turned 3
+  15 bastion-reactor at (8, 5), turned 2
+  16 bastion-reactor at (5, 3), turned 2
+  17 bastion-reactor at (5, 7), turned 0
   18 engine at (3, 4), turned 0
   19 engine at (3, 7), turned 0
-  20 engine at (3, 2), turned 0
-  21 engine at (3, 9), turned 0
-  22 cannon at (16, 4), turned 0
-  23 cannon at (16, 8), turned 2
-  24 weapon at (18, 4), turned 1
-  25 weapon at (18, 8), turned 1
+  20 bastion-engine at (3, 2), turned 0
+  21 bastion-engine at (3, 9), turned 0
+  22 bastion-cannon at (16, 4), turned 0
+  23 bastion-cannon at (16, 8), turned 2
+  24 bastion-weapon at (18, 4), turned 1
+  25 bastion-weapon at (18, 8), turned 1
   26 airlock at (8, 4), turned 0
   27 airlock at (8, 8), turned 2
 Wrecked: none

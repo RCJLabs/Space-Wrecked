@@ -6,6 +6,7 @@
 // the content, and find(selector): the first such element on screen, or
 // null.
 import { shipChecklist } from '../sim/campaign.js';
+import { countOfAny, versionAtHand } from '../sim/makers.js';
 import { hangarText } from './campaign/hubText.js';
 
 const picked = '.bld-part[aria-pressed="true"]';
@@ -34,9 +35,11 @@ export const TIP_STEPS = [
 
 export const TIP_IDS = TIP_STEPS.map((step) => step.id);
 
-// A part on hand that a failing flight check asks for, or null.
+// A part on hand that a failing flight check asks for, any maker's, or null.
 function neededOnHand(campaign, rules) {
-  return shipChecklist(campaign, rules).find((line) => line.ok !== true && line.add && campaign.parts[line.add] > 0)?.add ?? null;
+  const count = (type) => campaign.parts[type] ?? 0;
+  const type = shipChecklist(campaign, rules).find((line) => line.ok !== true && line.add && countOfAny(rules, line.add, count) > 0)?.add;
+  return type ? versionAtHand(rules, type, count) : null;
 }
 
 // No tip while the enemy's turn plays out, or once the fight is over.

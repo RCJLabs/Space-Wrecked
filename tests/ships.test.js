@@ -6,6 +6,7 @@ import { buildShip, layoutProblems } from '../src/sim/builder.js';
 import { canLaunch, flightChecklist, partLines } from '../src/sim/constraints.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { deploy } from '../src/sim/deploy.js';
+import { baseOf } from '../src/sim/makers.js';
 import { generateShip, planParts } from '../src/sim/gen/ship.js';
 import { step } from '../src/sim/grid.js';
 import { mapFromShip, WRECKS } from '../src/sim/mapFromShip.js';
@@ -99,9 +100,10 @@ test("a symmetric preset's ships are mirrored about the middle row, most of them
     let mirrored = 0;
     for (const ship of fleet.filter((s) => s.id === id)) {
       // Pairs come in twos, so only the parts in the line along the middle
-      // row can be odd ones out.
+      // row can be odd ones out. (A pair off true can be two makers', M23g:
+      // counted by the part.)
       const counts = new Map();
-      for (const m of ship.result.ship.modules) counts.set(m.type, (counts.get(m.type) ?? 0) + 1);
+      for (const m of ship.result.ship.modules) counts.set(baseOf(def(m)), (counts.get(baseOf(def(m))) ?? 0) + 1);
       for (const type of ['engine', 'weapon', 'airlock', 'quarters', 'lifesupport', 'armory', 'shield']) {
         assert.equal((counts.get(type) ?? 0) % 2, 0, `${name(ship)}: ${counts.get(type)} ${type}`);
       }

@@ -2126,6 +2126,23 @@ textarea {
   white-space: nowrap;
 }
 
+/* The picker's words (M23g): the category, and under it the maker picked. */
+.bld-pick-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.bld-pick-maker {
+  color: var(--c-ink-dim);
+  font-size: 10.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .bld-pick-count,
 .bld-look-count {
   color: var(--c-ink-dim);

@@ -130,9 +130,43 @@ skins.ground = {
   wall: '#8b929b',
 };
 
+// Bastion Arms (M23g): gunmetal fittings, orange hazard chevrons, engines
+// burning orange, and amber lines on the plans. Its parts take the ship's
+// paint and trim like any other's (FITTINGS).
+skins.bastion = {
+  ...skins.yard,
+  metal: '#4f5446',
+  metalHi: '#727862',
+  dark: '#24261f',
+  darker: '#17180f',
+  domeHi: '#848a74',
+  domeLo: '#3d4035',
+  rivet: '#a8ad94',
+  hazard: '#ff8c1a',
+  flame: '#ffb36b',
+  mark: '#ff8c1a',
+  markDark: '#1a1a14',
+  plans: '#ffc45e',
+};
+
 // The skin for a manufacturer, or the yard's for one without a skin yet.
 export function skinFor(manufacturer) {
   return skins[manufacturer] ?? skins.yard;
+}
+
+// What a part takes from its maker's skin (M23g): the fittings on its roof
+// and what sticks out of the hull for it, and its mark. The hull, its paint
+// and its trim stay the ship's.
+export const FITTINGS = ['metal', 'metalHi', 'dark', 'darker', 'domeHi', 'domeLo', 'rivet', 'hazard', 'flame', 'mark', 'markDark'];
+export function fittingsOf(manufacturer) {
+  const skin = skinFor(manufacturer);
+  return Object.fromEntries(FITTINGS.filter((key) => key in skin).map((key) => [key, skin[key]]));
+}
+
+// A maker's line on the plans and on its parts' icons (M23g): the yard's
+// is the blueprint's own.
+export function planLine(manufacturer) {
+  return skinFor(manufacturer).plans ?? palette.bpLine;
 }
 
 // Paint and trim (data/styling.json names them, M23f): a hull's color with

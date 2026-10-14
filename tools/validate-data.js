@@ -6,13 +6,15 @@
 //   node tools/validate-data.js
 import { pathToFileURL } from 'node:url';
 import { heldProblems, lookProblems } from '../src/render/figures/looks.js';
+import { MARKED } from '../src/render/exterior.js';
 import { hullStyleProblems } from '../src/render/hullShape.js';
-import { paints as PAINT_COLORS, trims as TRIM_COLORS } from '../src/render/palette.js';
+import { paints as PAINT_COLORS, skins as SKINS, trims as TRIM_COLORS } from '../src/render/palette.js';
 import { MODELED } from '../src/render/pieces.js';
 import { AIMS } from '../src/sim/approach.js';
 import { DEFAULT_HULL, DEFAULT_PAINT, DEFAULT_TRIM } from '../src/sim/builder.js';
 import { CAPTAIN_TRAITS } from '../src/sim/campaign.js';
 import { REQUIRED_TAGS } from '../src/sim/constraints.js';
+import { withBases } from '../src/sim/defs.js';
 import { SITE_CHARS } from '../src/sim/gen/site.js';
 import { TRAIT_STATS } from '../src/sim/traits.js';
 import { TIP_IDS } from '../src/ui/tipSteps.js';
@@ -22,7 +24,15 @@ import { checkCampaignFiles, checkStartShips } from './validate-campaign.js';
 
 const SIDES = ['n', 'e', 's', 'w'];
 const STATS = ['power', 'mass', 'thrust', 'berths', 'lifeSupport', 'cargo', 'hp'];
-const MODULE_KEYS = ['id', 'name', 'glyph', 'category', 'manufacturer', 'size', 'rotates', 'facesSpace', 'stats', 'tags', 'damage', 'shield', 'intercept', 'interior', 'cost', 'heal'];
+const MODULE_KEYS = ['id', 'base', 'name', 'glyph', 'category', 'manufacturer', 'size', 'rotates', 'facesSpace', 'stats', 'tags', 'damage', 'shield', 'intercept', 'interior', 'cost', 'heal'];
+// A maker's version of a part (M23g) holds only what it changes; the rest
+// comes from its base part (src/sim/defs.js withBases).
+const VERSION_KEYS = ['id', 'base', 'manufacturer', 'name', 'stats', 'cost'];
+// A manufacturer: its name, a short one for the drawer's maker buttons, and
+// maybe a line for its parts' cards and the mark on its parts' roofs
+// outside (exterior.js draws the marks; its skin is in palette.js).
+const MAKER_KEYS = ['id', 'name', 'short', 'blurb', 'mark'];
+const MAX_MAKER_SHORT = 8;
 // What a med bay heals each of the wounded in a jump (medbay.js): up to this.
 const MAX_HEAL = 10;
 // What a part does in the approach phase (src/sim/approach.js), by the tag
@@ -142,7 +152,7 @@ const TIP_KEYS = ['id', 'text'];
 const MAX_TIP = 200;
 const ENCOUNTER_KEYS = ['id', 'name', 'enemies'];
 // Ship presets (src/sim/gen/ship.js).
-const SHIP_KEYS = ['id', 'name', 'frame', 'crew', 'beam', 'symmetric', 'parts', 'wrecks', 'tactics', 'scrap', 'party', 'salvage', 'look'];
+const SHIP_KEYS = ['id', 'name', 'frame', 'crew', 'beam', 'symmetric', 'parts', 'makers', 'wrecks', 'tactics', 'scrap', 'party', 'salvage', 'look'];
 const LOOK_KEYS = ['paint', 'trim', 'pieces'];
 // A hostile preset's tactics in the approach phase (src/sim/approach.js).
 const TACTIC_KEYS = ['aim', 'board', 'flee'];
@@ -177,7 +187,13 @@ export function validateData(data) {
   const makers = listOf(makerFile, 'manufacturers', 'manufacturers.json', fail);
   const makerIds = uniqueIds(makers, 'manufacturers.json', fail);
   makers.forEach((maker, i) => {
-    if (!isText(maker.name)) fail(`manufacturers.json #${i}`, 'name must be a non-empty string');
+    const where = `manufacturers.json ${maker.id ?? `#${i}`}`;
+    knownKeys(maker, MAKER_KEYS, where, fail);
+    if (!isText(maker.name)) fail(where, 'name must be a non-empty string');
+    if (!isText(maker.short) || maker.short.length > MAX_MAKER_SHORT) fail(where, `short must be a name of up to ${MAX_MAKER_SHORT} letters`);
+    if (maker.blurb !== undefined && !isText(maker.blurb)) fail(where, 'blurb must be a non-empty string');
+    if (maker.mark !== undefined && !MARKED.includes(maker.mark)) fail(where, `mark must be one of ${MARKED.join(', ')}`);
+    if (isId(maker.id) && !Object.hasOwn(SKINS, maker.id)) fail(where, 'has no skin in src/render/palette.js');
   });
 
   // Hull styles (M23d): ships saved before them have the default one.
@@ -292,8 +308,12 @@ export function validateData(data) {
     if (!isText(category.name)) fail(where, 'name must be a non-empty string');
   });
 
-  const modules = listOf(moduleFile, 'modules', 'modules.json', fail);
-  uniqueIds(modules, 'modules.json', fail);
+  const listed = listOf(moduleFile, 'modules', 'modules.json', fail);
+  uniqueIds(listed, 'modules.json', fail);
+  // The parts as the game has them: each maker's version filled in from its
+  // base, checked as a part from here on, less any that can't be.
+  const versions = checkVersions(listed, fail);
+  const modules = withBases(listed).filter((def) => def.base === undefined || versions.has(def.id));
   for (const id of categoryIds) {
     if (!modules.some((def) => def.category === id)) fail(`modules.json category ${id}`, 'no part is in it');
   }
@@ -304,9 +324,11 @@ export function validateData(data) {
       if (!MODULE_KEYS.includes(key)) fail(where, `unknown field "${key}"`);
     }
     if (!isText(def.name)) fail(where, 'name must be a non-empty string');
-    if (typeof def.glyph !== 'string' || [...def.glyph].length !== 1 || def.glyph === '.' || def.glyph.trim() === '') {
+    // A version prints as its base part does (tools/build-ship.js).
+    const glyphOk = typeof def.glyph === 'string' && [...def.glyph].length === 1 && def.glyph !== '.' && def.glyph.trim() !== '';
+    if (!glyphOk) {
       fail(where, 'glyph must be one visible character other than "."');
-    } else if (glyphs.has(def.glyph)) {
+    } else if (def.base === undefined && glyphs.has(def.glyph)) {
       fail(where, `glyph "${def.glyph}" is already used`);
     } else {
       glyphs.add(def.glyph);
@@ -354,6 +376,7 @@ export function validateData(data) {
   const frameById = new Map(frames.map((frame) => [frame.id, frame]));
   ships.forEach((ship, i) => checkShip(ship, `ships.json ${ship.id ?? `#${i}`}`, frameById, moduleIds, fail));
   ships.forEach((ship, i) => ship?.look !== undefined && checkLook(ship.look, `ships.json ${ship.id ?? `#${i}`}`, data.styling, frameById.get(ship.frame), fail));
+  ships.forEach((ship, i) => ship?.makers !== undefined && checkMakers(ship.makers, `ships.json ${ship.id ?? `#${i}`}`, makerIds, fail));
 
   const encounterById = new Map(encounters.filter((e) => Array.isArray(e.enemies)).map((e) => [e.id, e.enemies]));
   const presets = new Map(ships.filter((ship) => typeof ship?.id === 'string').map((ship) => [ship.id, ship]));
@@ -368,6 +391,36 @@ export function validateData(data) {
   // The starting ships are built only from content that checks out.
   if (!problems.length) checkStartShips(data, scripts, fail);
   return problems;
+}
+
+// Each maker's version of a part (M23g): only what it changes
+// (VERSION_KEYS), of a part earlier in the file that isn't a version
+// itself, by another maker than its base's, and one version a maker for
+// each part. Returns the ids of the versions that name a base.
+function checkVersions(list, fail) {
+  const bases = new Map();
+  const taken = new Set();
+  const named = new Set();
+  list.forEach((def, i) => {
+    if (def.base === undefined) {
+      bases.set(def.id, def);
+      return;
+    }
+    const where = `modules.json ${def.id ?? `#${i}`}`;
+    knownKeys(def, VERSION_KEYS, where, fail);
+    const base = bases.get(def.base);
+    if (!base) {
+      fail(where, `base "${def.base}" must be a part earlier in the file that isn't a version itself`);
+      return;
+    }
+    named.add(def.id);
+    if (def.manufacturer === base.manufacturer) fail(where, `a version is by another maker than its base part's ("${base.manufacturer}")`);
+    const key = `${def.manufacturer} ${def.base}`;
+    if (taken.has(key)) fail(where, `${def.manufacturer} has a version of ${def.base} already`);
+    taken.add(key);
+    if (!isObject(def.stats)) fail(where, 'stats must be an object of the stats it changes');
+  });
+  return named;
 }
 
 // A ship preset: the frame a generated ship is built on, the crew it has to
@@ -477,6 +530,23 @@ function checkLook(look, where, styling, frame, fail) {
     else fail(where, `look.pieces.${type} must be a whole number, or [least, most]`);
   }
   if (frame && most > frame.maxStyling) fail(where, `look.pieces: up to ${most}, but the ${frame.name} takes at most ${frame.maxStyling}`);
+}
+
+// Who makes a generated ship's parts (M23g): for each maker, the chance in
+// 100 that a part, or a mirrored pair, is its version (src/sim/gen/ship.js
+// makersOf); the rest are the base parts. Together no more than 100.
+function checkMakers(makers, where, makerIds, fail) {
+  if (!isObject(makers)) {
+    fail(where, 'makers must be an object of manufacturers and chances in 100');
+    return;
+  }
+  let sum = 0;
+  for (const [id, chance] of Object.entries(makers)) {
+    if (!makerIds.has(id)) fail(where, `makers: unknown manufacturer "${id}"`);
+    if (isIntIn(chance, 1, 100)) sum += chance;
+    else fail(where, `makers.${id} must be a chance in 100, from 1 to 100`);
+  }
+  if (sum > 100) fail(where, `makers: the chances add up to ${sum}, more than 100`);
 }
 
 // How a hostile preset plays the approach: the kinds of module it fires at,

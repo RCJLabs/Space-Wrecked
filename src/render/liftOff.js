@@ -23,7 +23,8 @@ const SHAKE = 3; // pixels, at its worst
 const LIFT = 0.05; // of the view's height, the climb moves the ship up
 
 // The ship seen from outside, lit and ready to draw, with where its
-// engines' flames come out: { faces, glows, exhausts: [{ at, dir }], skin }.
+// engines' flames come out: { faces, glows, exhausts: [{ at, dir, flame }],
+// skin }.
 // input: { ship, defs, hull: traceHull(ship, defs), skin }.
 export function liftOffScene(input) {
   // exhausts: the mouth of each nozzle, on the hull's skin (exterior.js).
@@ -84,19 +85,19 @@ export function flameGlows(scene, moment, t) {
   if (flame <= 0) return [];
   const { exhausts, skin } = scene;
   const glows = [];
-  exhausts.forEach(({ at, dir }, i) => {
+  exhausts.forEach(({ at, dir, flame: color = skin.flame }, i) => {
     const flicker = 1 + 0.12 * Math.sin(t * 41 + i * 2.3) + 0.06 * Math.sin(t * 97 + i);
     // Glows closer together than they are wide, so the plume is one.
     const length = 0.3 + 1.2 * flame * flicker;
     for (let k = 0; k < PLUME; k++) {
       const u = k / (PLUME - 1);
-      glows.push({ at: along(at, dir, 0.1 + length * u), r: 0.12 + (0.4 - 0.1 * u) * flame * flicker, color: k ? skin.flame : skin.glassHi });
+      glows.push({ at: along(at, dir, 0.1 + length * u), r: 0.12 + (0.4 - 0.1 * u) * flame * flicker, color: k ? color : skin.glassHi });
     }
   });
   const pad = (1 - rise) * Math.min(1, flame);
   if (pad > 0 && exhausts.length) {
     const mid = [0, 1].map((k) => exhausts.reduce((sum, { at, dir }) => sum + at[k] + dir[k] * 1.2, 0) / exhausts.length);
-    glows.push({ at: [...mid, 0], r: 2.2 * pad, color: skin.flame });
+    glows.push({ at: [...mid, 0], r: 2.2 * pad, color: exhausts[0].flame ?? skin.flame });
   }
   return glows;
 }

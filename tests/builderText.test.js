@@ -106,3 +106,22 @@ test('the details card says what quarters, life support and the med bay do on th
   // The rest say nothing of the run.
   assert.equal(cardFor(defs, defs.modules.get('reactor')).lines.length, 3);
 });
+
+test("a Bastion part's card has its maker's word and how it differs from the Yard's (M23g)", () => {
+  assert.deepEqual(cardFor(defs, defs.modules.get('bastion-engine')), {
+    title: 'Bastion engine',
+    lines: [
+      "2×2 squares · doesn't turn · exhaust must face space",
+      'Power −1 · Thrust 12 · Mass 4 · Hull points 23',
+      "Built to take a beating: tougher than the yard's, and heavier.",
+      "Next to the Yard's: Mass +1 · Hull points +8 · Cost +20",
+      'Cost 220 · Bastion Arms',
+    ],
+  });
+  // What a gun does in an approach is its base part's; the corridor costs the same.
+  const gun = cardFor(defs, defs.modules.get('bastion-weapon')).lines;
+  assert.equal(gun[2], 'In an approach: 15 damage a hit, one shot a round.');
+  assert.equal(cardFor(defs, defs.modules.get('bastion-corridor')).lines.at(-2), "Next to the Yard's: Mass +1 · Hull points +5");
+  // A Yard part's card has neither line.
+  assert.equal(cardFor(defs, defs.modules.get('engine')).lines.length, 3);
+});

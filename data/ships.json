@@ -46,6 +46,7 @@
         "reactor": 2,
         "engine": [2, 4]
       },
+      "makers": { "bastion": 80 },
       "tactics": { "aim": ["weapons", "reactor"], "flee": 70 },
       "scrap": [20, 40],
       "party": "patrol",

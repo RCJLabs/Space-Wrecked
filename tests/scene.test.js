@@ -15,11 +15,12 @@ function scene(ship, extra = {}, frame = defs.frames.get(ship.frame)) {
 }
 const count = (model, kind, style) => model[kind].filter((p) => p.style === style).length;
 
-test('every module type has fittings, drawn for it or made from its interior', () => {
+test("every module type has fittings, drawn for it or made from its interior; a maker's version has its base part's", () => {
   for (const def of defs.modules.values()) {
     const model = propsModel(def);
     assert.ok(model.faces.length + model.lines.length > 0, def.id);
-    assert.ok(DRAWN.includes(def.id), `${def.id} has a drawing of its own`);
+    assert.ok(DRAWN.includes(def.base ?? def.id), `${def.id} has a drawing of its own, or its base part's`);
+    if (def.base) assert.deepEqual(model, propsModel(defs.modules.get(def.base)), `${def.id} is fitted as its base part is`);
   }
   const made = { ...defs.modules.get('armory'), id: 'galley', interior: ['#c', 'hH'] };
   assert.ok(propsModel(made).faces.length > 0, 'a new type draws from its template');
@@ -105,16 +106,40 @@ test('building a scene changes nothing it was given', () => {
   assert.deepEqual(ship, copy);
 });
 
-test('every part has a blueprint icon for the drawer, new types included', async () => {
+test("every part has a blueprint icon for the drawer, new types included; a maker's version in its maker's line", async () => {
   const { DRAWN: drawnIcons, partIconSvg } = await import('../src/render/parts/blueprint.js');
+  const { planLine } = await import('../src/render/palette.js');
   const closesEveryTag = (svg) => (svg.match(/<[a-z]+[^>]*[^/]>/g) ?? []).length === (svg.match(/<\/[a-z]+>/g) ?? []).length;
   for (const def of defs.modules.values()) {
     const svg = partIconSvg(def);
-    assert.ok(drawnIcons.includes(def.id), def.id);
+    assert.ok(drawnIcons.includes(def.base ?? def.id), def.id);
+    assert.ok(svg.includes(`stroke="${planLine(def.manufacturer)}"`), `${def.id} is drawn in ${def.manufacturer}'s line`);
+    if (def.base) assert.notEqual(planLine(def.manufacturer), planLine(defs.modules.get(def.base).manufacturer), `${def.id}'s line isn't its base part's`);
     assert.match(svg, /^<svg aria-hidden="true" xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
     assert.ok(closesEveryTag(svg), def.id);
   }
   const made = { ...defs.modules.get('armory'), id: 'galley', interior: ['#c', 'hH'] };
   const svg = partIconSvg(made);
   assert.ok(svg.includes('<rect') && closesEveryTag(svg), 'drawn from its interior template');
+});
+
+test("on the plans a Bastion part is drawn in Bastion's line, what sticks out of the hull for it too; the rest in the blueprint's (M23g)", async () => {
+  const { BLUEPRINT_ORDER, BLUEPRINT_STYLES, MAKER_LINES } = await import('../src/render/blueprintStyles.js');
+  assert.deepEqual(MAKER_LINES, { bastion: '#ffc45e' });
+  const plain = [at('bridge', 10, 5, 1), at('corridor', 9, 5), at('engine', 7, 4), at('airlock', 9, 6)];
+  const yard = buildShip(defs, 'starter', plain).ship;
+  const bastion = buildShip(defs, 'starter', plain.map((p) => (p.type === 'engine' ? { ...p, type: 'bastion-engine' } : p))).ship;
+  const { model } = scene(bastion);
+  const styled = [...model.faces, ...model.lines].map((p) => p.style);
+  const theirs = styled.filter((style) => style.endsWith('@bastion'));
+  // The engine's room, its fittings and its nozzles; nothing else.
+  assert.ok(theirs.includes('wallTop@bastion') && theirs.includes('propEdge@bastion') && theirs.includes('nozzleFace@bastion'));
+  const { model: before } = scene(yard);
+  assert.equal(styled.length, [...before.faces, ...before.lines].length, 'the same drawing, restyled');
+  assert.equal(count(model, 'lines', 'wallTop') + count(model, 'lines', 'wallTop@bastion'), count(before, 'lines', 'wallTop'));
+  assert.ok(model.glows.some((g) => g.color === '#ffc45e'), "the nozzles' glow");
+  // Every style drawn is known and in the order, each maker's copy right after its own.
+  for (const style of new Set(styled)) assert.ok(style in BLUEPRINT_STYLES && BLUEPRINT_ORDER.includes(style), style);
+  assert.equal(BLUEPRINT_ORDER.indexOf('wallTop@bastion'), BLUEPRINT_ORDER.indexOf('wallTop') + 1);
+  assert.equal(BLUEPRINT_STYLES['wallTop@bastion'].stroke, '#ffc45e');
 });

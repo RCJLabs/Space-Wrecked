@@ -5,6 +5,7 @@ import { canLaunch } from '../../sim/constraints.js';
 import { shopOf } from '../../sim/economy.js';
 import { heatLevel, paymentFor, pursuerOf, raidDue } from '../../sim/heat.js';
 import { launchProblem } from '../../sim/launch.js';
+import { baseOf, countOfAny } from '../../sim/makers.js';
 import { beginRaid } from '../../sim/raid.js';
 import { offerText } from './shopText.js';
 
@@ -14,7 +15,8 @@ export const LEVEL_NAMES = { calm: 'Calm', rumors: 'Rumors', hunters: 'Hunters',
 //   act, home   "Act 1 · Homeworld", "The hangar"
 //   goal        { ready, lines }: the flight checklist, act 1's goal. Each
 //               line is { ok, text, fix }, and a fix that adds a part says
-//               how many are on hand, and the shop's price if it has one.
+//               how many are on hand, and the shop's price if it has one;
+//               any maker's version of the part counts (M23g).
 //   crew        [{ name, job, hp, max }]: job is blank when it is the name
 //   holdings    [[label, value]]: credits, parts on hand and jobs
 //   hint        { tone, text }: what to do next
@@ -32,7 +34,7 @@ export function hangarText(campaign, rules) {
   const act = actOf(campaign, rules);
   const crew = crewText(campaign, rules);
   const checklist = shipChecklist(campaign, rules);
-  const onHand = (type) => campaign.parts[type] ?? 0;
+  const onHand = (type) => countOfAny(rules, type, (version) => campaign.parts[version] ?? 0);
   const lines = checklist.map((line) => ({
     ok: line.ok === true,
     text: line.text,
@@ -46,7 +48,7 @@ export function hangarText(campaign, rules) {
   const shop = shopOf(campaign, rules);
   // A part the checklist needs, for sale and affordable.
   const needs = partsNeeded(campaign, rules);
-  const buy = shop && (campaign.shop ?? []).find((item) => needs[item.part] > onHand(item.part) && item.price <= campaign.credits);
+  const buy = shop && (campaign.shop ?? []).find((item) => (needs[baseOf(rules.modules.get(item.part) ?? { id: item.part })] ?? 0) > onHand(item.part) && item.price <= campaign.credits);
   return {
     act: actTitle(campaign.act, rules),
     home: act?.home ?? '',

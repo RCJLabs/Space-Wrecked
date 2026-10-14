@@ -80,7 +80,7 @@
       "sites": ["pit9", "depot"],
       "encounter": "strikebreakers",
       "credits": [100, 140],
-      "drops": { "chance": 30, "parts": { "shield": 1, "weapon": 1, "cannon": 1, "pointdefense": 1, "shieldarray": 1 } },
+      "drops": { "chance": 30, "parts": { "shield": 1, "weapon": 1, "cannon": 1, "pointdefense": 1, "shieldarray": 1, "bastion-weapon": 1, "bastion-shield": 1 } },
       "pitch": "Con-Reg hired muscle to break the picket at {site}. {client} hired you to break the muscle."
     },
     {
