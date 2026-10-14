@@ -92,6 +92,9 @@ const MAX_NEEDED = 40;
 // More parts than a boarding crew strips off a ship: a guard on what a save
 // can hold.
 const MAX_SALVAGE = 20;
+// More buildings than the biggest colony grid has cells (40 x 30,
+// tools/validate-colony.js): a guard on what a save can hold.
+const MAX_BUILDINGS = 1200;
 // Who boards the ship in a fight (data/encounters.json).
 export const FIGHT_ENCOUNTER = 'boarders';
 const MAX_SEED = 0xffffffff;
@@ -133,7 +136,7 @@ export function newCampaign(rules, seed, { background = firstBackground(rules), 
     supplies: 0,
     run: null,
     // The colony (act 3): the world settled at the end of the run (M25,
-    // settle.js), and what is built on it from M26 on.
+    // settle.js), and the buildings on it (M26, colony.js).
     colony: null,
     fight: null,
   };
@@ -208,7 +211,14 @@ export function captainProblem(captain, rules, background = firstBackground(rule
 // for the crew aboard, and in an act on a planet, with what lifting off
 // takes. Act 1's goal is every line passing.
 export function shipChecklist(campaign, rules) {
-  return flightChecklist(campaign.ship, rules, campaign.crew.length, { liftOff: actOf(campaign, rules)?.liftOff ?? null });
+  return flightChecklist(campaign.ship, rules, crewAboard(campaign), { liftOff: actOf(campaign, rules)?.liftOff ?? null });
+}
+
+// How many fly with the ship, for its flight checks: the whole crew, until
+// a world is settled. From then on the crew lives at the colony (M26), and
+// nobody is aboard until M28's expeditions.
+export function crewAboard(campaign) {
+  return campaign.colony ? 0 : campaign.crew.length;
 }
 
 // The parts the ship still needs for the checklist, by type: { [type]:
@@ -221,7 +231,7 @@ export function partsNeeded(campaign, rules) {
   const needed = {};
   let ship = campaign.ship;
   for (let n = 0; n < MAX_NEEDED; n++) {
-    const line = partLines(ship, rules, campaign.crew.length, options).find((l) => l.ok === false && l.add);
+    const line = partLines(ship, rules, crewAboard(campaign), options).find((l) => l.ok === false && l.add);
     if (!line) break;
     needed[line.add] = (needed[line.add] ?? 0) + 1;
     ship = { ...ship, modules: [...ship.modules, { uid: -1 - n, type: line.add, x: 0, y: 0, rot: 0 }] };
@@ -412,11 +422,13 @@ function fightProblem(fight, crew) {
   return null;
 }
 
-// The colony (settle.js): the world settled, with its name and whether it
-// was surveyed.
+// The colony (settle.js, colony.js): the world settled, with its name and
+// whether it was surveyed, and the buildings on it, laid out as a ship's
+// modules are (builder.js).
 function isColony(colony) {
   const world = colony?.world;
-  return isRecord(colony) && isWorld(world) && typeof world.name === 'string' && world.name.trim() !== '' && world.name.length <= MAX_NAME && typeof world.surveyed === 'boolean';
+  if (!isRecord(colony) || !isWorld(world) || typeof world.name !== 'string' || world.name.trim() === '' || world.name.length > MAX_NAME || typeof world.surveyed !== 'boolean') return false;
+  return Array.isArray(colony.buildings) && colony.buildings.length <= MAX_BUILDINGS && isShipData({ frame: 'colony', modules: colony.buildings, nextUid: colony.nextUid });
 }
 
 // The ship's wrecked modules: each a module it has, with how it is wrecked.

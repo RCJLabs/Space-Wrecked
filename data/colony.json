@@ -1,0 +1,22 @@
+{
+  "site": { "width": 20, "height": 12, "gap": 1 },
+  "aboard": ["bridge", "engine", "corridor", "airlock"],
+  "text": "The colony: the ship's parts set down on the world, one by one. What they make, the colony runs on.",
+  "buildings": [
+    { "part": "reactor", "name": "Power plant", "text": "The ship's reactor on a slab of its own, humming. It runs everything the colony plugs in." },
+    { "part": "smallreactor", "name": "Generator", "text": "A small reactor in a shed. Enough to keep the lights on and the air moving." },
+    { "part": "lifesupport", "name": "Air plant", "text": "Scrubbers and fans, breathing for a settlement now instead of a ship." },
+    { "part": "quarters", "name": "Barracks", "text": "The crew quarters, set down whole: four bunks and a door that sticks." },
+    { "part": "bunks", "name": "Bunkhouse", "text": "Two bunks with their own little air plant, for a crew short of room." },
+    { "part": "cargo", "name": "Storehouse", "text": "A cargo hold on legs. Empty for now; the colony will fill it." },
+    { "part": "largehold", "name": "Warehouse", "text": "The big hold, out under the sky. It will take all the colony makes." },
+    { "part": "medbay", "name": "Infirmary", "text": "The med bay, with a proper floor under it. It patches the crew up between scrapes." },
+    { "part": "surgery", "name": "Clinic", "text": "Surgery, set down where nobody falls out of a hull breach mid-stitch." },
+    { "part": "armory", "name": "Armory", "text": "The ship's gun racks, kept where the crew can reach them when a raid comes." },
+    { "part": "weapon", "name": "Gun emplacement", "text": "A weapon mount bolted to the ground and pointed at the sky." },
+    { "part": "cannon", "name": "Cannon emplacement", "text": "A ship's cannon dug in and aimed up. Anything coming down will think twice." },
+    { "part": "pointdefense", "name": "Flak tower", "text": "Point defense up a tower, for whatever falls from the sky faster than it should." },
+    { "part": "shield", "name": "Shield dome", "text": "A shield generator throwing its field over the rooftops." },
+    { "part": "shieldarray", "name": "Shield array", "text": "The big shield array, with the whole colony under it." }
+  ]
+}

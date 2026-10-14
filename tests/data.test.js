@@ -148,7 +148,8 @@ const cases = [
   ['a run of no sectors', (d) => (d.campaign.acts[1].sectors = 0), /sectors must be a whole number from 1 to 20/],
   ['a jump that eats nothing past its range', (d) => (d.balance.longJumpFactor = 0), /longJumpFactor must be a whole number from 1 to 10/],
   ['an easy setting that makes enemies better', (d) => (d.balance.easyEnemyAim = 10), /easyEnemyAim must be a whole number from -50 to 0/],
-  ['act standing in with no words', (d) => (d.campaign.acts[1].stub = ''), /act #2: stub must be a non-empty string/],
+  ['act with no words for what is to come', (d) => (d.campaign.acts[2].ahead = ''), /act #3: ahead must be a non-empty string/],
+  ['act with its old stub words', (d) => (d.campaign.acts[2].stub = 'Coming soon.'), /act #3: unknown field "stub"/],
   ['background with no words for lifting off', (d) => delete d.backgrounds.backgrounds[0].launch, /miner launch: must be \{ text, escaped \}/],
   ['launch with nothing for an empty hangar', (d) => (d.backgrounds.backgrounds[0].launch.escaped = ''), /launch: text and escaped must be non-empty strings/],
   ['misspelled launch field', (d) => (d.backgrounds.backgrounds[0].launch.escape = 'Gone.'), /launch: unknown field "escape"/],
@@ -300,6 +301,18 @@ const cases = [
   ['too few world names for a system', (d) => (d.worlds.names.worlds = ['Harrow', 'Tarn']), /worlds.json names.worlds: needs 3 names/],
   ['a line missing from the lanes', (d) => d.worlds.lanes.pop(), /worlds.json: lanes must be 3 lines/],
   ['no node kind for the worlds to stand on', (d) => (d.sectors.nodes = d.sectors.nodes.filter((node) => node.id !== 'world')), /sectors.json: the "world" node kind is missing/],
+  // M26: the colony.
+  ['a colony grid too small', (d) => (d.colony.site.width = 4), /colony.json site: width must be a whole number from 8 to 40/],
+  ['a colony with no path between buildings to speak of', (d) => (d.colony.site.gap = 3), /colony.json site: gap must be a whole number from 0 to 2/],
+  ['a tag aboard that no part has', (d) => d.colony.aboard.push('galley'), /colony.json: aboard must be a list of the tags of parts that stay aboard/],
+  ['a building of an unknown part', (d) => (d.colony.buildings[0].part = 'fusion'), /colony.json building fusion: part: unknown part "fusion"/],
+  ["a building of a maker's version", (d) => (d.colony.buildings[0].part = 'bastion-reactor'), /colony.json building bastion-reactor: part: "bastion-reactor" is a maker's version of reactor: name the base part/],
+  ['a building of a part that stays aboard', (d) => (d.colony.buildings[0].part = 'engine'), /colony.json building engine: part: stays aboard/],
+  ['a part with two buildings', (d) => (d.colony.buildings[1].part = 'reactor'), /colony.json building reactor: part named twice/],
+  ['a building name twice', (d) => (d.colony.buildings[1].name = d.colony.buildings[0].name), /colony.json building smallreactor: name used twice/],
+  ['a building with no words', (d) => delete d.colony.buildings[0].text, /colony.json building reactor: text must be a non-empty string/],
+  ['a building with a stray field', (d) => (d.colony.buildings[0].power = 9), /colony.json building reactor: unknown field "power"/],
+  ['a building too big for the grid', (d) => Object.assign(d.colony.site, { width: 8, height: 6 }) && (d.modules.modules.find((m) => m.id === 'reactor').size = [9, 3]), /colony.json building reactor: part: doesn't fit on the colony's grid/],
 ];
 
 function pursuerRun(d) {
@@ -336,5 +349,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(42 modules, 1 frame, 2 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 5 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 11 kinds of sector node, 5 kinds of world, 10 events\)/);
+  assert.match(run.stdout, /OK \(42 modules, 1 frame, 2 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 5 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 10 events\)/);
 });

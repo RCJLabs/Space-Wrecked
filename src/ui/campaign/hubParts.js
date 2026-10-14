@@ -1,8 +1,7 @@
 // Pieces the campaign's homes share: the hangar (hangar.js), the sector
-// map on the run (sector.js) and the stub that stands in for an act not
-// built yet (stub.js). A titled panel, the crew's rows, a list of labels
-// and values, the heat meter, and the ship standing still in the middle,
-// seen from outside.
+// map on the run (sector.js) and the colony (colony.js). A titled panel,
+// the crew's rows, a list of labels and values, the heat meter, and the
+// ship standing still in the middle, seen from outside.
 import { traceHull } from '../../render/hull.js';
 import { fitOrbit } from '../../render/orbit.js';
 import { palette, skinFor } from '../../render/palette.js';

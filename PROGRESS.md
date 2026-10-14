@@ -2,6 +2,166 @@
 
 Newest entry first.
 
+## M26 Settling and donated modules (2026-10-14)
+
+**Status:** done, and the ROADMAP.md box is ticked. Act 3 has a home now: the colony on the world settled. Two taps on one of the ship's useful parts take it off the ship, and it stands on the colony's grid as the building of its kind, drawn as the part it was. The colony's power, beds and air are set against what the crew needs, and the crew lives there, so the ship's flight checks count nobody aboard.
+
+Some of this changes what was there before, not only adds to it:
+- **Act 3's stub is gone.** The colony is act 3's home (`colony` screen, in place of `stub`). The run's record and the world card that the stub showed are in the colony's left panel now.
+- **Act 3's words say what is still to come.** `data/campaign.json` act 3 has `ahead` in place of `stub`, and the validator knows `ahead` and no longer `stub`.
+- **In act 3 the ship's flight checks count nobody aboard** (`campaign.js` `crewAboard`, used by `shipChecklist` and `partsNeeded`). Acts 1 and 2 still count the whole crew.
+- **`SAVE_VERSION` 20.**
+- **The careful test player founds the colony after settling.** Each run's report has a line for it, and the summary has a line over the runs. Founding adds no steps: in all 30 voyages every step is main's, settling included, and the campaign as it landed is main's (but for the colony's empty building list).
+- **The roof fittings are shared:** `exterior.js` `roofFittings` draws a part's fittings for the ship and for its building. The ship looks the same (the exterior tests pass unchanged).
+
+No phone results have come back yet for M14 to M25.
+
+**How it was picked:** Evan answered five questions (2026-10-14), each the recommended answer:
+- **Gate 4:** "Passed: go on to M26" (the entry below).
+- **What can be donated:** "Useful parts": reactors, life support, quarters and bunks, holds, med bays and surgery, armories, guns and shields, each becoming the building of its kind. The bridge, engines, corridors and airlocks stay on the ship.
+- **The colony site:** "Drawn, laid out for you": the world's ground in 3D, the ship landed on it, each building drawn as its part and set out on the grid by itself. Building by hand comes in M27.
+- **What buildings do:** "House and power the crew": power, beds and air against what the crew needs; an infirmary heals. Guns, shields and the armory wait for M29's raids; soil, water and ore for M27's production.
+- **The snag** (measured before asking: counting the whole crew aboard, no ship could give a reactor, quarters or life support): "Crew moves off the ship". In act 3 the crew lives at the colony, so the ship's berth and air checks count only who is aboard, nobody until M28; the landed ship's reactor powers the colony too.
+
+Done when (ROADMAP.md, M26):
+- **The colony:** "act 3's home is the colony, in place of M25's stub: the world's ground in 3D in its kind's colors, the ship landed at its edge, and each building drawn as the part it was. Buildings are laid out by themselves on the colony's grid (`src/sim/grid.js` and the builder's placement), each in the first spot that fits with a path round it, in the order given; the same buildings in the same order always stand in the same places (tested). Continue on the title comes back to the colony, and a quit and reopen keeps it."
+- **Giving a part:** "at the colony, two taps on one of the ship's parts: it comes off the ship and stands in the colony as a building of its kind (`data/colony.json`: each useful part's building, its name and words; what it gives is its part's own numbers). Only useful parts, never a wrecked one, never one the ship can't fly without (every flight check must still pass, counting nobody aboard), and never when the grid has no room. Each refusal says why (tested)."
+- **What the colony gives:** "power from its power plants and from the landed ship (what its reactors make beyond what its own parts use). The buildings take it in the order they were given, and any it doesn't reach go dark. Beds and air from its powered quarters, bunks and life support, one each for every crew member; whoever goes without sleeps aboard the landed ship. A powered infirmary (a med bay or surgery) heals the crew to full when it opens, and from M28 and M29 when the crew comes home hurt. Holds are storehouses (for M27's production), and guns, shields and armories are defenses (for M29's raids): the colony says what they hold and guard, and they do nothing else yet (tested)."
+- **The colony screen:** "the colony's power, beds and air against what the crew needs; its buildings, the dark ones marked; the crew; and the ship's parts that can be given, each with what it would give, and why the rest can't. Act 3's words say what is still to come."
+- **Saves:** "`SAVE_VERSION` 20 for the colony's buildings. A v19 save in act 3 opens at the colony with no buildings yet and every part still aboard (tested)."
+- **The test player:** "over 30 voyages (campaign seeds 1 to 30) the careful test player settles and founds the colony, giving every useful part the flight checks let go, beds and air first. In every run the ship still passes every flight check, counting nobody aboard, and every building is powered. Its report says what each run gave, the colony's power, beds and air, and who sleeps aboard (`tools/voyage.js`)."
+- **Touch:** "every new button is 48 px or more at the three sizes. By touch: the colony after the landing; a part given in two taps; a refusal and its reason; the infirmary healing the crew; and a quit and reopen at the colony."
+
+How each is met:
+- **The colony:** `tests/colonyScene.test.js` (new): the ground cleared for the grid in the world's kind's colors (a ground for each kind), the ship's own faces moved off the grid's west edge and level with it, each building a box on its cells as tall as a hull with its part's fittings on the roof, its lights out while dark, and the same colony always drawn the same. `tests/colony.test.js` (new): by hand, the first buildings at (0, 0), (0, 4), (0, 7), (0, 9) and (4, 0); over 60 orders of every kind of building, each on the grid with a cell of path round it, and the same order laid out again stands in the same places. `tests/system.test.js`: Continue on the title comes back to the colony. By touch: Settle here, the landing, Skip and Continue reach the colony; a quit and reopen comes back to it, its buildings standing.
+- **Giving a part:** `tests/colony.test.js`: given, a part leaves the ship and stands as its building with its own numbers (a Bastion part as the same building); refused, each with its reason: parts that stay aboard ("Stays aboard: no use to the colony."), a wrecked part, the one reactor ("The ship couldn't fly without it: power −7 (0 made, 7 used)."), quarters that join the reactor to the bridge ("…1 part not joined to the bridge."), a grid with no room, a part not on the ship, and away from the colony. Through the reducer, a refusal changes nothing. By touch: two taps on Crew quarters; a tap on the reactor and on the parts that stay aboard says why.
+- **What the colony gives:** `tests/colony.test.js`: power 5 from a generator and the ship's 1 spare, the barracks and air plant powered, a shield array after them dark, a storehouse and the generator never dark; given first, the shield array takes the air plant's power and all three sleep aboard; bunks house two of three; guns, flak, armories and an infirmary counted only while powered. A med bay given to a hurt crew heals all 17 missing hit points, and nothing more as later parts come. `tests/colonyText.test.js` (new): the needs, buildings (a dark one "Dark: needs 4 power"), who sleeps aboard, and "Guns 15, for raids to come".
+- **The colony screen:** `tests/colonyText.test.js`: the head, needs, buildings, crew (each marked if they sleep aboard), the ship's parts (a row a kind for those that can go, with the building and what it gives; a row a reason for the rest, naming each kind it holds back), the world, the run's record, and the act's words. By touch at the three sizes, below.
+- **Saves:** `tests/colony.test.js`: the step from 19 gives a settled colony no buildings and leaves act 1, act 2 and no campaign alone; a v19 save through the front door opens at the colony with every part aboard and a part can be given; a colony with buildings reads back the same; a uid twice or past `nextUid`, a turn it can't have, half a cell, no list and no `nextUid` are caught. By touch: a save made by main (v19) in act 3 opens at the colony with all 12 parts aboard, and a part given there saves it as v20.
+- **The test player:** `tests/voyage.test.js` (M26's test): in all 30 runs the colony is founded, its buildings are the parts given in order, nothing left aboard can be given, the ship passes every flight check and every building is powered; played again from the landing, it never gave anything else while a part with beds or air could go, and the same landing founds the same colony; air for everyone in every colony, and everyone housed in 10 or more (13 measured). The report and summary are below.
+- **Touch:** M26's browser check, below.
+
+### Shipped
+
+- **Data:** `colony.json` (new): the grid (20 × 12, a cell of path round each building), the tags of the parts that stay aboard, the colony's words, and the 15 buildings with their names and words (Power plant, Generator, Air plant, Barracks, Bunkhouse, Storehouse, Warehouse, Infirmary, Clinic, Armory, Gun emplacement, Cannon emplacement, Flak tower, Shield dome, Shield array). `campaign.json`: act 3's `ahead` words.
+- **Validation:** `tools/validate-colony.js` (new, from `validate-campaign.js`): the grid's size and path, the aboard tags (each a tag some part has), the words, and each building's part (it exists, is a base part, stays aboard by no tag, fits on the grid, is named once) with its name (once) and words. `validate-data.js` counts the colony's buildings. 13 bad-data cases.
+- **The sim:**
+  - `colony.js` (new): the buildings and what each gives (`givesOf`), the colony's power, beds, air, who sleeps aboard, stores, defenses and infirmary (`colonyStats`), the first spot that fits (`spotFor`), giving a part (`donatePlan`, `donate`), and the ship's parts as the colony sees them (`shipParts`);
+  - `settle.js` (a colony with no buildings), `acts.js` (`atColony`), `campaign.js` (`crewAboard`, the colony's checks), `root.js` (`campaign/donate`, the colony screen), `defs.js` (the colony's content), `save.js` (v20 and the migration from 19).
+- **The colony screen** (`colony.js`, `colonyText.js`, new; `style.css`): the head with the world and its kind; the left panel (needs, the power's sources, buildings, crew, the world and the run's record); the scene; the ship's parts as two-tap buttons; the foot's words. **The scene** (`render/colonyScene.js`, `render/colonyView.js`, new; `exterior.js` `roofFittings`; `palette.js` grounds).
+- **Gone:** `stub.js` and `stubText`; `runRecord` stays in `launchText.js` for the colony and the voyage report.
+- **Tools:** `voyage.js` founds the colony (`foundColony`), with a report line a run and a summary line, and returns the campaign as it landed; `voyagePlan.js` `nextGift`.
+- **Tests:** `tests/colony.test.js` (8), `tests/colonyText.test.js` (3), `tests/colonyScene.test.js` (3), `tests/colonyKit.js` (new); M26's voyage test; the system, launch, launch text and data tests brought up to date. 719 tests in all.
+- **Docs:** ROADMAP.md: §2 (the colony), §4.7 and §4.8 (v20), M26 ticked, and §9. CLAUDE.md: the colony in its lists of content, sim modules and validators.
+
+Decisions made along the way, not asked (each easy to change):
+- **The grid** is 20 × 12 with a cell of path round each building. The ship stands off its west edge, nose toward it, and buildings fill it a column at a time from that edge, top to bottom, each as it is and then turned a quarter. The grid's own edge needs no path: past it is open ground.
+- **Power, in the order given:** each building takes what it needs while enough is left; one that can't is dark, and a later one that needs less can still take what is left.
+- **Who sleeps aboard:** the last of the crew, in the crew's order, once the beds or the air run out.
+- **The infirmary heals as it opens** (given, or reached by power it lacked), not at every gift: nothing at the colony hurts the crew yet.
+- **The screen:** the colony's needs, buildings, crew, world and the run's record share the left panel, which scrolls; the ship's parts are on the right, those that can go first. Parts that can't go share a row a reason, so the bridge, corridors, airlock and engines are one row. A part armed glows on the ship, and where it would stand is marked out on the grid.
+- **The view** keeps the ship and the grid as far as the buildings reach, 3 columns on (8 at least), so a new colony isn't a speck on an empty field; it widens as the colony grows.
+- **Colors:** each kind of world has a ground, dark enough for the panels' words over it (the first tries, a pale ice and sand, washed them out). Buildings wear the ship's paint, their fittings in their maker's colors. The ship's nozzles still glow, as at the landing's end.
+- **The refusals' words** read the same for one part or many, so a row can hold several ("Stays aboard: no use to the colony.").
+- **The test player** gives a part with beds or air whenever one can go, else the first that can, asking again after each gift, until none can.
+- **The flags** count the parts given (`partsGiven`).
+
+### Known issues
+
+- **Quarters that hold the ship together.** In 17 of 30 careful runs the quarters can't go: "The ship couldn't fly without it: N parts not joined to the bridge." (checked run by run). The air plant goes in all 30, so in those 17 the crew has air at the colony but no beds, and all three sleep aboard. M26 has no way to free them (a refit on the landed ship would; §9).
+- **Nothing goes dark in play.** Everything given came off a ship that flew, so the power still balances: the colony's power left over is the ship's spare power before anything was given. Dark buildings are tested on colonies made by hand; they can happen once the ship flies off (M28).
+- **The infirmary healed nobody in the test runs.** The 2 runs that gave one landed with the crew at full. It is tested by hand and by touch.
+- **Parts on hand can't be set down,** only the ship's own (§9). The careful test player lands with a few.
+- **A building can't go back to the ship.** Nothing says so before the second tap but "It comes off the ship."
+- **The colony's view can't be turned or zoomed,** and a tap on it does nothing (§9).
+- **Stores and defenses do nothing yet,** as the Done when says (M27, M29). Nor do the world's numbers (M25's issue).
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+The quickest way there: settle a world in a run, or ask me for a save code at a world past the charts.
+1. **The landing, then the colony:** after Continue, the world's ground with the ship landed beside the grid. Can you read the panels' words over your world's ground, folded and unfolded? There are five grounds, one a kind.
+2. **A part given:** tap one on the right, then again. Does the first tap read clearly: its words in the foot, the glow on the ship, and the spot marked on the grid? Does the building read as the part it was?
+3. **A refusal:** tap the reactor, or the row for the bridge, corridors, airlock and engines. Is the reason in the foot plain?
+4. **Your quarters:** can they go on your ship, or do they hold it together? If they can't, the crew sleeps aboard: is "3 sleep on the ship" clear?
+5. **Quit and reopen:** Continue should say the world and come back to the colony.
+6. **Tell me:**
+   - whether a crew sleeping aboard because the quarters hold the ship together should have a way out in M27 (a refit on the landed ship, §9);
+   - whether parts on hand should become buildings too (§9);
+   - whether a building given should be able to go back to the ship;
+   - and the M14 to M25 questions still open.
+
+### Next session
+
+M27 Colony builder and production. First task: settle its Done when with Evan. ROADMAP.md has a draft: building and moving by hand on the colony's grid with the builder's rules; days passing; food and materials made by the day from the world's soil, water and ore, kept in the storehouses. Ask too whether parts on hand and a refit on the landed ship belong in it (§9).
+
+### Verified here
+
+- `node --test`: 719 pass. `node tools/validate-data.js`: OK ("15 colony buildings"). No golden file changed.
+- **The test player, 30 voyages** (`node tools/voyage.js --runs 30`, managing heat), the summary's colony line:
+  ```
+  The colony: founded in 30 of 30, 2 (1 to 5) parts given: Air plant 30, Gun emplacement 27, Barracks 13, Infirmary 2, Storehouse 2, Bunkhouse, Flak tower, Generator, Warehouse. Everyone housed in 13 of 30, 3 (0 to 3) sleeping aboard; every building powered in 30, power to spare 1 (0 to 3); the ship flies with nobody aboard in 30; the infirmary healed in 0.
+  ```
+  A run's line (seed 5): "Founded the colony: gave Air plant, Barracks, Infirmary, Storehouse; power 3 (0 from its plants, 3 the ship's spare), 3 used, 0 dark; beds 4 and air 4 for a crew of 4: everyone has a bed and air. The ship passes its flight checks with nobody aboard." The 17 runs where someone sleeps aboard are all the quarters holding the ship together.
+- **M26's browser check by touch:** 18 of 18 at each of 905 × 370, 821 × 283 and 960 × 825. It covers:
+  - at a world past the charts, Settle here in two taps, the landing, Skip, Continue: "Act 3 · The colony | Copperhill · Desert world";
+  - its needs (power 0 used of 1; beds 0 for 3, air 0 for 3 and "3 sleep on the ship", each marked short), "None yet: give the colony a part of the ship.", the ship's parts (Weapon mount, Crew quarters and Life support to give, each with its building and numbers; one row for the bridge, corridors, airlock and engines; the reactor with its reason), and the act's words in the foot; every button 48 px or more;
+  - Crew quarters: the first tap arms it ("Crew quarters becomes the colony's Barracks: beds 4 · power −1. It comes off the ship. Tap again to give it.") with nothing given; the second gives it ("The barracks stands at the colony: beds 4 · power −1."), the quarters off the ship and the list, beds 4 for 3;
+  - the reactor tapped ("Reactor: can't be given. The ship couldn't fly without it: power −6 (0 made, 6 used).") and the parts that stay aboard, nothing changed;
+  - the life support and the gun given: power 3 used of 4, beds and air 4 for 3, nobody aboard, "Guns 15, for raids to come", nothing left to give;
+  - a quit and reopen: Continue says "Act 3 · Copperhill" and comes back to the colony with its three buildings;
+  - a hurt crew and a med bay: given, "The infirmary stands at the colony: heals 1 · power −1. It patched the crew up: 17 hit points.", 3/10 3/8 3/8 to 10/10 8/8 8/8;
+  - a save made by main (v19) in act 3 opens at the colony with all 12 parts aboard and 3 to give; a part given saves it as v20;
+  - offline, the colony draws; no console errors.
+  - Both panels scroll at 905 × 370 and 821 × 283, and both fit at 960 × 825.
+- **Act 1:** 100 test runs identical to main's, seed by seed, the campaign at launch and the log. **Act 2:** all 30 voyages' steps main's, settling included, and the campaign as it landed main's but for the colony's empty building list.
+- **The fights** (`node tools/sim.js`; no balance number changed): the same as M25's to the line, but for the time taken.
+
+  ```
+  1,000 fights on example ship, pirate cutter, patrol corvette, derelict hauler, con-reg repo tug, con-reg gunship. The squad (marine, engineer, medic), played by the AI, against the boarding party (pirate, pirate, brute, pirate), played by the AI. 30 rounds at most, seed "balance".
+
+  Ship              Fights    Crew wins  Boarders win  No winner    Rounds  Crew orders
+  Example ship         167  63% (56–70)           37%         0%   7 (5–9)           30
+  Pirate cutter        167  47% (40–55)           37%        16%  7 (5–12)           28
+  Patrol corvette      167  54% (46–61)           38%         8%  8 (5–17)           30
+  Derelict hauler      167  40% (33–48)           49%        11%  7 (5–12)           27
+  Con-Reg repo tug     166  41% (34–49)           43%        16%  7 (4–10)           25
+  Con-Reg gunship      166  31% (25–39)           41%        28%  7 (5–12)           29
+  All                1,000  46% (43–49)           41%        13%  7 (5–12)           28
+
+  Rounds and crew orders count the fights with a winner: the median (10th to 90th percentile). Win rates have a 95% interval.
+
+  Shots: 23,357, 23.4 a fight. Hit: crew 55%, boarders 40%.
+  Shown odds  Shots  Shown  Hit
+  0–19%       2,020     9%   9%
+  20–39%      6,778    26%  27%
+  40–59%      4,466    45%  45%
+  60–79%      7,619    67%  67%
+  80–100%     2,474    83%  84%
+  On overwatch: 7% of shots, 27% hit. Crits: 32% of hits. Damage a hit: crew 4.5, boarders 4.5.
+  A fight: 1.8 crew go down, 0.9 bleed out, 2.6 boarders die.
+
+  1,000 fights in 38.7 s (39 ms a fight).
+  ```
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named:
+  - M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 40 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 39, and M8's extras.
+
+  Two copies were adapted, not the game, for what M26 changes on purpose:
+  - M25's goes on from the landing to the colony, where it went to the stub, and reads the run's record and the world card there; its save made by main comes back as v20 (it pinned v19);
+  - M24's takes its v17 save back as v20 (it pinned v19).
+
+  The copies that make saves the way main did open them from checkouts of the M24 merge (v18, for M25's) and the M23h merge (v17), as before. M14 ran 39 checks (40 in M25): its count follows the jobs its run plays.
+
+## Gate 4 (2026-10-14)
+
+**Passed.** Evan's answer at M26's start: "Passed: go on to M26".
+- ROADMAP.md named no gate for Phase 4. The one passed was drafted at M25's close: "act 2 plays on the phone from launch to a world settled, and Evan wants to keep going." v0.2 is done: Phase 4.
+- No phone results have come back for M14 to M25. The gate is Evan's call, so it stands as passed.
+- Phase 5 starts with M26 (settling and donated modules). ROADMAP.md held Phase 5's details until v0.2 shipped. They are drafted there now, with M26's Done when in full and the rest marked as drafts.
+
 ## M25 Scouting candidate worlds (2026-10-14)
 
 **Status:** done, and the ROADMAP.md box is ticked. Act 2 ends now. Jump on from the last sector's jump point reaches a system past the charts with three worlds. A survey from orbit shows what a world is worth, and Settle here at one ends the run: the ship lands, and act 3's stub stands in for the colony, the world saved with the campaign. Phase 4 (act 2, v0.2) is complete; Phase 5 waits on Evan's gate (Next session, below).

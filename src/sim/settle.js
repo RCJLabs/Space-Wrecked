@@ -5,6 +5,7 @@
 // (gen/system.js), and whether it was surveyed. The ship, crew, credits,
 // parts on hand and heat go with it, and the run stays as it ended, for
 // the act's record. Not while an approach holds the ship. Pure.
+import { newColony } from './colony.js';
 import { tally } from './flags.js';
 import { hereOf, holdOf, onTheRun } from './travel.js';
 
@@ -21,10 +22,11 @@ export function settlePlan(campaign, rules) {
   return { ok: true, world: { name: here.name, ...here.world, surveyed: run.surveyed.includes(run.at) } };
 }
 
-// Settles the world the ship is at: act 2 ends. Returns { ok: true, plan,
-// campaign } or { ok: false, error }.
+// Settles the world the ship is at: act 2 ends, and the colony begins with
+// no buildings yet (colony.js). Returns { ok: true, plan, campaign } or
+// { ok: false, error }.
 export function settle(campaign, rules) {
   const plan = settlePlan(campaign, rules);
   if (!plan.ok) return plan;
-  return { ok: true, plan, campaign: { ...campaign, act: campaign.act + 1, place: 'hub', colony: { world: plan.world }, flags: tally(campaign.flags, { settled: 1 }) } };
+  return { ok: true, plan, campaign: { ...campaign, act: campaign.act + 1, place: 'hub', colony: newColony(plan.world), flags: tally(campaign.flags, { settled: 1 }) } };
 }

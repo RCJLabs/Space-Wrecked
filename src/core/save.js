@@ -53,7 +53,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  19  the worlds past the charts: the run keeps the worlds it has
 //      surveyed, and the campaign the colony, once a world is settled
 //      (M25)
-export const SAVE_VERSION = 19;
+//  20  the colony's buildings: the ship's parts given to it, each where it
+//      stands on the colony's grid (M26)
+export const SAVE_VERSION = 20;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -256,6 +258,15 @@ export const MIGRATIONS = [
       if (!isObject(data) || !isObject(data.campaign)) return data;
       const { run } = data.campaign;
       return { ...data, campaign: { ...data.campaign, colony: null, run: isObject(run) ? { ...run, surveyed: [] } : run } };
+    },
+  },
+  // The colony's buildings (M26). A colony settled before them has none
+  // yet: every part is still aboard.
+  {
+    from: 19,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign) || !isObject(data.campaign.colony)) return data;
+      return { ...data, campaign: { ...data.campaign, colony: { ...data.campaign.colony, buildings: [], nextUid: 1 } } };
     },
   },
 ];

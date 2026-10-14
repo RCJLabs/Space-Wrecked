@@ -3,8 +3,9 @@
 // job board, the shop, payments on the debt and raids all are; once the
 // ship has launched (launch.js), they stay behind. Act 2's is the ship, on
 // the run (travel.js), where stations sell supplies, repair, patch, sign on
-// crew and see to refits. Pure; imports nothing, so every part of the sim
-// can ask.
+// crew and see to refits. Act 3's is the colony on the world settled
+// (colony.js), where the ship's parts become buildings. Pure; imports
+// nothing, so every part of the sim can ask.
 
 // The act's entry in data/campaign.json: { act, name, hub, home, heals },
 // and liftOff where leaving the act means lifting off a planet. Null for an
@@ -23,4 +24,9 @@ export function atHangar(campaign, rules) {
 export function atStation(campaign, rules) {
   const { run } = campaign;
   return campaign.place === 'hub' && actOf(campaign, rules)?.hub === 'ship' && run?.sector.nodes[run.at]?.type === 'station';
+}
+
+// True when the campaign is at home at its colony (act 3), with no fight on.
+export function atColony(campaign, rules) {
+  return campaign.place === 'hub' && actOf(campaign, rules)?.hub === 'colony' && Boolean(campaign.colony);
 }

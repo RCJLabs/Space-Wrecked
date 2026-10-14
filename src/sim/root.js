@@ -4,6 +4,7 @@
 import { int } from '../core/rng.js';
 import { emptyBuilds, reduceBuilds } from './builds.js';
 import { beginFight, captainProblem, newCampaign, refitShip, saveFight } from './campaign.js';
+import { donate } from './colony.js';
 import { endJob, takeJob, withBoard } from './contracts.js';
 import { buyPart, sellPart } from './economy.js';
 import { beginBoarding, closeApproach, endBoarding, giveOrder } from './encounter.js';
@@ -25,22 +26,21 @@ import { beginRun, buySupplies, jump, leaveSector, scan } from './travel.js';
 // screen that shows the campaign: construction mode, the job board and the
 // shop are the hangar's; the launch plays between act 1 and act 2's sector
 // map, and the approach phase on the run is played on its own screen; the
-// landing plays between act 2 and act 3 (M25), and the stub stands in for
-// act 3 until it is built.
+// landing plays between act 2 and act 3 (M25), whose home is the colony
+// (M26).
 export const PLACE_SCREENS = { hub: 'hub', fight: 'campaign-fight' };
-export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'sector', 'approach', 'landing', 'stub'];
+export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'sector', 'approach', 'landing', 'colony'];
 // The moves on the run that can open an approach (a hostile ship, or the
 // pursuer's hunters) or put one away, and so change the screen.
 const SCREEN_CHANGES = ['campaign/jump', 'campaign/sector/leave', 'campaign/regroup', 'campaign/survey', 'campaign/approach/close'];
 
 // The screen a campaign is played on where it is now: its fight, or its
 // act's home: the hangar in act 1, the sector map on the run (act 2), or the
-// approach going on there, and the stub for the act after it, until it is
-// built.
+// approach going on there, and the colony in act 3.
 export function campaignScreen(campaign) {
   if (campaign.place === 'fight') return PLACE_SCREENS.fight;
   if (campaign.act === 2) return campaign.run?.approach ? 'approach' : 'sector';
-  return campaign.act === 1 ? PLACE_SCREENS.hub : 'stub';
+  return campaign.act === 1 ? PLACE_SCREENS.hub : 'colony';
 }
 
 export function initialState(seed) {
@@ -103,6 +103,8 @@ export function initialState(seed) {
 //                                  it, as when regrouping
 //   campaign/settle { rules }      the world the ship is at settled: act 2
 //                                  ends, and the landing plays (settle.js)
+//   campaign/donate { uid, rules } the ship's part uid given to the colony,
+//                                  where it stands as a building (colony.js)
 //   campaign/approach/order { order, rules }   the player's order for a
 //                                  round of the approach (encounter.js)
 //   campaign/approach/close        Carry on, once the approach is over, or
@@ -204,7 +206,8 @@ export function reduce(state, action) {
     case 'campaign/repair':
     case 'campaign/patch':
     case 'campaign/hire':
-    case 'campaign/dismiss': {
+    case 'campaign/dismiss':
+    case 'campaign/donate': {
       const move = {
         'campaign/run/begin': (c) => beginRun(c, action.rules),
         'campaign/jump': (c) => jump(c, action.rules, action.to),
@@ -221,6 +224,7 @@ export function reduce(state, action) {
         'campaign/patch': (c) => patchCrew(c, action.rules),
         'campaign/hire': (c) => hireRecruit(c, action.rules, action.slot),
         'campaign/dismiss': (c) => dismissCrew(c, action.rules, action.id),
+        'campaign/donate': (c) => donate(c, action.rules, action.uid),
       }[action.type];
       const done = state.campaign && move(state.campaign);
       if (!done?.ok) return state;

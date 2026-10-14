@@ -35,7 +35,9 @@
 //     (restNow), and face the hunters as any hostile ship;
 //   - in the system past the charts (M25), survey while the supplies
 //     allow, and settle the world it scores best (voyagePlan.js
-//     systemMove), which ends the voyage.
+//     systemMove), which ends the voyage;
+//   - at the colony (M26), give it every useful part of the ship the
+//     flight checks let go, beds and air first (voyagePlan.js nextGift).
 //
 //   node tools/voyage.js               a voyage from campaign seed 1, step by step
 //   node tools/voyage.js --seed 7      another seed
@@ -50,7 +52,8 @@
 //                                      a balance number changed for this run
 //                                      only (as many --set as you like)
 import { pathToFileURL } from 'node:url';
-import { maxHp } from '../src/sim/campaign.js';
+import { maxHp, shipChecklist } from '../src/sim/campaign.js';
+import { buildingOf, colonyStats, donate } from '../src/sim/colony.js';
 import { flightChecklist } from '../src/sim/constraints.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { FACED } from '../src/sim/approach.js';
@@ -67,14 +70,14 @@ import { settle } from '../src/sim/settle.js';
 import { survey } from '../src/sim/survey.js';
 import { swapTransponder } from '../src/sim/transponder.js';
 import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer } from '../src/sim/travel.js';
-import { stubText } from '../src/ui/campaign/launchText.js';
+import { runRecord } from '../src/ui/campaign/launchText.js';
 import { captainOrder } from './approachPlan.js';
 import { fightBoarding } from './boarding.js';
 import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
 import { withPart } from './startShip.js';
-import { bestChoice, boardIt, HEAT_POLICIES, hireWho, LONG_FROM, nextJump, refitAt, restNow, scanNow, swapNow, systemMove, worldScore } from './voyagePlan.js';
+import { bestChoice, boardIt, HEAT_POLICIES, hireWho, LONG_FROM, nextGift, nextJump, refitAt, restNow, scanNow, swapNow, systemMove, worldScore } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
@@ -82,12 +85,14 @@ export const REFIT_POLICIES = ['yes', 'no'];
 const MAX_JUMPS = 100; // a voyage still going after this many stops
 
 // A voyage from a launched campaign (act 2, the run not yet begun) to a
-// world settled: { ended, steps, sectors, system, tally, lines, campaign }.
+// world settled and its colony founded: { ended, steps, sectors, system,
+// tally, lines, campaign, landed }.
 // ended: whether it settled a world, ending the act; steps: every jump,
 // purchase, event, approach, boarding, patch, repair, scan and survey, with
 // what it moved, [before, after], and the settling; sectors: each sector as
 // the ship entered it; system: the system past the charts, as it entered
-// it, or null.
+// it, or null; landed: the campaign as it settled, before the colony was
+// founded, or null.
 export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 'yes', refit = 'yes', heat = 'manage', label = '' } = {}) {
   if (!LONG_POLICIES.includes(longPolicy)) throw new Error(`--long is one of ${LONG_POLICIES.join(', ')}`);
   if (!HEAT_POLICIES.includes(heat)) throw new Error(`--heat is one of ${HEAT_POLICIES.join(', ')}`);
@@ -153,8 +158,10 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     systemHungry: 0,
     // The world settled: { name, kind, surveyed, score (as the player knew
     // it), best (the best score of the system's worlds, all numbers known),
-    // record (the act's, as act 3's stub says it) }, or null.
+    // record (the act's, as the colony says it) }, or null.
     settled: null,
+    // The colony founded (foundColony), or null.
+    colony: null,
     peak: launched.heat,
     heat: [launched.heat, null],
     hp: [hpOf(campaign), null],
@@ -191,6 +198,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
   };
   // A jump made: its step, the tallies and the log.
   let system = null;
+  let landed = null;
   const jumped = (before, moved) => {
     if (!moved.ok) throw new Error(moved.error);
     campaign = moved.campaign;
@@ -318,8 +326,13 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
         const { world } = campaign.colony;
         const best = Math.max(...before.run.sector.nodes.filter((node) => node.world).map((node) => worldScore(defs, node.world, true)));
         record('settle', before, { world: world.name });
-        tally.settled = { name: world.name, kind: world.kind, surveyed: world.surveyed, score: worldScore(defs, world, world.surveyed), best, record: stubText(campaign, defs).record.lines };
+        tally.settled = { name: world.name, kind: world.kind, surveyed: world.surveyed, score: worldScore(defs, world, world.surveyed), best, record: runRecord(campaign, defs) };
         lines.push(`   Settled ${world.name} (${kindName(defs, world)}, ${world.surveyed ? `surveyed, scoring ${worldScore(defs, world, true)}` : `not surveyed, its kind scoring ${worldScore(defs, world, false)}`}; the system's best scores ${best}): act 2 ends.`);
+        landed = campaign;
+        const founded = foundColony(campaign, defs);
+        campaign = founded.campaign;
+        tally.colony = founded.colony;
+        lines.push(`   ${colonyLine(defs, founded.colony)}`);
         break;
       }
       jumped(before, jump(campaign, defs, move.to));
@@ -431,7 +444,59 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     `${where}, ${tally.crossed} sectors crossed, ${tally.surveys} world${tally.surveys === 1 ? '' : 's'} surveyed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits; boarded ${tally.boardings} (won ${tally.boardingsWon}), left ${tally.left}, fought off ${tally.defencesWon} of ${tally.defences}; salvage ${tally.salvaged} parts and ${tally.salvageCredits} credits, lost ${tally.partsLost} parts and ${tally.creditsLost} credits, ${tally.fightHp} hit points; patched ${tally.patchedHp} for ${tally.patchCredits} credits; ${tally.repairs} repairs for ${tally.repairCredits} credits; signed on ${tally.hired}, healed ${tally.healed} in the med bay; refitted ${tally.fitted} parts at ${tally.refits} stations. The hunters: met ${tally.hunts} (${tally.taskForces} the task force), faced ${tally.huntsFaced}; ${tally.hotJumps} jumps where they might wait; ${tally.regroups} regroups and ${tally.hides} days hidden, healing ${tally.rested}; ${tally.swaps} transponder swaps for ${tally.swapCredits} credits. Heat ${tally.heat[0]} to ${tally.heat[1]}, at most ${tally.peak}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
   );
   if (ended) lines.push(`The act's record: ${tally.settled.record.map(([label, value]) => `${label} ${value}`).join('; ')}.`);
-  return { ended, steps, sectors, system, tally, lines, campaign };
+  return { ended, steps, sectors, system, tally, lines, campaign, landed };
+}
+
+// The colony founded as the careful player would (M26): the ship's parts
+// given one at a time, the next each time voyagePlan.js's nextGift, until
+// the flight checks let no more go. { campaign, colony: { given (types, in
+// the order given), healed (by an infirmary as it opened), power (as
+// colony.js colonyStats has it), beds, air, crew, aboard (how many sleep
+// aboard), dark (buildings without power), flies (every flight check
+// passing, counting nobody aboard) } }.
+export function foundColony(campaign, defs) {
+  const given = [];
+  let healed = 0;
+  for (let uid = nextGift(campaign, defs); uid !== null; uid = nextGift(campaign, defs)) {
+    const done = donate(campaign, defs, uid);
+    if (!done.ok) throw new Error(done.error);
+    given.push(done.plan.type);
+    healed += done.healed;
+    campaign = done.campaign;
+  }
+  const stats = colonyStats(campaign, defs);
+  const colony = {
+    given,
+    healed,
+    power: stats.power,
+    beds: stats.beds,
+    air: stats.air,
+    crew: campaign.crew.length,
+    aboard: stats.aboard.length,
+    dark: stats.buildings.filter((building) => !building.powered).length,
+    flies: shipChecklist(campaign, defs).every((line) => line.ok === true),
+  };
+  return { campaign, colony };
+}
+
+// What a run's colony came to, as a line of its report.
+function colonyLine(defs, colony) {
+  const { given, power } = colony;
+  const housed = colony.aboard ? `${colony.aboard} of them sleep aboard` : 'everyone has a bed and air';
+  return (
+    `Founded the colony: gave ${given.length ? namesOf(defs, given) : 'nothing'}; power ${power.made} (${power.plants} from its plants, ${power.ship} the ship's spare), ${power.used} used, ${colony.dark} dark; ` +
+    `beds ${colony.beds} and air ${colony.air} for a crew of ${colony.crew}: ${housed}${colony.healed ? `; the infirmary healed ${colony.healed}` : ''}. The ship ${colony.flies ? 'passes' : 'fails'} its flight checks with nobody aboard.`
+  );
+}
+
+// The buildings parts make, by name, most first: "Barracks, Air plant 2".
+function namesOf(defs, types) {
+  const counts = {};
+  for (const type of types) {
+    const name = buildingOf(type, defs)?.name ?? type;
+    counts[name] = (counts[name] ?? 0) + 1;
+  }
+  return Object.entries(counts).sort(([a, x], [b, y]) => y - x || a.localeCompare(b)).map(([name, n]) => (n > 1 ? `${name} ${n}` : name)).join(', ');
 }
 
 // Act 1's test run from campaign seed `seed`, and the launch: { ok: true,
@@ -479,6 +544,7 @@ export function manyVoyages(defs, runs, options = {}) {
     `${runs} voyages from launch, campaign seeds 1 to ${runs}, ${ignoring ? 'ignoring heat' : 'managing heat'}, long jumps ${policy}, ${options.scans === 'no' ? 'no scans' : 'scanning'}, ${options.refit === 'no' ? 'no refits' : 'refitting at stations'}${options.fit?.length ? `, fitted with ${options.fit.join(' and ')}` : ''}. The median, then the least and most:`,
     `Sectors crossed: ${spread(of('crossed'))}; ${done.filter((r) => r.system).length} of ${done.length} entered the system past the charts, ${done.filter((r) => r.ended).length} settled a world; fed all the way in ${done.filter((r) => r.tally.hungryJumps === 0).length} of ${done.length}.`,
     systemLine(defs, done),
+    colonySummary(defs, done),
     `Jumps: ${spread(of('jumps'))}, long ${spread(of('longJumps'))}, hungry ${spread(of('hungryJumps'))}.`,
     `At the nodes: ${spread(of('events'))} events, ${spread(of('eventCredits'))} credits and ${spread(of('eventSupplies'))} supplies from them, ${spread(of('found'))} parts found, ${spread(of('sold'))} sold, ${spread(of('wounds'))} hit points lost; ${spread(of('scans'))} scans.`,
     `Hostile ships: ${spread(of('approaches'))} met, ${spread(of('approachesWon'))} disabled or blown up, ${spread(of('approachesLost'))} boarding us. Boarded her ${spread(of('boardings'))} times (won ${spread(of('boardingsWon'))}), left her ${spread(of('left'))}; fought off ${spread(of('defencesWon'))} of ${spread(of('defences'))} boardings. Salvage: ${spread(of('salvaged'))} parts and ${spread(of('salvageCredits'))} credits. Lost: ${spread(of('partsLost'))} parts and ${spread(of('creditsLost'))} credits; ${spread(of('fightHp'))} hit points in the fights. Lost a boarding at home: ${done.filter((r) => r.steps.some((step) => step.kind === 'boarding' && step.dir === 'you' && !step.won)).length} of ${done.length}; dragged past 40 rounds: ${done.reduce((sum, r) => sum + r.tally.dragged, 0)}.`,
@@ -505,6 +571,22 @@ function systemLine(defs, done) {
   const worlds = defs.worlds.system.worlds;
   const surveyed = [...Array(worlds + 1).keys()].reverse().map((n) => `${n === worlds ? `all ${n} worlds` : n || 'none'} in ${count(n)}${n === worlds ? ' runs' : ''}`);
   return `The system: surveyed ${surveyed.join(', ')}. Settled a surveyed world in ${settled.filter((world) => world.surveyed).length} of ${done.length}, the system's best (all its numbers known) in ${settled.filter((world) => world.surveyed && world.score === world.best).length}; by kind: ${named.join(', ') || 'none'}. Hungry jumps in the system: ${done.reduce((sum, r) => sum + r.tally.systemHungry, 0)}; the hunters met there: ${done.reduce((sum, r) => sum + r.steps.filter((step) => step.kind === 'approach' && step.sector > defs.acts.get(2).sectors).length, 0)}.`;
+}
+
+// The colonies founded (M26): what was given, and how they house and
+// power the crew.
+function colonySummary(defs, done) {
+  const colonies = done.map((r) => r.tally.colony).filter(Boolean);
+  const median = (values) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted.length ? `${sorted[Math.floor((sorted.length - 1) / 2)]} (${sorted[0]} to ${sorted.at(-1)})` : '-';
+  };
+  const housed = colonies.filter((colony) => colony.aboard === 0).length;
+  return (
+    `The colony: founded in ${colonies.length} of ${done.length}, ${median(colonies.map((colony) => colony.given.length))} parts given: ${namesOf(defs, colonies.flatMap((colony) => colony.given)) || 'none'}. ` +
+    `Everyone housed in ${housed} of ${colonies.length}, ${median(colonies.map((colony) => colony.aboard))} sleeping aboard; every building powered in ${colonies.filter((colony) => colony.dark === 0).length}, power to spare ${median(colonies.map((colony) => colony.power.spare))}; ` +
+    `the ship flies with nobody aboard in ${colonies.filter((colony) => colony.flies).length}; the infirmary healed in ${colonies.filter((colony) => colony.healed > 0).length}.`
+  );
 }
 
 // The parts the runs fitted, by name, most first: "Cargo hold 12, ...".

@@ -59,7 +59,7 @@ test('through the game: Launch plays the launch, and Continue goes to the sector
   const launched = reduce(state, { type: 'campaign/launch', rules });
   assert.deepEqual([launched.screen, launched.campaign.act], ['launch', 2]);
   assert.equal(reduce({ ...launched, screen: 'title' }, { type: 'campaign/continue' }).screen, 'sector');
-  assert.equal(campaignScreen({ ...launched.campaign, act: 3 }), 'stub', 'the act after the run is still the stub');
+  assert.equal(campaignScreen({ ...launched.campaign, act: 3 }), 'colony', 'the act after the run is the colony');
   assert.equal(campaignScreen(state.campaign), 'hub');
   // Not ready: nothing changes.
   const early = { ...state, campaign: withBoard(newCampaign(rules, 5), rules) };

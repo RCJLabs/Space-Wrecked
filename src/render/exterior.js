@@ -80,13 +80,9 @@ export function exteriorScene({ ship, defs, hull, skin: base }) {
     const def = defs.modules.get(module.type);
     if (!def) continue;
     for (const [x, y] of placedCells(def, module)) makerAt.set(`${x},${y}`, def.manufacturer);
-    const kit = kitOf(def.manufacturer);
-    const local = [];
-    const lights = [];
-    MARKS[defs.manufacturers?.get(def.manufacturer)?.mark]?.(local, kit, def);
-    (ROOFS[def.base ?? def.id] ?? fromTemplate)(local, kit, lights, def, round);
-    faces.push(...placeFaces(local, def, module));
-    for (const g of lights) glows.push({ ...g, at: placeFaces([{ pts: [g.at], normal: [0, 0, 1] }], def, module)[0].pts[0] });
+    const fittings = roofFittings(def, module, kitOf(def.manufacturer), { defs, round });
+    faces.push(...fittings.faces);
+    glows.push(...fittings.glows);
   }
   // The kit of the part whose cell (x, y) is: a heavy gun's barrel stands
   // between two of its cells.
@@ -144,6 +140,19 @@ export function exteriorScene({ ship, defs, hull, skin: base }) {
     glows.push(...piece.glows);
   }
   return { faces, glows, exhausts };
+}
+
+// A part's fittings on its roof (at HULL), where placement puts it, in
+// kit's colors (its maker's over the ship's skin) over its maker's mark:
+// { faces, glows }. round when the hull's corners are. The ship wears them,
+// and so does each building at the colony (colonyScene.js, M26).
+export function roofFittings(def, placement, kit, { defs, round = true }) {
+  const local = [];
+  const lights = [];
+  MARKS[defs.manufacturers?.get(def.manufacturer)?.mark]?.(local, kit, def);
+  (ROOFS[def.base ?? def.id] ?? fromTemplate)(local, kit, lights, def, round);
+  const glows = lights.map((g) => ({ ...g, at: placeFaces([{ pts: [g.at], normal: [0, 0, 1] }], def, placement)[0].pts[0] }));
+  return { faces: placeFaces(local, def, placement), glows };
 }
 
 // A plated roof's seams: a dark frame inset in each module's plate.

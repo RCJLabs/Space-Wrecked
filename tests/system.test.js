@@ -178,13 +178,13 @@ test('Settle here: act 2 ends, surveyed or not, and the world goes with the camp
   assert.deepEqual(plan, { ok: true, world: { name: node.name, ...node.world, surveyed: false } });
   const { campaign: after } = settle(campaign, rules);
   assert.deepEqual([after.act, after.place], [COLONY_ACT, 'hub']);
-  assert.deepEqual(after.colony, { world: plan.world });
+  assert.deepEqual(after.colony, { world: plan.world, buildings: [], nextUid: 1 });
   assert.equal(after.flags.settled, 1);
   // The ship, crew, credits, parts on hand and heat go with it; the run
   // stays as it ended, for the act's record.
   for (const key of ['ship', 'crew', 'captain', 'credits', 'parts', 'heat', 'supplies', 'wrecks', 'run', 'rng', 'background']) assert.deepEqual(after[key], campaign[key], key);
   assert.deepEqual(campaignProblems(after), []);
-  assert.equal(campaignScreen(after), 'stub');
+  assert.equal(campaignScreen(after), 'colony');
   // Surveyed first, the colony says so.
   assert.equal(settle(survey(campaign, rules).campaign, rules).campaign.colony.world.surveyed, true);
   // Settled, the run is over: no more jumps, surveys or settling.
@@ -199,13 +199,13 @@ test('no settling away from a world or off the run', () => {
   assert.match(settlePlan(readyToLaunch(), rules).error, /on the run/);
 });
 
-test('through the game: Settle here plays the landing, and Continue on the title comes back to the stub', () => {
+test('through the game: Settle here plays the landing, and Continue on the title comes back to the colony', () => {
   let state = { ...initialState(1), screen: 'sector', campaign: at(inSystem(), 3) };
   state = reduce(state, { type: 'campaign/settle', rules });
   assert.equal(state.screen, 'landing');
   assert.equal(state.campaign.act, COLONY_ACT);
   assert.equal(reduce(state, { type: 'campaign/settle', rules }), state, 'settled once');
-  assert.equal(reduce({ ...state, screen: 'title' }, { type: 'campaign/continue' }).screen, 'stub');
+  assert.equal(reduce({ ...state, screen: 'title' }, { type: 'campaign/continue' }).screen, 'colony');
 });
 
 test('a v18 save carries on where it was, and one at the last jump point jumps on into the system', () => {
@@ -224,7 +224,7 @@ test('a v18 save carries on where it was, and one at the last jump point jumps o
   const opened = parseSave(JSON.stringify({ version: 18, data: old({ ...v18, run: v18run }) }));
   assert.equal(opened.ok, true, opened.error);
   assert.equal(opened.save.version, SAVE_VERSION);
-  assert.equal(SAVE_VERSION, 19);
+  assert.ok(SAVE_VERSION >= 19);
   const on = leaveSector(opened.save.data.campaign, rules).campaign;
   assert.equal(on.run.sector.system, true);
   assert.deepEqual(campaignProblems(on), []);
