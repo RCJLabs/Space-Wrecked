@@ -613,9 +613,20 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
   - **Saves:** no version change: a refit changes only the ship and the parts on hand. An act 2 save made by main opens and refits at a station (tested).
   - **The hangar:** act 1's construction mode works as before.
   - **Touch:** every new button is 48 px or more at the three sizes. By touch: a found part fitted at a station in two taps, a jump refused while a check fails and allowed once it is fixed, a wrecked part kept on, and a quit and reopen that keeps the refit.
-- [ ] **M24 Heat v2: hunters, regrouping, transponders** (§4.4's act 2 rules).
+- [ ] **M24 Heat v2: hunters, regrouping, transponders** (§4.4's act 2 rules). Nothing in act 2 reads heat yet, and a long jump is the only way to shed it: the careful test player launches at heat 41 (32 to 49), passes 50 by its second jump and reaches 100 by about its sixteenth of 30. Evan's picks (2026-10-14): the hunters by a chance at each jump, shown before it; heat falls once they are faced; Regroup rests and patches the crew up; transponder swaps at stations, and nebulae to hide in. Payments on the debt stay act 1's (§9).
 
-  **Done when (draft):** as in M15, ignoring heat brings the hunters, and managing it keeps them off.
+  **Done when:**
+  - **Levels:** on the run, the heat meter names act 2's levels, each with the pursuer's words (data): calm, rumors from 25, hunters from 50, the task force from 75, and at 100 they are on the ship.
+  - **Hunters:** from heat 50, wherever a jump comes out (a long jump, and the jump on into the next sector, too), Con-Reg's hunters may be waiting: 20% from 50 (`huntChance`), the task force 35% from 75 (`taskForceChance`), and certain at 100, by the heat the ship arrives with. Never at a station or in a nebula. The jump says the chance before it is made, and it is rolled as shown (Law 4) (tested).
+    - They are an approach like a hostile ship's (§4.2), in the pursuer's ships (data: a tug, and the task force's bigger ship), and their boarding fights are against the pursuer's parties (`recovery`, `raid` in `data/encounters.json`).
+    - A hostile ship where they wait slips away; an event there waits until they are dealt with (tested).
+  - **After them:** a boarding fight with them either way, or their ship disabled, blown up or driven off, drops heat to 40 (`heatAfterRaid`); getting away, or parting after the last round, leaves it. Lost at home, they take what a lost raid takes (Law 3) (tested).
+  - **Regroup:** away from stations, two taps. A day's rest eats a jump's supplies and heals each of the wounded 3 hit points (`regroupHp`), on top of the med bay's day. Heat rises 5 (`regroupHeat`), and the hunters may find the ship at a jump's odds. It needs the supplies for the day (tested).
+  - **Nebulae:** a kind of node, one in most sectors and on the charts. The hunters never wait in one, and Regroup there hides the ship: heat falls 10 (`hideHeat`) instead of rising, with no roll (tested).
+  - **Transponder swap:** at a station, once a sector, two taps: heat falls 30 (`swapHeat`) for 40 credits (`swapPrice`) (tested).
+  - **Saves:** `SAVE_VERSION` 18 for the sector's swap and the hunters' approach. An older act 2 save opens where it was, with the swap unused (tested).
+  - **The test,** as M15's: over 30 voyages (campaign seeds 1 to 30), the test player ignoring heat (no swaps, no hiding, no long jumps) meets the hunters in at least 27; managing it (a swap at a station in each sector, hiding in a nebula on its way, long jumps from heat 40), in at most 3. Managing it, the careful test player still crosses all five sectors fed in at least 24 of 30. `tools/voyage.js --heat ignore` and `--heat manage` (the default) report the hunters met and faced, the regroups, hides and swaps, and heat along the way. `tools/approach.js` and `tools/sim.js --boardings` measure the hunters' ships and parties.
+  - **Touch:** every new button is 48 px or more at the three sizes. By touch: a jump that shows the hunters' chance, the hunters met and faced with heat falling to 40, a regroup, a hide in a nebula, a transponder swap, and a quit and reopen with the hunters waiting.
 - [ ] **M25 Scouting candidate worlds.**
 
   **Done when (draft):** a run reaches the last sector, scouts its worlds and picks one, ending act 2 cleanly.
@@ -738,5 +749,6 @@ These ideas wait until v0.4 or later:
 - scrapping a wrecked part in a refit, to fit a spare in its place without paying for the repair. Without a dealer to replace it, a ship that scraps its only engine would be stranded at the station (raised in M23h)
 - refits away from stations: moving and turning what is aboard between jumps, with fitting and taking off still at stations (raised in M23h)
 - the station's foot: Buy, Repair and Patch up crowd it at 821 × 283, which is why Refit is the ship's panel, as the crew's opens the crew card. A station menu could hold them all (raised in M23h)
+- the rest of §4.4's act 2 heat: payments on the debt at stations, as in act 1 (Evan's call in M24: not now), agents at stations from heat 25, and docking at a station in pursuer space for +10 (raised in M24)
 
 Ideas that come up during a session go here, not into code.
