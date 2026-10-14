@@ -4,11 +4,12 @@
 // stat, rule or boarding map, and that saves (v17) and codes (v4) carry
 // them. How they look is tests/stylingDraw.test.js's.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { BLUEPRINT_VERSION, decodeBlueprint, encodeBlueprint, encodePlacements } from '../src/core/blueprint.js';
 import { base64UrlToBytes, bytesToBase64Url, checksum } from '../src/core/codec.js';
 import { makeSave, MIGRATIONS, parseSave, SAVE_VERSION } from '../src/core/save.js';
-import { applyCommand, DEFAULT_PAINT, DEFAULT_TRIM, isShipData, layoutProblems, openings } from '../src/sim/builder.js';
+import { applyCommand, buildShip, DEFAULT_PAINT, DEFAULT_TRIM, isShipData, layoutProblems, openings } from '../src/sim/builder.js';
 import { sideStats } from '../src/sim/approach.js';
 import { refitShip } from '../src/sim/campaign.js';
 import { flightChecklist, shipStats } from '../src/sim/constraints.js';
@@ -193,6 +194,21 @@ test('a piece fits itself to the hull where it is tapped, and Turn shows it the 
   // The rooms' layer again lets go of what was picked out.
   session = reduceSession(session, { type: 'build/layer', layer: 'rooms' }, rules);
   assert.deepEqual([session.layer, session.selected, session.armed], ['rooms', null, null]);
+});
+
+test('a wedge or a curve tapped at a step in the hull takes a turn joined along both legs: a slope, not a spike', () => {
+  const placements = JSON.parse(readFileSync(new URL('./fixtures/example-ship.json', import.meta.url), 'utf8')).placements;
+  const example = buildShip(rules, 'starter', placements).ship;
+  // The example ship's stern: the engines' tops on row 6, the quarters' on
+  // row 5 from column 9, two open cells above the engines.
+  for (const type of ['longwedge', 'curve']) {
+    const slope = fitPiece(example, rules, type, 0, 8, 5.5);
+    assert.deepEqual([slope, pieceError(example, rules, slope)], [P(type, 7, 5, 6), null], type);
+  }
+  // Turned by hand, it keeps the turn; and a wedge that can only join one
+  // leg there takes the first turn that fits, as before.
+  assert.deepEqual(fitPiece(example, rules, 'longwedge', 3, 8, 5.5, { turnsToo: false }), P('longwedge', 8, 4, 3));
+  assert.deepEqual(fitPiece(example, rules, 'wedge', 0, 7.5, 5.5), P('wedge', 7, 5, 0));
 });
 
 test('a tap on the hull by its side finds the side; a ship loaded from elsewhere opens on the same layer', () => {

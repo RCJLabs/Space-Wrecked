@@ -311,10 +311,12 @@ export function nextTurn(def, rot) {
 // The placement of a piece under point (px, py) that fits there, trying
 // `rot` first: each spot of its footprint that covers the cell under the
 // point, the one centred nearest the point first; then the piece's other
-// turns the same way (unless `turnsToo` is false). Failing those, any spot
-// that comes within `reach` cells of the point, the nearest first (so a
-// tap on the hull finds its side). If none fits, the first try, for a
-// ghost that says why. `site` as in pieceError.
+// turns the same way (unless `turnsToo` is false). A wedge or a curve takes
+// the first that joins the hull along both its legs, if one does, so a
+// step in the hull gets a slope, not a spike. Failing those, any spot that
+// comes within `reach` cells of the point, the nearest first (so a tap on
+// the hull finds its side). If none fits, the first try, for a ghost that
+// says why. `site` as in pieceError.
 export function fitPiece(ship, defs, type, rot, px, py, { ignore = null, turnsToo = true, site = null, reach = 0 } = {}) {
   const def = defs.styling.get(type);
   const frame = defs.frames.get(ship.frame);
@@ -322,7 +324,9 @@ export function fitPiece(ship, defs, type, rot, px, py, { ignore = null, turnsTo
   const [cx, cy] = [Math.floor(px), Math.floor(py)];
   const turns = turnsToo ? [rot, ...rotations(def.turns, rot)] : [rot];
   const fits = (placement) => !pieceError(ship, defs, placement, ignore, here);
+  const joined = (placement) => pieceLegs(def, placement).every(({ side, cells }) => cells.every(([x, y]) => here.hull(...stepSide(x, y, side))));
   let first = null;
+  let fit = null;
   for (const turn of turns) {
     const [w, h] = pieceFootprint(def, turn);
     const spots = [];
@@ -336,9 +340,12 @@ export function fitPiece(ship, defs, type, rot, px, py, { ignore = null, turnsTo
     for (const { x, y } of spots) {
       const placement = { type, x, y, rot: turn };
       first ??= placement;
-      if (fits(placement)) return placement;
+      if (!fits(placement)) continue;
+      if (!def.shape || joined(placement)) return placement;
+      fit ??= placement;
     }
   }
+  if (fit) return fit;
   if (reach > 0) {
     const near = [];
     for (const turn of turns) {
