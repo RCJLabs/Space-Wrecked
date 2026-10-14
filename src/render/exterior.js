@@ -3,10 +3,10 @@
 // module, with each module's roof fittings, glowing nozzles, gun barrels,
 // docking collars and running lights on the hull's skin, shaped to match
 // the style. Pure: ship data in, { faces, glows, exhausts } out (solid.js
-// faces, mesh.js glows; exhausts are where the engines' flames come out:
-// [{ at, dir }]), in the manufacturer's skin: the hull in the ship's paint
-// and trim, each part's fittings in its own maker's (M23g). This is how the
-// ship looks anywhere but the builder.
+// faces, mesh.js glows; exhausts are where the engines' flames come out,
+// in their maker's color: [{ at, dir, flame }]), in the manufacturer's
+// skin: the hull in the ship's paint and trim, each part's fittings in its
+// own maker's (M23g). This is how the ship looks anywhere but the builder.
 import { footprint, interiorRows, placedCells } from '../sim/modules.js';
 import { hullBands, hullShape, nearestSide, noseSurfaces, sidePoint, styleOf } from './hullShape.js';
 import { fittingsOf, paintSkin } from './palette.js';
@@ -18,7 +18,8 @@ const STEP = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 const NOZZLE_Z = HULL / 2;
 
 // input: { ship, defs, hull: traceHull(ship, defs), skin }. The skin is
-// the maker's; the ship's paint and trim go over it.
+// the hull's; each part's fittings are its maker's (palette.js fittingsOf),
+// and the ship's paint and trim go over them all.
 export function exteriorScene({ ship, defs, hull, skin: base }) {
   const faces = [];
   const glows = [];
@@ -102,7 +103,7 @@ export function exteriorScene({ ship, defs, hull, skin: base }) {
     const start = [sx + dx * 0.1, sy + dy * 0.1, NOZZLE_Z];
     solidTube(faces, start, [dx, dy], 0.42, 0.2, 0.31, skin.dark, { endColor: skin.flame, glowing: true });
     glows.push({ at: [start[0] + dx * 0.78, start[1] + dy * 0.78, NOZZLE_Z], r: 0.6, color: skin.flame });
-    exhausts.push({ at: [start[0] + dx * 0.42, start[1] + dy * 0.42, NOZZLE_Z], dir: [dx, dy] });
+    exhausts.push({ at: [start[0] + dx * 0.42, start[1] + dy * 0.42, NOZZLE_Z], dir: [dx, dy], flame: skin.flame });
   }
   for (const { x, y, side, heavy } of hull.barrels) {
     const skin = kitAt(x, y);

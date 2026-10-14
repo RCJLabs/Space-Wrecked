@@ -28,9 +28,9 @@ const MODULE_KEYS = ['id', 'base', 'name', 'glyph', 'category', 'manufacturer', 
 // A maker's version of a part (M23g) holds only what it changes; the rest
 // comes from its base part (src/sim/defs.js withBases).
 const VERSION_KEYS = ['id', 'base', 'manufacturer', 'name', 'stats', 'cost'];
-// A manufacturer: its name, a short one for the drawer's maker buttons, a
-// line for its parts' cards, and the mark on its parts' roofs outside
-// (exterior.js draws the marks; its skin is in palette.js).
+// A manufacturer: its name, a short one for the drawer's maker buttons, and
+// maybe a line for its parts' cards and the mark on its parts' roofs
+// outside (exterior.js draws the marks; its skin is in palette.js).
 const MAKER_KEYS = ['id', 'name', 'short', 'blurb', 'mark'];
 const MAX_MAKER_SHORT = 8;
 // What a med bay heals each of the wounded in a jump (medbay.js): up to this.
@@ -191,7 +191,7 @@ export function validateData(data) {
     knownKeys(maker, MAKER_KEYS, where, fail);
     if (!isText(maker.name)) fail(where, 'name must be a non-empty string');
     if (!isText(maker.short) || maker.short.length > MAX_MAKER_SHORT) fail(where, `short must be a name of up to ${MAX_MAKER_SHORT} letters`);
-    if (!isText(maker.blurb)) fail(where, 'blurb must be a non-empty string');
+    if (maker.blurb !== undefined && !isText(maker.blurb)) fail(where, 'blurb must be a non-empty string');
     if (maker.mark !== undefined && !MARKED.includes(maker.mark)) fail(where, `mark must be one of ${MARKED.join(', ')}`);
     if (isId(maker.id) && !Object.hasOwn(SKINS, maker.id)) fail(where, 'has no skin in src/render/palette.js');
   });

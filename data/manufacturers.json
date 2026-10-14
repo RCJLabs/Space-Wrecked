@@ -3,8 +3,7 @@
     {
       "id": "yard",
       "name": "Yard standard",
-      "short": "Yard",
-      "blurb": "What every yard builds and every hangar stocks."
+      "short": "Yard"
     },
     {
       "id": "bastion",

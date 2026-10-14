@@ -1,8 +1,9 @@
 // The details a long press shows for a part: size, what has to face space,
 // stats, what it does in an approach (a gun's damage, a shield's strength,
 // point defense) and for the crew on the run (quarters, life support and
-// the med bay), and cost; and for a placed part, where it is and whether it
-// reaches the bridge. For a styling piece (M23f), pieceCard.
+// the med bay), its maker's word on it and how a maker's version differs
+// from its base part (M23g), and cost; and for a placed part, where it is
+// and whether it reaches the bridge. For a styling piece (M23f), pieceCard.
 import { footprint } from '../../sim/modules.js';
 import { pieceFootprint } from '../../sim/styling.js';
 
@@ -29,6 +30,7 @@ export function cardFor(defs, def, placed = null) {
       .join(' · '),
     ...approachLine(defs, def),
     ...runLine(defs, def),
+    ...makerLines(defs, def),
     `Cost ${def.cost} · ${defs.manufacturers.get(def.manufacturer)?.name ?? def.manufacturer}`,
   ];
   if (placed) {
@@ -59,6 +61,23 @@ function runLine(defs, def) {
   }
   if (def.stats.berths || def.stats.lifeSupport) return ['On the run: the ship carries as many crew as its berths and life support both cover. Recruits sign on at stations.'];
   return [];
+}
+
+// Its maker's word on a part (data/manufacturers.json blurb), and for a
+// maker's version, how it differs from the part it is a version of:
+// "Next to the Yard's: Mass +1 · Hull points +8 · Cost +20".
+function makerLines(defs, def) {
+  const lines = [];
+  const blurb = defs.manufacturers.get(def.manufacturer)?.blurb;
+  if (blurb) lines.push(blurb);
+  const base = def.base !== undefined && defs.modules.get(def.base);
+  if (base) {
+    const changes = STATS.filter(([key]) => def.stats[key] !== base.stats[key]).map(([key, label]) => `${label} ${signed(def.stats[key] - base.stats[key])}`);
+    if (def.cost !== base.cost) changes.push(`Cost ${signed(def.cost - base.cost)}`);
+    const by = defs.manufacturers.get(base.manufacturer)?.short ?? base.manufacturer;
+    if (changes.length) lines.push(`Next to the ${by}'s: ${changes.join(' · ')}`);
+  }
+  return lines;
 }
 
 // A styling piece's card: its size and turns, where it goes, and that it
