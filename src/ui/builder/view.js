@@ -50,10 +50,11 @@ const PICK = 56; // the Parts tab's picker row and the space over it
 // Mounts the builder in root and returns the screen's handle (resize, draw,
 // unmount, frameStats). source:
 //   open(defs, frame)   once the content has loaded, what to build:
-//                       { ship, log, stock } (stock as in session.js, or
-//                       null for endless parts), or { session } to pick up
-//                       a session from an earlier visit; null if there is
-//                       nothing to build
+//                       { ship, log, stock, wrecked } (stock as in
+//                       session.js, or null for endless parts; wrecked, the
+//                       uids of parts that can't come off, as there), or
+//                       { session } to pick up a session from an earlier
+//                       visit; null if there is nothing to build
 //   onSession(session, prev)   after every change to the session
 //   crew()              the crew the flight checklist counts
 //   liftOff()           optional: the thrust for each unit of mass lifting
@@ -61,6 +62,8 @@ const PICK = 56; // the Parts tab's picker row and the space over it
 //   launch              true if the Ship tab has Launch
 //   ready               optional: what the hint says once every flight
 //                       check passes, for a builder without Launch
+//   cleared             optional: what the chip on the board says then
+//                       ("Ready to launch" without it)
 //   leave               null, or { icon, label, onTap }: the way out, at
 //                       the end of the drawer's tabs
 //   slots(api)          null, or the Saves tab: { handlers (savesPanel.js,
@@ -132,7 +135,7 @@ export function mountBuilder(root, source) {
         setStatus({ tone: 'info', text: 'Nothing to build here.' });
         return;
       }
-      store = createStore((session, action) => reduceSession(session, action, defs), opened.session ?? createSession(opened.ship, opened.log, opened.stock));
+      store = createStore((session, action) => reduceSession(session, action, defs), opened.session ?? createSession(opened.ship, opened.log, opened.stock, opened.wrecked));
       derived = derive(store.getState().ship);
       store.subscribe(onSession);
       const api = {
@@ -346,7 +349,7 @@ export function mountBuilder(root, source) {
     const onHand = (type) => partsLeft(session, type);
     // The checklist's fixes ask for a part: any maker's version will do.
     const ofAny = (type) => countOfAny(defs, type, onHand);
-    drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules, onHand: ofAny, ship: session.ship });
+    drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules, onHand: ofAny, ship: session.ship, cleared: source.cleared });
     drawer.setStock(session.stock ? onHand : null);
   }
 
@@ -366,7 +369,7 @@ export function mountBuilder(root, source) {
       setToolFace(deleteButton, mode === 'done' ? icons.done : icons.remove, mode === 'done' ? 'Done' : 'Delete');
     }
     deleteButton.disabled = mode === 'delete' && session.selected === null;
-    const summary = flightSummary(session.ship, defs, derived.lines, (type) => countOfAny(defs, type, (version) => partsLeft(session, version)));
+    const summary = flightSummary(session.ship, defs, derived.lines, (type) => countOfAny(defs, type, (version) => partsLeft(session, version)), source.cleared);
     layoutChip.hidden = !summary;
     if (summary) setText(layoutChip, summary);
     // The Saves tab only changes with the slots, the ship or the replay;
@@ -477,7 +480,7 @@ export function mountBuilder(root, source) {
     const ship = { ship: session.ship, derived, selected: session.selected, lifted };
     const before = shown.ship;
     if (!before || before.ship !== ship.ship || before.derived !== derived || before.selected !== ship.selected || before.lifted !== lifted) {
-      plans.setShip({ ship: session.ship, defs, frame, doors: derived.doors, hull: derived.hull, selected: session.selected, lifted, flagged: derived.flagged });
+      plans.setShip({ ship: session.ship, defs, frame, doors: derived.doors, hull: derived.hull, selected: session.selected, lifted, flagged: derived.flagged, wrecked: new Set(session.wrecked ?? []) });
       shown.ship = ship;
     }
     const ghost = ghostOf(session);
@@ -723,7 +726,8 @@ export function mountBuilder(root, source) {
     if (!module) return;
     const noBridge = derived.problems.some((p) => p.rule === 'bridge');
     const joined = noBridge ? null : !derived.loose.has(uid);
-    openCard(cardFor(defs, defs.modules.get(module.type), { module, joined }), side);
+    const wrecked = Boolean(session.wrecked?.includes(uid));
+    openCard(cardFor(defs, defs.modules.get(module.type), { module, joined, wrecked }), side);
   }
 
   function openCard({ title, lines }, side) {

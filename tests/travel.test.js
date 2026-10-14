@@ -41,7 +41,7 @@ test('cargo holds carry more: capacity is the lockers and the holds', () => {
   const { ship } = applyCommand(ready.ship, rules, { op: 'place', type: 'cargo', x: 12, y: 2, rot: 0 });
   assert.notEqual(ship, ready.ship, 'the hold goes on');
   assert.equal(supplyCapacity(ship, rules), balance.baseSupplies + rules.modules.get('cargo').stats.cargo);
-  const campaign = beginRun(launch(refitShip({ ...ready, parts: { ...ready.parts, cargo: 1 } }, ship), rules).campaign, rules).campaign;
+  const campaign = beginRun(launch(refitShip({ ...ready, parts: { ...ready.parts, cargo: 1 } }, ship, rules), rules).campaign, rules).campaign;
   assert.equal(campaign.supplies, balance.baseSupplies + 20);
 });
 
@@ -49,7 +49,7 @@ test('a jump to a linked node eats a supply for each crew member and adds heat',
   const campaign = onRun({ heat: 30 });
   const to = linked(campaign.run.sector, campaign.run.at)[0];
   const plan = jumpPlan(campaign, rules, to);
-  assert.deepEqual(plan, { ok: true, kind: 'jump', supplies: balance.jumpSupplies * 3, heat: balance.jumpHeat, hungry: false, heal: 0 });
+  assert.deepEqual(plan, { ok: true, kind: 'jump', supplies: balance.jumpSupplies * 3, left: 0, heat: balance.jumpHeat, hungry: false, heal: 0 });
   const after = jump(campaign, rules, to).campaign;
   assert.equal(after.run.at, to);
   assert.deepEqual(after.run.seen, [campaign.run.sector.start, to]);
@@ -66,7 +66,7 @@ test('a long jump goes two links away for three jumps of supplies, and sheds hea
   const far = [...reach(sector, here)].find(([, links]) => links === 2)[0];
   assert.ok(!linked(sector, here).includes(far));
   const plan = jumpPlan(campaign, rules, far);
-  assert.deepEqual(plan, { ok: true, kind: 'long', supplies: 3 * balance.longJumpFactor, heat: balance.longJumpHeat, hungry: false, heal: 0 });
+  assert.deepEqual(plan, { ok: true, kind: 'long', supplies: 3 * balance.longJumpFactor, left: 0, heat: balance.longJumpHeat, hungry: false, heal: 0 });
   const after = jump(campaign, rules, far).campaign;
   assert.equal(after.supplies, campaign.supplies - 9);
   assert.equal(after.heat, 20);
@@ -125,7 +125,7 @@ test('the jump point leads on into the next sector, named afresh, up to the act\
   const exit = at(run, run.run.sector.exit);
   const { ok, campaign, plan } = leaveSector(exit, rules);
   assert.ok(ok);
-  assert.deepEqual(plan, { ok: true, kind: 'sector', supplies: 3, heat: balance.jumpHeat, hungry: false, heal: 0 });
+  assert.deepEqual(plan, { ok: true, kind: 'sector', supplies: 3, left: 0, heat: balance.jumpHeat, hungry: false, heal: 0 });
   assert.equal(campaign.run.sector.index, 2);
   assert.deepEqual(campaign.run.past, [run.run.sector.name]);
   assert.notEqual(campaign.run.sector.name, run.run.sector.name);

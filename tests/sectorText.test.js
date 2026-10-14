@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { refitShip } from '../src/sim/campaign.js';
+import { removeModule } from '../src/sim/builder.js';
 import { launch } from '../src/sim/launch.js';
-import { beginRun, knownNodes, linked, reach, scan } from '../src/sim/travel.js';
+import { beginRun, brokenWhy, buySupplies, failingCheck, jumpPlan, knownNodes, linked, reach, scan, supplyCapacity } from '../src/sim/travel.js';
+import { fitPart } from '../tools/run.js';
 import { continueText } from '../src/ui/campaign/hubText.js';
 import { jumpText, nodeText, sectorText } from '../src/ui/campaign/sectorText.js';
 import { rules } from './battleKit.js';
@@ -27,7 +30,7 @@ test('the map: the sector, its nodes by column with what a jump reaches, its lin
   }
   assert.ok(text.links.every(({ a, b, near }) => near === (a === sector.start || b === sector.start)));
   assert.deepEqual(text.here, { name: 'Way in', kind: '', text: rules.nodeTypes.get('start').text });
-  assert.deepEqual(text.hold, [['Supplies', `${balance.baseSupplies} of ${balance.baseSupplies}`], ['Credits', '40']]);
+  assert.deepEqual(text.hold, [['Supplies', `${balance.baseSupplies} of ${balance.baseSupplies}`], ['Credits', '40'], ['Parts', 'Corridor ×2']]);
   assert.equal(text.offer, null);
   assert.equal(text.leave, null);
   assert.match(text.hint.text, /A \? is a node not made out yet/);
@@ -118,4 +121,57 @@ test('Continue says the sector on the run', () => {
   const campaign = onRun();
   assert.equal(continueText(campaign, rules), `Act 2 · Sector 1 · ${campaign.run.sector.name}`);
   assert.equal(continueText({ ...campaign, run: null }, rules), 'Act 2 · Your ship');
+});
+
+// M23h: refits at stations.
+const atStation = (extra = {}) => {
+  const campaign = onRun(extra);
+  return at(campaign, campaign.run.sector.nodes.find((n) => n.type === 'station').id);
+};
+const near = (campaign) => [...reach(campaign.run.sector, campaign.run.at)].find(([, links]) => links === 1)[0];
+
+test("at a station the ship's panel is Refit, and the station says what is on hand to fit", () => {
+  const station = atStation({ parts: { corridor: 2, medbay: 1 } });
+  const text = sectorText(station, rules);
+  assert.deepEqual(text.refit, { label: 'Refit', parts: 3, line: '3 parts on hand: Refit fits them, free.', broken: null });
+  assert.deepEqual(text.hold.at(-1), ['Parts', 'Corridor ×2, Med bay']);
+  assert.equal(sectorText(atStation({ parts: {} }), rules).refit.line, "Refit moves and turns the ship's parts, free.");
+  assert.equal(sectorText(atStation({ parts: { medbay: 1 } }), rules).refit.line, 'A part on hand: Refit fits it, free.');
+  // Away from a station, no Refit.
+  assert.equal(sectorText(at(station, near(station)), rules).refit, null);
+  // The hint says so once nothing more pressing is there: the holds full,
+  // and no room for a recruit.
+  const crowded = { ...station, crew: [...station.crew, { ...station.crew[2], id: 9, name: 'Ash Vey' }] };
+  assert.deepEqual(sectorText(crowded, rules).hint, { tone: 'good', text: "3 parts on hand: tap Refit, on the ship's panel, to fit them, free." });
+});
+
+test('a flight check failing at the station: the hint, the panel and the jump, in the bad tone', () => {
+  const station = atStation({ parts: { corridor: 2 } });
+  const broken = refitShip(station, removeModule(station.ship, station.ship.modules.find((m) => m.type === 'reactor').uid), rules);
+  const check = failingCheck(broken, rules);
+  const text = sectorText(broken, rules);
+  assert.deepEqual(text.hint, { tone: 'bad', text: brokenWhy(check) });
+  assert.equal(text.refit.broken, brokenWhy(check));
+  const jumpTo = jumpText(broken, rules, near(broken));
+  assert.equal(jumpTo.ok, false);
+  assert.equal(jumpTo.head, "Can't leave");
+  assert.equal(jumpTo.tone, 'bad');
+  assert.deepEqual(jumpTo.lines, [jumpPlan(broken, rules, near(broken)).error]);
+  assert.match(jumpTo.lines[0], /^The ship can't leave until every flight check passes: power −7 \(0 made, 7 used\)\. Refit to fix it\.$/);
+});
+
+test('supplies past the holds after a refit: the hold row, the hint and the jump say they stay behind', () => {
+  const station = atStation({ parts: { corridor: 2, cargo: 1 }, credits: 200 });
+  const withHold = refitShip(station, fitPart(station.ship, rules, 'cargo').ship, rules);
+  const full = buySupplies(withHold, rules, supplyCapacity(withHold.ship, rules) - withHold.supplies).campaign;
+  const without = refitShip(full, station.ship, rules);
+  const over = rules.modules.get('cargo').stats.cargo;
+  const text = sectorText(without, rules);
+  assert.deepEqual(text.hold[0], ['Supplies', `${full.supplies} of ${balance.baseSupplies}, ${over} won't fit`]);
+  assert.deepEqual(text.hint, { tone: 'warn', text: `The holds take ${balance.baseSupplies} now: ${over} supplies stay behind at the next jump. Refit a hold back on to keep them.` });
+  const jumpTo = jumpText(without, rules, near(without));
+  assert.equal(jumpTo.ok, true);
+  assert.equal(jumpTo.tone, 'warn');
+  assert.equal(jumpTo.left, over);
+  assert.deepEqual(jumpTo.lines.slice(0, 2), [`${over} supplies stay behind: the holds take ${balance.baseSupplies}.`, `Eats 3 supplies: ${balance.baseSupplies - 3} left.`]);
 });

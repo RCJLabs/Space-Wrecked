@@ -21,6 +21,6 @@ export function readyToLaunch(extra = {}) {
     ...[4, 6, 8].map((y) => ({ op: 'place', type: 'engine', x: 7, y, rot: 0 })),
   ];
   for (const command of commands) ship = applyCommand(ship, rules, command).ship;
-  campaign = refitShip(campaign, ship);
+  campaign = refitShip(campaign, ship, rules);
   return { ...campaign, ...extra };
 }

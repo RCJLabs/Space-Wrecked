@@ -2,8 +2,9 @@
 // stats, what it does in an approach (a gun's damage, a shield's strength,
 // point defense) and for the crew on the run (quarters, life support and
 // the med bay), its maker's word on it and how a maker's version differs
-// from its base part (M23g), and cost; and for a placed part, where it is
-// and whether it reaches the bridge. For a styling piece (M23f), pieceCard.
+// from its base part (M23g), and cost; and for a placed part, where it is,
+// whether it reaches the bridge and whether it is wrecked. For a styling
+// piece (M23f), pieceCard.
 import { footprint } from '../../sim/modules.js';
 import { pieceFootprint } from '../../sim/styling.js';
 
@@ -18,8 +19,10 @@ const STATS = [
 ];
 const ALWAYS = new Set(['mass', 'hp']);
 
-// placed: { module, joined } for a part on the hull, where joined is true,
-// false, or null when there is no bridge yet.
+// placed: { module, joined, wrecked } for a part on the hull, where joined
+// is true, false, or null when there is no bridge yet, and wrecked is true
+// for a part an approach wrecked, which stays on until a station repairs it
+// (M23h).
 export function cardFor(defs, def, placed = null) {
   const [w, h] = footprint(def, placed?.module.rot ?? 0);
   const faces = def.facesSpace ? ` · ${def.facesSpace.what} must face space` : '';
@@ -37,6 +40,7 @@ export function cardFor(defs, def, placed = null) {
     const where = `At (${placed.module.x}, ${placed.module.y})`;
     const joined = placed.joined === null ? 'no bridge yet' : placed.joined ? 'joined to the bridge' : 'not joined to the bridge';
     lines.push(`${where} · ${joined}`);
+    if (placed.wrecked) lines.push('Wrecked in an approach: it comes off once the station repairs it, and it can still move.');
   }
   return { title: def.name, lines };
 }

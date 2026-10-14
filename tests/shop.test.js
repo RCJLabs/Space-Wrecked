@@ -182,7 +182,7 @@ test("the hangar points to the shop: its price in the goal's fixes, and a hint w
   let campaign = { ...fresh(5), shop: [{ part: 'engine', price: 200 }], credits: 250 };
   let { ship } = campaign;
   for (const command of [{ op: 'place', type: 'quarters', x: 9, y: 5, rot: 0 }, { op: 'place', type: 'lifesupport', x: 9, y: 8, rot: 0 }]) ship = applyCommand(ship, rules, command).ship;
-  campaign = refitShip(campaign, ship);
+  campaign = refitShip(campaign, ship, rules);
   const text = hangarText(campaign, rules);
   assert.equal(text.shop, true);
   assert.equal(text.goal.lines.find((line) => line.text.startsWith('Thrust') || line.text === 'No thrust').fix, "Add 3 × Engine (+12 thrust each): none on hand, 200 at Dutch's yard");

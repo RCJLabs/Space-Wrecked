@@ -149,7 +149,7 @@ test('the map: a hostile ship until it is met, the parts wrecked aboard, and wha
   const station = campaign.run.sector.nodes.find((n) => n.type === 'station').id;
   const wrecked = { ...campaign, wrecks: { [engine]: 'fire' }, run: { ...campaign.run, at: station, seen: [...campaign.run.seen, station] } };
   const text = sectorText(wrecked, rules);
-  assert.deepEqual(text.hold.at(-1), ['Wrecked', 'Engine']);
+  assert.deepEqual(text.hold.find(([label]) => label === 'Wrecked'), ['Wrecked', 'Engine']);
   const price = repairPrice('engine', rules);
   assert.deepEqual(text.repair, { ok: true, label: `Repair · ${price}`, ask: `Repair for ${price}?`, text: `Repairs the engine for ${price} credits. Tap again to repair.`, why: null });
   assert.equal(text.hint.text, 'Supplies and repairs here. A part is wrecked aboard.');

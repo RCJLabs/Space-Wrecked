@@ -42,7 +42,7 @@ test('the hint follows what is left to do', () => {
   // engine has to come from somewhere else.
   let ship = applyCommand(campaign.ship, rules, { op: 'place', type: 'quarters', x: 9, y: 5, rot: 0 }).ship;
   ship = applyCommand(ship, rules, { op: 'place', type: 'lifesupport', x: 9, y: 8, rot: 0 }).ship;
-  const fitted = refitShip(campaign, ship);
+  const fitted = refitShip(campaign, ship, rules);
   assert.deepEqual(fitted.parts, { corridor: 2 });
   const text = hangarText(fitted, rules);
   assert.equal(text.build, false);

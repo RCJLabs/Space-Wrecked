@@ -22,12 +22,19 @@
 // lockers alone last the start crew (30 supplies, 3 aboard). On the lockers
 // alone a fourth mouth leaves 7 jumps, and a station is sometimes further
 // off than that, past a sector's jump point, where no plan can see.
-import { maxHp } from '../src/sim/campaign.js';
+// At a station it refits (refitAt, M23h): every part on hand that feeds,
+// heals, houses, guards, arms or drives the ship goes on, in that order,
+// where it touches most of the ship, each kept only while every flight
+// check still passes; a part the power doesn't stretch to takes a reactor
+// on hand with it. Never corridors, airlocks, armories or a second bridge,
+// and no healer that heals no more than one aboard.
+import { canRefit, maxHp, refitShip } from '../src/sim/campaign.js';
 import { crewRoom } from '../src/sim/crew.js';
 import { sellPriceOf } from '../src/sim/economy.js';
 import { choiceProblem } from '../src/sim/events.js';
 import { recruitOffer } from '../src/sim/recruits.js';
-import { jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity } from '../src/sim/travel.js';
+import { failingCheck, jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity } from '../src/sim/travel.js';
+import { fitPart } from './run.js';
 
 export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30 };
 const BUFFER_JUMPS = 4;
@@ -53,6 +60,64 @@ export function hireWho(campaign, rules) {
   if (campaign.credits - rules.balance.recruitFee < reserve) return null;
   const count = (job) => campaign.crew.filter((member) => member.job === job).length;
   return [...offer].sort((a, b) => count(a.job) - count(b.job) || b.hp - a.hp || a.slot - b.slot)[0].slot;
+}
+
+// The kinds of part the test player fits at a station, in the order it
+// fits them (data/modules.json categories).
+export const FIT_ORDER = ['cargo', 'crew', 'defense', 'weapons', 'engines'];
+
+// The parts on hand the test player would fit, in order: by FIT_ORDER, the
+// dearest first in each, one entry for each part.
+export function refitPicks(campaign, rules) {
+  const healer = Math.max(0, ...campaign.ship.modules.map((module) => rules.modules.get(module.type)?.heal ?? 0));
+  return Object.entries(campaign.parts)
+    .filter(([type]) => FIT_ORDER.includes(rules.modules.get(type)?.category))
+    .filter(([type]) => !rules.modules.get(type).heal || rules.modules.get(type).heal > healer)
+    .sort(([a], [b]) => FIT_ORDER.indexOf(rules.modules.get(a).category) - FIT_ORDER.indexOf(rules.modules.get(b).category) || rules.modules.get(b).cost - rules.modules.get(a).cost || a.localeCompare(b))
+    .flatMap(([type, count]) => Array(count).fill(type));
+}
+
+// The careful player's refit where the ship is: { campaign, parts (the
+// types fitted, in order) }. Away from a station, nothing. tried: a Map of
+// type -> the ship a part of that type last wouldn't go on, so a ship that
+// hasn't changed isn't tried again (fitPart tries every cell).
+export function refitAt(campaign, rules, tried = new Map()) {
+  if (!canRefit(campaign, rules)) return { campaign, parts: [] };
+  let now = campaign;
+  const parts = [];
+  for (const type of refitPicks(campaign, rules)) {
+    if (!now.parts[type] || tried.get(type) === now.ship) continue;
+    const next = fitted(now, rules, type);
+    if (!next) {
+      tried.set(type, now.ship);
+      continue;
+    }
+    parts.push(...next.parts);
+    now = next.campaign;
+  }
+  return { campaign: now, parts };
+}
+
+// The campaign with a part of `type` fitted, and a reactor on hand with it
+// if the power is short: { campaign, parts }, or null if it can't go on
+// with every flight check passing.
+function fitted(campaign, rules, type) {
+  const one = fitOne(campaign, rules, type);
+  if (!one) return null;
+  const check = failingCheck(one, rules);
+  if (!check) return { campaign: one, parts: [type] };
+  if (check.id !== 'power') return null;
+  const reactor = Object.keys(one.parts).filter((t) => rules.modules.get(t)?.stats.power > 0).sort((a, b) => rules.modules.get(a).stats.mass - rules.modules.get(b).stats.mass || a.localeCompare(b))[0];
+  const powered = reactor && fitOne(one, rules, reactor);
+  return powered && !failingCheck(powered, rules) ? { campaign: powered, parts: [type, reactor] } : null;
+}
+
+// The campaign with one part of `type` fitted where it touches most of the
+// ship (tools/run.js fitPart), or null if it fits nowhere.
+function fitOne(campaign, rules, type) {
+  const placed = fitPart(campaign.ship, rules, type);
+  const next = placed && refitShip(campaign, placed.ship, rules);
+  return next && next !== campaign ? next : null;
 }
 
 // What a change in supplies is worth: the part of it below the buffer at

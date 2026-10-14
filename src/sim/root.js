@@ -59,7 +59,9 @@ export function initialState(seed) {
 //   campaign/board { rules }       a job board and the shop's stock for a
 //                                  hub without them (a campaign saved
 //                                  before there were jobs or a shop)
-//   campaign/ship { ship }         the ship refitted at the hub
+//   campaign/ship { ship, rules }  the ship refitted at the hangar, or at
+//                                  a station on the run (campaign.js
+//                                  refitShip)
 //   campaign/pay { rules }         a payment on the debt: credits for heat
 //   campaign/buy { index, rules }  the part at index in the shop's stock,
 //                                  bought
@@ -131,7 +133,7 @@ export function reduce(state, action) {
     case 'campaign/board':
       return withCampaign(state, state.campaign && withBoard(state.campaign, action.rules));
     case 'campaign/ship':
-      return withCampaign(state, state.campaign && refitShip(state.campaign, action.ship));
+      return withCampaign(state, state.campaign && refitShip(state.campaign, action.ship, action.rules));
     case 'campaign/pay':
     case 'campaign/buy':
     case 'campaign/sell': {

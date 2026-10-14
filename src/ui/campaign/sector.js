@@ -15,7 +15,10 @@
 // act's last jump point the charts end, for now. The crew and the holds are
 // on the right, heat by the act; a tap on the crew opens the crew card
 // (crewCard.js) over the chart, where recruits sign on at a station and
-// crew are let go, two taps each. The run begins, its first sector rolled,
+// crew are let go, two taps each. At a station a tap on the ship's panel
+// is Refit: construction mode (construction.js), with the parts on hand
+// (M23h). A ship that fails a flight check there can't jump until a refit
+// fixes it, and the chart says so. The run begins, its first sector rolled,
 // the first time the map opens.
 //
 // Each node's button is its share of its column, so no two overlap and
@@ -31,7 +34,7 @@ import { createCrewCard } from './crewCard.js';
 import { crewCardText, crewHeading, crewSaid } from './crewText.js';
 import { createEventCard } from './eventCard.js';
 import { eventText, resultText } from './eventText.js';
-import { crewRows, heatChip, listRows, panel } from './hubParts.js';
+import { crewRows, heatChip, listRows } from './hubParts.js';
 import { jumpText, sectorText } from './sectorText.js';
 
 const ARM_MS = 3000; // Jump on, Buy, Repair, Patch up, Scan, Sign on and Let go wait this long for a second tap
@@ -86,8 +89,20 @@ export const sectorScreen = {
     const crewPanel = node('section', 'hgr-panel sct-crew-panel');
     crewPanel.append(crewTitle, crewList, crewOpener);
     const hold = node('dl', 'hgr-hold');
+    // The ship's panel: at a station a button over the whole of it is
+    // Refit, as the crew's opens the crew card.
+    const shipHead = node('span', null, 'Ship');
+    const shipChevron = node('b', null, '›');
+    const shipTitle = node('h2');
+    shipTitle.append(shipHead, shipChevron);
+    shipTitle.setAttribute('aria-hidden', 'true');
+    const shipOpener = node('button', 'sct-ship-open');
+    shipOpener.type = 'button';
+    shipOpener.hidden = true;
+    const shipPanel = node('section', 'hgr-panel sct-ship-panel');
+    shipPanel.append(shipTitle, hold, shipOpener);
     const side = node('div', 'hgr-side');
-    side.append(crewPanel, panel('Ship', hold));
+    side.append(crewPanel, shipPanel);
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const hint = node('p', 'hgr-hint', 'Loading…');
@@ -128,6 +143,7 @@ export const sectorScreen = {
       onTap(onButton, () => twoTaps('on', () => game.dispatch({ type: 'campaign/sector/leave', rules: defs }))),
       onTap(scanButton, () => twoTaps('scan', () => game.dispatch({ type: 'campaign/scan', rules: defs }))),
       onTap(crewOpener, () => toggleCrew(!crewOpen)),
+      onTap(shipOpener, refit),
       () => clearTimeout(armTimer),
       () => card.detach(),
       () => crewCard.detach(),
@@ -199,6 +215,16 @@ export const sectorScreen = {
       map.inert = covered;
       if (carded) disarm();
 
+      // Refit, at a station: the ship's panel opens construction mode.
+      const { refit: station } = text;
+      const refitting = Boolean(station) && !covered;
+      shipOpener.hidden = !refitting;
+      shipPanel.dataset.refit = String(refitting);
+      shipPanel.dataset.broken = String(Boolean(station?.broken));
+      shipChevron.hidden = !refitting;
+      setText(shipHead, station ? 'Ship · Refit' : 'Ship');
+      shipOpener.setAttribute('aria-label', station ? `Refit. ${station.broken ?? station.line}` : 'Ship');
+
       // Scan, while it would show something.
       const { scan } = text;
       if (!scan && armed === 'scan') disarm();
@@ -245,9 +271,11 @@ export const sectorScreen = {
 
     // What the foot says of the jump picked.
     function planHint(plan) {
-      if (!plan.ok) return { tone: 'info', text: plan.lines[0] };
+      if (!plan.ok) return { tone: plan.tone === 'bad' ? 'bad' : 'info', text: plan.lines[0] };
       const again = `Tap it again, or ${plan.label}, to go.`;
-      return plan.tone === 'bad' ? { tone: 'bad', text: `Short of supplies: the crew goes hungry. ${again}` } : { tone: 'good', text: again };
+      if (plan.tone === 'bad') return { tone: 'bad', text: `Short of supplies: the crew goes hungry. ${again}` };
+      if (plan.left) return { tone: 'warn', text: `${plan.left} supplies stay behind: the holds are smaller now. ${again}` };
+      return { tone: 'good', text: again };
     }
 
     // The chart: its links, and a button for each node, made again for
@@ -322,7 +350,7 @@ export const sectorScreen = {
       buyButtons.forEach((entry) => entry.detach());
       buyButtons = [];
       if (plan) {
-        setText(infoTitle, plan.ok ? plan.label : 'Out of reach');
+        setText(infoTitle, plan.ok ? plan.label : plan.head);
         setText(infoName, plan.node.name);
         setText(infoKind, plan.node.kind);
         infoLines.replaceChildren(...plan.lines.map((line) => lineItem(line, plan.tone)));
@@ -331,11 +359,14 @@ export const sectorScreen = {
         setText(infoText, plan.node.text);
         return;
       }
-      const { here, offer, leave } = text;
+      const { here, offer, leave, refit: station } = text;
       setText(infoTitle, 'Here');
       setText(infoName, here.name);
       setText(infoKind, here.kind);
       const said = leave ? [leave.title, ...leave.lines].map((line, i) => lineItem(line, i ? leave.tone : 'head')) : offer ? [offer.line, offer.why].filter(Boolean).map((line) => lineItem(line, 'info')) : [];
+      // The station's refits: what Refit, on the ship's panel, would fit, or
+      // the flight check that keeps the ship here.
+      if (station) said.push(lineItem(station.broken ?? station.line, station.broken ? 'bad' : station.parts ? 'good' : 'info'));
       infoLines.replaceChildren(...said);
       buyButtons = (offer?.buys ?? []).map((entry) => {
         const button = toolButton('sct-buy', icons.supplies, armed === entry.count ? entry.ask : entry.label);
@@ -402,6 +433,15 @@ export const sectorScreen = {
       disarm();
       game.dispatch({ type: 'campaign/jump', to, rules: defs });
       render(true);
+    }
+
+    // Refit: construction mode on the ship, at a station. Opening it changes
+    // nothing, so it takes one tap.
+    function refit() {
+      const { campaign } = game.getState();
+      if (!defs || !campaign || !sectorText(campaign, defs).refit) return;
+      disarm();
+      game.dispatch({ type: 'screen/show', screen: 'construction' });
     }
 
     // The crew card up or down: what was picked or had a first tap is put

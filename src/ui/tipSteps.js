@@ -4,7 +4,9 @@
 // applies, and what a touch on puts it away (done: a selector; at's own
 // control unless given). when(state, rules, find) has the game's state,
 // the content, and find(selector): the first such element on screen, or
-// null.
+// null. The builder's tips are act 1's, at the hangar: construction mode at
+// a station on the run (M23h) has none.
+import { atHangar } from '../sim/acts.js';
 import { shipChecklist } from '../sim/campaign.js';
 import { countOfAny, versionAtHand } from '../sim/makers.js';
 import { hangarText } from './campaign/hubText.js';
@@ -14,9 +16,9 @@ const picked = '.bld-part[aria-pressed="true"]';
 export const TIP_STEPS = [
   { id: 'hangar-goal', screen: 'hub', at: '.hgr-panel:has(.hgr-goal)', when: () => true },
   { id: 'hangar-build', screen: 'hub', at: '.hgr-build', when: (state, rules) => hangarText(state.campaign, rules).build },
-  { id: 'build-parts', screen: 'construction', at: (state, rules) => `.bld-part[data-type="${neededOnHand(state.campaign, rules)}"]`, when: (state, rules, find) => !find(picked) },
-  { id: 'build-place', screen: 'construction', at: '.bld-status', done: '.bld-board', when: (state, rules, find) => Boolean(find(picked)) },
-  { id: 'build-back', screen: 'construction', at: '.bld-leave', when: (state, rules) => !hangarText(state.campaign, rules).build },
+  { id: 'build-parts', screen: 'construction', at: (state, rules) => `.bld-part[data-type="${neededOnHand(state.campaign, rules)}"]`, when: (state, rules, find) => atHangar(state.campaign, rules) && !find(picked) },
+  { id: 'build-place', screen: 'construction', at: '.bld-status', done: '.bld-board', when: (state, rules, find) => atHangar(state.campaign, rules) && Boolean(find(picked)) },
+  { id: 'build-back', screen: 'construction', at: '.bld-leave', when: (state, rules) => atHangar(state.campaign, rules) && !hangarText(state.campaign, rules).build },
   {
     id: 'hangar-jobs',
     screen: 'hub',

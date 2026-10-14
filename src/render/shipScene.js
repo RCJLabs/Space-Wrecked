@@ -26,6 +26,8 @@ export const HOVER = 1; // how high a part being placed floats
 //   selected  uid or null
 //   lifted    uid of a part being dragged (left out, its floor dashed) or null
 //   flagged   Set of uids to outline in red (loose, or off the frame)
+//   wrecked   Set of uids an approach wrecked, crossed out until a station
+//             repairs them (M23h)
 // }
 export function blueprintScene(input) {
   const { ship, defs, doors, hull } = input;
@@ -47,14 +49,26 @@ export function blueprintScene(input) {
     const mine = doors.filter((d) => d.uid === module.uid);
     merge(model, inLine(room(def, module, mine), def.manufacturer));
     if (input.flagged?.has(module.uid)) rect(model, [x0, y0], [x1, y1], 0.006, { edge: 'flagEdge' });
+    const wrecked = Boolean(input.wrecked?.has(module.uid));
+    if (wrecked) wreckMark(model, [x0, y0, x1, y1]);
     if (module.uid === input.selected) {
       rect(model, [x0, y0], [x1, y1], 0.01, { fill: 'selectFace', edge: 'selectEdge' });
       polyline(model, 'selectEdge', closed([[x0, y0, WALL], [x1, y0, WALL], [x1, y1, WALL], [x0, y1, WALL]]));
-      labels.push({ at: [(x0 + x1) / 2, (y0 + y1) / 2, WALL], text: def.name, tone: 'info' });
+      labels.push({ at: [(x0 + x1) / 2, (y0 + y1) / 2, WALL], text: wrecked ? `${def.name} · wrecked` : def.name, tone: wrecked ? 'bad' : 'info' });
     }
   }
   greebles(model, hull, shape, makerAt(ship, defs));
   return { model, labels };
+}
+
+// A wrecked part (M23h): its floor tinted, its edge dashed, and a cross
+// over the room at the top of its walls, so it reads among the fittings.
+function wreckMark(model, [x0, y0, x1, y1]) {
+  rect(model, [x0, y0], [x1, y1], 0.008, { fill: 'wreckFace', edge: 'wreckEdge' });
+  const inset = 0.25;
+  const [a, b, c, d] = [x0 + inset, y0 + inset, x1 - inset, y1 - inset];
+  polyline(model, 'wreckMark', [[a, b, WALL], [c, d, WALL]]);
+  polyline(model, 'wreckMark', [[c, b, WALL], [a, d, WALL]]);
 }
 
 // A room's model in its maker's line: its styles swapped for the maker's

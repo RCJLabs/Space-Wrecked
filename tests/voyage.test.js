@@ -11,21 +11,25 @@
 // And M23's: recruits sign on where the holds can feed them, and still the
 // careful player crosses fed in 24 of 30; a med bay heals the wounded over
 // jumps, so a ship with one patches less (Law 1). And M23e's: surgery,
-// bunks and the large hold each change the voyage (Law 1).
+// bunks and the large hold each change the voyage (Law 1). And M23h's: the
+// careful player refits at stations with what it has on hand, each part kept
+// only while every flight check passes, and still crosses fed in 24 of 30.
 // Each voyage launches from a test run of act 1 (tools/run.js) and is
-// played by the test player in tools/voyage.js.
+// played by the test player in tools/voyage.js. The voyages before M23h's
+// fly as fitted, with no refits, so each compares one part's difference.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { HEAT_MAX, maxHp } from '../src/sim/campaign.js';
 import { outcomeFor } from '../src/sim/events.js';
 import { launchedAt, voyage } from '../tools/voyage.js';
+import { FIT_ORDER } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 
 const { balance } = rules;
 const RUNS = 30;
 // Each seed's act 1 test run, once: the voyages below fly from it.
 const lifts = Array.from({ length: RUNS }, (_, i) => launchedAt(rules, i + 1));
-const fly = (options) => lifts.map((lifted, i) => voyage(rules, i + 1, options, lifted));
+const fly = (options) => lifts.map((lifted, i) => voyage(rules, i + 1, { refit: 'no', ...options }, lifted));
 const trips = fly({});
 const careful = fly({ long: 'never' });
 // The careful player with a cargo hold fitted, room to feed a recruit; and
@@ -33,10 +37,14 @@ const careful = fly({ long: 'never' });
 const cargo = fly({ long: 'never', fit: ['cargo'] });
 const medbay = fly({ long: 'never', fit: ['medbay'] });
 // M23e's parts for the voyage: surgery; bunks, with a cargo hold to feed
-// whoever they make room for; and the large hold.
-const surgery = fly({ long: 'never', fit: ['surgery'] });
+// whoever they make room for; and the large hold. Surgery takes more power
+// than the start ship has spare, so a small reactor goes on with it: a ship
+// failing a flight check can't leave a station (M23h).
+const surgery = fly({ long: 'never', fit: ['smallreactor', 'surgery'] });
 const bunks = fly({ long: 'never', fit: ['cargo', 'bunks'] });
 const largehold = fly({ long: 'never', fit: ['largehold'] });
+// M23h: the careful player refitting at stations.
+const refitting = fly({ long: 'never', refit: 'yes' });
 const SEEDS = [1, 2, 3];
 const clamp = (value, max) => Math.max(0, Math.min(max, value));
 
@@ -225,7 +233,7 @@ test('surgery, bunks and the large hold each change the voyage (Law 1)', () => {
 });
 
 test('the same seed always gives the same sectors, none named twice in a run', () => {
-  const again = voyage(rules, SEEDS[1]);
+  const again = voyage(rules, SEEDS[1], { refit: 'no' });
   assert.deepEqual(again.sectors, trips[1].sectors);
   assert.deepEqual(again.steps, trips[1].steps);
   assert.notDeepEqual(trips[0].sectors, trips[1].sectors);
@@ -234,4 +242,28 @@ test('the same seed always gives the same sectors, none named twice in a run', (
     assert.equal(new Set(names).size, names.length, names.join(', '));
     assert.deepEqual(trip.sectors.map((sector) => sector.index), [1, 2, 3, 4, 5]);
   }
+});
+
+test('the careful player refits at stations with what it has, every flight check passing, and still crosses fed in 24 or more of 30 (M23h)', () => {
+  assert.ok(refitting.every((trip) => trip.launched && trip.ended), 'every run reaches the end of the charts');
+  const fed = refitting.filter((trip) => trip.tally.hungryJumps === 0).length;
+  assert.ok(fed >= 24, `fed all the way in ${fed} of ${RUNS}, refitting`);
+  const refits = refitting.flatMap((trip) => trip.steps.filter((step) => step.kind === 'refit'));
+  const runs = refitting.filter((trip) => trip.tally.fitted > 0).length;
+  assert.ok(runs >= 15, `runs with a refit: ${runs} of ${RUNS}`);
+  for (const step of refits) {
+    // The parts come off the parts on hand and onto the ship, for nothing,
+    // and every flight check still passes.
+    assert.ok(step.fitted.length > 0);
+    assert.equal(step.modules[1] - step.modules[0], step.fitted.length);
+    assert.equal(step.parts[0] - step.parts[1], step.fitted.length);
+    assert.deepEqual([step.credits[1], step.supplies[1], step.heat[1], step.hp[1]], [step.credits[0], step.supplies[0], step.heat[0], step.hp[0]]);
+    assert.equal(step.passes, true);
+    // Only what feeds, heals, houses, guards, arms or drives the ship, and
+    // a reactor with a part the power doesn't stretch to.
+    for (const type of step.fitted) assert.ok([...FIT_ORDER, 'power'].includes(rules.modules.get(type).category), type);
+  }
+  // Without refits, the same seeds fly as before.
+  const bare = careful.map((trip) => trip.tally.hungryJumps === 0).filter(Boolean).length;
+  assert.ok(fed >= bare - 2, `fed in ${fed} refitting, ${bare} without`);
 });

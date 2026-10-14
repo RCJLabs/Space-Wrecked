@@ -125,3 +125,14 @@ test("a Bastion part's card has its maker's word and how it differs from the Yar
   // A Yard part's card has neither line.
   assert.equal(cardFor(defs, defs.modules.get('engine')).lines.length, 3);
 });
+
+test("a wrecked part's card says it stays on until a station repairs it, and the run's chip says Ready to jump (M23h)", () => {
+  const engine = defs.modules.get('engine');
+  const card = cardFor(defs, engine, { module: { uid: 4, type: 'engine', x: 0, y: 2, rot: 0 }, joined: true, wrecked: true });
+  assert.equal(card.lines.at(-1), 'Wrecked in an approach: it comes off once the station repairs it, and it can still move.');
+  assert.ok(!cardFor(defs, engine, { module: { uid: 4, type: 'engine', x: 0, y: 2, rot: 0 }, joined: true }).lines.some((line) => line.startsWith('Wrecked')));
+  const ship = readyToLaunch().ship;
+  const lines = flightChecklist(ship, defs, 3);
+  assert.match(flightSummary(ship, defs, lines).text, / · Ready to launch$/);
+  assert.match(flightSummary(ship, defs, lines, undefined, 'Ready to jump').text, / · Ready to jump$/);
+});

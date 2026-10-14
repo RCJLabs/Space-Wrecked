@@ -598,9 +598,18 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
   - **Saves and codes:** old saves and blueprint codes load with the Yard's parts, and neither version number changes (tested).
   - **Voyage:** the careful test player still crosses all five sectors fed in at least 24 of 30.
   - **Budget:** the hull views keep to the frame budget.
-- [ ] **M23h Refits at stations** (from §9; Evan's call in M23, numbered M23b until the looks came first). Act 2 has no refits yet: a part found at a node or stripped from a boarded ship can only be sold, and most ships launch with room for one recruit and no med bay.
+- [ ] **M23h Refits at stations** (from §9; Evan's call in M23, numbered M23b until the looks came first). Act 2 has no refits yet: a part found at a node or stripped from a boarded ship can only be sold, and most ships launch with room for one recruit and no med bay. Evan's picks (2026-10-14): refit with what the run finds (no parts dealer at stations yet, §9); a wrecked part is repaired before it comes off; refits are free.
 
-  **Done when (draft):** at a station, construction mode opens with the parts on hand, so parts found, stripped or bought can be fitted; the ship can't jump while its flight checklist fails.
+  **Done when:**
+  - **At a station:** Refit, at a station on the run, opens construction mode on the ship with the parts on hand: found at nodes, stripped in boardings, or left from act 1. Each change is saved at once, as at the hangar, and Look works there too. Map goes back to the chart. Away from a station there is no Refit, and the sim refuses one (tested).
+  - **Free:** a refit costs no credits, supplies or heat, and the ship's parts and the parts on hand add up to the same before and after (tested).
+  - **Wrecks:** a wrecked part is marked on the plans, and its card says so. It moves and turns with its damage, but comes off only once the station has repaired it; the sim refuses a refit that would drop one (tested).
+  - **No leaving broken:** while a flight check fails, the ship can't jump from the station (a jump, a long jump or Jump on), and the chart says which check fails and that Refit fixes it (tested). Supplies past what the holds take after a refit stay behind at the next jump, and the jump says so before it is made (tested).
+  - **Hints:** at a station with parts on hand, the chart says how many and that Refit fits them.
+  - **The test player:** the careful test player (`tools/voyage.js`) refits at stations with what it has on hand, keeping each part only while every flight check still passes, and still crosses all five sectors fed in at least 24 of 30. Its report says what it fitted, and how the same seeds go without refits.
+  - **Saves:** no version change: a refit changes only the ship and the parts on hand. An act 2 save made by main opens and refits at a station (tested).
+  - **The hangar:** act 1's construction mode works as before.
+  - **Touch:** every new button is 48 px or more at the three sizes. By touch: a found part fitted at a station in two taps, a jump refused while a check fails and allowed once it is fixed, a wrecked part kept on, and a quit and reopen that keeps the refit.
 - [ ] **M24 Heat v2: hunters, regrouping, transponders** (§4.4's act 2 rules).
 
   **Done when (draft):** as in M15, ignoring heat brings the hunters, and managing it keeps them off.

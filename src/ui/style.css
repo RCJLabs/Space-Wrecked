@@ -772,6 +772,52 @@ textarea {
   background: none;
 }
 
+/* The ship's panel (sector.js): at a station a button over the whole of it
+   is Refit (M23h), lit as the crew's is for recruits, and in the bad tone
+   while a flight check keeps the ship there. */
+.sct-ship-panel {
+  position: relative;
+}
+
+.sct-ship-panel[data-refit='true'] {
+  border-color: var(--c-accent);
+}
+
+.sct-ship-panel[data-broken='true'] {
+  border-color: var(--c-bad);
+}
+
+.sct-ship-panel h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.sct-ship-panel h2 b {
+  color: var(--c-accent);
+  font-size: 18px;
+  line-height: 0.6;
+}
+
+.sct-ship-panel[data-refit='true'] h2 span {
+  color: var(--c-accent);
+}
+
+.sct-ship-panel[data-broken='true'] h2 span,
+.sct-ship-panel[data-broken='true'] h2 b {
+  color: var(--c-bad);
+}
+
+#ui .sct-ship-open {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+}
+
 /* The crew card (crewCard.js) and the squad card (squadCard.js): the event
    card's frame, as tall as what they hold and no taller than the room
    under the head. Their head and Done stay put; the lists, side by side

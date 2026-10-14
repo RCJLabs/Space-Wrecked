@@ -72,7 +72,10 @@ const MAX_JOBS = 30; // a run not at launch after this many stops
 // and the layout stays whole (every part joined to the bridge, every
 // exhaust and barrel facing space), touching as much of the ship as it
 // can; ties go to the first row, then column, then turn. Returns { ship,
-// at: { x, y, rot } }, or null if it fits nowhere.
+// at: { x, y, rot } }, or null if it fits nowhere. A spot is weighed before
+// it is tried: one touching nothing can't join the bridge, and one touching
+// no more than the best so far can't win, so neither is built (M23h: the
+// voyage's refits fit parts at every station).
 export function fitPart(ship, defs, type) {
   const def = defs.modules.get(type);
   const frame = defs.frames.get(ship.frame);
@@ -83,10 +86,11 @@ export function fitPart(ship, defs, type) {
   for (const rot of def.rotates ? [0, 1, 2, 3] : [0]) {
     for (let y = 0; y < frame.height; y++) {
       for (let x = 0; x < frame.width; x++) {
+        const score = touching({ x, y, rot });
+        if (score === 0 || (best && score <= best.score)) continue;
         const placed = applyCommand(ship, defs, { op: 'place', type, x, y, rot });
         if (!placed.ok || layoutProblems(placed.ship, defs).length) continue;
-        const score = touching({ x, y, rot });
-        if (!best || score > best.score) best = { ship: placed.ship, at: { x, y, rot }, score };
+        best = { ship: placed.ship, at: { x, y, rot }, score };
       }
     }
   }
@@ -150,7 +154,7 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
       if (!part) break;
       const type = versionAtHand(defs, part, count);
       const fitted = fitPart(campaign.ship, defs, type);
-      const next = fitted ? refitShip(campaign, fitted.ship) : campaign;
+      const next = fitted ? refitShip(campaign, fitted.ship, defs) : campaign;
       if (next === campaign) {
         tally.stuck = `no room for the ${name(type)}`;
         return;

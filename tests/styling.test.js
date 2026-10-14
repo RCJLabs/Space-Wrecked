@@ -157,7 +157,7 @@ test('looks change no stat, rule or boarding map: the start ship dressed and pai
   assert.deepEqual(sideStats(side(dressed), rules), sideStats(side(start), rules));
   // A refit at the hangar that only styles takes no parts.
   const campaign = readyToLaunch();
-  assert.deepEqual(refitShip(campaign, dressed).parts, campaign.parts);
+  assert.deepEqual(refitShip(campaign, dressed, rules).parts, campaign.parts);
 });
 
 test('a piece fits itself to the hull where it is tapped, and Turn shows it the next way round', () => {

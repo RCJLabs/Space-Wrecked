@@ -14,8 +14,9 @@
 //            Launching (launch.js) moves it on from act 1.
 //   place    where the player is: 'hub', or 'fight' while a fight is on
 //   credits  money, a whole number
-//   parts    { [module type]: count }: parts on hand in the hangar, not on
-//            the ship. Refitting the ship (construction mode) takes parts
+//   parts    { [module type]: count }: parts on hand, not fitted: in the
+//            hangar in act 1, in the holds on the run. Refitting the ship
+//            (construction mode, at the hangar or a station) takes parts
 //            from here and puts back what comes off.
 //   crew     [{ id, name, job, hp, traits, look }]: everyone aboard. hp is
 //            what they have now: wounds carry from fight to fight, up to
@@ -53,7 +54,7 @@
 //            home against boarders (beginFight), which no screen starts any
 //            more.
 import { int, isState, pick, seedFrom } from '../core/rng.js';
-import { actOf } from './acts.js';
+import { actOf, atHangar, atStation } from './acts.js';
 import { battleProblem } from './battleShape.js';
 import { createBattle } from './battle.js';
 import { buildShip, isShipData } from './builder.js';
@@ -244,14 +245,37 @@ export function stockOf(campaign) {
   return stock;
 }
 
-// The ship after a refit in the hangar, and the parts on hand after it: a
-// part fitted comes out of the hangar, one taken off goes back. Only at the
-// hub, on the same frame, and only with the parts the campaign has;
-// otherwise the campaign is left as it was.
-export function refitShip(campaign, ship) {
-  if (campaign.place !== 'hub' || ship === campaign.ship || !isShipData(ship) || ship.frame !== campaign.ship.frame) return campaign;
+// The ship after a refit, and the parts on hand after it: a part fitted
+// comes out of the parts on hand, one taken off goes back. Only at the
+// hangar (act 1) or at a station on the run (act 2), on the same frame, and
+// only with the parts the campaign has. A wrecked part stays aboard, as
+// the same part, until a station repairs it (repair.js): it can move, and
+// its damage moves with it, but it can't come off. A refit is free.
+// Otherwise the campaign is left as it was.
+export function refitShip(campaign, ship, rules) {
+  if (!canRefit(campaign, rules) || ship === campaign.ship || !isShipData(ship) || ship.frame !== campaign.ship.frame) return campaign;
+  if (!keepsWrecks(campaign, ship)) return campaign;
   const parts = onHandAfter(campaign.parts, campaign.ship, ship);
   return parts ? { ...campaign, ship, parts } : campaign;
+}
+
+// True where the ship can be refitted: at the hangar, or at a station.
+export function canRefit(campaign, rules) {
+  return Boolean(rules) && (atHangar(campaign, rules) || atStation(campaign, rules));
+}
+
+// The uids of the ship's wrecked parts: those a refit can't take off.
+export function wreckedUids(campaign) {
+  const uids = new Set(campaign.ship.modules.map((module) => module.uid));
+  return Object.keys(campaign.wrecks ?? {}).map(Number).filter((uid) => uids.has(uid));
+}
+
+// True when every wrecked part is still on `ship`, as the part it was.
+function keepsWrecks(campaign, ship) {
+  return wreckedUids(campaign).every((uid) => {
+    const before = campaign.ship.modules.find((module) => module.uid === uid);
+    return ship.modules.some((module) => module.uid === uid && module.type === before.type);
+  });
 }
 
 // The parts on hand once ship `before` becomes `after`, or null if `after`

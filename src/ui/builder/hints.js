@@ -38,16 +38,17 @@ export function hintFor(session, defs, drag) {
   return { tone: 'info', text: 'Drag a part onto the grid, or tap a part and then the grid.' };
 }
 
-// The part count and either "Ready to launch" or how many flight checks
-// are open with a fix, for the chip on the board: the first that can be
-// made with the parts on hand, if any can. Null for an empty hull.
-// onHand(type): how many of a part are on hand (endless if not given).
-export function flightSummary(ship, defs, lines, onHand = () => Infinity) {
+// The part count and either `cleared` ("Ready to launch", or on the run
+// "Ready to jump") or how many flight checks are open with a fix, for the
+// chip on the board: the first that can be made with the parts on hand, if
+// any can. Null for an empty hull. onHand(type): how many of a part are on
+// hand (endless if not given).
+export function flightSummary(ship, defs, lines, onHand = () => Infinity, cleared = 'Ready to launch') {
   if (!ship.modules.length) return null;
   const frame = defs.frames.get(ship.frame);
   const count = `${ship.modules.length}/${frame?.maxModules ?? '?'} parts`;
   const open = lines.filter((line) => line.ok !== true);
-  if (!open.length) return { tone: 'good', text: `${count} · Ready to launch` };
+  if (!open.length) return { tone: 'good', text: `${count} · ${cleared}` };
   const fixes = open.filter((line) => line.fix);
   const fix = fixes.find((line) => !line.add || onHand(line.add) > 0) ?? fixes[0];
   return { tone: 'bad', text: `${count} · ${open.length} to fix: ${fix.fix}` };

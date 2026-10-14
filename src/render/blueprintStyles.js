@@ -41,6 +41,9 @@ export const BLUEPRINT_STYLES = {
   flagEdge: { stroke: bad, width: 2, dash: [6, 5] },
   blockFace: { fill: rgba(bad, 0.22) },
   blockEdge: { stroke: bad, width: 2.2 },
+  // A wrecked part (M23h), in the fire of a wrecked room on a battle map.
+  wreckFace: { fill: rgba(palette.fire, 0.16) },
+  wreckEdge: { stroke: palette.fire, width: 1.6, dash: [4, 3] },
   selectFace: { fill: rgba(ink, 0.07) },
   rimFace: { fill: rgba(line, 0.08) },
   rimBase: { stroke: rgba(line, 0.55), width: 1.1 },
@@ -58,6 +61,7 @@ export const BLUEPRINT_STYLES = {
   fieldRing: ROOM.fieldRing,
   coreEdge: { stroke: glow, width: 1.2, halo: rgba(glow, 0.25) },
   wallTop: ROOM.wallTop,
+  wreckMark: { stroke: palette.fire, width: 2, halo: rgba(palette.fire, 0.25) },
   rimTop: { stroke: line, width: 1.8, halo: rgba(line, 0.2) },
   selectEdge: { stroke: ink, width: 2.4, halo: rgba(ink, 0.25) },
   glows: {},
