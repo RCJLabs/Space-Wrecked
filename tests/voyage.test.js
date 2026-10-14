@@ -385,5 +385,5 @@ test('past the charts: the careful player crosses all five sectors, enters the s
   // The summary says so too.
   const summary = manyVoyages(rules, 2, { refit: 'no' }).lines.join('\n');
   assert.match(summary, /2 of 2 entered the system past the charts, 2 settled a world/);
-  assert.match(summary, /The system: surveyed 0 worlds in \d+, 1 worlds in \d+, 2 worlds in \d+, 3 worlds in \d+\. Settled a surveyed world in \d+ of 2/);
+  assert.match(summary, /The system: surveyed all 3 worlds in \d+ runs, 2 in \d+, 1 in \d+, none in \d+\. Settled a surveyed world in \d+ of 2/);
 });
