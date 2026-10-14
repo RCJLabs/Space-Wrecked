@@ -18,8 +18,12 @@
 // crew are let go, two taps each. At a station a tap on the ship's panel
 // is Refit: construction mode (construction.js), with the parts on hand
 // (M23h). A ship that fails a flight check there can't jump until a refit
-// fixes it, and the chart says so. The run begins, its first sector rolled,
-// the first time the map opens.
+// fixes it, and the chart says so. Since M24 a jump's plan says the chance
+// the pursuer's hunters wait where it comes out, and the nodes they may
+// wait at are ringed in red; Regroup, away from stations, rests the crew a
+// day (Hide, in a nebula, sheds heat), and at a station the transponder is
+// swapped once a sector, each two taps. The run begins, its first sector
+// rolled, the first time the map opens.
 //
 // Each node's button is its share of its column, so no two overlap and
 // each stays 48 px or more on the screens the game is for; its mark sits
@@ -37,7 +41,7 @@ import { eventText, resultText } from './eventText.js';
 import { crewRows, heatChip, listRows } from './hubParts.js';
 import { jumpText, sectorText } from './sectorText.js';
 
-const ARM_MS = 3000; // Jump on, Buy, Repair, Patch up, Scan, Sign on and Let go wait this long for a second tap
+const ARM_MS = 3000; // Jump on, Buy, Repair, Patch up, Scan, Regroup, the swap, Sign on and Let go wait this long for a second tap
 const SVG = 'http://www.w3.org/2000/svg';
 const MARKS = {
   start: icons.wayIn,
@@ -48,6 +52,7 @@ const MARKS = {
   trader: icons.tag,
   hazard: icons.hazard,
   hostile: icons.hostile,
+  nebula: icons.nebula,
   unknown: icons.unknown,
 };
 
@@ -107,11 +112,12 @@ export const sectorScreen = {
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const hint = node('p', 'hgr-hint', 'Loading…');
     const buys = node('div', 'sct-buys');
+    const restButton = toolButton('sct-rest', icons.regroup, 'Regroup');
     const scanButton = toolButton('sct-scan', icons.scan, 'Scan');
     const jumpButton = toolButton('sct-jump', icons.jump, 'Jump');
     const onButton = toolButton('sct-on', icons.jumpPoint, 'Jump on');
-    scanButton.hidden = jumpButton.hidden = onButton.hidden = true;
-    foot.append(titleButton, hint, buys, scanButton, jumpButton, onButton);
+    restButton.hidden = scanButton.hidden = jumpButton.hidden = onButton.hidden = true;
+    foot.append(titleButton, hint, buys, restButton, scanButton, jumpButton, onButton);
     const card = createEventCard({
       choose: (choice) => game.dispatch({ type: 'campaign/event/choose', choice, rules: defs }),
       close: () => {
@@ -129,7 +135,7 @@ export const sectorScreen = {
     let defs = null;
     let alive = true;
     let picked = null; // the node picked on the map: its jump shows
-    let armed = null; // 'on', 'scan', 'repair', 'patch', the supplies a Buy is for, or a crew card button's key, after its first tap
+    let armed = null; // 'on', 'scan', 'rest', 'swap', 'repair', 'patch', the supplies a Buy is for, or a crew card button's key, after its first tap
     let crewOpen = false; // the crew card is up
     let closed = null; // the result put away with Carry on (resultKey)
     let armTimer = 0;
@@ -142,6 +148,7 @@ export const sectorScreen = {
       onTap(jumpButton, makeJump),
       onTap(onButton, () => twoTaps('on', () => game.dispatch({ type: 'campaign/sector/leave', rules: defs }))),
       onTap(scanButton, () => twoTaps('scan', () => game.dispatch({ type: 'campaign/scan', rules: defs }))),
+      onTap(restButton, () => twoTaps('rest', () => game.dispatch({ type: 'campaign/regroup', rules: defs }))),
       onTap(crewOpener, () => toggleCrew(!crewOpen)),
       onTap(shipOpener, refit),
       () => clearTimeout(armTimer),
@@ -186,7 +193,7 @@ export const sectorScreen = {
       showInfo(text, plan);
       // A station selling three things or more crowds the foot: its buttons
       // go without icons there, so the hint keeps room.
-      foot.dataset.crowded = String((text.offer?.buys.length ?? 0) + (text.repair ? 1 : 0) + (text.patch ? 1 : 0) >= 3);
+      foot.dataset.crowded = String((text.offer?.buys.length ?? 0) + (text.repair ? 1 : 0) + (text.patch ? 1 : 0) + (text.swap ? 1 : 0) >= 3);
 
       // An event open here takes the card, and holds everything else; once
       // settled, the card shows what happened until Carry on.
@@ -225,6 +232,20 @@ export const sectorScreen = {
       setText(shipHead, station ? 'Ship · Refit' : 'Ship');
       shipOpener.setAttribute('aria-label', station ? `Refit. ${station.broken ?? station.line}` : 'Ship');
 
+      // A day's rest: Regroup, or Hide in a nebula, where one can be taken.
+      const { rest } = text;
+      if (!rest && armed === 'rest') disarm();
+      restButton.hidden = !rest || covered || Boolean(plan);
+      if (rest) {
+        if (restButton.dataset.kind !== rest.kind) {
+          restButton.dataset.kind = rest.kind;
+          restButton.querySelector('svg').outerHTML = rest.kind === 'hide' ? icons.nebula : icons.regroup;
+        }
+        setText(restButton.querySelector('span'), armed === 'rest' ? rest.ask : rest.label);
+        restButton.setAttribute('aria-label', rest.text.replace(/ Tap again to \w+\.$/, ''));
+      }
+      restButton.dataset.armed = String(armed === 'rest');
+
       // Scan, while it would show something.
       const { scan } = text;
       if (!scan && armed === 'scan') disarm();
@@ -256,9 +277,12 @@ export const sectorScreen = {
       if (typeof armed === 'number' && !buy) disarm();
       if (armed === 'repair' && !text.repair?.ok) disarm();
       if (armed === 'patch' && !text.patch?.ok) disarm();
+      if (armed === 'swap' && !text.swap?.ok) disarm();
       const said = crew ? (crewAsk ?? crew.hint)
         : armed === 'on' ? { tone: leave.tone === 'bad' ? 'bad' : 'warn', text: `${leave.lines.join(' ')} Tap Jump on again.` }
         : armed === 'scan' ? { tone: 'warn', text: scan.text }
+        : armed === 'rest' ? { tone: rest.tone === 'bad' ? 'bad' : 'warn', text: rest.text }
+        : armed === 'swap' ? { tone: 'warn', text: text.swap.text }
         : armed === 'repair' ? { tone: 'warn', text: text.repair.text }
         : armed === 'patch' ? { tone: 'warn', text: text.patch.text }
         : buy ? { tone: 'warn', text: buy.text }
@@ -273,7 +297,9 @@ export const sectorScreen = {
     function planHint(plan) {
       if (!plan.ok) return { tone: plan.tone === 'bad' ? 'bad' : 'info', text: plan.lines[0] };
       const again = `Tap it again, or ${plan.label}, to go.`;
-      if (plan.tone === 'bad') return { tone: 'bad', text: `Short of supplies: the crew goes hungry. ${again}` };
+      if (plan.hungry) return { tone: 'bad', text: `Short of supplies: the crew goes hungry. ${again}` };
+      if (plan.hunt >= 100) return { tone: 'bad', text: `The hunters will be waiting there. ${again}` };
+      if (plan.hunt) return { tone: 'warn', text: `Hunters: ${plan.hunt}% they wait there. ${again}` };
       if (plan.left) return { tone: 'warn', text: `${plan.left} supplies stay behind: the holds are smaller now. ${again}` };
       return { tone: 'good', text: again };
     }
@@ -333,10 +359,12 @@ export const sectorScreen = {
         button.dataset.seen = String(n.seen);
         button.dataset.done = String(n.done);
         button.dataset.reach = String(n.links);
+        button.dataset.hunt = String(n.hunt > 0);
         button.setAttribute('aria-pressed', String(id === picked));
         const where = n.here ? 'the ship is here' : n.links === 1 ? 'a jump away' : n.links === 2 ? 'a long jump away' : 'out of reach';
         const kind = n.known ? (defs.nodeTypes.get(n.type)?.name ?? n.type) : 'unknown';
-        button.setAttribute('aria-label', [n.name, kind === n.name ? null : kind, where].filter(Boolean).join(', '));
+        const hunters = n.hunt ? `hunters ${n.hunt}%` : null;
+        button.setAttribute('aria-label', [n.name, kind === n.name ? null : kind, where, hunters].filter(Boolean).join(', '));
       }
       const here = sector.nodes[run.at];
       ship.style.left = `${here.x * 100}%`;
@@ -383,6 +411,15 @@ export const sectorScreen = {
         button.setAttribute('aria-label', repair.ok ? repair.text.replace(' Tap again to repair.', '') : repair.why);
         buyButtons.push({ button, detach: onTap(button, () => twoTaps('repair', () => game.dispatch({ type: 'campaign/repair', rules: defs }))) });
         if (!repair.ok) infoLines.append(lineItem(repair.why, 'bad'));
+      }
+      // The transponder swap, once a sector, for heat.
+      const { swap } = text;
+      if (swap) {
+        const button = toolButton('sct-buy sct-swap', icons.transponder, armed === 'swap' ? swap.ask : swap.label);
+        button.dataset.armed = String(armed === 'swap');
+        button.disabled = !swap.ok;
+        button.setAttribute('aria-label', swap.ok ? swap.text.replace(' Tap again to swap.', '') : swap.why);
+        buyButtons.push({ button, detach: onTap(button, () => twoTaps('swap', () => game.dispatch({ type: 'campaign/swap', rules: defs }))) });
       }
       // Patching up, for the crew's wounds.
       const { patch } = text;

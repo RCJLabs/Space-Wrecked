@@ -1,11 +1,13 @@
 // Words for the approach screen (approach.js): the two ships, the other
 // ship's order for the round, every order the player can give with its
 // odds, what the last round came to, and how it ended, with the boarding
-// fight it ended in, if any (boardingText.js). The rules are
-// src/sim/approach.js's, played by src/sim/encounter.js. rules are the
-// content tables (src/sim/defs.js).
-import { AIMS, choicesFor, closeChance, fleeChance, sideStats } from '../../sim/approach.js';
+// fight it ended in, if any (boardingText.js). The pursuer's hunters (M24,
+// src/sim/hunt.js) say whose they are, and what facing them did to heat.
+// The rules are src/sim/approach.js's, played by src/sim/encounter.js.
+// rules are the content tables (src/sim/defs.js).
+import { AIMS, choicesFor, closeChance, FACED, fleeChance, sideStats } from '../../sim/approach.js';
 import { approachIntent, approachState } from '../../sim/encounter.js';
+import { pursuerOf } from '../../sim/heat.js';
 import { boardingStakes } from './boardingText.js';
 import { actTitle, heatText } from './hubText.js';
 
@@ -14,8 +16,8 @@ const AIM_NAMES = { weapons: 'guns', engines: 'engines', shields: 'shields', rea
 const WRECK_WORDS = { fire: 'on fire', vacuum: 'open to vacuum', rubble: 'full of rubble' };
 
 // The approach going on, as the screen shows it, or null with none:
-//   act, where, round   "Act 2 · The run", "Hostile ship · Pirate cutter",
-//                       "Round 1 of 3"
+//   act, where, round   "Act 2 · The run", "Hostile ship · Pirate cutter"
+//                       ("The hunters · Con-Reg repo tug"), "Round 1 of 3"
 //   heat                the hangar's meter (hubText.js heatText)
 //   you, them           { name, stats: [[label, value]], wrecked }: wrecked
 //                       { [uid]: wreck }, for the boards
@@ -38,7 +40,7 @@ export function approachText(campaign, rules) {
   const outcome = approach.outcome ? outcomeText(approach, campaign, rules) : null;
   return {
     act: actTitle(campaign.act, rules),
-    where: `Hostile ship · ${approach.enemy.name}`,
+    where: `${approach.hunt ? 'The hunters' : 'Hostile ship'} · ${approach.enemy.name}`,
     round: outcome ? 'Over' : `Round ${approach.round} of ${rules.balance.approachRounds}`,
     heat: heatText(campaign, rules),
     you: sideText('Your ship', state.you, rules),
@@ -47,7 +49,7 @@ export function approachText(campaign, rules) {
     orders: intent ? ordersText(state, intent, theirName, rules) : [],
     last: approach.last ? roundLines(approach.last, state, theirName, rules) : [],
     outcome,
-    hint: outcome ? outcomeHint(outcome) : approach.last ? { tone: 'info', text: '' } : { tone: 'info', text: 'Tap an order to see its odds; tap it again to give it.' },
+    hint: outcome ? outcomeHint(outcome) : approach.last ? { tone: 'info', text: '' } : openingHint(approach, campaign, rules),
   };
 }
 
@@ -198,11 +200,22 @@ function outcomeText(approach, campaign, rules) {
   if (changes.credits > 0) lines.push(`Scrap: ${changes.credits} credits.`);
   if (changes.lost?.part) lines.push(`They take the ${partName(changes.lost.part)} you had on hand.`);
   if (changes.lost?.credits) lines.push(`They take ${changes.lost.credits} credits.`);
-  if (changes.heat) lines.push(`The shooting was heard: heat +${changes.heat}.`);
+  if (approach.hunt && FACED.includes(kind)) lines.push(`Heat −${-changes.heat}, to ${campaign.heat}: ${pursuerOf(campaign, rules)?.run?.faced ?? 'they lose the trail.'}`);
+  else if (changes.heat) lines.push(`The shooting was heard: heat +${changes.heat}.`);
+  if (approach.hunt && !FACED.includes(kind)) lines.push(`Still on your trail: heat ${campaign.heat}.`);
   const wrecked = Object.keys(campaign.wrecks).map((uid) => partName(campaign.ship.modules.find((module) => module.uid === Number(uid))?.type));
   if (changes.patched.length) lines.push(`The crew gets ${changes.patched.map((uid) => `the ${partName(campaign.ship.modules.find((module) => module.uid === uid)?.type).toLowerCase()}`).join(' and ')} going again.`);
   if (wrecked.length) lines.push(`Wrecked aboard until a station repairs it: ${wrecked.join(', ')}.`);
   return { title, lines, board, boarding: stakes };
+}
+
+// What to do as it opens: the hunters, whose they are and what facing
+// them buys; anyone else, how orders are given.
+function openingHint(approach, campaign, rules) {
+  const how = 'Tap an order to see its odds; tap it again to give it.';
+  if (!approach.hunt) return { tone: 'info', text: how };
+  const name = pursuerOf(campaign, rules)?.name ?? 'The pursuer';
+  return { tone: 'warn', text: `${name}'s hunters were waiting. Facing them buys quiet; getting away doesn't. ${how}` };
 }
 
 // What to do once it is over: carry on, or fight the boarding it ended in.

@@ -476,11 +476,14 @@ textarea {
   background: var(--c-accent);
 }
 
-.hgr-heat[data-level='raid'] .hgr-heat-fill {
+.hgr-heat[data-level='raid'] .hgr-heat-fill,
+.hgr-heat[data-level='taskForce'] .hgr-heat-fill,
+.hgr-heat[data-level='cornered'] .hgr-heat-fill {
   background: var(--c-bad);
 }
 
-.hgr-heat[data-level='raid'] .hgr-heat-label {
+.hgr-heat[data-level='raid'] .hgr-heat-label,
+.hgr-heat[data-level='cornered'] .hgr-heat-label {
   color: var(--c-bad);
 }
 
@@ -1000,6 +1003,7 @@ textarea {
 
 #ui .sct-buy,
 #ui .sct-scan,
+#ui .sct-rest,
 #ui .sct-jump,
 #ui .sct-on {
   display: flex;
@@ -1036,10 +1040,11 @@ textarea {
   -webkit-line-clamp: 3;
 }
 
-/* The first tap of Jump on, Buy, Repair, Patch up or Scan: what it costs,
-   waiting for a second. */
+/* The first tap of Jump on, Buy, Repair, Patch up, the transponder swap,
+   Scan, Regroup or Hide: what it costs, waiting for a second. */
 #ui .sct-on[data-armed='true'],
 #ui .sct-scan[data-armed='true'],
+#ui .sct-rest[data-armed='true'],
 #ui .sct-buy[data-armed='true'] {
   border-color: var(--c-accent);
   background: var(--c-panel);
@@ -1103,7 +1108,8 @@ textarea {
 
 .sct-node[data-type='start'] .sct-dot,
 .sct-node[data-type='exit'] .sct-dot,
-.sct-node[data-type='station'] .sct-dot {
+.sct-node[data-type='station'] .sct-dot,
+.sct-node[data-type='nebula'] .sct-dot {
   width: 32px;
   height: 32px;
 }
@@ -1180,6 +1186,13 @@ textarea {
   color: var(--c-accent);
 }
 
+/* A nebula (M24): the hunters can't see in. */
+.sct-node[data-type='nebula'] .sct-dot {
+  border-color: var(--c-nebula);
+  border-style: dotted;
+  color: var(--c-nebula);
+}
+
 .sct-node[data-seen='true'] .sct-dot {
   background: var(--c-line);
 }
@@ -1193,6 +1206,11 @@ textarea {
 .sct-node[data-reach='2'] .sct-dot {
   outline: 2px dashed var(--c-accent);
   outline-offset: 3px;
+}
+
+/* Where the pursuer's hunters may wait (M24): the ring in red. */
+.sct-node[data-hunt='true'] .sct-dot {
+  outline-color: var(--c-bad);
 }
 
 .sct-node[aria-pressed='true'] .sct-dot {
