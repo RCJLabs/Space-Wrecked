@@ -60,5 +60,6 @@
   "regroupHeat": 5,
   "hideHeat": -10,
   "swapHeat": -30,
-  "swapPrice": 40
+  "swapPrice": 40,
+  "surveyHeat": 2
 }

@@ -15,7 +15,10 @@
 // careful player refits at stations with what it has on hand, each part kept
 // only while every flight check passes, and still crosses fed in 24 of 30.
 // And M24's: ignoring heat brings the pursuer's hunters, and managing it
-// keeps them off, the careful player still crossing fed in 24 of 30.
+// keeps them off, the careful player still crossing fed in 24 of 30. And
+// M25's: past the last sector's jump point it enters the system past the
+// charts, surveys while its supplies allow and settles the world it scores
+// best, in every run, which ends the voyage and the act.
 // Each voyage launches from a test run of act 1 (tools/run.js) and is
 // played by the test player in tools/voyage.js. The voyages before M23h's
 // fly as fitted, with no refits, so each compares one part's difference.
@@ -26,8 +29,8 @@ import { test } from 'node:test';
 import { FACED } from '../src/sim/approach.js';
 import { HEAT_MAX, maxHp } from '../src/sim/campaign.js';
 import { outcomeFor } from '../src/sim/events.js';
-import { launchedAt, voyage } from '../tools/voyage.js';
-import { FIT_ORDER } from '../tools/voyagePlan.js';
+import { launchedAt, manyVoyages, voyage } from '../tools/voyage.js';
+import { bestWorld, FIT_ORDER, systemMove } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 
 const { balance } = rules;
@@ -53,6 +56,7 @@ const largehold = fly({ fit: ['largehold'] });
 const refitting = fly({ refit: 'yes' });
 const ignoring = fly({ refit: 'yes', heat: 'ignore' });
 const SEEDS = [1, 2, 3];
+const LAST = rules.acts.get(2).sectors;
 const clamp = (value, max) => Math.max(0, Math.min(max, value));
 
 test('from launch, a run crosses three sectors by jumping and restocking at stations', () => {
@@ -60,7 +64,7 @@ test('from launch, a run crosses three sectors by jumping and restocking at stat
     const seed = SEEDS[i];
     assert.ok(trip.launched, `seed ${seed} launches`);
     assert.ok(trip.tally.crossed >= 3, `seed ${seed}: ${trip.tally.crossed} sectors crossed`);
-    assert.ok(trip.ended, `seed ${seed} reaches the end of the charts`);
+    assert.ok(trip.ended, `seed ${seed} settles a world past the charts`);
     assert.equal(trip.tally.crossed, rules.acts.get(2).sectors);
     const restocked = new Set(trip.steps.filter((step) => step.kind === 'buy').map((step) => step.sector));
     assert.ok([1, 2, 3].filter((sector) => restocked.has(sector)).length >= 2, `seed ${seed} restocks in the first three sectors: ${[...restocked]}`);
@@ -75,7 +79,7 @@ test('supplies and heat move as data/balance.json and data/events.json say, step
   for (const [voyages, hold] of runs) {
     for (const trip of voyages) for (const step of trip.steps) checkStep(step, balance.baseSupplies + hold, kinds);
   }
-  assert.deepEqual([...kinds].sort(), ['approach', 'boarding', 'buy', 'event', 'hide', 'hire', 'jump', 'long', 'patch', 'repair', 'scan', 'sector', 'swap'], 'every kind of step comes up');
+  assert.deepEqual([...kinds].sort(), ['approach', 'boarding', 'buy', 'event', 'hide', 'hire', 'jump', 'long', 'patch', 'repair', 'scan', 'sector', 'settle', 'survey', 'swap', 'system'], 'every kind of step comes up');
 });
 
 // One step of a voyage, as the rules say it moves things.
@@ -99,6 +103,20 @@ function checkStep(step, capacity, kinds) {
     assert.equal(step.credits[0] - step.credits[1], balance.swapPrice);
     assert.equal(step.heat[1], clamp(step.heat[0] + balance.swapHeat, HEAT_MAX));
     assert.deepEqual([after, step.hp[1]], [supplies, step.hp[0]]);
+    return;
+  }
+  if (step.kind === 'survey') {
+    // M25: a day in orbit: a jump's supplies and surveyHeat, and the
+    // hunters' roll at the heat it leaves.
+    assert.equal(after, supplies - balance.jumpSupplies * step.crew);
+    assert.equal(step.heat[1], clamp(step.heat[0] + balance.surveyHeat, HEAT_MAX));
+    assert.deepEqual([step.credits[1], step.hp[1], step.parts[1]], [step.credits[0], step.hp[0], step.parts[0]]);
+    checkHunt(step);
+    return;
+  }
+  if (step.kind === 'settle') {
+    // M25: settling moves nothing the ship carries: it all goes with it.
+    assert.deepEqual([after, step.credits[1], step.heat[1], step.hp[1], step.parts[1]], [supplies, step.credits[0], step.heat[0], step.hp[0], step.parts[0]]);
     return;
   }
   if (step.kind === 'regroup' || step.kind === 'hide') {
@@ -204,7 +222,7 @@ function checkHunt(step) {
 }
 
 test('ten events play from data, hostile ships are met and boardings fought, and the run pays its way: 24 or more of 30 careful runs cross all five sectors fed', () => {
-  assert.ok(careful.every((trip) => trip.launched && trip.ended), 'every run launches and reaches the end of the charts');
+  assert.ok(careful.every((trip) => trip.launched && trip.ended), 'every run launches and settles a world past the charts');
   const played = new Set(trips.flatMap((trip) => trip.steps.filter((step) => step.kind === 'event').map((step) => step.event)));
   assert.equal(played.size, rules.events.size, `events played: ${[...played].join(', ')}`);
   assert.equal(rules.events.size, 10);
@@ -228,7 +246,7 @@ test('recruits sign on where the holds can feed them, and the run still pays its
   // stations (voyagePlan.js HIRE_JUMPS), so the careful player signs no one on.
   assert.ok(careful.every((trip) => trip.tally.hired === 0), 'no recruit on the lockers alone');
   // With a cargo hold, it signs recruits on where there is room and credits.
-  assert.ok(cargo.every((trip) => trip.launched && trip.ended), 'every run reaches the end of the charts');
+  assert.ok(cargo.every((trip) => trip.launched && trip.ended), 'every run settles a world past the charts');
   const signed = cargo.filter((trip) => trip.tally.hired > 0).length;
   assert.ok(signed >= 10, `runs with a recruit: ${signed} of ${RUNS}`);
   assert.ok(cargo.every((trip) => trip.campaign.crew.length <= 4), 'up to the berths and life support: 4');
@@ -242,7 +260,7 @@ test('a med bay heals the wounded over jumps: fitted, the careful player patches
   // presets), so healthier is the crew's hit points over all 30, not the
   // median run's.
   const hp = (voyages) => voyages.reduce((total, trip) => total + trip.campaign.crew.reduce((sum, member) => sum + member.hp, 0), 0);
-  assert.ok(medbay.every((trip) => trip.launched && trip.ended), 'every run reaches the end of the charts');
+  assert.ok(medbay.every((trip) => trip.launched && trip.ended), 'every run settles a world past the charts');
   assert.ok(sum(medbay, 'healed') > 0 && sum(careful, 'healed') === 0, `healed ${sum(medbay, 'healed')} with a med bay`);
   assert.ok(sum(medbay, 'patchedHp') < sum(careful, 'patchedHp'), `patched ${sum(medbay, 'patchedHp')} with a med bay, ${sum(careful, 'patchedHp')} without`);
   assert.ok(hp(medbay) > hp(careful), `crew at the end, over ${RUNS} runs: ${hp(medbay)} hit points with, ${hp(careful)} without`);
@@ -284,7 +302,7 @@ test('the same seed always gives the same sectors, none named twice in a run', (
 });
 
 test('the careful player refits at stations with what it has, every flight check passing, and still crosses fed in 24 or more of 30 (M23h)', () => {
-  assert.ok(refitting.every((trip) => trip.launched && trip.ended), 'every run reaches the end of the charts');
+  assert.ok(refitting.every((trip) => trip.launched && trip.ended), 'every run settles a world past the charts');
   const fed = refitting.filter((trip) => trip.tally.hungryJumps === 0).length;
   assert.ok(fed >= 24, `fed all the way in ${fed} of ${RUNS}, refitting`);
   const refits = refitting.flatMap((trip) => trip.steps.filter((step) => step.kind === 'refit'));
@@ -308,7 +326,9 @@ test('the careful player refits at stations with what it has, every flight check
 });
 
 test("ignoring heat brings the hunters, and managing it keeps them off: 27 or more of 30 meet them ignoring it, 6 or fewer managing it, and managing it 24 or more of 30 cross fed (M24)", () => {
-  const met = (voyages) => voyages.filter((trip) => trip.tally.hunts > 0).length;
+  // Met crossing the act's sectors, as M24 measured it: the system past the
+  // charts (M25) is the next test's.
+  const met = (voyages) => voyages.filter((trip) => trip.steps.some((step) => step.kind === 'approach' && step.hunt && step.sector <= LAST)).length;
   const median = (voyages, key) => voyages.map((trip) => trip.tally[key]).sort((a, b) => a - b)[Math.floor(RUNS / 2)];
   assert.ok(ignoring.every((trip) => trip.launched && trip.ended), 'heat never ends a run (Law 5)');
   assert.ok(met(ignoring) >= 27, `ignoring heat, the hunters came in ${met(ignoring)} of ${RUNS}`);
@@ -331,4 +351,39 @@ test("ignoring heat brings the hunters, and managing it keeps them off: 27 or mo
   // its approaches and jumps.
   for (const trip of ignoring) for (const step of trip.steps) if (['regroup', 'approach', 'jump', 'sector'].includes(step.kind)) checkStep(step, Infinity, new Set());
   assert.ok(sum(ignoring, 'regroups') > 0, 'it regroups');
+});
+
+test('past the charts: the careful player crosses all five sectors, enters the system, surveys while its supplies allow and settles the world it scores best, in every run (M25)', () => {
+  for (const [i, trip] of refitting.entries()) {
+    const seed = i + 1;
+    assert.equal(trip.tally.crossed, LAST, `seed ${seed} crosses every sector`);
+    assert.equal(trip.system?.system, true, `seed ${seed} enters the system`);
+    assert.ok(trip.ended && trip.campaign.act === 3, `seed ${seed} settles a world`);
+    assert.equal(trip.steps.at(-1).kind, 'settle', 'settling ends the voyage');
+    // The colony keeps the world as the system has it.
+    const { run, colony } = trip.campaign;
+    const node = run.sector.nodes.find((n) => n.name === colony.world.name);
+    assert.deepEqual(colony.world, { name: node.name, ...node.world, surveyed: run.surveyed.includes(node.id) });
+    assert.equal(new Set(trip.steps.filter((step) => step.kind === 'survey').map((step) => step.world)).size, trip.tally.surveys, 'each world surveyed once');
+    // It settled where no survey was left that its supplies covered, with
+    // the way on to the best world, and that world is the one it settled:
+    // the best it knew of in reach.
+    assert.deepEqual(systemMove(trip.campaign, rules), { kind: 'settle' }, `seed ${seed}`);
+    assert.equal(bestWorld(trip.campaign, rules), node.id);
+    // Its report: the worlds surveyed, the one settled and the act's record.
+    assert.ok(trip.lines.some((line) => line.startsWith(`   Settled ${node.name} (`)), `seed ${seed} says what it settled`);
+    assert.match(trip.lines.at(-1), /^The act's record: /);
+  }
+  // Surveying while the supplies allow: most runs survey two worlds or
+  // more, none goes hungry for it, and nearly every run settles a world it
+  // surveyed.
+  const surveyed = refitting.filter((trip) => trip.tally.surveys >= 2).length;
+  assert.ok(surveyed >= 20, `two worlds or more surveyed in ${surveyed} of ${RUNS}`);
+  assert.equal(refitting.reduce((sum, trip) => sum + trip.tally.systemHungry, 0), 0, 'never hungry in the system');
+  const known = refitting.filter((trip) => trip.tally.settled.surveyed).length;
+  assert.ok(known >= 25, `settled a surveyed world in ${known} of ${RUNS}`);
+  // The summary says so too.
+  const summary = manyVoyages(rules, 2, { refit: 'no' }).lines.join('\n');
+  assert.match(summary, /2 of 2 entered the system past the charts, 2 settled a world/);
+  assert.match(summary, /The system: surveyed all 3 worlds in \d+ runs, 2 in \d+, 1 in \d+, none in \d+\. Settled a surveyed world in \d+ of 2/);
 });

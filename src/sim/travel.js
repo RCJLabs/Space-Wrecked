@@ -1,13 +1,17 @@
 // The run (ROADMAP §2, act 2): the ship crossing sectors, jumping from node
 // to node on each sector's map (gen/sector.js) and on into the next sector
-// from its jump point, up to the act's last. Pure: every roll is the
+// from its jump point, up to the act's last. Past the last one's jump point
+// lies the system (M25, gen/system.js): its worlds, one of which the crew
+// settles (settle.js), which ends the act. Pure: every roll is the
 // campaign's.
 //
 // campaign.run, from the act's first visit home (beginRun) on:
 //   sector   the sector the ship is in, saved whole, so an update to the
 //            game can't move a node under it: { index, name, nodes, links,
 //            start, exit }. A node of a kind that holds events has one
-//            (node.event, an id in data/events.json)
+//            (node.event, an id in data/events.json). The system past the
+//            charts is one too, with system: true, its worlds' nodes each
+//            carrying their world, and no jump point (exit: null)
 //   at       the node the ship is at
 //   seen     the nodes it has been to in this sector, in order
 //   past     the names of the sectors crossed before, oldest first
@@ -21,6 +25,7 @@
 //            slot }] (recruits.js)
 //   swapped  whether the transponder has been swapped in this sector
 //            (transponder.js, M24)
+//   surveyed the worlds surveyed in the system (survey.js, M25)
 // campaign.supplies: what the ship carries, up to supplyCapacity.
 //
 // A jump goes to a linked node: each crew member eats jumpSupplies, and heat
@@ -35,7 +40,8 @@
 // check fails, and supplies past what the holds take after a refit stay
 // behind at the next jump, before it eats. From
 // the jump point, leaving the sector is a jump into the next one's way in,
-// rolled from the campaign's RNG as it is left. The flags count the jumps,
+// rolled from the campaign's RNG as it is left; from the last sector's, into
+// the system's, rolled the same way. The flags count the jumps,
 // the long ones, the hungry ones, the hit points the med bay healed, the
 // supplies bought, those left behind, and the scans.
 //
@@ -55,6 +61,7 @@ import { flightChecklist, shipStats } from './constraints.js';
 import { openApproach } from './encounter.js';
 import { tally } from './flags.js';
 import { generateSector } from './gen/sector.js';
+import { generateSystem } from './gen/system.js';
 import { withHeat } from './heat.js';
 import { huntOdds, rollHunt } from './hunt.js';
 import { healCrew, healRate } from './medbay.js';
@@ -100,7 +107,7 @@ export function beginRun(campaign, rules) {
 
 // A run entering `sector`, with the sectors behind it.
 function freshRun(sector, past) {
-  return { sector, at: sector.start, seen: [sector.start], past, done: [], scans: [], result: null, approach: null, hired: [], swapped: false };
+  return { sector, at: sector.start, seen: [sector.start], past, done: [], scans: [], result: null, approach: null, hired: [], swapped: false, surveyed: [] };
 }
 
 // The event open at the ship's node: { node, event } (the event from
@@ -277,35 +284,38 @@ export function buySupplies(campaign, rules, count) {
 
 // What leaving the sector from its jump point takes: a jump's supplies,
 // heat and healing, into the next sector's way in, where the hunters may
-// wait. { ok: true, kind: 'sector', supplies, left, heat, hungry, heal,
-// hunt } or { ok: false, error, last, check } (last: the act's last
-// sector, past which the charts end; check: as for a jump).
+// wait; from the act's last sector, into the system past the charts (kind
+// 'system'). { ok: true, kind: 'sector' or 'system', supplies, left, heat,
+// hungry, heal, hunt } or { ok: false, error, last, check } (last: in the
+// system, past which nothing is charted; check: as for a jump).
 export function leavePlan(campaign, rules) {
   const { run } = campaign;
   if (!run || !onTheRun(campaign, rules)) return { ok: false, error: 'Jumps are made from the ship, on the run.' };
   const held = holdOf(campaign, rules);
   if (held) return { ok: false, error: held };
+  if (run.sector.system) return { ok: false, last: true, error: 'Nothing past the system is charted: settle one of its worlds.' };
   if (run.at !== run.sector.exit) return { ok: false, error: 'The sector is left from its jump point.' };
-  if (run.sector.index >= (actOf(campaign, rules)?.sectors ?? 0)) return { ok: false, last: true, error: 'The charts end at this jump point.' };
+  const last = run.sector.index >= (actOf(campaign, rules)?.sectors ?? 0);
   const check = failingCheck(campaign, rules);
   if (check) return { ok: false, error: brokenWhy(check), check };
   const supplies = jumpSupplies(campaign, rules);
   const left = suppliesOver(campaign, rules);
   const { jumpHeat } = rules.balance;
   const hunt = huntOdds(campaign, rules, withHeat(campaign.heat, jumpHeat), 'start');
-  return { ok: true, kind: 'sector', supplies, left, heat: jumpHeat, hungry: campaign.supplies - left < supplies, heal: healRate(campaign, rules), hunt };
+  return { ok: true, kind: last ? 'system' : 'sector', supplies, left, heat: jumpHeat, hungry: campaign.supplies - left < supplies, heal: healRate(campaign, rules), hunt };
 }
 
-// Leaves the sector into the next one, where the hunters may be waiting at
-// the way in. Returns { ok: true, campaign, plan, hunt } or { ok: false,
-// error }.
+// Leaves the sector into the next one, or from the last into the system
+// past the charts, where the hunters may be waiting at the way in. Returns
+// { ok: true, campaign, plan, hunt } or { ok: false, error }.
 export function leaveSector(campaign, rules) {
   const plan = leavePlan(campaign, rules);
   if (!plan.ok) return plan;
   const moved = spend(campaign, rules, plan);
   const { value: seed, state: rng } = int(moved.rng, 0, MAX_SEED);
   const past = [...campaign.run.past, campaign.run.sector.name];
-  const sector = generateSector(rules, seed, campaign.run.sector.index + 1, { avoid: past });
+  const index = campaign.run.sector.index + 1;
+  const sector = plan.kind === 'system' ? generateSystem(rules, seed, index) : generateSector(rules, seed, index, { avoid: past });
   const met = rollHunt({ ...moved, rng, run: freshRun(sector, past) }, rules);
   return { ok: true, plan, campaign: met.campaign, hunt: met.hunt };
 }

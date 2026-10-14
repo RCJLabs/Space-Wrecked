@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // A test voyage through act 2 (M19's and M20's Done whens): from launch,
-// across the act's sectors to where the charts end. The ship launches from
+// across the act's sectors and on into the system past the charts, where it
+// settles a world and the act ends (M25). The ship launches from
 // a test run of act 1 at the same seed (tools/run.js), so it sets out with
 // what such a run leaves it: its credits, heat and crew, the holds full. A
 // test player does what a careful player would (its judgment is
@@ -31,7 +32,10 @@
 //     (voyagePlan.js swapNow), hiding in a nebula on the way (restNow);
 //     with --heat ignore, none of these, and no long jumps;
 //   - either way, regroup away from stations when the crew is worn down
-//     (restNow), and face the hunters as any hostile ship.
+//     (restNow), and face the hunters as any hostile ship;
+//   - in the system past the charts (M25), survey while the supplies
+//     allow, and settle the world it scores best (voyagePlan.js
+//     systemMove), which ends the voyage.
 //
 //   node tools/voyage.js               a voyage from campaign seed 1, step by step
 //   node tools/voyage.js --seed 7      another seed
@@ -59,26 +63,31 @@ import { huntersOf } from '../src/sim/hunt.js';
 import { hireRecruit } from '../src/sim/recruits.js';
 import { regroup } from '../src/sim/regroup.js';
 import { repairShip } from '../src/sim/repair.js';
+import { settle } from '../src/sim/settle.js';
+import { survey } from '../src/sim/survey.js';
 import { swapTransponder } from '../src/sim/transponder.js';
-import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leavePlan, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer } from '../src/sim/travel.js';
+import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer } from '../src/sim/travel.js';
+import { stubText } from '../src/ui/campaign/launchText.js';
 import { captainOrder } from './approachPlan.js';
 import { fightBoarding } from './boarding.js';
 import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
 import { withPart } from './startShip.js';
-import { bestChoice, boardIt, HEAT_POLICIES, hireWho, LONG_FROM, nextJump, refitAt, restNow, scanNow, swapNow } from './voyagePlan.js';
+import { bestChoice, boardIt, HEAT_POLICIES, hireWho, LONG_FROM, nextJump, refitAt, restNow, scanNow, swapNow, systemMove, worldScore } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
 export const REFIT_POLICIES = ['yes', 'no'];
 const MAX_JUMPS = 100; // a voyage still going after this many stops
 
-// A voyage from a launched campaign (act 2, the run not yet begun) to the
-// end of the charts: { ended, steps, sectors, tally, lines, campaign }.
-// steps: every jump, purchase, event, approach, boarding, patch, repair and
-// scan with what it moved, [before, after]; sectors: each sector as the ship
-// entered it.
+// A voyage from a launched campaign (act 2, the run not yet begun) to a
+// world settled: { ended, steps, sectors, system, tally, lines, campaign }.
+// ended: whether it settled a world, ending the act; steps: every jump,
+// purchase, event, approach, boarding, patch, repair, scan and survey, with
+// what it moved, [before, after], and the settling; sectors: each sector as
+// the ship entered it; system: the system past the charts, as it entered
+// it, or null.
 export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 'yes', refit = 'yes', heat = 'manage', label = '' } = {}) {
   if (!LONG_POLICIES.includes(longPolicy)) throw new Error(`--long is one of ${LONG_POLICIES.join(', ')}`);
   if (!HEAT_POLICIES.includes(heat)) throw new Error(`--heat is one of ${HEAT_POLICIES.join(', ')}`);
@@ -140,6 +149,12 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     swaps: 0,
     swapCredits: 0,
     hotJumps: 0,
+    surveys: 0,
+    systemHungry: 0,
+    // The world settled: { name, kind, surveyed, score (as the player knew
+    // it), best (the best score of the system's worlds, all numbers known),
+    // record (the act's, as act 3's stub says it) }, or null.
+    settled: null,
     peak: launched.heat,
     heat: [launched.heat, null],
     hp: [hpOf(campaign), null],
@@ -152,6 +167,11 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
   ];
   const sectorLine = () => {
     const { sector } = campaign.run;
+    if (sector.system) {
+      const worlds = sector.nodes.filter((node) => node.world).map((node) => `${node.name} (${kindName(defs, node.world)})`);
+      lines.push(`The system past the charts: ${sector.name}, ${worlds.length} worlds: ${worlds.join(', ')}.`);
+      return;
+    }
     lines.push(`Sector ${sector.index}: ${sector.name}, ${sector.nodes.length} nodes, ${sector.nodes.filter((node) => node.type === 'station').length} station(s).`);
   };
   const record = (kind, before, extra = {}) => {
@@ -168,6 +188,33 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     };
     steps.push(step);
     return step;
+  };
+  // A jump made: its step, the tallies and the log.
+  let system = null;
+  const jumped = (before, moved) => {
+    if (!moved.ok) throw new Error(moved.error);
+    campaign = moved.campaign;
+    const { plan } = moved;
+    const out = plan.kind === 'sector' || plan.kind === 'system';
+    record(plan.kind, before, { hungry: plan.hungry, heal: plan.heal, max: before.crew.map((member) => maxHp(member, defs)), to: out ? null : campaign.run.at, hunt: moved.hunt });
+    tally.jumps += 1;
+    if (moved.hunt.chance > 0) tally.hotJumps += 1;
+    tally.peak = Math.max(tally.peak, campaign.heat);
+    if (plan.kind === 'long') tally.longJumps += 1;
+    if (plan.hungry) tally.hungryJumps += 1;
+    if (plan.hungry && before.run.sector.system) tally.systemHungry += 1;
+    // A sector is crossed when the ship reaches its jump point.
+    if (campaign.run.at === campaign.run.sector.exit) tally.crossed += 1;
+    const hungry = plan.hungry ? `, hungry (${hpOf(campaign)})` : '';
+    if (out) {
+      if (plan.kind === 'sector') sectors.push(campaign.run.sector);
+      else system = campaign.run.sector;
+      lines.push(`   Jumped on ${plan.kind === 'sector' ? 'out of the sector' : 'past the charts'}${hungry}: ${hold()}.`);
+      sectorLine();
+    } else {
+      const node = hereOf(campaign);
+      lines.push(`   ${plan.kind === 'long' ? 'Long jump' : 'Jump'} to ${node.name}${node.type === 'station' ? ' (a station)' : ''}${hungry}: ${hold()}.`);
+    }
   };
   sectorLine();
   for (;;) {
@@ -246,6 +293,37 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       tally.wounds += changes.wounds.reduce((sum, wound) => sum + wound.hp, 0);
       const said = pick.choice.outcomes[result.outcome].text;
       lines.push(`   ${open.event.title}: ${pick.choice.label}${result.roll === null ? '' : ` (rolled ${result.roll})`}. ${said} ${hold()}.`);
+    }
+    // The system past the charts (M25): a survey, a jump between its
+    // worlds, or settling, which ends the voyage. There is nothing else to
+    // do there: no station, no events.
+    if (campaign.run.sector.system) {
+      const move = systemMove(campaign, defs);
+      const before = campaign;
+      const here = hereOf(campaign);
+      if (move.kind === 'survey') {
+        const done = survey(campaign, defs);
+        if (!done.ok) throw new Error(done.error);
+        campaign = done.campaign;
+        record('survey', before, { world: here.name, hunt: done.hunt });
+        tally.surveys += 1;
+        tally.peak = Math.max(tally.peak, campaign.heat);
+        lines.push(`   Surveyed ${here.name} (${kindName(defs, here.world)}): ${numbersText(here.world)}; scores ${worldScore(defs, here.world, true)}. ${hold()}${done.hunt.found ? '. The hunters found the ship' : ''}.`);
+        continue;
+      }
+      if (move.kind === 'settle') {
+        const done = settle(campaign, defs);
+        if (!done.ok) throw new Error(done.error);
+        campaign = done.campaign;
+        const { world } = campaign.colony;
+        const best = Math.max(...before.run.sector.nodes.filter((node) => node.world).map((node) => worldScore(defs, node.world, true)));
+        record('settle', before, { world: world.name });
+        tally.settled = { name: world.name, kind: world.kind, surveyed: world.surveyed, score: worldScore(defs, world, world.surveyed), best, record: stubText(campaign, defs).record.lines };
+        lines.push(`   Settled ${world.name} (${kindName(defs, world)}, ${world.surveyed ? `surveyed, scoring ${worldScore(defs, world, true)}` : `not surveyed, its kind scoring ${worldScore(defs, world, false)}`}; the system's best scores ${best}): act 2 ends.`);
+        break;
+      }
+      jumped(before, jump(campaign, defs, move.to));
+      continue;
     }
     // A refit at a station, before the holds are filled: a hold fitted
     // takes more.
@@ -341,43 +419,19 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       lines.push(`   Scanned: ${look.reveals.length} node(s) shown, heat ${campaign.heat}.`);
     }
     const before = campaign;
-    let moved;
-    if (campaign.run.at === campaign.run.sector.exit) {
-      if (leavePlan(campaign, defs).last) break;
-      moved = leaveSector(campaign, defs);
-    } else {
-      moved = jump(campaign, defs, nextJump(campaign, defs, long, { heat }));
-    }
-    if (!moved.ok) throw new Error(moved.error);
-    campaign = moved.campaign;
-    const { plan } = moved;
-    record(plan.kind, before, { hungry: plan.hungry, heal: plan.heal, max: before.crew.map((member) => maxHp(member, defs)), to: plan.kind === 'sector' ? null : campaign.run.at, hunt: moved.hunt });
-    tally.jumps += 1;
-    if (moved.hunt.chance > 0) tally.hotJumps += 1;
-    tally.peak = Math.max(tally.peak, campaign.heat);
-    if (plan.kind === 'long') tally.longJumps += 1;
-    if (plan.hungry) tally.hungryJumps += 1;
-    // A sector is crossed when the ship reaches its jump point.
-    if (campaign.run.at === campaign.run.sector.exit) tally.crossed += 1;
-    const hungry = plan.hungry ? `, hungry (${hpOf(campaign)})` : '';
-    if (plan.kind === 'sector') {
-      sectors.push(campaign.run.sector);
-      lines.push(`   Jumped on out of the sector${hungry}: ${hold()}.`);
-      sectorLine();
-    } else {
-      const node = hereOf(campaign);
-      lines.push(`   ${plan.kind === 'long' ? 'Long jump' : 'Jump'} to ${node.name}${node.type === 'station' ? ' (a station)' : ''}${hungry}: ${hold()}.`);
-    }
+    jumped(before, campaign.run.at === campaign.run.sector.exit ? leaveSector(campaign, defs) : jump(campaign, defs, nextJump(campaign, defs, long, { heat })));
   }
   tally.heat[1] = campaign.heat;
   tally.hp[1] = hpOf(campaign);
   tally.healed = campaign.flags.hpHealed ?? 0;
-  const ended = leavePlan(campaign, defs).last === true;
-  const where = ended ? `The charts end at sector ${campaign.run.sector.index}'s jump point` : `Stopped in sector ${campaign.run.sector.index}`;
+  const ended = tally.settled !== null;
+  const { sector } = campaign.run;
+  const where = ended ? `Settled ${tally.settled.name} in ${sector.name}` : sector.system ? `Stopped in ${sector.name}, past the charts` : `Stopped in sector ${sector.index}`;
   lines.push(
-    `${where}, ${tally.crossed} sectors crossed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits; boarded ${tally.boardings} (won ${tally.boardingsWon}), left ${tally.left}, fought off ${tally.defencesWon} of ${tally.defences}; salvage ${tally.salvaged} parts and ${tally.salvageCredits} credits, lost ${tally.partsLost} parts and ${tally.creditsLost} credits, ${tally.fightHp} hit points; patched ${tally.patchedHp} for ${tally.patchCredits} credits; ${tally.repairs} repairs for ${tally.repairCredits} credits; signed on ${tally.hired}, healed ${tally.healed} in the med bay; refitted ${tally.fitted} parts at ${tally.refits} stations. The hunters: met ${tally.hunts} (${tally.taskForces} the task force), faced ${tally.huntsFaced}; ${tally.hotJumps} jumps where they might wait; ${tally.regroups} regroups and ${tally.hides} days hidden, healing ${tally.rested}; ${tally.swaps} transponder swaps for ${tally.swapCredits} credits. Heat ${tally.heat[0]} to ${tally.heat[1]}, at most ${tally.peak}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
+    `${where}, ${tally.crossed} sectors crossed, ${tally.surveys} world${tally.surveys === 1 ? '' : 's'} surveyed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits; boarded ${tally.boardings} (won ${tally.boardingsWon}), left ${tally.left}, fought off ${tally.defencesWon} of ${tally.defences}; salvage ${tally.salvaged} parts and ${tally.salvageCredits} credits, lost ${tally.partsLost} parts and ${tally.creditsLost} credits, ${tally.fightHp} hit points; patched ${tally.patchedHp} for ${tally.patchCredits} credits; ${tally.repairs} repairs for ${tally.repairCredits} credits; signed on ${tally.hired}, healed ${tally.healed} in the med bay; refitted ${tally.fitted} parts at ${tally.refits} stations. The hunters: met ${tally.hunts} (${tally.taskForces} the task force), faced ${tally.huntsFaced}; ${tally.hotJumps} jumps where they might wait; ${tally.regroups} regroups and ${tally.hides} days hidden, healing ${tally.rested}; ${tally.swaps} transponder swaps for ${tally.swapCredits} credits. Heat ${tally.heat[0]} to ${tally.heat[1]}, at most ${tally.peak}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
   );
-  return { ended, steps, sectors, tally, lines, campaign };
+  if (ended) lines.push(`The act's record: ${tally.settled.record.map(([label, value]) => `${label} ${value}`).join('; ')}.`);
+  return { ended, steps, sectors, system, tally, lines, campaign };
 }
 
 // Act 1's test run from campaign seed `seed`, and the launch: { ok: true,
@@ -423,7 +477,8 @@ export function manyVoyages(defs, runs, options = {}) {
   const met = done.filter((r) => r.tally.hunts > 0).length;
   const lines = [
     `${runs} voyages from launch, campaign seeds 1 to ${runs}, ${ignoring ? 'ignoring heat' : 'managing heat'}, long jumps ${policy}, ${options.scans === 'no' ? 'no scans' : 'scanning'}, ${options.refit === 'no' ? 'no refits' : 'refitting at stations'}${options.fit?.length ? `, fitted with ${options.fit.join(' and ')}` : ''}. The median, then the least and most:`,
-    `Sectors crossed: ${spread(of('crossed'))}; ${done.filter((r) => r.ended).length} of ${done.length} reached the end of the charts; fed all the way in ${done.filter((r) => r.tally.hungryJumps === 0).length} of ${done.length}.`,
+    `Sectors crossed: ${spread(of('crossed'))}; ${done.filter((r) => r.system).length} of ${done.length} entered the system past the charts, ${done.filter((r) => r.ended).length} settled a world; fed all the way in ${done.filter((r) => r.tally.hungryJumps === 0).length} of ${done.length}.`,
+    systemLine(defs, done),
     `Jumps: ${spread(of('jumps'))}, long ${spread(of('longJumps'))}, hungry ${spread(of('hungryJumps'))}.`,
     `At the nodes: ${spread(of('events'))} events, ${spread(of('eventCredits'))} credits and ${spread(of('eventSupplies'))} supplies from them, ${spread(of('found'))} parts found, ${spread(of('sold'))} sold, ${spread(of('wounds'))} hit points lost; ${spread(of('scans'))} scans.`,
     `Hostile ships: ${spread(of('approaches'))} met, ${spread(of('approachesWon'))} disabled or blown up, ${spread(of('approachesLost'))} boarding us. Boarded her ${spread(of('boardings'))} times (won ${spread(of('boardingsWon'))}), left her ${spread(of('left'))}; fought off ${spread(of('defencesWon'))} of ${spread(of('defences'))} boardings. Salvage: ${spread(of('salvaged'))} parts and ${spread(of('salvageCredits'))} credits. Lost: ${spread(of('partsLost'))} parts and ${spread(of('creditsLost'))} credits; ${spread(of('fightHp'))} hit points in the fights. Lost a boarding at home: ${done.filter((r) => r.steps.some((step) => step.kind === 'boarding' && step.dir === 'you' && !step.won)).length} of ${done.length}; dragged past 40 rounds: ${done.reduce((sum, r) => sum + r.tally.dragged, 0)}.`,
@@ -439,6 +494,19 @@ export function manyVoyages(defs, runs, options = {}) {
   return { lines, results };
 }
 
+// The system past the charts (M25): the surveys, and the worlds settled.
+function systemLine(defs, done) {
+  const settled = done.filter((r) => r.ended).map((r) => r.tally.settled);
+  const kinds = {};
+  for (const world of settled) kinds[world.kind] = (kinds[world.kind] ?? 0) + 1;
+  const named = Object.entries(kinds).sort(([a, x], [b, y]) => y - x || a.localeCompare(b)).map(([kind, n]) => `${kindName(defs, { kind })} ${n}`);
+  const surveys = done.map((r) => r.tally.surveys);
+  const count = (n) => surveys.filter((s) => s === n).length;
+  const worlds = defs.worlds.system.worlds;
+  const surveyed = [...Array(worlds + 1).keys()].reverse().map((n) => `${n === worlds ? `all ${n} worlds` : n || 'none'} in ${count(n)}${n === worlds ? ' runs' : ''}`);
+  return `The system: surveyed ${surveyed.join(', ')}. Settled a surveyed world in ${settled.filter((world) => world.surveyed).length} of ${done.length}, the system's best (all its numbers known) in ${settled.filter((world) => world.surveyed && world.score === world.best).length}; by kind: ${named.join(', ') || 'none'}. Hungry jumps in the system: ${done.reduce((sum, r) => sum + r.tally.systemHungry, 0)}; the hunters met there: ${done.reduce((sum, r) => sum + r.steps.filter((step) => step.kind === 'approach' && step.sector > defs.acts.get(2).sectors).length, 0)}.`;
+}
+
 // The parts the runs fitted, by name, most first: "Cargo hold 12, ...".
 function fitsLine(defs, done) {
   const all = {};
@@ -449,6 +517,16 @@ function fitsLine(defs, done) {
 
 function hpOf(campaign) {
   return campaign.crew.map((member) => member.hp).join('/');
+}
+
+// "Ice world", a world's kind by name.
+function kindName(defs, world) {
+  return defs.worlds.kinds.get(world.kind)?.name ?? world.kind;
+}
+
+// "soil 0, water 2, ore 1, danger 0, lanes 1"
+function numbersText(world) {
+  return ['soil', 'water', 'ore', 'danger', 'lanes'].map((rating) => `${rating} ${world[rating]}`).join(', ');
 }
 
 function signed(n) {

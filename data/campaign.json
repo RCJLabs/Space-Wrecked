@@ -7,9 +7,15 @@
       "hub": "ship",
       "home": "Your ship",
       "heals": false,
-      "sectors": 5,
-      "stub": "Past this jump point the charts run out. Worlds to scout, trade and boarding come later in v0.2. Your ship, crew and parts are saved here until then."
+      "sectors": 5
     },
-    { "act": 3, "name": "The colony", "hub": "colony", "home": "The colony", "heals": false }
+    {
+      "act": 3,
+      "name": "The colony",
+      "hub": "colony",
+      "home": "The colony",
+      "heals": false,
+      "stub": "The colony comes in v0.3: settling for good, building on the ship's grid, and holding what you build. Your ship, crew and world are saved here until then."
+    }
   ]
 }

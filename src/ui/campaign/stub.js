@@ -1,8 +1,9 @@
-// The stub: what stands in for an act not built yet (act 2 until v0.2).
-// The ship stands in the middle as it left the hangar; around it are how
-// the act before went, the crew, and the act's words for what is to come
-// (data/campaign.json). The campaign is saved as it is, so Continue on the
-// title comes back here, and the act picks up from it once it is built.
+// The stub: what stands in for an act not built yet (act 3, the colony,
+// until v0.3). The ship stands in the middle as it came down, the world
+// settled under it (M25); around it are how the run went, the crew, and
+// the act's words for what is to come (data/campaign.json). The campaign
+// is saved as it is, so Continue on the title comes back here, and the act
+// picks up from it once it is built.
 import { loadContent } from '../../platform/content.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
@@ -21,13 +22,19 @@ export const stubScreen = {
     const recordPanel = panel('', record);
     const crewList = node('ul', 'hgr-crew');
     const shipArea = node('div', 'hgr-ship');
+    // The world settled, under the ship.
+    const world = node('section', 'hgr-panel stb-world');
+    const worldTitle = node('h2');
+    const worldLines = node('ul', 'stb-lines');
+    world.append(worldTitle, worldLines);
+    world.hidden = true;
     const side = node('div', 'hgr-side');
     side.append(panel('Crew', crewList));
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const words = node('p', 'hgr-hint', 'Loading…');
     foot.append(titleButton, words);
-    el.append(head, recordPanel, shipArea, side, foot);
+    el.append(head, recordPanel, shipArea, world, side, foot);
     root.append(el);
 
     let alive = true;
@@ -47,6 +54,11 @@ export const stubScreen = {
         setText(recordPanel.querySelector('h2'), text.record.title);
         record.replaceChildren(...listRows(text.record.lines));
         crewList.replaceChildren(...crewRows(text.crew));
+        world.hidden = !text.world;
+        if (text.world) {
+          setText(worldTitle, text.world.title);
+          worldLines.replaceChildren(...text.world.lines.map((line) => node('li', null, line)));
+        }
         setText(words, text.text);
         words.dataset.tone = 'info';
         stand.show(campaign.ship, defs);

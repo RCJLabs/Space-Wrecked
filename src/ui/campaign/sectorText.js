@@ -4,10 +4,12 @@
 // show, what it would repair and patch up, and its refits (M23h); since
 // M24, the chance the pursuer's hunters wait where a jump comes out
 // (hunt.js), a day's rest or hiding (regroup.js) and the transponder swap
-// (transponder.js). The event card's words are eventText.js's, and the
-// approach screen's approachText.js's. rules are the content tables
-// (src/sim/defs.js).
+// (transponder.js); since M25, the system past the charts: its worlds, the
+// survey (survey.js) and settling (settle.js). The event card's words are
+// eventText.js's, and the approach screen's approachText.js's. rules are
+// the content tables (src/sim/defs.js).
 import { actOf, canRefit } from '../../sim/campaign.js';
+import { MAX_RATING, RATINGS } from '../../sim/gen/system.js';
 import { withHeat } from '../../sim/heat.js';
 import { maxHp } from '../../sim/campaign.js';
 import { crewRoom } from '../../sim/crew.js';
@@ -16,22 +18,28 @@ import { patchPlan } from '../../sim/patch.js';
 import { recruitOffer } from '../../sim/recruits.js';
 import { regroupPlan } from '../../sim/regroup.js';
 import { repairPlan, wrecksToRepair } from '../../sim/repair.js';
+import { settlePlan } from '../../sim/settle.js';
+import { surveyPlan } from '../../sim/survey.js';
 import { swapPlan } from '../../sim/transponder.js';
 import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesOver, supplyCapacity, supplyOffer } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
 
 // What the sector map shows, for a campaign on the run:
-//   act, where   "Act 2 · The run", "Sector 1 of 5 · Breaker's Yard"
+//   act, where   "Act 2 · The run", "Sector 1 of 5 · Breaker's Yard" ("The
+//                system · Tallow's Star" past the charts)
 //   heat         the hangar's meter (hubText.js heatText)
 //   nodes        [{ id, col, row, rows, x, y, type, name, here, seen,
-//                links, known, done, hunt }]: rows is how many nodes share
-//                its column, links how far a jump from here is: 1, 2 (a long
-//                jump) or 0; known whether what it holds is known (its type
-//                is 'unknown' until it is), done whether its event is
-//                settled, hunt the chance the hunters wait there for a jump
-//                that reaches it (0 out of reach)
+//                links, known, done, hunt, world, surveyed }]: rows is how
+//                many nodes share its column, links how far a jump from here
+//                is: 1, 2 (a long jump) or 0; known whether what it holds is
+//                known (its type is 'unknown' until it is), done whether its
+//                event is settled, hunt the chance the hunters wait there
+//                for a jump that reaches it (0 out of reach); world a world's
+//                kind by name ("Ice world"), or null, and surveyed whether it
+//                has been
 //   links        [{ a, b, near }]: near when it joins the node the ship is at
 //   here         the node the ship is at, as nodeText says it
+//   world        the world the ship is at, as worldSaid says it, or null
 //   crew         as the hangar's
 //   hold         [[label, value]]: supplies and credits, what the med bay
 //                heals, if there is one working, and the parts wrecked
@@ -45,8 +53,9 @@ import { actTitle, crewText, heatText } from './hubText.js';
 //                from one or with no one hurt: { ok, label, ask, text, why }
 //   repair       what the station would repair, or null away from one or
 //                with nothing wrecked: { ok, label, ask, text, why }
-//   leave        null away from the jump point; there { ok, last, label,
-//                ask, title, lines, tone }, last at the act's last
+//   leave        null away from the jump point; there { ok, label, ask,
+//                title, lines, tone }: on into the next sector, or from the
+//                act's last into the system past the charts
 //   scan         what a scan would show, or null when it would show nothing:
 //                { label, ask, text }
 //   rest         a day's rest where the ship is, or null where none can be
@@ -54,6 +63,11 @@ import { actTitle, crewText, heatText } from './hubText.js';
 //   swap         the station's transponder swap, or null away from one,
 //                once swapped in the sector, or with no heat: { ok, label,
 //                ask, text, why }
+//   survey       a day's survey of the world the ship is at, or null away
+//                from one or once it is surveyed: { ok, label, ask, text,
+//                why, tone }
+//   settle       settling the world the ship is at, or null away from one:
+//                { label, ask, text, tone }
 //   deciding     true while an event is open where the ship is
 //   hint         { tone, text }
 export function sectorText(campaign, rules) {
@@ -67,9 +81,10 @@ export function sectorText(campaign, rules) {
   const offer = supplyOffer(campaign, rules);
   const leave = at === sector.exit ? leaveText(campaign, rules) : null;
   const hunt = (id) => (far.get(id) ? (jumpPlan(campaign, rules, id).hunt?.chance ?? 0) : 0);
+  const surveyed = campaign.run.surveyed ?? [];
   return {
     act: actTitle(campaign.act, rules),
-    where: `Sector ${sector.index} of ${act?.sectors ?? sector.index} · ${sector.name}`,
+    where: sector.system ? `The system · ${sector.name}` : `Sector ${sector.index} of ${act?.sectors ?? sector.index} · ${sector.name}`,
     heat: heatText(campaign, rules),
     nodes: sector.nodes.map((node) => ({
       id: node.id,
@@ -86,9 +101,12 @@ export function sectorText(campaign, rules) {
       known: known.has(node.id),
       done: done.includes(node.id),
       hunt: hunt(node.id),
+      world: node.world ? kindOf(node.world, rules) : null,
+      surveyed: surveyed.includes(node.id),
     })),
     links: sector.links.map(([a, b]) => ({ a, b, near: a === at || b === at })),
-    here: nodeText(sector.nodes[at], rules, { done: done.includes(at) }),
+    here: placeText(sector, at, rules, { done: done.includes(at) }),
+    world: sector.nodes[at].world ? worldSaid(sector.nodes[at].world, rules, surveyed.includes(at)) : null,
     crew: crewText(campaign, rules),
     hold: [
       ['Supplies', suppliesRow(campaign, rules)],
@@ -104,6 +122,8 @@ export function sectorText(campaign, rules) {
     scan: scanText(campaign, rules),
     rest: restText(campaign, rules),
     swap: offer.ok ? swapText(campaign, rules) : null,
+    survey: surveyText(campaign, rules),
+    settle: settleText(campaign, rules),
     deciding: Boolean(openEvent(campaign, rules) || campaign.run.approach),
     hint: sectorHint(campaign, rules, { each, offer, leave, known }),
   };
@@ -112,9 +132,11 @@ export function sectorText(campaign, rules) {
 // A node: { name, kind, text }. kind is its kind's name, unless that is its
 // name, with its event's title until the event is settled ("Derelict: Dead
 // hauler"), or its hostile ship's until it is met ("Hostile ship: Pirate
-// cutter"); text is its kind's words. Unknown, it says so.
+// cutter"); text is its kind's words. Unknown, it says so. A world (M25)
+// says its own kind ("Ice world") and its words.
 export function nodeText(node, rules, { known = true, done = false } = {}) {
   if (!known) return { name: node.name, kind: 'Unknown', text: 'Too far to make out. Come closer, or scan.' };
+  if (node.world) return { name: node.name, kind: kindOf(node.world, rules), text: rules.worlds?.kinds.get(node.world.kind)?.text ?? '' };
   const kind = rules.nodeTypes.get(node.type);
   const name = kind?.name ?? node.type;
   const event = node.event && !done ? rules.events.get(node.event) : null;
@@ -123,6 +145,62 @@ export function nodeText(node, rules, { known = true, done = false } = {}) {
   if (ship) return { name: node.name, kind: `${what}: ${ship.name}`, text: kind?.text ?? '' };
   if (done && node.hostile) return { name: node.name, kind: `${what}, gone`, text: 'Nobody here now but the debris.' };
   return { name: node.name, kind: event ? `${what}: ${event.title}` : done && node.event ? `${what}, been and done` : what, text: kind?.text ?? '' };
+}
+
+// A node of the sector as nodeText says it; the way into the system past
+// the charts (M25) says the system's words.
+function placeText(sector, id, rules, options) {
+  const said = nodeText(sector.nodes[id], rules, options);
+  return sector.system && id === sector.start ? { ...said, text: rules.worlds?.system.text ?? said.text } : said;
+}
+
+// A world's kind by name: "Ice world".
+function kindOf(world, rules) {
+  return rules.worlds?.kinds.get(world.kind)?.name ?? world.kind;
+}
+
+// What is known of a world (M25), as lines: once surveyed, its numbers,
+// each of MAX_RATING, and how far it lies from the lanes; until then, that
+// a survey shows them.
+export function worldSaid(world, rules, surveyed) {
+  if (!surveyed) return ['Not surveyed: a day in orbit shows what it is worth.'];
+  const numbers = RATINGS.map((rating) => `${rating[0].toUpperCase()}${rating.slice(1)} ${world[rating]}`).join(' · ');
+  return [`${numbers}, each of ${MAX_RATING}.`, rules.worlds?.lanes[world.lanes - 1] ?? ''];
+}
+
+// A day's survey of the world the ship is at, two taps: what it takes, or
+// why it can't be made. null away from a world, or once it is surveyed.
+function surveyText(campaign, rules) {
+  const { run } = campaign;
+  const here = run.sector.nodes[run.at];
+  if (!here.world || run.surveyed.includes(run.at)) return null;
+  const plan = surveyPlan(campaign, rules);
+  if (!plan.ok) return { ok: false, label: 'Survey', ask: 'Survey?', text: plan.error, why: plan.error, tone: 'bad' };
+  const after = campaign.heat + plan.heat;
+  const ship = rules.ships.get(plan.hunt.ship)?.name ?? plan.hunt.ship;
+  const hunters = !plan.hunt.chance ? '' : plan.hunt.chance >= 100 ? ` The ${ship} will find you.` : ` Hunters: ${plan.hunt.chance}% the ${ship} finds you.`;
+  return {
+    ok: true,
+    label: 'Survey',
+    ask: 'Survey?',
+    text: `A day in orbit shows what ${here.name} is worth. It eats ${plan.supplies} supplies, ${campaign.supplies - plan.supplies} left, heat +${plan.heat} to ${after}.${hunters} Tap again to survey.`,
+    why: null,
+    tone: plan.hunt.chance >= 100 ? 'bad' : plan.hunt.chance ? 'warn' : 'info',
+  };
+}
+
+// Settling the world the ship is at, two taps. null away from a world.
+function settleText(campaign, rules) {
+  const plan = settlePlan(campaign, rules);
+  if (!plan.ok) return null;
+  const { world } = plan;
+  const unknown = world.surveyed ? '' : ' Not surveyed: what it is worth, you find out on the ground.';
+  return {
+    label: 'Settle here',
+    ask: 'Settle here?',
+    text: `Settle ${world.name} for good: the run ends here, and the ship, crew and all come down with you.${unknown} Tap again to settle.`,
+    tone: world.surveyed ? 'warn' : 'bad',
+  };
 }
 
 // The supplies aboard, of what the holds take, and those past it that stay
@@ -204,22 +282,24 @@ function scanText(campaign, rules) {
 // What a jump to node `id` would take, for the panel and Jump: { ok,
 // long, label ('Jump' or 'Long jump'), title, node (nodeText), lines,
 // tone, way (the nodes it passes, from here), left (the supplies that stay
-// behind), hungry, hunt (the hunters' chance there) }. When it can't be
+// behind), hungry, hunt (the hunters' chance there), world (worldSaid, for
+// a world, or null) }. When it can't be
 // made, head says why in a word ("Out of reach", or "Can't leave" while a
 // flight check keeps the ship at a station) and lines say why in full.
 export function jumpText(campaign, rules, id) {
   const { sector, at } = campaign.run;
   const target = sector.nodes[id];
-  const node = nodeText(target, rules, { known: knownNodes(campaign.run, rules).has(id), done: campaign.run.done.includes(id) });
+  const node = placeText(sector, id, rules, { known: knownNodes(campaign.run, rules).has(id), done: campaign.run.done.includes(id) });
   const plan = jumpPlan(campaign, rules, id);
-  if (!plan.ok) return { ok: false, long: false, label: 'Jump', head: plan.check ? "Can't leave" : 'Out of reach', title: target.name, node, lines: [plan.error], tone: plan.check ? 'bad' : 'info', way: [], left: 0, hungry: false, hunt: 0 };
+  const world = target.world ? worldSaid(target.world, rules, campaign.run.surveyed.includes(id)) : null;
+  if (!plan.ok) return { ok: false, long: false, label: 'Jump', head: plan.check ? "Can't leave" : 'Out of reach', title: target.name, node, lines: [plan.error], tone: plan.check ? 'bad' : 'info', way: [], left: 0, hungry: false, hunt: 0, world };
   const long = plan.kind === 'long';
   const label = long ? 'Long jump' : 'Jump';
   const lines = [...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan)];
   if (long) lines.push('A long jump passes the node between, and the pursuer loses the trail.');
   const between = long ? linked(sector, at).find((next) => linked(sector, next).includes(id)) : null;
   const way = long ? [at, between, id] : [at, id];
-  return { ok: true, long, label, title: `${label} to ${target.name}`, node, lines, tone: planTone(plan), way, left: plan.left, hungry: plan.hungry, hunt: plan.hunt.chance };
+  return { ok: true, long, label, title: `${label} to ${target.name}`, node, lines, tone: planTone(plan), way, left: plan.left, hungry: plan.hungry, hunt: plan.hunt.chance, world };
 }
 
 // A plan's tone: hunger, or the hunters certain, is bad; supplies left
@@ -323,13 +403,19 @@ function offerText(campaign, rules, { price, room, most }) {
   };
 }
 
-// The jump point: on into the next sector, or the end of the charts.
+// The jump point: on into the next sector, or from the act's last into the
+// system past the charts.
 function leaveText(campaign, rules) {
   const plan = leavePlan(campaign, rules);
-  if (plan.last) return { ok: false, last: true, label: 'Jump on', ask: '', title: 'The end of the charts', lines: [actOf(campaign, rules)?.stub ?? plan.error], tone: 'info' };
-  const next = campaign.run.sector.index + 1;
   const lines = plan.ok ? [...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan)] : [plan.error];
-  return { ok: plan.ok, last: false, label: 'Jump on', ask: 'Jump on?', title: `On to sector ${next}`, lines, tone: plan.check ? 'bad' : plan.ok ? planTone(plan) : 'info' };
+  return { ok: plan.ok, label: 'Jump on', ask: 'Jump on?', title: `On to ${onTo(campaign, rules)}`, lines, tone: plan.check ? 'bad' : plan.ok ? planTone(plan) : 'info' };
+}
+
+// Where the jump point leads: "sector 3", or past the act's last, "the
+// system past the charts".
+function onTo(campaign, rules) {
+  const { index } = campaign.run.sector;
+  return index >= (actOf(campaign, rules)?.sectors ?? 0) ? 'the system past the charts' : `sector ${index + 1}`;
 }
 
 // What to do next on the map, the most pressing first.
@@ -352,7 +438,7 @@ function sectorHint(campaign, rules, { each, offer, leave, known }) {
   if (offer.ok && wrecked && hurt) return { tone: 'good', text: `Supplies, repairs and a medic here. ${parts} wrecked aboard, and the crew is hurt.` };
   if (offer.ok && wrecked) return { tone: 'good', text: `Supplies and repairs here. ${parts} wrecked aboard.` };
   if (offer.ok && hurt) return { tone: 'good', text: 'Supplies and a medic here. The crew is hurt.' };
-  if (leave?.last) return { tone: 'info', text: 'The charts end here. The rest of the run comes in later updates.' };
+  if (campaign.run.sector.system) return systemHint(campaign, rules);
   if (offer.ok && offer.room && offer.most) return { tone: 'good', text: `Supplies sell here. A jump eats ${each}.` };
   const recruits = campaign.crew.length < crewRoom(campaign.ship, rules) ? recruitOffer(campaign, rules).length : 0;
   if (recruits) return { tone: 'good', text: `${recruits === 1 ? 'A recruit wants' : `${recruits} recruits want`} a berth here: tap Crew.` };
@@ -360,11 +446,25 @@ function sectorHint(campaign, rules, { each, offer, leave, known }) {
   // first here.
   const onHand = offer.ok ? Object.values(campaign.parts).reduce((sum, count) => sum + count, 0) : 0;
   if (onHand) return { tone: 'good', text: `${onHand === 1 ? 'A part' : `${onHand} parts`} on hand: tap Refit, on the ship's panel, to fit ${onHand === 1 ? 'it' : 'them'}, free.` };
-  if (leave) return { tone: 'good', text: `Tap Jump on for sector ${campaign.run.sector.index + 1}.` };
+  if (leave) return { tone: 'good', text: `Tap Jump on for ${onTo(campaign, rules)}.` };
   if (campaign.supplies < each) return { tone: 'bad', text: 'Short of supplies: the next jump goes hungry. Stations and traders sell them.' };
   if (hunted) return { tone: 'warn', text: `Heat ${campaign.heat}: the hunters may wait where you jump. A long jump sheds heat; so do nebulae and a station's transponder swap.` };
   if (hurt && rest.ok && rest.kind === 'regroup') return { tone: 'info', text: 'The crew is hurt: Regroup rests a day here, for heat.' };
   const { sector, at } = campaign.run;
   if ([...reach(sector, at).keys()].some((id) => !known.has(id))) return { tone: 'info', text: 'A ? is a node not made out yet: come closer, or Scan.' };
   return { tone: 'info', text: 'Tap a ringed node to plan a jump; dashed is a long jump.' };
+}
+
+// What to do in the system past the charts (M25): jump to a world, survey
+// it, or settle.
+function systemHint(campaign, rules) {
+  const { run } = campaign;
+  const here = run.sector.nodes[run.at];
+  if (!here.world) {
+    const worlds = run.sector.nodes.filter((node) => node.world).length;
+    return { tone: 'good', text: `${worlds} worlds past the charts: tap one to jump there. A survey from orbit shows what a world is worth; Settle here ends the run.` };
+  }
+  if (run.surveyed.includes(run.at)) return { tone: 'good', text: `Settle here to make ${here.name} home, or jump to another world.` };
+  if (surveyPlan(campaign, rules).ok) return { tone: 'good', text: `Survey shows what ${here.name} is worth, for a day's supplies. Or Settle here as it is.` };
+  return { tone: 'warn', text: `Too few supplies for a survey: settle here, or jump to another world.` };
 }

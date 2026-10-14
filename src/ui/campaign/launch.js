@@ -2,10 +2,10 @@
 // light, it climbs off the pad and flies away (render/liftOff.js), while
 // the background's words come up, then the pursuer's if a raid was at the
 // door. Skip goes to the end; at the end, Continue goes on to where the
-// campaign is now: the stub that stands in for act 2 (stub.js). The
-// campaign was saved as it launched, so quitting part way reopens there
-// too. With reduced motion (the motion setting, ../motion.js) nothing
-// moves: the ship stands with its engines lit, and the words are all there.
+// campaign is now: act 2's sector map (sector.js). The campaign was saved
+// as it launched, so quitting part way reopens there too. With reduced
+// motion (the motion setting, ../motion.js) nothing moves: the ship stands
+// with its engines lit, and the words are all there.
 import { loadContent } from '../../platform/content.js';
 import { traceHull } from '../../render/hull.js';
 import { CLIMB, END, flameGlows, IGNITE, liftOffAt, liftOffCamera, liftOffScene } from '../../render/liftOff.js';

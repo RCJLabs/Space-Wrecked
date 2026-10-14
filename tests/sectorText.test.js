@@ -3,10 +3,12 @@ import { test } from 'node:test';
 import { refitShip } from '../src/sim/campaign.js';
 import { removeModule } from '../src/sim/builder.js';
 import { launch } from '../src/sim/launch.js';
-import { beginRun, brokenWhy, buySupplies, failingCheck, jumpPlan, knownNodes, linked, reach, scan, supplyCapacity } from '../src/sim/travel.js';
+import { HEAT_MAX } from '../src/sim/campaign.js';
+import { survey } from '../src/sim/survey.js';
+import { beginRun, brokenWhy, buySupplies, failingCheck, jumpPlan, knownNodes, leaveSector, linked, reach, scan, supplyCapacity } from '../src/sim/travel.js';
 import { fitPart } from '../tools/run.js';
 import { continueText } from '../src/ui/campaign/hubText.js';
-import { jumpText, nodeText, sectorText } from '../src/ui/campaign/sectorText.js';
+import { jumpText, nodeText, sectorText, worldSaid } from '../src/ui/campaign/sectorText.js';
 import { rules } from './battleKit.js';
 import { readyToLaunch } from './launchKit.js';
 
@@ -104,17 +106,91 @@ test('a station sells a jump\'s worth and a fill-up, each with its price', () =>
   assert.deepEqual(short.offer.buys.map((buy) => buy.label), ['Buy 2'], 'as far as the credits go');
 });
 
-test('the jump point leads on, until the charts end at the act\'s last', () => {
+test('the jump point leads on, and from the act\'s last into the system past the charts', () => {
   const campaign = onRun({ heat: 10 });
   const exit = at(campaign, campaign.run.sector.exit);
   const text = sectorText(exit, rules);
-  assert.deepEqual(text.leave, { ok: true, last: false, label: 'Jump on', ask: 'Jump on?', title: 'On to sector 2', lines: [`Eats 3 supplies: ${balance.baseSupplies - 3} left.`, `Heat +${balance.jumpHeat}: ${10 + balance.jumpHeat}.`], tone: 'info' });
+  assert.deepEqual(text.leave, { ok: true, label: 'Jump on', ask: 'Jump on?', title: 'On to sector 2', lines: [`Eats 3 supplies: ${balance.baseSupplies - 3} left.`, `Heat +${balance.jumpHeat}: ${10 + balance.jumpHeat}.`], tone: 'info' });
   assert.match(text.hint.text, /Jump on for sector 2/);
   const last = { ...exit, run: { ...exit.run, sector: { ...exit.run.sector, index: rules.acts.get(2).sectors } } };
   const end = sectorText(last, rules);
-  assert.equal(end.leave.last, true);
-  assert.deepEqual(end.leave.lines, [rules.acts.get(2).stub]);
-  assert.match(end.hint.text, /The charts end here/);
+  assert.deepEqual([end.leave.ok, end.leave.title], [true, 'On to the system past the charts']);
+  assert.match(end.hint.text, /Tap Jump on for the system past the charts/);
+});
+
+// M25: the system past the charts.
+const SECTORS = rules.acts.get(2).sectors;
+const inSystem = (extra = {}) => {
+  const campaign = onRun(extra);
+  const exit = at(campaign, campaign.run.sector.exit);
+  return leaveSector({ ...exit, run: { ...exit.run, sector: { ...exit.run.sector, index: SECTORS } } }, rules).campaign;
+};
+
+test('the system on the chart: its name, its worlds with their kinds, none surveyed, and no jump point', () => {
+  const campaign = inSystem();
+  const { sector } = campaign.run;
+  const text = sectorText(campaign, rules);
+  assert.equal(text.where, `The system · ${sector.name}`);
+  assert.equal(text.leave, null);
+  const worlds = text.nodes.filter((n) => n.world);
+  assert.equal(worlds.length, rules.worlds.system.worlds);
+  for (const n of worlds) {
+    const { world } = sector.nodes[n.id];
+    assert.equal(n.world, rules.worlds.kinds.get(world.kind).name);
+    assert.deepEqual([n.type, n.known, n.surveyed, n.links], ['world', true, false, 1]);
+  }
+  assert.deepEqual([text.nodes[0].world, text.nodes[0].surveyed], [null, false]);
+  // At the way in: the system's words; no world here, nothing to survey or
+  // settle.
+  assert.deepEqual(text.here, { name: 'Way in', kind: '', text: rules.worlds.system.text });
+  assert.deepEqual([text.world, text.survey, text.settle, text.scan], [null, null, null, null]);
+  assert.match(text.hint.text, /^3 worlds past the charts: tap one to jump there/);
+  assert.equal(continueText(campaign, rules), `Act 2 · The system · ${sector.name}`);
+  // Picked, a world says its kind and its words, and that a survey shows
+  // its numbers.
+  const plan = jumpText(campaign, rules, 1);
+  const kind = rules.worlds.kinds.get(sector.nodes[1].world.kind);
+  assert.deepEqual(plan.node, { name: sector.nodes[1].name, kind: kind.name, text: kind.text });
+  assert.deepEqual(plan.world, ['Not surveyed: a day in orbit shows what it is worth.']);
+});
+
+test('at a world: Survey says what the day takes, and once surveyed the world\'s numbers and lanes show; Settle here, surveyed or not', () => {
+  const campaign = at(inSystem({ heat: 10 }), 2);
+  const node = campaign.run.sector.nodes[2];
+  const text = sectorText(campaign, rules);
+  assert.deepEqual(text.here, nodeText(node, rules));
+  assert.deepEqual(text.world, ['Not surveyed: a day in orbit shows what it is worth.']);
+  assert.deepEqual(text.survey, {
+    ok: true,
+    label: 'Survey',
+    ask: 'Survey?',
+    text: `A day in orbit shows what ${node.name} is worth. It eats 3 supplies, ${campaign.supplies - 3} left, heat +${balance.surveyHeat} to ${campaign.heat + balance.surveyHeat}. Tap again to survey.`,
+    why: null,
+    tone: 'info',
+  });
+  assert.equal(text.settle.label, 'Settle here');
+  assert.match(text.settle.text, new RegExp(`^Settle ${node.name} for good: the run ends here.+Not surveyed: what it is worth, you find out on the ground\\. Tap again to settle\\.$`));
+  assert.equal(text.settle.tone, 'bad');
+  assert.match(text.hint.text, new RegExp(`Survey shows what ${node.name} is worth`));
+  // Surveyed: its numbers, each of 3, and how far it lies from the lanes.
+  const done = survey(campaign, rules).campaign;
+  const after = sectorText(done, rules);
+  const { world } = node;
+  assert.deepEqual(after.world, [`Soil ${world.soil} · Water ${world.water} · Ore ${world.ore} · Danger ${world.danger}, each of 3.`, rules.worlds.lanes[world.lanes - 1]]);
+  assert.deepEqual(after.world, worldSaid(world, rules, true));
+  assert.equal(after.survey, null, 'surveyed once');
+  assert.equal(after.settle.tone, 'warn');
+  assert.doesNotMatch(after.settle.text, /Not surveyed/);
+  assert.equal(after.nodes[2].surveyed, true);
+  assert.match(after.hint.text, new RegExp(`Settle here to make ${node.name} home`));
+  // Short of supplies, Survey says why.
+  const short = sectorText({ ...campaign, supplies: 2 }, rules);
+  assert.deepEqual([short.survey.ok, short.survey.why], [false, "A day's survey eats 3 supplies, and the holds have 2."]);
+  assert.match(short.hint.text, /Too few supplies for a survey/);
+  // Hot, the hunters' odds.
+  const hot = sectorText({ ...campaign, heat: HEAT_MAX }, rules);
+  assert.match(hot.survey.text, /will find you\. Tap again to survey\.$/);
+  assert.equal(hot.survey.tone, 'bad');
 });
 
 test('Continue says the sector on the run', () => {

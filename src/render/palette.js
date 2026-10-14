@@ -73,10 +73,11 @@ export const palette = {
   target: '#ff6b6b',
   tracer: '#fff1b8',
   // The run's sector map: the chart under the nodes, and its grid; a
-  // nebula's cloud (M24).
+  // nebula's cloud (M24); a world past the charts (M25).
   chart: 'rgba(14, 21, 48, 0.6)',
   chartGrid: 'rgba(42, 53, 82, 0.35)',
   nebula: '#b49cff',
+  world: '#6fe3c5',
 };
 
 // Manufacturers are skins over the same part shapes: the colors a built ship

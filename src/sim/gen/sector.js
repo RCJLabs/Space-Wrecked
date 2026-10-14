@@ -157,7 +157,8 @@ export function crosses(nodes, [a, b], [c, d]) {
 }
 
 // A share of the map from 0 to 1, kept clear of its edges and rounded to
-// three places, so saves and golden files read cleanly.
-function place(share) {
+// three places, so saves and golden files read cleanly. The system past the
+// charts (system.js) places its nodes the same way.
+export function place(share) {
   return Math.round((MARGIN + (1 - 2 * MARGIN) * share) * 1000) / 1000;
 }

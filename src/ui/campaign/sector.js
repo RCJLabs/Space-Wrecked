@@ -11,8 +11,11 @@
 // approach screen (approach.js). At a station Buy sells supplies, Repair
 // fixes what an approach wrecked and Patch up heals the crew; Scan shows
 // what nodes within reach hold, and at the jump point Jump on leads into
-// the next sector, each two taps, the first saying what it costs; past the
-// act's last jump point the charts end, for now. The crew and the holds are
+// the next sector, each two taps, the first saying what it costs; from the
+// act's last, into the system past the charts (M25), whose worlds stand on
+// the chart with their kinds, solid once surveyed. At a world, Survey shows
+// what it is worth and Settle here ends the run, each two taps; settling
+// plays the landing (landing.js). The crew and the holds are
 // on the right, heat by the act; a tap on the crew opens the crew card
 // (crewCard.js) over the chart, where recruits sign on at a station and
 // crew are let go, two taps each. At a station a tap on the ship's panel
@@ -41,7 +44,7 @@ import { eventText, resultText } from './eventText.js';
 import { crewRows, heatChip, listRows } from './hubParts.js';
 import { jumpText, sectorText } from './sectorText.js';
 
-const ARM_MS = 3000; // Jump on, Buy, Repair, Patch up, Scan, Regroup, the swap, Sign on and Let go wait this long for a second tap
+const ARM_MS = 3000; // Jump on, Buy, Repair, Patch up, Scan, Regroup, the swap, Survey, Settle here, Sign on and Let go wait this long for a second tap
 const SVG = 'http://www.w3.org/2000/svg';
 const MARKS = {
   start: icons.wayIn,
@@ -53,6 +56,7 @@ const MARKS = {
   hazard: icons.hazard,
   hostile: icons.hostile,
   nebula: icons.nebula,
+  world: icons.world,
   unknown: icons.unknown,
 };
 
@@ -121,8 +125,11 @@ export const sectorScreen = {
     const scanButton = toolButton('sct-scan', icons.scan, 'Scan');
     const jumpButton = toolButton('sct-jump', icons.jump, 'Jump');
     const onButton = toolButton('sct-on', icons.jumpPoint, 'Jump on');
-    restButton.hidden = scanButton.hidden = jumpButton.hidden = onButton.hidden = true;
-    foot.append(titleButton, hint, buys, restButton, scanButton, jumpButton, onButton);
+    // At a world in the system past the charts (M25).
+    const surveyButton = toolButton('sct-survey', icons.survey, 'Survey');
+    const settleButton = toolButton('sct-settle', icons.settle, 'Settle here');
+    restButton.hidden = scanButton.hidden = jumpButton.hidden = onButton.hidden = surveyButton.hidden = settleButton.hidden = true;
+    foot.append(titleButton, hint, buys, restButton, scanButton, surveyButton, settleButton, jumpButton, onButton);
     const card = createEventCard({
       choose: (choice) => game.dispatch({ type: 'campaign/event/choose', choice, rules: defs }),
       close: () => {
@@ -140,7 +147,7 @@ export const sectorScreen = {
     let defs = null;
     let alive = true;
     let picked = null; // the node picked on the map: its jump shows
-    let armed = null; // 'on', 'scan', 'rest', 'swap', 'repair', 'patch', the supplies a Buy is for, or a crew card button's key, after its first tap
+    let armed = null; // 'on', 'scan', 'rest', 'swap', 'repair', 'patch', 'survey', 'settle', the supplies a Buy is for, or a crew card button's key, after its first tap
     let crewOpen = false; // the crew card is up
     let closed = null; // the result put away with Carry on (resultKey)
     let armTimer = 0;
@@ -155,6 +162,8 @@ export const sectorScreen = {
       onTap(scanButton, () => twoTaps('scan', () => game.dispatch({ type: 'campaign/scan', rules: defs }))),
       onTap(restButton, () => twoTaps('rest', () => game.dispatch({ type: 'campaign/regroup', rules: defs }))),
       onTap(swapButton, () => twoTaps('swap', () => game.dispatch({ type: 'campaign/swap', rules: defs }))),
+      onTap(surveyButton, () => twoTaps('survey', () => game.dispatch({ type: 'campaign/survey', rules: defs }))),
+      onTap(settleButton, () => twoTaps('settle', () => game.dispatch({ type: 'campaign/settle', rules: defs }))),
       onTap(crewOpener, () => toggleCrew(!crewOpen)),
       onTap(shipOpener, refit),
       () => clearTimeout(armTimer),
@@ -273,11 +282,25 @@ export const sectorScreen = {
       }
       const { leave } = text;
       if (!leave?.ok && armed === 'on') disarm();
-      onButton.hidden = !leave || leave.last || covered;
+      onButton.hidden = !leave || covered;
       if (covered) buys.hidden = true;
       onButton.disabled = !leave?.ok;
       setText(onButton.querySelector('span'), armed === 'on' ? leave.ask : 'Jump on');
       onButton.dataset.armed = String(armed === 'on');
+
+      // At a world (M25): Survey, until it is surveyed, and Settle here.
+      const { survey, settle } = text;
+      if (!survey?.ok && armed === 'survey') disarm();
+      surveyButton.hidden = !survey || covered || Boolean(plan);
+      surveyButton.disabled = !survey?.ok;
+      setText(surveyButton.querySelector('span'), armed === 'survey' ? survey.ask : 'Survey');
+      surveyButton.dataset.armed = String(armed === 'survey');
+      if (survey) surveyButton.setAttribute('aria-label', survey.ok ? survey.text.replace(' Tap again to survey.', '') : survey.why);
+      if (!settle && armed === 'settle') disarm();
+      settleButton.hidden = !settle || covered || Boolean(plan);
+      setText(settleButton.querySelector('span'), armed === 'settle' ? settle.ask : 'Settle here');
+      settleButton.dataset.armed = String(armed === 'settle');
+      if (settle) settleButton.setAttribute('aria-label', settle.text.replace(' Tap again to settle.', ''));
 
       const buy = typeof armed === 'number' ? text.offer?.buys.find((entry) => entry.count === armed) : null;
       if (typeof armed === 'number' && !buy) disarm();
@@ -289,6 +312,8 @@ export const sectorScreen = {
         : armed === 'scan' ? { tone: 'warn', text: scan.text }
         : armed === 'rest' ? { tone: rest.tone === 'bad' ? 'bad' : 'warn', text: rest.text }
         : armed === 'swap' ? { tone: 'warn', text: text.swap.text }
+        : armed === 'survey' ? { tone: survey.tone === 'bad' ? 'bad' : 'warn', text: survey.text }
+        : armed === 'settle' ? { tone: settle.tone, text: settle.text }
         : armed === 'repair' ? { tone: 'warn', text: text.repair.text }
         : armed === 'patch' ? { tone: 'warn', text: text.patch.text }
         : buy ? { tone: 'warn', text: buy.text }
@@ -343,6 +368,13 @@ export const sectorScreen = {
           dot.style.left = `${(n.x * columns - n.col) * 100}%`;
           dot.style.top = `${(n.y * n.rows - n.row) * 100}%`;
           button.append(dot);
+          // A world (M25) is named on the chart, with its kind.
+          if (n.world) {
+            const label = node('span', 'sct-label');
+            label.append(node('b', null, n.name), node('span', null, n.world));
+            Object.assign(label.style, { left: dot.style.left, top: dot.style.top });
+            button.append(label);
+          }
           return { id: n.id, button, dot, detach: onTap(button, () => tapNode(n.id)) };
         });
         map.replaceChildren(links, ...nodeButtons.map((entry) => entry.button), ship);
@@ -366,11 +398,13 @@ export const sectorScreen = {
         button.dataset.done = String(n.done);
         button.dataset.reach = String(n.links);
         button.dataset.hunt = String(n.hunt > 0);
+        button.dataset.surveyed = String(n.surveyed);
         button.setAttribute('aria-pressed', String(id === picked));
         const where = n.here ? 'the ship is here' : n.links === 1 ? 'a jump away' : n.links === 2 ? 'a long jump away' : 'out of reach';
-        const kind = n.known ? (defs.nodeTypes.get(n.type)?.name ?? n.type) : 'unknown';
+        const kind = n.world ?? (n.known ? (defs.nodeTypes.get(n.type)?.name ?? n.type) : 'unknown');
+        const surveyed = n.world ? (n.surveyed ? 'surveyed' : 'not surveyed') : null;
         const hunters = n.hunt ? `hunters ${n.hunt}%` : null;
-        button.setAttribute('aria-label', [n.name, kind === n.name ? null : kind, where, hunters].filter(Boolean).join(', '));
+        button.setAttribute('aria-label', [n.name, kind === n.name ? null : kind, surveyed, where, hunters].filter(Boolean).join(', '));
       }
       const here = sector.nodes[run.at];
       ship.style.left = `${here.x * 100}%`;
@@ -387,7 +421,8 @@ export const sectorScreen = {
         setText(infoTitle, plan.ok ? plan.label : plan.head);
         setText(infoName, plan.node.name);
         setText(infoKind, plan.node.kind);
-        infoLines.replaceChildren(...plan.lines.map((line) => lineItem(line, plan.tone)));
+        // A world's numbers, once surveyed, under what the jump takes.
+        infoLines.replaceChildren(...plan.lines.map((line) => lineItem(line, plan.tone)), ...(plan.world ?? []).map((line) => lineItem(line, 'info')));
         buys.replaceChildren();
         buys.hidden = true;
         swapButton.hidden = true;
@@ -399,6 +434,10 @@ export const sectorScreen = {
       setText(infoName, here.name);
       setText(infoKind, here.kind);
       const said = leave ? [leave.title, ...leave.lines].map((line, i) => lineItem(line, i ? leave.tone : 'head')) : offer ? [offer.line, offer.why].filter(Boolean).map((line) => lineItem(line, 'info')) : [];
+      // A world's numbers once surveyed, or that a survey shows them; and
+      // why a survey can't be made.
+      for (const line of text.world ?? []) said.push(lineItem(line, 'info'));
+      if (text.survey && !text.survey.ok) said.push(lineItem(text.survey.why, 'bad'));
       // The station's refits: what Refit, on the ship's panel, would fit, or
       // the flight check that keeps the ship here.
       if (station) said.push(lineItem(station.broken ?? station.line, station.broken ? 'bad' : station.parts ? 'good' : 'info'));

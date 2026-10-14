@@ -2,6 +2,157 @@
 
 Newest entry first.
 
+## M25 Scouting candidate worlds (2026-10-14)
+
+**Status:** done, and the ROADMAP.md box is ticked. Act 2 ends now. Jump on from the last sector's jump point reaches a system past the charts with three worlds. A survey from orbit shows what a world is worth, and Settle here at one ends the run: the ship lands, and act 3's stub stands in for the colony, the world saved with the campaign. Phase 4 (act 2, v0.2) is complete; Phase 5 waits on Evan's gate (Next session, below).
+
+Some of this changes what was there before, not only adds to it:
+- **The last jump point leads on.** "The end of the charts" and act 2's stub words are gone (`data/campaign.json` act 2 has no `stub` now). Act 3 has its own stub words.
+- **The stub is act 3's:** the run's record and the world settled, in place of act 1's jobs and raids. Act 2 has had no stub since M19 (the sector map is its home).
+- **The title's Continue** says "Act 2 · The system · name" past the charts, and "Act 3 · world" once settled.
+- **`SAVE_VERSION` 19.**
+- **The careful test player plays on into the system and settles,** so every fleet in `tests/voyage.test.js` ends there now. "Reaches the end of the charts" in those tests now means settles a world. M24's test counts the hunters met crossing the sectors, as it measured them; the system's are reported apart (Known issues).
+- **In the last sector the test player counts the jump on,** into the system, and wants 4 jumps' supplies left after it, as for any sector; before, it planned to stop at the jump point. Its steps in sectors 1 to 4 are main's in all 30 runs, and in sector 5 in 20; fed all the way in 25 either way.
+
+No phone results have come back yet for M14 to M24.
+
+**How it was picked:** Evan answered four questions (2026-10-14), each the recommended answer:
+- **Where the worlds are:** "System past the charts": three worlds in a system of their own past the last sector's jump point.
+- **Scouting:** "Survey from orbit": a day at a world, for supplies and heat, shows its numbers.
+- **What a world is:** "Act 3 numbers, shown now": soil, water, ore, danger and how far from the lanes, rolled now and saved with the world settled.
+- **The end of the act:** "Landing, then the stub": a short landing, then act 3's stub.
+
+Done when (ROADMAP.md, M25):
+- **The system:** "Jump on from the last sector's jump point reaches a system past the charts: its way in and three candidate worlds, each linked to the way in and to the world beside it, rolled from the campaign's RNG as the ship enters (`data/worlds.json`). Each world has a name, a kind (ocean, desert, ice, jungle, barren rock) and act 3's numbers, rolled within its kind's ranges: soil, water, ore and danger, each 0 to 3, and how far it lies from Con-Reg's lanes, 1 to 3. No two worlds in a system are of the same kind. The same seed always gives the same system (golden file) (tested)."
+- **Known from afar:** "the worlds are on the charts with their kind; their numbers show once surveyed (tested)."
+- **Survey:** "at a world, two taps. A day in orbit eats a jump's supplies and adds 2 heat (`surveyHeat`), and the hunters may find the ship, at a jump's odds, as when regrouping. It shows the world's numbers, once a world. It needs the supplies for the day (tested)."
+- **Settle:** "at a world, two taps on Settle here, surveyed or not: act 2 ends. The campaign moves on to act 3, saved at once with the world (its name, kind and numbers, and whether it was surveyed) for M26 to M29 to build on. The ship, crew, credits, parts on hand and heat go with it. Not while an approach holds the ship (tested)."
+- **The landing:** "a short landing scene, M17's lift-off in reverse, with Skip, then act 3's stub: the run's record (sectors, jumps, the hunters met and faced, boardings, credits, parts on hand, heat) and the world settled. Continue on the title comes back to the stub (tested)."
+- **Saves:** "`SAVE_VERSION` 19 for the system, the surveys and the world settled. An older act 2 save carries on where it was, and one in the last sector jumps on into the system (tested)."
+- **The test player:** "over 30 voyages (campaign seeds 1 to 30) the careful test player crosses all five sectors, enters the system, surveys while its supplies allow and settles the world it scores best, in every run. Its report says how many worlds it surveyed, which it settled and what the act's record came to (`tools/voyage.js`)."
+- **Touch:** "every new button is 48 px or more at the three sizes. By touch: Jump on into the system, a survey that shows a world's numbers, a jump to the next world, Settle here in two taps, the landing with Skip, act 3's stub, and a quit and reopen there."
+
+How each is met:
+- **The system:** `tests/system.test.js`. Over 300 seeds: the way in and 3 worlds, the links exactly 0–1, 0–2, 0–3, 1–2 and 2–3, no jump point, no kind or name twice, every number within its kind's ranges, and over the seeds every number in every range and every distance from the lanes. Jump on from the act's last jump point rolls the system from the campaign's RNG (the same as `generateSystem` at that seed); past it nothing is charted. Golden file `tests/golden/systems.txt` (new; `tools/sectors.js --system`, `--golden`). By touch: two taps on Jump on reach "The system · The Quiet Star", its three worlds named with their kinds.
+- **Known from afar:** `tests/system.test.js` (every node known on arrival, a scan shows nothing) and `tests/sectorText.test.js` (each world's kind on the chart, not surveyed; picked, its kind and words, and "Not surveyed: a day in orbit shows what it is worth."; surveyed, its four numbers, each of 3, and the lanes' words). By touch: the marks dashed until surveyed, then solid, and "Soil 1 · Water 0 · Ore 2 · Danger 1, each of 3." with "Far from any lane: hard to reach, and harder to find." in the left panel.
+- **Survey:** `tests/system.test.js`: 3 supplies and heat +2, the world added to the run's surveys, once a world; at the most heat the hunters find the ship, the survey made all the same, and the screen changes to the approach; held by them, no survey or settling; refused away from a world, off the run, or short ("A day's survey eats 3 supplies, and the holds have 2."). By touch: two taps, supplies 24 to 21, heat 14 to 16, the numbers and lanes in the left panel.
+- **Settle:** `tests/system.test.js`: act 3, the colony's world exactly the node's (name, kind, numbers, surveyed), the ship, crew, captain, credits, parts, heat, supplies, wrecks and run unchanged; surveyed first, the colony says so; refused away from a world, off the run, and while the hunters hold the ship; settled once. By touch: two taps on Settle here, the campaign in act 3 at once.
+- **The landing:** `tests/liftOff.test.js` (the landing is the lift-off's moments backwards: out of sight at first, in from the right, down onto the pad, the engines out) and `tests/launchText.test.js` (the world and its kind's landing words; act 3's stub with the run's record and the world, surveyed or not; Continue's words). `tests/system.test.js`: Settle here shows the landing, and Continue on the title the stub. By touch: the landing, Skip to its end, Continue to the stub; a quit and reopen comes back to the stub.
+- **Saves:** `tests/system.test.js`: a v18 save at the last jump point opens as it was (`run.surveyed` empty, `colony` null) and jumps on into the system; act 1 and no campaign migrate too; a settled campaign saves and reads back the same; a colony out of step with the act, or unreadable, and a broken system or survey list are caught. By touch: a save made by main (v18) at the last jump point opens, Jump on goes into the system, and it is saved as v19.
+- **The test player:** `tests/voyage.test.js` (M25's test): all 30 runs cross 5 sectors, enter the system and settle; each world surveyed at most once; at settling, no survey was left that its supplies covered with the way on to the best world, and the world settled is the best it knew of in reach; 2 worlds or more surveyed in 25 of 30, never hungry in the system, a surveyed world settled in 29. Its report (below) says the surveys, the world settled and the act's record.
+- **Touch:** M25's browser check, below: every button 48 px or more at the three sizes on the chart in the system, at a world, on the landing and on the stub, and each step by touch.
+
+### Shipped
+
+- **Data:** `worlds.json` (new): a system's 3 worlds and its words; the lanes' words, nearest first; five kinds of world, each with its ranges for soil, water, ore and danger, its words and its words for the landing; 12 system names and 24 world names. `sectors.json`: the world kind of node, on the charts. `balance.json`: `surveyHeat` 2. `campaign.json`: act 3's stub words; act 2's gone.
+- **Validation:** `tools/validate-worlds.js` (new, from `validate-campaign.js`): the system's size and words, the lanes' three lines, each kind's ranges (0 to 3, least first), weights, words and landing words, at least as many kinds and world names as a system has worlds, no name twice, and the world kind of node. `validate-data.js`: `surveyHeat`'s range and the count of kinds of world.
+- **The sim:**
+  - `gen/system.js` (new): the system, sector-shaped, rolled and saved as a sector is;
+  - `travel.js`: Jump on from the act's last jump point leads into the system, and nothing leads on from there; `run.surveyed`;
+  - `survey.js` and `settle.js` (new); `root.js` (`campaign/survey`, `campaign/settle`, the landing screen);
+  - `campaign.js` (`colony`, `COLONY_ACT`, its checks), `runShape.js` (a system, its worlds and the surveys), `save.js` (v19 and the migration from 18).
+- **The chart** (`sector.js`, `sectorText.js`, `style.css`, `icons.js`, `palette.js`): "The system · name"; a world's mark with its name and kind beside it, dashed until surveyed; Survey and Settle here in the foot, two taps each, with what they take and the hunters' odds; the world's kind, words, numbers and lanes in the left panel, picked or there; the system's words at its way in; hints for the system; Jump on's "On to the system past the charts".
+- **The landing** (`landing.js`, new; `liftOff.js` `landingAt`): the lift-off backwards, with Skip and Continue, the world's name and kind, and its kind's landing words. **The stub** (`stub.js`, `launchText.js`): act 3's, with the run's record and the world in a card under the ship. **The title's Continue** (`hubText.js`).
+- **Tools:** `voyage.js` plays the system and settles, with report lines for the system, each survey, the world settled and the act's record, and a summary line over many voyages; `voyagePlan.js` (`worldScore`, `bestWorld`, `systemMove`: Decisions); `sectors.js --system`.
+- **Tests:** `tests/system.test.js` (13, new), M25's voyage test and checks on every survey and settling in the fleets, the landing's in `tests/liftOff.test.js`, the system's words in `tests/sectorText.test.js`, the landing's and act 3's stub's in `tests/launchText.test.js`, 12 bad-data cases; the campaign, hunt, travel and data tests brought up to date. `raidsText` (act 1's raids on the old stub) and its test are gone with it.
+- **Docs:** ROADMAP.md: M25's Done when (settled at the start), §2, §4.4 (surveys' heat, the system's hunters), §4.7 (the system), §4.8 (v19), and §9.
+
+Decisions made along the way, not asked (each easy to change):
+- **The system is a sector-shaped map,** so the chart, jumps, long jumps, the hunters' rings and the approach all work in it unchanged. A long jump goes from the top world to the bottom one.
+- **The worlds aren't safe from the hunters,** and nothing past the charts sheds heat: no station, no nebula, no events, recruits or refits there. The jump into the system rolls at its way in, as into any sector.
+- **The stub shows a world's numbers even if it was settled without a survey,** with a line saying so: on the ground they are known. The colony still saves whether it was surveyed.
+- **Survey and Settle here are in the foot,** where Scan and Jump on would be: neither shows in the system. Settle here is in the accent color, as Jump on is; its warning is in the bad tone when the world wasn't surveyed.
+- **Every world has the same mark,** in a new `world` color, with its name and kind in words beside it; dashed until surveyed, as the chart dashes what isn't made out yet.
+- **Numbers are shown as numbers,** "Soil 1 · Water 0 · Ore 2 · Danger 1, each of 3."; the lanes in the data's words ("Far from any lane: hard to reach, and harder to find.").
+- **The landing plays against the stars,** as the lift-off does: the ship comes in stern first on a braking burn and sets down. Each kind of world has a line for it (data).
+- **The test player's judgment** (`tools/voyagePlan.js`): it scores a world as soil + water + ore + lanes − danger, a world not surveyed by its kind's averages; it surveys the nearest world not yet surveyed while the supplies cover the jumps there, the day and the way on to the best world it knows of, so a survey never strands it; then it settles the best world its supplies reach. Act 3 hasn't said what the numbers do, so the score is a guess (§9).
+
+### Known issues
+
+- **The hunters past the charts.** Each survey and jump there adds 2 heat and nothing sheds it, so the careful test player managing heat meets the hunters there in 9 runs of 30 (11 times), and in 10 of 30 over the whole act, against M24's 6 crossing the sectors. M24's test still holds on the sectors. Whether to cool the system is Evan's call (§9).
+- **Supplies past the charts:** no station is there. Managing heat, the careful test player surveys all three worlds in 15 runs of 30, two in 10, one in 4 and none in 1. Ignoring heat, 8 runs arrive with less than a jump's supplies, and each goes hungry once there; 3 of them were fed until then, so its runs fed all the way fall from 23 of 30 to 20 (across the sectors, still 23).
+- **The landing is against the stars,** not over the world: the lift-off backwards, as the Done when says (§9).
+- **The worlds' numbers do nothing yet:** they are rolled, shown and saved for M26 to M29. The test player's score is a guess until then.
+- **On the cover screen the stub's ship is small,** with the world's card under it.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+The quickest way there: play a run to the fifth sector, or ask me for a save code at the last jump point.
+1. **The last sector's jump point:** Jump on says "On to the system past the charts". Does the system read as the end of the run, folded and unfolded? Can you read the worlds' names and kinds beside their marks?
+2. **A survey:** tap Survey at a world, then again. Are "Soil 1 · Water 0 · Ore 2 · Danger 1, each of 3." and the lanes line clear? Is a day's supplies and 2 heat a fair price?
+3. **Settle here:** two taps. Does the first tap's warning make it plain the run ends?
+4. **The landing:** does the ship coming in stern first and setting down read as a landing? Try Skip.
+5. **Act 3's stub:** do the run's record and the world's card fit and read well on the cover screen? Quit and reopen: Continue should say the world.
+6. **Tell me:**
+   - whether the system should be quieter: about 1 run in 3 meets the hunters there;
+   - whether a world settled without a survey should hide its numbers until act 3;
+   - whether the landing will do until the image pass (M34);
+   - the Phase 4 gate (below), and the M14 to M24 questions still open.
+
+### Next session
+
+**Phase 4 is complete with M25: act 2 plays from launch to a world settled.** ROADMAP.md names no gate for it. A phase gate is Evan's call, so Phase 5 (M26 Settling and donated modules) starts only once this file records it. A draft for Evan: "Gate 4: from launch, a run on the phone crosses act 2 and settles a world, and Evan wants to keep going." With it passed, the next session settles M26's Done when first.
+
+### Verified here
+
+- `node --test`: 705 pass, in about 94 s. `node tools/validate-data.js`: OK ("5 kinds of world"). Golden files: `tests/golden/systems.txt` is new; `tests/golden/sectors.txt` was rewritten by the same tool and came out unchanged.
+- **The test player, 30 voyages** (`node tools/voyage.js --runs 30`, managing heat):
+  - every run crosses 5 sectors, enters the system and settles; fed all the way in 25 of 30;
+  - surveys: 3 worlds in 15, 2 in 10, 1 in 4, none in 1; settled a world it surveyed in 29, the system's best (all its numbers known) in 26; by kind: ice 10, jungle 8, ocean 5, barren rock 5, desert 2; never hungry in the system;
+  - the hunters: met in the system 11 times in 9 runs; over the act, 10 of 30 runs;
+  - a run's report ends with the act's record as the stub says it, for example "Sectors 5 crossed; Jumps 33, 3 long; Hunters None met; Boardings None; Credits 20; …".
+  - Ignoring heat (`--heat ignore`): every run settles; surveys 3 in 9, 2 in 6, 1 in 7, none in 8; 8 hungry jumps in the system; the hunters met there 17 times.
+- **M25's browser check by touch:** 21 of 21 at each of 905 × 370, 821 × 283 and 960 × 825. It covers:
+  - the last sector's jump point: "On to the system past the charts", the hint; Jump on in two taps ("Jump on?") reaches "The system · The Quiet Star" with Copperhill · Desert world, Second Chance · Jungle world and Ironbark · Ice world, dashed; the system's words at its way in; the hint; no Jump on or Scan; every button 48 px or more; the names clear of the chart's edge and each other;
+  - Copperhill picked: "Desert world", its jump's lines and "Not surveyed: …"; a second tap jumps there; Survey and Settle here show, 48 px or more;
+  - Survey in two taps ("Survey?"): supplies 24 to 21, heat 14 to 16, "Soil 1 · Water 0 · Ore 2 · Danger 1, each of 3. | Far from any lane: …", the mark solid, Survey gone;
+  - a jump to Second Chance in two taps; Settle here in two taps ("Settle here?"): act 3 and the colony saved at once; the landing ("Landing · Second Chance · Jungle world"), Skip 48 px; Skip to its end, the jungle's landing words; Continue to act 3's stub: "Sectors: 5 crossed", the hunters, the boardings, and the world's card ending "Settled without a survey: …"; its buttons 48 px or more; the panels fit;
+  - a quit and reopen: Continue says "Act 3 · Second Chance" and comes back to the stub;
+  - a save made by main (v18) at the last jump point: Jump on goes into the system, saved as v19;
+  - with reduced motion, the landing is all there at once;
+  - offline, the stub draws; no console errors.
+- **Act 1:** 100 test runs identical to main's, seed by seed (the campaign at launch, but for its colony, null).
+- **The fights** (`node tools/sim.js`, the balance rule: `surveyHeat` is a new number, and no fight reads it): the same as M24's to the line, but for the time taken.
+
+  ```
+  1,000 fights on example ship, pirate cutter, patrol corvette, derelict hauler, con-reg repo tug, con-reg gunship. The squad (marine, engineer, medic), played by the AI, against the boarding party (pirate, pirate, brute, pirate), played by the AI. 30 rounds at most, seed "balance".
+
+  Ship              Fights    Crew wins  Boarders win  No winner    Rounds  Crew orders
+  Example ship         167  63% (56–70)           37%         0%   7 (5–9)           30
+  Pirate cutter        167  47% (40–55)           37%        16%  7 (5–12)           28
+  Patrol corvette      167  54% (46–61)           38%         8%  8 (5–17)           30
+  Derelict hauler      167  40% (33–48)           49%        11%  7 (5–12)           27
+  Con-Reg repo tug     166  41% (34–49)           43%        16%  7 (4–10)           25
+  Con-Reg gunship      166  31% (25–39)           41%        28%  7 (5–12)           29
+  All                1,000  46% (43–49)           41%        13%  7 (5–12)           28
+
+  Rounds and crew orders count the fights with a winner: the median (10th to 90th percentile). Win rates have a 95% interval.
+
+  Shots: 23,357, 23.4 a fight. Hit: crew 55%, boarders 40%.
+  Shown odds  Shots  Shown  Hit
+  0–19%       2,020     9%   9%
+  20–39%      6,778    26%  27%
+  40–59%      4,466    45%  45%
+  60–79%      7,619    67%  67%
+  80–100%     2,474    83%  84%
+  On overwatch: 7% of shots, 27% hit. Crits: 32% of hits. Damage a hit: crew 4.5, boarders 4.5.
+  A fight: 1.8 crew go down, 0.9 bleed out, 2.6 boarders die.
+
+  1,000 fights in 37.7 s (38 ms a fight).
+  ```
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named:
+  - M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 40 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 40, and M8's extras.
+
+  Two copies were adapted, not the game, for what M25 changes on purpose:
+  - M24's takes its v17 save back as v19 (it pinned v18);
+  - M19's reads "On to the system past the charts" at the last jump point, where it read the end of the charts, and its walk across the act stops at that jump point, which leads on now. The first pass of the copy walked on into the system and stopped with "no route from 0 to null", a fault of the check, not the game.
+
+  The copies that make saves the way main did in M24 open them from a checkout of the M23h merge (v17), as in M24. M14 ran 40 checks (46 in M24): its count follows the jobs its run plays.
+
 ## M24 Heat v2: hunters, regrouping, transponders (2026-10-14)
 
 **Status:** done, and the ROADMAP.md box is ticked. Heat matters on the run now. From heat 50, Con-Reg's hunters may be waiting wherever a jump comes out, at a chance the jump shows first: the repo tug at 10%, the gunship at 35% from 75, and the gunship for certain at 100. Facing them drops heat to 40. Regroup rests a hurt crew for a day, for heat; Hide in a nebula sheds heat; and a station swaps the transponder for credits.

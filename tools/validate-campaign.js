@@ -1,5 +1,6 @@
 // The campaign's content, for validate-data.js: its acts (campaign.json),
-// act 2's sectors (sectors.json, validate-sectors.js) and the names its
+// act 2's sectors (sectors.json, validate-sectors.js) and the worlds past
+// them (worlds.json, validate-worlds.js, M25), the names its
 // recruits draw on (recruits.json), the backgrounds a
 // campaign starts from (backgrounds.json), act 1's
 // districts with their clients and job sites (districts.json), the sites'
@@ -13,6 +14,7 @@ import { HAZARDS, siteMarks, siteProblems } from '../src/sim/gen/site.js';
 import { isId, isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 import { checkEvents } from './validate-events.js';
 import { checkSectors } from './validate-sectors.js';
+import { checkWorlds } from './validate-worlds.js';
 
 const CAMPAIGN_KEYS = ['acts'];
 const ACT_KEYS = ['act', 'name', 'hub', 'home', 'heals', 'liftOff', 'sectors', 'stub'];
@@ -79,6 +81,7 @@ const MAX_CREDITS = 9995;
 export function checkCampaignFiles(data, ids, fail) {
   checkActs(data.campaign, fail);
   const holding = checkSectors(data.sectors, data.campaign?.acts, ids.presets ?? new Map(), fail);
+  checkWorlds(data.worlds, data.sectors, fail);
   const covered = checkEvents(data.events, holding, ids.moduleIds, fail);
   for (const kind of holding) if (!covered.has(kind)) fail(`sectors.json node ${kind}`, 'holds events, but events.json has none of its kind');
   checkRecruits(data.recruits, fail);
