@@ -2,6 +2,197 @@
 
 Newest entry first.
 
+## M23f Styling pieces (2026-10-14)
+
+**Status:** done, and the ROADMAP.md box is ticked. A ship can be styled now: wings, fins, antennas, a dish, lights, plates, and wedges and curves that reshape the hull, in one of six paints with one of six trims. None of it changes a stat, a rule or a boarding map. Enemy ships wear their side's look.
+
+Some of this changes what was there before, not only adds to it:
+- **The hull's style moved** from the Ship tab to the Look tab, with the paints and trims.
+- **The Hull view isn't only to look at any more.** It is the Look: taps and drags there place and pick out styling pieces, and its hint says so. The drawer's first tab reads Parts on the plans and Look outside.
+- **Saves are version 17** and **blueprint codes version 4.** Every older ship opens in the yard's colors, slate and sky, with no pieces; codes from version 1 to 3 still open.
+- **Enemy ships wear looks,** rolled on a stream of their own: the golden ships file is unchanged, and so are the fights aboard them. A generated ship takes 2 to 4 ms longer to make (on this machine: cutter 14 ms, corvette 21, hauler 11).
+- **The frame rate holds main's at 905 × 370 and 821 × 283.** At 960 × 825 a dressed ship turns a few frames a second slower than main's bare one, about as much as two runs of the same thing differ. Details under Verified.
+
+No phone results have come back yet for M14 to M23e.
+
+**How it was picked:** mockups drawn by the game's own renderer: each piece on the start ship, a dressed ship, sculpting, paint pairs, the enemy presets in their sides' looks, and two ways into the builder (A, a Look tab beside Parts; C, Look mode behind the Hull button). Evan took the recommended answer each time: "C · Look mode", "The 12 in the mockup", "Hull + trim swatches" and, for a piece whose room goes, "It comes off".
+
+Done when (ROADMAP.md, M23f):
+- **Data:** "the 12 pieces are in `data/styling.json`, each with its own model outside, its drawing on the plans and its icon; so are six paints and six trims."
+- **Look mode:** "the Hull button opens Look. The board shows the ship from outside, and the drawer's first tab picks from wings, gear, sculpt, paint, trim and hull style."
+- **Placing:** "a piece goes on from outside in two taps, on cells beside the hull and against a room; never ahead of the bow, and never in the cell in front of an exhaust, a barrel or a hatch; at most 24 a ship; it moves, turns (a wing flips sides) and comes off as a part does, undoable; paint and trim take one tap each, undoable."
+- **Room changes:** "one that leaves a piece with nothing to hold it takes the piece off in the same step; undo puts it back."
+- **Sculpting:** "wedges and curves join the hull, whose skin wraps them in the ship's style; the hull still covers every room and never cuts into one (tested)."
+- **Where it shows:** "pieces and paint show wherever ships are drawn: the builder's plans and Hull view, the hangar, the lift-off and the Enemy ships sandbox."
+- **Looks only:** "no stat, rule or boarding map changes with them (tested)."
+- **Saves and codes:** "saves (`SAVE_VERSION` 17: older ships have no pieces, in slate and sky) and blueprint codes (version 4, which still reads 1 to 3) carry them."
+- **Enemy ships:** "wear their side's paint and some pieces, the same for the same seed, their layouts unchanged (golden)."
+- **Fit and budget:** "every button is 48 px or more at the three sizes; the builder's default view keeps every cell 22 px or more on the cover screen; the hull views keep to the frame budget."
+
+How each is met:
+- **Data:** `tests/styling.test.js` (the 12 pieces in three groups, six paints and six trims, the yard's first) and `tests/stylingDraw.test.js` (every standing piece has a model outside and every piece an icon; wedges and curves are the hull's shape; standing pieces show on the plans in their own lines). `tools/validate-data.js` checks the file: groups, sizes, turns, shapes, a model for each standing piece, a color for each paint and trim.
+- **Look mode:** by touch at the three sizes, below.
+- **Placing:**
+  - the rules in `tests/styling.test.js`: open cells beside the hull, never on a room, in a gap the hull fills or on another piece; never ahead of the bow or in front of an exhaust, a barrel or a hatch; a wedge or a curve with a room all along a leg and its slope to open space; at most the frame's 24;
+  - the commands (place, move, turn, remove, paint, trim) and the session (two taps, Turn, undo);
+  - by touch at the three sizes, below.
+- **Room changes:** `tests/styling.test.js` (the room a piece is against taken off, a room built over it, an engine put with its exhaust onto it: each takes the piece off in the same step, the notice says so, and undo puts it back; paint, trim and style never do). By touch: taking off the life support takes the wing against it.
+- **Sculpting:** `tests/hullShape.test.js` runs its hull checks on sculpted ships too (wedges at the stern, long wedges at the steps, curves, a spiked bow): every cell covered at every height, so no room is cut into, and every surface finite and the same each time. `tests/stylingDraw.test.js`: the outline changes, and a roof and a deck go over each shaped piece.
+- **Where it shows:** by touch, below: the builder's plans and Hull view, the hangar, the lift-off and the Enemy ships sandbox all draw the pieces and the paint.
+- **Looks only:** `tests/styling.test.js` compares the start ship dressed and painted with it bare: the same stats, flight checklist, layout problems, doorways, boarding map and approach numbers, and a refit that only styles takes no parts.
+- **Saves and codes:** `tests/styling.test.js` (the v16 to v17 migration on every ship a save holds, the same on every load; version 4 codes carry the looks, and versions 1 to 3 open in the yard's colors). By touch: a save made by main opens, and a code made by main opens.
+- **Enemy ships:** `tests/ships.test.js`: 300 ships wear their preset's paint and trim, only the pieces their look names, never more than it allows, each where it fits; a symmetric ship's come in mirrored pairs; with the looks taken out, every ship's parts, style, wrecks and crew are the same; the golden ships file is unchanged.
+- **Fit and budget:** every button measured by touch at the three sizes. `tests/orbit.test.js` still holds the default view to 22 px cells. Frame rates under Verified.
+
+### Shipped
+
+- **The pieces** (`data/styling.json`), each a placement `{ uid, type, x, y, rot }` kept in the ship's `styling`, with uids from the ship's one count:
+
+  | Group | Piece | Cells | Turns |
+  | --- | --- | --- | --- |
+  | Wings | Swept wing | 2 × 2 | flips to either side |
+  | Wings | Delta wing | 3 × 2 | flips to either side |
+  | Wings | Tail fin | 2 × 1 | flips to either side |
+  | Wings | Spoiler | 2 × 1 | flips to either side |
+  | Gear | Antenna, Dish, Floodlight | 1 × 1 | turns |
+  | Gear | Light strip, Armor plate | 2 × 1 | turns |
+  | Sculpt | Wedge | 1 × 1 | turns |
+  | Sculpt | Long wedge | 2 × 1 | turns and flips |
+  | Sculpt | Curve | 2 × 1 | turns and flips |
+
+  Paints: slate (the yard's), graphite, bone, rust, olive, navy. Trims: sky (the yard's), amber, signal, lime, violet, white. The starter frame takes 24 pieces (`maxStyling` in `data/frames.json`).
+- **The rules** (`src/sim/styling.js`): where a piece goes, and `misfits`, the pieces a room change leaves with nothing to hold them, which the build commands take off in the same step (`builder.js`). A turn runs 0 to 7: four quarter turns, plus 4 for mirrored, so a wing sweeps back on either side.
+- **Looks only:** nothing that counts stats, checks a layout, makes a boarding map or plays an approach reads `styling`, `paint` or `trim`. Pieces are free and use no parts, in construction mode too.
+- **The Look** (`src/ui/builder/lookPanel.js`, `drawer.js`, `view.js`): the Hull button turns the board outside and the drawer's first tab into Look: a picker of wings, gear, sculpt, paint, trim and hull, and how many pieces the ship has of its 24.
+  - a piece's tile picks it, a tap beside the hull shows it there as a ghost, green or red, and a second tap puts it down; or drag the tile onto the board;
+  - the ghost fits itself to the hull where the finger is, turned the way that fits, and a tap on the roof by the hull's side finds that side;
+  - Turn shows it the next way round;
+  - a tap picks a placed piece out in the accent: then a tap elsewhere or a drag moves it, Turn turns it and Delete takes it off;
+  - a long press shows a piece's card;
+  - paint, trim and the hull's style take one tap; all of it undoes.
+
+  The session's layer, rooms or styling, decides which the board shows, and a ship loaded from a slot or a code keeps it.
+- **Drawing:**
+  - each standing piece has a model outside in the ship's paint and trim (`src/render/pieces.js`): wings with their navigation light, red to port and green to starboard, a fin, a spoiler, an antenna, a dish, a floodlight, a light strip and an armor plate;
+  - wedges and curves join the hull: the tracer runs the outline along their slope, and the skin, roof and deck wrap them in the ship's style (`hull.js`, `hullShape.js`, `exterior.js`, `shipScene.js`);
+  - on the plans, standing pieces are drawn in violet beside the blue rooms;
+  - a ghost and a picked-out piece are drawn over the ship from outside, so they show through it (`lookOverlay.js`);
+  - paint recolors the hull, its plates and seams, trim its stripe and the wings' leading edges (`palette.js` `paintSkin`).
+- **Enemy looks** (`look` in `data/ships.json`, `src/sim/gen/look.js`):
+  - pirate cutters in rust and signal, with one or two swept wings and one or two antennas;
+  - patrol corvettes in bone and sky, with a pair of delta wings, up to two tail fins and two to four floodlights;
+  - derelict haulers in olive and amber, with two to four armor plates, maybe a pair of dishes and up to two light strips.
+
+  Pieces go on at random where the builder's rules let them, in mirrored pairs on a symmetric ship (`mirroredPiece` flips any piece across a ship's middle). The Enemy ships sandbox names each ship's paint, trim and how many pieces it wears, and Builder copies them with it.
+- **Saves and codes:** `SAVE_VERSION` 17, migrating every ship a save holds (the builder's slots, the campaign's ship, the other ship in an approach, a boarding's ship). Codes are version 4: paint and trim after the hull's style, the pieces after the parts. A piece a code names that is unknown or no longer fits is left off, and the rest opens.
+- **Tools:** the validator checks the styling file and each preset's look; `tools/gen-ship.js` prints a ship's look (not in the golden file).
+- **Docs:** ROADMAP.md §4.1 (styling), §4.8 (saves 15 to 17), M23f's box and three ideas in §9; CLAUDE.md's content and layout lists.
+
+Decisions made along the way, not asked (each easy to change):
+- **24 pieces a ship** on the starter frame.
+- **Pieces are free:** no price, no parts on hand, in construction mode too.
+- **Nothing ahead of the bow:** the nose is drawn there.
+- **The curve is 2 × 1,** an S that leaves the hull level and meets it level. A 1 × 1 quarter curve folded the hull's skin where it met the next room.
+- **A wedge or a curve tapped at a step takes a turn joined to the hull along both legs** when one is: a slope, not a spike. The 1 × 1 wedge can't join two legs at most steps, so it makes a spike there; the long wedge and the curve make the slope.
+- **A tap reaches one cell:** if nothing fits under the finger, the nearest spot within a cell does.
+- **Enemy looks have no sculpt** (§9 has it).
+
+### Known issues
+
+- **Pieces on the far (north) side are half hidden** behind the hull at the builder's default view. One being placed or picked out is drawn over the hull; turning the camera shows the rest (§9).
+- **Plated curves are faceted:** the curve's skin is drawn in Plated's straight panels.
+- **Enemy pieces go anywhere they fit,** so a cutter's wing can sit near the bow (§9).
+- **The approach screen draws no looks:** it draws both ships as their boarding maps (§9, from planning). So a player sees an enemy's look only in the Enemy ships sandbox for now.
+- **A dressed ship costs frames at 960 × 825:** see Verified. The plans' rough frames for the outside views are the fix if a phone stutters (§9).
+- **The test suite takes about 1 min 40 s here.**
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **The Look,** in the dev Builder: tap Hull, pick Wings, and put a swept wing on each side of the ship, two taps each. Then:
+   - tap it, Turn it, drag it along the hull, Delete it, and undo each;
+   - long-press a piece for its card.
+2. **Paint and trim:** try the pairs. Does the hull still read in each, folded and unfolded?
+3. **Sculpt:** a long wedge or a curve at a step in the hull, and a wedge at a corner. Do the slopes look like part of the ship?
+4. **Construction mode:** style the campaign's ship in Build, then see it at the hangar and on lift-off.
+5. **The Enemy ships sandbox:** step through a few seeds of each preset in Hull.
+6. **Tell me:**
+   - which pieces you'd use and which look wrong;
+   - whether the half-hidden far side gets in the way;
+   - whether 24 is the right cap, and whether pieces should cost something;
+   - and the M14 to M23e questions still open.
+
+### Next session
+
+**M23g A second manufacturer.** Settle its Done when first. The draft is "every part, M23e's included, comes from both makers, told apart at a glance in the builder and outside it; each maker's versions differ in play somewhere (Law 1); the shop sells both; and old saves and blueprint codes load with the first maker's parts."
+
+### Verified here
+
+- `node --test`: 643 pass. `node tools/validate-data.js`: OK (12 styling pieces). The golden maps, battle logs and ships didn't change.
+- **Generated ships,** 100 seeds of each preset (`tests/ships.test.js`): every one passes the flight checklist and wears its look; per ship, 3.0 pieces on a cutter, 6.1 on a corvette, 5.9 on a hauler.
+- **Faces drawn outside:**
+
+  | Ship | Bare | Dressed |
+  | --- | --- | --- |
+  | The example ship | 739 faces, 7 glows | 1,067 faces, 14 glows (13 pieces, rust and amber) |
+  | Cutter, seed 1 | 1,027, 8 | 1,065, 10 (2 pieces) |
+  | Corvette, seed 1 | 1,907, 15 | 1,993, 21 (8 pieces) |
+  | Hauler, seed 1 | 1,432, 12 | 1,544, 12 (2 pieces) |
+
+- **M23f's check** (scratchpad `m23f/verify.mjs`), by touch at 905 × 370, 821 × 283 and 960 × 825: 28 of 28 at each size.
+  - **Look mode:** Hull opens it, the first tab reads Look and the board is outside. Its picker holds wings 4, gear 5, sculpt 3, paint 6, trim 6 and hull 2; every tile has its drawing or its color, and every drawer, tool and picker button is 48 px or more and in sight.
+  - **Two taps:** "Tap beside the hull where the Swept wing goes.", then "Tap the Swept wing again to place it, or Turn it.", then the wing is on and saved; the tally reads 1/24.
+  - **A wing flips:** one tapped below the ship turns to face up into it, and Turn shows it the other way.
+  - **Move, delete, undo:** a picked-out wing drags along the hull, and undo puts it back. Delete takes it off ("Removed Swept wing."), and undo puts it back.
+  - **Never ahead of the bow or in front of an exhaust:** "Nothing goes ahead of the bow: the nose is there." and "Antenna would be in front of the Engine's exhaust.", and nothing goes on.
+  - **Paint, trim and style:** rust, amber and Plated, a tap each, pressed in the tab and saved. Undo takes the paint back to slate.
+  - **A room change:** taking off the life support says "Removed Life support. The Swept wing came off.", and undo puts both back.
+  - **Sculpting:** a long wedge at the step over the engines goes on joined along both legs, and the hull wraps it.
+  - **Codes:** a copied code carries the pieces, rust and amber, and opens again; a version 3 code made by main opens Plated, in slate and sky.
+  - **A save made by main** (version 16) opens as 17: slate and sky, no pieces, Plated kept, and Slate pressed in its builder.
+  - **Construction mode:** Look is there; a wing in two taps and navy paint go on the campaign's ship, saved at once, and no parts are taken. The hangar draws it dressed, and the lift-off plays with it.
+  - **The Enemy ships sandbox:** each preset names its look ("Bone and sky, 8 styling pieces"), and Builder copies a ship with its look.
+  - **Offline,** the Look tab draws its icons.
+  - No console errors or warnings.
+- **Frame rate in the app while the views move** (a finger circling four seconds, the dev overlay read every half second; the lowest and middle windows, fps). The dressed example ship has 13 pieces, rust and amber; the lift-off is the start ship in the same 13 pieces here, bare on main:
+
+  | View | 905 × 370 | 821 × 283 | 960 × 825 | 905 × 370, CPU 4× slower |
+  | --- | --- | --- | --- | --- |
+  | Builder's Hull view, bare, main | 60 / 60 | 56 / 60 | 60 / 60 | 26 / 29 |
+  | The same, here | 56 / 60 | 60 / 60 | 56 / 60 | 26 / 28 |
+  | Dressed, here | 60 / 60 | 60 / 60 | 54 / 60 | 23 / 24 |
+  | Dressed, a ghost on it, here | 60 / 60 | 60 / 60 | 58 / 60 | 21 / 25 |
+  | Enemy ships sandbox, corvette 1, main | 58 / 60 | 58 / 60 | 42 / 46 | 17 / 20 |
+  | The same, here (8 pieces) | 58 / 60 | 60 / 60 | 40 / 41 | 16 / 20 |
+  | Hauler 1, main | 58 / 60 | 60 / 60 | 46 / 48 | 16 / 21 |
+  | The same, here (2 pieces) | 60 / 60 | 60 / 60 | 44 / 48 | 17 / 21 |
+  | Lift-off, main | 56 / 60 | 60 / 60 | 42 / 44 | 12 / 13 |
+  | Lift-off, here | 54 / 60 | 56 / 60 | 36 / 39 | 10 / 11 |
+
+  Two more runs of the corvette at 960 × 825 read 46 and 42 here, 48 and 47 on main: the runs differ by about 4 fps. Taking the pieces' glows out, or their faces, didn't move it beyond that.
+- **Regressions,** one after another, after the last change (the Look tab's own classes, below), at 905 × 370, 821 × 283 and 960 × 825 unless named:
+  - **M23f's check:** 28 of 28 at each size;
+  - **M23e's check** (adapted in M23f, below): 27 of 27 at each size;
+  - **M23d's check** (adapted in M23f): 25 of 25 at each size;
+  - **M23c's check** (as adapted in M23e): 25 of 25 at each size;
+  - **M23's check** (as adapted in M23e): 36 of 36 at each size;
+  - **M23b's check:** 8 of 8 at each size;
+  - **M22's check** (as adapted in M23e): 35 of 35 at each size;
+  - **M21's check** (as adapted in M23e): 32 of 32 at each size;
+  - **M19's check** (as adapted in M22): 52 of 52 at each size;
+  - **M20's check** (as adapted in M21): 32 of 32 at each size;
+  - **M18's check:** 43 of 43 at each size;
+  - **M17's check** (as adapted in M19): 37 of 37 at each size;
+  - **M16's check:** 29 of 29 at each size;
+  - **M15's check:** 30 of 30 at each size;
+  - **M14's saves check:** 10 of 10 at 905 × 370;
+  - **M13's check** (as adapted in M23e): 24 of 24 at 905 × 370;
+  - **M8's fight sandbox checks:** a whole fight played by touch at each size, with no console errors; the orders column at each size, every order and crew button 48 px or more; all 8 extras, offline included, with no console errors;
+  - **M14's check:** 48 of 48 at 905 × 370, with a job of each kind played by touch (M23e's run had 41: the count follows how the jobs go).
+- **What changed in the old checks:**
+  - **M23d's** (scratchpad `m23d/verify23f.mjs`) picks the hull's style in the Look tab, where it moved, and reads the Look's hint where it read the style's name. It expects a version 4 code, and a v15 save to open as v16 or later.
+  - **M23e's** (`m23e/verify23f.mjs`) asks that a save made before M23e opens as v16 or later, where it asked for v16.
+- **Found by the regressions:** the Look tab borrowed the Parts tab's classes for its look. So M23e's check counted the Look's hidden tiles as parts, at every size (19 of 27), and a first-run tip would have taken a pressed paint swatch for a part picked. It was fixed in the game, not in the check: the Look tab has classes of its own now and shares the look through the stylesheet, as M23's cards do.
+
 ## M23e Builder catalog and part variants (2026-10-13)
 
 **Status:** done, and the ROADMAP.md box is ticked. The builder has nine new parts, each with its own numbers and drawings, and the Parts tab is a picker: one category at a time, or all, with a size filter.
