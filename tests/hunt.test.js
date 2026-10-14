@@ -2,18 +2,20 @@
 // out, by the heat the ship arrives with (hunt.js): never at a station or
 // in a nebula, the chance shown before the jump and rolled as shown; a
 // hostile ship where they wait slips away, and an event there waits until
-// they are dealt with; facing them drops heat to heatAfterRaid. And the
-// run's own levels of heat, and the save that carries it all (v18).
+// they are dealt with; facing them drops heat to heatAfterRaid, and a
+// boarding is fought against the pursuer's party. And the run's own levels
+// of heat, and the save that carries it all (v18).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { makeSave, MIGRATIONS, parseSave, SAVE_VERSION } from '../src/core/save.js';
 import { seedFrom } from '../src/core/rng.js';
 import { FACED } from '../src/sim/approach.js';
 import { campaignProblems, HEAT_MAX } from '../src/sim/campaign.js';
-import { closeApproach, giveOrder } from '../src/sim/encounter.js';
+import { beginBoarding, closeApproach, endBoarding, giveOrder } from '../src/sim/encounter.js';
 import { RUN_LEVELS, runLevel } from '../src/sim/heat.js';
 import { huntersOf, huntOdds, rollHunt } from '../src/sim/hunt.js';
 import { launch } from '../src/sim/launch.js';
+import { raidLoss } from '../src/sim/raid.js';
 import { initialState, reduce, saveData } from '../src/sim/root.js';
 import { beginRun, holdOf, jump, jumpPlan, leavePlan, leaveSector, linked, openEvent, reach } from '../src/sim/travel.js';
 import { rules } from './battleKit.js';
@@ -26,6 +28,13 @@ const { hunters, taskForce } = rules.backgrounds.get('miner').pursuer.run;
 // A node linked to the way in that the hunters can wait at: not a station
 // or a nebula.
 const open = (campaign) => linked(campaign.run.sector, campaign.run.at).find((id) => !rules.nodeTypes.get(campaign.run.sector.nodes[id].type).safe && !rules.nodeTypes.get(campaign.run.sector.nodes[id].type).hides);
+// A boarding fight ended for the tests: won by the crew, or with the crew
+// all down.
+function finished(campaign, winner) {
+  const { battle } = campaign.fight;
+  const units = winner === 'crew' ? battle.units : battle.units.map((unit) => (unit.side === 'crew' ? { ...unit, hp: 0, status: 'down', bleed: 2 } : unit));
+  return { ...campaign, fight: { ...campaign.fight, battle: { ...battle, units, winner } } };
+}
 
 test("the run's levels of heat, each with the pursuer's words", () => {
   assert.deepEqual(RUN_LEVELS, ['calm', 'rumors', 'hunters', 'taskForce', 'cornered']);
@@ -151,6 +160,30 @@ test('facing them drops heat to heatAfterRaid; getting away or parting leaves it
     assert.deepEqual(campaignProblems(campaign), []);
   }
   assert.ok(seen.has('faced') && (seen.has('escaped') || seen.has('parted')), `outcomes: ${[...seen]}`);
+});
+
+test("boarded by them, the fight is against the pursuer's party; beaten at home, they take what a lost raid takes; heat stays fallen either way", () => {
+  const parts = { corridor: 2, armory: 1 };
+  const start = onRun({ heat: HEAT_MAX, parts });
+  const to = open(start);
+  let boarded = null;
+  for (let seed = 1; seed <= 300 && !boarded; seed++) {
+    let campaign = jump({ ...start, rng: seedFrom(seed) }, rules, to).campaign;
+    while (!campaign.run.approach.outcome) campaign = giveOrder(campaign, rules, { kind: 'evade' }).campaign;
+    if (campaign.run.approach.outcome.kind === 'boardedBy') boarded = campaign;
+  }
+  assert.ok(boarded, 'some dice bring them aboard');
+  assert.equal(boarded.heat, balance.heatAfterRaid, 'faced as they come aboard');
+  const home = beginBoarding(boarded, rules).campaign;
+  const party = rules.ships.get(taskForce).party;
+  assert.equal(home.fight.encounter, party);
+  assert.equal(home.fight.battle.units.filter((unit) => unit.side === 'enemy').length, rules.encounters.get(party).enemies.length);
+  assert.deepEqual(raidLoss(home, rules), { part: 'armory' });
+  const overrun = endBoarding(finished(home, 'enemy'), rules);
+  assert.deepEqual([overrun.parts, overrun.credits, overrun.heat, overrun.run.approach], [{ corridor: 2 }, home.credits, balance.heatAfterRaid, null]);
+  const repelled = endBoarding(finished(home, 'crew'), rules);
+  assert.deepEqual([repelled.parts, repelled.credits, repelled.heat], [parts, home.credits + home.fight.boarding.salvage.credits, balance.heatAfterRaid]);
+  for (const after of [overrun, repelled]) assert.deepEqual(campaignProblems(after), []);
 });
 
 test('the ship regroups or jumps, and the hunters coming changes the screen', () => {
