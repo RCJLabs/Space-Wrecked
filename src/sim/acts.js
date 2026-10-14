@@ -1,8 +1,10 @@
 // The campaign's acts (data/campaign.json): where the campaign is in the
 // story, and what its home offers. Act 1's home is the hangar, where the
 // job board, the shop, payments on the debt and raids all are; once the
-// ship has launched (launch.js), they stay behind. Pure; imports nothing,
-// so every part of the sim can ask.
+// ship has launched (launch.js), they stay behind. Act 2's is the ship, on
+// the run (travel.js), where stations sell supplies, repair, patch, sign on
+// crew and see to refits. Pure; imports nothing, so every part of the sim
+// can ask.
 
 // The act's entry in data/campaign.json: { act, name, hub, home, heals },
 // and liftOff where leaving the act means lifting off a planet. Null for an
@@ -14,4 +16,11 @@ export function actOf(campaign, rules) {
 // True when the campaign is at home and its home is the hangar (act 1).
 export function atHangar(campaign, rules) {
   return campaign.place === 'hub' && actOf(campaign, rules)?.hub === 'hangar';
+}
+
+// True when the ship is at a station on the run (act 2, whose home is the
+// ship), with no fight on.
+export function atStation(campaign, rules) {
+  const { run } = campaign;
+  return campaign.place === 'hub' && actOf(campaign, rules)?.hub === 'ship' && run?.sector.nodes[run.at]?.type === 'station';
 }

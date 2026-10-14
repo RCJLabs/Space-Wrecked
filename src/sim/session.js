@@ -22,11 +22,14 @@
 // (replay.js). Launch only goes ahead when every line of the flight
 // checklist passes (constraints.js).
 //
-// In construction mode (a campaign's hangar), the session has a stock: how
-// many of each part there are in all, on the ship and on hand. A part only
-// goes on while one is on hand, and taking one off puts it back, so undo and
-// redo keep the count too. Without a stock (the sandbox), parts are endless.
-// Styling pieces (styling.js, M23f) are endless either way.
+// In construction mode (a campaign's hangar, or a station on the run), the
+// session has a stock: how many of each part there are in all, on the ship
+// and on hand. A part only goes on while one is on hand, and taking one off
+// puts it back, so undo and redo keep the count too. Without a stock (the
+// sandbox), parts are endless. Styling pieces (styling.js, M23f) are
+// endless either way. On the run, the parts an approach wrecked stay aboard
+// until a station repairs them (campaign.js refitShip): they move and turn,
+// but Delete leaves them on.
 //
 // The session works on one layer at a time: the rooms (the plans) or the
 // styling (the Look, from outside). Taps pick out what is on its layer, and
@@ -49,9 +52,10 @@ export const PIECE_REACH = 1;
 
 // log: the commands that built `ship` from an empty frame (see replay.js).
 // stock: { [type]: count } of every part there is, on the ship or on hand,
-// or null for no limit.
-export function createSession(ship, log = [], stock = null) {
-  return { ship, log, stock, layer: 'rooms', past: [], future: [], selected: null, armed: null, ghost: null, notice: null };
+// or null for no limit. wrecked: the uids of the parts that can't come off
+// (wrecked, until a station repairs them).
+export function createSession(ship, log = [], stock = null, wrecked = []) {
+  return { ship, log, stock, wrecked, layer: 'rooms', past: [], future: [], selected: null, armed: null, ghost: null, notice: null };
 }
 
 // How many of a part are on hand to put on the ship: Infinity without a
@@ -330,8 +334,9 @@ function turnPiece(session, defs) {
 function remove(session, defs) {
   const item = itemOf(session.ship, session.selected);
   if (!item) return session;
-  const result = applyCommand(session.ship, defs, { op: 'remove', uid: item.uid });
   const name = nameOf(defs, item.type);
+  if (session.wrecked?.includes(item.uid)) return withNotice(session, 'bad', `The ${name} is wrecked: it comes off once the station repairs it. It can still move.`);
+  const result = applyCommand(session.ship, defs, { op: 'remove', uid: item.uid });
   const next = record(session, result.ship, { op: 'remove', uid: item.uid }, `remove ${name}`);
   return withNotice({ ...next, selected: null, ghost: null }, 'info', `Removed ${name}.${cameOff(defs, result.removed)}`);
 }

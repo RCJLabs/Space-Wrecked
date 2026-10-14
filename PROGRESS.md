@@ -2,6 +2,142 @@
 
 Newest entry first.
 
+## M23h Refits at stations (2026-10-14)
+
+**Status:** done, and the ROADMAP.md box is ticked. At a station the ship's panel on the sector map is Refit: construction mode on the ship with the parts on hand, found at nodes, stripped in boardings or left from act 1. A refit is free. A part an approach wrecked stays on until the station repairs it, and the ship can't jump from a station while a flight check fails.
+
+Some of this changes what was there before, not only adds to it:
+- **The ship's panel on the sector map is a button at stations,** as the crew's is: "Ship · Refit ›".
+- **A jump can be refused for the ship's sake:** from a station, while a flight check fails, it reads "Can't leave" in the bad tone, with the check named. Only a refit changes the ship, so a ship that hasn't refitted never sees it.
+- **Supplies can stay behind:** after a refit takes a hold off, what the holds no longer take is left at the next jump, which says so before it is made. Nothing is lost at the refit itself, so putting the hold back keeps them.
+- **The careful test player refits at stations** (`tools/voyage.js`, `--refit no` to skip). The fleets flown for M19 to M23e's Law 1 tests keep flying as fitted, with no refits, so each still compares one part's difference.
+- **A fixture was found flying a ship that fails its flight checklist:** M23e's surgery voyages fitted surgery to the start ship with 1 power spare, leaving it at −1. It flies with a small reactor now, and `voyage()` refuses a fitted ship that fails a check.
+- **`tools/run.js` fitPart weighs a spot before building it:** the same choices (act 1's 100 test runs, and 30 careful voyages without refits, come out the same as main's seed by seed, campaign and log), and `node --test` takes about 70 s here, down from 1 min 45 s.
+
+No phone results have come back yet for M14 to M23g.
+
+**How it was picked:** Evan answered three questions (2026-10-14), each the recommended answer:
+- **Parts:** "What's found": refit with parts found, stripped or left from act 1. A parts dealer at stations goes to §9 (it needs a save bump for what has been bought).
+- **Wrecks:** "Repair first": a wrecked part moves with its damage, but comes off only once repaired.
+- **Cost:** "Free".
+
+Done when (ROADMAP.md, M23h):
+- **At a station:** "Refit, at a station on the run, opens construction mode on the ship with the parts on hand: found at nodes, stripped in boardings, or left from act 1. Each change is saved at once, as at the hangar, and Look works there too. Map goes back to the chart. Away from a station there is no Refit, and the sim refuses one (tested)."
+- **Free:** "a refit costs no credits, supplies or heat, and the ship's parts and the parts on hand add up to the same before and after (tested)."
+- **Wrecks:** "a wrecked part is marked on the plans, and its card says so. It moves and turns with its damage, but comes off only once the station has repaired it; the sim refuses a refit that would drop one (tested)."
+- **No leaving broken:** "while a flight check fails, the ship can't jump from the station (a jump, a long jump or Jump on), and the chart says which check fails and that Refit fixes it (tested). Supplies past what the holds take after a refit stay behind at the next jump, and the jump says so before it is made (tested)."
+- **Hints:** "at a station with parts on hand, the chart says how many and that Refit fits them."
+- **The test player:** "the careful test player (`tools/voyage.js`) refits at stations with what it has on hand, keeping each part only while every flight check still passes, and still crosses all five sectors fed in at least 24 of 30. Its report says what it fitted, and how the same seeds go without refits."
+- **Saves:** "no version change: a refit changes only the ship and the parts on hand. An act 2 save made by main opens and refits at a station (tested)."
+- **The hangar:** "act 1's construction mode works as before."
+- **Touch:** "every new button is 48 px or more at the three sizes. By touch: a found part fitted at a station in two taps, a jump refused while a check fails and allowed once it is fixed, a wrecked part kept on, and a quit and reopen that keeps the refit."
+
+How each is met:
+- **At a station:** `tests/refit.test.js`: a cargo hold found fitted at a station; refused at the way in, a node a jump away, in a fight, in act 3, and through the reducer without the rules. By touch, below: Refit opens construction mode with the parts on hand, Look paints the hull, Map goes back, and away from the station the panel reads plain "Ship". Jump on can't be reached from a station (the jump point is never one), but `leavePlan` refuses too (tested, with a made-up sector whose exit is a station).
+- **Free:** `tests/refit.test.js`: credits, supplies, heat and flags unchanged, and `stockOf` the same before and after; a part taken off goes back on hand. By touch: a cargo hold in two taps, 140 credits, 30 supplies and heat 30 before and after.
+- **Wrecks:**
+  - `tests/refit.test.js`: the sim refuses a refit that takes a wrecked gun off or swaps it for another type; the builder's Delete leaves it on with "The Weapon mount is wrecked: it comes off once the station repairs it. It can still move."; moved, it keeps its uid, so its fire is on the boarding map where it went.
+  - `tests/scene.test.js`: crossed out in the wreck styles, at the top of its walls, labelled "Weapon mount · wrecked" in the bad tone when picked. `tests/builderText.test.js`: its card's line.
+  - By touch: picked, Delete refused, and the card.
+- **No leaving broken:**
+  - `tests/refit.test.js`: the reactor taken off, a jump and a long jump refused with "The ship can't leave until every flight check passes: power −7 (0 made, 7 used). Refit to fix it."; put back, it jumps; away from a station nothing holds it.
+  - Supplies: a cargo hold fitted and filled (50), then taken off: the refit keeps 50, the jump leaves 20 behind first (`flags.suppliesLeft`) and eats from the 30.
+  - `tests/sectorText.test.js`: the hint, the panel's line, "Can't leave" in the bad tone; the hold row "50 of 30, 20 won't fit", the warning, and the jump's "20 supplies stay behind: the holds take 30."
+  - By touch: the reactor off, back on the map the hint and the jump picked say so, Jump is disabled and a second tap on the node stays put; Undo in Refit puts the reactor back and the ship jumps in two taps.
+- **Hints:** the station's panel always says "4 parts on hand: Refit fits them, free." (by touch, and `tests/sectorText.test.js`); the foot's hint says it too once nothing more pressing is there (repairs, a medic, supplies to buy, recruits).
+- **The test player:** `tests/voyage.test.js`, 30 careful voyages refitting: fed all the way in 26; 25 runs fit something; every refit step takes the parts off the parts on hand and onto the ship for nothing, every flight check passing after. The report, below.
+- **Saves:** `SAVE_VERSION` stays 17. `tests/refit.test.js` saves an act 2 campaign and refits it after loading. By touch: a save made by main at a station opens and a med bay goes on in two taps.
+- **The hangar:** M13's, M14's, M16's, M17's and M23f's browser checks pass (below); the builder's first-run tips stay act 1's (`tests/tips.test.js`).
+- **Touch:** the chart's buttons and construction mode's, 48 px or more at the three sizes (the ship's panel is 183 × 102 at 905 × 370, 165 × 77 at 821 × 283 and 195 × 102 at 960 × 825).
+
+### Shipped
+
+- **The sim:**
+  - `acts.js` `atStation`;
+  - `campaign.js` `refitShip(campaign, ship, rules)`: at the hangar or a station, every wrecked part kept as the same part; `canRefit`, `wreckedUids`;
+  - `session.js`: a session's `wrecked` uids, which Delete leaves on;
+  - `travel.js`: `failingCheck` holds a jump from a station; `suppliesOver` and the plans' `left`, left behind before a jump eats; the flags count `suppliesLeft`;
+  - `root.js`: `campaign/ship` takes the rules.
+- **The chart** (`sector.js`, `sectorText.js`, `style.css`): the ship's panel as Refit at stations, lit, or in the bad tone while a check fails; the station's panel line; "Can't leave"; the supplies left behind, in the hold row, the hint and the jump.
+- **Construction mode on the run** (`construction.js`, `view.js`, `hints.js`, `drawer.js`, `card.js`): Map, "Ready to jump", the wrecked parts passed to the session and marked (`shipScene.js` `wreckMark`, the wreck styles in `blueprintStyles.js`), and the card's line. The builder's tips are act 1's (`tipSteps.js`).
+- **Tools:** `voyagePlan.js` `refitAt` and `refitPicks`; `voyage.js` `--refit`, the refit step and its report; `run.js` fitPart's weighing.
+- **Docs:** ROADMAP.md: M23h's Done when, §4.1 (refits on the run), §4.6 (the measurements), §4.8 (no save bump), four ideas in §9 and the test suite's time.
+
+Decisions made along the way, not asked (each easy to change):
+- **Refit is the ship's panel, not a button in the foot.** At a station the foot holds Buy, Repair, Patch up and Scan, and at 821 × 283 a fifth button would leave the hint no room. The crew's panel already opens the crew card this way.
+- **Refit opens in one tap:** opening construction mode changes nothing; every change in it is a ghost first and a second tap.
+- **Supplies stay behind at the next jump, not at the refit:** each change in construction mode is saved at once, so taking a hold off and putting it back would otherwise lose supplies.
+- **Only a station holds the ship:** a failing check stops a jump only at a station, where a refit can fix it. Only refits change the ship, so a check can't fail anywhere else; a data change that made one fail away from a station would strand nobody.
+- **The careful test player fits what feeds, heals, houses, guards, arms or drives the ship,** in that order: holds, then crew parts, then shields, guns and engines, the dearest first in each, a reactor on hand only to power one. Never a bridge, corridors, airlocks, armories or a second healer that heals no more.
+- **The station's hint names refits last,** after repairs, the medic, supplies and recruits: the station's panel always says it, and spare corridors would otherwise nag at every station.
+- **The ship's panel doesn't list the parts on hand.** A first try added a row, and M19's check caught it: at 821 × 283 a third row doesn't fit under the crew. The station's line says how many are on hand, and Refit's drawer what they are.
+
+### Known issues
+
+- **The refitting test player ends a voyage a little more hurt:** median crew at the end 24 hit points over 60 voyages, against 26 without refits. It keeps a holdful's price back before patching, and a bigger hold keeps more back, so it patches 9 at the median against 12. That is the test player's rule, not the game's.
+- **Refit opens with nothing on hand,** for moving, turning and the Look; the station's line says "Refit moves and turns the ship's parts, free."
+- **A wrecked part's cross is small on a one-cell part** (a gun, a point defense turret): half a cell across. Its label and the notice say it when it is picked.
+- **The test suite's voyages ran a ship with −1 power from M23e until now** (surgery, above). Its measurements in M23e's entry are of that ship.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **A station with parts on hand:** is "Ship · Refit ›" easy to find, folded and unfolded? Does the station's line read clearly?
+2. **Refit:** fit a found part in two taps, then tap Map. Does going back and forth feel right?
+3. **A wrecked part:** after an approach that wrecks something, refit at a station. Do the cross and the label read? Is "Repair first" right, or would you rather scrap it (§9)?
+4. **Breaking the ship:** take the reactor off and tap Map. Is the red "Can't leave" clear about what to do?
+5. **A cargo hold off with full holds:** do the warnings make sense before the jump?
+6. **Tell me:**
+   - whether refits should cost something after all (a fee, or heat);
+   - whether a parts dealer at stations should come sooner;
+   - and the M14 to M23g questions still open.
+
+### Next session
+
+**M24 Heat v2: hunters, regrouping, transponders.** Settle its Done when first. The draft is "as in M15, ignoring heat brings the hunters, and managing it keeps them off."
+
+### Verified here
+
+- `node --test`: 666 pass, in about 70 s. `node tools/validate-data.js`: OK. No golden file changed.
+- **M23h's browser check by touch:** 16 of 16 at each of 905 × 370, 821 × 283 and 960 × 825. It covers:
+  - the station: "Ship · Refit", "4 parts on hand: Refit fits them, free.", the ship's rows as before, every button 48 px or more;
+  - Refit: the parts on hand (Med bay ×1, Cargo hold ×1, Corridor ×2), Map, "12/40 parts · Ready to jump";
+  - a cargo hold in two taps, saved for nothing;
+  - the wrecked gun: picked, Delete refused with its notice, its card;
+  - Look: rust paint in a tap, no parts taken;
+  - the reactor off: the hint, the panel in the bad tone, "Can't leave", Jump disabled, a second tap stays put;
+  - Undo in a second visit puts the reactor back, and the ship jumps in two taps; away from the station, no Refit;
+  - a quit and reopen keeps the hold and the paint;
+  - a save made by main at a station refits;
+  - offline, Refit opens and draws; no console errors.
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named:
+  - M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 53, and M8's extras.
+
+  Three copies were adapted, not the game: M23g's, M23e's and M17's built their campaigns with `refitShip`, which takes the rules now, so their refits were refused and the checks went wrong from the start. M19's caught the Parts row (Decisions, above); on the final code it passes, and M20's to M23's ran again at the three sizes and pass. M19's at 905 × 370 timed out once while the test suite ran beside it, and passed 52 of 52 run alone. M14 ran 53 checks (47 in M23g): its count follows the jobs its run plays.
+- **Act 1** (`tools/run.js --runs 100`): the same as main's, seed by seed (each run's campaign and log): 100 ready, 6 jobs at the median (3 to 15), 641 in all, 27 quick minutes (12 to 58), 44 slow (21 to 93). The careful voyage without refits is the same as main's too, seed by seed over 30.
+- **The careful voyage** (`tools/voyage.js --long never`), the same seeds with and without refits:
+
+  | | Fed, 30 seeds | Fed, 60 seeds | Runs with a refit (60) | Parts fitted (60, median) | Patched (60, median) | Crew at the end (60, median) | Supplies bought (60, median) |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | No refits | 26 | 46 | 0 | 0 | 12 | 26 | 82 |
+  | Refits | 26 | 50 | 52 | 1 (0 to 7) | 9 | 24 | 90 |
+
+  Fitted over the 60: cargo hold 30, large hold 15, med bay 10, engine 7, light engine 7, weapon mount 7, point defense 6, bunks 5, small reactor 3, Bastion weapon mount 2, life support 1, shield generator 1. With long jumps from heat 50 (30 seeds): fed in 24 refitting, 23 without.
+- **Frame rate** (fps while a finger circles: lowest / middle of the half-second windows), main against this branch in the same runs:
+
+  | View | 905 × 370 | 960 × 825 | 905 × 370, CPU 4× slower (two runs) |
+  | --- | --- | --- | --- |
+  | Builder plans, the example ship (main) | 58 / 60 | 36 / 44 | 21 / 24, 23 / 28 |
+  | Builder plans, the example ship (here) | 60 / 60 | 45 / 48 | 19 / 21, 22 / 24 |
+  | Construction mode at the hangar (main) | 58 / 60 | 46 / 48 | 24 / 26, 22 / 26 |
+  | Construction mode at the hangar (here) | 60 / 60 | 44 / 49 | 21 / 25, 23 / 25 |
+  | Refit at a station, the gun wrecked (here) | 58 / 60 | 40 / 45 | 18 / 27, 24 / 25 |
+
+  This container runs the same code slower than M23g's did (main's builder plans at 960 × 825 read 36 / 44 here, 60 / 60 in M23g's runs), so only main against this branch in the same run counts: they are level, and the station's plans with a wreck crossed out run as the hangar's do.
+
 ## M23g A second manufacturer (2026-10-14)
 
 **Status:** done, and the ROADMAP.md box is ticked. Bastion Arms makes a version of every part: tough and heavy, on the Yard part's footprint, interior and fittings. Its parts are amber on the plans and in the drawer, and outside they wear gunmetal fittings, orange hazard chevrons and orange flames under the ship's own paint. The patrol's corvettes fly them.

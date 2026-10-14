@@ -84,7 +84,7 @@ export function createDrawer(defs, { palette: paletteHandlers, look: lookHandler
       const open = lines.filter((line) => line.ok !== true).length;
       badge.textContent = open ? String(open) : '✓';
       badge.dataset.tone = open ? 'bad' : 'good';
-      badge.setAttribute('aria-label', open ? `${open} checks open` : 'ready to launch');
+      badge.setAttribute('aria-label', open ? `${open} checks open` : (context.cleared ?? 'Ready to launch').toLowerCase());
     },
     dispose() {
       for (const off of detach) off();

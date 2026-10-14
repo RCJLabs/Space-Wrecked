@@ -143,3 +143,20 @@ test("on the plans a Bastion part is drawn in Bastion's line, what sticks out of
   assert.equal(BLUEPRINT_ORDER.indexOf('wallTop@bastion'), BLUEPRINT_ORDER.indexOf('wallTop') + 1);
   assert.equal(BLUEPRINT_STYLES['wallTop@bastion'].stroke, '#ffc45e');
 });
+
+test('a wrecked part is crossed out on the plans, in the wreck styles, and its label says so when picked (M23h)', () => {
+  const { ship } = buildShip(defs, 'starter', [at('bridge', 10, 4, 1), at('weapon', 13, 5)]);
+  const weapon = ship.modules.find((m) => m.type === 'weapon').uid;
+  const plain = scene(ship);
+  for (const style of ['wreckFace', 'wreckEdge', 'wreckMark']) assert.equal(count(plain.model, style === 'wreckFace' ? 'faces' : 'lines', style), 0, style);
+  const wrecked = scene(ship, { wrecked: new Set([weapon]), selected: weapon });
+  assert.equal(count(wrecked.model, 'faces', 'wreckFace'), 1);
+  assert.ok(count(wrecked.model, 'lines', 'wreckEdge') > 0);
+  assert.equal(count(wrecked.model, 'lines', 'wreckMark'), 2, 'a cross');
+  assert.deepEqual(wrecked.labels.map(({ text, tone }) => [text, tone]), [['Weapon mount · wrecked', 'bad']]);
+  // The cross stands at the top of the walls, inside the room.
+  const [x0, y0] = [13, 5];
+  for (const line of wrecked.model.lines.filter((l) => l.style === 'wreckMark')) {
+    for (const [x, y] of line.pts) assert.ok(x > x0 && x < x0 + 1 && y > y0 && y < y0 + 1, `${x}, ${y}`);
+  }
+});

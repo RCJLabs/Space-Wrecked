@@ -94,28 +94,29 @@ test('a refit at the hub takes parts from the hangar and puts back what comes of
   assert.deepEqual(stockOf(campaign), { quarters: 1, lifesupport: 1, corridor: 5, bridge: 1, reactor: 1, airlock: 1, weapon: 1 });
   const quarters = applyCommand(campaign.ship, rules, { op: 'place', type: 'quarters', x: 9, y: 5, rot: 0 });
   assert.ok(quarters.ok, quarters.message);
-  const fitted = refitShip(campaign, quarters.ship);
+  const fitted = refitShip(campaign, quarters.ship, rules);
   assert.equal(fitted.ship, quarters.ship);
   assert.deepEqual(fitted.parts, { lifesupport: 1, corridor: 2 });
   assert.deepEqual(campaignProblems(fitted), []);
   const corridor = fitted.ship.modules.find((m) => m.type === 'corridor');
-  assert.deepEqual(refitShip(fitted, removeModule(fitted.ship, corridor.uid)).parts, { lifesupport: 1, corridor: 3 }, 'a part taken off goes back');
+  assert.deepEqual(refitShip(fitted, removeModule(fitted.ship, corridor.uid), rules).parts, { lifesupport: 1, corridor: 3 }, 'a part taken off goes back');
   // Only parts the campaign has: no engine, and no second quarters.
   const engine = applyCommand(campaign.ship, rules, { op: 'place', type: 'engine', x: 7, y: 6, rot: 0 });
   assert.ok(engine.ok, engine.message);
-  assert.equal(refitShip(campaign, engine.ship), campaign);
+  assert.equal(refitShip(campaign, engine.ship, rules), campaign);
   const twice = applyCommand(fitted.ship, rules, { op: 'place', type: 'quarters', x: 5, y: 5, rot: 0 });
   assert.ok(twice.ok, twice.message);
-  assert.equal(refitShip(fitted, twice.ship), fitted);
+  assert.equal(refitShip(fitted, twice.ship, rules), fitted);
   // Not in a fight, not onto another frame, and the same ship changes nothing.
   const fighting = beginFight(campaign, rules).campaign;
-  assert.equal(refitShip(fighting, quarters.ship), fighting);
-  assert.equal(refitShip(campaign, { ...quarters.ship, frame: 'barge' }), campaign);
-  assert.equal(refitShip(campaign, campaign.ship), campaign);
+  assert.equal(refitShip(fighting, quarters.ship, rules), fighting);
+  assert.equal(refitShip(campaign, { ...quarters.ship, frame: 'barge' }, rules), campaign);
+  assert.equal(refitShip(campaign, campaign.ship, rules), campaign);
+  assert.equal(refitShip(campaign, quarters.ship), campaign, 'not without the rules to say where the ship is');
   // Through the game's reducer.
   const state = started(4);
-  assert.deepEqual(reduce(state, { type: 'campaign/ship', ship: quarters.ship }).campaign.parts, { lifesupport: 1, corridor: 2 });
-  assert.equal(reduce(state, { type: 'campaign/ship', ship: engine.ship }), state);
+  assert.deepEqual(reduce(state, { type: 'campaign/ship', ship: quarters.ship, rules }).campaign.parts, { lifesupport: 1, corridor: 2 });
+  assert.equal(reduce(state, { type: 'campaign/ship', ship: engine.ship, rules }), state);
 });
 
 test("a new campaign's seed is the game's next roll, and the game goes to the hub with a job board", () => {
@@ -252,7 +253,7 @@ test('quitting anywhere and reopening resumes where the player was', () => {
     // Construction mode: a part fitted is saved at once.
     state = reduce(state, { type: 'screen/show', screen: 'construction' });
     const fitted = applyCommand(state.campaign.ship, rules, { op: 'place', type: 'quarters', x: 9, y: 5, rot: 0 });
-    state = reduce(state, { type: 'campaign/ship', ship: fitted.ship });
+    state = reduce(state, { type: 'campaign/ship', ship: fitted.ship, rules });
     reopened = quitAndReopen(state);
     assert.equal(reopened.screen, 'hub', 'construction mode reopens at the hangar');
     assert.deepEqual(saveData(reopened), saveData(state), 'after a refit');

@@ -121,7 +121,7 @@ test('save version 16 gives every ship a style: the builder\'s, the campaign\'s 
 
 test('restyling at the hangar takes no parts', () => {
   const campaign = newCampaign(rules, 7);
-  const styled = refitShip(campaign, { ...campaign.ship, hull: 'plated' });
+  const styled = refitShip(campaign, { ...campaign.ship, hull: 'plated' }, rules);
   assert.equal(styled.ship.hull, 'plated');
   assert.deepEqual(styled.parts, campaign.parts);
 });
