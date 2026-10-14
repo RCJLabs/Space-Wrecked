@@ -28,7 +28,7 @@ A ship-first sandbox RPG in 3D: build a ship on a grid, run from a pursuer, and 
 - **`SAVE_VERSION` gates all saves.** Never change the save schema without bumping `SAVE_VERSION` and writing a migration. Never reset player saves. (This is the Ascent rule.)
 - **Seeded RNG everywhere**, using `mulberry32` in `src/core/rng.js`. This covers battles, the approach phase, generators, loot and events. No bare `Math.random()` in game logic. RNG state is part of the save, so reloading never rerolls.
 - **All content is data** in `data/*.json`:
-  - modules and the builder's part categories, hull frames, hull styles, styling pieces with the paints and trims, manufacturers, weapons, enemies, encounters, ship presets (each with its side's look), the campaign's acts
+  - modules (each maker's versions with them) and the builder's part categories, hull frames, hull styles, styling pieces with the paints and trims, manufacturers, weapons, enemies, encounters, ship presets (each with its side's look and makers), the campaign's acts
   - crew jobs, traits, recruits' names, backgrounds (each with its start and pursuer), districts, the job sites' map templates
   - how jobs, enemies and weapons look in a fight (`look` and `held`, checked against `src/render/figures/looks.js`)
   - mission and job templates (`data/contracts.json`), events, balance numbers
@@ -53,7 +53,7 @@ CNAME                       # spacewrecked.rcjlabs.com
 .well-known/assetlinks.json # TWA verification, added with the TWA
 src/
   core/      rng, save, blueprint codes, store, events
-  sim/       grid, builder rules, styling, constraints, mapFromShip, battle, ai, approach, heat, campaign, economy, gen/
+  sim/       grid, builder rules, styling, makers, constraints, mapFromShip, battle, ai, approach, heat, campaign, economy, gen/
   render/    3D camera, scenes and painters, part and styling piece models, figures (figures/), portraits (portraits/), hull tracer and hull shapes, SVG icons, tweens, particles
   ui/        screens, panels, gestures
   platform/  storage, service worker registration, haptics, orientation

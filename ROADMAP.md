@@ -85,6 +85,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Frame shapes:** a frame can still cut cells out of its rectangle, for a special hull. The starter frame had a ship-shaped outline from M4 to M5b; it is open now.
 - **Module definitions** (`data/modules.json`) hold:
   - id, name, manufacturer, size in cells, and whether it rotates
+  - for a maker's version of a part (M23g), its base part (`base`): it holds only its own id, maker, name, price and the stats it changes, and takes everything else from its base, so it has the same footprint, interior, fittings and icon
   - the drawer's category it sits in (M23e): command, power, engines, weapons, defense, crew, cargo or utility, in that order (the file's `categories`)
   - the side that must face space, if any: an engine's exhaust, a gun's barrel, a point defense turret
   - stats: power, mass, thrust, crew berths, life support, cargo, hit points
@@ -93,7 +94,8 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - an interior template at tile resolution: walls, floor, cover props, consoles
   - cost
 
-  The base parts come first in the file: the flight checklist's fixes name the first part that gives what is short, so act 1's goal and generated ships ask for an Engine, not a variant of one.
+  The base parts come first in the file: the flight checklist's fixes name the first part that gives what is short, so act 1's goal and generated ships ask for an Engine, not a variant of one. Makers' versions come after them all. Where the game asks for a part (act 1's goal, the shop's "needed" lines, the checklist's fixes), any maker's version of it counts.
+- **Manufacturers** (`data/manufacturers.json`, M23g): the Yard's standard parts, and Bastion Arms', tough and heavy: half again the hit points, a quarter more mass (at least 1) and about a tenth more money. A maker has a name, a short name for the drawer, a line for its parts' cards and a mark on its parts' roofs; its colors are a skin in `palette.js`: the fittings its parts wear outside, under the ship's paint, and its line on the plans and the drawer's icons (Bastion's amber). Enemy presets roll a maker for each part (`makers` in `data/ships.json`): the patrol's corvettes carry Bastion's for four parts in five, each kept only while the ship still passes its flight checklist.
 - **Placement rules:**
   - in bounds, with no overlap
   - every module reachable from the bridge through shared walls: two rooms that share a wall get one doorway in its middle, and corridors side by side open into each other
@@ -107,11 +109,11 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - everything connected
 
   Each failing line names its fix, for example "Life support 2 of 4 crew".
-- **Auto-hull:** trace the outline of the occupied cells, slope the corners between parts (fairings), and wrap it in the ship's hull style (`data/hulls.json`, M23d): Rounded (rounded corners, a rounded shoulder, a bullet nose) or Plated (cut corners, a stepped armor shoulder, panel seams on the roof, a blunt prow). The hull stands about half a cell out from the rooms, so its curves never cut into one, with a nose on every front. Nozzles, gun barrels and docking collars go where engines, guns and airlocks face space, set on the hull's skin. The player picks a ship's style in the builder; enemy ships roll one with their seed. The builder shows the hull as the blueprint's rim; outside the builder it is raised into a solid hull, plated in the manufacturer's skin.
+- **Auto-hull:** trace the outline of the occupied cells, slope the corners between parts (fairings), and wrap it in the ship's hull style (`data/hulls.json`, M23d): Rounded (rounded corners, a rounded shoulder, a bullet nose) or Plated (cut corners, a stepped armor shoulder, panel seams on the roof, a blunt prow). The hull stands about half a cell out from the rooms, so its curves never cut into one, with a nose on every front. Nozzles, gun barrels and docking collars go where engines, guns and airlocks face space, set on the hull's skin. The player picks a ship's style in the builder; enemy ships roll one with their seed. The builder shows the hull as the blueprint's rim; outside the builder it is raised into a solid hull in the ship's paint, each part's fittings in its maker's skin (M23g).
 - **Blueprint codes** are versioned, compact (base64url) and carry a checksum. A bad code fails with a message, never a crash.
 - **Build replay:** every placement is a command, and replaying the command list plays back a timelapse.
 - **Construction mode** (M13): in a campaign, the builder works on the campaign's ship with the parts the campaign has. A part goes on only while one is on hand, and one taken off goes back, undo and redo included. The palette shows only the parts on hand, with how many. A checklist fix whose part isn't on hand says so instead of picking it. Every change is saved through the campaign at once.
-- **The Parts drawer** (M23e): one category at a time or all, picked from a sheet that a 48 px button opens, each category with how many parts it holds; a size filter (any, small, medium, large) a tap a step. All lists the parts by category, the base part first. In construction mode only the parts on hand show, and the counts follow.
+- **The Parts drawer** (M23e): one category at a time or all, picked from a sheet that a 48 px button opens, each category with how many parts it holds; a size filter (any, small, medium, large) a tap a step. All lists the parts by category, the base part first, each maker's version beside it (M23g). The sheet's first row picks a maker, any or one, and stays open; a category closes it, and the picker names the maker picked. In construction mode only the parts on hand show, and the counts follow.
 - **Styling** (M23f, `data/styling.json`): pieces that change how a ship looks and nothing else (§1, Law 1), kept apart from its rooms, with its paint and trim (six of each):
   - wings (swept and delta wings, a tail fin, a spoiler), gear (an antenna, a dish, a floodlight, a light strip, an armor plate) and sculpt (a wedge, a long wedge, a curve);
   - a piece goes on open cells beside the hull, its root all along a room's side, never ahead of the bow or in the cell in front of an exhaust, a barrel or a hatch, and at most the frame's `maxStyling` (24) a ship;
@@ -333,6 +335,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - Portraits (v15, M23c): every crew member's look. A v14 crew gets one from its ids, the same on every load.
 - Hull styles (v16, M23d): every ship's style. A v15 ship is Rounded.
 - Styling (v17, M23f): every ship's paint, trim and styling pieces: the builder's slots, the campaign's ship, the other ship in an approach and the one a boarding is fought on. A v16 ship is in the yard's colors, slate and sky, with no pieces.
+- Makers (M23g) needed no new version: a maker's version of a part is a part of its own (`bastion-engine`), and saves and blueprint codes name parts by id. Every older ship's parts are the Yard's.
 - The builder keeps up to six ships in slots, each with the build log its replay plays back. A single ship travels between devices as a blueprint code.
 
 ---
@@ -523,7 +526,7 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
 
   **Done when:** both styles are in data (`data/hulls.json`): Rounded, with rounded corners outside and in, a rounded shoulder and a bullet nose; and Plated, with cut corners, a stepped armor shoulder, panel seams on the roof and a blunt prow. In both, no outer corner of the outline is a plain right angle, and the hull covers every cell and never cuts into a room (tested). Nozzles, barrels and collars sit on the new skin, bevelled to match. The player picks the style in the builder, one tap, undoable, saved with the ship (`SAVE_VERSION` 16: older ships are Rounded) and carried by blueprint codes (version 3, which still reads 1 and 2). Every enemy ship gets one of the two at random, the same for the same seed, its layout unchanged (golden). The builder's rim and Hull view, the hangar, the lift-off and the Enemy ships sandbox all draw it. The builder's default view keeps every cell 22 px or more on the cover screen. The boarding maps don't change (golden), and the hull views keep to the frame budget at the three sizes.
 - [x] **M23e Builder catalog and part variants** (§4.1, §5). Evan's picks (2026-10-13): the drawer as a picker, one category at a time; the nine parts below; enemy ships using some now; and Law 1 for variants as reworded in the Done when.
-  - the parts drawer in categories (command, power, engines, weapons, defense, crew, cargo and utility): one category at a time, or all, picked from a 48 px button, with a size filter. The maker filter waits for a second maker (M23g)
+  - the parts drawer in categories (command, power, engines, weapons, defense, crew, cargo and utility): one category at a time, or all, picked from a 48 px button, with a size filter. The maker filter came with the second maker (M23g)
   - nine new parts, each with its own footprint, interior, model and icon:
     - **light engine** (2 × 1): half an engine's thrust for a third of its mass, cheap, wrecked by one hit. Thrust 6, mass 1, 8 hit points, 90 credits
     - **heavy engine** (3 × 2): about twice an engine's thrust, and two hits to wreck. Thrust 26, mass 6, 30 hit points, 420 credits
@@ -714,5 +717,10 @@ These ideas wait until v0.4 or later:
 - the far side in the Look: the builder looks at the ship from the south, so a piece on the north side is half hidden behind the hull. Pieces being placed and picked out are drawn over it; turning the camera to the side being styled would show the piece itself (raised in M23f)
 - enemy looks placed with an eye: their pieces go anywhere they fit, so a cutter's wing can sit by the bow. Wings aft and gear on top would read better, and sculpt (slopes at their steps) would sleek them (raised in M23f)
 - the plans' rough frames for the outside views while the camera moves: at 960 × 825 a dressed ship turns a few frames a second slower than a bare one, and the lift-off of the start ship in 13 pieces slower than main's (raised in M23f, after M23d)
+- the third maker (M31): M23g's mockups had two more, Kestrel Dynamics (light and dear: pearl fittings, coral stripes, violet flames) and Scrapline (cheap and power-hungry: rust fittings, bare patches, green flames). Kestrel's parts that weigh 1 can't get lighter in whole numbers, and Scrapline's rust is lost on a rust-painted hull. Its plans line has to stand apart from Bastion's amber, the Yard's blue, styling's violet, the ghosts' green and red and the selection's white (raised in M23g)
+- makers inside: a boarding map draws every room in the Yard's skin, whoever made the part (raised in M23g)
+- swapping a placed part's maker: a part is a maker's from the drawer, and the other maker's version means taking it off and placing that one (raised in M23g)
+- makers for the other sides: only the patrol flies Bastion's; the cutters and haulers are all the Yard's (raised in M23g)
+- the test players and makers: act 1's test player fits whichever maker's part is on hand, and a Bastion engine fitted in act 1 costs the careful player about one fed voyage in 15 in act 2 (its mass, evading less). That is why the scrap job doesn't drop one (raised in M23g)
 
 Ideas that come up during a session go here, not into code.
