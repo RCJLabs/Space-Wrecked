@@ -665,12 +665,25 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
   - **The test player:** over 30 voyages (campaign seeds 1 to 30) the careful test player crosses all five sectors, enters the system, surveys while its supplies allow and settles the world it scores best, in every run. Its report says how many worlds it surveyed, which it settled and what the act's record came to (`tools/voyage.js`).
   - **Touch:** every new button is 48 px or more at the three sizes. By touch: Jump on into the system, a survey that shows a world's numbers, a jump to the next world, Settle here in two taps, the landing with Skip, act 3's stub, and a quit and reopen there.
 
+**Gate 4:** act 2 plays on the phone from launch to a world settled, and Evan wants to keep going. ROADMAP named no gate for Phase 4; this one was drafted at M25's close. **Passed 2026-10-14** ("Passed: go on to M26"). v0.2 is done.
+
 ### Phase 5: Act 3 (v0.3)
 
-- [ ] M26 Settling and donated modules
-- [ ] M27 Colony builder and production
-- [ ] M28 Expeditions from the colony
-- [ ] M29 Raids
+Detailed at the start of M26, once v0.2 was done. The Done whens past M26 are drafts, to settle as each milestone starts.
+
+- [ ] **M26 Settling and donated modules.** Act 3 opens on a stub (M25): the world settled and saved, the ship and crew with it, and nothing to do there. Evan's picks (2026-10-14): useful parts of the ship become the colony's first buildings (reactors, life support, quarters and bunks, holds, med bays and surgery, armories, guns and shields; the bridge, engines, corridors and airlocks stay aboard), each drawn as its part and laid out for you on the colony's grid, building by hand coming in M27; the buildings house and power the crew; and in act 3 the crew lives at the colony, so the ship's flight checks count only who is aboard (nobody until M28's expeditions) and the landed ship's reactor powers the colony too. Measured before settling this (the careful test player's ships at settling, seeds 1 to 30): counting the whole crew aboard, no ship could give a reactor, quarters or life support; counting nobody aboard, every ship can power its colony, and 13 can give their quarters. In the other 17 the quarters join the engines or the airlock to the bridge.
+
+  **Done when:**
+  - **The colony:** act 3's home is the colony, in place of M25's stub: the world's ground in 3D in its kind's colors, the ship landed at its edge, and each building drawn as the part it was. Buildings are laid out by themselves on the colony's grid (`src/sim/grid.js` and the builder's placement), each in the first spot that fits with a path round it, in the order given; the same buildings in the same order always stand in the same places (tested). Continue on the title comes back to the colony, and a quit and reopen keeps it.
+  - **Giving a part:** at the colony, two taps on one of the ship's parts: it comes off the ship and stands in the colony as a building of its kind (`data/colony.json`: each useful part's building, its name and words; what it gives is its part's own numbers). Only useful parts, never a wrecked one, never one the ship can't fly without (every flight check must still pass, counting nobody aboard), and never when the grid has no room. Each refusal says why (tested).
+  - **What the colony gives:** power from its power plants and from the landed ship (what its reactors make beyond what its own parts use). The buildings take it in the order they were given, and any it doesn't reach go dark. Beds and air from its powered quarters, bunks and life support, one each for every crew member; whoever goes without sleeps aboard the landed ship. A powered infirmary (a med bay or surgery) heals the crew to full when it opens, and from M28 and M29 when the crew comes home hurt. Holds are storehouses (for M27's production), and guns, shields and armories are defenses (for M29's raids): the colony says what they hold and guard, and they do nothing else yet (tested).
+  - **The colony screen:** the colony's power, beds and air against what the crew needs; its buildings, the dark ones marked; the crew; and the ship's parts that can be given, each with what it would give, and why the rest can't. Act 3's words say what is still to come.
+  - **Saves:** `SAVE_VERSION` 20 for the colony's buildings. A v19 save in act 3 opens at the colony with no buildings yet and every part still aboard (tested).
+  - **The test player:** over 30 voyages (campaign seeds 1 to 30) the careful test player settles and founds the colony, giving every useful part the flight checks let go, beds and air first. In every run the ship still passes every flight check, counting nobody aboard, and every building is powered. Its report says what each run gave, the colony's power, beds and air, and who sleeps aboard (`tools/voyage.js`).
+  - **Touch:** every new button is 48 px or more at the three sizes. By touch: the colony after the landing; a part given in two taps; a refusal and its reason; the infirmary healing the crew; and a quit and reopen at the colony.
+- [ ] M27 Colony builder and production. Draft: building and moving by hand on the colony's grid, with the builder's rules; days passing; food and materials made by the day from the world's soil, water and ore, kept in the storehouses.
+- [ ] M28 Expeditions from the colony. Draft: the ship flies out with a squad (berths and air for whoever is aboard), to nodes for salvage and materials, and back; the colony runs on its own power while it is gone.
+- [ ] M29 Raids. Draft: heat in act 3 falls slowly, and the pursuer raids the colony by heat and how far it lies from the lanes; guns, shields and armories defend; a raid is fought on the colony's grid.
 
 ### Phase 6: Breadth (v0.4)
 

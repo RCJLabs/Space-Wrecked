@@ -2,6 +2,13 @@
 
 Newest entry first.
 
+## Gate 4 (2026-10-14)
+
+**Passed.** Evan's answer at M26's start: "Passed: go on to M26".
+- ROADMAP.md named no gate for Phase 4. The one passed was drafted at M25's close: "act 2 plays on the phone from launch to a world settled, and Evan wants to keep going." v0.2 is done: Phase 4.
+- No phone results have come back for M14 to M25. The gate is Evan's call, so it stands as passed.
+- Phase 5 starts with M26 (settling and donated modules). ROADMAP.md held Phase 5's details until v0.2 shipped. They are drafted there now, with M26's Done when in full and the rest marked as drafts.
+
 ## M25 Scouting candidate worlds (2026-10-14)
 
 **Status:** done, and the ROADMAP.md box is ticked. Act 2 ends now. Jump on from the last sector's jump point reaches a system past the charts with three worlds. A survey from orbit shows what a world is worth, and Settle here at one ends the run: the ship lands, and act 3's stub stands in for the colony, the world saved with the campaign. Phase 4 (act 2, v0.2) is complete; Phase 5 waits on Evan's gate (Next session, below).
