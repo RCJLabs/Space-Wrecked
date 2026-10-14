@@ -24,6 +24,8 @@ export const palette = {
   bpDeep: '#081530',
   bpLine: '#8cd7ff',
   bpGlow: '#ffd36b',
+  // Styling pieces on the blueprint (M23f): set apart from the rooms.
+  bpStyle: '#d0a8ff',
   // Wrecked rooms on a battle map: fire, vacuum and rubble, each with the
   // floor color it leaves.
   fire: '#ff7a2f',
@@ -131,6 +133,34 @@ skins.ground = {
 // The skin for a manufacturer, or the yard's for one without a skin yet.
 export function skinFor(manufacturer) {
   return skins[manufacturer] ?? skins.yard;
+}
+
+// Paint and trim (data/styling.json names them, M23f): a hull's color with
+// its plates' tints and its seams, and the trim that the livery stripe and
+// the lit fittings take. Slate and sky are the yard's own, every ship's
+// until it is painted.
+export const paints = {
+  slate: { hull: '#3c4b68', plates: ['#3c4b68', '#425275', '#38465f', '#455679'], seam: '#222d45' },
+  graphite: { hull: '#3d4148', plates: ['#3d4148', '#454950', '#383b42', '#4a4e57'], seam: '#202328' },
+  bone: { hull: '#aaa596', plates: ['#aaa596', '#b3ae9f', '#a29d8e', '#b8b3a6'], seam: '#6f6a5e' },
+  rust: { hull: '#7a432f', plates: ['#7a432f', '#844a34', '#713d2a', '#8b5139'], seam: '#45251a' },
+  olive: { hull: '#55603f', plates: ['#55603f', '#5c6845', '#4e5839', '#626e4a'], seam: '#30361f' },
+  navy: { hull: '#26365c', plates: ['#26365c', '#2b3c66', '#223154', '#30426d'], seam: '#131c32' },
+};
+export const trims = {
+  sky: '#8cd7ff',
+  amber: '#ffb347',
+  signal: '#ff5a4a',
+  lime: '#9be35a',
+  violet: '#b49cff',
+  white: '#eef3fb',
+};
+
+// A skin with a ship's paint and trim over it; ones it doesn't know leave
+// the skin's own.
+export function paintSkin(skin, paint, trim) {
+  const coat = paints[paint];
+  return { ...skin, ...(coat ? { hull: coat.hull, plates: coat.plates, seam: coat.seam } : {}), ...(trims[trim] ? { livery: trims[trim] } : {}) };
 }
 
 // Portraits (src/render/portraits/): skin, hair and eye colors by the ids

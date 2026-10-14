@@ -195,7 +195,7 @@ test('applyCommand runs place, move and remove, and refuses anything else', () =
   }
   assert.deepEqual(ship.modules, [{ uid: 1, type: 'long', x: 1, y: 1, rot: 1 }]);
   assert.equal(applyCommand(ship, defs, { op: 'remove', uid: 2 }).rule, 'missing');
-  assert.equal(applyCommand(ship, defs, { op: 'paint' }).rule, 'command');
+  assert.equal(applyCommand(ship, defs, { op: 'fly' }).rule, 'command');
   assert.equal(moduleAt(ship, defs, 1, 2), 1);
   assert.equal(moduleAt(ship, defs, 0, 0), null);
   assert.equal(moduleAt(ship, defs, -1, 0), null, 'off the frame');

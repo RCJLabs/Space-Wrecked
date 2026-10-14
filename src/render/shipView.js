@@ -9,6 +9,7 @@
 //   board.setShip(input)    the ship and its overlays (see blueprintScene)
 //   board.setGhost(input)   a part being placed (see ghostScene), or null
 //   board.setHull(input)    the ship seen from outside (see exteriorScene)
+//   board.setMarks(faces)   marks on it (lookOverlay.js), or null
 //   board.draw(ctx, cam, rect, view)   view is 'plans' or 'hull'; true
 //                                      means this frame was a rough one
 //                                      (the camera moved, on a phone too
@@ -73,6 +74,7 @@ export function createBoard(frame) {
   let ship = null;
   let ghost = null;
   let hull = null;
+  let marks = null;
   // The grid and ship as last drawn in full, reused while only a part being
   // placed moves over them; a half-resolution canvas for rough frames; and
   // the budget that picks between them while the camera moves.
@@ -97,10 +99,16 @@ export function createBoard(frame) {
       const { faces, glows } = exteriorScene(input);
       hull = { faces: prepareSolid(faces, shade), glows, space: input.skin.space };
     },
+    // The styling piece being placed or moved and the one picked out, drawn
+    // over the hull so they show even behind it.
+    setMarks(faces) {
+      marks = faces?.length ? prepareSolid(faces, shade) : null;
+    },
     draw(ctx, cam, rect, view = 'plans') {
       if (view === 'hull') {
         drawSpace(ctx, rect, hull?.space ?? palette.space);
         if (hull) paintSolid(ctx, hull.faces, hull.glows, cam);
+        if (marks) paintSolid(ctx, marks, [], cam);
         lastCam = null;
         return false;
       }

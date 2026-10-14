@@ -4,11 +4,12 @@ import { newShip } from '../src/sim/builder.js';
 import { flightChecklist } from '../src/sim/constraints.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { createSession, reduceSession } from '../src/sim/session.js';
-import { cardFor } from '../src/ui/builder/card.js';
+import { cardFor, pieceCard } from '../src/ui/builder/card.js';
 import { flightSummary, hintFor } from '../src/ui/builder/hints.js';
 import { EXAMPLE_SCRIPT, runScript } from '../tools/build-ship.js';
 import { readData } from '../tools/data.js';
 import { readFileSync } from 'node:fs';
+import { readyToLaunch } from './launchKit.js';
 
 const defs = indexDefs(readData());
 const act = (session, action) => reduceSession(session, action, defs);
@@ -33,7 +34,26 @@ test('the hint follows what the player is doing', () => {
   const drag = { kind: 'part', type: 'corridor', placement: null };
   assert.equal(hintFor(s, defs, drag).text, 'Let go off the grid to cancel.');
   assert.equal(hintFor(s, defs, { ...drag, placement: { x: 3, y: 0 } }).text, 'Let go to place the Corridor here.');
-  assert.equal(hintFor(s, defs, { ...drag, kind: 'module', placement: { x: 3, y: 0 } }).text, 'Let go to move the Corridor here.');
+  assert.equal(hintFor(s, defs, { ...drag, kind: 'placed', placement: { x: 3, y: 0 } }).text, 'Let go to move the Corridor here.');
+});
+
+test('from outside, the hint and the card speak of styling pieces', () => {
+  let s = act(createSession(readyToLaunch().ship), { type: 'build/layer', layer: 'styling' });
+  assert.match(hintFor(s, defs).text, /^Drag a piece beside the hull/);
+  s = act(s, { type: 'build/arm', moduleType: 'antenna' });
+  assert.equal(hintFor(s, defs).text, 'Tap beside the hull where the Antenna goes.');
+  s = act(s, { type: 'build/tap', x: 12.5, y: 4.5 });
+  assert.deepEqual(hintFor(s, defs), { tone: 'good', text: 'Tap the Antenna again to place it, or Turn it.' });
+  assert.deepEqual(hintFor(act(s, { type: 'build/tap', x: 12.5, y: 6.5 }), defs), { tone: 'bad', text: 'Antenna goes beside the hull, not over a room.' });
+  s = act(act(act(s, { type: 'build/tap', x: 12.5, y: 4.5 }), { type: 'build/cancel' }), { type: 'build/tap', x: 12.5, y: 4.5 });
+  assert.equal(hintFor(s, defs).text, 'Antenna: tap where to move it, or Turn or Delete.');
+  assert.deepEqual(pieceCard(defs.styling.get('sweptwing')), {
+    title: 'Swept wing',
+    lines: ['2×2 squares · flips to either side', "Goes beside the hull, its root all along a room's side.", 'Looks only: no mass, power or cost, and no parts used. A room change that leaves it nothing to hold it takes it off.'],
+  });
+  const curve = pieceCard(defs.styling.get('curve'), { x: 15, y: 5, rot: 1 });
+  assert.deepEqual([curve.lines[0], curve.lines[1], curve.lines.at(-1)], ['1×2 squares · turns and flips', 'Shapes the hull: a room all along one straight side, its curved side to open space.', 'At (15, 5)']);
+  assert.equal(pieceCard(defs.styling.get('antenna')).lines[0], '1×1 squares · turns');
 });
 
 test('the chip counts parts and gives the first fix, or says the ship is ready', () => {

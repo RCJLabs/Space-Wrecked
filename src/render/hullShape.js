@@ -66,11 +66,26 @@ const key = ([x, y]) => `${Math.round(x * 1e6)},${Math.round(y * 1e6)}`;
 //     nose's front, which the nose covers
 //   noses: [{ x, y0, y1, length, rings: [[[x, y, h]]], tip, blunt }]
 //     tip is null on a blunt nose, whose last ring is its flat front
+//   holes: [[[x, y]]] gaps the outline closes round (a styling piece's
+//     shape can shut one in): the hull fills them, roof and all
 // }
 export function hullShape(hull, style) {
-  const loops = outlineLoops(hull).map((loop) => contours(loop, style));
+  const outlines = outlineLoops(hull);
+  const holes = outlines.filter((runs) => loopArea(runs) < 0);
+  const loops = outlines.filter((runs) => loopArea(runs) >= 0).map((loop) => contours(loop, style));
   const noses = loops.flatMap((loop) => loop.noses);
-  return { style, loops: loops.map(({ levels, nose, per }) => ({ levels, nose, per })), noses };
+  return { style, loops: loops.map(({ levels, nose, per }) => ({ levels, nose, per })), noses, holes: holes.map((runs) => runs.map((r) => r.v)) };
+}
+
+// Twice the area a loop of runs goes round: more than nothing for the
+// outside of a solid, less for a hole in one.
+function loopArea(runs) {
+  let sum = 0;
+  for (let i = 0; i < runs.length; i++) {
+    const [a, b] = [runs[i].v, runs[(i + 1) % runs.length].v];
+    sum += a[0] * b[1] - b[0] * a[1];
+  }
+  return sum;
 }
 
 // The traced outline (hull.js edges) as closed loops: [{ v, n, end }] for

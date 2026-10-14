@@ -105,10 +105,11 @@ test('opening a build keeps a good log, and rebuilds a bad or very long one with
 });
 
 test('commands are recognised by shape', () => {
-  for (const ok of [{ op: 'place', uid: 1, type: 'corridor', x: 0, y: 0, rot: 0 }, { op: 'place', type: 'corridor', x: 1, y: 2, rot: 3 }, { op: 'move', uid: 2, x: 1, y: 1, rot: 1 }, { op: 'remove', uid: 4 }]) {
+  // A styling piece turns 0 to 7 (M23f); paint and trim name a color.
+  for (const ok of [{ op: 'place', uid: 1, type: 'corridor', x: 0, y: 0, rot: 0 }, { op: 'place', type: 'corridor', x: 1, y: 2, rot: 3 }, { op: 'move', uid: 2, x: 1, y: 1, rot: 1 }, { op: 'remove', uid: 4 }, { op: 'place', uid: 5, type: 'sweptwing', x: 2, y: 2, rot: 4 }, { op: 'paint', color: 'rust' }, { op: 'trim', color: 'amber' }]) {
     assert.equal(isCommand(ok), true, JSON.stringify(ok));
   }
-  for (const bad of [null, [], {}, { op: 'fly' }, { op: 'remove' }, { op: 'move', uid: 1, x: 1, y: 1, rot: 4 }, { op: 'place', type: '', x: 0, y: 0, rot: 0 }, { op: 'place', type: 'corridor', x: 0.5, y: 0, rot: 0 }]) {
+  for (const bad of [null, [], {}, { op: 'fly' }, { op: 'remove' }, { op: 'move', uid: 1, x: 1, y: 1, rot: 8 }, { op: 'place', type: '', x: 0, y: 0, rot: 0 }, { op: 'place', type: 'corridor', x: 0.5, y: 0, rot: 0 }, { op: 'paint' }, { op: 'trim', color: '' }]) {
     assert.equal(isCommand(bad), false, JSON.stringify(bad));
   }
 });

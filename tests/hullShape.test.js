@@ -8,10 +8,11 @@ import { exteriorScene, HULL } from '../src/render/exterior.js';
 import { traceHull } from '../src/render/hull.js';
 import { CHORD, hullBands, hullShape, MAX_NOSE, noseSurfaces, PLAIN, sidePoint, styleOf } from '../src/render/hullShape.js';
 import { skins } from '../src/render/palette.js';
-import { buildShip } from '../src/sim/builder.js';
+import { applyCommand, buildShip } from '../src/sim/builder.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { launchedShip } from '../tools/startShip.js';
 import { rules } from './battleKit.js';
+import { readyToLaunch } from './launchKit.js';
 
 const placements = JSON.parse(readFileSync(new URL('./fixtures/example-ship.json', import.meta.url), 'utf8')).placements;
 const at = (type, x, y, rot = 0) => ({ type, x, y, rot });
@@ -24,11 +25,23 @@ const odd = [
   [[1, 0], [2, 0], [3, 0], [1, 1], [3, 1], [1, 2], [2, 2], [3, 2]].map(([x, y]) => at('corridor', x, y)),
   [at('corridor', 3, 3), at('corridor', 4, 4), at('corridor', 5, 3)],
 ];
+// M23f's wedges and curves, which the hull takes in (src/sim/styling.js):
+// rakes at the stern's corners, ramps and curves at its steps, and a spike
+// at the bow's top corner, its leg along the nose's front.
+const start = readyToLaunch().ship;
+const sculpted = (pieces) => pieces.reduce((ship, piece) => {
+  const result = applyCommand(ship, rules, { op: 'place', ...piece });
+  assert.ok(result.ok, `${piece.type} at (${piece.x}, ${piece.y}): ${result.message}`);
+  return result.ship;
+}, start);
 const fleet = [
   ['example', buildShip(rules, 'starter', placements).ship],
   ['launched', launchedShip(rules)],
   ...odd.map((list, i) => [`odd ${i}`, buildShip(rules, 'starter', list).ship]),
   ...[...rules.ships.keys()].flatMap((preset) => [1, 2, 3].map((seed) => [`${preset} ${seed}`, generateShip(rules, preset, seed).ship])),
+  ['sculpted', sculpted([at('wedge', 7, 3, 0), at('wedge', 7, 10, 1), at('longwedge', 9, 4, 0), at('longwedge', 9, 9, 4), at('curve', 15, 5, 0)])],
+  ['curved steps', sculpted([at('curve', 9, 4, 0), at('curve', 9, 9, 4)])],
+  ['spiked bow', sculpted([at('wedge', 16, 5, 3), at('wedge', 16, 9, 2)])],
 ];
 const styles = [...rules.hulls.values()];
 
@@ -58,6 +71,19 @@ test('in every style the hull covers every cell at every height, so it never cut
           // Each cell's corners, a hair in from them: a room is 0.1 in.
           for (const [cx, cy] of [[x + 0.01, y + 0.01], [x + 0.99, y + 0.01], [x + 0.99, y + 0.99], [x + 0.01, y + 0.99]]) {
             assert.ok(inside(loops, [cx, cy]), `${style.id}, ${name}: (${cx}, ${cy}) outside level ${j}`);
+          }
+        }
+        // A wedge or a curve is inside too: points over its cells that are
+        // inside its outline by a hair all round.
+        for (const { region } of hull.sculpt) {
+          const xs = region.map(([x]) => x);
+          const ys = region.map(([, y]) => y);
+          for (let gx = 0; gx <= 20; gx++) {
+            for (let gy = 0; gy <= 20; gy++) {
+              const point = [Math.min(...xs) + ((Math.max(...xs) - Math.min(...xs)) * gx) / 20, Math.min(...ys) + ((Math.max(...ys) - Math.min(...ys)) * gy) / 20];
+              const deep = [[0, 0], [0.02, 0], [-0.02, 0], [0, 0.02], [0, -0.02]].every(([dx, dy]) => inside([region], [point[0] + dx, point[1] + dy]));
+              if (deep) assert.ok(inside(loops, point), `${style.id}, ${name}: a shaped piece's (${point}) outside level ${j}`);
+            }
           }
         }
       }

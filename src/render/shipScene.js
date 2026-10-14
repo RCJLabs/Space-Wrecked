@@ -6,7 +6,8 @@
 import { footprint } from '../sim/modules.js';
 import { hullBands, hullShape, noseSurfaces, sidePoint, styleOf } from './hullShape.js';
 import { box, closed, createModel, cylinder, face, glow, mapModel, merge, polyline, rect } from './mesh.js';
-import { palette } from './palette.js';
+import { palette, skinFor } from './palette.js';
+import { pieceScene } from './pieces.js';
 import { placeModel, propsModel } from './props.js';
 
 export const WALL = 0.44; // room walls
@@ -28,8 +29,10 @@ export function blueprintScene(input) {
   const { ship, defs, doors, hull } = input;
   const model = createModel();
   const labels = [];
-  const shape = hullShape(hull, styleOf(defs, ship));
+  const style = styleOf(defs, ship);
+  const shape = hullShape(hull, style);
   deckAndRim(model, hull, shape);
+  stylingModel(model, ship, defs, shape, style);
 
   for (const module of ship.modules) {
     const def = defs.modules.get(module.type);
@@ -87,6 +90,7 @@ export function gridModel(frame, margin = 8) {
 function deckAndRim(model, hull, shape) {
   for (const [x, y] of [...hull.cells, ...hull.pockets]) face(model, 'deck', [[x, y, 0], [x + 1, y, 0], [x + 1, y + 1, 0], [x, y + 1, 0]]);
   for (const tri of hull.fairings) face(model, 'deck', tri.map(([x, y]) => [x, y, 0]));
+  for (const pts of [...(hull.sculpt ?? []).map((piece) => piece.region), ...shape.holes]) face(model, 'deck', pts.map(([x, y]) => [x, y, 0]));
   for (const band of hullBands(shape, RIM)) face(model, 'rimFace', band.pts);
   for (const { levels } of shape.loops) {
     const [roof, side, base] = [levels[0], levels[levels.length - 2], levels[levels.length - 1]];
@@ -101,6 +105,25 @@ function deckAndRim(model, hull, shape) {
     if (nose.tip) {
       const tip = [nose.tip[0], nose.tip[1], nose.tip[2] * RIM];
       for (const p of rings[rings.length - 1]) polyline(model, p[2] > tip[2] ? 'rimTop' : 'rimBase', [p, tip]);
+    }
+  }
+}
+
+// The styling pieces that stand on the hull's side, as see-through
+// outlines in their own color, at the rim's scale (the outside's hull is
+// HULL tall, the rim RIM).
+function stylingModel(model, ship, defs, shape, style) {
+  const scale = RIM / 0.8;
+  const wallTop = style.profile[style.profile.length - 2][1] * 0.8;
+  for (const placement of ship.styling ?? []) {
+    const def = defs.styling?.get(placement.type);
+    if (!def || def.shape) continue;
+    const { faces } = pieceScene({ def, placement, shape, wallTop, skin: skinFor('yard') });
+    for (const { pts, normal } of faces) {
+      if (normal[2] < -0.5) continue; // undersides: the top shows them
+      const at = pts.map(([x, y, z]) => [x, y, z * scale]);
+      face(model, 'pieceFace', at);
+      polyline(model, 'pieceEdge', closed(at));
     }
   }
 }

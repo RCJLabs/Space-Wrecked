@@ -1,10 +1,13 @@
 // Ship layout rules on the shared grid: placing, moving and removing modules,
 // and checking a whole layout. A ship is plain data:
-//   { frame, hull, modules: [{ uid, type, x, y, rot }], nextUid }
-// hull is its hull's style (data/hulls.json), which only changes how it
-// looks from outside (M23d). Every change is a command (see applyCommand),
-// so a build can be replayed step by step. Functions return new ships and
-// never change their input.
+//   { frame, hull, paint, trim, modules: [{ uid, type, x, y, rot }],
+//     styling: [{ uid, type, x, y, rot }], nextUid }
+// hull is its hull's style (data/hulls.json, M23d); paint, trim and the
+// styling pieces (data/styling.json, styling.js, M23f) are its looks. None
+// of them changes anything but how it looks from outside. Modules and
+// pieces share one count of uids. Every change is a command (see
+// applyCommand), so a build can be replayed step by step. Functions return
+// new ships and never change their input.
 //
 // Rooms join where they share a wall: each wall two rooms share gets one
 // doorway in its middle, and corridors side by side open into each other,
@@ -13,32 +16,46 @@
 import { inFrame } from './frame.js';
 import { cellAt, createGrid, exteriorOf, inBounds, OPPOSITE, SIDES, step, withCells } from './grid.js';
 import { facingSide, footprint, hasTag, isRotation, placedCells, sideCells } from './modules.js';
+import { misfits, pieceError } from './styling.js';
 
 // The hull style a ship has until the player picks another, and the one
 // ships saved before M23d were given.
 export const DEFAULT_HULL = 'rounded';
+// The paint and trim a ship has until it is painted, the yard's, and the
+// ones ships saved before M23f were given.
+export const DEFAULT_PAINT = 'slate';
+export const DEFAULT_TRIM = 'sky';
 
 export function newShip(frameId, hull = DEFAULT_HULL) {
-  return { frame: frameId, hull, modules: [], nextUid: 1 };
+  return { frame: frameId, hull, paint: DEFAULT_PAINT, trim: DEFAULT_TRIM, modules: [], styling: [], nextUid: 1 };
 }
 
 // True if value has a ship's shape: whole-number positions, quarter-turn
-// rotations, unique uids below nextUid, and a hull style's name if it has
-// one. A ship has one from M23d on (save version 16 gives older ones the
-// default), but the migrations from before then check ships with this too,
-// so it can't insist. Whether the parts exist and fit is the layout rules'
-// business, not this; a save only has to be readable.
+// rotations (a styling piece's 0 to 7), uids unique across its modules and
+// pieces and below nextUid, and names for its hull style, paint and trim if
+// it has them. A ship has a style from M23d on (save version 16) and its
+// looks from M23f on (17), but the migrations from before then check ships
+// with this too, so it can't insist. Whether the parts exist and fit is the
+// layout rules' business, not this; a save only has to be readable.
 export function isShipData(value) {
   if (!isRecord(value) || typeof value.frame !== 'string' || !value.frame || !Array.isArray(value.modules)) return false;
-  if (value.hull !== undefined && (typeof value.hull !== 'string' || !value.hull)) return false;
+  for (const name of ['hull', 'paint', 'trim']) {
+    if (value[name] !== undefined && (typeof value[name] !== 'string' || !value[name])) return false;
+  }
+  if (value.styling !== undefined && !Array.isArray(value.styling)) return false;
   if (!Number.isInteger(value.nextUid) || value.nextUid < 1) return false;
   const uids = new Set();
-  for (const m of value.modules) {
+  const placed = (m, turns) => {
     if (!isRecord(m) || !Number.isInteger(m.uid) || m.uid < 1 || m.uid >= value.nextUid || uids.has(m.uid)) return false;
-    if (typeof m.type !== 'string' || !m.type || !Number.isInteger(m.x) || !Number.isInteger(m.y) || !isRotation(m.rot)) return false;
+    if (typeof m.type !== 'string' || !m.type || !Number.isInteger(m.x) || !Number.isInteger(m.y) || !turns(m.rot)) return false;
     uids.add(m.uid);
-  }
-  return true;
+    return true;
+  };
+  return value.modules.every((m) => placed(m, isRotation)) && (value.styling ?? []).every((p) => placed(p, isPieceTurn));
+}
+
+function isPieceTurn(rot) {
+  return Number.isInteger(rot) && rot >= 0 && rot <= 7;
 }
 
 function isRecord(value) {
@@ -117,7 +134,8 @@ export function turnedPlacement(def, placement, frame) {
 }
 
 // Turns a placed module a quarter clockwise, in place (see turnedPlacement).
-// Returns what moveModule returns, plus the new placement when it worked.
+// Returns what applyCommand's move returns, plus the new placement when it
+// worked.
 export function rotateModule(ship, defs, uid) {
   const module = ship.modules.find((m) => m.uid === uid);
   if (!module) return { ok: false, rule: 'missing', message: `There is no module ${uid}.` };
@@ -127,29 +145,71 @@ export function rotateModule(ship, defs, uid) {
   const frame = defs.frames.get(ship.frame);
   if (!frame) return { ok: false, rule: 'frame', message: `Unknown hull frame "${ship.frame}".` };
   const turned = turnedPlacement(def, module, frame);
-  const result = moveModule(ship, defs, uid, turned);
+  const result = tidied(moveModule(ship, defs, uid, turned), defs);
   return result.ok ? { ...result, placement: turned } : result;
 }
 
 // Applies one build command:
-//   { op: 'place', type, x, y, rot }   adds a module with the next uid
+//   { op: 'place', type, x, y, rot }   adds a module, or a styling piece,
+//                                      with the next uid
 //   { op: 'move', uid, x, y, rot }     moves or turns one
 //   { op: 'remove', uid }              takes one out
 //   { op: 'hull', style }              gives the hull a style
-// Returns { ok: true, ship, uid? } or { ok: false, rule, message }.
+//   { op: 'paint', color }             paints the hull (data/styling.json)
+//   { op: 'trim', color }              and its trim
+// Returns { ok: true, ship, uid?, removed? } or { ok: false, rule,
+// message }. A change to the rooms takes off the styling pieces it leaves
+// with nothing to hold them (styling.js misfits): removed lists them.
 export function applyCommand(ship, defs, command) {
-  if (command.op === 'place') return placeModule(ship, defs, command);
-  if (command.op === 'move') return moveModule(ship, defs, command.uid, command);
+  const piece = (uid) => (ship.styling ?? []).find((p) => p.uid === uid);
+  if (command.op === 'place') return defs.styling?.has(command.type) ? placePiece(ship, defs, command) : tidied(placeModule(ship, defs, command), defs);
+  if (command.op === 'move') return piece(command.uid) ? movePiece(ship, defs, command.uid, command) : tidied(moveModule(ship, defs, command.uid, command), defs);
   if (command.op === 'remove') {
+    if (piece(command.uid)) return { ok: true, ship: { ...ship, styling: ship.styling.filter((p) => p.uid !== command.uid) } };
     const next = removeModule(ship, command.uid);
     if (next === ship) return { ok: false, rule: 'missing', message: `There is no module ${command.uid}.` };
-    return { ok: true, ship: next };
+    return tidied({ ok: true, ship: next }, defs);
   }
   if (command.op === 'hull') {
     if (!defs.hulls?.has(command.style)) return { ok: false, rule: 'hull', message: `There is no hull style "${command.style}".` };
     return { ok: true, ship: ship.hull === command.style ? ship : { ...ship, hull: command.style } };
   }
+  if (command.op === 'paint' || command.op === 'trim') {
+    const known = command.op === 'paint' ? defs.paints : defs.trims;
+    if (!known?.has(command.color)) return { ok: false, rule: command.op, message: `There is no ${command.op} "${command.color}".` };
+    return { ok: true, ship: ship[command.op] === command.color ? ship : { ...ship, [command.op]: command.color } };
+  }
   return { ok: false, rule: 'command', message: `Unknown build command "${command.op}".` };
+}
+
+// Adds a styling piece. Returns { ok: true, ship, uid } or { ok: false,
+// rule, message, uids? }.
+export function placePiece(ship, defs, placement) {
+  const error = pieceError(ship, defs, placement);
+  if (error) return { ok: false, ...error };
+  const { type, x, y, rot } = placement;
+  const uid = ship.nextUid;
+  return { ok: true, uid, ship: { ...ship, styling: [...(ship.styling ?? []), { uid, type, x, y, rot }], nextUid: uid + 1 } };
+}
+
+// Moves or turns a styling piece, keeping its uid and place in the order.
+function movePiece(ship, defs, uid, { x, y, rot }) {
+  const piece = ship.styling.find((p) => p.uid === uid);
+  const next = { uid, type: piece.type, x, y, rot };
+  const error = pieceError(ship, defs, next, uid);
+  if (error) return { ok: false, ...error };
+  if (piece.x === x && piece.y === y && piece.rot === rot) return { ok: true, ship };
+  return { ok: true, ship: { ...ship, styling: ship.styling.map((p) => (p.uid === uid ? next : p)) } };
+}
+
+// A room change's result with the styling pieces it left with nothing to
+// hold them taken off.
+function tidied(result, defs) {
+  if (!result.ok || !result.ship.styling?.length) return result;
+  const gone = misfits(result.ship, defs);
+  if (!gone.length) return result;
+  const removed = result.ship.styling.filter((p) => gone.includes(p.uid));
+  return { ...result, ship: { ...result.ship, styling: result.ship.styling.filter((p) => !gone.includes(p.uid)) }, removed };
 }
 
 // The uid of the module covering cell (x, y), or null.

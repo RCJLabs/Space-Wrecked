@@ -8,18 +8,22 @@
 // anywhere but the builder.
 import { footprint, interiorRows } from '../sim/modules.js';
 import { hullBands, hullShape, nearestSide, noseSurfaces, sidePoint, styleOf } from './hullShape.js';
+import { paintSkin } from './palette.js';
+import { pieceScene } from './pieces.js';
 import { normalOf, placeFaces, plate, solidBox, solidCylinder, solidTube } from './solid.js';
 
 export const HULL = 0.8; // the hull's height
 const STEP = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 const NOZZLE_Z = HULL / 2;
 
-// input: { ship, defs, hull: traceHull(ship, defs), skin }
-export function exteriorScene({ ship, defs, hull, skin }) {
+// input: { ship, defs, hull: traceHull(ship, defs), skin }. The skin is
+// the maker's; the ship's paint and trim go over it.
+export function exteriorScene({ ship, defs, hull, skin: base }) {
   const faces = [];
   const glows = [];
   const exhausts = [];
   if (!hull.cells.length) return { faces, glows, exhausts };
+  const skin = paintSkin(base, ship.paint, ship.trim);
   const style = styleOf(defs, ship);
   const shape = hullShape(hull, style);
   const round = style.corners === 'round';
@@ -55,6 +59,10 @@ export function exteriorScene({ ship, defs, hull, skin }) {
   }
   for (const [x, y] of hull.pockets) plate(faces, [x, y], [x + 1, y + 1], HULL, skin.hull, { edge: skin.seam });
   for (const tri of hull.fairings) faces.push({ pts: tri.map(([x, y]) => [x, y, HULL]), normal: [0, 0, 1], color: skin.hull, edge: skin.seam });
+  // Wedges and curves, and any gap they shut in: plain hull.
+  for (const pts of [...(hull.sculpt ?? []).map((piece) => piece.region), ...shape.holes]) {
+    faces.push({ pts: pts.map(([x, y]) => [x, y, HULL]), normal: [0, 0, 1], color: skin.hull, edge: skin.seam });
+  }
 
   for (const nose of shape.noses) noseFaces(faces, nose, skin, curve);
 
@@ -108,6 +116,14 @@ export function exteriorScene({ ship, defs, hull, skin }) {
   for (const [y, color] of [[Math.min(...ys) - m, skin.port], [Math.max(...ys) + 1 + m, skin.starboard]]) {
     const [lx, ly] = nearestSide(shape, [stern - m, y]);
     glows.push({ at: [lx, ly, wallTop + 0.03], r: 0.3, color });
+  }
+  // The styling pieces that stand on the hull's side (pieces.js).
+  for (const placement of ship.styling ?? []) {
+    const def = defs.styling?.get(placement.type);
+    if (!def || def.shape) continue;
+    const piece = pieceScene({ def, placement, shape, wallTop, skin });
+    faces.push(...piece.faces);
+    glows.push(...piece.glows);
   }
   return { faces, glows, exhausts };
 }

@@ -213,8 +213,9 @@ const fineLog = [
   { op: 'place', uid: 1, type: 'bridge', x: 15, y: 5, rot: 0 },
   { op: 'place', uid: 2, type: 'corridor', x: 13, y: 5, rot: 0 },
 ];
-// ...and from save version 16 (M23d), with the default hull style.
-const fineStyled = { ...fine, hull: 'rounded' };
+// ...and from save version 16 (M23d), with the default hull style, and
+// from 17 (M23f) with the yard's paint and trim and no styling pieces.
+const fineStyled = { ...fine, hull: 'rounded', paint: 'slate', trim: 'sky', styling: [] };
 
 test("an M3 save's ship (v1) becomes slot 1, numbered in build order, with a log that builds it", () => {
   const v1 = { version: 1, data: { settings: { fpsCap: 60 }, rng: 5, ship } };

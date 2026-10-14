@@ -27,7 +27,7 @@ const MOCKUP = JSON.parse(readFileSync(EXAMPLE_SCRIPT, 'utf8')).placements;
 
 test('an empty ship has no hull', () => {
   assert.deepEqual(traceHull(newShip('starter'), defs), {
-    cells: [], pockets: [], fairings: [], edges: [], noses: [], nozzles: [], barrels: [], collars: [], lights: [],
+    cells: [], pockets: [], fairings: [], sculpt: [], edges: [], noses: [], nozzles: [], barrels: [], collars: [], lights: [],
   });
 });
 

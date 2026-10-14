@@ -6,8 +6,9 @@
 // fly toward +x.
 import { spaceTest } from '../sim/builder.js';
 import { MAX_MARGIN, MAX_NOSE } from './hullShape.js';
-import { createGrid, exteriorOf, SIDES, step, withCells } from '../sim/grid.js';
+import { createGrid, exteriorOf, OPPOSITE, SIDES, step, withCells } from '../sim/grid.js';
 import { facingSide, hasTag, placedCells, sideCells } from '../sim/modules.js';
+import { pieceCells, pieceLegs, pieceShape } from '../sim/styling.js';
 
 // Room the camera keeps around the ship, in cells, for the hull round its
 // rooms and what sticks out of it (hullShape.js, exterior.js): the side
@@ -27,8 +28,12 @@ const NORMAL = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 //             space (as the rules have them: builder.js spaceTest)
 //   fairings  triangles [[x, y] × 3] across empty corners with modules on
 //             two adjacent sides; the middle point is the inside corner
+//   sculpt    { uid, region } the shaped styling pieces the hull takes in
+//             (wedges and curves, src/sim/styling.js), region their polygon
+//             [[x, y]]; a corner one fills has no fairing
 //   edges     the outline as { a, b, normal }: segments [x, y] to [x, y]
-//             with the outward normal, fairing slopes included
+//             with the outward normal, fairing slopes and the shaped
+//             pieces' outlines included
 //   noses     { x, y0, y1, length }: one per run of cells on the front
 //             column; x is the hull's front edge, y0 to y1 its span
 //   nozzles   { x, y, side } engine cells whose exhaust side faces space
@@ -46,7 +51,7 @@ export function traceHull(ship, defs) {
     if (!def) continue;
     for (const [x, y] of placedCells(def, module)) owners.set(key(x, y), module.uid);
   }
-  const hull = { cells: [], pockets: [], fairings: [], edges: [], noses: [], nozzles: [], barrels: [], collars: [], lights: [] };
+  const hull = { cells: [], pockets: [], fairings: [], sculpt: [], edges: [], noses: [], nozzles: [], barrels: [], collars: [], lights: [] };
   if (!owners.size) return hull;
 
   const occupied = (x, y) => owners.has(key(x, y));
@@ -80,19 +85,37 @@ export function traceHull(ship, defs) {
   }
   const solid = (x, y) => occupied(x, y) || pocketKeys.has(key(x, y));
 
+  // The shaped styling pieces on open cells (src/sim/styling.js): the sides
+  // their legs cover, by cell, so a room's side under a leg isn't outline.
+  const shaped = shapedPieces(ship, defs).filter((piece) => piece.cells.every(([x, y]) => !solid(x, y)));
+  const legs = new Map();
+  for (const piece of shaped) {
+    for (const { side, cells } of piece.legs) {
+      for (const [x, y] of cells) {
+        if (!legs.has(key(x, y))) legs.set(key(x, y), new Set());
+        legs.get(key(x, y)).add(side);
+      }
+    }
+  }
+  const covered = (x, y, side) => legs.get(key(x, y))?.has(side) ?? false;
+
   // The outline: every side of the body that faces open space...
   const edges = new Map();
   for (const [x, y] of [...hull.cells, ...hull.pockets]) {
     for (const side of SIDES) {
-      if (solid(...step(x, y, side))) continue;
+      const [nx, ny] = step(x, y, side);
+      if (solid(nx, ny) || covered(nx, ny, OPPOSITE[side])) continue;
       const [a, b] = sideOf(x, y, side);
       edges.set(edgeKey(a, b), { a, b, normal: NORMAL[side] });
     }
   }
   // ...except where a fairing slopes across a corner instead. Its inside
   // corner is where the two neighbours' walls meet; the slope runs from the
-  // far end of one wall to the far end of the other.
+  // far end of one wall to the far end of the other. A shaped piece on the
+  // corner takes the fairing's place.
+  const shapedCells = new Set(shaped.flatMap((piece) => piece.cells.map(([x, y]) => key(x, y))));
   for (const { x, y, e, s } of corners) {
+    if (shapedCells.has(key(x, y))) continue;
     const cx = e ? x + 1 : x;
     const cy = s ? y + 1 : y;
     const a = [cx, s ? y : y + 1];
@@ -101,6 +124,20 @@ export function traceHull(ship, defs) {
     edges.delete(edgeKey([cx, y], [cx, y + 1]));
     edges.delete(edgeKey([x, cy], [x + 1, cy]));
     edges.set(edgeKey(a, b), { a, b, normal: [e ? -Math.SQRT1_2 : Math.SQRT1_2, s ? -Math.SQRT1_2 : Math.SQRT1_2] });
+  }
+  // A shaped piece's legs are outline where nothing solid is across them,
+  // and its rim always is.
+  for (const piece of shaped) {
+    for (const { side, cells } of piece.legs) {
+      for (const [x, y] of cells) {
+        const [nx, ny] = step(x, y, side);
+        if (solid(nx, ny) || covered(nx, ny, OPPOSITE[side])) continue;
+        const [a, b] = sideOf(x, y, side);
+        edges.set(edgeKey(a, b), { a, b, normal: NORMAL[side] });
+      }
+    }
+    for (const { a, b, normal } of piece.rim) edges.set(edgeKey(a, b), { a, b, normal });
+    hull.sculpt.push({ uid: piece.uid, region: piece.region });
   }
   hull.edges = [...edges.values()];
 
@@ -147,6 +184,18 @@ export function traceHull(ship, defs) {
 
 function pointOf([x, y]) {
   return { x, y };
+}
+
+// The ship's wedges and curves (data/styling.json pieces with a shape):
+// [{ uid, cells, legs, region, rim }].
+function shapedPieces(ship, defs) {
+  const pieces = [];
+  for (const placement of ship.styling ?? []) {
+    const def = defs.styling?.get(placement.type);
+    if (!def?.shape) continue;
+    pieces.push({ uid: placement.uid, cells: pieceCells(def, placement), legs: pieceLegs(def, placement), ...pieceShape(def, placement) });
+  }
+  return pieces;
 }
 
 // The two ends of a cell's side, in order around the cell clockwise.

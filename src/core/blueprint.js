@@ -1,9 +1,10 @@
 // Blueprint codes: a ship as a short line of text that players copy and
 // paste between devices. A code is
 //   wtb.<version>.<payload>.<checksum>
-// The payload is base64url bytes: the frame's id, the hull's style, the part
-// types the ship uses, then each part in build order as three bytes: its
-// type, x, and y × 4 + its quarter turns. Decoding rebuilds the ship
+// The payload is base64url bytes: the frame's id, the hull's style, paint
+// and trim, the part types the ship uses, then each part in build order as
+// three bytes: its type, x, and y × 4 + its quarter turns; then the same
+// for its styling pieces, with y × 8 + their turn. Decoding rebuilds the ship
 // through the builder's placement rules, so a code can only make a ship the
 // builder could have made. Whitespace is ignored, so codes survive chat
 // apps. Decoding never throws: every way a code can be wrong has a message.
@@ -14,44 +15,54 @@
 //      opens: its parts move to the fine grid (regrid.js).
 //   3  the hull's style after the frame (M23d). A version 1 or 2 code opens
 //      in the default style, as older saves' ships do.
+//   4  the hull's paint and trim after its style, and the styling pieces
+//      after the parts (M23f). An older code opens in the yard's slate and
+//      sky with none.
 import { config } from '../config.js';
-import { buildShip, DEFAULT_HULL } from '../sim/builder.js';
+import { buildShip, DEFAULT_HULL, DEFAULT_PAINT, DEFAULT_TRIM, placePiece } from '../sim/builder.js';
 import { regridPlacement } from '../sim/regrid.js';
 import { base64UrlToBytes, bytesToBase64Url, checksum } from './codec.js';
 
-export const BLUEPRINT_VERSION = 3;
+export const BLUEPRINT_VERSION = 4;
 const PREFIX = `${config.appId}b`;
 const SAVE_PREFIX = `${config.appId}.`;
 
-// The code for a ship: its frame, its hull's style and its parts in build
-// order.
+// The code for a ship: its frame, its hull's style, paint and trim, its
+// parts in build order and its styling pieces.
 export function encodeBlueprint(ship) {
-  return encodePlacements(ship.frame, ship.modules, BLUEPRINT_VERSION, ship.hull);
+  return encodePlacements(ship.frame, ship.modules, BLUEPRINT_VERSION, ship.hull, { paint: ship.paint, trim: ship.trim, styling: ship.styling ?? [] });
 }
 
 // The code for a frame and placements [{ type, x, y, rot }], unchecked, with
-// the hull's style from version 3. Tests use it to make codes the game
-// would never make.
-export function encodePlacements(frameId, placements, version = BLUEPRINT_VERSION, hull = DEFAULT_HULL) {
-  const types = [...new Set(placements.map((p) => p.type))];
+// the hull's style from version 3, and its paint, trim and styling pieces
+// from 4. Tests use it to make codes the game would never make.
+export function encodePlacements(frameId, placements, version = BLUEPRINT_VERSION, hull = DEFAULT_HULL, { paint = DEFAULT_PAINT, trim = DEFAULT_TRIM, styling = [] } = {}) {
   const bytes = [];
   const text = (value) => {
     const chars = [...value].map((c) => c.charCodeAt(0));
     if (chars.length > 255 || chars.some((c) => c > 127)) throw new RangeError(`blueprint: can't encode the id "${value}"`);
     bytes.push(chars.length, ...chars);
   };
+  // Each list as its types, then each item as three bytes.
+  const list = (items, noun, rows, turns) => {
+    const types = [...new Set(items.map((p) => p.type))];
+    if (types.length > 255 || items.length > 255) throw new RangeError(`blueprint: too many ${noun}s`);
+    bytes.push(types.length);
+    types.forEach(text);
+    bytes.push(items.length);
+    for (const { type, x, y, rot } of items) {
+      if (!(x >= 0 && x <= 255 && y >= 0 && y < rows && rot >= 0 && rot < turns)) throw new RangeError(`blueprint: can't encode a ${noun} at (${x}, ${y}) turned ${rot}`);
+      bytes.push(types.indexOf(type), x, y * turns + rot);
+    }
+  };
   text(frameId);
   if (version >= 3) text(hull);
-  if (types.length > 255 || placements.length > 255) throw new RangeError('blueprint: too many parts');
-  bytes.push(types.length);
-  types.forEach(text);
-  bytes.push(placements.length);
-  for (const { type, x, y, rot } of placements) {
-    if (!(x >= 0 && x <= 255 && y >= 0 && y <= 63 && rot >= 0 && rot <= 3)) {
-      throw new RangeError(`blueprint: can't encode a part at (${x}, ${y}) turned ${rot}`);
-    }
-    bytes.push(types.indexOf(type), x, y * 4 + rot);
+  if (version >= 4) {
+    text(paint);
+    text(trim);
   }
+  list(placements, 'part', 64, 4);
+  if (version >= 4) list(styling, 'styling piece', 32, 8);
   const body = `${PREFIX}.${version}.${bytesToBase64Url(Uint8Array.from(bytes))}`;
   return `${body}.${checksum(body)}`;
 }
@@ -81,16 +92,26 @@ export function decodeBlueprint(text, defs) {
   const unknown = [...new Set(read.placements.map((p) => p.type))].filter((type) => !defs.modules.has(type));
   if (unknown.length) return fail(`This blueprint uses parts this version of the game doesn't have: ${unknown.join(', ')}.`);
   const placements = version === 1 ? read.placements.map(regridPlacement) : read.placements;
-  const { ship, rejected } = buildShip(defs, read.frame, placements);
-  if (rejected.length) return fail(`This blueprint doesn't fit together: ${rejected[0].message}`);
-  // A style this version doesn't have changes only the look: the ship
-  // opens in the default style.
-  const hull = defs.hulls?.has(read.hull) ? read.hull : DEFAULT_HULL;
-  return { ok: true, ship: hull === ship.hull ? ship : { ...ship, hull } };
+  const built = buildShip(defs, read.frame, placements);
+  if (built.rejected.length) return fail(`This blueprint doesn't fit together: ${built.rejected[0].message}`);
+  // Looks this version doesn't have change only the look: a style, paint
+  // or trim it doesn't know opens as the default, and a styling piece it
+  // doesn't know, or that doesn't fit, is left off.
+  let ship = {
+    ...built.ship,
+    hull: defs.hulls?.has(read.hull) ? read.hull : DEFAULT_HULL,
+    paint: defs.paints?.has(read.paint) ? read.paint : DEFAULT_PAINT,
+    trim: defs.trims?.has(read.trim) ? read.trim : DEFAULT_TRIM,
+  };
+  for (const piece of read.styling) {
+    const placed = placePiece(ship, defs, piece);
+    if (placed.ok) ship = placed.ship;
+  }
+  return { ok: true, ship };
 }
 
-// The payload's bytes as { frame, hull, placements }, or null if they don't
-// follow the layout of the code's version exactly.
+// The payload's bytes as { frame, hull, paint, trim, placements, styling },
+// or null if they don't follow the layout of the code's version exactly.
 function unpack(payload, version) {
   let bytes;
   try {
@@ -107,25 +128,36 @@ function unpack(payload, version) {
     at += length;
     return /^[a-z][a-z0-9-]*$/.test(value) ? value : null;
   };
+  // A list: its types, then each item as three bytes, the last y × turns
+  // plus the turn. Null if it runs past the end.
+  const list = (turns) => {
+    const typeCount = byte();
+    if (typeCount === null) return null;
+    const types = [];
+    for (let i = 0; i < typeCount; i++) {
+      const type = text();
+      if (type === null) return null;
+      types.push(type);
+    }
+    const count = byte();
+    if (count === null || at + count * 3 > bytes.length) return null;
+    const items = [];
+    for (let i = 0; i < count; i++) {
+      const [t, x, packed] = [byte(), byte(), byte()];
+      if (t >= types.length) return null;
+      items.push({ type: types[t], x, y: Math.floor(packed / turns), rot: packed % turns });
+    }
+    return items;
+  };
   const frame = text();
   const hull = version >= 3 ? text() : DEFAULT_HULL;
-  const typeCount = byte();
-  if (frame === null || hull === null || typeCount === null) return null;
-  const types = [];
-  for (let i = 0; i < typeCount; i++) {
-    const type = text();
-    if (type === null) return null;
-    types.push(type);
-  }
-  const count = byte();
-  if (count === null || at + count * 3 !== bytes.length) return null;
-  const placements = [];
-  for (let i = 0; i < count; i++) {
-    const [t, x, packed] = [byte(), byte(), byte()];
-    if (t >= types.length) return null;
-    placements.push({ type: types[t], x, y: packed >> 2, rot: packed & 3 });
-  }
-  return { frame, hull, placements };
+  const paint = version >= 4 ? text() : DEFAULT_PAINT;
+  const trim = version >= 4 ? text() : DEFAULT_TRIM;
+  if (frame === null || hull === null || paint === null || trim === null) return null;
+  const placements = list(4);
+  const styling = placements && version >= 4 ? list(8) : [];
+  if (!placements || !styling || at !== bytes.length) return null;
+  return { frame, hull, paint, trim, placements, styling };
 }
 
 function fail(error) {

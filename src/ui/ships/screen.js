@@ -207,11 +207,14 @@ export const shipsScreen = {
       const span = (i) => Math.max(...cells.map((c) => c[i])) - Math.min(...cells.map((c) => c[i])) + 1;
       const ready = canLaunch(flightChecklist(result.ship, defs, result.crew));
       const wrecks = Object.keys(result.wrecked).length;
-      // The hull's style is rolled with the ship (M23d).
+      // The hull's style is rolled with the ship (M23d), and its side's look
+      // worn (M23f).
       const style = defs.hulls.get(result.ship.hull)?.name ?? result.ship.hull;
+      const colors = `${defs.paints.get(result.ship.paint)?.name ?? result.ship.paint} and ${(defs.trims.get(result.ship.trim)?.name ?? result.ship.trim).toLowerCase()}`;
+      const pieces = result.ship.styling?.length ?? 0;
       setText(info, {
         tone: ready ? 'good' : 'bad',
-        text: `${result.ship.modules.length} parts · ${span(0)} × ${span(1)} cells · ${style} hull · crew ${result.crew}${wrecks ? ` · ${wrecks} wrecked` : ''} · ${ready ? 'flight check passes' : 'flight check fails'}`,
+        text: `${result.ship.modules.length} parts · ${span(0)} × ${span(1)} cells · ${style} hull · ${colors}, ${pieces} styling piece${pieces === 1 ? '' : 's'} · crew ${result.crew}${wrecks ? ` · ${wrecks} wrecked` : ''} · ${ready ? 'flight check passes' : 'flight check fails'}`,
       });
       info.hidden = false;
     }

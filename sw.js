@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "b381a50eb38a";
+const VERSION = "cae6941f7428";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -24,6 +24,7 @@ const FILES = [
   "data/sectors.json",
   "data/ships.json",
   "data/sites.json",
+  "data/styling.json",
   "data/tiles.json",
   "data/tips.json",
   "data/traits.json",
@@ -64,6 +65,7 @@ const FILES = [
   "src/render/hullShape.js",
   "src/render/layer.js",
   "src/render/liftOff.js",
+  "src/render/lookOverlay.js",
   "src/render/loop.js",
   "src/render/mesh.js",
   "src/render/orbit.js",
@@ -72,6 +74,7 @@ const FILES = [
   "src/render/parts/art.js",
   "src/render/parts/blueprint.js",
   "src/render/pick.js",
+  "src/render/pieces.js",
   "src/render/playback.js",
   "src/render/portraits/badge.js",
   "src/render/portraits/face.js",
@@ -109,6 +112,7 @@ const FILES = [
   "src/sim/flags.js",
   "src/sim/frame.js",
   "src/sim/gen/layout.js",
+  "src/sim/gen/look.js",
   "src/sim/gen/sector.js",
   "src/sim/gen/ship.js",
   "src/sim/gen/site.js",
@@ -137,6 +141,7 @@ const FILES = [
   "src/sim/session.js",
   "src/sim/settings.js",
   "src/sim/sight.js",
+  "src/sim/styling.js",
   "src/sim/terrain.js",
   "src/sim/traits.js",
   "src/sim/travel.js",
@@ -147,6 +152,7 @@ const FILES = [
   "src/ui/builder/catalog.js",
   "src/ui/builder/drawer.js",
   "src/ui/builder/hints.js",
+  "src/ui/builder/lookPanel.js",
   "src/ui/builder/palette.js",
   "src/ui/builder/savesPanel.js",
   "src/ui/builder/screen.js",

@@ -32,6 +32,8 @@ export const BLUEPRINT_STYLES = {
   coreFace: { fill: rgba(glow, 0.28) },
   propFine: { stroke: rgba(line, 0.6), width: 0.8 },
   propEdge: { stroke: rgba(line, 0.85), width: 1 },
+  pieceFace: { fill: rgba(palette.bpStyle, 0.07) },
+  pieceEdge: { stroke: rgba(palette.bpStyle, 0.85), width: 0.9 },
   fieldRing: { stroke: rgba(line, 0.8), width: 1, dash: [3, 4] },
   coreEdge: { stroke: glow, width: 1.2, halo: rgba(glow, 0.25) },
   wallTop: { stroke: line, width: 1.4, halo: rgba(line, 0.16) },

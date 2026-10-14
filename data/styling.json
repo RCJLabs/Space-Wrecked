@@ -1,0 +1,37 @@
+{
+  "groups": [
+    { "id": "wings", "name": "Wings" },
+    { "id": "gear", "name": "Gear" },
+    { "id": "sculpt", "name": "Sculpt" }
+  ],
+  "pieces": [
+    { "id": "sweptwing", "name": "Swept wing", "group": "wings", "size": [2, 2], "turns": [0, 4] },
+    { "id": "deltawing", "name": "Delta wing", "group": "wings", "size": [3, 2], "turns": [0, 4] },
+    { "id": "tailfin", "name": "Tail fin", "group": "wings", "size": [2, 1], "turns": [0, 4] },
+    { "id": "spoiler", "name": "Spoiler", "group": "wings", "size": [2, 1], "turns": [0, 4] },
+    { "id": "antenna", "name": "Antenna", "group": "gear", "size": [1, 1], "turns": [0, 1, 2, 3] },
+    { "id": "dish", "name": "Dish", "group": "gear", "size": [1, 1], "turns": [0, 1, 2, 3] },
+    { "id": "floodlight", "name": "Floodlight", "group": "gear", "size": [1, 1], "turns": [0, 1, 2, 3] },
+    { "id": "lightstrip", "name": "Light strip", "group": "gear", "size": [2, 1], "turns": [0, 1, 2, 3] },
+    { "id": "armorplate", "name": "Armor plate", "group": "gear", "size": [2, 1], "turns": [0, 1, 2, 3] },
+    { "id": "wedge", "name": "Wedge", "group": "sculpt", "size": [1, 1], "shape": "wedge", "turns": [0, 1, 2, 3] },
+    { "id": "longwedge", "name": "Long wedge", "group": "sculpt", "size": [2, 1], "shape": "wedge", "turns": [0, 1, 2, 3, 4, 5, 6, 7] },
+    { "id": "curve", "name": "Curve", "group": "sculpt", "size": [2, 1], "shape": "curve", "turns": [0, 1, 2, 3, 4, 5, 6, 7] }
+  ],
+  "paints": [
+    { "id": "slate", "name": "Slate" },
+    { "id": "graphite", "name": "Graphite" },
+    { "id": "bone", "name": "Bone" },
+    { "id": "rust", "name": "Rust" },
+    { "id": "olive", "name": "Olive" },
+    { "id": "navy", "name": "Navy" }
+  ],
+  "trims": [
+    { "id": "sky", "name": "Sky" },
+    { "id": "amber", "name": "Amber" },
+    { "id": "signal", "name": "Signal" },
+    { "id": "lime", "name": "Lime" },
+    { "id": "violet", "name": "Violet" },
+    { "id": "white", "name": "White" }
+  ]
+}
