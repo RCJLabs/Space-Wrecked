@@ -12,6 +12,7 @@ import { MAX_STOCK, PAY_STEP } from '../src/sim/economy.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { HAZARDS, siteMarks, siteProblems } from '../src/sim/gen/site.js';
 import { isId, isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
+import { checkColony } from './validate-colony.js';
 import { checkEvents } from './validate-events.js';
 import { checkSectors } from './validate-sectors.js';
 import { checkWorlds } from './validate-worlds.js';
@@ -82,6 +83,7 @@ export function checkCampaignFiles(data, ids, fail) {
   checkActs(data.campaign, fail);
   const holding = checkSectors(data.sectors, data.campaign?.acts, ids.presets ?? new Map(), fail);
   checkWorlds(data.worlds, data.sectors, fail);
+  checkColony(data.colony, data.modules?.modules, fail);
   const covered = checkEvents(data.events, holding, ids.moduleIds, fail);
   for (const kind of holding) if (!covered.has(kind)) fail(`sectors.json node ${kind}`, 'holds events, but events.json has none of its kind');
   checkRecruits(data.recruits, fail);

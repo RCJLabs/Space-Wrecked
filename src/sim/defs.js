@@ -4,10 +4,10 @@
 // empty tables.
 
 // The content files, by name: data/<name>.json.
-export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'hulls', 'styling', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'worlds', 'events', 'recruits', 'tips'];
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'hulls', 'styling', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'worlds', 'colony', 'events', 'recruits', 'tips'];
 
 export function indexDefs(files) {
-  const { modules, frames, manufacturers, hulls, styling, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, worlds, events, recruits, tips } = files;
+  const { modules, frames, manufacturers, hulls, styling, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, worlds, colony, events, recruits, tips } = files;
   return {
     balance,
     tilesPerCell: modules.tilesPerCell,
@@ -72,6 +72,10 @@ export function indexDefs(files) {
     // (nearest first), the kinds of world by id, each with the ranges its
     // numbers roll in, and the names systems and worlds draw on.
     worlds: worlds ? { system: worlds.system, lanes: worlds.lanes ?? [], kinds: byId(worlds.kinds), names: worlds.names ?? {} } : null,
+    // The colony (M26, colony.js): its grid, the tags of the parts that
+    // stay aboard, its words, and the building each useful part becomes,
+    // by the part's base id, in data order.
+    colony: colony ? { site: colony.site, aboard: colony.aboard ?? [], text: colony.text, buildings: new Map((colony.buildings ?? []).map((b) => [b.part, b])) } : null,
     // What happens at a sector's nodes (events.js): each event by id, and
     // the drop tables its outcomes draw parts from.
     events: byId(events?.events),

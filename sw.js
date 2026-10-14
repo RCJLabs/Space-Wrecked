@@ -4,12 +4,13 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "4c73f1dff9fe";
+const VERSION = "e965061fd2a3";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
   "data/balance.json",
   "data/campaign.json",
+  "data/colony.json",
   "data/contracts.json",
   "data/districts.json",
   "data/encounters.json",
