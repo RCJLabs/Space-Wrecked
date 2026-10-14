@@ -54,7 +54,7 @@ export function stubText(campaign, rules) {
   return {
     act: actTitle(campaign.act, rules),
     home: world ? `${home} · ${world.name}` : home,
-    text: act?.stub ?? 'This act is not built yet.',
+    text: act?.ahead ?? 'This act is not built yet.',
     record: { title: actTitle(campaign.act - 1, rules), lines: runRecord(campaign, rules) },
     world: world && worldCard(world, rules),
     crew: crewText(campaign, rules),

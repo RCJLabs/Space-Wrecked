@@ -15,7 +15,7 @@
       "hub": "colony",
       "home": "The colony",
       "heals": false,
-      "stub": "The colony comes in v0.3: settling for good, building on the ship's grid, and holding what you build. Your ship, crew and world are saved here until then."
+      "ahead": "Still to come in v0.3: building and moving by hand, days that bring food and materials from the world, the ship flying out with a squad, and raids to hold the colony against."
     }
   ]
 }

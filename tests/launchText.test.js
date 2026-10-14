@@ -65,7 +65,7 @@ test("the stub: act 3 with its words, how the run went, the world settled, and t
   const kind = rules.worlds.kinds.get(world.kind);
   assert.equal(text.act, 'Act 3 · The colony');
   assert.equal(text.home, `The colony · ${world.name}`);
-  assert.equal(text.text, rules.acts.get(3).stub);
+  assert.equal(text.text, rules.acts.get(3).ahead);
   assert.deepEqual(text.record, {
     title: 'Act 2 · The run',
     lines: [

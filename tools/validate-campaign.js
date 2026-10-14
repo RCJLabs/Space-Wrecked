@@ -18,11 +18,13 @@ import { checkSectors } from './validate-sectors.js';
 import { checkWorlds } from './validate-worlds.js';
 
 const CAMPAIGN_KEYS = ['acts'];
-const ACT_KEYS = ['act', 'name', 'hub', 'home', 'heals', 'liftOff', 'sectors', 'stub'];
+const ACT_KEYS = ['act', 'name', 'hub', 'home', 'heals', 'liftOff', 'sectors', 'ahead'];
 // A run (act 2) crosses up to this many sectors.
 const MAX_SECTORS = 20;
 // Lifting off takes thrust for each unit of mass: up to this many.
 const MAX_LIFT_OFF = 4;
+// An act's words for what is still to come fit a panel's line or two.
+const MAX_AHEAD = 240;
 const BACKGROUND_KEYS = ['id', 'name', 'blurb', 'pursuer', 'launch', 'captains', 'district', 'start'];
 // Recruits' names (recruits.js): a first and a last name, each list of 2
 // or more, and each name short enough that the two fit a crew member's.
@@ -159,7 +161,8 @@ function checkActs(file, fail) {
       fail(at, `liftOff must be a number above 0, up to ${MAX_LIFT_OFF}`);
     }
     if (act.sectors !== undefined && !isIntIn(act.sectors, 1, MAX_SECTORS)) fail(at, `sectors must be a whole number from 1 to ${MAX_SECTORS}`);
-    if (act.stub !== undefined && !isText(act.stub)) fail(at, 'stub must be a non-empty string');
+    // What is still to come in an act not finished yet (act 3's, M26).
+    if (act.ahead !== undefined && !(isText(act.ahead) && act.ahead.length <= MAX_AHEAD)) fail(at, `ahead must be a non-empty string of up to ${MAX_AHEAD} letters`);
   });
   if (acts.length !== ACTS || acts.some((act, i) => act.act !== i + 1)) fail(where, `acts must be acts 1 to ${ACTS} in order`);
 }
