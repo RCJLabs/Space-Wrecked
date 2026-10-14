@@ -48,16 +48,26 @@
 // sheds heat worth WORTH.hot a point; Evan settled the trade in M24
 // (2026-10-14): the managing player meets the hunters in at most 6 runs of
 // 30, fed in 24.
+// In the system past the charts (M25), it scores each world as a colony
+// (worldScore): soil, water and ore a point each, a point for each step
+// further from Con-Reg's lanes, where the pursuer's ships pass, and danger a
+// point against; a world not surveyed, what its kind's ranges give on
+// average. It surveys while its supplies allow (systemMove): the nearest
+// world not yet surveyed, while the supplies cover the jumps there, the
+// day, and the way from there to the best world it knows of, so a survey
+// never leaves it hungry or out of reach of that world. Then it settles the
+// best world its supplies reach (bestWorld).
 import { canRefit, maxHp, refitShip } from '../src/sim/campaign.js';
 import { crewRoom } from '../src/sim/crew.js';
 import { sellPriceOf } from '../src/sim/economy.js';
 import { choiceProblem } from '../src/sim/events.js';
+import { LANES } from '../src/sim/gen/system.js';
 import { withHeat } from '../src/sim/heat.js';
 import { huntOdds } from '../src/sim/hunt.js';
 import { recruitOffer } from '../src/sim/recruits.js';
 import { regroupPlan } from '../src/sim/regroup.js';
 import { swapPlan } from '../src/sim/transponder.js';
-import { failingCheck, jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity } from '../src/sim/travel.js';
+import { failingCheck, jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity, within } from '../src/sim/travel.js';
 import { fitPart } from './run.js';
 
 export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30, nebula: 15, hot: 1.5, hunted: -40 };
@@ -395,4 +405,57 @@ export function restNow(campaign, rules, heat) {
   if (heat === 'manage') return null;
   const missing = campaign.crew.reduce((sum, member) => sum + maxHp(member, rules) - member.hp, 0);
   return missing >= REST_HP * campaign.crew.length ? plan : null;
+}
+
+// What a world is worth to the player as a colony: soil, water and ore a
+// point each, a point for each step further from the lanes, and danger a
+// point against. surveyed: whether its numbers are known; if not, its
+// kind's ranges give them, on average.
+export function worldScore(rules, world, surveyed) {
+  const kind = rules.worlds.kinds.get(world.kind);
+  const value = (rating) => (surveyed ? world[rating] : (kind[rating][0] + kind[rating][1]) / 2);
+  const lanes = surveyed ? world.lanes : (1 + LANES) / 2;
+  return value('soil') + value('water') + value('ore') + lanes - value('danger');
+}
+
+// The world the player would settle, from where the ship is in the system:
+// the one it scores best of those the supplies reach without going hungry
+// (of all of them, if none is in reach); on a tie, one surveyed, then the
+// nearest, then the top one. A node id.
+export function bestWorld(campaign, rules) {
+  const { sector, at, surveyed } = campaign.run;
+  const each = jumpSupplies(campaign, rules);
+  const away = within(sector, at, sector.nodes.length);
+  const worlds = sector.nodes.filter((node) => node.world);
+  const reached = worlds.filter((node) => away.get(node.id) * each <= campaign.supplies);
+  const known = (node) => (surveyed.includes(node.id) ? 1 : 0);
+  const score = (node) => worldScore(rules, node.world, known(node));
+  return [...(reached.length ? reached : worlds)].sort((a, b) => score(b) - score(a) || known(b) - known(a) || away.get(a.id) - away.get(b.id) || a.id - b.id)[0].id;
+}
+
+// What the player does next in the system: { kind: 'survey' } where the
+// ship is, { kind: 'jump', to } a link on, or { kind: 'settle' } where the
+// ship is. It surveys the nearest world not yet surveyed (the top one on a
+// tie) whose survey the supplies cover, with the jumps there and the way on
+// from there to the best world now (bestWorld); once none is, it makes for
+// that world, and settles it.
+export function systemMove(campaign, rules) {
+  const { sector, at, surveyed } = campaign.run;
+  const each = jumpSupplies(campaign, rules);
+  const links = (from) => within(sector, from, sector.nodes.length);
+  const away = links(at);
+  const best = bestWorld(campaign, rules);
+  const next = sector.nodes
+    .filter((node) => node.world && !surveyed.includes(node.id))
+    .sort((a, b) => away.get(a.id) - away.get(b.id) || a.id - b.id)
+    .find((node) => campaign.supplies >= each * (away.get(node.id) + 1 + links(node.id).get(best)));
+  if (next) return next.id === at ? { kind: 'survey' } : { kind: 'jump', to: stepToward(sector, at, next.id) };
+  return best === at ? { kind: 'settle' } : { kind: 'jump', to: stepToward(sector, at, best) };
+}
+
+// The node a link on from `from` toward `to`, by the fewest links; the
+// lowest id on a tie.
+function stepToward(sector, from, to) {
+  const back = within(sector, to, sector.nodes.length);
+  return linked(sector, from).sort((a, b) => back.get(a) - back.get(b) || a - b)[0];
 }
