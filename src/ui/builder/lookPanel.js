@@ -10,7 +10,7 @@ import { paints, trims } from '../../render/palette.js';
 import { pieceIconSvg } from '../../render/pieces.js';
 import { attachGestures, onTap } from '../gestures.js';
 
-// The space for an icon on a tile, in CSS px (style.css .bld-part svg).
+// The space for an icon on a tile, in CSS px (style.css .bld-look-tile svg).
 const ICON_HEIGHT = 21;
 const ICON_WIDTH = 52;
 
@@ -18,14 +18,14 @@ const ICON_WIDTH = 52;
 // dragMove(x, y), dragEnd(x, y), dragCancel() }; onPaint(id), onTrim(id),
 // onStyle(id).
 export function createLookPanel(defs, handlers) {
-  const el = node('div', 'bld-parts bld-look');
-  const row = node('div', 'bld-pick-row');
-  const pick = node('button', 'btn bld-pick');
+  const el = node('div', 'bld-look');
+  const row = node('div', 'bld-look-row');
+  const pick = node('button', 'btn bld-look-pick');
   pick.type = 'button';
   pick.setAttribute('aria-expanded', 'false');
-  const pickName = node('span', 'bld-pick-name');
-  const pickCount = node('small', 'bld-pick-count');
-  pick.append(pickName, pickCount, node('span', 'bld-pick-arrow', '▾'));
+  const pickName = node('span', 'bld-look-name');
+  const pickCount = node('small', 'bld-look-count');
+  pick.append(pickName, pickCount, node('span', 'bld-look-arrow', '▾'));
   const tally = node('p', 'bld-tally');
   const tallyCount = node('b');
   tally.append(node('small', null, 'Pieces'), tallyCount);
@@ -40,15 +40,15 @@ export function createLookPanel(defs, handlers) {
   ];
 
   // The sheet: a tile a group, its look on it and how many it holds.
-  const sheet = node('div', 'bld-sheet');
+  const sheet = node('div', 'bld-look-sheet');
   sheet.hidden = true;
   const choices = new Map();
   for (const group of groups) {
-    const choice = node('button', 'btn bld-cat');
+    const choice = node('button', 'btn bld-look-group');
     choice.type = 'button';
     choice.dataset.group = group.id;
     choice.innerHTML = groupIcon(defs, group);
-    choice.append(node('span', null, group.name), node('small', 'bld-cat-count', String(group.ids.length)));
+    choice.append(node('span', null, group.name), node('small', 'bld-look-group-count', String(group.ids.length)));
     sheet.append(choice);
     choices.set(group.id, choice);
   }
@@ -57,11 +57,11 @@ export function createLookPanel(defs, handlers) {
   const grids = new Map();
   const tiles = new Map(); // 'kind:id' -> tile
   for (const group of groups) {
-    const grid = node('div', 'bld-palette');
+    const grid = node('div', 'bld-look-tiles');
     grid.setAttribute('role', 'toolbar');
     grid.setAttribute('aria-label', group.name);
     for (const id of group.ids) {
-      const tile = node('button', group.kind === 'pieces' ? 'bld-part' : 'bld-part bld-swatch');
+      const tile = node('button', group.kind === 'pieces' ? 'bld-look-tile' : 'bld-look-tile bld-swatch');
       tile.type = 'button';
       tile.dataset[group.kind === 'pieces' ? 'type' : group.kind] = id;
       tile.setAttribute('aria-pressed', 'false');
@@ -123,7 +123,7 @@ export function createLookPanel(defs, handlers) {
   ];
   for (const [id, grid] of grids) {
     const group = groups.find((g) => g.id === id);
-    const at = (x, y) => document.elementFromPoint(x, y)?.closest?.('.bld-part') ?? null;
+    const at = (x, y) => document.elementFromPoint(x, y)?.closest?.('.bld-look-tile') ?? null;
     if (group.kind === 'pieces') {
       const typeAt = (x, y) => at(x, y)?.dataset.type ?? null;
       detach.push(

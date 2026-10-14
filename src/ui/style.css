@@ -2088,22 +2088,27 @@ textarea {
 }
 
 /* The Parts tab (M23e): the category picker and the size filter in a row,
-   over the part tiles, or over the sheet of categories while it is open. */
-.bld-parts {
+   over the part tiles, or over the sheet of categories while it is open.
+   The Look tab (M23f) has classes of its own and looks the same: the
+   picker of groups and the pieces' tally over its tiles. */
+.bld-parts,
+.bld-look {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-.bld-pick-row {
+.bld-pick-row,
+.bld-look-row {
   flex: none;
   display: flex;
   gap: var(--gap);
   padding: 8px 8px 0 16px;
 }
 
-#ui .bld-pick {
+#ui .bld-pick,
+#ui .bld-look-pick {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -2113,25 +2118,29 @@ textarea {
   font-size: 13px;
 }
 
-.bld-pick-name {
+.bld-pick-name,
+.bld-look-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.bld-pick-count {
+.bld-pick-count,
+.bld-look-count {
   color: var(--c-ink-dim);
   font-size: 11.5px;
   font-weight: 600;
 }
 
-.bld-pick-arrow {
+.bld-pick-arrow,
+.bld-look-arrow {
   margin-left: auto;
   font-size: 12px;
 }
 
-#ui .bld-pick[aria-expanded='true'] {
+#ui .bld-pick[aria-expanded='true'],
+#ui .bld-look-pick[aria-expanded='true'] {
   border-color: var(--c-accent);
   color: var(--c-accent);
 }
@@ -2219,7 +2228,9 @@ textarea {
 
 /* The sheet of categories: tiles the part tiles' size, three across. */
 .bld-sheet,
-.bld-palette {
+.bld-palette,
+.bld-look-sheet,
+.bld-look-tiles {
   flex: 1;
   min-height: 0;
   display: grid;
@@ -2233,15 +2244,18 @@ textarea {
   scrollbar-width: none;
 }
 
-.bld-sheet {
+.bld-sheet,
+.bld-look-sheet {
   touch-action: pan-y;
 }
 
-.bld-palette {
+.bld-palette,
+.bld-look-tiles {
   touch-action: none;
 }
 
-#ui .bld-cat {
+#ui .bld-cat,
+#ui .bld-look-group {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2255,7 +2269,8 @@ textarea {
   overflow: hidden;
 }
 
-.bld-cat svg {
+.bld-cat svg,
+.bld-look-group svg {
   flex: none;
   max-width: 100%;
   width: auto;
@@ -2263,7 +2278,8 @@ textarea {
   max-height: calc(var(--tile) * 0.3);
 }
 
-.bld-cat-count {
+.bld-cat-count,
+.bld-look-group-count {
   color: var(--c-ink-dim);
   font-size: 10px;
 }
@@ -2494,7 +2510,8 @@ textarea {
   color: var(--c-space);
 }
 
-#ui .bld-part {
+#ui .bld-part,
+#ui .bld-look-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2519,11 +2536,14 @@ textarea {
 /* Only a drawer taller than the screen scrolls; then a part has to be
    dragged out sideways. */
 .bld-palette[data-scrolls],
-#ui .bld-palette[data-scrolls] .bld-part {
+#ui .bld-palette[data-scrolls] .bld-part,
+.bld-look-tiles[data-scrolls],
+#ui .bld-look-tiles[data-scrolls] .bld-look-tile {
   touch-action: pan-y;
 }
 
-.bld-part svg {
+.bld-part svg,
+.bld-look-tile svg {
   flex: none;
   max-width: 100%;
   width: auto;
@@ -2557,7 +2577,8 @@ textarea {
   font-size: 12.5px;
 }
 
-.bld-part[aria-pressed='true'] {
+.bld-part[aria-pressed='true'],
+.bld-look-tile[aria-pressed='true'] {
   border-color: var(--c-accent);
   box-shadow: inset 0 0 0 1px var(--c-accent);
   color: var(--c-accent);
