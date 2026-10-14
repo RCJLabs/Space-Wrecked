@@ -132,6 +132,18 @@ const BALANCE = {
   recruitFee: [0, 1000],
   recruitOffer: [0, 4],
   squadSize: [1, 5],
+  // Heat on the run (src/sim/hunt.js, regroup.js): the chance the
+  // pursuer's hunters wait where a jump comes out, from huntHeat, and the
+  // task force's from raidHeat (certain at the most heat); a day's rest's
+  // hit points and heat, and the heat a day hidden in a nebula sheds; and a
+  // transponder swap's heat and price.
+  huntChance: [0, 100],
+  taskForceChance: [0, 100],
+  regroupHp: [0, 20],
+  regroupHeat: [0, 50],
+  hideHeat: [-100, 0],
+  swapHeat: [-100, 0],
+  swapPrice: [0, 1000],
 };
 // A weapon's held shape and a fighter's look are how the fight draws them
 // (src/render/figures/looks.js).
@@ -239,6 +251,8 @@ export function validateData(data) {
     if (balance.midRange < balance.closeRange) fail('balance.json', 'midRange must be at least closeRange');
     if (!(balance.rumorHeat < balance.huntHeat && balance.huntHeat < balance.raidHeat)) fail('balance.json', 'heat thresholds must rise: rumorHeat, then huntHeat, then raidHeat');
     if (!(balance.heatAfterRaid < balance.raidHeat)) fail('balance.json', 'heatAfterRaid must be under raidHeat, or one raid brings the next');
+    if (!(balance.heatAfterRaid < balance.huntHeat)) fail('balance.json', 'heatAfterRaid must be under huntHeat, or facing the hunters leaves them on the trail');
+    if (balance.taskForceChance < balance.huntChance) fail('balance.json', 'taskForceChance must be at least huntChance: the chance rises with heat');
     if (balance.loudJobHeat < balance.jobHeat) fail('balance.json', 'loudJobHeat must be at least jobHeat');
     if (balance.sellPercent > balance.buyPercent) fail('balance.json', 'sellPercent must be at most buyPercent, or buying and selling makes money');
   }

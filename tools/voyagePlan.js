@@ -5,7 +5,14 @@
 //   short    6 a supply while the holds hold less than BUFFER_JUMPS jumps'
 //            worth: a hungry jump costs the whole crew hit points
 //   hp       2: wounds heal only at stations (patch.js) or with a med bay
-//   heat     0.3 a point: it does nothing in act 2 yet, but it will
+//   heat     0.3 a point: what it costs is the hunters (M24), which the
+//            managing player keeps off by its lines below, not by price
+//   nebula   15 for a nebula on the way while the managing player hides
+//            (HIDE_FROM): a day there sheds hideHeat
+//   hot      1.5 a point of heat, for the managing player from HIDE_FROM:
+//            what keeping under the hunters is worth
+//   hunted   −40 for an event's outcome that takes heat to the hunters'
+//            level, for the managing player
 //   part     half what the shop pays for it: it has to be sold to be spent
 //   hostile  −30 for a hostile ship ahead: tools/approach.js has the start
 //            ship boarded by about one in five, which is a fight the crew
@@ -28,17 +35,44 @@
 // check still passes; a part the power doesn't stretch to takes a reactor
 // on hand with it. Never corridors, airlocks, armories or a second bridge,
 // and no healer that heals no more than one aboard.
+// Heat (M24), by its policy. Managing it, the player makes long jumps from
+// LONG_FROM, and in place of any jump that would come out where the
+// hunters may wait; swaps the transponder at a station from SWAP_FROM
+// where the credits cover it beyond half a holdful's price; hides in a
+// nebula on its way from HIDE_FROM while the holds keep HIDE_JUMPS jumps'
+// worth; weighs an event's heat at WORTH.hot; scans only below LONG_FROM;
+// and never regroups, since a day's rest costs more heat than it heals.
+// Ignoring heat, none of these: it regroups away from stations when the
+// crew is down REST_HP hit points each on average and the holds keep
+// REST_JUMPS jumps' worth, and weighs heat at nothing. A managed long jump
+// sheds heat worth WORTH.hot a point; Evan settled the trade in M24
+// (2026-10-14): the managing player meets the hunters in at most 6 runs of
+// 30, fed in 24.
 import { canRefit, maxHp, refitShip } from '../src/sim/campaign.js';
 import { crewRoom } from '../src/sim/crew.js';
 import { sellPriceOf } from '../src/sim/economy.js';
 import { choiceProblem } from '../src/sim/events.js';
+import { withHeat } from '../src/sim/heat.js';
+import { huntOdds } from '../src/sim/hunt.js';
 import { recruitOffer } from '../src/sim/recruits.js';
+import { regroupPlan } from '../src/sim/regroup.js';
+import { swapPlan } from '../src/sim/transponder.js';
 import { failingCheck, jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity } from '../src/sim/travel.js';
 import { fitPart } from './run.js';
 
-export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30 };
+export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30, nebula: 15, hot: 1.5, hunted: -40 };
 const BUFFER_JUMPS = 4;
 export const HIRE_JUMPS = 10;
+// How the test player treats heat (M24), and the managing player's lines.
+export const HEAT_POLICIES = ['manage', 'ignore'];
+export const LONG_FROM = 45;
+export const SWAP_FROM = 15;
+export const HIDE_FROM = 15;
+const REST_HP = 3;
+// A day's rest is taken only with this many jumps' supplies left after it,
+// and a day hidden with HIDE_JUMPS'.
+const REST_JUMPS = 4;
+const HIDE_JUMPS = 8;
 
 // Whether to board a ship the player has disabled: with at least half the
 // crew's hit points between them; a crew worn down leaves her.
@@ -133,12 +167,22 @@ function suppliesWorth(campaign, rules, change) {
   return to > from ? worth : -worth;
 }
 
+// What a point of heat is worth to the player: nothing ignoring it;
+// managing it, WORTH.hot from HIDE_FROM, where it starts to tell, and
+// WORTH.heat below.
+export function heatWorth(campaign, heat = 'manage') {
+  if (heat === 'ignore') return 0;
+  return campaign.heat >= HIDE_FROM ? WORTH.hot : WORTH.heat;
+}
+
 // What an outcome's effects are worth to the player, in credits, for the
 // campaign as it stands.
-export function effectsWorth(campaign, rules, effects) {
+export function effectsWorth(campaign, rules, effects, heat = 'manage') {
   let worth = effects.credits ?? 0;
   if (effects.supplies) worth += suppliesWorth(campaign, rules, effects.supplies);
-  worth -= WORTH.heat * (effects.heat ?? 0);
+  worth -= heatWorth(campaign, heat) * (effects.heat ?? 0);
+  const { huntHeat } = rules.balance;
+  if (heat === 'manage' && campaign.heat < huntHeat && campaign.heat + (effects.heat ?? 0) >= huntHeat) worth += WORTH.hunted;
   if (effects.wound) worth -= WORTH.hp * effects.wound.hp * (effects.wound.all ? campaign.crew.length : 1);
   if (effects.part) worth += WORTH.part * (sellPriceOf(effects.part, rules) ?? 0);
   if (effects.drop) worth += WORTH.part * dropWorth(rules, effects.drop);
@@ -162,11 +206,11 @@ function dearest(campaign, rules, count) {
 
 // The choice the player makes at an event: { choice, worth }, the one worth
 // most of those it can make.
-export function bestChoice(campaign, rules, event) {
+export function bestChoice(campaign, rules, event, heat = 'manage') {
   let best = null;
   for (const choice of event.choices) {
     if (choiceProblem(campaign, choice)) continue;
-    const worth = choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * effectsWorth(campaign, rules, outcome.effects), 0);
+    const worth = choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * effectsWorth(campaign, rules, outcome.effects, heat), 0);
     if (!best || worth > best.worth) best = { choice, worth };
   }
   return best;
@@ -174,7 +218,7 @@ export function bestChoice(campaign, rules, event) {
 
 // What an unknown node is worth on average: the mix's kinds by weight, each
 // its events' best choices on average, or a hostile ship's worth.
-function unknownWorth(campaign, rules) {
+function unknownWorth(campaign, rules, heat) {
   const mix = Object.entries(rules.sectors.mix);
   const total = mix.reduce((sum, [, weight]) => sum + weight, 0);
   let worth = 0;
@@ -185,7 +229,7 @@ function unknownWorth(campaign, rules) {
     }
     const events = [...rules.events.values()].filter((event) => event.kind === kind);
     if (!events.length) continue;
-    const each = events.reduce((sum, event) => sum + (bestChoice(campaign, rules, event)?.worth ?? 0), 0) / events.length;
+    const each = events.reduce((sum, event) => sum + (bestChoice(campaign, rules, event, heat)?.worth ?? 0), 0) / events.length;
     worth += (weight / total) * each;
   }
   return worth;
@@ -230,7 +274,12 @@ function wayCost(campaign, rules, way, { supplies, credits }, judge) {
       credits -= bought * price;
     }
   }
-  if (leavePlan({ ...campaign, run: { ...campaign.run, at: sector.exit } }, rules).ok) eat();
+  if (leavePlan({ ...campaign, run: { ...campaign.run, at: sector.exit } }, rules).ok) {
+    eat();
+    // Into the next sector with less than the buffer, where no plan can see
+    // a station yet, is as good as hungry.
+    if (supplies < BUFFER_JUMPS * each) hungry += 1;
+  }
   return { hungry, value: WORTH.supply * supplies + credits + worth };
 }
 
@@ -240,18 +289,21 @@ function better(a, b) {
   return !b || (a.hungry !== b.hungry ? a.hungry < b.hungry : a.value > b.value);
 }
 
-// What each node is worth passing through, for the campaign as it stands.
-function nodeJudge(campaign, rules) {
+// What each node is worth passing through, for the campaign as it stands:
+// a nebula, too, while the managing player would hide there.
+function nodeJudge(campaign, rules, heat = 'manage') {
   const { run } = campaign;
   const known = knownNodes(run, rules);
-  const guess = unknownWorth(campaign, rules);
+  const guess = unknownWorth(campaign, rules, heat);
+  const hiding = heat === 'manage' && campaign.heat >= HIDE_FROM;
   return (id) => {
     if (!known.has(id)) return guess;
     const node = run.sector.nodes[id];
+    if (hiding && rules.nodeTypes.get(node.type)?.hides) return WORTH.nebula;
     if (run.done.includes(id)) return 0;
     if (node.hostile) return WORTH.hostile;
     const event = node.event ? rules.events.get(node.event) : null;
-    return event ? (bestChoice(campaign, rules, event)?.worth ?? 0) : 0;
+    return event ? (bestChoice(campaign, rules, event, heat)?.worth ?? 0) : 0;
   };
 }
 
@@ -266,19 +318,23 @@ function bestWay(campaign, rules, from, carried, judge) {
 }
 
 // Where the player jumps next from where the ship is (not the jump point):
-// a node id. With the 'heat' policy, when heat is at the hunters' level or
-// over, a long jump on instead, if it leaves the holds above the buffer,
+// a node id. With the 'heat' policy, when heat is at `from` or over (the
+// managing player's LONG_FROM), a long jump on instead, if it leaves the
+// holds above the buffer,
 // the way on from there is forecast to go hungry not once, it is worth as
 // much as the way it skips, counting the heat it sheds at its worth, and it
 // doesn't pass the station the way calls at next while the holds have room.
 // The forecast counts only the credits on hand, not what the nodes will
 // pay: so a long jump goes over nodes that pay nothing, empty space or a
-// hostile ship, not over those that pay.
-export function nextJump(campaign, rules, policy) {
+// hostile ship, not over those that pay. Managing heat, a jump that would
+// come out where the hunters may wait is the one to skip: then a long jump
+// that keeps the holds above the buffer and goes hungry not once is taken
+// whatever it passes by.
+export function nextJump(campaign, rules, policy, { heat = 'manage', from = LONG_FROM } = {}) {
   const { sector, at } = campaign.run;
-  const judge = nodeJudge(campaign, rules);
+  const judge = nodeJudge(campaign, rules, heat);
   const way = bestWay(campaign, rules, at, { supplies: campaign.supplies, credits: campaign.credits }, judge);
-  if (policy !== 'heat' || campaign.heat < rules.balance.huntHeat) return way.way[1];
+  if (policy !== 'heat' || campaign.heat < from) return way.way[1];
   if (sector.nodes[way.way[1]].type === 'station' && campaign.supplies < supplyCapacity(campaign.ship, rules)) return way.way[1];
   const cost = jumpSupplies(campaign, rules, true);
   if (campaign.supplies - cost < BUFFER_JUMPS * jumpSupplies(campaign, rules)) return way.way[1];
@@ -286,7 +342,13 @@ export function nextJump(campaign, rules, policy) {
   const room = supplyCapacity(campaign.ship, rules);
   // What the heat a long jump sheds is worth, against the two jumps it
   // takes the place of.
-  const shed = WORTH.heat * (2 * rules.balance.jumpHeat - rules.balance.longJumpHeat);
+  const shed = (heat === 'manage' ? WORTH.hot : WORTH.heat) * (2 * rules.balance.jumpHeat - rules.balance.longJumpHeat);
+  // Hot: the jump comes out where the hunters may wait, or, to the jump
+  // point, leaves the jump on out of the sector hot.
+  const { jumpHeat } = rules.balance;
+  const next = sector.nodes[way.way[1]];
+  const out = next.id === sector.exit ? jumpHeat : 0;
+  const hot = heat === 'manage' && (huntOdds(campaign, rules, withHeat(campaign.heat, jumpHeat), next.type).chance > 0 || (out > 0 && huntOdds(campaign, rules, withHeat(campaign.heat, jumpHeat + out), 'start').chance > 0));
   let long = null;
   for (const [to, links] of reach(sector, at)) {
     if (links !== 2 || sector.nodes[to].col !== sector.nodes[at].col + 2) continue;
@@ -299,7 +361,38 @@ export function nextJump(campaign, rules, policy) {
     }
     const on = bestWay(campaign, rules, to, { supplies, credits }, judge);
     const there = { hungry: on.hungry, value: on.value + judge(to) + shed, to };
-    if (there.hungry === 0 && there.value >= way.value && better(there, long)) long = there;
+    if (there.hungry === 0 && (hot || there.value >= way.value) && better(there, long)) long = there;
   }
   return long ? long.to : way.way[1];
+}
+
+// Whether the managing player swaps the transponder where the ship is: at
+// a station, heat at SWAP_FROM or more, and the credits covering it beyond
+// half a holdful's price.
+export function swapNow(campaign, rules, heat) {
+  if (heat !== 'manage' || campaign.heat < SWAP_FROM) return false;
+  const plan = swapPlan(campaign, rules);
+  return plan.ok && campaign.credits - plan.price >= (supplyCapacity(campaign.ship, rules) * rules.balance.supplyPrice) / 2;
+}
+
+// Whether the player scans where a scan would show something ahead:
+// managing heat, not from LONG_FROM.
+export function scanNow(campaign, rules, heat) {
+  return heat !== 'manage' || campaign.heat + rules.balance.scanHeat < LONG_FROM;
+}
+
+// Whether to take a day where the ship is: { kind: 'hide' | 'regroup' } or
+// null. Managing heat, it hides in a nebula from HIDE_FROM; either way it
+// regroups when the crew is down REST_HP each on average, but managing
+// heat, only while heat stays under huntHeat. Never below the buffer.
+export function restNow(campaign, rules, heat) {
+  const plan = regroupPlan(campaign, rules);
+  if (!plan.ok) return null;
+  if (campaign.supplies - plan.supplies < REST_JUMPS * jumpSupplies(campaign, rules)) return null;
+  if (plan.kind === 'hide') return heat === 'manage' && campaign.heat >= HIDE_FROM && campaign.supplies - plan.supplies >= HIDE_JUMPS * jumpSupplies(campaign, rules) ? plan : null;
+  // Managing heat, a day's rest costs more heat than it heals: patch up at
+  // stations instead.
+  if (heat === 'manage') return null;
+  const missing = campaign.crew.reduce((sum, member) => sum + maxHp(member, rules) - member.hp, 0);
+  return missing >= REST_HP * campaign.crew.length ? plan : null;
 }

@@ -3,13 +3,15 @@
 import { actOf, HEAT_MAX, maxHp, partsNeeded, shipChecklist } from '../../sim/campaign.js';
 import { canLaunch } from '../../sim/constraints.js';
 import { shopOf } from '../../sim/economy.js';
-import { heatLevel, paymentFor, pursuerOf, raidDue } from '../../sim/heat.js';
+import { heatLevel, paymentFor, pursuerOf, raidDue, runLevel } from '../../sim/heat.js';
 import { launchProblem } from '../../sim/launch.js';
 import { baseOf, countOfAny } from '../../sim/makers.js';
 import { beginRaid } from '../../sim/raid.js';
 import { offerText } from './shopText.js';
 
 export const LEVEL_NAMES = { calm: 'Calm', rumors: 'Rumors', hunters: 'Hunters', raid: 'Raid' };
+// On the run (act 2, M24), heat's own levels (heat.js RUN_LEVELS).
+export const RUN_LEVEL_NAMES = { calm: 'Calm', rumors: 'Rumors', hunters: 'Hunters', taskForce: 'Task force', cornered: 'Cornered' };
 
 // What the hangar shows:
 //   act, home   "Act 1 · Homeworld", "The hangar"
@@ -99,17 +101,20 @@ function hangarHint({ act, raid, ready, build, buy, heat, held, shop }, rules) {
   return { tone: 'info', text: `The parts still missing come from jobs${shop ? ' and the shop' : ''}: tap Jobs.` };
 }
 
-// The heat meter: see hangarText.
+// The heat meter: see hangarText. On the run, the run's levels, with the
+// pursuer's words for them.
 export function heatText(campaign, rules) {
-  const level = heatLevel(campaign.heat, rules);
+  const run = actOf(campaign, rules)?.hub === 'ship';
+  const level = run ? runLevel(campaign.heat, rules) : heatLevel(campaign.heat, rules);
   const { payment, ok, why } = paymentFor(campaign, rules);
   const { rumorHeat, huntHeat, raidHeat } = rules.balance;
+  const pursuer = pursuerOf(campaign, rules);
   return {
     value: campaign.heat,
     max: HEAT_MAX,
     level,
-    name: LEVEL_NAMES[level],
-    line: pursuerOf(campaign, rules)?.levels[level] ?? '',
+    name: (run ? RUN_LEVEL_NAMES : LEVEL_NAMES)[level],
+    line: (run ? pursuer?.run?.levels[level] : pursuer?.levels[level]) ?? '',
     marks: [rumorHeat, huntHeat, raidHeat],
     payment: payment && {
       label: `Pay ${payment.credits}`,

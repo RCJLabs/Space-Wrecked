@@ -4,12 +4,16 @@
 // sector can need is there, so none comes twice in a sector, nor a
 // sector's name twice in a run. A kind of node with ships on it (hostile
 // ships, M21) lists the presets it can have, by weight, each from a sector
-// on: presets with tactics for the approach phase (data/ships.json).
+// on: presets with tactics for the approach phase (data/ships.json). A kind
+// can be on the charts (known before the ship gets near), safe (the
+// pursuer's hunters never wait there, M24), or a place to hide (a nebula:
+// safe, and Regroup there sheds heat).
 import { MAX_PLACE_NAME as MAX_NAME } from '../src/sim/runShape.js';
 import { isId, isIntIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 
 const SECTOR_KEYS = ['columns', 'rows', 'extraLinkChance', 'counts', 'mix', 'nodes', 'names'];
-const NODE_KEYS = ['id', 'name', 'names', 'events', 'ships', 'text'];
+const NODE_KEYS = ['id', 'name', 'names', 'events', 'ships', 'charted', 'safe', 'hides', 'text'];
+const FLAGS = ['charted', 'safe', 'hides'];
 const SHIP_KEYS = ['ship', 'weight', 'from'];
 // The kinds every sector has: where the ship comes in, and where it jumps
 // on from. The generator places them itself.
@@ -56,6 +60,10 @@ export function checkSectors(file, acts, presets, fail) {
     else if (node.events && FIXED.includes(node.id)) fail(at, 'the way in and the jump point hold no events');
     else if (node.events && isId(node.id)) holding.add(node.id);
     if (node.ships !== undefined) checkShips(node, at, run, presets, fail);
+    for (const flag of FLAGS) if (node[flag] !== undefined && node[flag] !== true) fail(at, `${flag} must be true, or left out`);
+    if (FIXED.includes(node.id) && FLAGS.some((flag) => node[flag] !== undefined)) fail(at, 'the way in and the jump point are on the charts, and never safe');
+    if (node.hides && (node.events || node.ships)) fail(at, 'a place to hide holds no events and no ships');
+    if (node.safe && node.hides) fail(at, 'a place to hide is safe already: leave safe out');
   });
 
   // The kinds counted into a sector, each in a column of its own between

@@ -28,7 +28,7 @@ const fleet = [...defs.ships.keys()].flatMap((id) =>
 const name = ({ id, seed }) => `${id} seed ${seed}`;
 
 test('100 generated ships of each preset all pass the flight checklist', () => {
-  assert.equal(fleet.length, 300);
+  assert.equal(fleet.length, 100 * defs.ships.size);
   for (const ship of fleet) {
     const { result } = ship;
     assert.ok(result.ok, `${name(ship)}: ${result.error}`);

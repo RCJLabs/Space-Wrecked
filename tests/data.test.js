@@ -129,7 +129,7 @@ const cases = [
   ['trait far past its range', (d) => (d.traits.traits[0].effects = { aim: 50 }), /effects\.aim must be a whole number from -30 to 30/],
   ['misspelled trait field', (d) => (d.traits.traits[0].effect = {}), /traits\.json steady: unknown field "effect"/],
   ['sector with no jump point', (d) => (d.sectors.nodes = d.sectors.nodes.filter((n) => n.id !== 'exit')), /the "exit" node kind is missing/],
-  ['more stations than columns between', (d) => (d.sectors.counts.station = [1, 9]), /counts take up to 9 columns, but only 5 lie between/],
+  ['more stations than columns between', (d) => (d.sectors.counts.station = [1, 9]), /counts take up to 10 columns, but only 5 lie between/],
   ['too few places for a full sector', (d) => (d.sectors.names.places = d.sectors.names.places.slice(0, 4)), /mix\.empty: needs 15 names in its list, has 4/],
   ['a mix kind that is not a node kind', (d) => (d.sectors.mix.wreck = 2), /mix\.wreck: must be a node kind other than start, exit and the counted kinds/],
   ['a kind holding events with none of its kind', (d) => (d.events.events = d.events.events.filter((e) => e.kind !== 'derelict')), /node derelict: holds events, but events\.json has none of its kind/],
@@ -164,7 +164,7 @@ const cases = [
   ['start ship with no airlock', (d) => (start(d).ship.placements = start(d).ship.placements.filter((p) => p.type !== 'airlock')), /start\.ship: No airlock on the hull edge/],
   ['no backgrounds', (d) => (d.backgrounds.backgrounds = []), /needs at least one background/],
   ['background in an unknown district', (d) => (d.backgrounds.backgrounds[0].district = 'docks'), /unknown district "docks"/],
-  ['background with no pursuer', (d) => delete d.backgrounds.backgrounds[0].pursuer, /pursuer: must be \{ name, blurb, levels, hunters, raiders, payment \}/],
+  ['background with no pursuer', (d) => delete d.backgrounds.backgrounds[0].pursuer, /pursuer: must be \{ name, blurb, levels, hunters, raiders, payment, run \}/],
   ['client in two districts', (d) => d.districts.districts.push({ ...structuredClone(district(d)), id: 'docks', sites: [{ id: 'pier', name: 'Pier', map: 'yard', blurb: 'Wet.' }] }), /duplicate client id "marta"/],
   ['site on an unknown map', (d) => (district(d).sites[0].map = 'moon'), /unknown or broken map "moon"/],
   ['site map with a stray character', (d) => (d.sites.maps[0].rows[1] = d.sites.maps[0].rows[1].replace('k', 'Z')), /"Z" is no site tile/],
@@ -272,7 +272,30 @@ const cases = [
   ['an enemy look with a bad count', (d) => (d.ships.ships[1].look.pieces.deltawing = [3, 1]), /corvette: look\.pieces\.deltawing must be a whole number, or \[least, most\]/],
   ['an enemy look past the cap', (d) => (d.ships.ships[2].look.pieces.armorplate = 30), /hauler: look\.pieces: up to \d+, but the Starter hull takes at most 24/],
   ['an enemy look with a stray field', (d) => (d.ships.ships[2].look.decals = []), /hauler look: unknown field "decals"/],
+  // M24: heat on the run.
+  ['hunters past certain', (d) => (d.balance.huntChance = 101), /huntChance must be a whole number from 0 to 100/],
+  ['a task force less likely than the hunters', (d) => (d.balance.taskForceChance = d.balance.huntChance - 1), /taskForceChance must be at least huntChance/],
+  ['heat after facing them still at the hunters', (d) => (d.balance.heatAfterRaid = 60), /heatAfterRaid must be under huntHeat/],
+  ['hiding that adds heat', (d) => (d.balance.hideHeat = 5), /hideHeat must be a whole number from -100 to 0/],
+  ['a transponder swap that adds heat', (d) => (d.balance.swapHeat = 10), /swapHeat must be a whole number from -100 to 0/],
+  ['a pursuer with nothing to say of the task force', (d) => delete pursuerRun(d).levels.taskForce, /run: levels must say something for each of calm, rumors, hunters, taskForce, cornered/],
+  ['hunters in a ship with no tactics', (d) => (pursuerRun(d).hunters = 'hauler'), /run: hunters: the Derelict hauler needs tactics for the approach and a party/],
+  ['a task force in an unknown ship', (d) => (pursuerRun(d).taskForce = 'dreadnought'), /run: taskForce: unknown ship preset "dreadnought"/],
+  ['a pursuer with no words once faced', (d) => (pursuerRun(d).faced = ''), /run: faced must be a non-empty string/],
+  ['a pursuer with a stray field on the run', (d) => (pursuerRun(d).bounty = 50), /run: unknown field "bounty"/],
+  ['a nebula with events', (d) => (nodeKind(d, 'nebula').events = true), /node nebula: a place to hide holds no events and no ships/],
+  ['a kind charted as a word', (d) => (nodeKind(d, 'station').charted = 'yes'), /node station: charted must be true, or left out/],
+  ['a way in safe from the hunters', (d) => (nodeKind(d, 'start').safe = true), /node start: the way in and the jump point are on the charts, and never safe/],
+  ['a nebula safe twice over', (d) => (nodeKind(d, 'nebula').safe = true), /node nebula: a place to hide is safe already/],
 ];
+
+function pursuerRun(d) {
+  return d.backgrounds.backgrounds[0].pursuer.run;
+}
+
+function nodeKind(d, id) {
+  return d.sectors.nodes.find((node) => node.id === id);
+}
 
 test('the validator names each kind of mistake', () => {
   for (const [name, breakIt, expected] of cases) {
@@ -300,5 +323,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(42 modules, 1 frame, 2 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 3 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 9 kinds of sector node, 10 events\)/);
+  assert.match(run.stdout, /OK \(42 modules, 1 frame, 2 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 5 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 10 kinds of sector node, 10 events\)/);
 });

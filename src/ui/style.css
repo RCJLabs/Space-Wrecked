@@ -476,11 +476,14 @@ textarea {
   background: var(--c-accent);
 }
 
-.hgr-heat[data-level='raid'] .hgr-heat-fill {
+.hgr-heat[data-level='raid'] .hgr-heat-fill,
+.hgr-heat[data-level='taskForce'] .hgr-heat-fill,
+.hgr-heat[data-level='cornered'] .hgr-heat-fill {
   background: var(--c-bad);
 }
 
-.hgr-heat[data-level='raid'] .hgr-heat-label {
+.hgr-heat[data-level='raid'] .hgr-heat-label,
+.hgr-heat[data-level='cornered'] .hgr-heat-label {
   color: var(--c-bad);
 }
 
@@ -1000,6 +1003,8 @@ textarea {
 
 #ui .sct-buy,
 #ui .sct-scan,
+#ui .sct-rest,
+#ui .sct-swap,
 #ui .sct-jump,
 #ui .sct-on {
   display: flex;
@@ -1016,6 +1021,17 @@ textarea {
   border-color: var(--c-accent);
   background: var(--c-accent);
   color: var(--c-space);
+}
+
+/* The transponder swap, in the left panel at a station (sector.js): the
+   panel's width, its words allowed a second line. */
+#ui .sct-swap {
+  justify-content: center;
+  width: 100%;
+  margin: 6px 0 2px;
+  padding: 4px 10px;
+  white-space: normal;
+  text-align: center;
 }
 
 /* A station selling three things or more (sector.js): the foot's buttons
@@ -1036,10 +1052,12 @@ textarea {
   -webkit-line-clamp: 3;
 }
 
-/* The first tap of Jump on, Buy, Repair, Patch up or Scan: what it costs,
-   waiting for a second. */
+/* The first tap of Jump on, Buy, Repair, Patch up, the transponder swap,
+   Scan, Regroup or Hide: what it costs, waiting for a second. */
 #ui .sct-on[data-armed='true'],
 #ui .sct-scan[data-armed='true'],
+#ui .sct-rest[data-armed='true'],
+#ui .sct-swap[data-armed='true'],
 #ui .sct-buy[data-armed='true'] {
   border-color: var(--c-accent);
   background: var(--c-panel);
@@ -1103,7 +1121,8 @@ textarea {
 
 .sct-node[data-type='start'] .sct-dot,
 .sct-node[data-type='exit'] .sct-dot,
-.sct-node[data-type='station'] .sct-dot {
+.sct-node[data-type='station'] .sct-dot,
+.sct-node[data-type='nebula'] .sct-dot {
   width: 32px;
   height: 32px;
 }
@@ -1180,6 +1199,13 @@ textarea {
   color: var(--c-accent);
 }
 
+/* A nebula (M24): the hunters can't see in. */
+.sct-node[data-type='nebula'] .sct-dot {
+  border-color: var(--c-nebula);
+  border-style: dotted;
+  color: var(--c-nebula);
+}
+
 .sct-node[data-seen='true'] .sct-dot {
   background: var(--c-line);
 }
@@ -1193,6 +1219,11 @@ textarea {
 .sct-node[data-reach='2'] .sct-dot {
   outline: 2px dashed var(--c-accent);
   outline-offset: 3px;
+}
+
+/* Where the pursuer's hunters may wait (M24): the ring in red. */
+.sct-node[data-hunt='true'] .sct-dot {
+  outline-color: var(--c-bad);
 }
 
 .sct-node[aria-pressed='true'] .sct-dot {
@@ -2936,17 +2967,25 @@ textarea {
   left: 8px;
   right: 80px;
   display: flex;
+  flex-wrap: wrap; /* more presets than fit: the seed buttons go below */
   align-items: center;
   gap: 6px;
 }
 
-.shp-presets {
+.shp-presets,
+.shp-seeds {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
 }
 
+.shp-seeds {
+  flex-wrap: nowrap;
+}
+
 #ui .shp-button {
-  padding: 0 12px;
+  padding: 0 10px;
   background: var(--c-panel);
   font-size: 13px;
   white-space: nowrap;

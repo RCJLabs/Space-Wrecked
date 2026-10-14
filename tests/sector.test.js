@@ -2,8 +2,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { crosses, generateSector } from '../src/sim/gen/sector.js';
+import { launch } from '../src/sim/launch.js';
+import { beginRun, knownNodes } from '../src/sim/travel.js';
 import { GOLDEN_SECTORS, goldenText } from '../tools/sectors.js';
 import { rules } from './battleKit.js';
+import { readyToLaunch } from './launchKit.js';
 
 const spec = rules.sectors;
 const SEEDS = Array.from({ length: 300 }, (_, i) => i + 1);
@@ -79,6 +82,25 @@ test('stations as the data counts them, each in a column of its own; names never
   for (let count = min; count <= max; count++) assert.ok(tally.get(count) > 50, `each count comes up: ${[...tally].join(' ')}`);
 });
 
+test('every kind the data counts comes as often as it says, each in a column of its own: since M24, a nebula in every sector, on the charts', () => {
+  for (const seed of SEEDS) {
+    const sector = generateSector(rules, seed, 1);
+    const counted = sector.nodes.filter((node) => node.type in spec.counts);
+    for (const [type, [min, max]] of Object.entries(spec.counts)) {
+      const count = counted.filter((node) => node.type === type).length;
+      assert.ok(count >= min && count <= max, `seed ${seed}: ${count} ${type}`);
+    }
+    assert.equal(new Set(counted.map((node) => node.col)).size, counted.length, `seed ${seed}: each in a column of its own`);
+    const nebulae = sector.nodes.filter((node) => node.type === 'nebula');
+    assert.ok(nebulae.every((node) => spec.names.nebulae.includes(node.name) && !node.event && !node.hostile), `seed ${seed}: a nebula named as one, empty`);
+  }
+  assert.deepEqual(spec.counts.nebula, [1, 1]);
+  // On the charts: known as the ship comes into the sector.
+  const { run } = beginRun(launch(readyToLaunch(), rules).campaign, rules).campaign;
+  const nebula = run.sector.nodes.find((node) => node.type === 'nebula');
+  assert.ok(knownNodes(run, rules).has(nebula.id));
+});
+
 test('the nodes between roll their kinds from the mix, and those that hold events get one of their kind', () => {
   const kinds = new Map();
   const events = new Set();
@@ -105,9 +127,12 @@ test('the nodes between roll their kinds from the mix, and those that hold event
   }
   for (const kind of Object.keys(spec.mix)) assert.ok(kinds.get(kind) > 100, `${kind} comes up: ${kinds.get(kind)}`);
   assert.equal(events.size, rules.events.size, 'every event comes up');
-  // The mix's weights show: empty space (3) comes about three times as often as a trader (1).
+  // The mix's weights show: empty space comes as many times as often as a
+  // trader as its weight is times the trader's.
   const ratio = kinds.get('empty') / kinds.get('trader');
-  assert.ok(ratio > 2.4 && ratio < 3.8, `empty to trader: ${ratio}`);
+  const weights = rules.sectors.mix;
+  const expected = weights.empty / weights.trader;
+  assert.ok(ratio > expected * 0.8 && ratio < expected * 1.25, `empty to trader: ${ratio}, the mix says ${expected}`);
 });
 
 test('the same seed always gives the same sector, and names to avoid are avoided', () => {

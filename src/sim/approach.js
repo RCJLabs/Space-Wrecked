@@ -51,6 +51,10 @@ export const OUTCOMES = ['escaped', 'fled', 'boarded', 'boardedBy', 'destroyed',
 // The outcomes that are boardings, and whose ship the fight is on: 'them'
 // when the player boards her, 'you' when she boards the player.
 export const BOARDINGS = { boarded: 'them', boardedBy: 'you' };
+// The outcomes that face the other ship down: she is driven off, disabled
+// (boarded or left), blown up, boards the player, or both are disabled.
+// Getting away, and parting after the last round, don't (hunt.js).
+export const FACED = ['fled', 'boarded', 'boardedBy', 'destroyed', 'adrift'];
 
 // True if a volley aimed at `aim` can hit a module of this kind.
 export function aimedAt(def, aim) {

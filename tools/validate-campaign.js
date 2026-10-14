@@ -30,9 +30,15 @@ const MAX_CAPTAINS = 20;
 // The words as the ship lifts off (launch.js), and the pursuer's when it
 // lifts off with a raid at the door.
 const LAUNCH_KEYS = ['text', 'escaped'];
-const PURSUER_KEYS = ['name', 'blurb', 'levels', 'hunters', 'raiders', 'payment'];
-// Heat's levels (src/sim/heat.js), each with the pursuer's words for it.
+const PURSUER_KEYS = ['name', 'blurb', 'levels', 'hunters', 'raiders', 'payment', 'run'];
+// Heat's levels (src/sim/heat.js), each with the pursuer's words for it:
+// act 1's, and on the run (act 2) its own.
 const HEAT_LEVELS = ['calm', 'rumors', 'hunters', 'raid'];
+const RUN_LEVELS = ['calm', 'rumors', 'hunters', 'taskForce', 'cornered'];
+// On the run: its words for each level, the ships its hunters fly from the
+// hunters' level and from the task force's (ship presets with tactics and
+// a party), and its words once they have been faced (src/sim/hunt.js).
+const RUN_KEYS = ['levels', 'hunters', 'taskForce', 'faced'];
 const PAYMENT_KEYS = ['name', 'text', 'credits', 'heat'];
 const MAX_HUNTERS = 2;
 // A raid's raiders, at the hangar's doors (hangarMap.js).
@@ -244,7 +250,7 @@ function checkShop(shop, where, clients, moduleIds, fail) {
 // as they lift off, their district, and what a campaign from it starts
 // with: credits, parts held, the crew by job, and the ship as a script of
 // placements (tools/build-ship.js).
-function checkBackgrounds(file, { districts }, { jobIds, enemyIds, moduleIds, frameById, encounters }, fail) {
+function checkBackgrounds(file, { districts }, { jobIds, enemyIds, moduleIds, frameById, encounters, presets = new Map() }, fail) {
   const backgrounds = listOf(file, 'backgrounds', 'backgrounds.json', fail);
   uniqueIds(backgrounds, 'backgrounds.json', fail);
   if (!backgrounds.length) fail('backgrounds.json', 'needs at least one background');
@@ -253,7 +259,7 @@ function checkBackgrounds(file, { districts }, { jobIds, enemyIds, moduleIds, fr
     const where = `backgrounds.json ${background.id ?? `#${i}`}`;
     knownKeys(background, BACKGROUND_KEYS, where, fail);
     if (!isText(background.name) || !isText(background.blurb)) fail(where, 'name and blurb must be non-empty strings');
-    checkPursuer(background.pursuer, `${where} pursuer`, { enemyIds, encounters }, fail);
+    checkPursuer(background.pursuer, `${where} pursuer`, { enemyIds, encounters, presets }, fail);
     if (!isListIn(background.captains, 1, MAX_CAPTAINS) || !background.captains.every((name) => isText(name) && name.trim().length <= MAX_NAME)) {
       fail(where, `captains must be a list of 1 to ${MAX_CAPTAINS} names of up to ${MAX_NAME} letters`);
     }
@@ -272,12 +278,14 @@ function checkBackgrounds(file, { districts }, { jobIds, enemyIds, moduleIds, fr
 
 // The pursuer: who they are, their words for each level of heat, the
 // hunters they send along on jobs once heat is high, the encounter they
-// raid the hangar with, and the payment that buys some heat off.
-function checkPursuer(pursuer, where, { enemyIds, encounters }, fail) {
+// raid the hangar with, the payment that buys some heat off, and how they
+// hunt the ship on the run.
+function checkPursuer(pursuer, where, { enemyIds, encounters, presets }, fail) {
   if (!isObject(pursuer)) {
-    fail(where, 'must be { name, blurb, levels, hunters, raiders, payment }');
+    fail(where, 'must be { name, blurb, levels, hunters, raiders, payment, run }');
     return;
   }
+  checkRun(pursuer.run, `${where} run`, presets, fail);
   knownKeys(pursuer, PURSUER_KEYS, where, fail);
   if (!isText(pursuer.name) || !isText(pursuer.blurb)) fail(where, 'name and blurb must be non-empty strings');
   const { levels } = pursuer;
@@ -297,6 +305,28 @@ function checkPursuer(pursuer, where, { enemyIds, encounters }, fail) {
   if (!isText(payment.name) || !isText(payment.text)) fail(`${where} payment`, 'name and text must be non-empty strings');
   if (!isIntIn(payment.credits, PAY_STEP, MAX_CREDITS) || payment.credits % PAY_STEP) fail(`${where} payment`, `credits must be a multiple of ${PAY_STEP} from ${PAY_STEP} to ${MAX_CREDITS}`);
   if (!isIntIn(payment.heat, 1, 100)) fail(`${where} payment`, 'heat must be a whole number from 1 to 100');
+}
+
+// The pursuer on the run (act 2, src/sim/hunt.js): its words for each of
+// the run's levels of heat, the ship presets its hunters and its task force
+// fly (each with tactics for the approach and a party to board with), and
+// its words once they have been faced.
+function checkRun(run, where, presets, fail) {
+  if (!isObject(run)) {
+    fail(where, 'must be { levels, hunters, taskForce, faced }');
+    return;
+  }
+  knownKeys(run, RUN_KEYS, where, fail);
+  const { levels } = run;
+  if (!isObject(levels) || Object.keys(levels).length !== RUN_LEVELS.length || !RUN_LEVELS.every((level) => isText(levels[level]))) {
+    fail(where, `levels must say something for each of ${RUN_LEVELS.join(', ')}`);
+  }
+  for (const key of ['hunters', 'taskForce']) {
+    const preset = presets.get(run[key]);
+    if (!preset) fail(where, `${key}: unknown ship preset "${run[key]}"`);
+    else if (!preset.tactics || !preset.party) fail(where, `${key}: the ${preset.name} needs tactics for the approach and a party for the boardings`);
+  }
+  if (!isText(run.faced)) fail(where, 'faced must be a non-empty string');
 }
 
 // Returns the start's ship script if it is well formed, else null.

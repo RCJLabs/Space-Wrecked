@@ -22,10 +22,16 @@
 //     time, and jump to the next node on the way that goes hungry least,
 //     then is worth most: the supplies and credits carried out, and the
 //     nodes passed;
-//   - with --long heat (the default), when heat is at the hunters' level
-//     (huntHeat) or over, make a long jump on instead, if the supplies
-//     cover it and the way on from there goes hungry no more often; with
-//     --long never, never.
+//   - with --long heat (the default), when heat is at LONG_FROM or over
+//     (voyagePlan.js), make a long jump on instead, if the supplies cover
+//     it and the way on from there goes hungry no more often; with --long
+//     never, never;
+//   - with --heat manage (the default, M24), keep the pursuer's hunters
+//     off: long jumps as above, a transponder swap at a station
+//     (voyagePlan.js swapNow), hiding in a nebula on the way (restNow);
+//     with --heat ignore, none of these, and no long jumps;
+//   - either way, regroup away from stations when the crew is worn down
+//     (restNow), and face the hunters as any hostile ship.
 //
 //   node tools/voyage.js               a voyage from campaign seed 1, step by step
 //   node tools/voyage.js --seed 7      another seed
@@ -35,6 +41,7 @@
 //   node tools/voyage.js --fit medbay  a part fitted before the voyage (or a
 //                                      list, like --fit cargo,medbay)
 //   node tools/voyage.js --refit no    no refits at stations
+//   node tools/voyage.js --heat ignore no swaps, hides or long jumps
 //   node tools/voyage.js --runs 20 --set supplyPrice=2
 //                                      a balance number changed for this run
 //                                      only (as many --set as you like)
@@ -42,13 +49,17 @@ import { pathToFileURL } from 'node:url';
 import { maxHp } from '../src/sim/campaign.js';
 import { flightChecklist } from '../src/sim/constraints.js';
 import { indexDefs } from '../src/sim/defs.js';
+import { FACED } from '../src/sim/approach.js';
 import { approachState, closeApproach, giveOrder } from '../src/sim/encounter.js';
 import { chooseEvent, partsOnHand } from '../src/sim/events.js';
 import { launch } from '../src/sim/launch.js';
 import { patchCrew } from '../src/sim/patch.js';
 import { raidLoss } from '../src/sim/raid.js';
+import { huntersOf } from '../src/sim/hunt.js';
 import { hireRecruit } from '../src/sim/recruits.js';
+import { regroup } from '../src/sim/regroup.js';
 import { repairShip } from '../src/sim/repair.js';
+import { swapTransponder } from '../src/sim/transponder.js';
 import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leavePlan, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer } from '../src/sim/travel.js';
 import { captainOrder } from './approachPlan.js';
 import { fightBoarding } from './boarding.js';
@@ -56,7 +67,7 @@ import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
 import { withPart } from './startShip.js';
-import { bestChoice, boardIt, hireWho, nextJump, refitAt } from './voyagePlan.js';
+import { bestChoice, boardIt, HEAT_POLICIES, hireWho, LONG_FROM, nextJump, refitAt, restNow, scanNow, swapNow } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
@@ -68,8 +79,11 @@ const MAX_JUMPS = 100; // a voyage still going after this many stops
 // steps: every jump, purchase, event, approach, boarding, patch, repair and
 // scan with what it moved, [before, after]; sectors: each sector as the ship
 // entered it.
-export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', refit = 'yes', label = '' } = {}) {
-  if (!LONG_POLICIES.includes(long)) throw new Error(`--long is one of ${LONG_POLICIES.join(', ')}`);
+export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 'yes', refit = 'yes', heat = 'manage', label = '' } = {}) {
+  if (!LONG_POLICIES.includes(longPolicy)) throw new Error(`--long is one of ${LONG_POLICIES.join(', ')}`);
+  if (!HEAT_POLICIES.includes(heat)) throw new Error(`--heat is one of ${HEAT_POLICIES.join(', ')}`);
+  // Ignoring heat makes no long jumps either.
+  const long = heat === 'ignore' ? 'never' : longPolicy;
   if (!SCAN_POLICIES.includes(scans)) throw new Error(`--scan is one of ${SCAN_POLICIES.join(', ')}`);
   if (!REFIT_POLICIES.includes(refit)) throw new Error(`--refit is one of ${REFIT_POLICIES.join(', ')}`);
   const begun = beginRun(launched, defs);
@@ -117,6 +131,16 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', refit
     refits: 0,
     fitted: 0,
     fits: {},
+    hunts: 0,
+    huntsFaced: 0,
+    taskForces: 0,
+    regroups: 0,
+    hides: 0,
+    rested: 0,
+    swaps: 0,
+    swapCredits: 0,
+    hotJumps: 0,
+    peak: launched.heat,
     heat: [launched.heat, null],
     hp: [hpOf(campaign), null],
   };
@@ -151,30 +175,11 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', refit
       lines.push(`Stopped: still going after ${MAX_JUMPS} jumps.`);
       break;
     }
-    // An event where the ship is: the choice worth most.
-    const open = openEvent(campaign, defs);
-    if (open) {
-      const pick = bestChoice(campaign, defs, open.event);
-      const before = campaign;
-      const made = chooseEvent(campaign, defs, pick.choice.id);
-      if (!made.ok) throw new Error(made.error);
-      campaign = made.campaign;
-      const { result } = made;
-      const { changes } = result;
-      record('event', before, { event: open.event.id, choice: pick.choice.id, outcome: result.outcome, roll: result.roll, changes });
-      tally.events += 1;
-      tally.eventCredits += changes.credits;
-      tally.eventSupplies += changes.supplies;
-      tally.found += changes.parts.length;
-      tally.sold += changes.sold.length;
-      tally.wounds += changes.wounds.reduce((sum, wound) => sum + wound.hp, 0);
-      const said = pick.choice.outcomes[result.outcome].text;
-      lines.push(`   ${open.event.title}: ${pick.choice.label}${result.roll === null ? '' : ` (rolled ${result.roll})`}. ${said} ${hold()}.`);
-    }
-    // A hostile ship where the ship is: the approach, played out.
+    // A hostile ship where the ship is, or the hunters: the approach,
+    // played out. An event where the hunters wait comes after.
     if (campaign.run.approach) {
       const before = campaign;
-      const { enemy } = campaign.run.approach;
+      const { enemy, hunt } = campaign.run.approach;
       while (!campaign.run.approach.outcome) {
         const given = giveOrder(campaign, defs, captainOrder(approachState(campaign, defs), defs));
         if (!given.ok) throw new Error(given.error);
@@ -182,12 +187,17 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', refit
       }
       const { outcome, round } = campaign.run.approach;
       const { changes } = outcome;
-      record('approach', before, { ship: enemy.ship, outcome: outcome.kind, how: outcome.how ?? null, rounds: round, changes, boarding: outcome.boarding, wrecks: Object.keys(campaign.wrecks).length });
+      record('approach', before, { ship: enemy.ship, hunt, outcome: outcome.kind, how: outcome.how ?? null, rounds: round, changes, boarding: outcome.boarding, wrecks: Object.keys(campaign.wrecks).length });
       tally.approaches += 1;
+      if (hunt) {
+        tally.hunts += 1;
+        if (FACED.includes(outcome.kind)) tally.huntsFaced += 1;
+        if (enemy.ship === huntersOf(campaign, defs)?.taskForce) tally.taskForces += 1;
+      }
       if (outcome.kind === 'boarded' || outcome.kind === 'destroyed') tally.approachesWon += 1;
       if (outcome.kind === 'boardedBy') tally.approachesLost += 1;
       tally.approachCredits += changes.credits;
-      lines.push(`   ${enemy.name}: ${outcome.kind}${outcome.how ? ` (${outcome.how})` : ''} in round ${round}, ${Object.keys(campaign.wrecks).length} wrecked aboard. ${hold()}.`);
+      lines.push(`   ${hunt ? 'The hunters, in a ' : ''}${enemy.name}: ${outcome.kind}${outcome.how ? ` (${outcome.how})` : ''} in round ${round}, ${Object.keys(campaign.wrecks).length} wrecked aboard. ${hold()}.`);
       // Its boarding, if it ended in one: fought, or a disabled ship left.
       if (outcome.boarding === 'due' && (outcome.kind === 'boardedBy' || boardIt(campaign, defs))) {
         const ready = campaign;
@@ -217,6 +227,26 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', refit
         campaign = closeApproach(campaign).campaign;
       }
     }
+    // An event where the ship is: the choice worth most.
+    const open = openEvent(campaign, defs);
+    if (open) {
+      const pick = bestChoice(campaign, defs, open.event, heat);
+      const before = campaign;
+      const made = chooseEvent(campaign, defs, pick.choice.id);
+      if (!made.ok) throw new Error(made.error);
+      campaign = made.campaign;
+      const { result } = made;
+      const { changes } = result;
+      record('event', before, { event: open.event.id, choice: pick.choice.id, outcome: result.outcome, roll: result.roll, changes });
+      tally.events += 1;
+      tally.eventCredits += changes.credits;
+      tally.eventSupplies += changes.supplies;
+      tally.found += changes.parts.length;
+      tally.sold += changes.sold.length;
+      tally.wounds += changes.wounds.reduce((sum, wound) => sum + wound.hp, 0);
+      const said = pick.choice.outcomes[result.outcome].text;
+      lines.push(`   ${open.event.title}: ${pick.choice.label}${result.roll === null ? '' : ` (rolled ${result.roll})`}. ${said} ${hold()}.`);
+    }
     // A refit at a station, before the holds are filled: a hold fitted
     // takes more.
     if (refit === 'yes') {
@@ -242,6 +272,29 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', refit
       tally.spent += before.credits - campaign.credits;
       lines.push(`   Bought ${count} supplies at ${hereOf(campaign).name} for ${before.credits - campaign.credits} credits: ${hold()}.`);
     }
+    // A recruit signed on, where there is room and the fee to spare.
+    const slot = offer.ok ? hireWho(campaign, defs) : null;
+    if (slot !== null) {
+      const before = campaign;
+      const signed = hireRecruit(campaign, defs, slot);
+      if (!signed.ok) throw new Error(signed.error);
+      campaign = signed.campaign;
+      const member = campaign.crew.at(-1);
+      record('hire', before, { name: member.name, job: member.job, traits: member.traits });
+      tally.hired += 1;
+      tally.hireCredits += signed.plan.fee;
+      lines.push(`   Signed on ${member.name} (${defs.jobs.get(member.job)?.name ?? member.job}) for ${signed.plan.fee} credits: a crew of ${campaign.crew.length}, ${hold()}.`);
+    }
+    // Managing heat: the transponder swapped, once a recruit has signed
+    // on, and before patching and repairs.
+    if (swapNow(campaign, defs, heat)) {
+      const before = campaign;
+      campaign = swapTransponder(campaign, defs).campaign;
+      record('swap', before);
+      tally.swaps += 1;
+      tally.swapCredits += before.credits - campaign.credits;
+      lines.push(`   Swapped the transponder for ${before.credits - campaign.credits} credits: ${hold()}.`);
+    }
     // Patching up, then repairs, with what is left beyond a holdful's price.
     const reserve = supplyCapacity(campaign.ship, defs) * defs.balance.supplyPrice;
     const patched = offer.ok && campaign.credits > reserve ? patchCrew({ ...campaign, credits: campaign.credits - reserve }, defs) : { ok: false };
@@ -262,21 +315,23 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', refit
       tally.repairCredits += fixed.plan.cost;
       lines.push(`   Repaired ${fixed.plan.repairs.map((repair) => repair.type).join(', ')} for ${fixed.plan.cost} credits: ${hold()}.`);
     }
-    // A recruit signed on, where there is room and the fee to spare.
-    const slot = offer.ok ? hireWho(campaign, defs) : null;
-    if (slot !== null) {
+    // A day hidden in a nebula, or regrouping: the hunters may find a ship
+    // that regroups, and then their approach comes first.
+    const rest = restNow(campaign, defs, heat);
+    if (rest) {
       const before = campaign;
-      const signed = hireRecruit(campaign, defs, slot);
-      if (!signed.ok) throw new Error(signed.error);
-      campaign = signed.campaign;
-      const member = campaign.crew.at(-1);
-      record('hire', before, { name: member.name, job: member.job, traits: member.traits });
-      tally.hired += 1;
-      tally.hireCredits += signed.plan.fee;
-      lines.push(`   Signed on ${member.name} (${defs.jobs.get(member.job)?.name ?? member.job}) for ${signed.plan.fee} credits: a crew of ${campaign.crew.length}, ${hold()}.`);
+      const done = regroup(campaign, defs);
+      if (!done.ok) throw new Error(done.error);
+      campaign = done.campaign;
+      record(rest.kind, before, { heal: rest.heal, max: before.crew.map((member) => maxHp(member, defs)), found: done.hunt?.found ?? false });
+      tally[rest.kind === 'hide' ? 'hides' : 'regroups'] += 1;
+      tally.rested += (campaign.flags.hpRested ?? 0) - (before.flags.hpRested ?? 0);
+      tally.peak = Math.max(tally.peak, campaign.heat);
+      lines.push(`   ${rest.kind === 'hide' ? 'Hid a day in the nebula' : 'Regrouped a day'}: crew ${hpOf(campaign)}, ${hold()}${done.hunt?.found ? '. The hunters found the ship' : ''}.`);
+      continue;
     }
     // A scan, where it would show a node ahead.
-    const look = scans === 'yes' ? scanPlan(campaign, defs) : { ok: false };
+    const look = scans === 'yes' && scanNow(campaign, defs, heat) ? scanPlan(campaign, defs) : { ok: false };
     const { sector, at } = campaign.run;
     if (look.ok && look.reveals.some((id) => sector.nodes[id].col > sector.nodes[at].col)) {
       const before = campaign;
@@ -291,13 +346,15 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', refit
       if (leavePlan(campaign, defs).last) break;
       moved = leaveSector(campaign, defs);
     } else {
-      moved = jump(campaign, defs, nextJump(campaign, defs, long));
+      moved = jump(campaign, defs, nextJump(campaign, defs, long, { heat }));
     }
     if (!moved.ok) throw new Error(moved.error);
     campaign = moved.campaign;
     const { plan } = moved;
-    record(plan.kind, before, { hungry: plan.hungry, heal: plan.heal, max: before.crew.map((member) => maxHp(member, defs)), to: plan.kind === 'sector' ? null : campaign.run.at });
+    record(plan.kind, before, { hungry: plan.hungry, heal: plan.heal, max: before.crew.map((member) => maxHp(member, defs)), to: plan.kind === 'sector' ? null : campaign.run.at, hunt: moved.hunt });
     tally.jumps += 1;
+    if (moved.hunt.chance > 0) tally.hotJumps += 1;
+    tally.peak = Math.max(tally.peak, campaign.heat);
     if (plan.kind === 'long') tally.longJumps += 1;
     if (plan.hungry) tally.hungryJumps += 1;
     // A sector is crossed when the ship reaches its jump point.
@@ -318,7 +375,7 @@ export function voyageFrom(defs, launched, { long = 'heat', scans = 'yes', refit
   const ended = leavePlan(campaign, defs).last === true;
   const where = ended ? `The charts end at sector ${campaign.run.sector.index}'s jump point` : `Stopped in sector ${campaign.run.sector.index}`;
   lines.push(
-    `${where}, ${tally.crossed} sectors crossed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits; boarded ${tally.boardings} (won ${tally.boardingsWon}), left ${tally.left}, fought off ${tally.defencesWon} of ${tally.defences}; salvage ${tally.salvaged} parts and ${tally.salvageCredits} credits, lost ${tally.partsLost} parts and ${tally.creditsLost} credits, ${tally.fightHp} hit points; patched ${tally.patchedHp} for ${tally.patchCredits} credits; ${tally.repairs} repairs for ${tally.repairCredits} credits; signed on ${tally.hired}, healed ${tally.healed} in the med bay; refitted ${tally.fitted} parts at ${tally.refits} stations. Heat ${tally.heat[0]} to ${tally.heat[1]}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
+    `${where}, ${tally.crossed} sectors crossed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits; boarded ${tally.boardings} (won ${tally.boardingsWon}), left ${tally.left}, fought off ${tally.defencesWon} of ${tally.defences}; salvage ${tally.salvaged} parts and ${tally.salvageCredits} credits, lost ${tally.partsLost} parts and ${tally.creditsLost} credits, ${tally.fightHp} hit points; patched ${tally.patchedHp} for ${tally.patchCredits} credits; ${tally.repairs} repairs for ${tally.repairCredits} credits; signed on ${tally.hired}, healed ${tally.healed} in the med bay; refitted ${tally.fitted} parts at ${tally.refits} stations. The hunters: met ${tally.hunts} (${tally.taskForces} the task force), faced ${tally.huntsFaced}; ${tally.hotJumps} jumps where they might wait; ${tally.regroups} regroups and ${tally.hides} days hidden, healing ${tally.rested}; ${tally.swaps} transponder swaps for ${tally.swapCredits} credits. Heat ${tally.heat[0]} to ${tally.heat[1]}, at most ${tally.peak}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
   );
   return { ended, steps, sectors, tally, lines, campaign };
 }
@@ -361,9 +418,11 @@ export function manyVoyages(defs, runs, options = {}) {
   // In the first three sectors: M19's Done when.
   const early = (r, test) => r.steps.filter((step) => step.sector <= 3 && test(step)).length;
   const hungryEarly = done.map((r) => early(r, (step) => step.hungry));
-  const policy = options.long === 'never' ? 'never' : `when heat is at ${defs.balance.huntHeat} or over`;
+  const ignoring = options.heat === 'ignore';
+  const policy = ignoring || options.long === 'never' ? 'never' : `when heat is at ${LONG_FROM} or over`;
+  const met = done.filter((r) => r.tally.hunts > 0).length;
   const lines = [
-    `${runs} voyages from launch, campaign seeds 1 to ${runs}, long jumps ${policy}, ${options.scans === 'no' ? 'no scans' : 'scanning'}, ${options.refit === 'no' ? 'no refits' : 'refitting at stations'}${options.fit?.length ? `, fitted with ${options.fit.join(' and ')}` : ''}. The median, then the least and most:`,
+    `${runs} voyages from launch, campaign seeds 1 to ${runs}, ${ignoring ? 'ignoring heat' : 'managing heat'}, long jumps ${policy}, ${options.scans === 'no' ? 'no scans' : 'scanning'}, ${options.refit === 'no' ? 'no refits' : 'refitting at stations'}${options.fit?.length ? `, fitted with ${options.fit.join(' and ')}` : ''}. The median, then the least and most:`,
     `Sectors crossed: ${spread(of('crossed'))}; ${done.filter((r) => r.ended).length} of ${done.length} reached the end of the charts; fed all the way in ${done.filter((r) => r.tally.hungryJumps === 0).length} of ${done.length}.`,
     `Jumps: ${spread(of('jumps'))}, long ${spread(of('longJumps'))}, hungry ${spread(of('hungryJumps'))}.`,
     `At the nodes: ${spread(of('events'))} events, ${spread(of('eventCredits'))} credits and ${spread(of('eventSupplies'))} supplies from them, ${spread(of('found'))} parts found, ${spread(of('sold'))} sold, ${spread(of('wounds'))} hit points lost; ${spread(of('scans'))} scans.`,
@@ -373,7 +432,8 @@ export function manyVoyages(defs, runs, options = {}) {
     `Refits: ${spread(of('fitted'))} parts fitted at ${spread(of('refits'))} stations, in ${done.filter((r) => r.tally.fitted > 0).length} of ${done.length} runs: ${fitsLine(defs, done)}.`,
     `In the first three sectors: restocked at ${spread(done.map((r) => early(r, (step) => step.kind === 'buy')))} stations; hungry on ${spread(hungryEarly)} jumps; fed all the way in ${hungryEarly.filter((n) => n === 0).length} of ${done.length}.`,
     `Supplies bought: ${spread(of('bought'))}, for ${spread(of('spent'))} credits. Launch credits: ${spread(done.map((r) => r.steps[0]?.credits[0] ?? 0))}.`,
-    `Heat at launch: ${spread(done.map((r) => r.tally.heat[0]))}; at the end: ${spread(done.map((r) => r.tally.heat[1]))}.`,
+    `Heat at launch: ${spread(done.map((r) => r.tally.heat[0]))}; at the end: ${spread(done.map((r) => r.tally.heat[1]))}; at most: ${spread(of('peak'))}. Jumps where the hunters might wait: ${spread(of('hotJumps'))}.`,
+    `The hunters: met in ${met} of ${done.length} runs, ${spread(of('hunts'))} a run (the task force ${spread(of('taskForces'))}), faced ${spread(of('huntsFaced'))}. Regroups ${spread(of('regroups'))}, days hidden ${spread(of('hides'))}, healing ${spread(of('rested'))}; transponder swaps ${spread(of('swaps'))} for ${spread(of('swapCredits'))} credits.`,
     ...results.filter((r) => !r.launched).map((r) => r.lines.at(-1)),
   ];
   return { lines, results };
@@ -405,7 +465,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const made = sets.length ? rulesWith(readData(), sets) : { ok: true, rules: indexDefs(readData()) };
   if (!made.ok) throw new Error(made.error);
   const fit = value('--fit', '');
-  const options = { long: value('--long', 'heat'), scans: value('--scan', 'yes'), refit: value('--refit', 'yes'), fit: fit ? fit.split(',') : [] };
+  const options = { long: value('--long', 'heat'), scans: value('--scan', 'yes'), refit: value('--refit', 'yes'), heat: value('--heat', 'manage'), fit: fit ? fit.split(',') : [] };
   const runs = Number(value('--runs', 0));
   console.log((runs ? manyVoyages(made.rules, runs, options) : voyage(made.rules, Number(value('--seed', 1)), options)).lines.join('\n'));
 }

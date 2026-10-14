@@ -59,6 +59,11 @@ export const icons = {
   // A hostile ship: a raider's hull in the crosshairs.
   hostile: icon('<path d="M5 15.5 12 6l7 9.5-7-2.5z"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/>'),
   scan: icon('<path d="M12 12 18.5 5.5"/><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M15.5 12a3.5 3.5 0 1 1-1-2.5"/>'),
+  // Heat on the run (M24): a nebula's cloud of dust, swirling; a bunk to
+  // rest a day on; and a transponder, its tag swapped for another.
+  nebula: icon('<path d="M7 18.5a4 4 0 0 1-.6-8 5.5 5.5 0 0 1 10.7-1.4 4.5 4.5 0 0 1 .4 9.4z"/><path d="M9 14.5c1.5-1.5 3.5-1.5 5 0"/>'),
+  regroup: icon('<path d="M3 19V6"/><path d="M3 14h18v5"/><path d="M21 14v-1.5a3 3 0 0 0-3-3h-7.5V14"/><circle cx="6.8" cy="11.3" r="1.7"/>'),
+  transponder: icon('<rect x="3" y="7" width="11" height="10" rx="1.5"/><path d="M6 11h5M6 14h3"/><path d="M17 7.5a5 5 0 0 1 2.5 8.5"/><path d="M19.5 12.5V16H16"/>'),
   // Launch: a ship standing on its tail, fins out, its flame under it.
   launch: icon('<path d="M12 2.5c3 2.4 4.5 5.9 4.5 10.5v3h-9v-3C7.5 8.4 9 4.9 12 2.5z"/><path d="m7.5 12.5-2.5 3v2l2.5-1.5M16.5 12.5l2.5 3v2l-2.5-1.5"/><circle cx="12" cy="9.5" r="1.6"/><path d="M10.5 19 12 22l1.5-3"/>'),
 };

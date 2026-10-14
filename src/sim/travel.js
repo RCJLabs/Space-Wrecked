@@ -19,6 +19,8 @@
 //            hostile ship, or null (encounter.js)
 //   hired    the recruits signed on at the sector's stations: [{ node,
 //            slot }] (recruits.js)
+//   swapped  whether the transponder has been swapped in this sector
+//            (transponder.js, M24)
 // campaign.supplies: what the ship carries, up to supplyCapacity.
 //
 // A jump goes to a linked node: each crew member eats jumpSupplies, and heat
@@ -39,10 +41,14 @@
 //
 // An event open at the ship's node holds every jump and scan until it is
 // settled, and so does an approach until it is over and put away. Arriving
-// where a hostile ship is opens the approach. What a node holds is known for
-// the way in, the jump point and stations, which are on the charts, and for
-// any node the ship has been at or next to; a scan shows every node within
-// scanRange links of the ship, for scanHeat.
+// where a hostile ship is opens the approach. From huntHeat, wherever a jump
+// comes out the pursuer's hunters may be waiting (hunt.js): each plan says
+// the chance, by the heat the ship arrives with, and arriving rolls it
+// before anything else there. An event where they wait comes once they are
+// dealt with. What a node holds is known for the way in, the jump point and
+// the kinds on the charts (stations, nebulae), and for any node the ship
+// has been at or next to; a scan shows every node within scanRange links
+// of the ship, for scanHeat.
 import { int } from '../core/rng.js';
 import { actOf, atStation } from './acts.js';
 import { flightChecklist, shipStats } from './constraints.js';
@@ -50,11 +56,13 @@ import { openApproach } from './encounter.js';
 import { tally } from './flags.js';
 import { generateSector } from './gen/sector.js';
 import { withHeat } from './heat.js';
+import { huntOdds, rollHunt } from './hunt.js';
 import { healCrew, healRate } from './medbay.js';
 
 const MAX_SEED = 0xffffffff;
-// The kinds of node on the charts: known before the ship gets near.
-const CHARTED = ['start', 'exit', 'station'];
+// The kinds of node on the charts, known before the ship gets near: the way
+// in, the jump point, and the kinds the data charts (data/sectors.json).
+const FIXED = ['start', 'exit'];
 
 // What the ship can carry: its lockers (baseSupplies) and its cargo holds.
 export function supplyCapacity(ship, rules) {
@@ -92,16 +100,17 @@ export function beginRun(campaign, rules) {
 
 // A run entering `sector`, with the sectors behind it.
 function freshRun(sector, past) {
-  return { sector, at: sector.start, seen: [sector.start], past, done: [], scans: [], result: null, approach: null, hired: [] };
+  return { sector, at: sector.start, seen: [sector.start], past, done: [], scans: [], result: null, approach: null, hired: [], swapped: false };
 }
 
 // The event open at the ship's node: { node, event } (the event from
 // data/events.json), or null when there is none or it is settled. An event
-// the data no longer has is passed by.
+// the data no longer has is passed by, and one where the hunters wait
+// comes once their approach is put away.
 export function openEvent(campaign, rules) {
   const { run } = campaign;
   const node = run?.sector.nodes[run.at];
-  if (!node?.event || run.done.includes(run.at)) return null;
+  if (!node?.event || run.done.includes(run.at) || run.approach) return null;
   const event = rules.events.get(node.event);
   return event ? { node, event } : null;
 }
@@ -133,7 +142,8 @@ export function within(sector, id, links) {
 // The nodes whose kind is known on the map (see the top of the file).
 export function knownNodes(run, rules) {
   const { sector } = run;
-  const known = new Set(sector.nodes.filter((node) => CHARTED.includes(node.type)).map((node) => node.id));
+  const charted = (type) => FIXED.includes(type) || rules.nodeTypes.get(type)?.charted === true;
+  const known = new Set(sector.nodes.filter((node) => charted(node.type)).map((node) => node.id));
   for (const id of run.seen) {
     known.add(id);
     for (const next of linked(sector, id)) known.add(next);
@@ -205,8 +215,9 @@ export function suppliesOver(campaign, rules) {
 // 'jump' or 'long', supplies (what it eats), left (the supplies the holds
 // can't take, left behind first), heat (its change), hungry (the supplies
 // carried don't cover it), heal (what the med bay heals each of the
-// wounded on the way) }, or { ok: false, error, check? } (check: the
-// flight check that keeps the ship at the station).
+// wounded on the way), hunt (the chance the hunters wait there, hunt.js
+// huntOdds) }, or { ok: false, error, check? } (check: the flight check
+// that keeps the ship at the station).
 export function jumpPlan(campaign, rules, to) {
   const { run } = campaign;
   if (!run || !onTheRun(campaign, rules)) return { ok: false, error: 'Jumps are made from the ship, on the run.' };
@@ -224,18 +235,22 @@ export function jumpPlan(campaign, rules, to) {
   const { jumpHeat, longJumpHeat, longJumpFactor } = rules.balance;
   const heal = healRate(campaign, rules) * (long ? longJumpFactor : 1);
   const left = suppliesOver(campaign, rules);
-  return { ok: true, kind: long ? 'long' : 'jump', supplies, left, heat: long ? longJumpHeat : jumpHeat, hungry: campaign.supplies - left < supplies, heal };
+  const heat = long ? longJumpHeat : jumpHeat;
+  const hunt = huntOdds(campaign, rules, withHeat(campaign.heat, heat), node.type);
+  return { ok: true, kind: long ? 'long' : 'jump', supplies, left, heat, hungry: campaign.supplies - left < supplies, heal, hunt };
 }
 
-// Jumps to node `to`, where a hostile ship opens the approach. Returns
-// { ok: true, campaign, plan } or { ok: false, error }.
+// Jumps to node `to`, where the hunters may be waiting, or a hostile ship
+// opens the approach. Returns { ok: true, campaign, plan, hunt (hunt.js
+// rollHunt's) } or { ok: false, error }.
 export function jump(campaign, rules, to) {
   const plan = jumpPlan(campaign, rules, to);
   if (!plan.ok) return plan;
   const moved = spend(campaign, rules, plan);
   const { run } = moved;
   const arrived = { ...moved, run: { ...run, at: to, seen: run.seen.includes(to) ? run.seen : [...run.seen, to], result: null } };
-  return { ok: true, plan, campaign: openApproach(arrived, rules) };
+  const met = rollHunt(arrived, rules);
+  return { ok: true, plan, campaign: openApproach(met.campaign, rules), hunt: met.hunt };
 }
 
 // What the station the ship is at sells: { ok: true, price (a supply),
@@ -261,10 +276,10 @@ export function buySupplies(campaign, rules, count) {
 }
 
 // What leaving the sector from its jump point takes: a jump's supplies,
-// heat and healing, into the next sector's way in. { ok: true, kind:
-// 'sector', supplies, left, heat, hungry, heal } or { ok: false, error,
-// last, check } (last: the act's last sector, past which the charts end;
-// check: as for a jump).
+// heat and healing, into the next sector's way in, where the hunters may
+// wait. { ok: true, kind: 'sector', supplies, left, heat, hungry, heal,
+// hunt } or { ok: false, error, last, check } (last: the act's last
+// sector, past which the charts end; check: as for a jump).
 export function leavePlan(campaign, rules) {
   const { run } = campaign;
   if (!run || !onTheRun(campaign, rules)) return { ok: false, error: 'Jumps are made from the ship, on the run.' };
@@ -276,11 +291,14 @@ export function leavePlan(campaign, rules) {
   if (check) return { ok: false, error: brokenWhy(check), check };
   const supplies = jumpSupplies(campaign, rules);
   const left = suppliesOver(campaign, rules);
-  return { ok: true, kind: 'sector', supplies, left, heat: rules.balance.jumpHeat, hungry: campaign.supplies - left < supplies, heal: healRate(campaign, rules) };
+  const { jumpHeat } = rules.balance;
+  const hunt = huntOdds(campaign, rules, withHeat(campaign.heat, jumpHeat), 'start');
+  return { ok: true, kind: 'sector', supplies, left, heat: jumpHeat, hungry: campaign.supplies - left < supplies, heal: healRate(campaign, rules), hunt };
 }
 
-// Leaves the sector into the next one. Returns { ok: true, campaign, plan }
-// or { ok: false, error }.
+// Leaves the sector into the next one, where the hunters may be waiting at
+// the way in. Returns { ok: true, campaign, plan, hunt } or { ok: false,
+// error }.
 export function leaveSector(campaign, rules) {
   const plan = leavePlan(campaign, rules);
   if (!plan.ok) return plan;
@@ -288,7 +306,8 @@ export function leaveSector(campaign, rules) {
   const { value: seed, state: rng } = int(moved.rng, 0, MAX_SEED);
   const past = [...campaign.run.past, campaign.run.sector.name];
   const sector = generateSector(rules, seed, campaign.run.sector.index + 1, { avoid: past });
-  return { ok: true, plan, campaign: { ...moved, rng, run: freshRun(sector, past) } };
+  const met = rollHunt({ ...moved, rng, run: freshRun(sector, past) }, rules);
+  return { ok: true, plan, campaign: met.campaign, hunt: met.hunt };
 }
 
 // A jump's cost: the supplies the holds can't take, left behind; supplies

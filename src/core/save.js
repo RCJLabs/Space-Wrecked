@@ -47,7 +47,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      (M23d)
 //  17  styling: every ship has a paint, a trim and its styling pieces
 //      (data/styling.json): the same ships, and a boarding fight's (M23f)
-export const SAVE_VERSION = 17;
+//  18  heat on the run: the run keeps whether the transponder has been
+//      swapped in its sector, and an approach whether it is the pursuer's
+//      hunters (M24)
+export const SAVE_VERSION = 18;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -230,6 +233,17 @@ export const MIGRATIONS = [
     from: 16,
     up: (data) =>
       eachShip(data, (ship) => (isObject(ship) ? { ...ship, paint: ship.paint ?? 'slate', trim: ship.trim ?? 'sky', styling: ship.styling ?? [] } : ship)),
+  },
+  // Heat on the run: a run under way hasn't swapped its transponder in its
+  // sector, and an approach going on is a hostile ship's, as every one was.
+  {
+    from: 17,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign) || !isObject(data.campaign.run)) return data;
+      const { run } = data.campaign;
+      const approach = isObject(run.approach) ? { ...run.approach, hunt: false } : run.approach;
+      return { ...data, campaign: { ...data.campaign, run: { ...run, swapped: false, approach } } };
+    },
   },
 ];
 

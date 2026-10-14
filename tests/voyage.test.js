@@ -14,11 +14,16 @@
 // bunks and the large hold each change the voyage (Law 1). And M23h's: the
 // careful player refits at stations with what it has on hand, each part kept
 // only while every flight check passes, and still crosses fed in 24 of 30.
+// And M24's: ignoring heat brings the pursuer's hunters, and managing it
+// keeps them off, the careful player still crossing fed in 24 of 30.
 // Each voyage launches from a test run of act 1 (tools/run.js) and is
 // played by the test player in tools/voyage.js. The voyages before M23h's
 // fly as fitted, with no refits, so each compares one part's difference.
+// Before M24 the careful player made no long jumps, since heat did nothing
+// in act 2; since M24 it manages heat, long jumps and all (the default).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { FACED } from '../src/sim/approach.js';
 import { HEAT_MAX, maxHp } from '../src/sim/campaign.js';
 import { outcomeFor } from '../src/sim/events.js';
 import { launchedAt, voyage } from '../tools/voyage.js';
@@ -31,20 +36,22 @@ const RUNS = 30;
 const lifts = Array.from({ length: RUNS }, (_, i) => launchedAt(rules, i + 1));
 const fly = (options) => lifts.map((lifted, i) => voyage(rules, i + 1, { refit: 'no', ...options }, lifted));
 const trips = fly({});
-const careful = fly({ long: 'never' });
+const careful = trips;
 // The careful player with a cargo hold fitted, room to feed a recruit; and
 // with a med bay.
-const cargo = fly({ long: 'never', fit: ['cargo'] });
-const medbay = fly({ long: 'never', fit: ['medbay'] });
+const cargo = fly({ fit: ['cargo'] });
+const medbay = fly({ fit: ['medbay'] });
 // M23e's parts for the voyage: surgery; bunks, with a cargo hold to feed
 // whoever they make room for; and the large hold. Surgery takes more power
 // than the start ship has spare, so a small reactor goes on with it: a ship
 // failing a flight check can't leave a station (M23h).
-const surgery = fly({ long: 'never', fit: ['smallreactor', 'surgery'] });
-const bunks = fly({ long: 'never', fit: ['cargo', 'bunks'] });
-const largehold = fly({ long: 'never', fit: ['largehold'] });
-// M23h: the careful player refitting at stations.
-const refitting = fly({ long: 'never', refit: 'yes' });
+const surgery = fly({ fit: ['smallreactor', 'surgery'] });
+const bunks = fly({ fit: ['cargo', 'bunks'] });
+const largehold = fly({ fit: ['largehold'] });
+// M23h: the careful player refitting at stations, as tools/voyage.js plays
+// by default; and M24: the same, ignoring heat.
+const refitting = fly({ refit: 'yes' });
+const ignoring = fly({ refit: 'yes', heat: 'ignore' });
 const SEEDS = [1, 2, 3];
 const clamp = (value, max) => Math.max(0, Math.min(max, value));
 
@@ -68,7 +75,7 @@ test('supplies and heat move as data/balance.json and data/events.json say, step
   for (const [voyages, hold] of runs) {
     for (const trip of voyages) for (const step of trip.steps) checkStep(step, balance.baseSupplies + hold, kinds);
   }
-  assert.deepEqual([...kinds].sort(), ['approach', 'boarding', 'buy', 'event', 'hire', 'jump', 'long', 'patch', 'repair', 'scan', 'sector'], 'every kind of step comes up');
+  assert.deepEqual([...kinds].sort(), ['approach', 'boarding', 'buy', 'event', 'hide', 'hire', 'jump', 'long', 'patch', 'repair', 'scan', 'sector', 'swap'], 'every kind of step comes up');
 });
 
 // One step of a voyage, as the rules say it moves things.
@@ -87,6 +94,22 @@ function checkStep(step, capacity, kinds) {
     assert.deepEqual([after, step.credits[1]], [supplies, step.credits[0]]);
     return;
   }
+  if (step.kind === 'swap') {
+    // M24: the transponder swapped, at its price, for its heat.
+    assert.equal(step.credits[0] - step.credits[1], balance.swapPrice);
+    assert.equal(step.heat[1], clamp(step.heat[0] + balance.swapHeat, HEAT_MAX));
+    assert.deepEqual([after, step.hp[1]], [supplies, step.hp[0]]);
+    return;
+  }
+  if (step.kind === 'regroup' || step.kind === 'hide') {
+    // M24: a day's rest: a jump's supplies, its healing and the med bay's,
+    // and its heat; hidden in a nebula, heat falls.
+    assert.equal(after, supplies - balance.jumpSupplies * step.crew);
+    assert.equal(step.heat[1], clamp(step.heat[0] + (step.kind === 'hide' ? balance.hideHeat : balance.regroupHeat), HEAT_MAX));
+    assert.deepEqual(step.hp[1], step.hp[0].map((hp, i) => Math.min(step.max[i], hp + step.heal)));
+    assert.equal(step.credits[1], step.credits[0]);
+    return;
+  }
   if (step.kind === 'approach') {
     // A wreck's scrap and the heat, and a boarding left due; nothing else moved.
     const { changes } = step;
@@ -94,7 +117,10 @@ function checkStep(step, capacity, kinds) {
     assert.deepEqual([after, step.hp[1], step.parts[1]], [supplies, step.hp[0], step.parts[0]]);
     assert.equal(step.credits[1] - step.credits[0], changes.credits);
     assert.equal(step.heat[1] - step.heat[0], changes.heat);
-    assert.ok(changes.heat === 0 || changes.heat === clamp(step.heat[0] + balance.approachHeat, HEAT_MAX) - step.heat[0]);
+    // The hunters faced (M24): heat falls to heatAfterRaid, whatever the
+    // shots added; otherwise the shots' heat, or none.
+    if (step.hunt && FACED.includes(step.outcome)) assert.equal(step.heat[1], Math.min(step.heat[0], balance.heatAfterRaid));
+    else assert.ok(changes.heat === 0 || changes.heat === clamp(step.heat[0] + balance.approachHeat, HEAT_MAX) - step.heat[0]);
     if (step.outcome === 'destroyed') assert.ok(changes.credits >= preset.scrap[0] && changes.credits <= preset.scrap[1], `scrap ${changes.credits}`);
     else assert.equal(changes.credits, 0);
     assert.deepEqual([changes.parts, changes.lost], [[], null]);
@@ -162,19 +188,32 @@ function checkStep(step, capacity, kinds) {
   // Hunger first, then the med bay's healing, up to each one's most.
   assert.deepEqual(step.hp[1], step.hp[0].map((hp, i) => Math.min(step.max[i], (step.hungry ? Math.max(1, hp - balance.hungerHp) : hp) + step.heal)));
   assert.equal(step.credits[1], step.credits[0]);
+  // The hunters' chance where it came out (M24), by the heat it came out
+  // with: none below huntHeat, and none at all where they never wait.
+  checkHunt(step);
+}
+
+// The hunters' chance a jump showed and rolled (hunt.js): its level's, by
+// the heat the ship came out with, or none where they never wait.
+function checkHunt(step) {
+  const heat = step.heat[1];
+  const chances = heat >= HEAT_MAX ? [0, 100] : heat >= balance.raidHeat ? [0, balance.taskForceChance] : heat >= balance.huntHeat ? [0, balance.huntChance] : [0];
+  assert.ok(chances.includes(step.hunt.chance), `chance ${step.hunt.chance} at heat ${heat}`);
+  assert.equal(step.hunt.chance === 0, step.hunt.roll === null && !step.hunt.found || heat < balance.huntHeat || step.hunt.why !== null);
+  if (step.hunt.roll !== null) assert.equal(step.hunt.found, step.hunt.roll < step.hunt.chance, 'rolled as shown');
 }
 
 test('ten events play from data, hostile ships are met and boardings fought, and the run pays its way: 24 or more of 30 careful runs cross all five sectors fed', () => {
-  assert.ok([...trips, ...careful].every((trip) => trip.launched && trip.ended), 'every run launches and reaches the end of the charts');
+  assert.ok(careful.every((trip) => trip.launched && trip.ended), 'every run launches and reaches the end of the charts');
   const played = new Set(trips.flatMap((trip) => trip.steps.filter((step) => step.kind === 'event').map((step) => step.event)));
   assert.equal(played.size, rules.events.size, `events played: ${[...played].join(', ')}`);
   assert.equal(rules.events.size, 10);
-  const met = [...trips, ...careful].flatMap((trip) => trip.steps.filter((step) => step.kind === 'approach'));
+  const met = careful.flatMap((trip) => trip.steps.filter((step) => step.kind === 'approach'));
   assert.ok(met.length >= RUNS, `hostile ships met: ${met.length}`);
   assert.ok(['escaped', 'boardedBy'].every((kind) => met.some((step) => step.outcome === kind)), `outcomes: ${[...new Set(met.map((step) => step.outcome))]}`);
   // Boardings at home, won and lost. (The test captain never closes to board,
   // and seldom disables a ship: boarding hers is tests/encounter.test.js's.)
-  const fought = [...trips, ...careful].flatMap((trip) => trip.steps.filter((step) => step.kind === 'boarding'));
+  const fought = [...careful, ...ignoring].flatMap((trip) => trip.steps.filter((step) => step.kind === 'boarding'));
   assert.ok(fought.some((step) => step.dir === 'you' && step.won) && fought.some((step) => step.dir === 'you' && !step.won), `fights at home: ${fought.filter((s) => s.dir === 'you').length}`);
   const fed = careful.filter((trip) => trip.tally.hungryJumps === 0).length;
   assert.ok(fed >= 24, `fed all the way in ${fed} of ${RUNS}`);
@@ -266,4 +305,30 @@ test('the careful player refits at stations with what it has, every flight check
   // Without refits, the same seeds fly as before.
   const bare = careful.map((trip) => trip.tally.hungryJumps === 0).filter(Boolean).length;
   assert.ok(fed >= bare - 2, `fed in ${fed} refitting, ${bare} without`);
+});
+
+test("ignoring heat brings the hunters, and managing it keeps them off: 27 or more of 30 meet them ignoring it, 6 or fewer managing it, and managing it 24 or more of 30 cross fed (M24)", () => {
+  const met = (voyages) => voyages.filter((trip) => trip.tally.hunts > 0).length;
+  const median = (voyages, key) => voyages.map((trip) => trip.tally[key]).sort((a, b) => a - b)[Math.floor(RUNS / 2)];
+  assert.ok(ignoring.every((trip) => trip.launched && trip.ended), 'heat never ends a run (Law 5)');
+  assert.ok(met(ignoring) >= 27, `ignoring heat, the hunters came in ${met(ignoring)} of ${RUNS}`);
+  assert.ok(met(refitting) <= 6, `managing heat, the hunters came in ${met(refitting)} of ${RUNS}`);
+  assert.ok(median(ignoring, 'hunts') > median(refitting, 'hunts'), 'more hunters a run ignoring heat');
+  const fed = refitting.filter((trip) => trip.tally.hungryJumps === 0).length;
+  assert.ok(fed >= 24, `fed all the way in ${fed} of ${RUNS}, managing heat`);
+  // Managing heat swaps, hides and long-jumps; ignoring it does none of these.
+  const sum = (voyages, key) => voyages.reduce((total, trip) => total + trip.tally[key], 0);
+  assert.ok(sum(refitting, 'swaps') > 0 && sum(refitting, 'hides') > 0 && sum(refitting, 'longJumps') > 0);
+  assert.deepEqual([sum(ignoring, 'swaps'), sum(ignoring, 'hides'), sum(ignoring, 'longJumps')], [0, 0, 0]);
+  // Every hunt is an approach against the pursuer's ships, from its hunters'
+  // level (hunt.js), and the task force comes too, ignoring heat.
+  const { hunters, taskForce } = rules.backgrounds.get('miner').pursuer.run;
+  const hunts = ignoring.flatMap((trip) => trip.steps.filter((step) => step.kind === 'approach' && step.hunt));
+  assert.ok(hunts.every((step) => [hunters, taskForce].includes(step.ship) && step.heat[0] >= balance.huntHeat));
+  assert.ok(hunts.some((step) => step.ship === hunters) && hunts.some((step) => step.ship === taskForce), 'the tug and the task force');
+  assert.ok(hunts.some((step) => FACED.includes(step.outcome) && step.heat[1] === balance.heatAfterRaid), 'faced, heat falls to heatAfterRaid');
+  // The days the ignoring player rests check out step by step, and so do
+  // its approaches and jumps.
+  for (const trip of ignoring) for (const step of trip.steps) if (['regroup', 'approach', 'jump', 'sector'].includes(step.kind)) checkStep(step, Infinity, new Set());
+  assert.ok(sum(ignoring, 'regroups') > 0, 'it regroups');
 });
