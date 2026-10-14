@@ -1004,6 +1004,7 @@ textarea {
 #ui .sct-buy,
 #ui .sct-scan,
 #ui .sct-rest,
+#ui .sct-swap,
 #ui .sct-jump,
 #ui .sct-on {
   display: flex;
@@ -1020,6 +1021,17 @@ textarea {
   border-color: var(--c-accent);
   background: var(--c-accent);
   color: var(--c-space);
+}
+
+/* The transponder swap, in the left panel at a station (sector.js): the
+   panel's width, its words allowed a second line. */
+#ui .sct-swap {
+  justify-content: center;
+  width: 100%;
+  margin: 6px 0 2px;
+  padding: 4px 10px;
+  white-space: normal;
+  text-align: center;
 }
 
 /* A station selling three things or more (sector.js): the foot's buttons
@@ -1045,6 +1057,7 @@ textarea {
 #ui .sct-on[data-armed='true'],
 #ui .sct-scan[data-armed='true'],
 #ui .sct-rest[data-armed='true'],
+#ui .sct-swap[data-armed='true'],
 #ui .sct-buy[data-armed='true'] {
   border-color: var(--c-accent);
   background: var(--c-panel);

@@ -22,7 +22,7 @@
 // the pursuer's hunters wait where it comes out, and the nodes they may
 // wait at are ringed in red; Regroup, away from stations, rests the crew a
 // day (Hide, in a nebula, sheds heat), and at a station the transponder is
-// swapped once a sector, each two taps. The run begins, its first sector
+// swapped once a sector, from the left panel, each two taps. The run begins, its first sector
 // rolled, the first time the map opens.
 //
 // Each node's button is its share of its column, so no two overlap and
@@ -71,7 +71,12 @@ export const sectorScreen = {
     const infoKind = node('p', 'sct-kind');
     const infoLines = node('ul', 'sct-lines');
     const infoText = node('p', 'sct-text');
-    info.append(infoTitle, infoName, infoKind, infoLines, infoText);
+    // At a station, the transponder swap sits here, under its kind, with
+    // what the station offers: in the foot, beside Buy, Repair and Patch
+    // up, it would leave the hint no room at 821 × 283.
+    const swapButton = toolButton('sct-swap', icons.transponder, 'Transponder');
+    swapButton.hidden = true;
+    info.append(infoTitle, infoName, infoKind, swapButton, infoLines, infoText);
     const map = node('div', 'sct-map');
     const links = document.createElementNS(SVG, 'svg');
     links.setAttribute('class', 'sct-links');
@@ -149,6 +154,7 @@ export const sectorScreen = {
       onTap(onButton, () => twoTaps('on', () => game.dispatch({ type: 'campaign/sector/leave', rules: defs }))),
       onTap(scanButton, () => twoTaps('scan', () => game.dispatch({ type: 'campaign/scan', rules: defs }))),
       onTap(restButton, () => twoTaps('rest', () => game.dispatch({ type: 'campaign/regroup', rules: defs }))),
+      onTap(swapButton, () => twoTaps('swap', () => game.dispatch({ type: 'campaign/swap', rules: defs }))),
       onTap(crewOpener, () => toggleCrew(!crewOpen)),
       onTap(shipOpener, refit),
       () => clearTimeout(armTimer),
@@ -193,7 +199,7 @@ export const sectorScreen = {
       showInfo(text, plan);
       // A station selling three things or more crowds the foot: its buttons
       // go without icons there, so the hint keeps room.
-      foot.dataset.crowded = String((text.offer?.buys.length ?? 0) + (text.repair ? 1 : 0) + (text.patch ? 1 : 0) + (text.swap ? 1 : 0) >= 3);
+      foot.dataset.crowded = String((text.offer?.buys.length ?? 0) + (text.repair ? 1 : 0) + (text.patch ? 1 : 0) >= 3);
 
       // An event open here takes the card, and holds everything else; once
       // settled, the card shows what happened until Carry on.
@@ -384,6 +390,7 @@ export const sectorScreen = {
         infoLines.replaceChildren(...plan.lines.map((line) => lineItem(line, plan.tone)));
         buys.replaceChildren();
         buys.hidden = true;
+        swapButton.hidden = true;
         setText(infoText, plan.node.text);
         return;
       }
@@ -412,14 +419,15 @@ export const sectorScreen = {
         buyButtons.push({ button, detach: onTap(button, () => twoTaps('repair', () => game.dispatch({ type: 'campaign/repair', rules: defs }))) });
         if (!repair.ok) infoLines.append(lineItem(repair.why, 'bad'));
       }
-      // The transponder swap, once a sector, for heat.
+      // The transponder swap, once a sector, for heat: in this panel.
       const { swap } = text;
+      swapButton.hidden = !swap;
       if (swap) {
-        const button = toolButton('sct-buy sct-swap', icons.transponder, armed === 'swap' ? swap.ask : swap.label);
-        button.dataset.armed = String(armed === 'swap');
-        button.disabled = !swap.ok;
-        button.setAttribute('aria-label', swap.ok ? swap.text.replace(' Tap again to swap.', '') : swap.why);
-        buyButtons.push({ button, detach: onTap(button, () => twoTaps('swap', () => game.dispatch({ type: 'campaign/swap', rules: defs }))) });
+        setText(swapButton.querySelector('span'), armed === 'swap' ? swap.ask : swap.label);
+        swapButton.dataset.armed = String(armed === 'swap');
+        swapButton.disabled = !swap.ok;
+        swapButton.setAttribute('aria-label', swap.ok ? swap.text.replace(' Tap again to swap.', '') : swap.why);
+        if (!swap.ok) infoLines.append(lineItem(swap.why, 'bad'));
       }
       // Patching up, for the crew's wounds.
       const { patch } = text;
