@@ -133,6 +133,21 @@ skins.ground = {
   wall: '#8b929b',
 };
 
+// The ground of a world settled (M26's colony), by its kind (data/worlds.json):
+// the land round the colony, the ground cleared for its grid, and the slabs
+// its buildings stand on. A kind without its own takes rock's.
+export const grounds = {
+  ocean: { land: '#1d3a40', cleared: '#2a4b50', slab: '#6c7a7c' },
+  desert: { land: '#4a3823', cleared: '#5c472d', slab: '#8f8270' },
+  ice: { land: '#3b4c5c', cleared: '#4d6172', slab: '#8796a5' },
+  jungle: { land: '#1d321c', cleared: '#3f3a28', slab: '#77776a' },
+  rock: { land: '#302d2b', cleared: '#423e3a', slab: '#7a746e' },
+};
+
+export function groundFor(kind) {
+  return grounds[kind] ?? grounds.rock;
+}
+
 // Bastion Arms (M23g): gunmetal fittings, orange hazard chevrons, engines
 // burning orange, and amber lines on the plans. Its parts take the ship's
 // paint and trim like any other's (FITTINGS).

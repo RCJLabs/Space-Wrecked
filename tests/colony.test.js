@@ -47,10 +47,10 @@ test('a part given comes off the ship and stands at the colony as the building o
 test('each refusal says why: parts that stay aboard, wrecks, a ship that could not fly, no room, away from the colony', () => {
   const campaign = settled();
   for (const type of ['bridge', 'engine', 'corridor', 'airlock']) {
-    assert.deepEqual(donatePlan(campaign, rules, uidOf(campaign, type)), { ok: false, error: 'It stays aboard: the colony has no use for it.' }, type);
+    assert.deepEqual(donatePlan(campaign, rules, uidOf(campaign, type)), { ok: false, error: 'Stays aboard: no use to the colony.' }, type);
   }
   const quarters = uidOf(campaign, 'quarters');
-  assert.deepEqual(donatePlan({ ...campaign, wrecks: { [quarters]: 'fire' } }, rules, quarters), { ok: false, error: "It's wrecked: there's nothing left in it to give." });
+  assert.deepEqual(donatePlan({ ...campaign, wrecks: { [quarters]: 'fire' } }, rules, quarters), { ok: false, error: "Wrecked: there's nothing left to give." });
   // The one reactor: without it the ship has no power.
   assert.deepEqual(donatePlan(campaign, rules, uidOf(campaign, 'reactor')), { ok: false, error: "The ship couldn't fly without it: power −7 (0 made, 7 used)." });
   // Quarters that join the reactor to the bridge.
@@ -69,7 +69,7 @@ test('each refusal says why: parts that stay aboard, wrecks, a ship that could n
   const small = { ...rules, colony: { ...rules.colony, site: { width: 3, height: 2, gap: 1 } } };
   const first = donate(campaign, small, quarters);
   assert.equal(first.ok, true, first.error);
-  assert.deepEqual(donatePlan(first.campaign, small, uidOf(campaign, 'lifesupport')), { ok: false, error: "There's no room left on the colony's grid for it." });
+  assert.deepEqual(donatePlan(first.campaign, small, uidOf(campaign, 'lifesupport')), { ok: false, error: "There's no room left on the colony's grid." });
   // Not a part of the ship, or not at the colony.
   assert.deepEqual(donatePlan(campaign, rules, 99), { ok: false, error: "That part isn't on the ship." });
   assert.deepEqual(donatePlan({ ...campaign, act: 2, colony: null }, rules, quarters), { ok: false, error: 'Parts are given at the colony.' });

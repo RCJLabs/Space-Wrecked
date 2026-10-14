@@ -70,7 +70,7 @@ import { settle } from '../src/sim/settle.js';
 import { survey } from '../src/sim/survey.js';
 import { swapTransponder } from '../src/sim/transponder.js';
 import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer } from '../src/sim/travel.js';
-import { stubText } from '../src/ui/campaign/launchText.js';
+import { runRecord } from '../src/ui/campaign/launchText.js';
 import { captainOrder } from './approachPlan.js';
 import { fightBoarding } from './boarding.js';
 import { readData } from './data.js';
@@ -158,7 +158,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     systemHungry: 0,
     // The world settled: { name, kind, surveyed, score (as the player knew
     // it), best (the best score of the system's worlds, all numbers known),
-    // record (the act's, as act 3's stub says it) }, or null.
+    // record (the act's, as the colony says it) }, or null.
     settled: null,
     // The colony founded (foundColony), or null.
     colony: null,
@@ -326,7 +326,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
         const { world } = campaign.colony;
         const best = Math.max(...before.run.sector.nodes.filter((node) => node.world).map((node) => worldScore(defs, node.world, true)));
         record('settle', before, { world: world.name });
-        tally.settled = { name: world.name, kind: world.kind, surveyed: world.surveyed, score: worldScore(defs, world, world.surveyed), best, record: stubText(campaign, defs).record.lines };
+        tally.settled = { name: world.name, kind: world.kind, surveyed: world.surveyed, score: worldScore(defs, world, world.surveyed), best, record: runRecord(campaign, defs) };
         lines.push(`   Settled ${world.name} (${kindName(defs, world)}, ${world.surveyed ? `surveyed, scoring ${worldScore(defs, world, true)}` : `not surveyed, its kind scoring ${worldScore(defs, world, false)}`}; the system's best scores ${best}): act 2 ends.`);
         landed = campaign;
         const founded = foundColony(campaign, defs);

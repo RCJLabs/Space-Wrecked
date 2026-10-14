@@ -157,13 +157,13 @@ export function donatePlan(campaign, rules, uid) {
   const def = rules.modules.get(module.type);
   if (!def) return { ok: false, error: 'That part is unknown.' };
   const building = buildingOf(module.type, rules);
-  if (!building) return { ok: false, error: 'It stays aboard: the colony has no use for it.' };
-  if (String(uid) in (campaign.wrecks ?? {})) return { ok: false, error: "It's wrecked: there's nothing left in it to give." };
+  if (!building) return { ok: false, error: 'Stays aboard: no use to the colony.' };
+  if (String(uid) in (campaign.wrecks ?? {})) return { ok: false, error: "Wrecked: there's nothing left to give." };
   const removed = applyCommand(campaign.ship, rules, { op: 'remove', uid });
   const failing = shipChecklist({ ...campaign, ship: removed.ship }, rules).find((line) => line.ok !== true);
   if (failing) return { ok: false, error: `The ship couldn't fly without it: ${lowerFirst(failing.text)}.` };
   const placement = spotFor(campaign.colony, module.type, rules);
-  if (!placement) return { ok: false, error: "There's no room left on the colony's grid for it." };
+  if (!placement) return { ok: false, error: "There's no room left on the colony's grid." };
   return { ok: true, uid, type: module.type, building, placement, gives: givesOf(def), ship: removed.ship };
 }
 

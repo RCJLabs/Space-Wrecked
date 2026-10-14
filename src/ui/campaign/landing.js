@@ -3,8 +3,8 @@
 // its engines, sets down on the world settled and its engines die away
 // (render/liftOff.js landingAt), while the world's name and its kind's words
 // for the landing come up. Skip goes to the end; at the end, Continue goes
-// on to where the campaign is now: the stub that stands in for act 3
-// (stub.js). The campaign was saved as it settled, so quitting part way
+// on to where the campaign is now: act 3's home, the colony (colony.js).
+// The campaign was saved as it settled, so quitting part way
 // reopens there too. With reduced motion (the motion setting, ../motion.js)
 // nothing moves: the ship stands down, and the words are all there.
 import { loadContent } from '../../platform/content.js';

@@ -3,6 +3,7 @@
 // the dev sandboxes.
 import { approachScreen } from './campaign/approach.js';
 import { captainScreen } from './campaign/captain.js';
+import { colonyScreen } from './campaign/colony.js';
 import { constructionScreen } from './campaign/construction.js';
 import { campaignFightScreen } from './campaign/fight.js';
 import { hangarScreen } from './campaign/hangar.js';
@@ -11,7 +12,6 @@ import { landingScreen } from './campaign/landing.js';
 import { launchScreen } from './campaign/launch.js';
 import { sectorScreen } from './campaign/sector.js';
 import { shopScreen } from './campaign/shop.js';
-import { stubScreen } from './campaign/stub.js';
 import { sandboxes } from './dev/sandboxes.js';
 import { settingsScreen } from './settings.js';
 import { titleScreen } from './title.js';
@@ -29,7 +29,7 @@ const screens = {
   sector: sectorScreen,
   approach: approachScreen,
   landing: landingScreen,
-  stub: stubScreen,
+  colony: colonyScreen,
 };
 
 export function screenFor(id) {
