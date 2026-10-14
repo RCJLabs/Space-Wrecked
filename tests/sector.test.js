@@ -105,9 +105,12 @@ test('the nodes between roll their kinds from the mix, and those that hold event
   }
   for (const kind of Object.keys(spec.mix)) assert.ok(kinds.get(kind) > 100, `${kind} comes up: ${kinds.get(kind)}`);
   assert.equal(events.size, rules.events.size, 'every event comes up');
-  // The mix's weights show: empty space (3) comes about three times as often as a trader (1).
+  // The mix's weights show: empty space comes as many times as often as a
+  // trader as its weight is times the trader's.
   const ratio = kinds.get('empty') / kinds.get('trader');
-  assert.ok(ratio > 2.4 && ratio < 3.8, `empty to trader: ${ratio}`);
+  const weights = rules.sectors.mix;
+  const expected = weights.empty / weights.trader;
+  assert.ok(ratio > expected * 0.8 && ratio < expected * 1.25, `empty to trader: ${ratio}, the mix says ${expected}`);
 });
 
 test('the same seed always gives the same sector, and names to avoid are avoided', () => {

@@ -20,6 +20,18 @@
           "text": "Put something toward the debt. Con-Reg calls off the dogs while the money comes in.",
           "credits": 50,
           "heat": 15
+        },
+        "run": {
+          "levels": {
+            "calm": "Out here Con-Reg is a logo on old crates. Keep it that way.",
+            "rumors": "Station talk has your registration on Con-Reg's wanted board, with a finder's fee.",
+            "hunters": "A Con-Reg repo tug is working the lanes, asking after you by name.",
+            "taskForce": "Con-Reg has sent a task force: a gunship, a court order and nobody who wants to hear about it.",
+            "cornered": "Con-Reg knows where you'll come out. The next jump meets them."
+          },
+          "hunters": "repotug",
+          "taskForce": "repogunship",
+          "faced": "Con-Reg will have to send for another crew. That buys some quiet."
         }
       },
       "launch": {

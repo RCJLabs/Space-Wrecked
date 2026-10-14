@@ -18,6 +18,12 @@
 // The approach stays, with its outcome, until the player carries on, or
 // until its boarding fight is over.
 //
+// The pursuer's hunters (hunt.js, M24) are an approach too, opened where
+// they wait (openHunt) rather than from the node: a hostile ship there
+// slips away, and the node isn't settled by them, so an event there waits
+// until they have been dealt with. Facing them (approach.js FACED) drops
+// heat to heatAfterRaid, past what the shots added; getting away leaves it.
+//
 // A boarding fight is on the boarded ship's map, wrecked rooms and all
 // (Law 2): her generated ship's when the player boards her, with her crew
 // (the preset's party, data/encounters.json) on her bridge and the player's
@@ -36,6 +42,7 @@
 //
 // run.approach, while one is open:
 //   node     the node it is at
+//   hunt     whether it is the pursuer's hunters (M24)
 //   enemy    { ship (the preset), name, crew }
 //   them     the other ship's side: { ship, damage, wrecked }
 //   you      the player's side: { damage, wrecked }; its ship is the
@@ -53,7 +60,7 @@
 // crew boarded her) | 'you' (she boarded the player's ship), salvage:
 // { parts, credits } (what a win pays) }.
 import { int, pick } from '../core/rng.js';
-import { BOARDINGS, enemyOrder, playRound } from './approach.js';
+import { BOARDINGS, enemyOrder, FACED, playRound } from './approach.js';
 import { createBattle } from './battle.js';
 import { crewUnit, endFight } from './campaign.js';
 import { defaultSquad, squadMembers, squadProblem } from './crew.js';
@@ -91,11 +98,34 @@ export function openApproach(campaign, rules) {
   const { run } = campaign;
   const node = run?.sector.nodes[run.at];
   if (!node?.hostile || run.approach || run.done.includes(run.at)) return campaign;
-  const preset = rules.ships.get(node.hostile.ship);
-  const made = preset?.tactics ? generateShip(rules, preset.id, node.hostile.seed) : null;
-  if (!made?.ok) return campaign;
-  const approach = {
-    node: run.at,
+  const approach = approachAgainst(campaign, rules, node.hostile.ship, node.hostile.seed, false);
+  return approach ? { ...campaign, run: { ...run, approach } } : campaign;
+}
+
+// Opens the pursuer's hunters' approach where the ship is (hunt.js): their
+// ship, preset `ship`, generated from `seed`. A hostile ship waiting there
+// slips away, its node settled. The flags count the hunters met. The
+// campaign as it was if an approach is open already, or the preset won't
+// generate.
+export function openHunt(campaign, rules, ship, seed) {
+  const { run } = campaign;
+  if (!run || run.approach) return campaign;
+  const approach = approachAgainst(campaign, rules, ship, seed, true);
+  if (!approach) return campaign;
+  const node = run.sector.nodes[run.at];
+  const done = node.hostile && !run.done.includes(run.at) ? [...run.done, run.at] : run.done;
+  return { ...campaign, flags: tally(campaign.flags, { hunts: 1 }), run: { ...run, done, approach } };
+}
+
+// A fresh approach at the ship's node against preset `id` generated from
+// `seed`, or null if the preset has no tactics or won't generate.
+function approachAgainst(campaign, rules, id, seed, hunt) {
+  const preset = rules.ships.get(id);
+  const made = preset?.tactics ? generateShip(rules, preset.id, seed) : null;
+  if (!made?.ok) return null;
+  return {
+    node: campaign.run.at,
+    hunt,
     enemy: { ship: preset.id, name: preset.name, crew: made.crew },
     them: { ship: made.ship, damage: {}, wrecked: made.wrecked },
     you: { damage: {}, wrecked: wrecksOn(campaign.ship, campaign.wrecks) },
@@ -104,7 +134,6 @@ export function openApproach(campaign, rules) {
     last: null,
     outcome: null,
   };
-  return { ...campaign, run: { ...run, approach } };
 }
 
 // Gives the player's order for this round, and plays it. Returns { ok:
@@ -152,7 +181,10 @@ function settle(campaign, rules, outcome) {
     rng = scrap.state;
     changes.credits = scrap.value;
   }
-  const heat = approach.fired ? withHeat(campaign.heat, rules.balance.approachHeat) : campaign.heat;
+  // The hunters faced: the pursuer has to send for another crew.
+  const faced = approach.hunt === true && FACED.includes(outcome.kind);
+  const fired = approach.fired ? withHeat(campaign.heat, rules.balance.approachHeat) : campaign.heat;
+  const heat = faced ? Math.min(campaign.heat, rules.balance.heatAfterRaid) : fired;
   changes.heat = heat - campaign.heat;
   const kept = juryRig(campaign.ship, approach.you.wrecked, rules);
   changes.patched = kept.patched;
@@ -164,8 +196,9 @@ function settle(campaign, rules, outcome) {
     credits: campaign.credits + changes.credits,
     heat,
     wrecks: kept.wrecked,
-    flags: tally(campaign.flags, { approaches: 1, approachesWon: won, approachesLost: outcome.kind === 'boardedBy' ? 1 : 0 }),
-    run: { ...run, done: [...run.done, approach.node], approach: { ...approach, outcome: { ...outcome, changes, boarding } } },
+    flags: tally(campaign.flags, { approaches: 1, approachesWon: won, approachesLost: outcome.kind === 'boardedBy' ? 1 : 0, huntsFaced: faced ? 1 : 0 }),
+    // The hunters don't settle the node: an event there is still to come.
+    run: { ...run, done: approach.hunt ? run.done : [...run.done, approach.node], approach: { ...approach, outcome: { ...outcome, changes, boarding } } },
   };
 }
 

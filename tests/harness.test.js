@@ -48,7 +48,7 @@ test('a balance number can change for a run, checked like the data, the file lef
 });
 
 test('ships to fight on: the example, the presets, a ship script or a blueprint code', () => {
-  assert.deepEqual(shipsFor(null, rules).map((s) => s.label), ['Example ship', 'Pirate cutter', 'Patrol corvette', 'Derelict hauler']);
+  assert.deepEqual(shipsFor(null, rules).map((s) => s.label), ['Example ship', 'Pirate cutter', 'Patrol corvette', 'Derelict hauler', 'Con-Reg repo tug', 'Con-Reg gunship']);
   assert.deepEqual(shipsFor(['hauler'], rules), [{ label: 'Derelict hauler', preset: 'hauler' }]);
   const [script] = shipsFor([EXAMPLE_SCRIPT], rules);
   assert.equal(script.label, 'example-ship');
@@ -61,11 +61,11 @@ test('ships to fight on: the example, the presets, a ship script or a blueprint 
 
 test('a run is the same every time, and each ship keeps its own fights', () => {
   const ships = shipsFor(null, rules);
-  const records = run({ ships, fights: 16 });
-  assert.deepEqual(records, run({ ships, fights: 16 }));
+  const records = run({ ships, fights: 4 * ships.length });
+  assert.deepEqual(records, run({ ships, fights: 4 * ships.length }));
   // Ships take turns, four fights each; the example ship's fights don't
   // change when the others leave the list.
-  assert.deepEqual(records.map((r) => r.ship).slice(0, 4), ships.map((s) => s.label));
+  assert.deepEqual(records.map((r) => r.ship).slice(0, ships.length), ships.map((s) => s.label));
   const alone = run({ ships: [ships[0]], fights: 4 });
   assert.deepEqual(alone, records.filter((r) => r.ship === 'Example ship'));
   // Another seed, other fights.
@@ -80,7 +80,7 @@ test("a summary's numbers add up", () => {
     assert.equal(row.crew.count + row.enemy.count + row.stalls.count, row.fights, row.label);
     assert.ok(row.crew.low <= row.crew.rate && row.crew.rate <= row.crew.high);
   }
-  assert.deepEqual(summary.ships.map((row) => row.fights), [6, 6, 6, 6]);
+  assert.deepEqual(summary.ships.map((row) => row.fights), [4, 4, 4, 4, 4, 4]);
   const shots = records.flatMap((r) => r.shots);
   assert.equal(summary.shots.total, shots.length);
   assert.equal(summary.shots.bands.reduce((sum, band) => sum + band.shots, 0), shots.length);

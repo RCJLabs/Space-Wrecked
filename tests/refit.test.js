@@ -159,8 +159,8 @@ test('an act 2 save opens at the same version and refits at a station', () => {
   const text = JSON.stringify(makeSave({ ...initialState(1), campaign }));
   const opened = parseSave(text);
   assert.equal(opened.ok, true, opened.error);
-  assert.equal(SAVE_VERSION, 17);
-  assert.equal(opened.save.version, 17);
+  // M23h needed no bump (saves were 17 then; M24 made them 18).
+  assert.equal(opened.save.version, SAVE_VERSION);
   const reopened = opened.save.data.campaign;
   const cargo = fitPart(reopened.ship, rules, 'cargo');
   assert.deepEqual(refitShip(reopened, cargo.ship, rules).parts, { corridor: 2 });

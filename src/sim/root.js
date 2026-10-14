@@ -13,8 +13,10 @@ import { launch } from './launch.js';
 import { beginRaid, endRaid } from './raid.js';
 import { patchCrew } from './patch.js';
 import { dismissCrew, hireRecruit } from './recruits.js';
+import { regroup } from './regroup.js';
 import { repairShip } from './repair.js';
 import { defaultSettings, fightSettings, reduceSettings } from './settings.js';
+import { swapTransponder } from './transponder.js';
 import { beginRun, buySupplies, jump, leaveSector, scan } from './travel.js';
 
 // The screen each place in a campaign is played on in act 1, and every
@@ -24,6 +26,9 @@ import { beginRun, buySupplies, jump, leaveSector, scan } from './travel.js';
 // stub stands in for act 3 until it is built.
 export const PLACE_SCREENS = { hub: 'hub', fight: 'campaign-fight' };
 export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'sector', 'approach', 'stub'];
+// The moves on the run that can open an approach (a hostile ship, or the
+// pursuer's hunters) or put one away, and so change the screen.
+const SCREEN_CHANGES = ['campaign/jump', 'campaign/sector/leave', 'campaign/regroup', 'campaign/approach/close'];
 
 // The screen a campaign is played on where it is now: its fight, or its
 // act's home: the hangar in act 1, the sector map on the run (act 2), or the
@@ -80,10 +85,16 @@ export function initialState(seed) {
 //                                  and its screen
 //   campaign/supplies { count, rules }   supplies bought at a station
 //   campaign/sector/leave { rules }   on from the jump point into the next
-//                                  sector
+//                                  sector, where the hunters may wait
 //   campaign/event/choose { choice, rules }   a choice made at the event
 //                                  open where the ship is (events.js)
 //   campaign/scan { rules }        a scan from where the ship is
+//   campaign/regroup { rules }     a day's rest where the ship is, or a day
+//                                  hidden in a nebula (regroup.js); the
+//                                  hunters may find it, which opens their
+//                                  approach and its screen
+//   campaign/swap { rules }        the transponder swapped at a station
+//                                  (transponder.js)
 //   campaign/approach/order { order, rules }   the player's order for a
 //                                  round of the approach (encounter.js)
 //   campaign/approach/close        Carry on, once the approach is over, or
@@ -173,6 +184,8 @@ export function reduce(state, action) {
     case 'campaign/sector/leave':
     case 'campaign/event/choose':
     case 'campaign/scan':
+    case 'campaign/regroup':
+    case 'campaign/swap':
     case 'campaign/approach/order':
     case 'campaign/approach/close':
     case 'campaign/repair':
@@ -186,6 +199,8 @@ export function reduce(state, action) {
         'campaign/sector/leave': (c) => leaveSector(c, action.rules),
         'campaign/event/choose': (c) => chooseEvent(c, action.rules, action.choice),
         'campaign/scan': (c) => scan(c, action.rules),
+        'campaign/regroup': (c) => regroup(c, action.rules),
+        'campaign/swap': (c) => swapTransponder(c, action.rules),
         'campaign/approach/order': (c) => giveOrder(c, action.rules, action.order),
         'campaign/approach/close': (c) => closeApproach(c),
         'campaign/repair': (c) => repairShip(c, action.rules),
@@ -195,8 +210,9 @@ export function reduce(state, action) {
       }[action.type];
       const done = state.campaign && move(state.campaign);
       if (!done?.ok) return state;
-      // Meeting a hostile ship, and putting the approach away, change screen.
-      const screen = action.type === 'campaign/jump' || action.type === 'campaign/approach/close' ? campaignScreen(done.campaign) : state.screen;
+      // Meeting a hostile ship or the hunters, and putting the approach
+      // away, change screen.
+      const screen = SCREEN_CHANGES.includes(action.type) ? campaignScreen(done.campaign) : state.screen;
       return { ...state, campaign: done.campaign, screen };
     }
     default: {

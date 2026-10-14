@@ -12,6 +12,11 @@ import { atHangar } from './acts.js';
 import { HEAT_MAX } from './campaign.js';
 
 export const LEVELS = ['calm', 'rumors', 'hunters', 'raid'];
+// On the run (act 2, M24) the levels are the run's own, each with the
+// pursuer's words (its run, data/backgrounds.json): from huntHeat its
+// hunters may wait where a jump comes out, from raidHeat its task force,
+// and at HEAT_MAX they wait at every one (hunt.js).
+export const RUN_LEVELS = ['calm', 'rumors', 'hunters', 'taskForce', 'cornered'];
 
 // The level heat is at.
 export function heatLevel(heat, rules) {
@@ -19,6 +24,13 @@ export function heatLevel(heat, rules) {
   if (heat >= raidHeat) return 'raid';
   if (heat >= huntHeat) return 'hunters';
   return heat >= rumorHeat ? 'rumors' : 'calm';
+}
+
+// The level heat is at on the run.
+export function runLevel(heat, rules) {
+  if (heat >= HEAT_MAX) return 'cornered';
+  const level = heatLevel(heat, rules);
+  return level === 'raid' ? 'taskForce' : level;
 }
 
 // The pursuer after the campaign (its background's), or null.

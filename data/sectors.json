@@ -2,12 +2,13 @@
   "columns": 7,
   "rows": [2, 3],
   "extraLinkChance": 35,
-  "counts": { "station": [2, 2] },
-  "mix": { "empty": 3, "derelict": 2, "distress": 2, "trader": 1, "hazard": 2, "hostile": 2 },
+  "counts": { "station": [2, 2], "nebula": [1, 1] },
+  "mix": { "empty": 2, "derelict": 2, "distress": 2, "trader": 1, "hazard": 2, "hostile": 2 },
   "nodes": [
     { "id": "start", "name": "Way in", "text": "Where the ship came into the sector." },
     { "id": "exit", "name": "Jump point", "text": "The way on to the next sector. Jump from here and this one is behind you." },
-    { "id": "station", "name": "Station", "names": "stations", "text": "A tired station selling supplies by the crate. Cash only, and the coffee is extra." },
+    { "id": "station", "name": "Station", "names": "stations", "charted": true, "safe": true, "text": "A tired station selling supplies by the crate. Cash only, and the coffee is extra." },
+    { "id": "nebula", "name": "Nebula", "names": "nebulae", "charted": true, "hides": true, "text": "A cloud of charged dust where sensors see nothing, theirs included. A good place to sit tight." },
     { "id": "empty", "name": "Empty space", "names": "places", "text": "Rock, dust and nobody. Nothing to stop for." },
     { "id": "derelict", "name": "Derelict", "names": "places", "events": true, "text": "Something dead and drifting, with whatever it carried still aboard." },
     { "id": "distress", "name": "Distress call", "names": "places", "events": true, "text": "Someone on the emergency band, asking for help. Or saying they are." },
@@ -53,6 +54,7 @@
       "Last Chance Supply",
       "Dock Seven"
     ],
+    "nebulae": ["The Smudge", "Grey Veil", "Static Bloom", "The Murk", "Soot Cloud", "Ghost Water", "The Haze", "Ash Drift", "Blind Spot", "Fogbank", "Pea Soup", "The Shroud"],
     "places": [
       "Drift Four",
       "Dust Bank",

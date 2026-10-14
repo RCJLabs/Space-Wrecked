@@ -83,7 +83,8 @@ test("act 1's goal and the shop count either maker's part", () => {
 });
 
 test("saves and codes keep their versions: old ones load with the Yard's parts, and Bastion's parts round-trip", () => {
-  assert.equal(SAVE_VERSION, 17);
+  // M23g needed neither number bumped (saves were 17 then; M24 made them 18).
+  assert.ok(SAVE_VERSION >= 17);
   assert.equal(BLUEPRINT_VERSION, 4);
   // The example ship's code as main made it before M23g.
   const old = decodeBlueprint('wtb.4.B3N0YXJ0ZXIHcm91bmRlZAVzbGF0ZQNza3kIBmJyaWRnZQdyZWFjdG9yCHF1YXJ0ZXJzCGNvcnJpZG9yBmVuZ2luZQtsaWZlc3VwcG9ydAdhaXJsb2NrBndlYXBvbgsADxkBDBQCCRQDCRwDChwDCxwEBxgFCSAEByAGCyAHDSIAAA.b6db7753', rules);

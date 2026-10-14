@@ -43,7 +43,7 @@ test('what the map knows: the charted kinds and the nodes next to the route; the
   const text = sectorText(campaign, rules);
   for (const n of text.nodes) {
     const node = sector.nodes[n.id];
-    const known = ['start', 'exit', 'station'].includes(node.type) || n.id === sector.start || linked(sector, sector.start).includes(n.id);
+    const known = ['start', 'exit', 'station', 'nebula'].includes(node.type) || n.id === sector.start || linked(sector, sector.start).includes(n.id);
     assert.equal(n.known, known, `node ${n.id}`);
     assert.equal(n.type, known ? node.type : 'unknown');
   }
@@ -68,7 +68,7 @@ test('a jump picked says what it eats and what heat does; out of reach, why', ()
   const near = jumpText(campaign, rules, next);
   assert.equal(near.ok, true);
   assert.equal(near.title, `Jump to ${sector.nodes[next].name}`);
-  assert.deepEqual(near.lines, [`Eats 3 supplies: ${balance.baseSupplies - 3} left.`, 'Heat +3: 33.']);
+  assert.deepEqual(near.lines, [`Eats 3 supplies: ${balance.baseSupplies - 3} left.`, `Heat +${balance.jumpHeat}: ${30 + balance.jumpHeat}.`]);
   assert.deepEqual(near.way, [sector.start, next]);
   const far = [...reach(sector, sector.start)].find(([, links]) => links === 2)[0];
   const long = jumpText(campaign, rules, far);
@@ -108,7 +108,7 @@ test('the jump point leads on, until the charts end at the act\'s last', () => {
   const campaign = onRun({ heat: 10 });
   const exit = at(campaign, campaign.run.sector.exit);
   const text = sectorText(exit, rules);
-  assert.deepEqual(text.leave, { ok: true, last: false, label: 'Jump on', ask: 'Jump on?', title: 'On to sector 2', lines: [`Eats 3 supplies: ${balance.baseSupplies - 3} left.`, 'Heat +3: 13.'], tone: 'info' });
+  assert.deepEqual(text.leave, { ok: true, last: false, label: 'Jump on', ask: 'Jump on?', title: 'On to sector 2', lines: [`Eats 3 supplies: ${balance.baseSupplies - 3} left.`, `Heat +${balance.jumpHeat}: ${10 + balance.jumpHeat}.`], tone: 'info' });
   assert.match(text.hint.text, /Jump on for sector 2/);
   const last = { ...exit, run: { ...exit.run, sector: { ...exit.run.sector, index: rules.acts.get(2).sectors } } };
   const end = sectorText(last, rules);

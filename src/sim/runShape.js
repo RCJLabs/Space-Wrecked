@@ -27,7 +27,7 @@ const ID = /^[a-z][a-z0-9-]*$/;
 // null if it reads.
 export function runProblem(run) {
   if (!isRecord(run)) return 'is unreadable';
-  const { sector, at, seen, past, done, scans, result, approach, hired } = run;
+  const { sector, at, seen, past, done, scans, result, approach, hired, swapped } = run;
   if (!isRecord(sector) || !isInt(sector.index, 1, 99) || !isName(sector.name)) return 'has an unreadable sector';
   const { nodes, links } = sector;
   if (!Array.isArray(nodes) || nodes.length < 2 || nodes.length > MAX_NODES) return 'has an unreadable map';
@@ -63,19 +63,23 @@ export function runProblem(run) {
   // each slot once.
   const isHire = (h) => isRecord(h) && isNode(h.node) && seen.includes(h.node) && isInt(h.slot, 0, MAX_SLOT);
   if (!Array.isArray(hired) || !hired.every(isHire) || new Set(hired.map((h) => `${h.node}:${h.slot}`)).size !== hired.length) return 'has unreadable recruits';
+  if (typeof swapped !== 'boolean') return 'has an unreadable transponder';
   return null;
 }
 
 // The approach going on (encounter.js): where the ship is, against the
 // hostile ship there, with both sides' damage and wrecks, and its outcome
-// once it is over (when the node is settled, and not before).
+// once it is over (when the node is settled, and not before); or against
+// the pursuer's hunters (hunt.js), wherever they found the ship, which
+// settle nothing.
 function isApproach(approach, nodes, at, done) {
-  if (!isRecord(approach) || approach.node !== at || !nodes[at].hostile) return false;
+  if (!isRecord(approach) || approach.node !== at || typeof approach.hunt !== 'boolean' || !(approach.hunt || nodes[at].hostile)) return false;
   const { enemy, them, you, round, fired, last, outcome } = approach;
   if (!isRecord(enemy) || !isId(enemy.ship) || !isText(enemy.name) || !isInt(enemy.crew, 1, MAX_CREW)) return false;
   if (!isRecord(them) || !isShipData(them.ship) || !isSide(them) || !isRecord(you) || !isSide(you)) return false;
   if (!isInt(round, 1, MAX_ROUNDS) || typeof fired !== 'boolean') return false;
   if (last !== null && !(isRecord(last) && isOrder(last.order) && isOrder(last.intent) && Array.isArray(last.events) && last.events.every(isRecord))) return false;
+  if (approach.hunt) return outcome === null || isOutcome(outcome);
   if (outcome === null) return !done.includes(at);
   return done.includes(at) && isOutcome(outcome);
 }
