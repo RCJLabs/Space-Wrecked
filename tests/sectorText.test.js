@@ -30,7 +30,7 @@ test('the map: the sector, its nodes by column with what a jump reaches, its lin
   }
   assert.ok(text.links.every(({ a, b, near }) => near === (a === sector.start || b === sector.start)));
   assert.deepEqual(text.here, { name: 'Way in', kind: '', text: rules.nodeTypes.get('start').text });
-  assert.deepEqual(text.hold, [['Supplies', `${balance.baseSupplies} of ${balance.baseSupplies}`], ['Credits', '40'], ['Parts', 'Corridor ×2']]);
+  assert.deepEqual(text.hold, [['Supplies', `${balance.baseSupplies} of ${balance.baseSupplies}`], ['Credits', '40']]);
   assert.equal(text.offer, null);
   assert.equal(text.leave, null);
   assert.match(text.hint.text, /A \? is a node not made out yet/);
@@ -134,7 +134,9 @@ test("at a station the ship's panel is Refit, and the station says what is on ha
   const station = atStation({ parts: { corridor: 2, medbay: 1 } });
   const text = sectorText(station, rules);
   assert.deepEqual(text.refit, { label: 'Refit', parts: 3, line: '3 parts on hand: Refit fits them, free.', broken: null });
-  assert.deepEqual(text.hold.at(-1), ['Parts', 'Corridor ×2, Med bay']);
+  // The ship's panel keeps to its rows: at 821 × 283 a third doesn't fit
+  // under the crew (M19), and the station's line names what is on hand.
+  assert.deepEqual(text.hold.map(([label]) => label), ['Supplies', 'Credits']);
   assert.equal(sectorText(atStation({ parts: {} }), rules).refit.line, "Refit moves and turns the ship's parts, free.");
   assert.equal(sectorText(atStation({ parts: { medbay: 1 } }), rules).refit.line, 'A part on hand: Refit fits it, free.');
   // Away from a station, no Refit.

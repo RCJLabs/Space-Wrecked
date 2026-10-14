@@ -27,8 +27,8 @@ import { actTitle, crewText, heatText } from './hubText.js';
 //   here         the node the ship is at, as nodeText says it
 //   crew         as the hangar's
 //   hold         [[label, value]]: supplies and credits, what the med bay
-//                heals, if there is one working, the parts wrecked aboard
-//                and the parts on hand, if any
+//                heals, if there is one working, and the parts wrecked
+//                aboard, if any
 //   offer        what the station sells, or null away from one: { line,
 //                why, buys: [{ count, label, ask, text }] }
 //   refit        the station's refits, or null away from one: { label,
@@ -81,7 +81,6 @@ export function sectorText(campaign, rules) {
       ['Credits', campaign.credits.toLocaleString('en')],
       ...medbayRow(campaign, rules),
       ...wrecksLine(campaign, rules),
-      ...partsRow(campaign, rules),
     ],
     offer: offer.ok ? offerText(campaign, rules, offer) : null,
     refit: refitText(campaign, rules),
@@ -115,14 +114,6 @@ export function nodeText(node, rules, { known = true, done = false } = {}) {
 function suppliesRow(campaign, rules) {
   const over = suppliesOver(campaign, rules);
   return `${campaign.supplies} of ${supplyCapacity(campaign.ship, rules)}${over ? `, ${over} won't fit` : ''}`;
-}
-
-// The parts on hand, not fitted, as a holdings row, or none.
-function partsRow(campaign, rules) {
-  const names = Object.entries(campaign.parts)
-    .sort(([a], [b]) => partName(a, rules).localeCompare(partName(b, rules)))
-    .map(([type, count]) => (count > 1 ? `${partName(type, rules)} ×${count}` : partName(type, rules)));
-  return names.length ? [['Parts', names.join(', ')]] : [];
 }
 
 // The station's refits: Refit opens construction mode on the ship, with the
@@ -295,8 +286,4 @@ function sectorHint(campaign, rules, { each, offer, leave, known }) {
   const { sector, at } = campaign.run;
   if ([...reach(sector, at).keys()].some((id) => !known.has(id))) return { tone: 'info', text: 'A ? is a node not made out yet: come closer, or Scan.' };
   return { tone: 'info', text: 'Tap a ringed node to plan a jump; dashed is a long jump.' };
-}
-
-function partName(type, rules) {
-  return rules.modules.get(type)?.name ?? type;
 }
