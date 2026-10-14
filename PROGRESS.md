@@ -123,7 +123,7 @@ Decisions made along the way, not asked (each easy to change):
 ### Known issues
 
 - **The all-Bastion start ship scores lower in the approach** than the Yard's against both presets (−20 against −11 versus the cutter; −18 against −16 versus the corvette). It wrecks far less against the cutter but evades less. The harness's score counts only boardings, not repair bills or a boarding map's wrecked rooms, so it undersells hit points.
-- **Against the corvette, Bastion's start ship loses as many parts as the Yard's** (0.96 an approach against 0.93): it evades 21 against 30, and the corvette's guns now sit in tougher parts too.
+- **Against the corvette, Bastion's start ship loses as many parts as the Yard's** (0.96 an approach against 0.93), while evading less (21 against 30). Both face the same corvettes, mostly Bastion's now.
 - **Paint can hide Bastion:** on graphite its gunmetal fittings fade; the chevrons and orange flames still show.
 - **Inside, on a boarding map,** every part is drawn in the Yard's skin (§9).
 - **A placed part's maker can't be swapped in place** (§9).
