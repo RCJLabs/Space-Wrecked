@@ -250,6 +250,11 @@ const cases = [
   ['a paint with no color', (d) => d.styling.paints.push({ id: 'gold', name: 'Gold' }), /styling\.json gold: has no color in src\/render\/palette\.js paints/],
   ['no slate paint', (d) => (d.styling.paints = d.styling.paints.filter((p) => p.id !== 'slate')), /paints must have "slate": ships from before paint have it/],
   ['no sky trim', (d) => (d.styling.trims = d.styling.trims.filter((p) => p.id !== 'sky')), /trims must have "sky"/],
+  ['an enemy look in an unknown paint', (d) => (d.ships.ships[0].look.paint = 'gold'), /ships\.json cutter: look\.paint must be one of the paints in styling\.json/],
+  ['an enemy look with a part for a piece', (d) => (d.ships.ships[0].look.pieces.engine = 1), /cutter: look\.pieces: unknown styling piece "engine"/],
+  ['an enemy look with a bad count', (d) => (d.ships.ships[1].look.pieces.deltawing = [3, 1]), /corvette: look\.pieces\.deltawing must be a whole number, or \[least, most\]/],
+  ['an enemy look past the cap', (d) => (d.ships.ships[2].look.pieces.armorplate = 30), /hauler: look\.pieces: up to \d+, but the Starter hull takes at most 24/],
+  ['an enemy look with a stray field', (d) => (d.ships.ships[2].look.decals = []), /hauler look: unknown field "decals"/],
 ];
 
 test('the validator names each kind of mistake', () => {

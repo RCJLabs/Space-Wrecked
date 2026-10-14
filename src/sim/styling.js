@@ -137,6 +137,28 @@ export function pieceShape(def, placement) {
   return { region, rim: pieces };
 }
 
+// A placement mirrored north to south across a ship's middle (`across` is
+// its top row plus its bottom row): the same piece on the other side,
+// flipped, or null if no turn of it is. A piece takes its mirrored turn if
+// it has one (a wing); a wedge or a curve, whichever turn has the mirrored
+// outline; a standing piece without one looks the same flipped east to west
+// (an antenna, a dish, a light, a plate), so a half turn stands in for it.
+export function mirroredPiece(def, placement, across) {
+  const quarter = placement.rot & 3;
+  const exact = ((4 - quarter) % 4) + (placement.rot & 4 ? 0 : 4);
+  const [, h] = pieceFootprint(def, placement.rot);
+  const at = (rot) => ({ ...placement, y: across - placement.y - h + 1, rot });
+  if (def.turns.includes(exact)) return at(exact);
+  if (def.shape) {
+    const outline = (pts) => pts.map(([x, y]) => `${Math.round(x * 1e4)},${Math.round(y * 1e4)}`).sort().join(' ');
+    const want = outline(pieceShape(def, placement).region.map(([x, y]) => [x, across + 1 - y]));
+    const rot = def.turns.find((turn) => pieceFootprint(def, turn)[1] === h && outline(pieceShape(def, at(turn)).region) === want);
+    return rot === undefined ? null : at(rot);
+  }
+  const half = (6 - quarter) % 4;
+  return !(placement.rot & 4) && def.turns.includes(half) ? at(half) : null;
+}
+
 export function stepSide(x, y, side) {
   const [dx, dy] = STEP[side];
   return [x + dx, y + dy];

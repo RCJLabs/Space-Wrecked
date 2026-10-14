@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Generates ships from the presets in data/ships.json (src/sim/gen/ship.js)
 // and prints them: the layout, one glyph a cell (tools/build-ship.js), the
-// parts in the order they went in, the wrecked rooms and the flight
-// checklist.
+// parts in the order they went in, the wrecked rooms, the look (paint, trim
+// and styling pieces, M23f) and the flight checklist.
 //
 //   node tools/gen-ship.js                    every preset, seed 1
 //   node tools/gen-ship.js hauler --seed 7    one preset, another seed
@@ -42,6 +42,14 @@ export function shipText(defs, presetId, seed) {
     `Wrecked: ${wrecks.length ? wrecks.join(', ') : 'none'}`,
     '',
   ].join('\n');
+}
+
+// What a generated ship wears: its style, paint and trim, then its styling
+// pieces. Not in the golden file, which is the layouts.
+export function lookText(defs, ship) {
+  const name = (list, id) => list?.get(id)?.name ?? id;
+  const pieces = (ship.styling ?? []).map((p) => `  ${p.uid} ${p.type} at (${p.x}, ${p.y}), turned ${p.rot}`);
+  return [`Look: ${name(defs.hulls, ship.hull)} hull, ${name(defs.paints, ship.paint)} and ${name(defs.trims, ship.trim)}, ${pieces.length} styling pieces`, ...pieces].join('\n');
 }
 
 // Every preset at the golden seeds.
@@ -103,6 +111,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       console.log(shipText(defs, id, seed));
       const result = generateShip(defs, id, seed);
       if (!result.ok) continue;
+      console.log(lookText(defs, result.ship));
       for (const line of flightChecklist(result.ship, defs, result.crew)) {
         console.log(`  ${line.ok === true ? 'ok  ' : line.ok === false ? 'FAIL' : 'wait'} ${line.text}${line.fix ? `  ->  ${line.fix}` : ''}`);
       }

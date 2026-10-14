@@ -16,7 +16,7 @@ import { mapFromShip } from '../src/sim/mapFromShip.js';
 import { logFor, logMatches, openBuild, renumbered, replay } from '../src/sim/replay.js';
 import { initialState, saveData } from '../src/sim/root.js';
 import { createSession, reduceSession } from '../src/sim/session.js';
-import { fitPiece, misfits, pieceError } from '../src/sim/styling.js';
+import { fitPiece, mirroredPiece, misfits, mountSide, pieceCells, pieceError, pieceShape } from '../src/sim/styling.js';
 import { rules } from './battleKit.js';
 import { readyToLaunch } from './launchKit.js';
 
@@ -207,6 +207,23 @@ test('a tap on the hull by its side finds the side; a ship loaded from elsewhere
   assert.deepEqual([session.ghost.x, session.ghost.y, session.ghost.rot], [12, 4, 0]);
   session = reduceSession(session, { type: 'build/load', ship: { ...start } }, rules);
   assert.deepEqual([session.layer, session.armed, session.past.length], ['styling', null, 0]);
+});
+
+test("a piece mirrored across a ship's middle is the same piece flipped: its cells, the side it is against the hull by, a wedge's or a curve's outline", () => {
+  const across = 4 + 9; // a ship on rows 4 to 9
+  const MIRROR = { n: 's', s: 'n', e: 'e', w: 'w' };
+  const at = (list) => list.map(([x, y]) => `${x.toFixed(4)},${y.toFixed(4)}`).sort();
+  for (const def of rules.styling.values()) {
+    for (const rot of def.turns) {
+      const placement = P(def.id, 10, 2, rot);
+      const mirror = mirroredPiece(def, placement, across);
+      assert.ok(mirror && def.turns.includes(mirror.rot), `${def.id} turned ${rot}`);
+      assert.deepEqual(at(pieceCells(def, mirror)), at(pieceCells(def, placement).map(([x, y]) => [x, across - y])), `${def.id} turned ${rot}: its cells`);
+      if (def.shape) assert.deepEqual(at(pieceShape(def, mirror).region), at(pieceShape(def, placement).region.map(([x, y]) => [x, across + 1 - y])), `${def.id} turned ${rot}: its outline`);
+      else assert.equal(mountSide(mirror.rot), MIRROR[mountSide(rot)], `${def.id} turned ${rot}: its side`);
+      assert.deepEqual(mirroredPiece(def, mirror, across), placement, `${def.id} turned ${rot}: mirrored twice, as it was`);
+    }
+  }
 });
 
 test('build logs replay looks and pieces, and a ship renumbers with its pieces after its parts', () => {

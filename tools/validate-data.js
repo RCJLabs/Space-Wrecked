@@ -142,7 +142,8 @@ const TIP_KEYS = ['id', 'text'];
 const MAX_TIP = 200;
 const ENCOUNTER_KEYS = ['id', 'name', 'enemies'];
 // Ship presets (src/sim/gen/ship.js).
-const SHIP_KEYS = ['id', 'name', 'frame', 'crew', 'beam', 'symmetric', 'parts', 'wrecks', 'tactics', 'scrap', 'party', 'salvage'];
+const SHIP_KEYS = ['id', 'name', 'frame', 'crew', 'beam', 'symmetric', 'parts', 'wrecks', 'tactics', 'scrap', 'party', 'salvage', 'look'];
+const LOOK_KEYS = ['paint', 'trim', 'pieces'];
 // A hostile preset's tactics in the approach phase (src/sim/approach.js).
 const TACTIC_KEYS = ['aim', 'board', 'flee'];
 const MAX_SCRAP = 9999;
@@ -352,6 +353,7 @@ export function validateData(data) {
   checkStyling(data.styling, moduleIds, fail);
   const frameById = new Map(frames.map((frame) => [frame.id, frame]));
   ships.forEach((ship, i) => checkShip(ship, `ships.json ${ship.id ?? `#${i}`}`, frameById, moduleIds, fail));
+  ships.forEach((ship, i) => ship?.look !== undefined && checkLook(ship.look, `ships.json ${ship.id ?? `#${i}`}`, data.styling, frameById.get(ship.frame), fail));
 
   const encounterById = new Map(encounters.filter((e) => Array.isArray(e.enemies)).map((e) => [e.id, e.enemies]));
   const presets = new Map(ships.filter((ship) => typeof ship?.id === 'string').map((ship) => [ship.id, ship]));
@@ -374,7 +376,8 @@ export function validateData(data) {
 // (each a count, or [least, most]) and, for a derelict, how many rooms are
 // wrecked. A hostile one also has its tactics in the approach phase, its
 // scrap in credits, the party that fights its boardings and the parts a
-// crew that wins aboard her strips off (salvage).
+// crew that wins aboard her strips off (salvage). Any may have a look
+// (checkLook).
 // Styling (M23f): the pieces and the groups the Look tab sorts them into,
 // and the paints and trims, each with a color in src/render/palette.js. A
 // piece that stands on the hull has a model of its own (src/render/
@@ -446,6 +449,34 @@ function checkShip(ship, where, frameById, moduleIds, fail) {
     else fail(where, `parts.${type} must be a whole number, or [least, most]`);
   }
   if (frame && most > frame.maxModules) fail(where, `parts: up to ${most}, but the ${frame.name} holds at most ${frame.maxModules}`);
+}
+
+// What a generated ship of the preset wears (M23f): its side's paint and
+// trim, and styling pieces, each a count or [least, most], put on at random
+// where they fit (src/sim/gen/look.js; on a symmetric ship in pairs, so an
+// odd count gets one more).
+function checkLook(look, where, styling, frame, fail) {
+  if (!isObject(look)) {
+    fail(where, 'look must be an object');
+    return;
+  }
+  knownKeys(look, LOOK_KEYS, `${where} look`, fail);
+  const ids = (key) => new Set((Array.isArray(styling?.[key]) ? styling[key] : []).map((item) => item?.id));
+  if (!ids('paints').has(look.paint)) fail(where, 'look.paint must be one of the paints in styling.json');
+  if (!ids('trims').has(look.trim)) fail(where, 'look.trim must be one of the trims in styling.json');
+  if (!isObject(look.pieces)) {
+    fail(where, 'look.pieces must be an object of styling pieces and counts');
+    return;
+  }
+  const pieces = ids('pieces');
+  let most = 0;
+  for (const [type, count] of Object.entries(look.pieces)) {
+    if (!pieces.has(type)) fail(where, `look.pieces: unknown styling piece "${type}"`);
+    if (isIntIn(count, 0, Infinity)) most += count;
+    else if (isRange(count, 0, Infinity)) most += count[1];
+    else fail(where, `look.pieces.${type} must be a whole number, or [least, most]`);
+  }
+  if (frame && most > frame.maxStyling) fail(where, `look.pieces: up to ${most}, but the ${frame.name} takes at most ${frame.maxStyling}`);
 }
 
 // How a hostile preset plays the approach: the kinds of module it fires at,

@@ -11,20 +11,22 @@
 // berths. Then the layout. A layout that runs into a dead end starts over
 // from the parts, with the random numbers where they got to. Last, a
 // preset with wrecks gets some of its rooms wrecked: a derelict. Its hull
-// gets one of the styles at random (M23d).
+// gets one of the styles at random (M23d), and it wears its side's look:
+// paint, trim and styling pieces (look.js, M23f).
 import { int, pick, seedFrom, shuffle } from '../../core/rng.js';
 import { DEFAULT_HULL, layoutProblems } from '../builder.js';
 import { canLaunch, flightChecklist, partLines } from '../constraints.js';
 import { WRECKS } from '../mapFromShip.js';
 import { hasTag, interiorRows, placedCells } from '../modules.js';
 import { layOutShip, roomsOnFoot } from './layout.js';
+import { dressShip } from './look.js';
 
 const ATTEMPTS = 20; // layouts tried before the preset is given up on
 
 // Returns { ok: true, ship, preset, crew, wrecked } or { ok: false, error }.
 // The ship is plain ship data (builder.js) in the middle of its frame, its
-// parts numbered in the order they went in, so logFor(ship) (replay.js)
-// builds it again step by step. wrecked is { [uid]: 'fire' | 'vacuum' |
+// parts numbered in the order they went in and its styling pieces after
+// them, so logFor(ship) (replay.js) builds it again step by step. wrecked is { [uid]: 'fire' | 'vacuum' |
 // 'rubble' }, ready for mapFromShip: empty unless the preset has wrecks.
 export function generateShip(defs, presetId, seed) {
   const preset = defs.ships.get(presetId);
@@ -40,7 +42,8 @@ export function generateShip(defs, presetId, seed) {
     // The layout checked every part as it went in; this is the whole ship,
     // and every room of it boarders can walk into.
     if (layoutProblems(ship, defs).length || !canLaunch(flightChecklist(ship, defs, preset.crew)) || !roomsOnFoot(ship, defs)) continue;
-    return { ok: true, ship: { ...ship, hull: hullStyle(defs, presetId, seed) }, preset: preset.id, crew: preset.crew, wrecked: wreckRooms(defs, preset, ship, state) };
+    const dressed = dressShip(defs, preset, { ...ship, hull: hullStyle(defs, presetId, seed) }, seed);
+    return { ok: true, ship: dressed, preset: preset.id, crew: preset.crew, wrecked: wreckRooms(defs, preset, ship, state) };
   }
   return { ok: false, error: `No layout for a ${preset.name} in ${ATTEMPTS} tries.` };
 }

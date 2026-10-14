@@ -12,6 +12,7 @@ import { mapFromShip, WRECKS } from '../src/sim/mapFromShip.js';
 import { facingSide, footprint, hasTag, placedCells, sideCells } from '../src/sim/modules.js';
 import { stepsFrom } from '../src/sim/moves.js';
 import { logFor, replay } from '../src/sim/replay.js';
+import { mirroredPiece, misfits } from '../src/sim/styling.js';
 import { walkable } from '../src/sim/terrain.js';
 import { renderShip } from '../tools/build-ship.js';
 import { readData } from '../tools/data.js';
@@ -42,17 +43,18 @@ test("each ship builds again part by part, and every step keeps the builder's ru
     const built = ship.result.ship;
     const again = buildShip(defs, built.frame, built.modules);
     assert.deepEqual(again.rejected, [], name(ship));
-    assert.deepEqual({ ...again.ship, hull: built.hull }, built, name(ship));
+    assert.deepEqual(again.ship.modules, built.modules, name(ship));
     // Its build log replays in the builder, and every ship on the way has
     // each part joined to the bridge and nothing facing space blocked (the
-    // airlock comes last, so that rule waits for it).
-    // A step that gives the hull its style (M23d) changes no part.
+    // airlock comes last, so that rule waits for it). A step that gives
+    // the hull its style (M23d), paint or trim, or puts on a styling piece
+    // (M23f) changes no part.
     const log = logFor(built);
     const { ships, error } = replay(log, defs, built.frame);
     assert.equal(error, null, name(ship));
     assert.deepEqual(ships.at(-1), built, name(ship));
     for (const [i, partway] of ships.slice(1).entries()) {
-      if (log[i].op === 'hull') continue;
+      if (log[i].op !== 'place' || !defs.modules.has(log[i].type)) continue;
       assert.deepEqual(layoutProblems(partway, defs).filter((p) => p.rule !== 'airlock'), [], `${name(ship)}, step ${i + 1}`);
     }
   }
@@ -192,6 +194,43 @@ test('fixed seeds give the golden ships', () => {
   // To change them on purpose: node tools/gen-ship.js --golden, and say so
   // in PROGRESS.md.
   assert.equal(goldenText(defs), readFileSync(GOLDEN_SHIPS, 'utf8'));
+});
+
+test("each ship wears its side's look: the preset's paint and trim, and pieces of the kinds it names where they fit, in mirrored pairs on a symmetric ship", () => {
+  for (const ship of fleet) {
+    const built = ship.result.ship;
+    const { look, symmetric } = defs.ships.get(ship.id);
+    assert.deepEqual([built.paint, built.trim], [look.paint, look.trim], name(ship));
+    assert.deepEqual(misfits(built, defs), [], `${name(ship)}: every piece fits`);
+    const counts = {};
+    for (const piece of built.styling) counts[piece.type] = (counts[piece.type] ?? 0) + 1;
+    for (const [type, n] of Object.entries(counts)) {
+      assert.ok(type in look.pieces, `${name(ship)}: ${type} isn't in the look`);
+      const most = [look.pieces[type]].flat().at(-1);
+      assert.ok(n <= most + (symmetric ? most % 2 : 0), `${name(ship)}: ${n} ${type}`);
+    }
+    if (!symmetric) continue;
+    const rows = built.modules.flatMap((m) => placedCells(def(m), m).map(([, y]) => y));
+    const across = Math.min(...rows) + Math.max(...rows);
+    const key = (p) => `${p.type} ${p.x},${p.y},${p.rot}`;
+    const worn = new Set(built.styling.map(key));
+    for (const piece of built.styling) assert.ok(worn.has(key(mirroredPiece(defs.styling.get(piece.type), piece, across))), `${name(ship)}: ${key(piece)} has its mirror`);
+  }
+  // Across the fleet, every kind a look names turns up.
+  for (const [id, preset] of defs.ships) {
+    const kinds = new Set(fleet.filter((ship) => ship.id === id).flatMap(({ result }) => result.ship.styling.map((p) => p.type)));
+    assert.deepEqual([...kinds].sort(), Object.keys(preset.look.pieces).sort(), id);
+  }
+});
+
+test('a look changes no layout: without it, the same seed gives the same parts, style, wrecks and crew, in the yard\'s colors', () => {
+  const bare = { ...defs, ships: new Map([...defs.ships].map(([id, { look, ...preset }]) => [id, preset])) };
+  for (const ship of fleet.filter(({ seed }) => seed <= 20)) {
+    const plain = generateShip(bare, ship.id, ship.seed);
+    const { ship: built, wrecked, crew } = ship.result;
+    assert.deepEqual([plain.ship.modules, plain.ship.hull, plain.wrecked, plain.crew], [built.modules, built.hull, wrecked, crew], name(ship));
+    assert.deepEqual([plain.ship.paint, plain.ship.trim, plain.ship.styling], ['slate', 'sky', []], name(ship));
+  }
 });
 
 test("an unknown preset, or one that can't be built, says so", () => {
