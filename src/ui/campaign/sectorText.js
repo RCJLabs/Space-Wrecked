@@ -105,7 +105,7 @@ export function sectorText(campaign, rules) {
       surveyed: surveyed.includes(node.id),
     })),
     links: sector.links.map(([a, b]) => ({ a, b, near: a === at || b === at })),
-    here: nodeText(sector.nodes[at], rules, { done: done.includes(at) }),
+    here: placeText(sector, at, rules, { done: done.includes(at) }),
     world: sector.nodes[at].world ? worldSaid(sector.nodes[at].world, rules, surveyed.includes(at)) : null,
     crew: crewText(campaign, rules),
     hold: [
@@ -145,6 +145,13 @@ export function nodeText(node, rules, { known = true, done = false } = {}) {
   if (ship) return { name: node.name, kind: `${what}: ${ship.name}`, text: kind?.text ?? '' };
   if (done && node.hostile) return { name: node.name, kind: `${what}, gone`, text: 'Nobody here now but the debris.' };
   return { name: node.name, kind: event ? `${what}: ${event.title}` : done && node.event ? `${what}, been and done` : what, text: kind?.text ?? '' };
+}
+
+// A node of the sector as nodeText says it; the way into the system past
+// the charts (M25) says the system's words.
+function placeText(sector, id, rules, options) {
+  const said = nodeText(sector.nodes[id], rules, options);
+  return sector.system && id === sector.start ? { ...said, text: rules.worlds?.system.text ?? said.text } : said;
 }
 
 // A world's kind by name: "Ice world".
@@ -282,7 +289,7 @@ function scanText(campaign, rules) {
 export function jumpText(campaign, rules, id) {
   const { sector, at } = campaign.run;
   const target = sector.nodes[id];
-  const node = nodeText(target, rules, { known: knownNodes(campaign.run, rules).has(id), done: campaign.run.done.includes(id) });
+  const node = placeText(sector, id, rules, { known: knownNodes(campaign.run, rules).has(id), done: campaign.run.done.includes(id) });
   const plan = jumpPlan(campaign, rules, id);
   const world = target.world ? worldSaid(target.world, rules, campaign.run.surveyed.includes(id)) : null;
   if (!plan.ok) return { ok: false, long: false, label: 'Jump', head: plan.check ? "Can't leave" : 'Out of reach', title: target.name, node, lines: [plan.error], tone: plan.check ? 'bad' : 'info', way: [], left: 0, hungry: false, hunt: 0, world };

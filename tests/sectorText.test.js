@@ -140,7 +140,9 @@ test('the system on the chart: its name, its worlds with their kinds, none surve
     assert.deepEqual([n.type, n.known, n.surveyed, n.links], ['world', true, false, 1]);
   }
   assert.deepEqual([text.nodes[0].world, text.nodes[0].surveyed], [null, false]);
-  // At the way in: no world here, nothing to survey or settle.
+  // At the way in: the system's words; no world here, nothing to survey or
+  // settle.
+  assert.deepEqual(text.here, { name: 'Way in', kind: '', text: rules.worlds.system.text });
   assert.deepEqual([text.world, text.survey, text.settle, text.scan], [null, null, null, null]);
   assert.match(text.hint.text, /^3 worlds past the charts: tap one to jump there/);
   assert.equal(continueText(campaign, rules), `Act 2 · The system · ${sector.name}`);
