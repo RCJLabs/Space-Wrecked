@@ -601,7 +601,7 @@ Detailed at the start of M19, once v0.1 was done. The Done whens past M19 are dr
   - **Saves and codes:** old saves and blueprint codes load with the Yard's parts, and neither version number changes (tested).
   - **Voyage:** the careful test player still crosses all five sectors fed in at least 24 of 30.
   - **Budget:** the hull views keep to the frame budget.
-- [ ] **M23h Refits at stations** (from §9; Evan's call in M23, numbered M23b until the looks came first). Act 2 has no refits yet: a part found at a node or stripped from a boarded ship can only be sold, and most ships launch with room for one recruit and no med bay. Evan's picks (2026-10-14): refit with what the run finds (no parts dealer at stations yet, §9); a wrecked part is repaired before it comes off; refits are free.
+- [x] **M23h Refits at stations** (from §9; Evan's call in M23, numbered M23b until the looks came first). Act 2 has no refits yet: a part found at a node or stripped from a boarded ship can only be sold, and most ships launch with room for one recruit and no med bay. Evan's picks (2026-10-14): refit with what the run finds (no parts dealer at stations yet, §9); a wrecked part is repaired before it comes off; refits are free.
 
   **Done when:**
   - **At a station:** Refit, at a station on the run, opens construction mode on the ship with the parts on hand: found at nodes, stripped in boardings, or left from act 1. Each change is saved at once, as at the hangar, and Look works there too. Map goes back to the chart. Away from a station there is no Refit, and the sim refuses one (tested).
