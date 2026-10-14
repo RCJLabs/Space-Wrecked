@@ -2,6 +2,202 @@
 
 Newest entry first.
 
+## M24 Heat v2: hunters, regrouping, transponders (2026-10-14)
+
+**Status:** done, and the ROADMAP.md box is ticked. Heat matters on the run now. From heat 50, Con-Reg's hunters may be waiting wherever a jump comes out, at a chance the jump shows first: the repo tug at 10%, the gunship at 35% from 75, and the gunship for certain at 100. Facing them drops heat to 40. Regroup rests a hurt crew for a day, for heat; Hide in a nebula sheds heat; and a station swaps the transponder for credits.
+
+Some of this changes what was there before, not only adds to it:
+- **A jump adds 2 heat, not 3** (a call made here, not Evan's: Decisions, below).
+- **Every sector has a nebula,** in a column of its own, and empty space is rarer (weight 2, was 3). So the same seed gives a different sector from main's. `tests/golden/sectors.txt` is rewritten on purpose.
+- **The heat meter on the run** names act 2's levels: Task force from 75 (where act 1's says Raid), and Cornered at 100, with Con-Reg's words for the run. At the hangar it reads as before.
+- **A jump can end in a fight** from heat 50: the approach screen opens instead of the chart. An event at that node waits until the approach is put away.
+- **The careful test player manages heat** (`tools/voyage.js`, the default): long jumps from heat 45 (50 before) and in place of any jump where the hunters may wait, transponder swaps, hides, and scans only below 45. Before M24 heat did nothing in act 2, so the fleets behind M19's to M23h's tests flew with no long jumps. They now fly managing heat and still pass their guards, none lowered, but the numbers in those milestones' entries are of the old player.
+- **`SAVE_VERSION` 18.**
+- **The Enemy ships sandbox's top row wraps** at 821 × 283, its seed buttons below the presets, and the fitted ship keeps clear of the row's real height.
+
+No phone results have come back yet for M14 to M23h.
+
+**How it was picked:** Evan answered four questions (2026-10-14), each the recommended answer, and a fifth once the first numbers were in:
+- **Hunters:** "Chance each jump": the chart shows the odds before every jump, rolled as shown.
+- **After them:** "Falls if you face them": a boarding fight with them, or their ship disabled, blown up or driven off, drops heat to 40; escaping leaves it.
+- **Regroup:** "Rest and patch up": 3 hit points each for a jump's supplies and 5 heat, with the hunters' odds while the ship waits ("Rest and jury-rig" not picked).
+- **Shedding heat:** "Transponder swap" and "Hiding in nebulae", both.
+- **The trade** (managing heat couldn't keep the hunters to 3 runs of 30 and stay fed in 24): "At most 6 of 30", the hunters at 10% from heat 50 (20% in the first question). The others were "Keep 3 of 30, fed in 22" and "Keep 20%, at most 10 of 30".
+
+Done when (ROADMAP.md, M24):
+- **Levels:** "on the run, the heat meter names act 2's levels, each with the pursuer's words (data): calm, rumors from 25, hunters from 50, the task force from 75, and at 100 they are on the ship."
+- **Hunters:** "from heat 50, wherever a jump comes out (a long jump, and the jump on into the next sector, too), Con-Reg's hunters may be waiting: 10% from 50 (`huntChance`), the task force 35% from 75 (`taskForceChance`), and certain at 100, by the heat the ship arrives with. Never at a station or in a nebula. The jump says the chance before it is made, and it is rolled as shown (Law 4) (tested)."
+  - "They are an approach like a hostile ship's (§4.2), in the pursuer's ships (data: a tug, and the task force's bigger ship), and their boarding fights are against the pursuer's parties (`recovery`, `raid` in `data/encounters.json`)."
+  - "A hostile ship where they wait slips away; an event there waits until they are dealt with (tested)."
+- **After them:** "a boarding fight with them either way, or their ship disabled, blown up or driven off, drops heat to 40 (`heatAfterRaid`); getting away, or parting after the last round, leaves it. Lost at home, they take what a lost raid takes (Law 3) (tested)."
+- **Regroup:** "away from stations, two taps. A day's rest eats a jump's supplies and heals each of the wounded 3 hit points (`regroupHp`), on top of the med bay's day. Heat rises 5 (`regroupHeat`), and the hunters may find the ship at a jump's odds. It needs the supplies for the day (tested)."
+- **Nebulae:** "a kind of node, one in every sector and on the charts. The hunters never wait in one, and Regroup there hides the ship: heat falls 10 (`hideHeat`) instead of rising, with no roll (tested)."
+- **Transponder swap:** "at a station, once a sector, two taps: heat falls 30 (`swapHeat`) for 40 credits (`swapPrice`) (tested)."
+- **Saves:** "`SAVE_VERSION` 18 for the sector's swap and the hunters' approach. An older act 2 save opens where it was, with the swap unused (tested)."
+- **The test:** "as M15's: over 30 voyages (campaign seeds 1 to 30), the test player ignoring heat (no swaps, no hiding, no long jumps) meets the hunters in at least 27; managing it (transponder swaps at stations, hiding in nebulae on its way, long jumps from heat 45 and in place of any jump where the hunters may wait), in at most 6. Managing it, the careful test player still crosses all five sectors fed in at least 24 of 30. `tools/voyage.js --heat ignore` and `--heat manage` (the default) report the hunters met and faced, the regroups, hides and swaps, and heat along the way. `tools/approach.js` and `tools/sim.js --boardings` measure the hunters' ships and parties."
+- **Touch:** "every new button is 48 px or more at the three sizes. By touch: a jump that shows the hunters' chance, the hunters met and faced with heat falling to 40, a regroup, a hide in a nebula, a transponder swap, and a quit and reopen with the hunters waiting."
+
+How each is met:
+- **Levels:** `tests/hunt.test.js` (calm to cornered at 0, 24, 25, 49, 50, 74, 75, 99, 100, each with its words) and `tests/huntText.test.js` (the meter's names and words on the run; act 1's at the hangar). By touch: "Heat 58 · Hunters" and "Heat 100 · Cornered", each with Con-Reg's line in the meter's label.
+- **Hunters:**
+  - `tests/hunt.test.js`: none below 50, the tug at 10%, the gunship at 35% and certain at 100; none at a station or in a nebula; the way in is no refuge. Over 60 seeds a jump rolls as shown (found exactly when the roll is under the chance). A long jump from just over 50 comes out under it with no roll; Jump on comes out at the next sector's way in, where they wait too.
+  - `tests/huntText.test.js`: the jump's plan says "Hunters: 10% the Con-Reg repo tug waits there.", or "The Con-Reg gunship will be waiting there.", "The hunters keep clear of stations." or "The nebula hides the ship: the hunters can't see in."; the chart rings only the nodes in reach. `tests/voyage.test.js` checks every jump in six fleets of 30 voyages managing heat, and in the fleet ignoring it, against the chance for the heat it came out with.
+  - Their ships and parties: `data/ships.json` and `data/backgrounds.json`, checked by `tools/validate-campaign.js` (presets with tactics and a party). A new test in `tests/hunt.test.js`: boarded by the gunship, the fight is against its party, the task force.
+  - `tests/hunt.test.js`: a cutter where they wait slips away (its node done); an event there waits ("Deal with the Con-Reg gunship first."), and opens once they are got away from and put away.
+- **After them:** `tests/hunt.test.js`: faced, heat 40; got away or parted, heat as it was plus 4 if a gun fired; boarded by them and beaten, they take the armory on hand (what a lost raid takes) and heat stays 40; fought off, their gear's credits. `tests/voyage.test.js`: every faced hunt in the fleets drops heat to 40. By touch: the tug blown up, "Heat −20, to 40: Con-Reg will have to send for another crew. That buys some quiet."; the gunship got away from, "Still on your trail: heat 100."
+- **Regroup:** `tests/regroup.test.js`: 3 supplies, heat +5, 3 hit points each and the med bay's day on top (with a medic, 3 + 1 + 1); at the most heat the gunship finds the ship, and the screen changes; refused at a station, with no one hurt, short of supplies, or while an event is open. By touch: two taps, 30 supplies to 27, heat 20 to 25, hit points 6/4/4 to 9/7/7.
+- **Nebulae:** `tests/sector.test.js`, over 300 seeds: one in every sector, in a column of its own, named from its list, with no event or ship, and known as the ship comes into the sector (on the charts). `tools/validate-sectors.js` refuses a kind that hides and holds events or ships. `tests/regroup.test.js`: Hide sheds 10 with no roll and heals all the same, down to 0 and no further. By touch: Hide in two taps, heat 60 to 50; offline, the chart draws the nebula's mark.
+- **Transponder swap:** `tests/regroup.test.js`: heat −30 for 40 credits, once a sector, the next sector's slate clean; refused away from stations, with no heat or short of credits; through the store. `tests/huntText.test.js`: its words, gone once swapped. By touch: two taps on it in the left panel, heat 58 to 28 and credits 120 to 80, the button gone after.
+- **Saves:** `tests/hunt.test.js`: a v17 run gets `swapped: false`, a v17 approach under way is a hostile ship's (`hunt: false`), and a v17 save opens at v18. By touch: a save made by main (v17) at a station opens, the swap works, and it is saved as v18.
+- **The test:** `tests/voyage.test.js` (M24's test): ignoring heat, the hunters in 30 of 30 runs; managing it, 6 of 30, fed all the way in 25. Both reports are below. `tools/approach.js` and `tools/sim.js --boardings` read every preset, so the hunters' rows came with the data (below).
+- **Touch:** M24's browser check, below: every button on the chart, at a station and on the approach screen 48 px or more at the three sizes, and each step by touch.
+
+### Shipped
+
+- **Data:**
+  - `balance.json`: `huntChance` 10, `taskForceChance` 35, `regroupHp` 3, `regroupHeat` 5, `hideHeat` −10, `swapHeat` −30, `swapPrice` 40; `jumpHeat` 2;
+  - `ships.json`: the repo tug and the gunship, in Con-Reg's graphite and amber;
+  - `backgrounds.json`: the pursuer's words for the run's levels, its two ships, and what facing them says;
+  - `sectors.json`: the nebula kind and 12 nebula names, one a sector; the kinds' `charted`, `safe` and `hides` flags; empty space's weight 2.
+- **Validation:** `validate-data.js` (the new numbers' ranges; `heatAfterRaid` under `huntHeat`, the task force's chance at least the hunters'), `validate-campaign.js` (the pursuer's run words and ships, each with tactics and a party), `validate-sectors.js` (the kinds' flags: a kind that hides holds no events or ships, and none is both safe and hiding), `tools/sectors.js` (the nebula's letter).
+- **The sim:**
+  - `heat.js` `runLevel`; `approach.js` `FACED`;
+  - `hunt.js`: `huntOdds` and `rollHunt`, by the heat the ship comes out with;
+  - `encounter.js` `openHunt`, the approach's `hunt`, and its end: heat to 40 when faced, no node settled;
+  - `travel.js`: the plans' `hunt`, the roll at jumps, long jumps and Jump on; `run.swapped`; an event waits while an approach is open; the charts from the kinds' flags;
+  - `regroup.js` (Regroup and Hide), `transponder.js` (the swap), `root.js` (`campaign/regroup`, `campaign/swap`), `runShape.js` and `save.js` (v18 and the migration from 17).
+- **The chart** (`sector.js`, `sectorText.js`, `style.css`, `icons.js`, `palette.js`): the hunters' chance in a jump's plan and in Jump on's, its tone and hint; the nodes they may wait at ringed red; Regroup and Hide in the foot, two taps; the transponder swap in the left panel at stations, two taps; the nebula's mark and color; hints that say how to shed heat where the ship is.
+- **The meter** (`hubText.js`): the run's levels and words. **The approach screen** (`approachText.js`): "The hunters · …", the opening hint, and what facing them did to heat.
+- **The Enemy ships sandbox** (`ships/screen.js`, `style.css`): its row of presets wraps, with the seed buttons together, and the fit measures it.
+- **Tools:** `voyage.js` `--heat manage|ignore` and its report (hunters met and faced, the gunship, regroups, hides, the swaps' credits, heat at its most, jumps where the hunters might wait); `voyagePlan.js`, the managing player (Decisions).
+- **Tests:** `tests/hunt.test.js` (9), `tests/regroup.test.js` (5), `tests/huntText.test.js` (6), a sector test for the counted kinds, M24's voyage test and checks on every swap, regroup, hide and hunt in the fleets; the data, events, sector, sector words, travel, harness, ships, makers and refit tests brought up to date.
+- **Docs:** ROADMAP.md: M24's Done when (settled at the start), §4.2 (the hunters' ships and their balance), §4.4 (act 2 as built), §4.7 (the nebula), §4.8 (v18), and §9.
+
+Decisions made along the way, not asked (each easy to change):
+- **A jump adds 2 heat, down from 3, and empty space's weight is 2, down from 3.** Both were in the setup every option of the trade was measured with, but the question named only the hunters' chance, so neither is Evan's pick. The nebula takes a node a sector, and the lower weight takes it out of empty space rather than the kinds that pay. To undo: `jumpHeat` 3 and the mix's `empty` 3 in the data, then measure again.
+- **The way in is no refuge:** Jump on rolls at the next sector's way in. Only stations and nebulae are safe.
+- **Heat falls as a boarding with them begins,** won or lost: Evan's pick counts "a boarding fight with them" as facing them. Beaten at home, they still take what a lost raid takes.
+- **The hunters settle no node.** A hostile ship where they wait slips away and its node is done; an event waits, and its node stays open.
+- **Regroup needs someone hurt, and isn't offered at a station** (Patch up is there). In a nebula, Hide can be taken with no one hurt while there is heat to lose.
+- **The repo tug closes to board from round 2.** From round 1, a shield did worse against it than none in the Law 1 test: it was aboard before the shield counted. Its beam is 5 to 7 cells: narrower, 2 seeds in 100 found no layout.
+- **Where the hunters may wait is the jump ring in red,** not a new mark; the nebula is a dotted violet ring (`nebula` in the palette).
+- **The swap is in the left panel at a station,** under the station's kind, not in the foot. It was in the foot first, with Buy, Fill up, Repair and Patch up, and M22's check caught the hint squeezed to a column of three words at 821 × 283, the two-tap confirmation unreadable. M23h moved Refit onto the ship's panel for the same reason.
+- **The test player managing heat** (`tools/voyagePlan.js`): swaps from heat 15 when the credits left would still buy half a holdful; hides from 15 with 8 jumps' supplies left after; long jumps from 45, and in place of any jump where the hunters may wait; scans only below 45; weighs an event's heat at 1.5 a point from 15, and 40 more against crossing 50; counts leaving a sector with under 4 jumps' supplies as going hungry; and never regroups. Ignoring heat, it does none of these, makes no long jumps, and regroups when the crew is down 3 hit points each.
+
+### Known issues
+
+- **Managing heat meets the hunters in exactly 6 of 30 on the test's seeds, Evan's limit,** and in 8 of seeds 31 to 60 (14 of 60, 23%). The Done when holds on its seeds, but the rate is nearer 1 run in 4 than 1 in 5, and a small change to the data or the test player could tip the test.
+- **The gunship can only be run from.** Its shield takes 10 off each round's hits, so the start ship's one gun does 5 a hit and can't disable it in three rounds: firing at its engines and at its guns came out the same over 400 approaches. The start crew beats its party 9% of the time at home and 14% aboard her. The careful test player never meets it on seeds 1 to 30, but at heat 100 it waits at every node but stations and nebulae.
+- **Ignoring heat costs a lot, but never ends a run** (Law 5): 8 hunters a run at the median, a boarding lost at home in every run, fed in 23 of 30 against 25.
+- **The test player managing heat never regroups,** by its rule, so the voyages don't measure what Regroup is worth to a careful player (§9).
+- **`node --test` takes about 95 s here, up from 70:** the fleets managing and ignoring heat.
+- **The earlier milestones' voyage numbers,** in their entries and in ROADMAP.md §4.6, are of the test player before it managed heat.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **Heat 50 or more on the run:** are the red rings clear, folded and unfolded? Does the jump's "Hunters: 10% …" line catch your eye before the second tap?
+2. **Meeting them:** does the approach screen make it clear who they are and that facing them buys quiet? Face them, by firing or boarding, and check that the end says heat fell to 40.
+3. **Regroup** with the crew hurt, away from a station, and **Hide** in the nebula (the dotted violet ring): are the words right? Is 5 heat for 3 hit points each a trade you would take?
+4. **A station at heat 50 or more:** "Transponder · 40" is in the left panel, under the station's name. Easy to find there? Is it worth 40?
+5. **Heat 75 and 100:** do Task force and Cornered, and the gunship, feel like the end of the line?
+6. **Tell me:**
+   - whether careful play meeting the hunters in about 1 run in 4 is right, or 10% should come down;
+   - whether a jump should go back to +3;
+   - whether a refitted ship should be able to beat the gunship;
+   - and the M14 to M23h questions still open.
+
+### Next session
+
+**M25 Scouting candidate worlds.** Settle its Done when first. The draft is "a run reaches the last sector, scouts its worlds and picks one, ending act 2 cleanly."
+
+### Verified here
+
+- `node --test`: 688 pass, in about 95 s. `node tools/validate-data.js`: OK. Golden files changed on purpose: `tests/golden/ships.txt` (the repo tug's and the gunship's ships added, nothing else changed) and `tests/golden/sectors.txt` (rewritten: a nebula in every sector, empty space rarer).
+- **M24's browser check by touch:** 20 of 20 at each of 905 × 370, 821 × 283 and 960 × 825. It covers:
+  - open space at heat 58, the crew hurt: "Heat 58 · Hunters" with Con-Reg's line; the derelict a jump away ringed red, the station a jump away not, nothing out of reach; Regroup; the hint; every button 48 px or more; a jump picked says "Hunters: 10% the Con-Reg repo tug waits there.";
+  - Regroup at heat 20 in two taps: supplies 30 to 27, heat 20 to 25, hit points 6/4/4 to 9/7/7;
+  - Hide in the nebula at heat 60 in two taps: heat 50, no hunters;
+  - the swap, in the left panel at a station at heat 58, in two taps: heat 28, credits 120 to 80, the button gone after; the station's buttons 48 px or more;
+  - at heat 98 the jump says "The Con-Reg gunship will be waiting there." in the bad tone; the second tap opens "The hunters · Con-Reg gunship" at "Heat 100 · Cornered", with the opening hint; the approach's buttons 48 px or more;
+  - a quit and reopen: the hunters still waiting;
+  - fleeing the gunship: got away, "Still on your trail: heat 100.";
+  - at heat 58, on dice that bring the tug: the jump said 10%, and firing at its reactor twice blows it apart: "Heat −20, to 40: …"; Carry on, back on the chart at "Heat 40 · Rumors";
+  - a save made by main (v17) at a station: the swap works, saved as v18;
+  - offline, the chart draws the nebula's mark and Hide; no console errors.
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named:
+  - M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 40 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 46, and M8's extras.
+
+  Five copies were adapted, not the game, for what M24 changes on purpose:
+  - M23h's and M23g's open a save made by main from a new checkout of main (M23h's code, v17) and take it back as v17 or later;
+  - M23f's takes a v16 save back as v17 or later;
+  - M19's reads a jump's heat from the data;
+  - M17's reads "Task force" on the run's meter at heat 80.
+
+  The first pass also caught two problems in the game, both fixed:
+  - the swap in the station's foot squeezed the hint unreadable at 821 × 283 (Decisions, above);
+  - the Enemy ships sandbox's two new presets pushed its next-seed button under DEV at 821 × 283, so M23d's check timed out. The row wraps now.
+
+  After the fixes, every check that opens the chart or the sandbox ran again at the three sizes and passed. M23f's lift-off step failed once at 960 × 825 while voyages ran beside it, and passed alone. M14 ran 46 checks (53 in M23h): its count follows the jobs its run plays.
+- **Act 1** (`tools/run.js`, 100 test runs): identical to main's, seed by seed, campaign and log.
+- **The fights** (`node tools/sim.js`, the balance rule):
+
+  ```
+  1,000 fights on example ship, pirate cutter, patrol corvette, derelict hauler, con-reg repo tug, con-reg gunship. The squad (marine, engineer, medic), played by the AI, against the boarding party (pirate, pirate, brute, pirate), played by the AI. 30 rounds at most, seed "balance".
+
+  Ship              Fights    Crew wins  Boarders win  No winner    Rounds  Crew orders
+  Example ship         167  63% (56–70)           37%         0%   7 (5–9)           30
+  Pirate cutter        167  47% (40–55)           37%        16%  7 (5–12)           28
+  Patrol corvette      167  54% (46–61)           38%         8%  8 (5–17)           30
+  Derelict hauler      167  40% (33–48)           49%        11%  7 (5–12)           27
+  Con-Reg repo tug     166  41% (34–49)           43%        16%  7 (4–10)           25
+  Con-Reg gunship      166  31% (25–39)           41%        28%  7 (5–12)           29
+  All                1,000  46% (43–49)           41%        13%  7 (5–12)           28
+
+  Rounds and crew orders count the fights with a winner: the median (10th to 90th percentile). Win rates have a 95% interval.
+
+  Shots: 23,357, 23.4 a fight. Hit: crew 55%, boarders 40%.
+  Shown odds  Shots  Shown  Hit
+  0–19%       2,020     9%   9%
+  20–39%      6,778    26%  27%
+  40–59%      4,466    45%  45%
+  60–79%      7,619    67%  67%
+  80–100%     2,474    83%  84%
+  On overwatch: 7% of shots, 27% hit. Crits: 32% of hits. Damage a hit: crew 4.5, boarders 4.5.
+  A fight: 1.8 crew go down, 0.9 bleed out, 2.6 boarders die.
+
+  1,000 fights in 40.8 s (41 ms a fight).
+  ```
+
+  Each preset is a row of its own, so the hunters' two came with the data, and the 1,000 fights are split six ways.
+- **The hunters' ships** (`tools/approach.js`, 300 a row; score is wins less losses in every 100):
+
+  | Ship | Against | Got away | Boarded her | Boarded by her | Blew her up | Parted | Score |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | start | repo tug | 64% | 0% | 20% | 0% | 16% | −20 |
+  | start | gunship | 65% | 0% | 13% | 0% | 22% | −13 |
+  | + weapon mount | repo tug | 47% | 19% | 14% | 10% | 9% | +15 |
+  | + weapon mount | gunship | 67% | 0% | 9% | 0% | 23% | −9 |
+  | + cannon | repo tug | 45% | 30% | 10% | 11% | 5% | +31 |
+  | + heavy engine | gunship | 90% | 0% | 1% | 0% | 9% | −1 |
+
+  Boarding fights (`tools/sim.js --boardings`, 125 a row, the start crew at full health): against the tug's party 38% won at home and 46% aboard her; against the gunship's, 9% and 14%. The cutter's, for comparison: 52% and 42%.
+- **The voyages** (`tools/voyage.js`, from M16's launches):
+
+  | | Seeds | Hunters met (runs) | Hunters a run | Fed all the way | Heat at most | Swaps a run | Days hidden | Long jumps |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | Managing heat | 1 to 30 | 6 | 0 (0 to 2) | 25 | 51 (47 to 80) | 1 (0 to 4) | 1 (0 to 7) | 3 (1 to 6) |
+  | Managing, no refits | 1 to 30 | 6 | 0 (0 to 2) | 24 | 50 (44 to 80) | 2 (0 to 4) | 0 (0 to 1) | 2 (0 to 5) |
+  | Ignoring heat | 1 to 30 | 30 | 8 (3 to 13) | 23 | 100 (84 to 100) | 0 | 0 | 0 |
+  | Managing heat | 1 to 60 | 14 | 0 (0 to 5) | 48 | 53 (46 to 100) | 1 (0 to 4) | 1 (0 to 7) | 3 (0 to 6) |
+  | Ignoring heat | 1 to 60 | 60 | 7 (3 to 14) | 43 | 100 (84 to 100) | 0 | 0 | 0 |
+
+  Ignoring heat, it regroups 7 times a run (2 to 16), healing 59 hit points, and loses 77 hit points in fights; managing it, 0 in fights at the median (0 to 49).
+- **Frame rate:** no new 3D view. The approach screen draws the hunters' ships as it draws any other.
+
 ## M23h Refits at stations (2026-10-14)
 
 **Status:** done, and the ROADMAP.md box is ticked. At a station the ship's panel on the sector map is Refit: construction mode on the ship with the parts on hand, found at nodes, stripped in boardings or left from act 1. A refit is free. A part an approach wrecked stays on until the station repairs it, and the ship can't jump from a station while a flight check fails.
