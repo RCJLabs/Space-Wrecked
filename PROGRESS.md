@@ -142,7 +142,18 @@ M27 Colony builder and production. First task: settle its Done when with Evan. R
 
   1,000 fights in 38.7 s (39 ms a fight).
   ```
-- **Every earlier milestone's browser check:** running as this is written (M25's and M24's adapted copies pass at all three sizes so far); filled in before the merge.
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named:
+  - M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 40 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 39, and M8's extras.
+
+  Two copies were adapted, not the game, for what M26 changes on purpose:
+  - M25's goes on from the landing to the colony, where it went to the stub, and reads the run's record and the world card there; its save made by main comes back as v20 (it pinned v19);
+  - M24's takes its v17 save back as v20 (it pinned v19).
+
+  The copies that make saves the way main did open them from checkouts of the M24 merge (v18, for M25's) and the M23h merge (v17), as before. M14 ran 39 checks (40 in M25): its count follows the jobs its run plays.
 
 ## Gate 4 (2026-10-14)
 
