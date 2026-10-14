@@ -151,9 +151,10 @@ export function jobsText(flags, none = 'None yet') {
 
 // Under the title's Continue: where the campaign is. rules may still be
 // loading (null): then the act goes without its home, and a job without
-// its name. On the run, the sector says where.
+// its name. On the run, the sector says where, or the system past the
+// charts; once a world is settled (M25), the world.
 export function continueText(campaign, rules) {
-  const { fight, run } = campaign;
+  const { fight, run, colony } = campaign;
   const approach = run?.approach;
   const boarding = fight?.boarding && approach ? (fight.boarding.dir === 'them' ? `Aboard the ${approach.enemy.name}` : `Boarders from the ${approach.enemy.name}`) : null;
   const what = fight?.raid ? 'The raid' : fight?.job ? rules?.contracts.jobs.get(fight.job.contract)?.title ?? 'On a job' : boarding ?? 'In a fight';
@@ -161,6 +162,6 @@ export function continueText(campaign, rules) {
   const facing = approach && (approach.outcome ? `${approach.enemy.name}, over` : `${approach.enemy.name}, round ${approach.round}`);
   const at = fight
     ? fight.battle.winner ? `${kind} just ended` : `${what}, round ${fight.battle.round}`
-    : facing ?? (run ? `Sector ${run.sector.index} · ${run.sector.name}` : rules && actOf(campaign, rules)?.home);
+    : facing ?? (colony ? colony.world.name : run ? `${run.sector.system ? 'The system' : `Sector ${run.sector.index}`} · ${run.sector.name}` : rules && actOf(campaign, rules)?.home);
   return at ? `Act ${campaign.act} · ${at}` : `Act ${campaign.act}`;
 }

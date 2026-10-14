@@ -1,8 +1,11 @@
 // The ship lifting off at the end of act 1 (src/ui/campaign/launch.js): its
 // engines light and shake it, it climbs off the pad toward the camera, then
-// it flies away nose first, gathering speed, until it is out of sight.
-// Pure: the scene is made once from the ship (exterior.js), and each moment
-// of the sequence, the camera and the flames, comes from the time alone.
+// it flies away nose first, gathering speed, until it is out of sight. The
+// landing at the end of act 2 (src/ui/campaign/landing.js, M25) is the same
+// run backwards: the ship comes in stern first, braking on its engines,
+// slows, sets down, and its engines die away. Pure: the scene is made once
+// from the ship (exterior.js), and each moment of the sequence, the camera
+// and the flames, comes from the time alone.
 import { exteriorScene } from './exterior.js';
 import { prepareSolid } from './painter.js';
 import { shade } from './solid.js';
@@ -47,6 +50,11 @@ export function liftOffAt(t) {
     gone: t >= AWAY,
     over: t >= END,
   };
+}
+
+// The landing at t seconds: the lift-off's moment at END - t, over at END.
+export function landingAt(t) {
+  return { ...liftOffAt(END - t), over: t >= END };
 }
 
 // The camera for a moment of the sequence, from base, the camera on the

@@ -7,6 +7,7 @@ import { constructionScreen } from './campaign/construction.js';
 import { campaignFightScreen } from './campaign/fight.js';
 import { hangarScreen } from './campaign/hangar.js';
 import { jobsScreen } from './campaign/jobs.js';
+import { landingScreen } from './campaign/landing.js';
 import { launchScreen } from './campaign/launch.js';
 import { sectorScreen } from './campaign/sector.js';
 import { shopScreen } from './campaign/shop.js';
@@ -27,6 +28,7 @@ const screens = {
   launch: launchScreen,
   sector: sectorScreen,
   approach: approachScreen,
+  landing: landingScreen,
   stub: stubScreen,
 };
 

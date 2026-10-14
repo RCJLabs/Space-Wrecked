@@ -294,6 +294,7 @@ const cases = [
   ['a world kind with too rich a soil', (d) => (d.worlds.kinds[0].soil = [0, 4]), /worlds.json kind ocean: soil must be \[least, most\], from 0 to 3/],
   ['a world kind with its danger backwards', (d) => (d.worlds.kinds[0].danger = [2, 1]), /worlds.json kind ocean: danger must be \[least, most\]/],
   ['a world kind with a stray field', (d) => (d.worlds.kinds[0].gold = [1, 2]), /worlds.json kind ocean: unknown field "gold"/],
+  ['a world kind with no words for the landing', (d) => delete d.worlds.kinds[0].landing, /worlds.json kind ocean: landing must be a non-empty string/],
   ['fewer kinds of world than a system has worlds', (d) => (d.worlds.kinds = d.worlds.kinds.slice(0, 2)), /worlds.json: needs 3 kinds of world, one for each world in a system; has 2/],
   ['a world name twice', (d) => (d.worlds.names.worlds[1] = d.worlds.names.worlds[0]), /worlds.json names.worlds: has a name twice/],
   ['too few world names for a system', (d) => (d.worlds.names.worlds = ['Harrow', 'Tarn']), /worlds.json names.worlds: needs 3 names/],

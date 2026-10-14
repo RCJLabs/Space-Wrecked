@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { traceHull } from '../src/render/hull.js';
-import { AWAY, CLIMB, END, flameGlows, IGNITE, liftOffAt, liftOffCamera, liftOffScene, PLUME } from '../src/render/liftOff.js';
+import { AWAY, CLIMB, END, flameGlows, IGNITE, landingAt, liftOffAt, liftOffCamera, liftOffScene, PLUME } from '../src/render/liftOff.js';
 import { fitOrbit, project, screenBounds } from '../src/render/orbit.js';
 import { skins } from '../src/render/palette.js';
 import { BOARD_VIEW, boardBox } from '../src/render/shipView.js';
@@ -72,4 +72,36 @@ test('with nothing moving the camera, the moment at rest is the fitted camera', 
   const rect = RECTS[0];
   const base = fit(rect);
   assert.deepEqual(liftOffCamera(base, rect, box, liftOffAt(0), 0), base);
+});
+
+test('the landing is the lift-off backwards: in out of sight, braking in, down onto the pad, the engines dying away (M25)', () => {
+  assert.equal(landingAt(0).gone, true, 'out of sight at first');
+  assert.equal(landingAt(0).over, false);
+  assert.equal(landingAt(END - AWAY + 0.01).gone, false, 'in sight once it comes in');
+  for (const t of times) {
+    const { over, ...moment } = landingAt(t);
+    const { over: _, ...back } = liftOffAt(END - t);
+    assert.deepEqual(moment, back, `at ${t}`);
+    assert.equal(over, t >= END);
+  }
+  // Down: no climb, the engines out and still; the pad lit as it sets down.
+  assert.deepEqual(landingAt(END), { flame: 0, shake: 0, rise: 0, away: 0, gone: false, over: true });
+  assert.equal(flameGlows(scene, landingAt(END - IGNITE), END - IGNITE).length, 6 * PLUME + 1, 'burning on the pad as it touches down');
+  assert.deepEqual(flameGlows(scene, landingAt(END), END), [], 'and out once down');
+  // Coming in from the right, never turning back (but for the engines'
+  // shake), and in sight from once it is in until it is down.
+  for (const rect of RECTS) {
+    const base = fit(rect);
+    let last = Infinity;
+    for (const t of times.filter((t) => t > END - AWAY)) {
+      const m = landingAt(t);
+      const cam = liftOffCamera(base, rect, box, m, t);
+      const [nose] = project(cam, box.x1, (box.y0 + box.y1) / 2, 0);
+      if (t <= END - CLIMB) {
+        assert.ok(nose <= last + 2 * 3, `coming in from the right at ${t}`);
+        last = nose;
+      }
+      if (m.away <= 0.8) assert.ok(inSight(cam, rect), `in sight at ${t}`);
+    }
+  }
 });

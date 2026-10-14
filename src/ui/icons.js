@@ -64,6 +64,11 @@ export const icons = {
   nebula: icon('<path d="M7 18.5a4 4 0 0 1-.6-8 5.5 5.5 0 0 1 10.7-1.4 4.5 4.5 0 0 1 .4 9.4z"/><path d="M9 14.5c1.5-1.5 3.5-1.5 5 0"/>'),
   regroup: icon('<path d="M3 19V6"/><path d="M3 14h18v5"/><path d="M21 14v-1.5a3 3 0 0 0-3-3h-7.5V14"/><circle cx="6.8" cy="11.3" r="1.7"/>'),
   transponder: icon('<rect x="3" y="7" width="11" height="10" rx="1.5"/><path d="M6 11h5M6 14h3"/><path d="M17 7.5a5 5 0 0 1 2.5 8.5"/><path d="M19.5 12.5V16H16"/>'),
+  // The system past the charts (M25): a world, banded; a survey, a world
+  // with an orbit round it; and settling, a flag planted in the ground.
+  world: icon('<circle cx="12" cy="12" r="8"/><path d="M4.6 9.5c2.4 1 5.2 1.2 7.4.6s5-.6 7.4.4M4.4 14.2c2.6.8 5 .8 7.6 0s5.2-.8 7.6 0"/>'),
+  survey: icon('<circle cx="12" cy="12" r="4.5"/><path d="M5.5 7.4C2.9 9 1.8 10.9 2.4 12.4c1 2.6 6.6 3.2 12.4 1.4S23 8.6 21.9 6c-.5-1.2-2.1-1.8-4.3-1.8"/>'),
+  settle: icon('<path d="M7 21V3.5"/><path d="M7 4h11l-2.8 3.8L18 11.5H7"/><path d="M3 21h9"/>'),
   // Launch: a ship standing on its tail, fins out, its flame under it.
   launch: icon('<path d="M12 2.5c3 2.4 4.5 5.9 4.5 10.5v3h-9v-3C7.5 8.4 9 4.9 12 2.5z"/><path d="m7.5 12.5-2.5 3v2l2.5-1.5M16.5 12.5l2.5 3v2l-2.5-1.5"/><circle cx="12" cy="9.5" r="1.6"/><path d="M10.5 19 12 22l1.5-3"/>'),
 };

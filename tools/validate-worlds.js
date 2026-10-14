@@ -2,7 +2,8 @@
 // validate-campaign.js: how many worlds a system has and its words, the
 // words for how far a world lies from the lanes (one line for each of 1 to
 // LANES, nearest first), the kinds of world, each with the ranges its act 3
-// numbers roll in (gen/system.js), and the names a system and its worlds
+// numbers roll in (gen/system.js), its words and the words for the landing
+// on it, and the names a system and its worlds
 // draw on. A system's worlds are of different kinds and names, so there are
 // at least as many of each as a system has worlds. The worlds stand on the
 // "world" kind of node (sectors.json).
@@ -12,7 +13,7 @@ import { isIntIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from
 
 const FILE_KEYS = ['system', 'lanes', 'kinds', 'names'];
 const SYSTEM_KEYS = ['worlds', 'text'];
-const KIND_KEYS = ['id', 'name', 'weight', ...RATINGS, 'text'];
+const KIND_KEYS = ['id', 'name', 'weight', ...RATINGS, 'text', 'landing'];
 const NAME_LISTS = ['systems', 'worlds'];
 const MAX_WORLDS = 5;
 const MAX_TEXT = 200;
@@ -40,7 +41,7 @@ export function checkWorlds(file, sectors, fail) {
     const at = `${where} kind ${kind.id ?? `#${i}`}`;
     knownKeys(kind, KIND_KEYS, at, fail);
     if (!isText(kind.name) || kind.name.length > MAX_NAME) fail(at, `name must be a non-empty string of up to ${MAX_NAME} letters`);
-    if (!isText(kind.text) || kind.text.length > MAX_TEXT) fail(at, `text must be a non-empty string of up to ${MAX_TEXT} letters`);
+    for (const key of ['text', 'landing']) if (!isText(kind[key]) || kind[key].length > MAX_TEXT) fail(at, `${key} must be a non-empty string of up to ${MAX_TEXT} letters`);
     if (!isIntIn(kind.weight, 1, 100)) fail(at, 'weight must be a whole number from 1 to 100');
     for (const rating of RATINGS) if (!isRange(kind[rating], 0, MAX_RATING)) fail(at, `${rating} must be [least, most], from 0 to ${MAX_RATING}`);
   });
