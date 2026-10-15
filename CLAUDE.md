@@ -29,7 +29,7 @@ A ship-first sandbox RPG in 3D: build a ship on a grid, run from a pursuer, and 
 - **Seeded RNG everywhere**, using `mulberry32` in `src/core/rng.js`. This covers battles, the approach phase, generators, loot and events. No bare `Math.random()` in game logic. RNG state is part of the save, so reloading never rerolls.
 - **All content is data** in `data/*.json`:
   - modules (each maker's versions with them) and the builder's part categories, hull frames, hull styles, styling pieces with the paints and trims, manufacturers, weapons, enemies, encounters, ship presets (each with its side's look and makers), the campaign's acts
-  - crew jobs, traits, recruits' names, backgrounds (each with its start and pursuer), districts, the job sites' map templates, the run's sectors, the worlds past the charts, the colony's buildings and what it builds (farms, mines, solar arrays and shelters), the places within reach of the colony
+  - crew jobs, traits, recruits' names, backgrounds (each with its start and pursuer, the pursuer's words and raiders in each act), districts, the job sites' map templates, the run's sectors, the worlds past the charts, the colony's buildings (with the shots its defenses fire at a raid's lander) and what it builds (farms, mines, solar arrays and shelters), the places within reach of the colony
   - how jobs, enemies and weapons look in a fight (`look` and `held`, checked against `src/render/figures/looks.js`)
   - mission and job templates (`data/contracts.json`), events, balance numbers
 
@@ -53,7 +53,7 @@ CNAME                       # spacewrecked.rcjlabs.com
 .well-known/assetlinks.json # TWA verification, added with the TWA
 src/
   core/      rng, save, blueprint codes, store, events
-  sim/       grid, builder rules, styling, makers, constraints, mapFromShip, battle, ai, approach, heat, campaign, colony (with its building by hand, its days and its expeditions), economy, gen/
+  sim/       grid, builder rules, styling, makers, constraints, mapFromShip, battle, ai, approach, heat, campaign, colony (with its building by hand, its days and its expeditions), raids (with the colony as a battle map), economy, gen/
   render/    3D camera, scenes and painters, part and styling piece models, figures (figures/), portraits (portraits/), hull tracer and hull shapes, SVG icons, tweens, particles
   ui/        screens, panels, gestures
   platform/  storage, service worker registration, haptics, orientation

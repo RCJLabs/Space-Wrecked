@@ -41,7 +41,6 @@ import { crewUnit, endFight, shipChecklist } from './campaign.js';
 import { storesOf } from './colony.js';
 import { squadMembers, squadProblem } from './crew.js';
 import { passDay } from './days.js';
-import { downText, raidDown, tripHeatOf } from './raids.js';
 import { deploy } from './deploy.js';
 import { pickWeighted } from './drops.js';
 import { applyEffects, choiceProblem, outcomeFor } from './events.js';
@@ -50,12 +49,14 @@ import { generateShip } from './gen/ship.js';
 import { withHeat } from './heat.js';
 import { mapFromShip } from './mapFromShip.js';
 import { hasTag } from './modules.js';
+import { downText, raidDown, tripHeatOf } from './raids.js';
 import { enemyBonus } from './settings.js';
 
 const MAX_SEED = 0xffffffff;
 // What an event at a place can do and need (data/events.json): food (the
 // run's supplies), materials, wounds and parts. Credits buy nothing at the
-// colony, and heat waits for M29.
+// colony, and a place's events leave heat alone: a trip adds its own as it
+// flies out (M29).
 export const PLACE_EFFECTS = ['supplies', 'materials', 'wound', 'part', 'drop'];
 export const PLACE_NEEDS = ['supplies', 'parts'];
 

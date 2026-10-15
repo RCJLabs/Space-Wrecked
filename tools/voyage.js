@@ -775,7 +775,8 @@ function raidsLine(defs, raids) {
 // What a lost raid took, in words: "12 food, 15 materials and a Shield
 // generator", or "nothing".
 function tookText(defs, taken) {
-  const said = [...(taken?.food ? [`${taken.food} food`] : []), ...(taken?.materials ? [`${taken.materials} materials`] : []), ...(taken?.part ? [`a ${defs.modules.get(taken.part)?.name ?? taken.part}`] : [])];
+  const part = taken?.part ? defs.modules.get(taken.part)?.name ?? taken.part : null;
+  const said = [...(taken?.food ? [`${taken.food} food`] : []), ...(taken?.materials ? [`${taken.materials} materials`] : []), ...(part ? [`${/^[aeiou]/i.test(part) ? 'an' : 'a'} ${part}`] : [])];
   return said.length < 2 ? said[0] ?? 'nothing' : `${said.slice(0, -1).join(', ')} and ${said.at(-1)}`;
 }
 

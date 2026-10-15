@@ -111,8 +111,10 @@ export function buildingOf(type, rules) {
 //   beds, air  the crew it beds and breathes for (berths, life support)
 //   storage    what it holds (cargo), for M27's production
 //   heal       an infirmary's (a med bay's or surgery's)
-//   damage, shield, intercept   a defense's, for M29's raids
-//   armory     true for an armory, also for the raids
+//   damage, shield, intercept   a defense's part's own numbers; in a
+//              raid (M29, raids.js) a defense fires its data/colony.json
+//              shots, and any shield guards the defenders
+//   armory     true for an armory, which arms the defenders in a raid
 export function givesOf(def) {
   const stats = def.stats ?? {};
   return {
