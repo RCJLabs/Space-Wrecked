@@ -248,7 +248,19 @@ The quickest way there: play days at a colony with heat 25 or more, or ask me fo
   - M27's 30 days are main's in all 30, but for heat and the raids' flags;
   - M28's 30 days of trips are main's in 28. The other two (seeds 10 and 15) lie near the lanes, where 9 trips added 54 heat: from 25 the odds were rolled (nothing found), and the rolls moved the RNG.
 - **The fights** (`node tools/sim.js`; no balance number changed): identical to main's but for the time taken.
-- REGRESSIONS
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named:
+  - M28 32, M27 32, M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 40 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 41 (its count goes with the jobs it rolls), and M8's extras.
+
+  Three copies were adapted, not the game, for what M29 changes on purpose:
+  - M28's: its v21 save comes back as v23;
+  - M27's reads food and materials as the needs' 5th and 6th rows, the needs now ending with the raid's line, and its save comes back as v23;
+  - M26's Defense line says "1 shot at a lander", and its needs end with the raid's line.
+
+  The copies that make saves the way main did open them from checkouts of the M28 merge (v22, for M29's), the M27 merge (v21, M28's), the M26 merge (v20, M27's), the M25 merge (v19, M26's), the M24 merge (v18, M25's), and the M23h and M23g merges (v17), as before.
 
 ## M28 Expeditions from the colony (2026-10-15)
 
