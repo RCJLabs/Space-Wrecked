@@ -726,7 +726,70 @@ Detailed at the start of M26, once v0.2 was done. The Done whens past M26 are dr
   - **Saves:** `SAVE_VERSION` 22 for the places and the trip. A v21 colony opens with no trip, and its places are rolled when the colony is first shown (tested).
   - **The test player:** over 30 voyages (campaign seeds 1 to 30) the careful test player plays 60 days at the colony. It builds as in M27, puts berths and air for its squad back aboard, and flies trips, building a generator and shelters when someone stays home. In every run it flies at least one trip and the ship comes home from every one. Its report says each run's trips, days away, what they brought, the boardings won and lost, and the hungry days (`tools/voyage.js`).
   - **Touch:** every new button is 48 px or more at the three sizes. By touch: a place and a squad picked; Fly out refused for a failing flight check, and a refit that puts life support aboard; Fly out; an event decided at a place; a boarding fought; Fly home and its report; a generator and a shelter built; and a quit and reopen while the ship is away.
-- [ ] M29 Raids. Draft: heat in act 3 falls slowly, and the pursuer raids the colony by heat and how far it lies from the lanes; guns, shields and armories defend; a raid is fought on the colony's grid.
+- [ ] **M29 Raids.** The colony stands as M28 left it. Heat is where the landing left it, and nothing in act 3 moves it. The defenses given from the ship stand there doing nothing: guns, flak towers, shield domes and armories.
+
+  Evan's picks (2026-10-15), each the recommended option:
+  - **Found:** heat falls a little each day, and trips add some, less the further the colony lies from the lanes. Each day the pursuer may find the colony, at odds shown on the colony screen. Found, its lander comes 3 days later.
+  - **Defenses:** the defenses fight the landing, each hit a raider fewer in the fight. Shield domes and the armory help the crew in the fight itself.
+  - **Losing:** a lost raid takes half the food and materials, and the dearest part in the hold.
+  - **The ship away:** a raid can land while the ship is away, and whoever is home fights it.
+
+  Measured before settling this (the careful test player's colonies after M28's 60 days, seeds 1 to 30):
+  - heat is 50 at the median (26 to 75), as it landed;
+  - 24 colonies have a powered gun emplacement and 1 a flak tower. None has set down a shield dome or an armory, though several hold them as parts;
+  - the colonies lie near the lanes in 2 runs, off them in 10 and far in 18.
+
+  A prototype raid on each colony's grid, buildings as blocks of cover (the crew played by the AI, the raiders pressing on, 150 fights a row), gave these crew win rates:
+
+  | Raiders | Whole crew | Two at home | One at home |
+  | --- | --- | --- | --- |
+  | 4: the pursuer's (agent, heavy, agent, guard) | 39% | 10% | 0% |
+  | 3 | 90% | 53% | 9% |
+  | 2 | 99% | 86% | 34% |
+
+  **Done when:**
+  - **Heat at the colony:**
+    - in act 3 heat falls by `colonyHeatFall` at each day's end;
+    - a trip adds heat as it flies out, less the further the colony lies from the lanes (`tripHeat`, by lanes);
+    - the colony screen shows heat with the pursuer's words for act 3 (`data/backgrounds.json`) (tested).
+  - **Found:**
+    - at each day's end, while no raid is coming, the pursuer may find the colony;
+    - the odds go by heat's level and the colony's lanes (`raidOdds`, `data/balance.json`), with none below `rumorHeat`, shown on the colony screen as they will be rolled;
+    - found, the raid lands `raidWarning` days later, and the colony screen counts them down;
+    - a trip's days roll the same way, and the same seed always rolls the same (tested).
+  - **The landing:**
+    - on its day the raid is down, and Next day and Fly out wait until it is faced;
+    - two taps on Defend. First the landing: each powered gun emplacement and flak tower fires once at the lander as it comes down, a cannon emplacement twice, each at `landingHit`%, shown before the tap. Each hit is a raider fewer;
+    - then the fight with the rest (tested).
+  - **The fight** on the colony's grid (`src/sim/colonyMap.js`):
+    - open ground, each building a block of cover where it stands (fields half cover, the rest full);
+    - the crew at home starts by the landed ship's edge, and the pursuer's raiders (`data/backgrounds.json`) at the far edge, pressing on as at the hangar;
+    - a powered shield dome or shield array gives the defenders `raidShieldArmor` armor, and a powered armory `raidArmoryAim` aim (tested).
+  - **Afterwards:**
+    - won or lost, heat falls to `heatAfterRaid`;
+    - lost, the raiders take half the food, half the materials and the dearest part in the hold;
+    - downed crew come home hurt, as from any fight (tested).
+  - **While the ship is away:**
+    - a raid that lands during a leg stops it on that day. Those at home face it, and the leg flies on after; the squad doesn't fight;
+    - with nobody home, the landing's hits are all the colony has: it holds if they stop every raider, and is lost if not (tested).
+  - **The colony screen:**
+    - heat and its words, and the day's odds of being found;
+    - a raid coming, and its days;
+    - Defend in two taps, the first saying what the guns will fire and at what odds;
+    - the landing's report, the fight, and what came of it.
+
+    Act 3's words say what is still to come.
+  - **Saves:** `SAVE_VERSION` 23 for a raid coming and a leg stopped by one. A v22 colony opens with none coming (tested).
+  - **The test player:** over 30 voyages (campaign seeds 1 to 30) the careful test player plays its colony's 60 days with raids: M27's 30 days, then M28's 30 of trips.
+    - It stays home while a raid is coming, sets down the guns, shields and armories in the hold, and faces every raid.
+    - Its report says each run's raids found, faced, won and lost, the raiders the guns stopped, and what lost raids took (`tools/voyage.js`).
+    - The odds are tuned so that a careful colony is found more often near the lanes than far from them. The numbers are measured and reported.
+  - **Touch:** every new button is 48 px or more at the three sizes. By touch:
+    - the odds and the warning;
+    - Defend's two taps, with the landing's report;
+    - a raid fought and won, and one lost with what was taken;
+    - a raid landing while the ship is away;
+    - a quit and reopen with a raid coming.
 
 ### Phase 6: Breadth (v0.4)
 
