@@ -873,7 +873,39 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
     - a quit and reopen that keeps the background.
 
   As built (PROGRESS.md has the measurements): the deserter also has a small reactor fitted, and an engine, crew quarters and two corridors on hand. The smuggler's credits are 75, with life support and two corridors on hand. Over 50 runs each, act 1's slow median is 45 minutes for the miner, 41 for the deserter and 39 for the smuggler.
-- [ ] M31 Manufacturers. Draft: a third maker (§9 has M23g's two candidates, Kestrel Dynamics and Scrapline), with its version of each part, its own numbers and its look outside and on the plans; makers for the other sides (§9); the shop and drops carrying it. §5's target is 3.
+- [ ] **M31 Manufacturers.** Two makers so far: the Yard's standard parts and Bastion Arms', tough and heavy (M23g). Bastion's are amber on the plans and in the drawer, every shop and the salvage carry them, and the patrol's corvettes and the pursuers' bigger ships fly them.
+
+  Evan's picks (2026-10-15), from mockups drawn by the game's renderer:
+  - **The makers:** both of M23g's other candidates, Kestrel Dynamics and Scrapline. That makes four makers, one past §5's target of three.
+  - **Kestrel's trade:** a real one. Its ships get away more often, but its parts break sooner when hit, so a ship of them fares worse than the Yard's against some preset.
+  - **Enemy ships:** each flown by the side that fits it: Kestrel's by the pirates' cutters and the Hallorans' runner, Scrapline's by the derelict haulers.
+  - **Where they come from:** shops and salvage, like Bastion's.
+
+  Measured before settling this (`tools/approach.js`, 200 approaches a row, the launched start ship with every part by the maker, at M23g's mockup numbers):
+  - **Kestrel** (about a third less mass, a fifth fewer hit points, a fifth dearer): evasion 43 against the Yard's 30. It is boarded in 1% to 12% of approaches against 12% to 24%, and it scores better against every preset. Its fewer hit points barely show: fewer shots land.
+  - **Scrapline** (a third off the price, a fifth fewer hit points, 1 more power drawn): every approach comes out as the Yard's. A gun hit does 15, which wrecks a 12-point part as surely as a 15-point one, and an approach doesn't count power. Its three engines leave the start ship 2 power short (−7 with every part its own), so it needs a second reactor to fly.
+
+  **Done when:**
+  - **Data:** Kestrel Dynamics and Scrapline are in `data/manufacturers.json`. Their versions in `data/modules.json` keep the Yard part's footprint, interior, fittings and icon. None is worse than another part in every way (M23e's test).
+    - **Kestrel**, light and dear: a version of every part that weighs 2 or more (the four that weigh 1 can't get lighter in whole numbers), with about a third less mass, fewer hit points and a higher price.
+    - **Scrapline**, cheap and power-hungry: a version of every part, about a third cheaper, with fewer hit points. Each part that draws power draws 1 more, and a reactor makes 1 less.
+  - **Law 1** (`tools/approach.js`, tested):
+    - the start ship with Kestrel's parts evades more against every preset and loses more parts for each hit it takes, and it fares worse than the Yard's against at least one preset;
+    - with Scrapline's parts, and the reactor it then needs to fly, it fares differently from the Yard's against the presets. Its power counts in the flight checklist: the start ship with Scrapline's engines is short of power, and the fix asks for a reactor.
+  - **At a glance:**
+    - on the plans and in the drawer, each maker's rooms and icons are in its own line: Kestrel's rose, Scrapline's lime;
+    - outside, wherever ships are drawn (the Hull view, the hangar, the lift-off, the colony and the Enemy ships sandbox), its parts wear its own fittings, mark and flames. Kestrel's are pearl fittings, coral stripes and violet flames; Scrapline's are rust fittings, bare patches and green flames.
+  - **The drawer:** each part's versions sit beside it. The category sheet picks any maker or one of the four. Construction mode shows the parts on hand of every maker. Every button is 48 px or more at the three sizes.
+  - **Where they come from:** each act 1 shop carries a few of each maker's parts, some jobs drop them, and act 2's salvage has them. Act 1 runs about as before: from every background's start every test run reaches launch, with the slow median within 10 minutes of M30's (`tools/run.js`).
+  - **Enemy ships:** the pirates' cutters and the Hallorans' runner fly Kestrel's parts for most of theirs, and the derelict haulers Scrapline's. Each part is rolled from the ship's seed and kept only while the ship still passes its flight checklist, and boarding a ship strips them. Layouts and boarding maps are unchanged; the golden ships file is updated on purpose, for the part names.
+  - **Saves and codes:** old saves and blueprint codes load as before, and neither version number changes (tested).
+  - **The voyage:** from each background's start the careful test player crosses all five sectors fed, meets the hunters and loses a raid at the colony within 5 runs of 30 of M30's numbers (`tools/voyage.js --background all`).
+  - **Budget:** the hull views keep to the frame budget.
+  - **Touch:** at the three sizes:
+    - each new maker's parts in the drawer and on the plans;
+    - fitted and seen outside in the Hull view;
+    - bought in a shop;
+    - flown by an enemy ship in the Enemy ships sandbox.
 - [ ] M32 All jobs, traits and talents. Draft: Pilot, Scout, Xenobiologist and Quartermaster join the Marine, Engineer and Medic (§4.5). Each has its numbers and weapon, a ship station effect, a battle ability and a colony effect. Traits go from 6 toward §5's 20. Talents: what they are and how they are earned is to settle. Recruits get a background (§9).
 - [ ] M33 Factions, quests and companions. Draft: factions whose standing moves with the jobs and events the crew takes; quests that chain jobs and events across the acts; named companions with loyalty quests (§9).
 - [ ] M34 Image pass: Base44 portraits and scenes. Draft: WebP portraits for named characters (companions, the districts' clients) and scenes (the hangar, the lift-off, the landing), each logged in `assets/LOG.md`. Recruits keep their layered portraits, drawn in code since M23c.
