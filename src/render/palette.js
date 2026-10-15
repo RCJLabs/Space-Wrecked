@@ -165,6 +165,14 @@ export const buildColors = {
   ore: '#b8743f',
   oreDark: '#86512c',
   lamp: '#ffd36b',
+  // M28: the solar array's panels and frames, the shelter's skin, its ribs,
+  // its ends and its door.
+  panel: '#2f4f86',
+  panelFrame: '#c8d0d8',
+  hut: '#c9c2b4',
+  hutRib: '#b3ab9b',
+  hutEnd: '#a8a092',
+  door: '#3a3530',
 };
 
 // Bastion Arms (M23g): gunmetal fittings, orange hazard chevrons, engines

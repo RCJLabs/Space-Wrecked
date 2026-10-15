@@ -157,3 +157,39 @@ function inputsOf(campaign) {
   const { ship, colony } = campaign;
   return { ship, hull: traceHull(ship, rules), site, kind: colony.world.kind, defs: rules, skin: skinFor('yard'), mark: null };
 }
+
+test('a solar array and a shelter stand as panels and a hut, the shelter dark without power; the ship away leaves its pad empty (M28)', () => {
+  const landed = settled();
+  const campaign = { ...landed, colony: { ...landed.colony, buildings: [{ uid: 1, type: 'solar', x: 4, y: 0, rot: 0 }, { uid: 2, type: 'shelter', x: 4, y: 4, rot: 0 }], nextUid: 3 } };
+  const scene = sceneOf(campaign);
+  const within = (face, x0, y0, x1, y1) => face.pts.every(([x, y]) => x >= x0 - 1e-9 && x <= x1 + 1e-9 && y >= y0 - 1e-9 && y <= y1 + 1e-9);
+  const solar = scene.faces.filter((face) => within(face, 4, 0, 6, 2));
+  const hut = scene.faces.filter((face) => within(face, 4, 4, 6, 6));
+  assert.ok(solar.some((face) => face.color === buildColors.panel), 'solar panels');
+  // A panel leans back: its top face rises from front to back.
+  const panel = solar.find((face) => face.color === buildColors.panel);
+  assert.ok(Math.max(...panel.pts.map(([, , z]) => z)) > Math.min(...panel.pts.map(([, , z]) => z)));
+  assert.ok(hut.some((face) => face.color === buildColors.hut) && hut.some((face) => face.color === buildColors.door), 'the hut and its door');
+  assert.ok(Math.max(...hut.flatMap((face) => face.pts.map(([, , z]) => z))) <= BUILD_TALL);
+  // The array powers the shelter: both lit, each with its light.
+  assert.ok(scene.glows.some((glow) => glow.at[0] >= 4 && glow.at[0] <= 6 && glow.at[1] <= 2), 'the inverter light');
+  assert.ok(scene.glows.some((glow) => glow.at[1] >= 4 && glow.at[1] <= 6), 'the shelter window');
+  // The shelter alone, with nothing but the ship's spare to run it, keeps
+  // its window lit; dark, it's out.
+  const dark = colonyScene({ ...sceneInput(campaign), buildings: [{ uid: 2, type: 'shelter', x: 4, y: 4, rot: 0, powered: false }] });
+  assert.ok(!dark.glows.some((glow) => glow.at[1] >= 4 && glow.at[1] <= 6 && glow.at[0] >= 4));
+  // Away: no ship's faces west of the grid, only its pad, and the view
+  // keeps its place.
+  const away = colonyScene({ ...sceneInput(campaign), away: true });
+  assert.ok(scene.faces.some((face) => face.pts.every(([x]) => x < 0)), 'the ship stands west of the grid');
+  assert.ok(!away.faces.some((face) => face.pts.every(([x]) => x < 0)), 'away, nothing stands there');
+  assert.ok(away.ground.some((face) => face.pts.every(([x]) => x < 0) && face.alpha < 1), 'its pad');
+  assert.deepEqual(away.box, scene.box);
+});
+
+function sceneInput(campaign) {
+  const stats = colonyStats(campaign, rules);
+  const powered = new Map(stats.buildings.map((b) => [b.uid, b.powered]));
+  const { ship, colony } = campaign;
+  return { ship, hull: traceHull(ship, rules), buildings: colony.buildings.map((b) => ({ ...b, powered: powered.get(b.uid) ?? false })), site, kind: colony.world.kind, defs: rules, skin: skinFor('yard') };
+}

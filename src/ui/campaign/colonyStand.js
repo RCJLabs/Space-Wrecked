@@ -118,6 +118,7 @@ export function createStand(area, { onTap }) {
         skin: skinFor('yard'),
         mark,
         whole,
+        away: Boolean(colony.trip),
       });
       scene = prepareColony(built, colony.world.kind);
       // The view keeps its fit, and the player's moves, while only the

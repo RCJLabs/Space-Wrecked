@@ -8,10 +8,10 @@
 // damage, and the plans mark them. The way out, at the end of the drawer's
 // tabs, goes home: Hangar to the hangar, where Launch is once every flight
 // check passes; Map to the sector map, where the ship can't jump until they
-// all do; or Colony to the colony, the flight checks counting only who is
-// aboard (nobody, until M28's expeditions). The board is
+// all do; or Colony to the colony, the flight checks counting a full squad
+// aboard (M28: what a trip needs, berths and air for each). The board is
 // ../builder/view.js's.
-import { actOf, canRefit, crewAboard, stockOf, wreckedUids } from '../../sim/campaign.js';
+import { actOf, canRefit, crewAboard, fullSquad, stockOf, wreckedUids } from '../../sim/campaign.js';
 import { mountBuilder } from '../builder/view.js';
 import { icons } from '../icons.js';
 
@@ -37,13 +37,15 @@ export const constructionScreen = {
       ready: {
         hangar: 'Every flight check passes. Launch is at the hangar: tap Hangar.',
         run: 'Every flight check passes: the ship can jump. Tap Map.',
-        colony: 'Every flight check passes: the ship can fly. Tap Colony.',
+        colony: 'Every flight check passes with a full squad aboard: the ship can fly out. Tap Colony.',
       }[home],
       cleared: { hangar: 'Ready to launch', run: 'Ready to jump', colony: 'Ready to fly' }[home],
       leave: { icon: leave.icon, label: leave.label, onTap: () => game.dispatch({ type: 'screen/show', screen: leave.screen }) },
+      // At the colony, a full squad: what a trip from it needs aboard.
       crew: () => {
         const now = game.getState().campaign;
-        return now ? crewAboard(now) : 0;
+        if (!now) return 0;
+        return now.colony && defs ? fullSquad(now, defs) : crewAboard(now);
       },
       liftOff: () => {
         const { campaign } = game.getState();
