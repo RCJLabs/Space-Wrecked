@@ -120,7 +120,7 @@ function recruitText(campaign, rules, recruit, place) {
   const fee = rules.balance.recruitFee;
   const crew = campaign.crew.length + 1;
   const each = rules.balance.jumpSupplies * crew;
-  const jumps = Math.floor(supplyCapacity(campaign.ship, rules) / Math.max(1, each));
+  const jumps = Math.floor(supplyCapacity(campaign.ship, rules, [...campaign.crew, recruit]) / Math.max(1, each));
   return {
     key: `hire:${recruit.slot}`,
     slot: recruit.slot,

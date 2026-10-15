@@ -18,7 +18,7 @@
 //   { uid }          the ship's part uid
 import { atColony } from './acts.js';
 import { turnedPlacement } from './builder.js';
-import { AWAY, buildGives, buildingName, buildingOf, buildOf, colonyStats, donate, donatePlan, givesOf, makesOf, placeBuilding, SITE, siteDef, siteError, spotFor, storesOf } from './colony.js';
+import { AWAY, buildGives, buildingName, buildingOf, buildOf, colonyStats, crewYields, donate, donatePlan, givesOf, makesOf, placeBuilding, SITE, siteDef, siteError, spotFor, storesOf } from './colony.js';
 import { tally } from './flags.js';
 
 // What building `what` would come to, at placement { x, y, rot }, or
@@ -61,7 +61,7 @@ export function buildPlan(campaign, rules, what, placement = null) {
     placement: { x: spot.x, y: spot.y, rot: spot.rot },
     cost,
     gives: known ? (known.makes ? null : buildGives(known)) : givesOf(rules.modules.get(type)),
-    makes: known ? makesOf(known, campaign.colony.world) : null,
+    makes: known ? makesOf(known, campaign.colony.world, crewYields(campaign, rules)) : null,
   };
 }
 
@@ -169,7 +169,7 @@ export function buildList(campaign, rules) {
   const builds = [...(rules.colony?.builds?.values() ?? [])].map((known) => {
     const what = { build: known.id };
     const plan = buildPlan(campaign, rules, what);
-    const makes = makesOf(known, campaign.colony.world);
+    const makes = makesOf(known, campaign.colony.world, crewYields(campaign, rules));
     return { what, id: known.id, name: known.name, cost: known.cost, makes, gives: makes ? null : buildGives(known), ok: plan.ok, error: plan.ok ? null : plan.error };
   });
   const hold = Object.entries(campaign.parts).map(([type, count]) => {

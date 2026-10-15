@@ -21,6 +21,8 @@ const MAX_CREW = 99;
 const MAX_HP = 999;
 // More recruits than a station offers (recruitOffer): the same kind of guard.
 const MAX_SLOT = 9;
+// Farther than any scan reaches (balance.scanRange and a scout's, edges.js).
+const MAX_REACH = 9;
 const MAX_SEED = 0xffffffff;
 const ID = /^[a-z][a-z0-9-]*$/;
 
@@ -60,7 +62,10 @@ export function runProblem(run) {
   if (!Array.isArray(past) || past.length > MAX_PAST || !past.every(isName)) return 'has unreadable past sectors';
   const isNodeList = (list) => Array.isArray(list) && list.every(isNode) && new Set(list).size === list.length;
   if (!isNodeList(done) || !done.every((id) => seen.includes(id) && (nodes[id].event || nodes[id].hostile))) return 'has unreadable events done';
-  if (!isNodeList(scans) || !scans.every((id) => seen.includes(id))) return 'has unreadable scans';
+  // Each scan (travel.js): where it was made, a node the ship has been to,
+  // and how far it reached. The same node is scanned again only farther.
+  const isScan = (s) => isRecord(s) && isNode(s.at) && seen.includes(s.at) && isInt(s.reach, 1, MAX_REACH);
+  if (!Array.isArray(scans) || !scans.every(isScan) || new Set(scans.map((s) => `${s.at}:${s.reach}`)).size !== scans.length) return 'has unreadable scans';
   if (result !== null && !isResult(result, nodes, done)) return 'has an unreadable last event';
   if (approach !== null && !isApproach(approach, nodes, at, done)) return 'has an unreadable approach';
   // The recruits signed on (recruits.js): at stations the ship has been to,

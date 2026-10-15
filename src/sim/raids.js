@@ -11,8 +11,8 @@
 //     raid is down: Next day and the trips wait until it is faced.
 // Facing it (faceRaid):
 //   - the colony's powered defenses fire at the lander as it comes down,
-//     each building its data/colony.json shots at landingHit percent, and
-//     each hit is a raider fewer;
+//     each building its data/colony.json shots at landingHit percent (and
+//     a marine at home's more, M32), and each hit is a raider fewer;
 //   - whoever is home fights the rest on the colony's grid (colonyMap.js),
 //     the raiders pressing on as at the hangar (raid.js). A powered shield
 //     gives the defenders raidShieldArmor armor, a powered armory
@@ -30,6 +30,7 @@ import { createBattle } from './battle.js';
 import { crewUnit, endFight } from './campaign.js';
 import { buildingOf, colonyStats } from './colony.js';
 import { colonyMap, raidStarts } from './colonyMap.js';
+import { colonyEdge } from './edges.js';
 import { tally } from './flags.js';
 import { pursuerOf, runLevel, withHeat } from './heat.js';
 import { enemyBonus } from './settings.js';
@@ -140,14 +141,17 @@ export function defensesOf(campaign, rules) {
 
 // What facing the raid that is down would come to: { ok: true, raiders
 // (the pursuer's, enemy ids), defenders (crew ids at home), guns, shots,
-// armor and aim (defensesOf's), hit (each shot's chance, percent) }, or
-// { ok: false, error }.
+// armor and aim (defensesOf's), hit (each shot's chance, percent:
+// landingHit, and a marine at home's more, edges.js) }, or { ok: false,
+// error }.
 export function landingPlan(campaign, rules) {
   if (!atColony(campaign, rules) || !raidDown(campaign)) return { ok: false, error: 'No lander is down at the colony.' };
   const pursuer = colonyPursuer(campaign, rules);
   const raiders = rules.encounters.get(pursuer?.raiders)?.enemies;
   if (!raiders) return { ok: false, error: 'The raiders are unknown.' };
-  return { ok: true, raiders, defenders: defendersOf(campaign).map((member) => member.id), ...defensesOf(campaign, rules), hit: rules.balance.landingHit };
+  const defenders = defendersOf(campaign);
+  const hit = Math.min(100, rules.balance.landingHit + colonyEdge(defenders, rules, 'landing'));
+  return { ok: true, raiders, defenders: defenders.map((member) => member.id), ...defensesOf(campaign, rules), hit };
 }
 
 // Faces the raid that is down (see landingPlan): the guns fire at the

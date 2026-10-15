@@ -31,14 +31,14 @@ export const STATION_EFFECTS = {
 //             home
 //   landing   to hit, for each defense's shots at a raid's lander
 //             (raids.js): home
-//   mines     materials each mine digs a day (days.js): home
+//   mines     materials each mine digs a day (colony.js): home
 //   tripDays  days a trip's legs are shorter, each way, never under 1
 //             (expeditions.js): in the squad
 //   places    places within reach past data/expeditions.json's
 //             (expeditions.js): anywhere in the crew
-//   farms     food each farm grows a day (days.js): home
+//   farms     food each farm grows a day (colony.js): home
 //   stores    food and materials the stores keep past theirs (colony.js):
-//             home
+//             anywhere in the crew, so a trip never spoils what they keep
 export const COLONY_EFFECTS = {
   heal: [1, 5],
   landing: [1, 50],
@@ -59,6 +59,26 @@ export function colonyEdge(members, rules, key) {
   return best(members, rules, 'colony', key);
 }
 
+// The crew member whose job brings the best ship effect `key`, the first
+// of them, or null: who to name when the screens show it at work.
+export function stationBy(members, rules, key) {
+  return by(members, rules, 'station', key);
+}
+
+// The same for colony effect `key`.
+export function colonyBy(members, rules, key) {
+  return by(members, rules, 'colony', key);
+}
+
 function best(members, rules, layer, key) {
-  return Math.max(0, ...members.map((member) => rules.jobs.get(member.job)?.[layer]?.[key] ?? 0));
+  return Math.max(0, ...members.map((member) => edgeOf(member, rules, layer, key)));
+}
+
+function by(members, rules, layer, key) {
+  const most = best(members, rules, layer, key);
+  return most ? members.find((member) => edgeOf(member, rules, layer, key) === most) : null;
+}
+
+function edgeOf(member, rules, layer, key) {
+  return rules.jobs.get(member.job)?.[layer]?.[key] ?? 0;
 }

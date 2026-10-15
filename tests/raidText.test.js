@@ -126,10 +126,12 @@ test("the defenses: what fires at a lander and what the defenders gain, and None
 test("Defend: the first tap says what fires at the lander, at what odds, and who fights; the landing's report; the fight's line, opening words and end", () => {
   const base = withBuildings(at(settled(), { heat: 70 }), [['reactor', 6, 0], ['weapon', 0, 0], ['cannon', 0, 3], ['shield', 0, 6]]);
   const ready = down(base);
+  // The marine at home calls the shots (M32): 60%, not landingHit's 50.
+  const marine = ready.crew.find((member) => member.job === 'marine').name;
   assert.deepEqual(defendText(base, rules), { ok: false, ask: null, why: 'No lander is down at the colony.' });
   assert.deepEqual(defendText(ready, rules), {
     ok: true,
-    ask: `The gun emplacement and the cannon emplacement (2 shots) fire at the lander as it comes down, 50% a shot, each hit a raider fewer. 3 at home fight whoever lands of 4 (${party}); the shield gives +1 armor. Tap again to defend.`,
+    ask: `The gun emplacement and the cannon emplacement (2 shots) fire at the lander as it comes down, 60% a shot with ${marine} the marine calling them, each hit a raider fewer. 3 at home fight whoever lands of 4 (${party}); the shield gives +1 armor. Tap again to defend.`,
     why: null,
   });
   assert.equal(defendText(down(at(settled(), { heat: 70 })), rules).ask, `Nothing at the colony fires at the lander. 3 at home fight whoever lands of 4 (${party}). Tap again to defend.`);

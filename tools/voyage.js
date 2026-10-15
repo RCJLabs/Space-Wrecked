@@ -345,7 +345,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
         record('survey', before, { world: here.name, hunt: done.hunt });
         tally.surveys += 1;
         tally.peak = Math.max(tally.peak, campaign.heat);
-        lines.push(`   Surveyed ${here.name} (${kindName(defs, here.world)}): ${numbersText(here.world)}; scores ${worldScore(defs, here.world, true)}. ${hold()}${done.hunt.found ? '. The hunters found the ship' : ''}.`);
+        lines.push(`   Surveyed ${here.name} (${kindName(defs, here.world)}): ${numbersText(here.world)}; scores ${worldScore(defs, here.world, true)}. ${hold()}${done.plan.free ? ', a free survey' : ''}${done.hunt?.found ? '. The hunters found the ship' : ''}.`);
         continue;
       }
       if (move.kind === 'settle') {
@@ -433,7 +433,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       lines.push(`   Swapped the transponder for ${before.credits - campaign.credits} credits: ${hold()}.`);
     }
     // Patching up, then repairs, with what is left beyond a holdful's price.
-    const reserve = supplyCapacity(campaign.ship, defs) * defs.balance.supplyPrice;
+    const reserve = supplyCapacity(campaign.ship, defs, campaign.crew) * defs.balance.supplyPrice;
     const patched = offer.ok && campaign.credits > reserve ? patchCrew({ ...campaign, credits: campaign.credits - reserve }, defs) : { ok: false };
     if (patched.ok) {
       const before = campaign;
@@ -725,7 +725,7 @@ function flyTrip(campaign, defs, index, squad, raids) {
   if (raidDown(now)) now = faceRaid(now, defs, raids);
   const home = flyHome(now, defs);
   if (!home.ok) throw new Error(home.error);
-  return { campaign: onWay(home.campaign, defs, raids), record: { day, name: place.name, kind: place.kind, days: place.days, squad: squad.length, what } };
+  return { campaign: onWay(home.campaign, defs, raids), record: { day, name: place.name, kind: place.kind, days: out.plan.days.out + home.plan.days, squad: squad.length, what } };
 }
 
 // A leg a raid stopped (M29): those at home face it, and the ship flies
@@ -747,7 +747,7 @@ function onWay(campaign, defs, raids) {
 // lost 0; built Shelter (day 40); refitted Life support aboard; 0 hungry
 // days."
 function tripsLine(defs, trips) {
-  const each = trips.flown.map((trip) => `${trip.name} (day ${trip.day}, ${trip.days * 2} days, ${trip.squad} aboard: ${trip.what})`).join('; ');
+  const each = trips.flown.map((trip) => `${trip.name} (day ${trip.day}, ${trip.days} days, ${trip.squad} aboard: ${trip.what})`).join('; ');
   const builds = trips.built.map((b) => `${b.name} (day ${b.day})`).join(', ');
   return (
     `${TRIP_DAYS} days of trips: ${trips.flown.length} trip${trips.flown.length === 1 ? '' : 's'}, ${trips.away} days away${each ? `: ${each}` : ''}. ` +

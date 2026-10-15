@@ -24,7 +24,8 @@ import { boardPlace, endPlaceFight } from '../src/sim/expeditions.js';
 import { endColonyRaid, faceRaid, raidTake } from '../src/sim/raids.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { mapFromShip } from '../src/sim/mapFromShip.js';
-import { pressAction } from '../src/sim/press.js';
+import { shotOdds } from '../src/sim/odds.js';
+import { advance, pressAction } from '../src/sim/press.js';
 import { launchedShip } from './startShip.js';
 
 // Who plays which side: the side aboard the other's ship presses on.
@@ -35,9 +36,12 @@ export const BOARDING_PLAYERS = {
 // A boarding fight still going after this many rounds has stalled.
 export const MAX_ROUNDS = 60;
 // The test player's fights: past this many rounds, both sides press on, so
-// two sides on overwatch either side of a door can't hold a voyage up.
+// two sides on overwatch either side of a door can't hold a voyage up; and
+// a shot with less than HOPELESS percent to hit gives way to a step nearer,
+// so two sides out of each other's reach can't trade misses for ever (M32).
 const DRAGGING = 40;
-const BOTH_PRESS = { crew: pressAction, enemy: pressAction };
+const HOPELESS = 10;
+const BOTH_PRESS = { crew: charge, enemy: charge };
 // Who plays a raid on the colony (M29): those at home the AI, the raiders
 // pressing on.
 const RAID_PLAYERS = { crew: aiAction, enemy: pressAction };
@@ -90,6 +94,17 @@ function fightThrough(campaign, rules, end, players = BOARDING_PLAYERS[campaign.
   if (!played.battle.winner) throw new Error(`A ${fight.raid ? 'raid' : 'boarding'} fight stalled after ${MAX_ROUNDS} rounds.`);
   const over = saveFight(campaign, played.battle, [...fight.log, ...played.events]);
   return { campaign: end(over, rules), won: played.battle.winner === 'crew', rounds: played.battle.round, dir: fight.boarding?.dir ?? null, salvage: fight.boarding?.salvage ?? null, dragged };
+}
+
+// Pressing on, past DRAGGING rounds: as pressAction, but a hopeless shot
+// gives way to a step nearer, where there is one.
+function charge(battle, rules) {
+  const action = pressAction(battle, rules);
+  if (action.type !== 'shoot') return action;
+  const unit = battle.units.find((u) => u.id === action.unit);
+  const target = battle.units.find((u) => u.id === action.target);
+  if (shotOdds(battle, unit, target, rules).hit >= HOPELESS) return action;
+  return advance(battle, unit, rules) ?? action;
 }
 
 // The harness's rows: two for each hostile preset with a party.

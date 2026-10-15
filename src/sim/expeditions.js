@@ -13,7 +13,10 @@
 // the ship lands, and a new list is rolled. From M29 a trip adds heat as
 // the ship flies out (raids.js tripHeatOf), and a leg stops on the day a
 // raid's lander comes down at the colony: those at home face it, and Fly
-// on passes the rest of the leg. Pure: every roll is the campaign's.
+// on passes the rest of the leg. From M32 the crew's jobs help (edges.js):
+// a pilot in the squad flies each leg a day shorter, never under 1, and a
+// scout in the crew finds one more place within reach. Pure: every roll is
+// the campaign's.
 //
 // A place (colony.places, and the trip's; tripShape.js):
 //   kind    its kind's id (data/expeditions.json kinds)
@@ -43,6 +46,7 @@ import { squadMembers, squadProblem } from './crew.js';
 import { passDay } from './days.js';
 import { deploy } from './deploy.js';
 import { pickWeighted } from './drops.js';
+import { colonyEdge } from './edges.js';
 import { applyEffects, choiceProblem, outcomeFor } from './events.js';
 import { tally } from './flags.js';
 import { generateShip } from './gen/ship.js';
@@ -51,6 +55,7 @@ import { mapFromShip } from './mapFromShip.js';
 import { hasTag } from './modules.js';
 import { downText, raidDown, tripHeatOf } from './raids.js';
 import { enemyBonus } from './settings.js';
+import { MAX_PLACES } from './tripShape.js';
 
 const MAX_SEED = 0xffffffff;
 // What an event at a place can do and need (data/events.json): food (the
@@ -74,8 +79,9 @@ export function otherWorlds(campaign) {
   return sector.nodes.filter((node) => node.world && node.name !== campaign.colony.world.name).map((node) => ({ name: node.name, world: node.world }));
 }
 
-// The places within reach, rolled from the campaign's RNG: { places, rng }.
-// Each in turn: a kind by weight, among those with a name left (a kind of
+// The places within reach, rolled from the campaign's RNG: { places, rng }:
+// data/expeditions.json's count, and a scout's more (edges.js). Each in
+// turn: a kind by weight, among those with a name left (a kind of
 // worlds names its places for the system's other worlds); a name of its
 // kind, none twice in the list; its days within the kind's; whether the
 // scavengers hold it, at the kind's chance; its event, one of the kind's,
@@ -92,7 +98,8 @@ export function rollPlaces(campaign, rules) {
   const taken = new Set();
   const left = (kind) => (kind.worlds ? worlds : spec.names[kind.id] ?? []).filter((name) => !taken.has(name));
   const places = [];
-  for (let n = 0; n < (spec?.places ?? 0); n++) {
+  const count = Math.min(MAX_PLACES, (spec?.places ?? 0) + colonyEdge(campaign.crew, rules, 'places'));
+  for (let n = 0; n < count; n++) {
     const table = Object.fromEntries([...spec.kinds.values()].filter((kind) => left(kind).length).map((kind) => [kind.id, kind.weight]));
     if (!Object.keys(table).length) break;
     const picked = pickWeighted(rng, table);
@@ -110,6 +117,12 @@ export function rollPlaces(campaign, rules) {
   return { places, rng };
 }
 
+// How many days each leg of a trip to place takes with the squad aboard
+// (crew members): the place's, less a pilot's (edges.js), never under 1.
+export function legDays(place, squad, rules) {
+  return Math.max(1, place.days - colonyEdge(squad, rules, 'tripDays'));
+}
+
 // The campaign with its places rolled, at the colony with the ship home
 // and none listed; else the campaign as it is.
 export function withPlaces(campaign, rules) {
@@ -120,10 +133,11 @@ export function withPlaces(campaign, rules) {
 
 // What a trip to the place listed at index would come to with squad (crew
 // ids): { ok, error (why the ship can't fly, or null), place, kind, squad
-// (their ids, in the crew's order), days ({ out, back }), checks (the
-// flight checklist with the squad aboard), eats (what the trip's days eat
-// in all, at home and away), food ([now, home again]: as the days would
-// leave it, nothing found), hungry (the days that would go hungry) }. With
+// (their ids, in the crew's order), days ({ out, back }: legDays's),
+// checks (the flight checklist with the squad aboard), eats (what the
+// trip's days eat in all, at home and away), food ([now, home again]: as
+// the days would leave it, nothing found), hungry (the days that would go
+// hungry) }. With
 // nothing to plan (away from the colony, the ship away, no such place, no
 // squad): { ok: false, error } alone.
 export function tripPlan(campaign, rules, index, squad) {
@@ -135,9 +149,11 @@ export function tripPlan(campaign, rules, index, squad) {
   if (!kind) return { ok: false, error: "There's no such place within reach." };
   const why = squadProblem(campaign.crew, squad, rules);
   if (why) return { ok: false, error: why };
-  const ids = squadMembers(campaign.crew, squad).map((member) => member.id);
+  const members = squadMembers(campaign.crew, squad);
+  const ids = members.map((member) => member.id);
   const checks = shipChecklist(campaign, rules, ids.length);
-  const away = passDays({ ...campaign, colony: { ...campaign.colony, trip: newTrip(place, ids) } }, rules, place.days * 2, { stop: false });
+  const leg = legDays(place, members, rules);
+  const away = passDays({ ...campaign, colony: { ...campaign.colony, trip: newTrip(place, ids) } }, rules, leg * 2, { stop: false });
   const failing = checks.find((line) => line.ok !== true);
   return {
     ok: !failing,
@@ -145,7 +161,7 @@ export function tripPlan(campaign, rules, index, squad) {
     place,
     kind,
     squad: ids,
-    days: { out: place.days, back: place.days },
+    days: { out: leg, back: leg },
     checks,
     eats: away.days.reduce((sum, day) => sum + day.plan.eats, 0),
     food: [campaign.supplies, away.campaign.supplies],
@@ -166,7 +182,7 @@ export function flyOut(campaign, rules, index, squad) {
   if (!plan.ok) return { ok: false, error: plan.error };
   const heat = withHeat(campaign.heat, tripHeatOf(campaign, rules));
   const leaving = { ...campaign, heat, colony: { ...campaign.colony, places: [], trip: newTrip(plan.place, plan.squad) }, flags: tally(campaign.flags, { trips: 1, tripHeat: heat - campaign.heat }) };
-  const out = flyLeg(leaving, rules, 'out', plan.place.days);
+  const out = flyLeg(leaving, rules, 'out', plan.days.out);
   return { ok: true, plan, campaign: out.campaign, days: out.days, stopped: out.stopped };
 }
 
@@ -342,10 +358,11 @@ export function homePlan(campaign, rules) {
   if (raidDown(campaign)) return { ok: false, error: downText(campaign, rules) };
   const here = tripHere(campaign, rules);
   if (here.event) return { ok: false, error: `Decide first: ${here.event.title}.` };
-  const back = passDays(campaign, rules, trip.place.days, { stop: false });
+  const days = legDays(trip.place, squadMembers(campaign.crew, trip.squad), rules);
+  const back = passDays(campaign, rules, days, { stop: false });
   return {
     ok: true,
-    days: trip.place.days,
+    days,
     eats: back.days.reduce((sum, day) => sum + day.plan.eats, 0),
     food: [campaign.supplies, back.campaign.supplies],
     hungry: back.days.filter((day) => !day.plan.fed).length,
@@ -360,7 +377,7 @@ export function homePlan(campaign, rules) {
 export function flyHome(campaign, rules) {
   const plan = homePlan(campaign, rules);
   if (!plan.ok) return plan;
-  const back = flyLeg(campaign, rules, 'home', campaign.colony.trip.place.days);
+  const back = flyLeg(campaign, rules, 'home', plan.days);
   return { ok: true, plan, campaign: back.campaign, days: back.days, stopped: back.stopped };
 }
 

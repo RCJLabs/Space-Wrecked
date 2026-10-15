@@ -20,6 +20,14 @@ export function pressAction(battle, rules, goals = null) {
   if (!unit) return { type: 'end' };
   const foes = battle.units.filter((u) => u.side !== unit.side && u.status === 'active');
   if (foes.some((u) => canSee(battle, [unit.x, unit.y], [u.x, u.y], rules))) return aiAction(battle, rules);
+  return advance(battle, unit, rules, goals) ?? aiAction(battle, rules);
+}
+
+// The unit's step on: a move toward the nearest of `goals` (the enemy's
+// tiles, unless given), as far as one action takes it, or with nowhere
+// nearer, opening a closed door beside it. Null with neither.
+export function advance(battle, unit, rules, goals = null) {
+  const foes = battle.units.filter((u) => u.side !== unit.side && u.status === 'active');
   const away = stepsFrom(battle, goals ?? foes.map((u) => [u.x, u.y]), rules);
   let best = { d: away.get(`${unit.x},${unit.y}`) ?? Infinity, cost: 0, x: unit.x, y: unit.y };
   for (const spot of reachable(battle, unit, unit.mobility, rules).values()) {
@@ -28,5 +36,5 @@ export function pressAction(battle, rules, goals = null) {
   }
   if (best.x !== unit.x || best.y !== unit.y) return { type: 'move', unit: unit.id, to: [best.x, best.y] };
   const door = SIDES.find((side) => shutDoor(battle, unit.x, unit.y, side));
-  return door ? { type: 'open', unit: unit.id, side: door } : aiAction(battle, rules);
+  return door ? { type: 'open', unit: unit.id, side: door } : null;
 }

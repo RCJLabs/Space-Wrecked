@@ -8,8 +8,8 @@
 //     away included: food is one store, the run's supplies;
 //   - each of the wounded heals where they are. At home, a fed crew rests,
 //     healing what a day's regroup heals (regroupHp), and a powered
-//     infirmary heals its own on top, a medic at home adding theirs as to
-//     a med bay's on the run (medbay.js). While the ship is away, whoever
+//     infirmary heals its own on top, a medic at home adding their colony
+//     effect (edges.js; before M32, their med bay's on the run). While the ship is away, whoever
 //     is home without a bed and air at the colony doesn't rest, since the
 //     ship isn't there to sleep aboard; the infirmary still heals them. The
 //     squad aboard heals what the ship's med bay heals in a jump. Short of
@@ -29,8 +29,9 @@
 // hunger took. The only roll is the pursuer's, the campaign's. Pure.
 import { atColony } from './acts.js';
 import { colonyStats, storesOf } from './colony.js';
+import { colonyEdge } from './edges.js';
 import { tally } from './flags.js';
-import { healCrew, healRate, stationHeal } from './medbay.js';
+import { healCrew, healRate } from './medbay.js';
 import { downText, foundOdds, raidDayEnd, raidDown } from './raids.js';
 import { jumpSupplies } from './travel.js';
 
@@ -70,7 +71,7 @@ export function planDay(campaign, rules) {
   const away = new Set(trip?.squad ?? []);
   const home = campaign.crew.filter((member) => !away.has(member.id));
   const squad = campaign.crew.filter((member) => away.has(member.id));
-  const infirmary = stats.infirmary ? stats.infirmary + stationHeal(home, rules) : 0;
+  const infirmary = stats.infirmary ? stats.infirmary + colonyEdge(home, rules, 'heal') : 0;
   const aboard = squad.length ? healRate({ ...campaign, crew: squad }, rules) : 0;
   const rough = new Set(stats.rough);
   const rest = fed ? regroupHp : 0;

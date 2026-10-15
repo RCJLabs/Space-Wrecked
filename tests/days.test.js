@@ -29,12 +29,15 @@ test('a day: farms grow food and mines dig materials by the world, the crew eats
   assert.equal(rules.colony.materials, 20);
   const campaign = withBuildings(landed, [['farm', 4, 0], ['mine', 4, 3], ['farm', 7, 0]]);
   const stats = colonyStats(campaign, rules);
+  // The mine digs the world's ore, 2, and 1 more for the engineer at home
+  // (M32, tests/edges.test.js).
+  assert.ok(campaign.crew.some((member) => member.job === 'engineer'));
   assert.deepEqual(stats.buildings.map((b) => [b.name, b.need, b.powered, b.makes]), [
     ['Farm', 0, true, { food: 1 }],
-    ['Mine', 0, true, { materials: 2 }],
+    ['Mine', 0, true, { materials: 3 }],
     ['Farm', 0, true, { food: 1 }],
   ]);
-  assert.deepEqual(stats.made, { food: 2, materials: 2 });
+  assert.deepEqual(stats.made, { food: 2, materials: 3 });
   // Farms and mines take no power: the ship's spare is still there.
   assert.equal(stats.power.spare, colonyStats(landed, rules).power.spare);
   const plan = dayPlan(campaign, rules);
@@ -42,10 +45,10 @@ test('a day: farms grow food and mines dig materials by the world, the crew eats
   const heals = Object.fromEntries(campaign.crew.map((member) => [member.id, regroupHp]));
   // found: the odds of the pursuer finding the colony at the day's end
   // (M29), none at the settled colony's heat.
-  assert.deepEqual(plan, { ok: true, day: 1, made: { food: 2, materials: 2 }, eats: 3, fed: true, heals, hunger: 0, rough: [], food: [27, 26], materials: [20, 22], lost: { food: 0, materials: 0 }, stores: 30, found: 0 });
+  assert.deepEqual(plan, { ok: true, day: 1, made: { food: 2, materials: 3 }, eats: 3, fed: true, heals, hunger: 0, rough: [], food: [27, 26], materials: [20, 23], lost: { food: 0, materials: 0 }, stores: 30, found: 0 });
   const { campaign: after, healed, hurt } = nextDay(campaign, rules);
-  assert.deepEqual([after.colony.day, after.supplies, after.colony.materials, healed, hurt], [2, 26, 22, 0, 0]);
-  assert.deepEqual(after.flags, { ...campaign.flags, colonyDays: 1, foodGrown: 2, materialsDug: 2 });
+  assert.deepEqual([after.colony.day, after.supplies, after.colony.materials, healed, hurt], [2, 26, 23, 0, 0]);
+  assert.deepEqual(after.flags, { ...campaign.flags, colonyDays: 1, foodGrown: 2, materialsDug: 3 });
   for (const key of ['act', 'place', 'ship', 'parts', 'credits', 'run', 'rng', 'wrecks']) assert.deepEqual(after[key], campaign[key], key);
   // Heat falls a little each day (M29). Below rumorHeat the pursuer can't
   // find the colony, so nothing is rolled.
@@ -66,10 +69,10 @@ test('what a farm and a mine make: the world numbers they make from, added up, a
   const world = (soil, water, ore) => ({ kind: 'rock', soil, water, ore, danger: 0, lanes: 1 });
   assert.deepEqual([yieldOf(farm, world(3, 2, 0)), yieldOf(farm, world(0, 3, 1)), yieldOf(farm, world(0, 0, 3)), yieldOf(farm, world(1, 0, 0))], [5, 3, 1, 1]);
   assert.deepEqual([yieldOf(mine, world(3, 3, 3)), yieldOf(mine, world(3, 3, 0))], [3, 1]);
-  // On the colony's own world.
+  // On the colony's own world, the engineer at home digging 1 more (M32).
   const jungle = settled(2);
   assert.equal(jungle.colony.world.kind, 'jungle');
-  assert.deepEqual(colonyStats(withBuildings(jungle, [['farm', 0, 0], ['mine', 3, 0]]), rules).made, { food: 5, materials: 1 });
+  assert.deepEqual(colonyStats(withBuildings(jungle, [['farm', 0, 0], ['mine', 3, 0]]), rules).made, { food: 5, materials: 2 });
 });
 
 test('a fed crew rests; short of food everyone goes hungry, never below 1, and the infirmary still heals', () => {
@@ -112,9 +115,10 @@ test('food and materials are kept up to the stores, the landed ship holds and th
   assert.deepEqual(storesOf(landed, rules), { ship: 30, colony: 0, total: 30 });
   const full = withBuildings({ ...landed, supplies: 30, colony: { ...landed.colony, materials: 29 } }, [['farm', 4, 0], ['farm', 7, 0], ['farm', 10, 0], ['farm', 13, 0], ['mine', 4, 3]]);
   const plan = dayPlan(full, rules);
-  assert.deepEqual([plan.food, plan.materials, plan.lost], [[30, 30], [29, 30], { food: 1, materials: 1 }]);
+  // The mine digs 3, the engineer at home's 1 among them (M32).
+  assert.deepEqual([plan.food, plan.materials, plan.lost], [[30, 30], [29, 30], { food: 1, materials: 2 }]);
   const after = nextDay(full, rules).campaign;
-  assert.deepEqual([after.supplies, after.colony.materials, after.flags.foodLost, after.flags.materialsLost], [30, 30, 1, 1]);
+  assert.deepEqual([after.supplies, after.colony.materials, after.flags.foodLost, after.flags.materialsLost], [30, 30, 1, 2]);
   // A storehouse keeps 20 more of each.
   const stored = withBuildings(full, [['farm', 4, 0], ['farm', 7, 0], ['farm', 10, 0], ['farm', 13, 0], ['mine', 4, 3], ['cargo', 8, 4]]);
   assert.deepEqual(storesOf(stored, rules), { ship: 30, colony: 20, total: 50 });

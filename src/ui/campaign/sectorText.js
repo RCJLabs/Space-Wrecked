@@ -13,6 +13,7 @@ import { MAX_RATING, RATINGS } from '../../sim/gen/system.js';
 import { withHeat } from '../../sim/heat.js';
 import { maxHp } from '../../sim/campaign.js';
 import { crewRoom } from '../../sim/crew.js';
+import { stationBy } from '../../sim/edges.js';
 import { healRate } from '../../sim/medbay.js';
 import { patchPlan } from '../../sim/patch.js';
 import { recruitOffer } from '../../sim/recruits.js';
@@ -23,6 +24,7 @@ import { surveyPlan } from '../../sim/survey.js';
 import { swapPlan } from '../../sim/transponder.js';
 import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesOver, supplyCapacity, supplyOffer } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
+import { byJob } from './crewJobText.js';
 
 // What the sector map shows, for a campaign on the run:
 //   act, where   "Act 2 · The run", "Sector 1 of 5 · Breaker's Yard" ("The
@@ -176,6 +178,10 @@ function surveyText(campaign, rules) {
   if (!here.world || run.surveyed.includes(run.at)) return null;
   const plan = surveyPlan(campaign, rules);
   if (!plan.ok) return { ok: false, label: 'Survey', ask: 'Survey?', text: plan.error, why: plan.error, tone: 'bad' };
+  if (plan.free) {
+    const xeno = byJob(stationBy(campaign.crew, rules, 'freeSurvey'), rules);
+    return { ok: true, label: 'Survey', ask: 'Survey?', text: `${xeno} reads ${here.name} from orbit as the ship passes: no day, no supplies, no heat. Tap again to survey.`, why: null, tone: 'good' };
+  }
   const after = campaign.heat + plan.heat;
   const ship = rules.ships.get(plan.hunt.ship)?.name ?? plan.hunt.ship;
   const hunters = !plan.hunt.chance ? '' : plan.hunt.chance >= 100 ? ` The ${ship} will find you.` : ` Hunters: ${plan.hunt.chance}% the ${ship} finds you.`;
@@ -207,7 +213,7 @@ function settleText(campaign, rules) {
 // behind at the next jump (a refit took a hold off).
 function suppliesRow(campaign, rules) {
   const over = suppliesOver(campaign, rules);
-  return `${campaign.supplies} of ${supplyCapacity(campaign.ship, rules)}${over ? `, ${over} won't fit` : ''}`;
+  return `${campaign.supplies} of ${supplyCapacity(campaign.ship, rules, campaign.crew)}${over ? `, ${over} won't fit` : ''}`;
 }
 
 // The station's refits: Refit opens construction mode on the ship, with the
@@ -270,12 +276,12 @@ function repairText(campaign, rules) {
 function scanText(campaign, rules) {
   const plan = scanPlan(campaign, rules);
   if (!plan.ok) return null;
-  const { scanRange } = rules.balance;
   const count = plan.reveals.length;
+  const scout = plan.reach > rules.balance.scanRange ? stationBy(campaign.crew, rules, 'scan') : null;
   return {
     label: 'Scan',
     ask: 'Scan?',
-    text: `A scan shows what ${count === 1 ? 'one node holds' : `${count} nodes hold`} within ${scanRange} jumps, for ${plan.heat} heat. Tap again to scan.`,
+    text: `A scan shows what ${count === 1 ? 'one node holds' : `${count} nodes hold`} within ${plan.reach} jumps${scout ? `, ${byJob(scout, rules)} reading it` : ''}, for ${plan.heat} heat. Tap again to scan.`,
   };
 }
 
@@ -295,7 +301,7 @@ export function jumpText(campaign, rules, id) {
   if (!plan.ok) return { ok: false, long: false, label: 'Jump', head: plan.check ? "Can't leave" : 'Out of reach', title: target.name, node, lines: [plan.error], tone: plan.check ? 'bad' : 'info', way: [], left: 0, hungry: false, hunt: 0, world };
   const long = plan.kind === 'long';
   const label = long ? 'Long jump' : 'Jump';
-  const lines = [...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan)];
+  const lines = [...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)];
   if (long) lines.push('A long jump passes the node between, and the pursuer loses the trail.');
   const between = long ? linked(sector, at).find((next) => linked(sector, next).includes(id)) : null;
   const way = long ? [at, between, id] : [at, id];
@@ -362,7 +368,7 @@ function swapText(campaign, rules) {
 // The supplies the holds can't take, left behind as the ship jumps: a
 // line, or none.
 function leftLine(campaign, rules, plan) {
-  return plan.left ? [`${plan.left} supplies stay behind: the holds take ${supplyCapacity(campaign.ship, rules)}.`] : [];
+  return plan.left ? [`${plan.left} supplies stay behind: the holds take ${supplyCapacity(campaign.ship, rules, campaign.crew)}.`] : [];
 }
 
 // What a jump eats, and what is left after it, or the hunger: of what the
@@ -377,6 +383,13 @@ function suppliesLine(campaign, rules, plan) {
 function healLine(campaign, rules, plan) {
   const hurt = campaign.crew.some((member) => member.hp < maxHp(member, rules));
   return plan.heal && hurt ? [`The med bay heals each of the wounded ${plan.heal} on the way.`] : [];
+}
+
+// The wrecked parts an engineer aboard fixes on the way: a line, or none.
+function fixLine(campaign, rules, plan) {
+  if (!plan.fixes.length) return [];
+  const parts = plan.fixes.map((fix) => `the ${(rules.modules.get(fix.type)?.name ?? fix.type).toLowerCase()}`).join(', ');
+  return [`${byJob(stationBy(campaign.crew, rules, 'repair'), rules)} fixes ${parts} on the way.`];
 }
 
 function heatLine(campaign, plan) {
@@ -407,7 +420,7 @@ function offerText(campaign, rules, { price, room, most }) {
 // system past the charts.
 function leaveText(campaign, rules) {
   const plan = leavePlan(campaign, rules);
-  const lines = plan.ok ? [...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan)] : [plan.error];
+  const lines = plan.ok ? [...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)] : [plan.error];
   return { ok: plan.ok, label: 'Jump on', ask: 'Jump on?', title: `On to ${onTo(campaign, rules)}`, lines, tone: plan.check ? 'bad' : plan.ok ? planTone(plan) : 'info' };
 }
 
@@ -425,7 +438,7 @@ function sectorHint(campaign, rules, { each, offer, leave, known }) {
   const check = failingCheck(campaign, rules);
   if (check) return { tone: 'bad', text: brokenWhy(check) };
   const over = offer.ok ? suppliesOver(campaign, rules) : 0;
-  if (over) return { tone: 'warn', text: `The holds take ${supplyCapacity(campaign.ship, rules)} now: ${over} supplies stay behind at the next jump. Refit a hold back on to keep them.` };
+  if (over) return { tone: 'warn', text: `The holds take ${supplyCapacity(campaign.ship, rules, campaign.crew)} now: ${over} supplies stay behind at the next jump. Refit a hold back on to keep them.` };
   // The hunters out: what sheds heat here, or anywhere.
   const hunted = campaign.heat >= rules.balance.huntHeat;
   const swap = offer.ok ? swapPlan(campaign, rules) : null;
@@ -465,6 +478,7 @@ function systemHint(campaign, rules) {
     return { tone: 'good', text: `${worlds} worlds past the charts: tap one to jump there. A survey from orbit shows what a world is worth; Settle here ends the run.` };
   }
   if (run.surveyed.includes(run.at)) return { tone: 'good', text: `Settle here to make ${here.name} home, or jump to another world.` };
-  if (surveyPlan(campaign, rules).ok) return { tone: 'good', text: `Survey shows what ${here.name} is worth, for a day's supplies. Or Settle here as it is.` };
+  const survey = surveyPlan(campaign, rules);
+  if (survey.ok) return { tone: 'good', text: `Survey shows what ${here.name} is worth, for ${survey.free ? 'nothing' : "a day's supplies"}. Or Settle here as it is.` };
   return { tone: 'warn', text: `Too few supplies for a survey: settle here, or jump to another world.` };
 }

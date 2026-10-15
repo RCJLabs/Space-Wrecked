@@ -3,8 +3,10 @@
 // defenses, Defend's first tap, the landing's report, the raid fight's
 // line under the round, and how a raid ended. rules are the content tables
 // (src/sim/defs.js).
+import { colonyBy } from '../../sim/edges.js';
 import { pursuerOf, runLevel } from '../../sim/heat.js';
 import { colonyPursuer, defendersOf, defensesOf, foundOdds, landingPlan, raidDown, raidIn, raidTake } from '../../sim/raids.js';
+import { byJob } from './crewJobText.js';
 
 const LANES = ['near the lanes', 'off the lanes', 'far from the lanes'];
 
@@ -52,8 +54,9 @@ export function raidHint(campaign, rules) {
 export function defendText(campaign, rules) {
   const plan = landingPlan(campaign, rules);
   if (!plan.ok) return { ok: false, ask: null, why: plan.error };
+  const spotter = plan.hit > rules.balance.landingHit ? colonyBy(defendersOf(campaign), rules, 'landing') : null;
   const guns = plan.guns.length
-    ? `${capital(listed(plan.guns.map((gun) => `the ${lowerFirst(gun.name)}${gun.shots > 1 ? ` (${gun.shots} shots)` : ''}`)))} fire${plan.guns.length === 1 ? 's' : ''} at the lander as it comes down, ${plan.hit}% a shot, each hit a raider fewer.`
+    ? `${capital(listed(plan.guns.map((gun) => `the ${lowerFirst(gun.name)}${gun.shots > 1 ? ` (${gun.shots} shots)` : ''}`)))} fire${plan.guns.length === 1 ? 's' : ''} at the lander as it comes down, ${plan.hit}% a shot${spotter ? ` with ${byJob(spotter, rules)} calling them` : ''}, each hit a raider fewer.`
     : 'Nothing at the colony fires at the lander.';
   const party = countedNames(plan.raiders.map((id) => rules.enemies.get(id)?.name ?? id));
   const fight = plan.defenders.length
