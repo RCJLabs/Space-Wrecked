@@ -118,34 +118,36 @@ export function defendersOf(campaign) {
   return campaign.crew.filter((member) => !away.has(member.id));
 }
 
-// What facing the raid that is down would come to: { ok: true, raiders
-// (the pursuer's, enemy ids), defenders (crew ids at home), guns ([{ uid,
-// name, shots }]: the powered defenses that fire at the lander, in the
-// order built), shots (in all), hit (each shot's chance, percent), armor
-// and aim (what the defenders gain: a powered shield's and armory's) }, or
-// { ok: false, error }.
-export function landingPlan(campaign, rules) {
-  if (!atColony(campaign, rules) || !raidDown(campaign)) return { ok: false, error: 'No lander is down at the colony.' };
-  const pursuer = colonyPursuer(campaign, rules);
-  const raiders = rules.encounters.get(pursuer?.raiders)?.enemies;
-  if (!raiders) return { ok: false, error: 'The raiders are unknown.' };
+// The colony's defenses against a raid as they stand: { guns ([{ uid,
+// name, shots }]: the powered buildings that fire at a lander, in the
+// order built), shots (in all), armor and aim (what the defenders gain: a
+// powered shield's and a powered armory's) }.
+export function defensesOf(campaign, rules) {
   const stats = colonyStats(campaign, rules);
   const guns = stats.buildings
     .filter((b) => b.powered)
     .map((b) => ({ uid: b.uid, name: b.name, shots: buildingOf(b.type, rules)?.shots ?? 0 }))
     .filter((gun) => gun.shots > 0);
   const lit = stats.buildings.filter((b) => b.powered && b.gives);
-  const { raidShieldArmor, raidArmoryAim, landingHit } = rules.balance;
+  const { raidShieldArmor, raidArmoryAim } = rules.balance;
   return {
-    ok: true,
-    raiders,
-    defenders: defendersOf(campaign).map((member) => member.id),
     guns,
     shots: guns.reduce((sum, gun) => sum + gun.shots, 0),
-    hit: landingHit,
     armor: lit.some((b) => b.gives.shield > 0) ? raidShieldArmor : 0,
     aim: lit.some((b) => b.gives.armory) ? raidArmoryAim : 0,
   };
+}
+
+// What facing the raid that is down would come to: { ok: true, raiders
+// (the pursuer's, enemy ids), defenders (crew ids at home), guns, shots,
+// armor and aim (defensesOf's), hit (each shot's chance, percent) }, or
+// { ok: false, error }.
+export function landingPlan(campaign, rules) {
+  if (!atColony(campaign, rules) || !raidDown(campaign)) return { ok: false, error: 'No lander is down at the colony.' };
+  const pursuer = colonyPursuer(campaign, rules);
+  const raiders = rules.encounters.get(pursuer?.raiders)?.enemies;
+  if (!raiders) return { ok: false, error: 'The raiders are unknown.' };
+  return { ok: true, raiders, defenders: defendersOf(campaign).map((member) => member.id), ...defensesOf(campaign, rules), hit: rules.balance.landingHit };
 }
 
 // Faces the raid that is down (see landingPlan): the guns fire at the

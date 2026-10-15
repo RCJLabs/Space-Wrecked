@@ -17,12 +17,20 @@
 // places within reach head the right-hand panel, and a trip is planned and
 // flown from there (colonyTrip.js); while the ship is away its pad stands
 // empty, the panel is where the squad is, and Refit and Next day wait for
-// it to come home. The campaign is saved after every change, so Continue
-// on the title comes back here.
+// it to come home. From M29 heat shows in the head, with the pursuer's
+// words for it, and the raid's line closes the needs: the day's odds of
+// the colony being found, or the days until the lander comes. While it is
+// down, Defend takes the place of Next day: the first tap says what the
+// guns will fire and at what odds, the second fires them and opens the
+// fight on the colony's grid (src/sim/raids.js), or says what came of the
+// landing without one. The campaign is saved after every change, so
+// Continue on the title comes back here.
 import { loadContent } from '../../platform/content.js';
 import { buildPlan, build, movePlan, takeDown, takeDownPlan, turnedSpot } from '../../sim/colonyBuild.js';
 import { buildingName, siteDef } from '../../sim/colony.js';
 import { dayPlan, nextDay } from '../../sim/days.js';
+import { faceRaid, raidDown } from '../../sim/raids.js';
+import { fightSettings } from '../../sim/settings.js';
 import { footprint } from '../../sim/modules.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
@@ -30,9 +38,10 @@ import { icons } from '../icons.js';
 import { buildingInfo, builtText, colonyText, dayReport, dayText, givenText, placeText, takeDownText, takenText, whyNotText } from './colonyText.js';
 import { createStand } from './colonyStand.js';
 import { createTrips } from './colonyTrip.js';
-import { crewRows, listRows } from './hubParts.js';
+import { crewRows, heatChip, listRows } from './hubParts.js';
+import { defendText, landingReport, raidHint } from './raidText.js';
 
-const ARM_MS = 4000; // a first tap on Next day or Take down waits this long for its second
+const ARM_MS = 4000; // a first tap on Next day, Defend or Take down waits this long for its second
 
 export const colonyScreen = {
   mount(root, { store: game }) {
@@ -40,7 +49,8 @@ export const colonyScreen = {
     const head = node('header', 'hgr-head');
     const actLine = node('h1');
     const homeLine = node('p', 'hgr-home');
-    head.append(actLine, homeLine);
+    const heat = heatChip();
+    head.append(actLine, homeLine, heat.el);
     // The colony, its buildings, the crew and the world, in one panel.
     const info = node('section', 'hgr-panel cln-info');
     const needs = node('dl', 'hgr-hold cln-needs');
@@ -61,7 +71,9 @@ export const colonyScreen = {
     const hint = node('p', 'hgr-hint', 'Loading…');
     const refitButton = toolButton('hgr-tool cln-refit', icons.build, 'Refit');
     const dayButton = toolButton('hgr-tool cln-day', icons.day, 'Next day');
-    foot.append(titleButton, hint, refitButton, dayButton);
+    // In Next day's place while a raid's lander is down (M29).
+    const defendButton = toolButton('hgr-tool cln-defend', icons.shoot, 'Defend');
+    foot.append(titleButton, hint, refitButton, dayButton, defendButton);
     el.append(head, info, sceneArea, side, foot);
     root.append(el);
 
@@ -72,7 +84,7 @@ export const colonyScreen = {
     // type, placement, uid } (uid: the building being moved, else null);
     // or { kind: 'look', uid }.
     let mode = { kind: 'browse' };
-    let armed = null; // 'day' or 'down': a first tap waiting for its second
+    let armed = null; // 'day', 'defend' or 'down', or a trip's: a first tap waiting for its second
     let said = null; // { text, tone }: what the last tap came to, until the next
     let marked = null; // the ship's parts a refusal is about
     let armTimer = 0;
@@ -99,6 +111,7 @@ export const colonyScreen = {
       onTap(titleButton, () => game.dispatch({ type: 'screen/show', screen: 'title' })),
       onTap(refitButton, () => game.dispatch({ type: 'screen/show', screen: 'construction' })),
       onTap(dayButton, tapDay),
+      onTap(defendButton, tapDefend),
       () => clearTimeout(armTimer),
       () => rowButtons.forEach((detach) => detach()),
       () => stand.dispose(),
@@ -138,6 +151,7 @@ export const colonyScreen = {
       const text = colonyText(campaign, defs);
       setText(actLine, text.act);
       setText(homeLine, text.home);
+      heat.show(text.heat);
       needs.replaceChildren(...text.needs.map(({ label, value, ok }) => {
         const row = node('div');
         row.dataset.ok = String(ok);
@@ -160,17 +174,24 @@ export const colonyScreen = {
       if (mode.kind === 'place' && mode.uid !== null && !campaign.colony.buildings.some((b) => b.uid === mode.uid)) mode = { kind: 'browse' };
       const plan = mode.kind === 'place' ? planOf(campaign) : null;
       sideFor(text, campaign, plan);
+      const down = raidDown(campaign);
+      if (!down && armed === 'defend') disarm();
       dayButton.dataset.armed = String(armed === 'day');
       dayButton.disabled = away;
+      dayButton.hidden = down;
+      defendButton.hidden = !down;
+      defendButton.dataset.armed = String(armed === 'defend');
       refitButton.disabled = away;
 
-      const tripArmed = armed !== null && armed !== 'day' && armed !== 'down';
+      const tripArmed = armed !== null && !['day', 'defend', 'down'].includes(armed);
+      const defend = armed === 'defend' ? defendText(campaign, defs) : null;
       const words = armed === 'day' ? dayText(dayPlan(campaign, defs))
+        : defend ? (defend.ok ? { text: defend.ask, tone: 'warn' } : { text: defend.why, tone: 'bad' })
         : armed === 'down' ? takeDownText(takeDownPlan(campaign, defs, mode.uid))
-        : (tripArmed ? trips.hint(campaign) : null) ?? said ?? trips.hint(campaign) ?? (plan?.same ? { text: `Tap the grid where the ${lowerFirst(buildingName(mode.type, defs))} should go, or turn it.`, tone: 'info' }
+        : (tripArmed ? trips.hint(campaign) : null) ?? said ?? (down ? raidHint(campaign, defs) : null) ?? trips.hint(campaign) ?? (plan?.same ? { text: `Tap the grid where the ${lowerFirst(buildingName(mode.type, defs))} should go, or turn it.`, tone: 'info' }
           : plan ? placeText(plan, { moving: mode.uid !== null })
           : mode.kind === 'look' ? buildingInfo(text.buildings.find((b) => b.uid === mode.uid))
-          : { text: text.ahead, tone: 'info' });
+          : raidHint(campaign, defs) ?? { text: text.ahead, tone: 'info' });
       setText(hint, words.text);
       hint.dataset.tone = words.tone;
 
@@ -439,8 +460,29 @@ export const colonyScreen = {
       }
       disarm();
       const result = nextDay(campaign, defs);
-      said = result.ok ? dayReport(result) : { text: result.error, tone: 'bad' };
+      said = result.ok ? dayReport(result, defs) : { text: result.error, tone: 'bad' };
       game.dispatch({ type: 'campaign/day', rules: defs });
+      if (alive) render(true);
+    }
+
+    // Defend, while the raid's lander is down: the first tap says what the
+    // guns will fire, at what odds, and who fights; the second fires them.
+    // With raiders left and someone home, the fight's screen opens;
+    // otherwise the hint says what came of the landing.
+    function tapDefend() {
+      const { campaign } = game.getState();
+      if (!defs || !campaign || !raidDown(campaign)) return;
+      if (armed !== 'defend') {
+        said = null;
+        trips.cancel();
+        arm('defend');
+        return;
+      }
+      disarm();
+      const result = faceRaid(campaign, defs, fightSettings(game.getState().settings));
+      said = result.ok ? landingReport(result, campaign, defs) : { text: result.error, tone: 'bad' };
+      mode = { kind: 'browse' };
+      game.dispatch({ type: 'campaign/raid/face', rules: defs });
       if (alive) render(true);
     }
 

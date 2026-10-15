@@ -30,6 +30,8 @@ test('the colony as it opens: nothing built, everyone aboard, every part still o
     // The survey ate a day's food.
     { label: 'Food', value: '24 of 30 · +0, eats 3', ok: true },
     { label: 'Materials', value: '20 of 30 · +0 a day', ok: true },
+    // M29: heat under rumors, so the pursuer can't find the colony.
+    { label: 'Found', value: 'No odds under heat 25', ok: true },
   ]);
   assert.equal(text.stores, "30 each, in the landed ship's holds");
   assert.equal(text.power, '0 from power plants, 1 spare from the landed ship');
@@ -80,7 +82,9 @@ test('parts given: the needs met, the buildings and what they give, and who stil
     { label: 'Aboard', value: 'Nobody', ok: true },
     { label: 'Food', value: '27 of 30 · +0, eats 3', ok: true },
     { label: 'Materials', value: '20 of 30 · +0 a day', ok: true },
-    { label: 'Defense', value: 'Guns 15, for raids to come', ok: true },
+    // M29: what fires at a raid's lander as it comes down.
+    { label: 'Defense', value: '1 shot at a lander', ok: true },
+    { label: 'Found', value: 'No odds under heat 25', ok: true },
   ]);
   assert.deepEqual(text.buildings.map((b) => [b.name, b.gives, b.powered]), [
     ['Barracks', 'Beds 4 · power −1', true],

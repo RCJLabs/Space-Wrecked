@@ -102,9 +102,11 @@ function hangarHint({ act, raid, ready, build, buy, heat, held, shop }, rules) {
 }
 
 // The heat meter: see hangarText. On the run, the run's levels, with the
-// pursuer's words for them.
+// pursuer's words for them; at the colony (M29) the same levels, with its
+// words for the colony.
 export function heatText(campaign, rules) {
-  const run = actOf(campaign, rules)?.hub === 'ship';
+  const hub = actOf(campaign, rules)?.hub;
+  const run = hub === 'ship' || hub === 'colony';
   const level = run ? runLevel(campaign.heat, rules) : heatLevel(campaign.heat, rules);
   const { payment, ok, why } = paymentFor(campaign, rules);
   const { rumorHeat, huntHeat, raidHeat } = rules.balance;
@@ -114,7 +116,7 @@ export function heatText(campaign, rules) {
     max: HEAT_MAX,
     level,
     name: (run ? RUN_LEVEL_NAMES : LEVEL_NAMES)[level],
-    line: (run ? pursuer?.run?.levels[level] : pursuer?.levels[level]) ?? '',
+    line: (hub === 'colony' ? pursuer?.colony?.levels[level] : run ? pursuer?.run?.levels[level] : pursuer?.levels[level]) ?? '',
     marks: [rumorHeat, huntHeat, raidHeat],
     payment: payment && {
       label: `Pay ${payment.credits}`,

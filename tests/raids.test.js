@@ -15,9 +15,9 @@ import { campaignProblems, maxHp } from '../src/sim/campaign.js';
 import { colonyStats, donate } from '../src/sim/colony.js';
 import { colonyMap, raidStarts, START_COLUMNS } from '../src/sim/colonyMap.js';
 import { dayPlan, nextDay } from '../src/sim/days.js';
-import { flyHome, flyOn, flyOut, homePlan, tripHere, tripPlan } from '../src/sim/expeditions.js';
+import { flyHome, flyOn, flyOut, homePlan, onPlan, tripHere, tripPlan } from '../src/sim/expeditions.js';
 import { HEAT_MAX } from '../src/sim/campaign.js';
-import { defendersOf, endColonyRaid, faceRaid, foundOdds, landingPlan, raidDown, raidIn, raidTake, settleRaid, tripHeatOf } from '../src/sim/raids.js';
+import { defendersOf, defensesOf, endColonyRaid, faceRaid, foundOdds, landingPlan, raidDown, raidIn, raidTake, settleRaid, tripHeatOf } from '../src/sim/raids.js';
 import { campaignScreen, initialState, reduce, saveData } from '../src/sim/root.js';
 import { traitBonus } from '../src/sim/traits.js';
 import { rules } from './battleKit.js';
@@ -157,6 +157,10 @@ test('the landing: on its day Next day and Fly out wait; Defend fires each power
   assert.deepEqual(plan.guns.map((gun) => [gun.name, gun.shots]), [['Gun emplacement', 1], ['Flak tower', 1], ['Cannon emplacement', 2]]);
   assert.deepEqual([plan.shots, plan.hit, plan.armor, plan.aim, plan.raiders, plan.defenders], [4, landingHit, raidShieldArmor, raidArmoryAim, raiders, [1, 2, 3]]);
   assert.deepEqual([landingHit, raidShieldArmor, raidArmoryAim], [50, 1, 10]);
+  // The defenses are the colony's as they stand, a raid coming or not, for
+  // the colony screen.
+  assert.deepEqual(defensesOf(base, rules), { guns: plan.guns, shots: plan.shots, armor: plan.armor, aim: plan.aim });
+  assert.deepEqual(defensesOf(settled(), rules), { guns: [], shots: 0, armor: 0, aim: 0 });
   // Dark defenses don't fire, and a dark shield and armory give nothing.
   const dark = { ...ready, colony: { ...ready.colony, buildings: ready.colony.buildings.filter((b) => b.type !== 'reactor') } };
   const lit = colonyStats(dark, rules).buildings.filter((b) => b.powered).map((b) => b.name);
@@ -283,6 +287,8 @@ test('while the ship is away: a leg stops on the raid\'s day, those at home face
   assert.deepEqual([here.event, here.held, here.leg], [null, false, { dir: 'out', left: 2 }]);
   assert.match(homePlan(away, rules).error, /on its way/);
   assert.match(flyOn(away, rules).error, /lander is down/);
+  assert.match(onPlan(away, rules).error, /lander is down/);
+  assert.equal(onPlan(coming, rules).error, 'The ship is not on its way anywhere.');
   // Those at home face it; the squad sits out.
   assert.deepEqual(defendersOf(away).map((member) => member.id), [2, 3]);
   let faced = null;
@@ -295,9 +301,14 @@ test('while the ship is away: a leg stops on the raid\'s day, those at home face
   assert.deepEqual(campaignProblems(faced.campaign), []);
   const after = endColonyRaid({ ...faced.campaign, fight: { ...faced.campaign.fight, battle: { ...faced.campaign.fight.battle, winner: 'crew' } } }, rules);
   assert.equal(after.colony.trip.leg.left, 2);
-  // Flying on: the rest of the leg, and the squad is at the place.
+  // Flying on: the rest of the leg, and the squad is at the place. Its
+  // plan says the days left and what they eat, as they come to.
+  const ahead = onPlan(after, rules);
+  assert.deepEqual([ahead.ok, ahead.dir, ahead.place, ahead.days, ahead.hungry], [true, 'out', far, 2, 0]);
   const on = flyOn(after, rules);
   assert.equal(on.ok, true, on.error);
+  assert.deepEqual(on.plan, ahead);
+  assert.deepEqual([ahead.eats, ahead.food], [on.days.reduce((sum, day) => sum + day.plan.eats, 0), [after.supplies, on.campaign.supplies]]);
   assert.deepEqual([on.dir, on.stopped, on.days.length, on.campaign.colony.trip.leg, on.campaign.colony.day], ['out', false, 2, null, 4]);
   assert.equal(tripHere(on.campaign, rules).event.id, 'rich-seam');
   // The same on the way home: the leg stops, and flying on lands the ship.

@@ -169,17 +169,37 @@ export function flyOut(campaign, rules, index, squad) {
   return { ok: true, plan, campaign: out.campaign, days: out.days, stopped: out.stopped };
 }
 
-// Flies on with the leg a raid stopped, once it is faced: the rest of its
-// days pass, as flyOut's or flyHome's would have, and it may stop again.
-// The squad is then at the place, or the ship is home. Returns { ok: true,
-// campaign, days, dir ('out' or 'home'), stopped } or { ok: false, error }.
-export function flyOn(campaign, rules) {
+// What flying on with the leg a raid stopped would come to, once the raid
+// is faced: { ok: true, dir ('out' or 'home'), place, days (still to fly),
+// eats, food ([now, then]), hungry }, or { ok: false, error }: with no leg
+// stopped, or the lander still down.
+export function onPlan(campaign, rules) {
   const trip = atColony(campaign, rules) ? campaign.colony.trip : null;
   if (!trip?.leg) return { ok: false, error: 'The ship is not on its way anywhere.' };
   if (raidDown(campaign)) return { ok: false, error: downText(campaign, rules) };
+  const ahead = passDays(campaign, rules, trip.leg.left, { stop: false });
+  return {
+    ok: true,
+    dir: trip.leg.dir,
+    place: trip.place,
+    days: trip.leg.left,
+    eats: ahead.days.reduce((sum, day) => sum + day.plan.eats, 0),
+    food: [campaign.supplies, ahead.campaign.supplies],
+    hungry: ahead.days.filter((day) => !day.plan.fed).length,
+  };
+}
+
+// Flies on with the leg a raid stopped (see onPlan): the rest of its days
+// pass, as flyOut's or flyHome's would have, and it may stop again. The
+// squad is then at the place, or the ship is home. Returns { ok: true,
+// plan, campaign, days, dir, stopped } or { ok: false, error }.
+export function flyOn(campaign, rules) {
+  const plan = onPlan(campaign, rules);
+  if (!plan.ok) return plan;
+  const { trip } = campaign.colony;
   const going = { ...campaign, colony: { ...campaign.colony, trip: { ...trip, leg: null } } };
-  const on = flyLeg(going, rules, trip.leg.dir, trip.leg.left);
-  return { ok: true, campaign: on.campaign, days: on.days, dir: trip.leg.dir, stopped: on.stopped };
+  const on = flyLeg(going, rules, plan.dir, plan.days);
+  return { ok: true, plan, campaign: on.campaign, days: on.days, dir: plan.dir, stopped: on.stopped };
 }
 
 // Where the squad is on a trip, for the screens: { place, kind, event (the

@@ -42,6 +42,7 @@ const TURN_SLOP = 0.17; // radians of twist before a pinch turns the map
 const KEY_TURN = Math.PI / 12; // Q and E on a keyboard
 const SETTLE_MS = 150; // still this long after a camera move, the map sharpens
 const NOTICE_MS = 2600;
+const OPENING_MS = 8000; // a fight's opening words stay this long, or until a tap
 const ARM_MS = 3000; // End turn waits this long for its second tap
 const LOG_LINES = 16;
 
@@ -63,6 +64,9 @@ const LOG_LINES = 16;
 //   lookOf(unit, index)   optional: the look (src/sim/looks.js) of the
 //              crew unit at `index` among the crew, for its portrait; one
 //              is rolled if not given
+//   opening(battle)   optional: { tone, text } to say as a fight is shown,
+//              in place of the hint until the first tap on the board or
+//              OPENING_MS, or null for nothing
 export function mountFight(root, source) {
   const el = node('section', 'fight');
   const board = node('div', 'fgt-board');
@@ -249,6 +253,13 @@ export function mountFight(root, source) {
     if (moved) {
       if (rect) refit();
       else layout();
+    }
+    const opening = source.opening?.(battle) ?? null;
+    if (opening) {
+      clearTimeout(flashTimer);
+      flash = opening;
+      flashTimer = setTimeout(() => ((flash = null), sync()), OPENING_MS);
+      sync();
     }
   }
 

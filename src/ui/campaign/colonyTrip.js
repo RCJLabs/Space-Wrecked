@@ -8,7 +8,9 @@
 // event, each choice two taps (the first shows its odds), or the
 // squatters' derelict with Board her in two taps; then what came of it,
 // and Fly home in two taps. Each leg's days pass as it flies, and the hint
-// gives their report. Its words are tripText.js's.
+// gives their report. A raid's lander coming down on the way (M29) stops
+// the leg: once those at home have faced it (Defend, in colony.js's foot),
+// Fly on flies the rest, in two taps. Its words are tripText.js's.
 //
 // trips = createTrips(ctx), with the screen's:
 //   game, defs()                    the store, and the content once loaded
@@ -25,7 +27,7 @@
 //                                   null
 // trips.cancel()                    back from planning
 import { defaultSquad } from '../../sim/crew.js';
-import { chooseAtPlace, flyHome, flyOut, tripPlan } from '../../sim/expeditions.js';
+import { chooseAtPlace, flyHome, flyOn, flyOut, tripPlan } from '../../sim/expeditions.js';
 import { node } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
@@ -80,8 +82,18 @@ export function createTrips(ctx) {
       const rules = defs();
       const away = awayText(campaign, rules);
       const head = node('p', 'cln-placing', away.title);
-      head.append(node('small', null, away.where), node('small', null, `Aboard: ${away.squad}`));
+      head.append(node('small', null, away.leg?.line ?? away.where), node('small', null, `Aboard: ${away.squad}`));
       const nodes = [node('h2', null, 'Away'), head];
+      // A leg a raid stopped: nothing to do but fly on, once it is faced.
+      if (away.on) {
+        if (away.result) {
+          const result = node('p', 'cln-placing', away.result.title);
+          result.append(node('small', null, away.result.text));
+          nodes.push(result);
+        }
+        nodes.push(actionRow([['Fly on', away.leg.dir === 'out' ? icons.launch : icons.home, () => tapOn(), armed() === 'on' ? 'cln-confirm cln-armed' : 'cln-confirm', away.on.ok]]));
+        return nodes;
+      }
       if (away.event) {
         const event = node('p', 'cln-placing', away.event.title);
         event.append(node('small', null, away.event.text));
@@ -109,6 +121,7 @@ export function createTrips(ctx) {
       const rules = defs();
       if (what === 'fly' && pick) return { text: planText(tripPlan(campaign, rules, pick.index, pick.squad), campaign, rules).ask, tone: 'warn' };
       if (what === 'home') return { text: awayText(campaign, rules)?.home.ask ?? '', tone: 'warn' };
+      if (what === 'on') return { text: awayText(campaign, rules)?.on?.ask ?? '', tone: 'warn' };
       if (what === 'board') return { text: awayText(campaign, rules)?.held?.ask ?? '', tone: 'warn' };
       if (what?.startsWith('choice:')) {
         const choice = awayText(campaign, rules)?.event?.choices.find((entry) => `choice:${entry.id}` === what);
@@ -119,6 +132,7 @@ export function createTrips(ctx) {
         return words.ok ? { text: `${words.title}: tap Fly out to see what it comes to, or change the squad.`, tone: 'info' } : { text: words.why ?? '', tone: 'warn' };
       }
       const away = awayText(campaign, rules);
+      if (away?.on) return away.on.ok ? { text: `The raid is faced: fly on ${away.leg.dir === 'out' ? `to ${away.title}` : 'home'} when ready.`, tone: 'info' } : null;
       if (away?.event) return { text: `The squad is at ${away.title}: choose what it does there.`, tone: 'info' };
       if (away?.held) return { text: `Squatters hold ${away.title}: board her, or fly home and leave her be.`, tone: 'info' };
       if (away) return { text: `The squad is done at ${away.title}: fly home when ready.`, tone: 'info' };
@@ -249,6 +263,23 @@ export function createTrips(ctx) {
     disarm();
     say(null);
     game.dispatch({ type: 'campaign/trip/board', rules: defs() });
+  }
+
+  // Fly on, with the leg a raid stopped: the first tap says the days still
+  // to fly and what they eat; the second flies them.
+  function tapOn() {
+    if (armed() !== 'on') {
+      say(null);
+      arm('on');
+      return;
+    }
+    disarm();
+    const { campaign } = game.getState();
+    const rules = defs();
+    const result = flyOn(campaign, rules);
+    say(result.ok ? legReport(result, result.dir, campaign, rules) : { text: result.error, tone: 'bad' });
+    game.dispatch({ type: 'campaign/trip/on', rules });
+    refresh();
   }
 
   // Fly home: the first tap says what the days back eat; the second flies.
