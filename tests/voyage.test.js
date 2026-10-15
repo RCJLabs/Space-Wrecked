@@ -24,7 +24,9 @@
 // nobody aboard, and every building is powered, in every run. And M27's: it
 // plays the colony's first 30 days, building farms and mines by its own
 // judgment, and in every run its farms feed the crew within 15 days of the
-// landing.
+// landing. And M28's: it plays 30 days more, flying trips with a squad the
+// ship has berths and air for, and in every run it flies at least one and
+// the ship comes home from every one.
 // Each voyage launches from a test run of act 1 (tools/run.js) and is
 // played by the test player in tools/voyage.js. The voyages before M23h's
 // fly as fitted, with no refits, so each compares one part's difference.
@@ -36,7 +38,8 @@ import { FACED } from '../src/sim/approach.js';
 import { HEAT_MAX, maxHp, shipChecklist } from '../src/sim/campaign.js';
 import { colonyStats, donate, shipParts } from '../src/sim/colony.js';
 import { outcomeFor } from '../src/sim/events.js';
-import { COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, playColony, voyage } from '../tools/voyage.js';
+import { crewRoom } from '../src/sim/crew.js';
+import { COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, playColony, playTrips, TRIP_DAYS, voyage } from '../tools/voyage.js';
 import { bestWorld, FIT_ORDER, nextGift, systemMove } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 
@@ -231,8 +234,11 @@ function checkHunt(step) {
 test('ten events play from data, hostile ships are met and boardings fought, and the run pays its way: 24 or more of 30 careful runs cross all five sectors fed', () => {
   assert.ok(careful.every((trip) => trip.launched && trip.ended), 'every run launches and settles a world past the charts');
   const played = new Set(trips.flatMap((trip) => trip.steps.filter((step) => step.kind === 'event').map((step) => step.event)));
-  assert.equal(played.size, rules.events.size, `events played: ${[...played].join(', ')}`);
-  assert.equal(rules.events.size, 10);
+  // The run's events: those of a kind of node (the colony's places have the
+  // rest, M28).
+  const runEvents = [...rules.events.values()].filter((event) => rules.nodeTypes.get(event.kind)?.events);
+  assert.equal(played.size, runEvents.length, `events played: ${[...played].join(', ')}`);
+  assert.equal(runEvents.length, 10);
   const met = careful.flatMap((trip) => trip.steps.filter((step) => step.kind === 'approach'));
   assert.ok(met.length >= RUNS, `hostile ships met: ${met.length}`);
   assert.ok(['escaped', 'boardedBy'].every((kind) => met.some((step) => step.outcome === kind)), `outcomes: ${[...new Set(met.map((step) => step.outcome))]}`);
@@ -481,4 +487,39 @@ test("the colony's days: the careful player plays 30, building farms and mines b
   for (const trip of dug) assert.equal(trip.tally.days.built[0].type, 'mine');
   const summary = manyVoyages(rules, 2, { refit: 'no' }).lines.join('\n');
   assert.match(summary, /The colony's first 30 days: its farms feed the crew within 15 days of the landing in 2 of 2, from day \d+ /);
+});
+
+test("the colony's trips: the careful player flies 30 days more, a squad aboard with berths and air, and in every run it flies at least one trip and the ship comes home from every one (M28)", () => {
+  assert.equal(TRIP_DAYS, 30);
+  let fought = 0;
+  for (const [i, trip] of refitting.entries()) {
+    const seed = i + 1;
+    const { trips } = trip.tally;
+    const { home, travelled } = trip;
+    assert.ok(trips && travelled, `seed ${seed} plays the days of trips`);
+    assert.ok(trips.flown.length >= 1, `seed ${seed} flies a trip`);
+    // Home at the end, every trip flown home, every day played.
+    assert.equal(travelled.colony.trip, null);
+    assert.equal(travelled.flags.trips, trips.flown.length);
+    assert.equal(travelled.flags.tripsHome, trips.flown.length, `seed ${seed}: the ship came home from every trip`);
+    assert.equal(travelled.colony.day, home.colony.day + TRIP_DAYS);
+    assert.equal(trips.away, trips.flown.reduce((sum, flown) => sum + 2 * flown.days, 0));
+    assert.ok(trips.flown.every((flown) => flown.squad >= 1 && flown.squad <= balance.squadSize));
+    // Berths and air aboard for the squads it took; nobody lost.
+    assert.ok(crewRoom(travelled.ship, rules) >= Math.max(...trips.flown.map((flown) => flown.squad)), `seed ${seed}: room aboard for its squads`);
+    assert.deepEqual(travelled.crew.map((m) => m.id), home.crew.map((m) => m.id));
+    assert.ok(travelled.crew.every((m) => m.hp >= 1 && m.hp <= maxHp(m, rules)));
+    fought += trips.won + trips.lost;
+    // The same colony plays the same trips.
+    assert.deepEqual(playTrips(home, rules), { campaign: travelled, trips }, `seed ${seed}: the same trips again`);
+    // The report says the trips, the days away, what they brought, the
+    // boardings and the hungry days.
+    assert.ok(
+      trip.lines.some((line) => /^   30 days of trips: \d+ trips?, \d+ days away: .+\. Brought \d+ parts?, \d+ materials and \d+ food; boardings won \d+, lost \d+, left \d+; built .+; refitted .+ aboard; \d+ hungry days?\.$/.test(line)),
+      `seed ${seed} reports its trips`,
+    );
+  }
+  assert.ok(fought >= 1, 'some trips board a held derelict');
+  const summary = manyVoyages(rules, 2).lines.join('\n');
+  assert.match(summary, /The colony's 30 days of trips: trips \d+ \(\d+ to \d+\), flown in 2 of 2; /);
 });

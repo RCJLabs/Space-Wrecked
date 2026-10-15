@@ -5,7 +5,9 @@
   "materials": 20,
   "builds": [
     { "id": "farm", "name": "Farm", "size": [2, 2], "cost": 10, "makes": "food", "from": ["soil", "water"], "least": 1, "text": "Fields under clear sheeting, watered from whatever the world has. Every day it grows what the soil and water allow." },
-    { "id": "mine", "name": "Mine", "size": [2, 2], "cost": 10, "makes": "materials", "from": ["ore"], "least": 1, "text": "A shaft and a headframe over the best seam the landing found. Every day it brings up what the ore allows." }
+    { "id": "mine", "name": "Mine", "size": [2, 2], "cost": 10, "makes": "materials", "from": ["ore"], "least": 1, "text": "A shaft and a headframe over the best seam the landing found. Every day it brings up what the ore allows." },
+    { "id": "solar", "name": "Solar array", "size": [2, 2], "cost": 15, "gives": { "power": 3 }, "text": "Panels on frames, tilted at the star, with cells to carry them through the night. Power that stays when the ship flies." },
+    { "id": "shelter", "name": "Shelter", "size": [2, 2], "cost": 10, "gives": { "power": -1, "beds": 2, "air": 2 }, "text": "A sealed hut of mine-cut panels: two bunks and a scrubber, for whoever stays home." }
   ],
   "buildings": [
     { "part": "reactor", "name": "Power plant", "text": "The ship's reactor on a slab of its own, humming. It runs everything the colony plugs in." },

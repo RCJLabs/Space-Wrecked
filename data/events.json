@@ -1,6 +1,7 @@
 {
   "drops": {
-    "salvage": { "corridor": 3, "armory": 2, "cargo": 2, "medbay": 1, "shield": 1, "weapon": 1, "engine": 1, "lightengine": 1, "smallreactor": 1, "pointdefense": 1, "bunks": 1, "largehold": 1, "bastion-armory": 1, "bastion-shield": 1, "bastion-weapon": 1 }
+    "salvage": { "corridor": 3, "armory": 2, "cargo": 2, "medbay": 1, "shield": 1, "weapon": 1, "engine": 1, "lightengine": 1, "smallreactor": 1, "pointdefense": 1, "bunks": 1, "largehold": 1, "bastion-armory": 1, "bastion-shield": 1, "bastion-weapon": 1 },
+    "colony": { "lifesupport": 3, "bunks": 3, "quarters": 2, "smallreactor": 2, "cargo": 2, "medbay": 1, "weapon": 1, "shield": 1, "armory": 1 }
   },
   "events": [
     {
@@ -224,6 +225,177 @@
             { "chance": 50, "text": "The rocks hide you, and one of them hits you.", "effects": { "heat": -6, "wound": { "hp": 3 } } }
           ]
         }
+      ]
+    },
+    {
+      "id": "cold-hauler",
+      "kind": "hulk",
+      "title": "Cold hauler",
+      "text": "A hauler with her lights out and her holds still sealed. Whoever left her left in a hurry, and took nothing with them.",
+      "choices": [
+        {
+          "id": "strip",
+          "label": "Strip her",
+          "outcomes": [
+            { "chance": 70, "text": "The squad cracks the holds and brings back a crate of parts and some of her plating.", "effects": { "drop": "colony", "materials": 4 } },
+            { "chance": 30, "text": "A hold door gives on the way out. Someone takes the weight of it, but the crate came too.", "effects": { "drop": "colony", "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "plates",
+          "label": "Cut her plating",
+          "outcomes": [{ "chance": 100, "text": "Hull plates, cut and stacked in the hold. Slow work, and nobody gets hurt.", "effects": { "materials": 6 } }]
+        },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "Some ships are better left as they are.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "picked-liner",
+      "kind": "hulk",
+      "title": "Picked-over liner",
+      "text": "A passenger liner, stripped long ago by someone in a hurry. They never got as far as the engine room.",
+      "choices": [
+        {
+          "id": "engines",
+          "label": "Try the engine room",
+          "outcomes": [
+            { "chance": 60, "text": "Behind a jammed hatch: a part still in its mounts, and nobody else's name on it.", "effects": { "drop": "colony" } },
+            { "chance": 40, "text": "The hatch was jammed for a reason. The squad gets out with some scrap and a burn or two.", "effects": { "materials": 3, "wound": { "hp": 2 } } }
+          ]
+        },
+        {
+          "id": "galley",
+          "label": "Search the galley",
+          "outcomes": [{ "chance": 100, "text": "Sealed rations by the case, still good, or good enough.", "effects": { "supplies": 8 } }]
+        },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "The squad looks once round her dark decks and turns for home.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "old-battle",
+      "kind": "wreckage",
+      "title": "Old battle",
+      "text": "Wreckage from a fight nobody won, spread thin across a thousand kilometers of nothing.",
+      "choices": [
+        {
+          "id": "sift",
+          "label": "Sift the wreckage",
+          "outcomes": [
+            { "chance": 80, "text": "Plating, beams and cable: a hold's worth, slowly.", "effects": { "materials": 7 } },
+            { "chance": 20, "text": "A tumbling beam catches someone on the way back in, but the hold is full.", "effects": { "materials": 7, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "whole",
+          "label": "Look for a whole part",
+          "outcomes": [
+            { "chance": 50, "text": "One part came through the fight in one piece, and it comes home.", "effects": { "drop": "colony" } },
+            { "chance": 50, "text": "Everything worth having burned or broke. Nothing comes home.", "effects": {} }
+          ]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "The dead can keep their field.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "split-pod",
+      "kind": "wreckage",
+      "title": "Split cargo pod",
+      "text": "A cargo pod torn open in the field, its crates spinning slowly out of it.",
+      "choices": [
+        {
+          "id": "crates",
+          "label": "Grab the crates",
+          "outcomes": [
+            { "chance": 60, "text": "Food, most of it, and none of it spoiled in the cold.", "effects": { "supplies": 10 } },
+            { "chance": 40, "text": "A crate comes in faster than anyone liked. The food is fine; the one who caught it isn't.", "effects": { "supplies": 10, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "pod",
+          "label": "Cut up the pod",
+          "outcomes": [{ "chance": 100, "text": "The pod's frame, in pieces, in the hold.", "effects": { "materials": 4 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "The crates spin on.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "rich-seam",
+      "kind": "rock",
+      "title": "Rich seam",
+      "text": "A seam of ore shows bright on the rock's sunlit face, wider than the scans said.",
+      "choices": [
+        {
+          "id": "deep",
+          "label": "Dig deep",
+          "outcomes": [
+            { "chance": 75, "text": "The seam holds all the way down. The ship comes home heavy.", "effects": { "materials": 12 } },
+            { "chance": 25, "text": "The face slumps halfway down. The squad gets out with half the ore and some bruises.", "effects": { "materials": 6, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "skim",
+          "label": "Skim the face",
+          "outcomes": [{ "chance": 100, "text": "What comes away easily, and nobody under it.", "effects": { "materials": 5 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "The ore will keep.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "ice-and-iron",
+      "kind": "rock",
+      "title": "Ice and iron",
+      "text": "Dirty ice over a core of iron. The squad can cut one or the other before the ship has to turn for home.",
+      "choices": [
+        {
+          "id": "iron",
+          "label": "Cut the iron",
+          "outcomes": [{ "chance": 100, "text": "Iron, in slabs, in the hold.", "effects": { "materials": 8 } }]
+        },
+        {
+          "id": "ice",
+          "label": "Cut the ice",
+          "outcomes": [{ "chance": 100, "text": "Ice, melted down for the stores: water to drink and to cook with.", "effects": { "supplies": 6 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "The rock tumbles on.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "something-grows",
+      "kind": "planet",
+      "title": "Something grows",
+      "text": "Something green grows in the valleys down there, and the scanners say it won't kill anyone.",
+      "choices": [
+        {
+          "id": "forage",
+          "label": "Forage",
+          "outcomes": [
+            { "chance": 70, "text": "Roots, fruit and something like grain. The hold comes home full.", "effects": { "supplies": 12 } },
+            { "chance": 30, "text": "Something down there bites. The squad comes home with half a hold and a wound.", "effects": { "supplies": 6, "wound": { "hp": 3 } } }
+          ]
+        },
+        { "id": "leave", "label": "Stay in orbit", "outcomes": [{ "chance": 100, "text": "The squad watches it all the way home.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "crashed-probe",
+      "kind": "planet",
+      "title": "Crashed probe",
+      "text": "An old survey probe, crashed into a hillside and half buried. Whoever sent it never came back for it.",
+      "choices": [
+        {
+          "id": "dig",
+          "label": "Dig it out",
+          "outcomes": [
+            { "chance": 70, "text": "Most of the probe comes out whole, and part of it is worth fitting.", "effects": { "drop": "colony" } },
+            { "chance": 30, "text": "The hillside comes down on the dig. Someone is hurt, but its panels are in the hold.", "effects": { "materials": 3, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "panels",
+          "label": "Strip its panels",
+          "outcomes": [{ "chance": 100, "text": "The probe's panels and frame, light and easy to carry.", "effects": { "materials": 4 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "It can lie there a while longer.", "effects": {} }] }
       ]
     }
   ]

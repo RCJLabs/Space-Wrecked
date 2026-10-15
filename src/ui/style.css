@@ -4260,3 +4260,23 @@ textarea {
   background: var(--c-accent);
   color: var(--c-space);
 }
+
+/* Trips from the colony (M28, colonyTrip.js): a failing flight check in a
+   trip's plan, the squad's buttons and the choices at a place across the
+   panel, each 48 px or more. */
+.cln-placing small[data-tone='bad'] {
+  color: var(--c-bad);
+}
+
+#ui .cln-parts .apr-pick,
+#ui .cln-parts .sct-choice {
+  width: 100%;
+}
+
+#ui .cln-parts .sct-choice {
+  background: var(--c-panel);
+}
+
+#ui .cln-parts .sct-choice[data-armed='true'] {
+  background: var(--c-accent);
+}

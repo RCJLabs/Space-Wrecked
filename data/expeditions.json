@@ -1,0 +1,41 @@
+{
+  "places": 3,
+  "text": "Places the ship can reach from the colony and come home from: a few days out, a few days back.",
+  "kinds": [
+    {
+      "id": "hulk",
+      "name": "Derelict",
+      "weight": 3,
+      "days": [1, 2],
+      "held": { "chance": 50, "ship": "hauler", "party": "squatters", "salvage": 2, "materials": [4, 8] },
+      "text": "A ship adrift, dead or near enough. Whatever she carried may still be aboard, and so may whoever got there first."
+    },
+    {
+      "id": "wreckage",
+      "name": "Wreck field",
+      "weight": 2,
+      "days": [1, 3],
+      "text": "What is left of ships that met here once: plating, crates and the odd part still whole."
+    },
+    {
+      "id": "rock",
+      "name": "Ore rock",
+      "weight": 2,
+      "days": [1, 3],
+      "text": "A rock with metal in it, near enough to reach and small enough to dig by hand."
+    },
+    {
+      "id": "planet",
+      "name": "World",
+      "weight": 2,
+      "days": [2, 3],
+      "worlds": true,
+      "text": "Another of the system's worlds, never settled. What grows there, or fell there, is anyone's."
+    }
+  ],
+  "names": {
+    "hulk": ["Marta's Promise", "Long Haul", "Ninth Seam", "Old Faithful", "Quiet Ellen", "Brennan's Luck", "Overdue", "Last Shift"],
+    "wreckage": ["The Spill", "Tanner's Field", "The Graveyard", "The Scatter", "Broken Line", "The Drift"],
+    "rock": ["The Anvil", "Slag Rock", "Iron Knot", "The Lump", "Cinder", "Old Red"]
+  }
+}

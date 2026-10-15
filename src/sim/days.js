@@ -1,40 +1,58 @@
 // The colony's days (ROADMAP §2, M27): act 3 counts days from the landing,
-// day 1 first, and Next day passes one. A day, in order:
+// day 1 first, and Next day passes one. From M28 a trip's days pass the
+// same way, one by one, with the ship away (expeditions.js). A day, in
+// order:
 //   - each farm grows its food and each mine digs its materials, by the
 //     world's numbers (colony.js yieldOf);
-//   - the crew eats what a jump eats (travel.js jumpSupplies): food is the
-//     run's supplies;
-//   - a fed crew rests, each of the wounded healing what a day's regroup
-//     heals (regroupHp) and what a powered infirmary heals on top, a medic
-//     adding theirs as to a med bay's on the run (medbay.js). Short of
-//     food, everyone goes hungry as on a hungry jump instead, losing
-//     hungerHp hit points, never the last, and the infirmary still heals;
+//   - the crew eats what a jump eats (travel.js jumpSupplies), the squad
+//     away included: food is one store, the run's supplies;
+//   - each of the wounded heals where they are. At home, a fed crew rests,
+//     healing what a day's regroup heals (regroupHp), and a powered
+//     infirmary heals its own on top, a medic at home adding theirs as to
+//     a med bay's on the run (medbay.js). While the ship is away, whoever
+//     is home without a bed and air at the colony doesn't rest, since the
+//     ship isn't there to sleep aboard; the infirmary still heals them. The
+//     squad aboard heals what the ship's med bay heals in a jump. Short of
+//     food, everyone goes hungry as on a hungry jump, losing hungerHp hit
+//     points, never the last, and nobody rests; the infirmary and the med
+//     bay still heal;
 //   - food and materials are each kept up to the colony's stores (colony.js
 //     storesOf): what is past them is lost;
 //   - the day count rises.
-// Giving, building, moving and taking down take no time. The flags count
-// the days, the hungry ones, the food grown, the materials dug, what the
-// stores couldn't keep, and the hit points the days healed and hunger
-// took. Nothing is rolled. Pure.
+// While the ship is away the colony runs on its own power (colony.js
+// colonyStats). Giving, building, moving and taking down take no time. The
+// flags count the days, the hungry ones, the food grown, the materials dug,
+// what the stores couldn't keep, and the hit points the days healed and
+// hunger took. Nothing is rolled. Pure.
 import { atColony } from './acts.js';
 import { colonyStats, storesOf } from './colony.js';
 import { tally } from './flags.js';
-import { healCrew, stationHeal } from './medbay.js';
+import { healCrew, healRate, stationHeal } from './medbay.js';
 import { jumpSupplies } from './travel.js';
 
 // More days than a colony will see: a guard on what a save can hold.
 export const MAX_DAYS = 99999;
 
-// What passing the day would come to: { ok: true, day (the day it is now),
-// made ({ food, materials }: what the farms and mines make), eats (the
-// food the crew eats), fed (whether the food covers it), heal (what each
-// of the wounded heals), hunger (what each loses going hungry, 0 when
-// fed), food and materials ([now, after the day]), lost ({ food,
-// materials }: what the stores can't keep), stores (what they keep of
-// each) }, or { ok: false, error }.
+// What Next day would come to (see planDay), at home: { ok: false, error }
+// away from the colony, or while the ship is away and its days pass as it
+// flies.
 export function dayPlan(campaign, rules) {
   if (!atColony(campaign, rules)) return { ok: false, error: 'Days pass at the colony.' };
-  const { day, materials } = campaign.colony;
+  if (campaign.colony.trip) return { ok: false, error: 'The ship is away: the days pass as it flies.' };
+  return planDay(campaign, rules);
+}
+
+// What the next day would come to, the ship at home or away: { ok: true,
+// day (the day it is now), made ({ food, materials }: what the farms and
+// mines make), eats (the food the crew eats), fed (whether the food covers
+// it), heals ({ [id]: what each crew member would heal, wounded or not }),
+// hunger (what each loses going hungry, 0 when fed), rough (the ids at home
+// who don't rest for want of a bed and air, while the ship is away), food
+// and materials ([now, after the day]), lost ({ food, materials }: what
+// the stores can't keep), stores (what they keep of each) }, or { ok:
+// false, error }.
+export function planDay(campaign, rules) {
+  const { day, materials, trip } = campaign.colony;
   if (day >= MAX_DAYS) return { ok: false, error: 'The colony has counted all the days it can.' };
   const stats = colonyStats(campaign, rules);
   const stores = storesOf(campaign, rules, stats).total;
@@ -42,8 +60,15 @@ export function dayPlan(campaign, rules) {
   const eats = jumpSupplies(campaign, rules);
   const harvest = campaign.supplies + made.food;
   const fed = harvest >= eats;
-  const infirmary = stats.infirmary ? stats.infirmary + stationHeal(campaign.crew, rules) : 0;
   const { regroupHp, hungerHp } = rules.balance;
+  const away = new Set(trip?.squad ?? []);
+  const home = campaign.crew.filter((member) => !away.has(member.id));
+  const squad = campaign.crew.filter((member) => away.has(member.id));
+  const infirmary = stats.infirmary ? stats.infirmary + stationHeal(home, rules) : 0;
+  const aboard = squad.length ? healRate({ ...campaign, crew: squad }, rules) : 0;
+  const rough = new Set(stats.rough);
+  const rest = fed ? regroupHp : 0;
+  const heals = Object.fromEntries(campaign.crew.map((member) => [member.id, away.has(member.id) ? aboard : rough.has(member.id) ? infirmary : rest + infirmary]));
   const food = Math.max(0, harvest - eats);
   const dug = materials + made.materials;
   return {
@@ -52,8 +77,9 @@ export function dayPlan(campaign, rules) {
     made,
     eats,
     fed,
-    heal: (fed ? regroupHp : 0) + infirmary,
+    heals,
     hunger: fed ? 0 : hungerHp,
+    rough: stats.rough,
     food: [campaign.supplies, Math.min(food, stores)],
     materials: [materials, Math.min(dug, stores)],
     lost: { food: Math.max(0, food - stores), materials: Math.max(0, dug - stores) },
@@ -61,19 +87,31 @@ export function dayPlan(campaign, rules) {
   };
 }
 
-// Passes the day (see dayPlan). Returns { ok: true, plan, campaign, healed
+// Passes Next day (see dayPlan). Returns { ok: true, plan, campaign, healed
 // (hit points healed in all), hurt (hit points hunger took in all) } or
 // { ok: false, error }.
 export function nextDay(campaign, rules) {
   const plan = dayPlan(campaign, rules);
-  if (!plan.ok) return plan;
+  return plan.ok ? passPlanned(campaign, rules, plan) : plan;
+}
+
+// Passes the next day, the ship at home or away (planDay): what a trip's
+// days do (expeditions.js). Returns as nextDay does.
+export function passDay(campaign, rules) {
+  const plan = planDay(campaign, rules);
+  return plan.ok ? passPlanned(campaign, rules, plan) : plan;
+}
+
+function passPlanned(campaign, rules, plan) {
   let hurt = 0;
-  const hungry = campaign.crew.map((member) => {
+  let healed = 0;
+  const crew = campaign.crew.map((member) => {
     const hp = Math.max(1, member.hp - plan.hunger);
     hurt += member.hp - hp;
-    return hp === member.hp ? member : { ...member, hp };
+    const heal = healCrew([hp === member.hp ? member : { ...member, hp }], plan.heals[member.id] ?? 0, rules);
+    healed += heal.healed;
+    return heal.crew[0];
   });
-  const { crew, healed } = healCrew(hungry, plan.heal, rules);
   const flags = tally(campaign.flags, {
     colonyDays: 1,
     hungryDays: plan.fed ? 0 : 1,
@@ -85,5 +123,6 @@ export function nextDay(campaign, rules) {
     hungerHurt: hurt,
   });
   const colony = { ...campaign.colony, day: plan.day + 1, materials: plan.materials[1] };
-  return { ok: true, plan, campaign: { ...campaign, supplies: plan.food[1], crew, colony, flags }, healed, hurt };
+  const changed = hurt || healed ? crew : campaign.crew;
+  return { ok: true, plan, campaign: { ...campaign, supplies: plan.food[1], crew: changed, colony, flags }, healed, hurt };
 }

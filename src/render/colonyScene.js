@@ -39,6 +39,8 @@ const FRAME = 0.12;
 // The grid's lines while placing: half their width, and how faint.
 const LINE = 0.025;
 const LINE_ALPHA = 0.16;
+// How strongly the empty pad shows while the ship is away (M28).
+const PAD = 0.55;
 
 // input: { ship, hull (hull.js traceHull), buildings: [{ uid, type, x, y,
 // rot, powered }], site: { width, height }, kind (the world's), defs, skin
@@ -46,8 +48,9 @@ const LINE_ALPHA = 0.16;
 // null or { uids (the ship's parts a refusal is about, or the one being
 // given), ghost ({ type, x, y, rot, ok }: a building where it would stand,
 // ok when it can, or null), selected (the uid of the building looked at,
-// or null) }, whole (true: the view keeps the whole grid, and only it) }.
-export function colonyScene({ ship, hull, buildings, site, kind, defs, skin: base, mark = null, whole = false }) {
+// or null) }, whole (true: the view keeps the whole grid, and only it),
+// away (true while the ship is out on a trip, M28: its pad stands empty) }.
+export function colonyScene({ ship, hull, buildings, site, kind, defs, skin: base, mark = null, whole = false, away = false }) {
   const colors = groundFor(kind);
   const ground = [];
   const faces = [];
@@ -61,14 +64,19 @@ export function colonyScene({ ship, hull, buildings, site, kind, defs, skin: bas
     for (let j = 0; j <= site.height; j++) plate(ground, [0, j - LINE], [site.width, j + LINE], 0, palette.ink, { alpha: LINE_ALPHA });
   }
 
-  // The ship, landed beside the grid.
+  // The ship, landed beside the grid; while it is away, the scorched pad
+  // it stands on, so the view keeps its place.
   const at = landedAt(hull, site);
   const box = { x0: -0.5, y0: -0.5, x1: SHOWN, y1: site.height + 0.5 };
   if (hull.cells.length) {
-    const outside = exteriorScene({ ship, defs, hull, skin: base });
-    for (const face of outside.faces) faces.push(moved(face, at));
-    for (const glow of outside.glows) glows.push({ ...glow, at: shifted(glow.at, at) });
     const [x0, y0, x1, y1] = hullBounds(hull);
+    if (away) {
+      plate(ground, [x0 + at[0], y0 + at[1]], [x1 + at[0], y1 + at[1]], 0, colors.slab, { edge: skin.edge, alpha: PAD });
+    } else {
+      const outside = exteriorScene({ ship, defs, hull, skin: base });
+      for (const face of outside.faces) faces.push(moved(face, at));
+      for (const glow of outside.glows) glows.push({ ...glow, at: shifted(glow.at, at) });
+    }
     Object.assign(box, { x0: Math.min(box.x0, x0 + at[0]), y0: Math.min(box.y0, y0 + at[1]), y1: Math.max(box.y1, y1 + at[1]) });
   }
 
@@ -91,7 +99,7 @@ export function colonyScene({ ship, hull, buildings, site, kind, defs, skin: bas
   }
 
   // Parts being given, or refused: a glow over each on the ship.
-  for (const uid of mark?.uids ?? []) {
+  for (const uid of away ? [] : mark?.uids ?? []) {
     const module = ship.modules.find((m) => m.uid === uid);
     const def = module && defs.modules.get(module.type);
     if (!def) continue;

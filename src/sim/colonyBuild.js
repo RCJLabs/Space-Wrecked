@@ -1,5 +1,6 @@
 // Building by hand at the colony (ROADMAP §2, M27): a farm or a mine built
-// from materials (data/colony.json builds), a spare part from the hold set
+// from materials (data/colony.json builds; from M28 a solar array or a
+// shelter too), a spare part from the hold set
 // down as the building of its kind, or one of the ship's parts given
 // (colony.js donate), each where the player puts it on the colony's grid;
 // any building moved or turned; and any taken down, a part going back into
@@ -7,25 +8,29 @@
 // rules place each one (on the grid, nothing in the way), with the site's
 // path round every building (colony.js siteError), and every refusal says
 // why. Spare parts follow the ship's parts' rules for what becomes a
-// building. Pure.
+// building. While the ship is away on a trip (M28), building waits until
+// it is home. Pure.
 //
 // What is built is one of:
-//   { build: id }    a farm or a mine, for its cost in materials
+//   { build: id }    a farm, a mine, a solar array or a shelter, for its
+//                    cost in materials
 //   { part: type }   a spare part from the hold (campaign.parts)
 //   { uid }          the ship's part uid
 import { atColony } from './acts.js';
 import { turnedPlacement } from './builder.js';
-import { buildingName, buildingOf, buildOf, colonyStats, donate, donatePlan, givesOf, healIfOpened, placeBuilding, SITE, siteDef, siteError, spotFor, storesOf, yieldOf } from './colony.js';
+import { AWAY, buildGives, buildingName, buildingOf, buildOf, colonyStats, donate, donatePlan, givesOf, makesOf, placeBuilding, SITE, siteDef, siteError, spotFor, storesOf } from './colony.js';
 import { tally } from './flags.js';
 
 // What building `what` would come to, at placement { x, y, rot }, or
 // without one in the first spot that fits: { ok: true, what, from
 // ('build', 'hold' or 'ship'), type, name (the building's), placement,
-// cost (in materials), gives (a part's, colony.js givesOf; null for a farm
-// or a mine), makes (a farm's or a mine's: { food } or { materials }, what
-// it would make a day here; else null) }, or { ok: false, error }.
+// cost (in materials), gives (a part's, colony.js givesOf, or a build's,
+// buildGives; null for a farm or a mine), makes (a farm's or a mine's:
+// { food } or { materials }, what it would make a day here; else null) },
+// or { ok: false, error }.
 export function buildPlan(campaign, rules, what, placement = null) {
   if (!atColony(campaign, rules)) return { ok: false, error: 'Building is done at the colony.' };
+  if (campaign.colony.trip) return { ok: false, error: AWAY };
   if (what?.uid !== undefined) {
     const plan = donatePlan(campaign, rules, what.uid, placement);
     if (!plan.ok) return plan;
@@ -55,16 +60,15 @@ export function buildPlan(campaign, rules, what, placement = null) {
     name: buildingName(type, rules),
     placement: { x: spot.x, y: spot.y, rot: spot.rot },
     cost,
-    gives: known ? null : givesOf(rules.modules.get(type)),
-    makes: known ? { [known.makes]: yieldOf(known, campaign.colony.world) } : null,
+    gives: known ? (known.makes ? null : buildGives(known)) : givesOf(rules.modules.get(type)),
+    makes: known ? makesOf(known, campaign.colony.world) : null,
   };
 }
 
-// Builds `what` (see buildPlan). A farm or a mine takes its materials; a
-// spare part comes out of the hold; a ship's part comes off the ship. A
-// powered infirmary heals the crew to full as it opens (colony.js). The
-// flags count what was built and set down, and the materials spent.
-// Returns { ok: true, plan, campaign, healed } or { ok: false, error }.
+// Builds `what` (see buildPlan). A build takes its materials; a spare part
+// comes out of the hold; a ship's part comes off the ship. The flags count
+// what was built and set down, and the materials spent. Returns { ok:
+// true, plan, campaign } or { ok: false, error }.
 export function build(campaign, rules, what, placement = null) {
   const plan = buildPlan(campaign, rules, what, placement);
   if (!plan.ok) return plan;
@@ -78,7 +82,7 @@ export function build(campaign, rules, what, placement = null) {
   const colony = { ...placed.colony, materials: campaign.colony.materials - plan.cost };
   const parts = fromHold ? withPart(campaign.parts, plan.type, -1) : campaign.parts;
   const flags = tally(campaign.flags, { built: fromHold ? 0 : 1, partsSetDown: fromHold ? 1 : 0, materialsSpent: plan.cost });
-  return { ok: true, plan, ...healIfOpened(campaign, { ...campaign, colony, parts, flags }, rules) };
+  return { ok: true, plan, campaign: { ...campaign, colony, parts, flags } };
 }
 
 // What moving building uid to placement { x, y, rot } would come to: { ok:
@@ -86,6 +90,7 @@ export function build(campaign, rules, what, placement = null) {
 // same way: a placement with another rot.
 export function movePlan(campaign, rules, uid, placement) {
   if (!atColony(campaign, rules)) return { ok: false, error: 'Buildings are moved at the colony.' };
+  if (campaign.colony.trip) return { ok: false, error: AWAY };
   const building = campaign.colony.buildings.find((b) => b.uid === uid);
   if (!building) return { ok: false, error: "There's no such building." };
   const { x, y, rot } = placement ?? {};
@@ -118,12 +123,13 @@ export function turnedSpot(rules, type, placement) {
 
 // What taking building uid down would come to: { ok: true, uid, type,
 // name, back, darkens }. back is what comes back: { part: type } into the
-// hold, or a farm's or a mine's { materials (its cost), kept (what the
-// stores take of them) }. darkens is the names of the buildings it would
-// leave without power, in the order built. { ok: false, error } away from
-// the colony or for no such building.
+// hold, or a build's { materials (its cost), kept (what the stores take of
+// them) }. darkens is the names of the buildings it would leave without
+// power, in the order built. { ok: false, error } away from the colony,
+// while the ship is away, or for no such building.
 export function takeDownPlan(campaign, rules, uid) {
   if (!atColony(campaign, rules)) return { ok: false, error: 'Buildings are taken down at the colony.' };
+  if (campaign.colony.trip) return { ok: false, error: AWAY };
   const building = campaign.colony.buildings.find((b) => b.uid === uid);
   if (!building) return { ok: false, error: "There's no such building." };
   const known = buildOf(building.type, rules);
@@ -138,25 +144,24 @@ export function takeDownPlan(campaign, rules, uid) {
   return { ok: true, uid, type: building.type, name: buildingName(building.type, rules), back, darkens };
 }
 
-// Takes building uid down (see takeDownPlan). A powered infirmary that
-// was dark for want of the power it took heals the crew to full as it
-// opens. The flags count the buildings taken down. Returns { ok: true,
-// plan, campaign, healed } or { ok: false, error }.
+// Takes building uid down (see takeDownPlan). The flags count the
+// buildings taken down. Returns { ok: true, plan, campaign } or { ok:
+// false, error }.
 export function takeDown(campaign, rules, uid) {
   const plan = takeDownPlan(campaign, rules, uid);
   if (!plan.ok) return plan;
   const gone = without(campaign, uid);
   const materials = gone.colony.materials + (plan.back.kept ?? 0);
   const parts = plan.back.part ? withPart(campaign.parts, plan.back.part, 1) : campaign.parts;
-  const next = { ...gone, colony: { ...gone.colony, materials }, parts, flags: tally(campaign.flags, { takenDown: 1 }) };
-  return { ok: true, plan, ...healIfOpened(campaign, next, rules) };
+  return { ok: true, plan, campaign: { ...gone, colony: { ...gone.colony, materials }, parts, flags: tally(campaign.flags, { takenDown: 1 }) } };
 }
 
 // What can be built at the colony, for the colony's build list: { builds,
-// hold }. builds: [{ what, id, name, cost, makes, ok, error }] for each
-// farm and mine, in data order: what it costs, what it would make a day
-// here, and whether it can be built now (the materials, and a spot on the
-// grid). hold: [{ what, type, count, ok, name (the building's), gives,
+// hold }. builds: [{ what, id, name, cost, makes, gives, ok, error }] for
+// each build, in data order: what it costs, what it would make a day here
+// or give (the other null), and whether it can be built now (the
+// materials, and a spot on the grid). hold: [{ what, type, count, ok, name
+// (the building's), gives,
 // error }] for each kind of spare part in the hold, in the hold's order:
 // those that stand as buildings with what they give, the rest with why
 // not. The ship's parts are colony.js shipParts's.
@@ -164,7 +169,8 @@ export function buildList(campaign, rules) {
   const builds = [...(rules.colony?.builds?.values() ?? [])].map((known) => {
     const what = { build: known.id };
     const plan = buildPlan(campaign, rules, what);
-    return { what, id: known.id, name: known.name, cost: known.cost, makes: { [known.makes]: yieldOf(known, campaign.colony.world) }, ok: plan.ok, error: plan.ok ? null : plan.error };
+    const makes = makesOf(known, campaign.colony.world);
+    return { what, id: known.id, name: known.name, cost: known.cost, makes, gives: makes ? null : buildGives(known), ok: plan.ok, error: plan.ok ? null : plan.error };
   });
   const hold = Object.entries(campaign.parts).map(([type, count]) => {
     const what = { part: type };

@@ -58,11 +58,13 @@ function whereText(node, rules) {
 }
 
 // An outcome's effects in words, for the odds: "+10 credits, a salvaged
-// part". Nothing is "nothing".
+// part". Nothing is "nothing". At the colony (M28) supplies are food, and
+// an event can bring materials.
 export function effectsText(effects, campaign, rules) {
   const said = [];
   if (effects.credits) said.push(`${signed(effects.credits)} credits`);
-  if (effects.supplies) said.push(`${signed(effects.supplies)} supplies`);
+  if (effects.supplies) said.push(`${signed(effects.supplies)} ${suppliesWord(campaign)}`);
+  if (effects.materials) said.push(`${signed(effects.materials)} materials`);
   if (effects.heat) said.push(`heat ${signed(effects.heat)}`);
   if (effects.wound) said.push(`${effects.wound.all ? 'everyone' : 'someone'} hurt (${effects.wound.hp} hit points)`);
   if (effects.part) said.push(aPart(effects.part, rules));
@@ -80,7 +82,8 @@ export function changesText(changes, campaign, rules) {
   const said = [];
   const moved = [];
   if (changes.credits) moved.push(`${signed(changes.credits)} credits`);
-  if (changes.supplies) moved.push(`${signed(changes.supplies)} supplies`);
+  if (changes.supplies) moved.push(`${signed(changes.supplies)} ${suppliesWord(campaign)}`);
+  if (changes.materials) moved.push(`${signed(changes.materials)} materials`);
   if (changes.heat) moved.push(`heat ${signed(changes.heat)}`);
   if (moved.length) said.push(`${capital(moved.join(', '))}.`);
   if (changes.parts.length) said.push(`Found: ${changes.parts.map((part) => aPart(part, rules)).join(', ')}.`);
@@ -90,6 +93,11 @@ export function changesText(changes, campaign, rules) {
     said.push(`${name} hurt (${wound.hp} hit point${wound.hp === 1 ? '' : 's'}).`);
   }
   return said.length ? said.join(' ') : 'Nothing changes.';
+}
+
+// What supplies are called: food at the colony.
+function suppliesWord(campaign) {
+  return campaign.colony ? 'food' : 'supplies';
 }
 
 function dearestOnHand(campaign, rules) {

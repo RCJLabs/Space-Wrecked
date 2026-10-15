@@ -1,7 +1,9 @@
 // Words for boarding fights (src/sim/encounter.js, M22): what one at stake
 // says on the approach screen before it begins, the line under the round
-// while it is on, and the end panel's words once it is won or lost. rules
-// are the content tables (src/sim/defs.js).
+// while it is on, and the end panel's words once it is won or lost. From
+// M28 a boarding can be at a place the squatters hold, on a trip from the
+// colony (src/sim/expeditions.js): her name is the place's, and her salvage
+// brings materials. rules are the content tables (src/sim/defs.js).
 import { boardingDue } from '../../sim/encounter.js';
 import { raidLoss } from '../../sim/raid.js';
 
@@ -44,6 +46,8 @@ export function boardingStakes(campaign, rules) {
 // deadline }.
 export function boardingObjective(battle, campaign) {
   const left = battle.units.filter((unit) => unit.side === 'enemy' && unit.status === 'active').length;
+  const place = placeOf(campaign);
+  if (place) return { title: `Aboard ${place.name}`, progress: `${left} squatter${left === 1 ? '' : 's'} left`, done: false, deadline: null };
   const name = shortName(campaign.run?.approach?.enemy.name ?? 'ship');
   if (campaign.fight?.boarding?.dir === 'them') return { title: `Aboard the ${name}`, progress: `${left} of hers left`, done: false, deadline: null };
   return { title: 'Boarders', progress: `${left} left`, done: false, deadline: null };
@@ -54,6 +58,12 @@ export function boardingObjective(battle, campaign) {
 // endBoarding).
 export function boardingOutcome(battle, campaign, rules) {
   const { dir, salvage } = campaign.fight.boarding;
+  const place = placeOf(campaign);
+  if (place) {
+    if (battle.winner !== 'crew') return { tone: 'bad', title: 'Beaten back', text: 'The squad falls back to the ship, hurt. Nothing taken.' };
+    const parts = salvage.parts.map((type) => `${article(partName(type, rules))} ${partName(type, rules)}`);
+    return { tone: 'good', title: `${place.name} is yours`, text: `${parts.length ? `Stripped: ${parts.join(', ')}. ` : ''}Materials: ${salvage.materials ?? 0}, as far as the stores take them.` };
+  }
   const name = shortName(campaign.run?.approach?.enemy.name ?? 'ship');
   const scrap = `Scrap: ${salvage.credits} credits.`;
   if (battle.winner === 'crew') {
@@ -80,6 +90,11 @@ function partyText(party, rules) {
 
 function partName(type, rules) {
   return rules.modules.get(type)?.name ?? type;
+}
+
+// The place a boarding on a trip is at (M28), or null for the run's.
+function placeOf(campaign) {
+  return campaign.fight?.boarding && campaign.colony?.trip ? campaign.colony.trip.place : null;
 }
 
 // "Pirate cutter" -> "cutter".

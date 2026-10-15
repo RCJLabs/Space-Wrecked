@@ -4,29 +4,35 @@
 import { actOf } from '../../sim/campaign.js';
 import { buildingOf, colonyStats, shipParts, storesOf } from '../../sim/colony.js';
 import { buildList } from '../../sim/colonyBuild.js';
-import { dayPlan } from '../../sim/days.js';
+import { dayPlan, planDay } from '../../sim/days.js';
 import { actTitle, crewText } from './hubText.js';
 import { runRecord } from './launchText.js';
 import { worldSaid } from './sectorText.js';
 
 // What the colony screen shows:
-//   act, home   "Act 3 · The colony", "Greenhaven · Ice world · Day 4"
+//   act, home   "Act 3 · The colony", "Greenhaven · Ice world · Day 4",
+//               and "· the ship away" while it is out on a trip (M28)
 //   day         the colony's day
 //   needs       [{ label, value, ok }]: power, then beds and air against
-//               the crew and who sleeps aboard; food and materials against
-//               the stores, with what a day makes and eats; defenses and
-//               the infirmary once the colony has any. ok is false for a
-//               need short (for food, a day that would go hungry).
+//               the crew at home and who sleeps aboard (while the ship is
+//               away, who goes without, and who is away); food and
+//               materials against the stores, with what a day makes and
+//               eats; defenses and the infirmary once the colony has any.
+//               ok is false for a need short (for food, a day that would
+//               go hungry).
 //   power       how the power is made: "1 from its plants, 3 the ship's"
 //   stores      what the stores keep of each: "30 each, in the landed
 //               ship's holds"
 //   buildings   [{ uid, name, gives, powered }] in the order built: what
 //               each gives or makes, or that it is dark and what it needs
 //   crew        crewText's rows (hubText.js), each with aboard: true for
-//               whoever sleeps aboard the landed ship
-//   builds      [{ what, id, name, cost, makes, ok, why }]: the farms and
-//               mines, what each costs and would make a day here, and why
-//               one can't be built now
+//               whoever sleeps aboard the landed ship, and (M28) away: true
+//               for the squad on a trip, rough: true for whoever is home
+//               without a bed and air while the ship is away
+//   builds      [{ what, id, name, cost, makes, ok, why }]: the farms,
+//               mines, solar arrays and shelters, what each costs and would
+//               make a day here or give (makes: the words for either), and
+//               why one can't be built now
 //   hold        [{ what, uids, type, name, count, ok, building, gives, why
 //               }]: the spare parts in the hold, as parts are below
 //   parts       [{ uid, uids, type, name, count, ok, building, gives, why }]:
@@ -44,18 +50,25 @@ export function colonyText(campaign, rules) {
   const stats = colonyStats(campaign, rules);
   const stores = storesOf(campaign, rules, stats);
   const plan = dayPlan(campaign, rules);
-  const { world, day, materials } = campaign.colony;
+  const { world, materials } = campaign.colony;
   const kind = rules.worlds?.kinds.get(world.kind)?.name ?? world.kind;
   const crew = crewText(campaign, rules);
   const aboard = new Set(stats.aboard);
-  const n = crew.length;
-  const eats = plan.ok ? plan.eats : 0;
+  const rough = new Set(stats.rough);
+  const away = new Set(stats.away);
+  const trip = Boolean(campaign.colony.trip);
+  const n = crew.length - away.size;
+  // While the ship is away, the next day's plan is a trip's (days.js).
+  const day = trip ? planDay(campaign, rules) : plan;
+  const eats = day.ok ? day.eats : 0;
   const needs = [
     { label: 'Power', value: `${stats.power.used} used of ${stats.power.made}`, ok: stats.buildings.every((b) => b.powered) },
     { label: 'Beds', value: `${stats.beds} for ${n}`, ok: stats.beds >= n },
     { label: 'Air', value: `${stats.air} for ${n}`, ok: stats.air >= n },
-    { label: 'Aboard', value: aboard.size ? `${aboard.size} sleep${aboard.size === 1 ? 's' : ''} on the ship` : 'Nobody', ok: aboard.size === 0 },
-    { label: 'Food', value: `${campaign.supplies} of ${stores.total} · +${stats.made.food}, eats ${eats}`, ok: plan.ok ? plan.fed : true },
+    trip
+      ? { label: 'Away', value: `${away.size} on the trip${rough.size ? `, ${rough.size} home without a bed` : ''}`, ok: rough.size === 0 }
+      : { label: 'Aboard', value: aboard.size ? `${aboard.size} sleep${aboard.size === 1 ? 's' : ''} on the ship` : 'Nobody', ok: aboard.size === 0 },
+    { label: 'Food', value: `${campaign.supplies} of ${stores.total} · +${stats.made.food}, eats ${eats}`, ok: day.ok ? day.fed : true },
     { label: 'Materials', value: `${materials} of ${stores.total} · +${stats.made.materials} a day`, ok: true },
   ];
   const guard = defenseText(stats.defense);
@@ -64,19 +77,19 @@ export function colonyText(campaign, rules) {
   const list = buildList(campaign, rules);
   return {
     act: actTitle(campaign.act, rules),
-    home: `${world.name} · ${kind} · Day ${day}`,
-    day,
+    home: `${world.name} · ${kind} · Day ${campaign.colony.day}${trip ? ' · the ship away' : ''}`,
+    day: campaign.colony.day,
     needs,
-    power: `${stats.power.plants} from power plants, ${stats.power.ship} spare from the landed ship`,
-    stores: `${stores.total} each, ${stores.colony ? `${stores.ship} in the landed ship's holds and ${stores.colony} in storehouses` : "in the landed ship's holds"}`,
+    power: trip ? `${stats.power.plants} from power plants; the ship is away` : `${stats.power.plants} from power plants, ${stats.power.ship} spare from the landed ship`,
+    stores: `${stores.total} each, ${stores.colony ? `${stores.ship} in the ${trip ? '' : 'landed '}ship's holds and ${stores.colony} in storehouses` : `in the ${trip ? '' : 'landed '}ship's holds`}`,
     buildings: stats.buildings.map((b) => ({
       uid: b.uid,
       name: b.name,
       gives: !b.powered ? `Dark: needs ${b.need} power` : b.makes ? makesText(b.makes) : givesText(b.gives),
       powered: b.powered,
     })),
-    crew: crew.map((row, i) => ({ ...row, aboard: aboard.has(campaign.crew[i].id) })),
-    builds: list.builds.map((row) => ({ what: row.what, id: row.id, name: row.name, cost: row.cost, makes: `${makesText(row.makes)} here`, ok: row.ok, why: row.error })),
+    crew: crew.map((row, i) => ({ ...row, aboard: aboard.has(campaign.crew[i].id), away: away.has(campaign.crew[i].id), rough: rough.has(campaign.crew[i].id) })),
+    builds: list.builds.map((row) => ({ what: row.what, id: row.id, name: row.name, cost: row.cost, makes: row.makes ? `${makesText(row.makes)} here` : givesText(row.gives), ok: row.ok, why: row.error })),
     hold: holdRows(list.hold, rules),
     parts: partRows(campaign, rules),
     world: { title: `${world.name} · ${kind}`, lines: [...worldSaid(world, rules, true), ...(world.surveyed ? [] : ['Settled without a survey: these are what the landing found.'])] },
@@ -176,7 +189,7 @@ export function placeText(plan, { moving = false } = {}) {
   const name = plan.name;
   const after = 'or tap the grid to put it somewhere else.';
   if (moving) return { ok: true, text: `The ${lowerFirst(name)} here: tap it again to move it, ${after}`, tone: 'info' };
-  if (plan.from === 'build') return { ok: true, text: `A ${lowerFirst(name)} here, for ${plan.cost} materials: ${lowerFirst(makesText(plan.makes))}. Tap it again to build it, ${after}`, tone: 'info' };
+  if (plan.from === 'build') return { ok: true, text: `A ${lowerFirst(name)} here, for ${plan.cost} materials: ${lowerFirst(plan.makes ? makesText(plan.makes) : givesText(plan.gives))}. Tap it again to build it, ${after}`, tone: 'info' };
   if (plan.from === 'hold') return { ok: true, text: `The ${lowerFirst(name)} here, from the hold: ${lowerFirst(givesText(plan.gives))}. Tap it again to set it down, ${after}`, tone: 'info' };
   return { ok: true, text: `The ${lowerFirst(name)} here: ${lowerFirst(givesText(plan.gives))}. It comes off the ship. Tap it again to give it, ${after}`, tone: 'info' };
 }
@@ -191,16 +204,15 @@ export function giveText(row) {
 // What giving a part came to (colony.js donate's result).
 export function givenText(result, rules) {
   const name = buildingOf(result.plan.type, rules)?.name ?? result.plan.type;
-  const healed = result.healed ? ` It patched the crew up: ${result.healed} hit points.` : '';
-  return { text: `The ${lowerFirst(name)} stands at the colony: ${lowerFirst(givesText(result.plan.gives))}.${healed}`, tone: 'good' };
+  return { text: `The ${lowerFirst(name)} stands at the colony: ${lowerFirst(givesText(result.plan.gives))}.`, tone: 'good' };
 }
 
 // What building came to (colonyBuild.js build's result): { text, tone }.
 export function builtText(result) {
   const { plan, campaign } = result;
-  const healed = result.healed ? ` It patched the crew up: ${result.healed} hit points.` : '';
-  const what = plan.makes ? `${lowerFirst(makesText(plan.makes))}. ${campaign.colony.materials} materials left` : lowerFirst(givesText(plan.gives));
-  return { text: `The ${lowerFirst(plan.name)} stands at the colony: ${what}.${healed}`, tone: 'good' };
+  const does = lowerFirst(plan.makes ? makesText(plan.makes) : givesText(plan.gives));
+  const what = plan.from === 'build' ? `${does}. ${campaign.colony.materials} materials left` : does;
+  return { text: `The ${lowerFirst(plan.name)} stands at the colony: ${what}.`, tone: 'good' };
 }
 
 // What a building being looked at says: its name and what it gives or

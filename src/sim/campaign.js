@@ -64,6 +64,7 @@ import { crewLook, isLook } from './looks.js';
 import { MAX_STOCK } from './economy.js';
 import { mapFromShip, WRECKS } from './mapFromShip.js';
 import { isWorld, runProblem } from './runShape.js';
+import { isPlace, MAX_PLACES, tripProblem } from './tripShape.js';
 import { enemyBonus } from './settings.js';
 import { traitBonus } from './traits.js';
 
@@ -212,17 +213,26 @@ export function captainProblem(captain, rules, background = firstBackground(rule
 }
 
 // The ship's flight checklist (constraints.js) as the campaign asks it:
-// for the crew aboard, and in an act on a planet, with what lifting off
-// takes. Act 1's goal is every line passing.
-export function shipChecklist(campaign, rules) {
-  return flightChecklist(campaign.ship, rules, crewAboard(campaign), { liftOff: actOf(campaign, rules)?.liftOff ?? null });
+// for the crew aboard (or `crew` of them, for a trip's plan, M28), and in
+// an act on a planet, with what lifting off takes. Act 1's goal is every
+// line passing.
+export function shipChecklist(campaign, rules, crew = crewAboard(campaign)) {
+  return flightChecklist(campaign.ship, rules, crew, { liftOff: actOf(campaign, rules)?.liftOff ?? null });
 }
 
 // How many fly with the ship, for its flight checks: the whole crew, until
 // a world is settled. From then on the crew lives at the colony (M26), and
-// nobody is aboard until M28's expeditions.
+// only a trip's squad is aboard (M28).
 export function crewAboard(campaign) {
-  return campaign.colony ? 0 : campaign.crew.length;
+  if (!campaign.colony) return campaign.crew.length;
+  return campaign.colony.trip?.squad.length ?? 0;
+}
+
+// The squad a trip from the colony takes at most (M28): squadSize, or the
+// whole crew if it is fewer. Construction mode at the colony counts this
+// many aboard, so its flight checks show what a trip needs.
+export function fullSquad(campaign, rules) {
+  return Math.min(rules.balance.squadSize, campaign.crew.length);
 }
 
 // The parts the ship still needs for the checklist, by type: { [type]:
@@ -279,9 +289,9 @@ export function refitShip(campaign, ship, rules) {
 }
 
 // True where the ship can be refitted: at the hangar, at a station, or at
-// the colony, where it has landed (M27).
+// the colony, where it has landed (M27), while it is home (M28).
 export function canRefit(campaign, rules) {
-  return Boolean(rules) && (atHangar(campaign, rules) || atStation(campaign, rules) || atColony(campaign, rules));
+  return Boolean(rules) && (atHangar(campaign, rules) || atStation(campaign, rules) || (atColony(campaign, rules) && !campaign.colony.trip));
 }
 
 // The uids of the ship's wrecked parts: those a refit can't take off.
@@ -401,12 +411,18 @@ export function campaignProblems(value) {
   // The colony is the act after the run's: it has its world from settling.
   if (value.colony !== null && !isColony(value.colony)) wrong('colony is unreadable');
   else if ((value.colony !== null) !== (value.act >= COLONY_ACT)) wrong("colony doesn't match the act");
+  else if (value.colony?.trip) {
+    const why = tripProblem(value.colony.trip, Array.isArray(value.crew) ? value.crew : []);
+    if (why) wrong(`trip ${why}`);
+  }
   if ((value.place === 'fight') !== isRecord(value.fight) || (value.place !== 'fight' && value.fight !== null)) {
     wrong("fight doesn't match where the player is");
   } else if (value.fight !== null) {
     const why = fightProblem(value.fight, Array.isArray(value.crew) ? value.crew : []);
     if (why) wrong(`fight ${why}`);
-    else if (value.fight.boarding && !runWhy && value.run?.approach?.outcome?.boarding !== 'due') wrong('boarding fight has no approach that ended in it');
+    else if (value.fight.boarding && !runWhy && value.run?.approach?.outcome?.boarding !== 'due' && !heldPlace(value.colony)) {
+      wrong(value.colony?.trip ? 'boarding fight has no held derelict where the squad is' : 'boarding fight has no approach that ended in it');
+    }
   }
   return problems;
 }
@@ -429,12 +445,22 @@ function fightProblem(fight, crew) {
 
 // The colony (settle.js, colony.js): the world settled, with its name and
 // whether it was surveyed, the buildings on it, laid out as a ship's
-// modules are (builder.js), its day and its materials (M27, days.js).
+// modules are (builder.js), its day and its materials (M27, days.js), and
+// its places within reach and the trip under way, or null (M28,
+// expeditions.js; the trip's squad is checked against the crew apart).
 function isColony(colony) {
   const world = colony?.world;
   if (!isRecord(colony) || !isWorld(world) || typeof world.name !== 'string' || world.name.trim() === '' || world.name.length > MAX_NAME || typeof world.surveyed !== 'boolean') return false;
   if (!isInt(colony.day, 1, MAX_DAYS) || !isInt(colony.materials, 0, MAX_MATERIALS)) return false;
+  if (!Array.isArray(colony.places) || colony.places.length > MAX_PLACES || !colony.places.every(isPlace)) return false;
+  if (colony.trip !== null && !isRecord(colony.trip)) return false;
   return Array.isArray(colony.buildings) && colony.buildings.length <= MAX_BUILDINGS && isShipData({ frame: 'colony', modules: colony.buildings, nextUid: colony.nextUid });
+}
+
+// True when the colony's trip is at a place the scavengers hold, not yet
+// fought for: where a boarding fight on a trip comes from (M28).
+function heldPlace(colony) {
+  return Boolean(colony?.trip?.place?.held) && colony.trip.done === false;
 }
 
 // The ship's wrecked modules: each a module it has, with how it is wrecked.
@@ -444,12 +470,14 @@ function isWrecks(wrecks, ship) {
 }
 
 // A boarding fight's (encounter.js): which way it goes, and what a win
-// pays, rolled as it began.
+// pays, rolled as it began: her parts and credits, and at a place the
+// scavengers hold (M28, expeditions.js) materials.
 function isBoarding(boarding) {
   const { salvage } = boarding ?? {};
   return (
     isRecord(boarding) && (boarding.dir === 'them' || boarding.dir === 'you') && isRecord(salvage) &&
-    Array.isArray(salvage.parts) && salvage.parts.length <= MAX_SALVAGE && salvage.parts.every(isId) && isInt(salvage.credits, 0, Number.MAX_SAFE_INTEGER)
+    Array.isArray(salvage.parts) && salvage.parts.length <= MAX_SALVAGE && salvage.parts.every(isId) && isInt(salvage.credits, 0, Number.MAX_SAFE_INTEGER) &&
+    (salvage.materials === undefined || isInt(salvage.materials, 0, MAX_MATERIALS))
   );
 }
 

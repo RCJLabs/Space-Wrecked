@@ -7,7 +7,10 @@
 // colony too. From M27 the colony also builds from its materials: farms
 // that grow food and mines that dig materials, each day by the world's
 // numbers (days.js), placed by hand like every other building
-// (colonyBuild.js). Pure.
+// (colonyBuild.js). From M28 the ship flies out on trips with a squad
+// (expeditions.js): while it is away the colony runs on its own power, and
+// materials build what keeps it going alone, a solar array and shelters.
+// Pure.
 //
 // The colony (campaign.colony):
 //   world      the world settled (settle.js)
@@ -20,6 +23,9 @@
 //   day        the colony's day: 1 at the landing (M27, days.js)
 //   materials  what it builds with (M27): rules.colony.materials at the
 //              landing, salvaged from it
+//   places     the places within reach (M28, expeditions.js): [] until
+//              they are rolled, and after each trip until the next list
+//   trip       the trip under way (M28), or null while the ship is home
 import { atColony } from './acts.js';
 import { applyCommand, occupancy, placeModule } from './builder.js';
 import { shipChecklist } from './campaign.js';
@@ -27,7 +33,6 @@ import { shipStats } from './constraints.js';
 import { tally } from './flags.js';
 import { cellAt } from './grid.js';
 import { baseOf } from './makers.js';
-import { healCrew } from './medbay.js';
 import { footprint, hasTag, isRotation } from './modules.js';
 import { supplyCapacity } from './travel.js';
 
@@ -37,15 +42,19 @@ export const SITE = 'colony';
 // or materials; and the world's numbers they make it from (M25's).
 export const MAKES = ['food', 'materials'];
 export const RESOURCES = ['soil', 'water', 'ore'];
+// What a build can give as a building (M28, data/colony.json builds'
+// gives), as a part's numbers give it (givesOf): power it makes (above 0)
+// or needs (below), beds, air and storage.
+export const BUILD_GIVES = ['power', 'beds', 'air', 'storage'];
 
 // A colony on the world settled, with nothing built yet: day 1, with the
-// materials the landing salvaged.
+// materials the landing salvaged, no places rolled and the ship home.
 export function newColony(world, materials = 0) {
-  return { world, buildings: [], nextUid: 1, day: 1, materials };
+  return { world, buildings: [], nextUid: 1, day: 1, materials, places: [], trip: null };
 }
 
-// The colony's build of id type (data/colony.json builds: a farm or a
-// mine), or null.
+// The colony's build of id type (data/colony.json builds: a farm, a mine,
+// a solar array or a shelter), or null.
 export function buildOf(type, rules) {
   return rules.colony?.builds?.get(type) ?? null;
 }
@@ -61,9 +70,25 @@ export function siteDef(type, rules) {
 }
 
 // What a build makes a day on the world: the world's numbers it makes from,
-// added up, and at least its least.
+// added up, and at least its least. Null for a build that makes nothing.
 export function yieldOf(build, world) {
+  if (!build.makes) return null;
   return Math.max(build.least, build.from.reduce((sum, rating) => sum + (world?.[rating] ?? 0), 0));
+}
+
+// What a build makes a day here, as colonyStats has it: { food } or
+// { materials }, or null for one that makes nothing (a solar array, a
+// shelter).
+export function makesOf(build, world) {
+  return build.makes ? { [build.makes]: yieldOf(build, world) } : null;
+}
+
+// What a build gives as a building, as givesOf has a part's: its gives
+// (M28: a solar array's power, a shelter's beds and air and the power it
+// needs), the rest none.
+export function buildGives(build) {
+  const gives = build.gives ?? {};
+  return { ...givesOf({ tags: [] }), power: gives.power ?? 0, beds: gives.beds ?? 0, air: gives.air ?? 0, storage: gives.storage ?? 0 };
 }
 
 // The name a building goes by: its build's or its part's building's
@@ -103,8 +128,9 @@ export function givesOf(def) {
 
 // What the colony has and gives:
 //   power      { plants, ship, made, used, spare }: what its power plants
-//              make, the landed ship's spare (what its reactors make beyond
-//              what its own parts use), the two together, what the powered
+//              make (a solar array is one), the landed ship's spare (what
+//              its reactors make beyond what its own parts use; none while
+//              the ship is away, M28), the two together, what the powered
 //              buildings take, and what is left
 //   buildings  [{ uid, type, name, need, powered, gives, makes }], in the
 //              order built. Each takes the power it needs, in that order,
@@ -113,9 +139,11 @@ export function givesOf(def) {
 //              and farms and mines need none. makes is a farm's or a mine's
 //              ({ food } or { materials }: what it makes a day), else null.
 //   beds, air  from the powered buildings, one each for a crew member
-//   housed     the crew with a bed and air at the colony: the first of the
-//              crew, in its order. aboard is the ids of the rest, who
-//              sleep aboard the landed ship.
+//   housed     the crew at home with a bed and air at the colony: the first
+//              of those at home, in the crew's order. The rest sleep aboard
+//              the landed ship (aboard: their ids), or while it is away go
+//              without (rough: their ids, M28). The squad on a trip is
+//              neither (away: their ids).
 //   storage    what the powered storehouses hold
 //   made       { food, materials }: what the farms and mines make a day
 //   defense    { damage, shield, intercept, armories } of the powered
@@ -123,12 +151,13 @@ export function givesOf(def) {
 //   infirmary  the best powered infirmary's heal, 0 without one
 export function colonyStats(campaign, rules) {
   const { colony, crew } = campaign;
-  const ship = Math.max(0, shipStats(campaign.ship, rules).power);
+  const trip = colony.trip ?? null;
+  const ship = trip ? 0 : Math.max(0, shipStats(campaign.ship, rules).power);
   const known = colony.buildings.map((building) => {
     const build = buildOf(building.type, rules);
     const def = build ? null : rules.modules.get(building.type);
-    const makes = build ? { [build.makes]: yieldOf(build, colony.world) } : null;
-    return { ...building, makes, gives: build ? givesOf({ tags: [] }) : def ? givesOf(def) : null };
+    const makes = build ? makesOf(build, colony.world) : null;
+    return { ...building, makes, gives: build ? buildGives(build) : def ? givesOf(def) : null };
   });
   const plants = known.reduce((sum, { gives }) => sum + Math.max(0, gives?.power ?? 0), 0);
   let left = plants + ship;
@@ -142,14 +171,19 @@ export function colonyStats(campaign, rules) {
   const sum = (key) => lit.reduce((total, b) => total + b.gives[key], 0);
   const made = (what) => lit.reduce((total, b) => total + (b.makes?.[what] ?? 0), 0);
   const [beds, air] = [sum('beds'), sum('air')];
-  const housed = Math.min(crew.length, beds, air);
+  const away = new Set(trip?.squad ?? []);
+  const home = crew.filter((member) => !away.has(member.id));
+  const housed = Math.min(home.length, beds, air);
+  const without = home.slice(housed).map((member) => member.id);
   return {
     power: { plants, ship, made: plants + ship, used: plants + ship - left, spare: left },
     buildings,
     beds,
     air,
     housed,
-    aboard: crew.slice(housed).map((member) => member.id),
+    aboard: trip ? [] : without,
+    rough: trip ? without : [],
+    away: [...away],
     storage: sum('storage'),
     made: { food: made('food'), materials: made('materials') },
     defense: { damage: sum('damage'), shield: sum('shield'), intercept: sum('intercept'), armories: lit.filter((b) => b.gives.armory).length },
@@ -230,13 +264,15 @@ function isClear(grid, def, { x, y, rot }, gap) {
 // What giving the ship's part uid to the colony would come to: { ok: true,
 // uid, type, building (data/colony.json's), placement { x, y, rot },
 // gives, ship (without it) }, or { ok: false, error } saying why it can't
-// be given. Only at the colony; only a part with a building (the bridge,
+// be given. Only at the colony, with the ship home; only a part with a
+// building (the bridge,
 // engines, corridors and airlocks stay aboard), never a wrecked one, never
 // one the ship can't fly without (a flight check that passes failing
 // without it, counting nobody aboard), and only where it can stand: at
 // placement, or without one in the first spot that fits.
 export function donatePlan(campaign, rules, uid, placement = null) {
   if (!atColony(campaign, rules)) return { ok: false, error: 'Parts are given at the colony.' };
+  if (campaign.colony.trip) return { ok: false, error: AWAY };
   const module = campaign.ship.modules.find((m) => m.uid === uid);
   if (!module) return { ok: false, error: "That part isn't on the ship." };
   const def = rules.modules.get(module.type);
@@ -259,17 +295,20 @@ export function donatePlan(campaign, rules, uid, placement = null) {
 
 // Gives the ship's part uid to the colony: it comes off the ship and
 // stands on the colony's grid, at placement or in the first spot that
-// fits. A powered infirmary heals the crew to full as it opens: given, or
-// given the power it lacked. Returns { ok: true, plan, campaign, healed
-// (hit points healed in all) } or { ok: false, error }.
+// fits. An infirmary heals a day at a time (days.js); since M28 one that
+// opens no longer heals everyone to full. Returns { ok: true, plan,
+// campaign } or { ok: false, error }.
 export function donate(campaign, rules, uid, placement = null) {
   const plan = donatePlan(campaign, rules, uid, placement);
   if (!plan.ok) return plan;
   const placed = placeBuilding(campaign.colony, rules, plan.type, plan.placement);
   if (!placed.ok) return placed;
-  const next = { ...campaign, ship: plan.ship, colony: placed.colony, flags: tally(campaign.flags, { partsGiven: 1 }) };
-  return { ok: true, plan, ...healIfOpened(campaign, next, rules) };
+  return { ok: true, plan, campaign: { ...campaign, ship: plan.ship, colony: placed.colony, flags: tally(campaign.flags, { partsGiven: 1 }) } };
 }
+
+// What every change to the colony's buildings says while the ship is away
+// (M28): they wait for it to come home.
+export const AWAY = 'The ship is away: building waits until it is home.';
 
 // The colony with a building of type standing at placement, laid out as
 // the builder lays a ship's modules out, with the next uid: { ok: true,
@@ -281,27 +320,11 @@ export function placeBuilding(colony, rules, type, placement) {
   return { ok: true, uid: placed.uid, colony: { ...colony, buildings: placed.ship.modules, nextUid: placed.ship.nextUid } };
 }
 
-// The campaign after a change to the colony, `after`, with the crew healed
-// to full if it opened an infirmary (one powered after that wasn't
-// before): { campaign, healed (hit points in all) }.
-export function healIfOpened(before, after, rules) {
-  if (!opensInfirmary(before, after, rules)) return { campaign: after, healed: 0 };
-  const heal = healCrew(after.crew, Infinity, rules);
-  return { campaign: { ...after, crew: heal.crew }, healed: heal.healed };
-}
-
 // The ship's parts as the colony sees them, in the ship's order: [{ uid,
 // type, ...donatePlan }], each with whether it can be given, and what it
 // would give or why it can't.
 export function shipParts(campaign, rules) {
   return campaign.ship.modules.map((module) => ({ type: module.type, ...donatePlan(campaign, rules, module.uid), uid: module.uid }));
-}
-
-// True when an infirmary is powered after that wasn't before.
-function opensInfirmary(before, after, rules) {
-  const open = (campaign) => colonyStats(campaign, rules).buildings.filter((b) => b.powered && b.gives.heal > 0).map((b) => b.uid);
-  const was = new Set(open(before));
-  return open(after).some((uid) => !was.has(uid));
 }
 
 // The colony's buildings as the builder lays a ship out.
@@ -311,8 +334,8 @@ export function layoutOf(colony) {
 
 // The rules for the builder on the colony's grid: the grid among the
 // frames, a full rectangle that holds as many buildings as it has cells,
-// and the builds (farms and mines) among the parts, each as siteDef has
-// it.
+// and the builds (farms, mines, solar arrays and shelters) among the
+// parts, each as siteDef has it.
 export function siteRules(rules) {
   const { width, height } = rules.colony.site;
   const builds = [...(rules.colony.builds?.keys() ?? [])].map((id) => [id, siteDef(id, rules)]);

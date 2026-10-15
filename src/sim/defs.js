@@ -4,10 +4,10 @@
 // empty tables.
 
 // The content files, by name: data/<name>.json.
-export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'hulls', 'styling', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'worlds', 'colony', 'events', 'recruits', 'tips'];
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'hulls', 'styling', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'worlds', 'colony', 'expeditions', 'events', 'recruits', 'tips'];
 
 export function indexDefs(files) {
-  const { modules, frames, manufacturers, hulls, styling, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, worlds, colony, events, recruits, tips } = files;
+  const { modules, frames, manufacturers, hulls, styling, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, worlds, colony, expeditions, events, recruits, tips } = files;
   return {
     balance,
     tilesPerCell: modules.tilesPerCell,
@@ -76,7 +76,8 @@ export function indexDefs(files) {
     // stay aboard, its words, and the building each useful part becomes,
     // by the part's base id, in data order. From M27 (days.js), the
     // materials it starts with and what it builds from them, the farms and
-    // mines, by id in data order.
+    // mines, by id in data order; from M28 the solar arrays and shelters
+    // too.
     colony: colony
       ? {
           site: colony.site,
@@ -87,8 +88,14 @@ export function indexDefs(files) {
           buildings: new Map((colony.buildings ?? []).map((b) => [b.part, b])),
         }
       : null,
-    // What happens at a sector's nodes (events.js): each event by id, and
-    // the drop tables its outcomes draw parts from.
+    // The places within reach of the colony (M28, expeditions.js): how many
+    // the list holds, its words, the kinds of place by id in data order
+    // (each with the days it lies away, and for a derelict how often the
+    // scavengers hold her), and the names each kind draws on.
+    expeditions: expeditions ? { places: expeditions.places, text: expeditions.text, kinds: byId(expeditions.kinds), names: expeditions.names ?? {} } : null,
+    // What happens at a sector's nodes (events.js), and from M28 at the
+    // colony's places: each event by id, and the drop tables its outcomes
+    // draw parts from.
     events: byId(events?.events),
     eventDrops: events?.drops ?? {},
     // The names recruits at stations draw on (recruits.js): { first, last }.

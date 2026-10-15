@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "60f654b6b5f3";
+const VERSION = "8121e97090a7";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -16,6 +16,7 @@ const FILES = [
   "data/encounters.json",
   "data/enemies.json",
   "data/events.json",
+  "data/expeditions.json",
   "data/frames.json",
   "data/hulls.json",
   "data/jobs.json",
@@ -116,6 +117,7 @@ const FILES = [
   "src/sim/economy.js",
   "src/sim/encounter.js",
   "src/sim/events.js",
+  "src/sim/expeditions.js",
   "src/sim/fight.js",
   "src/sim/flags.js",
   "src/sim/frame.js",
@@ -160,6 +162,7 @@ const FILES = [
   "src/sim/traits.js",
   "src/sim/transponder.js",
   "src/sim/travel.js",
+  "src/sim/tripShape.js",
   "src/ui/battle/screen.js",
   "src/ui/battle/tileText.js",
   "src/ui/battle/wrecks.js",
@@ -181,6 +184,7 @@ const FILES = [
   "src/ui/campaign/colony.js",
   "src/ui/campaign/colonyStand.js",
   "src/ui/campaign/colonyText.js",
+  "src/ui/campaign/colonyTrip.js",
   "src/ui/campaign/construction.js",
   "src/ui/campaign/crewCard.js",
   "src/ui/campaign/crewText.js",
@@ -200,6 +204,7 @@ const FILES = [
   "src/ui/campaign/shop.js",
   "src/ui/campaign/shopText.js",
   "src/ui/campaign/squadCard.js",
+  "src/ui/campaign/tripText.js",
   "src/ui/clipboard.js",
   "src/ui/dev/fps.js",
   "src/ui/dev/menu.js",

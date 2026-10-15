@@ -4,7 +4,9 @@
 // recruits draw on (recruits.json), the backgrounds a
 // campaign starts from (backgrounds.json), act 1's
 // districts with their clients and job sites (districts.json), the sites'
-// map templates (sites.json) and the jobs (contracts.json).
+// map templates (sites.json) and the jobs (contracts.json); and from M28 the
+// places within reach of the colony (expeditions.json,
+// validate-expeditions.js), whose events are events.json's.
 import { buildShip, layoutProblems } from '../src/sim/builder.js';
 import { ACTS, MAX_NAME } from '../src/sim/campaign.js';
 import { MISSIONS } from '../src/sim/contracts.js';
@@ -14,6 +16,7 @@ import { HAZARDS, siteMarks, siteProblems } from '../src/sim/gen/site.js';
 import { isId, isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 import { checkColony } from './validate-colony.js';
 import { checkEvents } from './validate-events.js';
+import { checkExpeditions } from './validate-expeditions.js';
 import { checkSectors } from './validate-sectors.js';
 import { checkWorlds } from './validate-worlds.js';
 
@@ -86,8 +89,13 @@ export function checkCampaignFiles(data, ids, fail) {
   const holding = checkSectors(data.sectors, data.campaign?.acts, ids.presets ?? new Map(), fail);
   checkWorlds(data.worlds, data.sectors, fail);
   checkColony(data.colony, data.modules?.modules, fail);
-  const covered = checkEvents(data.events, holding, ids.moduleIds, fail);
+  const nodeKinds = new Set((data.sectors?.nodes ?? []).map((node) => node?.id));
+  const places = checkExpeditions(data.expeditions, nodeKinds, ids, fail);
+  const covered = checkEvents(data.events, holding, ids.moduleIds, fail, places);
   for (const kind of holding) if (!covered.has(kind)) fail(`sectors.json node ${kind}`, 'holds events, but events.json has none of its kind');
+  for (const kind of data.expeditions?.kinds ?? []) {
+    if (kind?.held?.chance !== 100 && !covered.has(kind?.id)) fail(`expeditions.json kind ${kind?.id}`, 'has places with events, but events.json has none of its kind');
+  }
   checkRecruits(data.recruits, fail);
   const maps = checkSiteMaps(data.sites, fail);
   const districts = checkDistricts(data.districts, maps, ids, fail);
