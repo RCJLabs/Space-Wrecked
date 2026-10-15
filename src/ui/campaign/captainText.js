@@ -20,11 +20,12 @@ export const LOOK_WORDS = {
 };
 
 // What the screen shows for a draft captain, { name, job, traits, look }:
-//   background  { name, blurb, pursuer }: fixed in v0.1
+//   background  { name, blurb, pursuer }: the one picked (background.js)
 //   look        [{ key, label, value }]: each layer of the look, its name
 //               and its choice in words ([] without a look)
 //   jobs        [{ id, name, line, picked }]: the start's crew jobs, each
-//               with its numbers and weapon
+//               once (a crew can have two of a job, M30), with its
+//               numbers and weapon
 //   traits      [{ id, name, text, effect, picked }]
 //   captain     the captain's numbers in words, with the traits picked
 //               ('' before a job is picked)
@@ -39,7 +40,7 @@ export function captainText(rules, draft, background = firstBackground(rules)) {
   return {
     background: { name: start.name, blurb: start.blurb, pursuer: start.pursuer.name },
     look: draft.look ? LOOK_KEYS.map((key) => ({ key, label: LAYER_NAMES[key], value: key === 'face' ? `${draft.look.face + 1} of ${FACES}` : LOOK_WORDS[key][draft.look[key]] })) : [],
-    jobs: start.start.crew.map((id) => {
+    jobs: [...new Set(start.start.crew)].map((id) => {
       const fighter = rules.jobs.get(id);
       return { id, name: fighter.name, line: statLine(fighter, rules), picked: id === draft.job };
     }),

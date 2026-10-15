@@ -57,6 +57,11 @@
 //                                      list, like --fit cargo,medbay)
 //   node tools/voyage.js --refit no    no refits at stations
 //   node tools/voyage.js --heat ignore no swaps, hides or long jumps
+//   node tools/voyage.js --background deserter
+//                                      from another background's start
+//                                      (M30; data/backgrounds.json)
+//   node tools/voyage.js --runs 30 --background all
+//                                      every background's, side by side
 //   node tools/voyage.js --runs 20 --set supplyPrice=2
 //                                      a balance number changed for this run
 //                                      only (as many --set as you like)
@@ -815,11 +820,12 @@ function namesOf(defs, types) {
   return Object.entries(counts).sort(([a, x], [b, y]) => y - x || a.localeCompare(b)).map(([name, n]) => (n > 1 ? `${name} ${n}` : name)).join(', ');
 }
 
-// Act 1's test run from campaign seed `seed`, and the launch: { ok: true,
-// campaign (launched), jobs } or { ok: false, line }. The slow half of a
-// voyage, so callers flying a seed more than once can keep it.
-export function launchedAt(defs, seed) {
-  const act1 = runToLaunch(defs, seed);
+// Act 1's test run from campaign seed `seed` (from `background`'s start,
+// the first's if none), and the launch: { ok: true, campaign (launched),
+// jobs } or { ok: false, line }. The slow half of a voyage, so callers
+// flying a seed more than once can keep it.
+export function launchedAt(defs, seed, background) {
+  const act1 = runToLaunch(defs, seed, { background });
   const lifted = act1.launched ? launch(act1.campaign, defs) : null;
   if (!lifted?.ok) return { ok: false, line: `Campaign seed ${seed}: ${lifted?.error ?? act1.lines.at(-1)}` };
   return { ok: true, campaign: lifted.campaign, jobs: act1.jobs };
@@ -829,8 +835,8 @@ export function launchedAt(defs, seed) {
 // `lifted`, launchedAt's for the seed), then the voyage, with the parts in
 // fit (module types) fitted to the ship first. { launched, ...voyageFrom },
 // or { launched: false, lines } if the test run stopped short.
-export function voyage(defs, seed, options = {}, lifted = launchedAt(defs, seed)) {
-  const { fit = [], ...rest } = options;
+export function voyage(defs, seed, options = {}, lifted = launchedAt(defs, seed, options.background)) {
+  const { fit = [], background, ...rest } = options;
   if (!lifted.ok) return { launched: false, lines: [lifted.line] };
   const ship = fit.reduce((fitted, type) => withPart(fitted, defs, type), lifted.campaign.ship);
   // A ship that fails a flight check can't leave a station (M23h), so what
@@ -838,6 +844,38 @@ export function voyage(defs, seed, options = {}, lifted = launchedAt(defs, seed)
   const broken = flightChecklist(ship, defs, lifted.campaign.crew.length).find((line) => line.ok !== true);
   if (broken) throw new Error(`Fitted with ${fit.join(' and ')}, the ship fails a flight check: ${broken.text}.`);
   return { launched: true, ...voyageFrom(defs, { ...lifted.campaign, ship }, { ...rest, label: `Campaign seed ${seed}, after ${lifted.jobs} jobs. ` }) };
+}
+
+// Voyages from seeds 1 to `runs` from each background's start, side by
+// side (M30): how many launched, crossed fed all the way and met the
+// hunters, and the colony's raids faced, won and lost, with the runs that
+// lost one. { lines, rows }, a row a background: { id, name, launched,
+// fed, met, faced, won, lost, runsLost }.
+export function voyagesByBackground(defs, runs, options = {}) {
+  const rows = [...defs.backgrounds.values()].map(({ id, name }) => {
+    const done = manyVoyages(defs, runs, { ...options, background: id }).results.filter((r) => r.launched);
+    const faced = done.flatMap((r) => r.tally.raids?.faced ?? []);
+    const won = faced.filter((raid) => raid.won).length;
+    return {
+      id,
+      name,
+      launched: done.length,
+      fed: done.filter((r) => r.tally.hungryJumps === 0).length,
+      met: done.filter((r) => r.tally.hunts > 0).length,
+      faced: faced.length,
+      won,
+      lost: faced.length - won,
+      runsLost: done.filter((r) => (r.tally.raids?.faced ?? []).some((raid) => !raid.won)).length,
+    };
+  });
+  const width = Math.max(...rows.map((row) => row.name.length), 10);
+  const cells = (values) => values.map((value, i) => (i ? String(value).padStart(i === 1 ? 8 : 9) : String(value).padEnd(width))).join('  ');
+  const lines = [
+    `${runs} voyages from each background's start, campaign seeds 1 to ${runs}: launched, fed all the way, met the hunters, and the colony's raids.`,
+    cells(['Background', 'Launched', 'Fed', 'Met', 'Raids', 'Won', 'Lost', 'Runs lost']),
+    ...rows.map((row) => cells([row.name, row.launched, row.fed, row.met, row.faced, row.won, row.lost, row.runsLost])),
+  ];
+  return { lines, rows };
 }
 
 // Voyages from seeds 1 to `runs`, summed up: { lines, results }.
@@ -857,7 +895,7 @@ export function manyVoyages(defs, runs, options = {}) {
   const policy = ignoring || options.long === 'never' ? 'never' : `when heat is at ${LONG_FROM} or over`;
   const met = done.filter((r) => r.tally.hunts > 0).length;
   const lines = [
-    `${runs} voyages from launch, campaign seeds 1 to ${runs}, ${ignoring ? 'ignoring heat' : 'managing heat'}, long jumps ${policy}, ${options.scans === 'no' ? 'no scans' : 'scanning'}, ${options.refit === 'no' ? 'no refits' : 'refitting at stations'}${options.fit?.length ? `, fitted with ${options.fit.join(' and ')}` : ''}. The median, then the least and most:`,
+    `${runs} voyages from launch, campaign seeds 1 to ${runs}${options.background ? `, the ${defs.backgrounds.get(options.background)?.name.toLowerCase()}` : ''}, ${ignoring ? 'ignoring heat' : 'managing heat'}, long jumps ${policy}, ${options.scans === 'no' ? 'no scans' : 'scanning'}, ${options.refit === 'no' ? 'no refits' : 'refitting at stations'}${options.fit?.length ? `, fitted with ${options.fit.join(' and ')}` : ''}. The median, then the least and most:`,
     `Sectors crossed: ${spread(of('crossed'))}; ${done.filter((r) => r.system).length} of ${done.length} entered the system past the charts, ${done.filter((r) => r.ended).length} settled a world; fed all the way in ${done.filter((r) => r.tally.hungryJumps === 0).length} of ${done.length}.`,
     systemLine(defs, done),
     colonySummary(defs, done),
@@ -1008,7 +1046,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const made = sets.length ? rulesWith(readData(), sets) : { ok: true, rules: indexDefs(readData()) };
   if (!made.ok) throw new Error(made.error);
   const fit = value('--fit', '');
-  const options = { long: value('--long', 'heat'), scans: value('--scan', 'yes'), refit: value('--refit', 'yes'), heat: value('--heat', 'manage'), fit: fit ? fit.split(',') : [] };
+  const options = { long: value('--long', 'heat'), scans: value('--scan', 'yes'), refit: value('--refit', 'yes'), heat: value('--heat', 'manage'), fit: fit ? fit.split(',') : [], background: value('--background', undefined) };
   const runs = Number(value('--runs', 0));
-  console.log((runs ? manyVoyages(made.rules, runs, options) : voyage(made.rules, Number(value('--seed', 1)), options)).lines.join('\n'));
+  if (options.background === 'all') console.log(voyagesByBackground(made.rules, runs || 30, { ...options, background: undefined }).lines.join('\n'));
+  else console.log((runs ? manyVoyages(made.rules, runs, options) : voyage(made.rules, Number(value('--seed', 1)), options)).lines.join('\n'));
 }

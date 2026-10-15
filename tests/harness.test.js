@@ -48,7 +48,7 @@ test('a balance number can change for a run, checked like the data, the file lef
 });
 
 test('ships to fight on: the example, the presets, a ship script or a blueprint code', () => {
-  assert.deepEqual(shipsFor(null, rules).map((s) => s.label), ['Example ship', 'Pirate cutter', 'Patrol corvette', 'Derelict hauler', 'Con-Reg repo tug', 'Con-Reg gunship']);
+  assert.deepEqual(shipsFor(null, rules).map((s) => s.label), ['Example ship', 'Pirate cutter', 'Patrol corvette', 'Derelict hauler', 'Con-Reg repo tug', 'Con-Reg gunship', 'Provost cutter', 'Fleet frigate', 'Halloran runner', 'Halloran yacht']);
   assert.deepEqual(shipsFor(['hauler'], rules), [{ label: 'Derelict hauler', preset: 'hauler' }]);
   const [script] = shipsFor([EXAMPLE_SCRIPT], rules);
   assert.equal(script.label, 'example-ship');
@@ -73,14 +73,15 @@ test('a run is the same every time, and each ship keeps its own fights', () => {
 });
 
 test("a summary's numbers add up", () => {
-  const records = run({ ships: shipsFor(null, rules), fights: 24 });
+  const ships = shipsFor(null, rules);
+  const records = run({ ships, fights: 4 * ships.length });
   const summary = summarize(records);
-  assert.equal(summary.fights, 24);
+  assert.equal(summary.fights, 4 * ships.length);
   for (const row of [...summary.ships, summary.all]) {
     assert.equal(row.crew.count + row.enemy.count + row.stalls.count, row.fights, row.label);
     assert.ok(row.crew.low <= row.crew.rate && row.crew.rate <= row.crew.high);
   }
-  assert.deepEqual(summary.ships.map((row) => row.fights), [4, 4, 4, 4, 4, 4]);
+  assert.deepEqual(summary.ships.map((row) => row.fights), ships.map(() => 4));
   const shots = records.flatMap((r) => r.shots);
   assert.equal(summary.shots.total, shots.length);
   assert.equal(summary.shots.bands.reduce((sum, band) => sum + band.shots, 0), shots.length);

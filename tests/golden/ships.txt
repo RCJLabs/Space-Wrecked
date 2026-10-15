@@ -399,3 +399,265 @@ EErrRRRQQ++BB
   13 weapon at (16, 8), turned 2
   14 bastion-airlock at (8, 4), turned 0
 Wrecked: none
+
+Provost cutter, seed 1: 13 parts, 10 × 5 cells, crew 3
+......LLW.
+eeRRR.XXBB
+eeRRR+++BB
+EERRRQQQBB
+EE.AAQQQ..
+  1 bridge at (15, 5), turned 1
+  2 corridor at (14, 6), turned 1
+  3 corridor at (13, 6), turned 0
+  4 corridor at (12, 6), turned 1
+  5 armory at (13, 5), turned 2
+  6 quarters at (12, 7), turned 0
+  7 lifesupport at (13, 4), turned 2
+  8 bastion-reactor at (9, 5), turned 2
+  9 engine at (7, 7), turned 0
+  10 bastion-lightengine at (7, 6), turned 0
+  11 lightengine at (7, 5), turned 0
+  12 weapon at (15, 4), turned 0
+  13 bastion-airlock at (10, 8), turned 0
+Wrecked: none
+
+Provost cutter, seed 2: 12 parts, 9 × 6 cells, crew 3
+.....QQ..
+.....QQ..
+EEAA.QQBB
+EERRR++BB
+eeRRRXXBB
+eeRRRLLW.
+  1 bridge at (14, 6), turned 1
+  2 bastion-corridor at (13, 7), turned 2
+  3 corridor at (12, 7), turned 1
+  4 bastion-armory at (12, 8), turned 2
+  5 bastion-quarters at (12, 4), turned 3
+  6 lifesupport at (12, 9), turned 2
+  7 reactor at (9, 7), turned 2
+  8 bastion-engine at (7, 6), turned 0
+  9 bastion-lightengine at (7, 9), turned 0
+  10 bastion-lightengine at (7, 8), turned 0
+  11 weapon at (14, 9), turned 2
+  12 bastion-airlock at (9, 6), turned 0
+Wrecked: none
+
+Provost cutter, seed 3: 12 parts, 11 × 5 cells, crew 3
+..RRRQQ....
+eeRRRQQXXBB
+eeRRRQQ++BB
+.EE.AALL.BB
+.EE.......W
+  1 bastion-bridge at (15, 5), turned 1
+  2 corridor at (14, 6), turned 2
+  3 bastion-corridor at (13, 6), turned 0
+  4 armory at (13, 5), turned 2
+  5 bastion-quarters at (11, 4), turned 1
+  6 bastion-lifesupport at (12, 7), turned 2
+  7 bastion-reactor at (8, 4), turned 0
+  8 engine at (7, 7), turned 0
+  9 lightengine at (6, 5), turned 0
+  10 lightengine at (6, 6), turned 0
+  11 bastion-weapon at (16, 8), turned 1
+  12 airlock at (10, 7), turned 2
+Wrecked: none
+
+Fleet frigate, seed 1: 16 parts, 14 × 6 cells, crew 4
+EE...........W
+EErrA...LLKKBB
+EErrAQQQX+++BB
+EERRRQQQX.SSBB
+..RRR......W..
+..RRR.........
+  1 bridge at (17, 5), turned 1
+  2 bastion-corridor at (16, 6), turned 2
+  3 bastion-corridor at (15, 6), turned 0
+  4 corridor at (14, 6), turned 1
+  5 bastion-shield at (15, 7), turned 0
+  6 bastion-armory at (13, 6), turned 3
+  7 quarters at (10, 6), turned 0
+  8 bastion-lifesupport at (13, 5), turned 0
+  9 reactor at (7, 7), turned 1
+  10 bastion-smallreactor at (7, 5), turned 0
+  11 bastion-engine at (5, 6), turned 0
+  12 bastion-engine at (5, 4), turned 0
+  13 cannon at (15, 5), turned 0
+  14 bastion-weapon at (16, 8), turned 1
+  15 weapon at (18, 4), turned 1
+  16 airlock at (9, 5), turned 3
+Wrecked: none
+
+Fleet frigate, seed 2: 15 parts, 15 × 4 cells, crew 4
+EE.AA........WW
+EErrRRRLQQ.SSBB
+EErrRRRLQQ+++BB
+EE..RRR.QQXX.BB
+  1 bastion-bridge at (17, 6), turned 1
+  2 bastion-corridor at (16, 7), turned 0
+  3 bastion-corridor at (15, 7), turned 2
+  4 corridor at (14, 7), turned 0
+  5 bastion-shield at (15, 6), turned 0
+  6 bastion-armory at (14, 8), turned 2
+  7 bastion-quarters at (12, 6), turned 1
+  8 bastion-lifesupport at (11, 6), turned 3
+  9 bastion-reactor at (8, 6), turned 3
+  10 bastion-smallreactor at (6, 6), turned 0
+  11 engine at (4, 7), turned 0
+  12 bastion-engine at (4, 5), turned 0
+  13 bastion-weapon at (18, 5), turned 0
+  14 bastion-weapon at (17, 5), turned 0
+  15 airlock at (7, 5), turned 0
+Wrecked: none
+
+Fleet frigate, seed 3: 14 parts, 13 × 5 cells, crew 4
+...AA..LL....
+EErrRRRQQSSBB
+EErrRRRQQ++BB
+..EERRRQQXXBB
+..EE.......WW
+  1 bridge at (16, 5), turned 1
+  2 bastion-corridor at (15, 6), turned 3
+  3 bastion-corridor at (14, 6), turned 0
+  4 bastion-shield at (14, 5), turned 2
+  5 bastion-armory at (14, 7), turned 2
+  6 bastion-quarters at (12, 5), turned 1
+  7 lifesupport at (12, 4), turned 2
+  8 reactor at (9, 5), turned 3
+  9 bastion-smallreactor at (7, 5), turned 1
+  10 bastion-engine at (7, 7), turned 0
+  11 bastion-engine at (5, 5), turned 0
+  12 bastion-weapon at (17, 8), turned 2
+  13 bastion-weapon at (16, 8), turned 2
+  14 bastion-airlock at (8, 4), turned 0
+Wrecked: none
+
+Halloran runner, seed 1: 13 parts, 10 × 5 cells, crew 3
+......LLW.
+eeRRR.XXBB
+eeRRR+++BB
+EERRRQQQBB
+EE.AAQQQ..
+  1 bridge at (15, 5), turned 1
+  2 corridor at (14, 6), turned 1
+  3 corridor at (13, 6), turned 0
+  4 corridor at (12, 6), turned 1
+  5 armory at (13, 5), turned 2
+  6 quarters at (12, 7), turned 0
+  7 lifesupport at (13, 4), turned 2
+  8 reactor at (9, 5), turned 2
+  9 engine at (7, 7), turned 0
+  10 lightengine at (7, 6), turned 0
+  11 lightengine at (7, 5), turned 0
+  12 weapon at (15, 4), turned 0
+  13 airlock at (10, 8), turned 0
+Wrecked: none
+
+Halloran runner, seed 2: 12 parts, 9 × 6 cells, crew 3
+.....QQ..
+.....QQ..
+EEAA.QQBB
+EERRR++BB
+eeRRRXXBB
+eeRRRLLW.
+  1 bridge at (14, 6), turned 1
+  2 corridor at (13, 7), turned 2
+  3 corridor at (12, 7), turned 1
+  4 armory at (12, 8), turned 2
+  5 quarters at (12, 4), turned 3
+  6 lifesupport at (12, 9), turned 2
+  7 reactor at (9, 7), turned 2
+  8 engine at (7, 6), turned 0
+  9 lightengine at (7, 9), turned 0
+  10 lightengine at (7, 8), turned 0
+  11 weapon at (14, 9), turned 2
+  12 airlock at (9, 6), turned 0
+Wrecked: none
+
+Halloran runner, seed 3: 12 parts, 11 × 5 cells, crew 3
+..RRRQQ....
+eeRRRQQXXBB
+eeRRRQQ++BB
+.EE.AALL.BB
+.EE.......W
+  1 bridge at (15, 5), turned 1
+  2 corridor at (14, 6), turned 2
+  3 corridor at (13, 6), turned 0
+  4 armory at (13, 5), turned 2
+  5 quarters at (11, 4), turned 1
+  6 lifesupport at (12, 7), turned 2
+  7 reactor at (8, 4), turned 0
+  8 engine at (7, 7), turned 0
+  9 lightengine at (6, 5), turned 0
+  10 lightengine at (6, 6), turned 0
+  11 weapon at (16, 8), turned 1
+  12 airlock at (10, 7), turned 2
+Wrecked: none
+
+Halloran yacht, seed 1: 16 parts, 14 × 6 cells, crew 4
+EE...........W
+EErrA...LLKKBB
+EErrAQQQX+++BB
+EERRRQQQX.SSBB
+..RRR......W..
+..RRR.........
+  1 bridge at (17, 5), turned 1
+  2 bastion-corridor at (16, 6), turned 2
+  3 bastion-corridor at (15, 6), turned 0
+  4 bastion-corridor at (14, 6), turned 1
+  5 shield at (15, 7), turned 0
+  6 bastion-armory at (13, 6), turned 3
+  7 quarters at (10, 6), turned 0
+  8 lifesupport at (13, 5), turned 0
+  9 bastion-reactor at (7, 7), turned 1
+  10 smallreactor at (7, 5), turned 0
+  11 bastion-engine at (5, 6), turned 0
+  12 bastion-engine at (5, 4), turned 0
+  13 bastion-cannon at (15, 5), turned 0
+  14 weapon at (16, 8), turned 1
+  15 weapon at (18, 4), turned 1
+  16 airlock at (9, 5), turned 3
+Wrecked: none
+
+Halloran yacht, seed 2: 15 parts, 15 × 4 cells, crew 4
+EE.AA........WW
+EErrRRRLQQ.SSBB
+EErrRRRLQQ+++BB
+EE..RRR.QQXX.BB
+  1 bridge at (17, 6), turned 1
+  2 corridor at (16, 7), turned 0
+  3 bastion-corridor at (15, 7), turned 2
+  4 corridor at (14, 7), turned 0
+  5 bastion-shield at (15, 6), turned 0
+  6 bastion-armory at (14, 8), turned 2
+  7 quarters at (12, 6), turned 1
+  8 bastion-lifesupport at (11, 6), turned 3
+  9 bastion-reactor at (8, 6), turned 3
+  10 bastion-smallreactor at (6, 6), turned 0
+  11 engine at (4, 7), turned 0
+  12 engine at (4, 5), turned 0
+  13 weapon at (18, 5), turned 0
+  14 bastion-weapon at (17, 5), turned 0
+  15 bastion-airlock at (7, 5), turned 0
+Wrecked: none
+
+Halloran yacht, seed 3: 14 parts, 13 × 5 cells, crew 4
+...AA..LL....
+EErrRRRQQSSBB
+EErrRRRQQ++BB
+..EERRRQQXXBB
+..EE.......WW
+  1 bastion-bridge at (16, 5), turned 1
+  2 bastion-corridor at (15, 6), turned 3
+  3 bastion-corridor at (14, 6), turned 0
+  4 shield at (14, 5), turned 2
+  5 armory at (14, 7), turned 2
+  6 bastion-quarters at (12, 5), turned 1
+  7 lifesupport at (12, 4), turned 2
+  8 reactor at (9, 5), turned 3
+  9 bastion-smallreactor at (7, 5), turned 1
+  10 bastion-engine at (7, 7), turned 0
+  11 engine at (5, 5), turned 0
+  12 weapon at (17, 8), turned 2
+  13 weapon at (16, 8), turned 2
+  14 bastion-airlock at (8, 4), turned 0
+Wrecked: none

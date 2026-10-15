@@ -193,7 +193,8 @@ function startName(rules, seed, id, job, taken) {
   return name;
 }
 
-// The background a campaign starts from when none is chosen: v0.1 has one.
+// The background a campaign starts from when none is picked: the first in
+// data/backgrounds.json, the miner.
 export function firstBackground(rules) {
   return rules.backgrounds.keys().next().value;
 }

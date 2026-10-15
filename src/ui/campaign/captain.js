@@ -1,13 +1,14 @@
-// Making a captain, the first screen of a new campaign: New game on the
-// title opens it. The background is fixed in v0.1, and only named under
-// the title. The captain's look (M23c) starts rolled: a tap on a layer
-// steps it to its next choice, and Roll rolls them all, the portrait
-// showing it in the helmet of the job picked. The name comes filled in
-// from the background's list, to keep or change; the job is one of the
-// crew's three; and two traits are picked from data/traits.json, each tap
-// showing what the trait is, and a third tap dropping the first. Start
-// begins the campaign, in place of any under way (the title asked first);
-// Title goes back with nothing changed.
+// Making a captain, the second screen of a new campaign: Next on the
+// background's screen (background.js, M30) opens it for the background
+// picked there, which is named under the title. The captain's look (M23c)
+// starts rolled: a tap on a layer steps it to its next choice, and Roll
+// rolls them all, the portrait showing it in the helmet of the job picked.
+// The name comes filled in from the background's list, to keep or change;
+// the job is one of the start crew's; and two traits are picked from
+// data/traits.json, each tap showing what the trait is, and a third tap
+// dropping the first. Start begins the campaign, in place of any under way
+// (the title asked first); Back goes back to the backgrounds with nothing
+// changed.
 import { seedFrom } from '../../core/rng.js';
 import { loadContent } from '../../platform/content.js';
 import { drawStars, makeStarfield, paintBackdrop } from '../../render/starfield.js';
@@ -20,6 +21,7 @@ import { icons } from '../icons.js';
 import { portraitImg, portraitUrl } from '../portrait.js';
 import { panel } from './hubParts.js';
 import { captainText } from './captainText.js';
+import { newGameDraft } from './newGame.js';
 
 const field = makeStarfield(seedFrom('captain'));
 
@@ -44,7 +46,7 @@ export const captainScreen = {
     const traitGrid = node('div', 'cap-traits');
     const flavor = node('p', 'cap-flavor');
     const foot = node('footer', 'cap-foot');
-    const backButton = toolButton('cap-back', icons.leave, 'Title');
+    const backButton = toolButton('cap-back', icons.prev, 'Back');
     const hint = node('p', 'cap-hint', 'Loading…');
     const startButton = toolButton('cap-start', icons.next, 'Start');
     startButton.disabled = true;
@@ -55,12 +57,13 @@ export const captainScreen = {
 
     let alive = true;
     let defs = null;
+    let background = null; // the id of the background picked (background.js)
     const draft = { name: '', job: null, traits: [], look: null };
     // Roll's own RNG, from the game's state as it stands: the game's
     // rolls don't move.
     let rolls = seedFrom(`captain look ${game.getState().rng}`);
     const cleanups = [
-      onTap(backButton, () => game.dispatch({ type: 'screen/show', screen: 'title' })),
+      onTap(backButton, () => game.dispatch({ type: 'screen/show', screen: 'background' })),
       onTap(startButton, start),
     ];
     const onInput = () => {
@@ -81,11 +84,12 @@ export const captainScreen = {
       .then((content) => {
         if (!alive) return;
         defs = content;
-        const background = defs.backgrounds.get(firstBackground(defs));
+        background = defs.backgrounds.has(newGameDraft.background) ? newGameDraft.background : firstBackground(defs);
+        const { captains, start } = defs.backgrounds.get(background);
         // A name from the background's list, picked by the game's RNG state
         // as it stands (nothing is rolled).
-        draft.name = background.captains[game.getState().rng % background.captains.length];
-        draft.job = background.start.crew[0];
+        draft.name = captains[game.getState().rng % captains.length];
+        draft.job = start.crew[0];
         roll();
         nameInput.value = draft.name;
         build();
@@ -97,7 +101,7 @@ export const captainScreen = {
 
     // The look's, job and trait buttons, made once the content is in.
     function build() {
-      const text = captainText(defs, draft);
+      const text = captainText(defs, draft, background);
       setText(sub, `${text.background.name}. After you: ${text.background.pursuer}.`);
       sub.title = text.background.blurb;
       const roller = toolButton('cap-roll', icons.again, 'Roll');
@@ -143,8 +147,8 @@ export const captainScreen = {
 
     function render() {
       if (!defs) return;
-      const text = captainText(defs, draft);
-      const place = defs.backgrounds.get(firstBackground(defs)).start.crew.indexOf(draft.job);
+      const text = captainText(defs, draft, background);
+      const place = defs.backgrounds.get(background).start.crew.indexOf(draft.job);
       const url = portraitUrl(draft.look, defs.jobs.get(draft.job)?.look, crewColor(Math.max(0, place)), 'bust');
       if (face.getAttribute('src') !== url) face.src = url;
       face.alt = `${draft.name.trim() || 'Your captain'}'s portrait`;
@@ -184,7 +188,7 @@ export const captainScreen = {
 
     function start() {
       if (!defs || startButton.disabled) return;
-      game.dispatch({ type: 'campaign/new', rules: defs, captain: { ...draft, name: draft.name.trim() } });
+      game.dispatch({ type: 'campaign/new', rules: defs, background, captain: { ...draft, name: draft.name.trim() } });
     }
 
     let backdrop = null;

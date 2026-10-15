@@ -165,7 +165,7 @@ const cases = [
   ['start ship with no airlock', (d) => (start(d).ship.placements = start(d).ship.placements.filter((p) => p.type !== 'airlock')), /start\.ship: No airlock on the hull edge/],
   ['no backgrounds', (d) => (d.backgrounds.backgrounds = []), /needs at least one background/],
   ['background in an unknown district', (d) => (d.backgrounds.backgrounds[0].district = 'docks'), /unknown district "docks"/],
-  ['background with no pursuer', (d) => delete d.backgrounds.backgrounds[0].pursuer, /pursuer: must be \{ name, blurb, levels, hunters, raiders, payment, run \}/],
+  ['background with no pursuer', (d) => delete d.backgrounds.backgrounds[0].pursuer, /pursuer: must be \{ name, blurb, levels, hunters, raiders, payment\?, run, colony \}/],
   ['client in two districts', (d) => d.districts.districts.push({ ...structuredClone(district(d)), id: 'docks', sites: [{ id: 'pier', name: 'Pier', map: 'yard', blurb: 'Wet.' }] }), /duplicate client id "marta"/],
   ['site on an unknown map', (d) => (district(d).sites[0].map = 'moon'), /unknown or broken map "moon"/],
   ['site map with a stray character', (d) => (d.sites.maps[0].rows[1] = d.sites.maps[0].rows[1].replace('k', 'Z')), /"Z" is no site tile/],
@@ -173,7 +173,7 @@ const cases = [
   ['site map with a pen no one can walk into', (d) => (d.sites.maps[3].rows[14] = ` -${d.sites.maps[3].rows[14].slice(2)}`) && (d.sites.maps[3].rows[15] = ` .|${d.sites.maps[3].rows[15].slice(3)}`), /\(0, 7\) can't be walked to/],
   ['site map with the hull for a wall', (d) => (d.sites.maps[0].rows[0] = ` =${d.sites.maps[0].rows[0].slice(2)}`), /a hull on an edge: a site has only walls and doors/],
   ['tiles with no rule for rock', (d) => delete d.tiles.tiles.rock, /no rules for the tile "rock"/],
-  ['board bigger than the jobs allow', (d) => (d.contracts.boardSize = 5) && d.contracts.jobs.pop(), /has 8 jobs that come back \(of 9\): a board of 5 needs 10/],
+  ['board bigger than the jobs allow', (d) => (d.contracts.boardSize = 5) && (d.contracts.jobs = d.contracts.jobs.filter((job) => job.id !== 'rent')), /district "tailings" has 8 jobs that come back \(of 9\): a board of 5 needs 10/],
   ['job done once as a word', (d) => (job(d, 'repo').once = 'yes'), /job repo: once must be true or false/],
   ['mission the rules don\'t know', (d) => d.contracts.missions.push({ id: 'escort', name: 'Escort', brief: 'Walk them home.' }), /unknown mission: the rules know clear, grab, hack/],
   ['brief with a word that can\'t be filled in', (d) => (d.contracts.missions[0].brief = 'Clear {site}.'), /"\{site\}" can't be filled in/],
@@ -199,6 +199,7 @@ const cases = [
   ['pursuer raiding with an unknown encounter', (d) => (d.backgrounds.backgrounds[0].pursuer.raiders = 'army'), /unknown raiders encounter "army"/],
   ['payment of odd credits', (d) => (d.backgrounds.backgrounds[0].pursuer.payment.credits = 52), /credits must be a multiple of 5/],
   ['payment that buys no heat', (d) => (d.backgrounds.backgrounds[0].pursuer.payment.heat = 0), /heat must be a whole number from 1 to 100/],
+  ['payment that is no payment', (d) => (d.backgrounds.backgrounds[0].pursuer.payment = 50), /payment must be \{ name, text, credits, heat \}, or left out for a pursuer that takes none/],
   ['tiles with no rule for the deck', (d) => delete d.tiles.tiles.deck, /no rules for the tile "deck"/],
   ['job paying odd credits', (d) => (job(d, 'rent').credits = [61, 90]), /multiples of 5/],
   ['act lifting off on nothing', (d) => (d.campaign.acts[0].liftOff = 0), /liftOff must be a number above 0, up to 4/],
@@ -364,5 +365,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(42 modules, 1 frame, 2 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 10 encounters, 5 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 18 events\)/);
+  assert.match(run.stdout, /OK \(42 modules, 1 frame, 2 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 14 enemies, 19 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 26 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 18 events\)/);
 });

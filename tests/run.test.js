@@ -47,6 +47,23 @@ test('a test run reaches launch in under an hour, and act 1 is not over too soon
   assert.ok(median(runs.map((run) => run.jobs)) >= 5, `the median run takes ${median(runs.map((run) => run.jobs))} jobs`);
 });
 
+// M30: each background's start launches as the miner's does, in about as
+// long: every run reaches launch, and at the slow pace the median run is
+// within 10 minutes of the miner's (ROADMAP.md M30; tools/run.js --runs 50
+// --background measures it over 50 seeds).
+test("from each background's start, every test run reaches launch, in about the miner's time (M30)", () => {
+  const median = (values) => [...values].sort((a, b) => a - b)[Math.floor((values.length - 1) / 2)];
+  const slow = {};
+  for (const background of rules.backgrounds.keys()) {
+    const runs = Array.from({ length: 10 }, (_, i) => runToLaunch(rules, i + 1, { background }));
+    for (const [i, run] of runs.entries()) assert.ok(run.launched, `${background} seed ${i + 1}: ${run.lines.at(-1)}`);
+    assert.match(runs[0].lines[0], new RegExp(rules.backgrounds.get(background).name.toLowerCase()));
+    slow[background] = median(runs.map((run) => run.minutes[1]));
+  }
+  for (const background of ['deserter', 'smuggler']) assert.ok(Math.abs(slow[background] - slow.miner) <= 10, `${background}: ${slow[background]} minutes against the miner's ${slow.miner}`);
+  assert.throws(() => runToLaunch(rules, 1, { background: 'pilot' }), /--background is one of miner, deserter, smuggler/);
+});
+
 test('the run tool prints a run, and runs summed up, from the command line', () => {
   assert.match(execFileSync(process.execPath, [TOOL, '--seed', '1'], { encoding: 'utf8' }), /Ready to launch after \d+ jobs/);
   const summed = manyRuns(rules, 2);

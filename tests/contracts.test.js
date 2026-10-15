@@ -41,7 +41,7 @@ test('a board offers different jobs, each rolled within its template', () => {
 
 test('over many boards, every job, client, site, mission and twist turns up', () => {
   const seen = (key) => new Set(offers.map((job) => job[key]));
-  assert.equal(seen('contract').size, contracts.jobs.size);
+  assert.equal(seen('contract').size, contractsIn(rules, DISTRICT).length);
   assert.equal(seen('client').size, rules.districts.get(DISTRICT).clients.length);
   assert.equal(seen('site').size, rules.districts.get(DISTRICT).sites.length);
   assert.deepEqual(new Set(offers.map((job) => contracts.jobs.get(job.contract).mission)), new Set(MISSIONS));
@@ -51,6 +51,15 @@ test('over many boards, every job, client, site, mission and twist turns up', ()
   for (const job of offers.filter((o) => o.twist === 'rush')) assert.notEqual(contracts.jobs.get(job.contract).mission, 'clear', 'no deadline on a clear-out');
   assert.equal(contractsIn(rules, 'nowhere').length, 0);
   assert.deepEqual(rollBoard(rules, 1, 'nowhere'), { board: [], rng: 1 });
+  // M30: each district's boards offer its own jobs, clients and sites, and
+  // every job belongs to one district.
+  for (const district of rules.districts.values()) {
+    const own = Array.from({ length: 200 }, (_, i) => rollBoard(rules, i * 7919, district.id).board).flat();
+    assert.equal(new Set(own.map((job) => job.contract)).size, contractsIn(rules, district.id).length, district.id);
+    assert.equal(new Set(own.map((job) => job.client)).size, district.clients.length, district.id);
+    assert.equal(new Set(own.map((job) => job.site)).size, district.sites.length, district.id);
+  }
+  assert.equal([...rules.districts.keys()].reduce((sum, id) => sum + contractsIn(rules, id).length, 0), contracts.jobs.size);
 });
 
 test('a new board offers none of the jobs skipped', () => {
