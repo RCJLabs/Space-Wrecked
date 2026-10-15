@@ -804,16 +804,68 @@ Detailed at the start of M26, once v0.2 was done. The Done whens past M26 are dr
     - a raid landing while the ship is away;
     - a quit and reopen with a raid coming.
 
-**Gate 5:** act 3 plays on the phone from the landing to a colony that feeds itself, flies trips and has faced a raid, and Evan wants to keep going. ROADMAP named no gate for Phase 5; this one was drafted at M29's close. Evan's call: until PROGRESS.md records it passed, Phase 6 waits. Passing it makes v0.3 done.
+**Gate 5:** act 3 plays on the phone from the landing to a colony that feeds itself, flies trips and has faced a raid, and Evan wants to keep going. ROADMAP named no gate for Phase 5; this one was drafted at M29's close. **Passed 2026-10-15** ("start the next phase"). v0.3 is done.
 
 ### Phase 6: Breadth (v0.4)
 
-- [ ] M30 Backgrounds 2 and 3, and their pursuers
-- [ ] M31 Manufacturers
-- [ ] M32 All jobs, traits and talents
-- [ ] M33 Factions, quests and companions
-- [ ] M34 Image pass: Base44 portraits and scenes, layered recruit portraits
-- [ ] M35 Audio pass with ZzFX
+Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are drafts, to settle as each milestone starts.
+
+- [ ] **M30 Backgrounds 2 and 3, and their pursuers.** One background plays from New game to the colony: the debt-bound miner, hunted by Con-Reg Recovery, in the Tailings. The captain screen names it, and there is nothing to pick.
+
+  Evan's picks (2026-10-15), each the recommended option:
+  - **The backgrounds:** the Navy deserter, hunted by the Fleet Provost, and the burned smuggler, hunted by the Halloran family.
+  - **Act 1:** each plays in a district of its own on the same rock, with its own clients, sites, shop and jobs.
+  - **The pursuers:** each has its own fighters, its own two ships in the run, its own payment terms or none, and its own words in all three acts. Heat's numbers are the same for all three.
+  - **Difficulty:** the three are about equally hard. The difficulty setting stays the place for harder.
+
+  Measured before settling this (`tools/run.js`, campaign seeds 1 to 50, from the miner's start): every run reaches launch, after 6 jobs at the median (3 to 13), with no raid in any run. It takes 45 minutes at the slow pace (21 to 93) and 28 at the quick pace (12 to 58).
+
+  **Done when:**
+  - **Picking a background:** New game opens a screen before the captain's with the three backgrounds. Each shows:
+    - its words and its pursuer;
+    - its district;
+    - what its start gives: the crew's jobs, credits, parts on hand and what is fitted.
+
+    A tap picks one, and Next goes on to the captain. The captain screen follows the pick: the background's names, its crew's jobs and its words (tested).
+  - **The Navy deserter** (`data/backgrounds.json`) walked off a Fleet tender with a crate of its spares.
+    - **Its start:** its own half-built ship on the starter frame, with a gun and a shield generator fitted; two marines and a medic; no credits.
+    - **Its district** (`data/districts.json`): the Strand, the spaceport's sailors' quarter. It has 6 clients, 4 sites on the four site maps, a shop and 8 jobs (`data/contracts.json`).
+    - **Its pursuer, the Fleet Provost:**
+      - takes no payments;
+      - an MP, armored, tails every job from heat 50;
+      - its raiders at the hangar and the colony are fewer than Con-Reg's four, and tougher;
+      - in the run a Provost cutter hunts from heat 50 and a Fleet frigate from 75 (`data/ships.json`), in navy and white.
+  - **The burned smuggler** dumped the Hallorans' cargo to outrun customs.
+    - **Its start:** its own half-built ship with a light engine and a cargo hold fitted; two engineers and a medic; credits to spend.
+    - **Its district:** the Narrows, the old town's back streets. It has 6 clients, 4 sites, a shop and 8 jobs.
+    - **Its pursuer, the Halloran family:**
+      - takes payments, dearer than Con-Reg's;
+      - a collector tails every job from heat 50;
+      - its raiders come in numbers, lightly armed;
+      - in the run a Halloran runner hunts from heat 50 and an armed yacht from 75.
+  - **Everything that reads the background reads the campaign's:**
+    - the job board and the shop (its district's);
+    - the heat meter's words, the hunters on jobs, the payment or its absence, and the raid at the hangar;
+    - the launch's words and the hunters' ships on the run;
+    - the colony's words and raiders.
+
+    A background is data only: each in `data/backgrounds.json` starts a campaign and plays to the colony (tested).
+  - **Saves:** the campaign has kept its background since v5, so `SAVE_VERSION` stays 23. A v23 save opens as the miner's, as before (tested).
+  - **About as hard as the miner:**
+    - **Act 1** (`tools/run.js --background`, seeds 1 to 50 from each start): every run reaches launch, and the median at the slow pace is within 10 minutes of the miner's.
+    - **Raids:** each pursuer's raiders are beaten by the AI crew within 10 points of Con-Reg's: the start crew at the hangar, and the crew of three at the colony.
+    - **The run and the colony** (`tools/voyage.js --background`, campaign seeds 1 to 30): the careful test player crosses the sectors fed, meets the hunters and wins the colony's raids about as often as from the miner's start, each within 5 runs of 30. Its report puts each background's numbers side by side.
+  - **Touch:** every new button is 48 px or more at the three sizes. By touch:
+    - each background picked, its captain made, and its hangar, job board and shop shown;
+    - a job with its pursuer's fighter along;
+    - its pursuer's raid at the hangar;
+    - its launch;
+    - a quit and reopen that keeps the background.
+- [ ] M31 Manufacturers. Draft: a third maker (§9 has M23g's two candidates, Kestrel Dynamics and Scrapline), with its version of each part, its own numbers and its look outside and on the plans; makers for the other sides (§9); the shop and drops carrying it. §5's target is 3.
+- [ ] M32 All jobs, traits and talents. Draft: Pilot, Scout, Xenobiologist and Quartermaster join the Marine, Engineer and Medic (§4.5). Each has its numbers and weapon, a ship station effect, a battle ability and a colony effect. Traits go from 6 toward §5's 20. Talents: what they are and how they are earned is to settle. Recruits get a background (§9).
+- [ ] M33 Factions, quests and companions. Draft: factions whose standing moves with the jobs and events the crew takes; quests that chain jobs and events across the acts; named companions with loyalty quests (§9).
+- [ ] M34 Image pass: Base44 portraits and scenes. Draft: WebP portraits for named characters (companions, the districts' clients) and scenes (the hangar, the lift-off, the landing), each logged in `assets/LOG.md`. Recruits keep their layered portraits, drawn in code since M23c.
+- [ ] M35 Audio pass with ZzFX. Draft: sounds made in code with ZzFX (approved for M35): shots and hits, the builder's placing, and the menus; a mute and a volume in the settings; audio starts after the first tap.
 
 ### Phase 7: Content and balance
 

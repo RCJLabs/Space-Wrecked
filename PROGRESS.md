@@ -2,6 +2,13 @@
 
 Newest entry first.
 
+## Gate 5 (2026-10-15)
+
+**Passed.** Evan's answer after M29: "Move the fps banner and start the next phase".
+- ROADMAP.md named no gate for Phase 5. The one passed was drafted at M29's close: "act 3 plays on the phone from the landing to a colony that feeds itself, flies trips and has faced a raid, and Evan wants to keep going." v0.3 is done: Phase 5.
+- No phone results came with it, and none have come back for M14 to M29. The gate is Evan's call, so it stands as passed.
+- Phase 6 starts with M30 (backgrounds 2 and 3, and their pursuers). ROADMAP.md held Phase 6's details until v0.3 was done. They are drafted there now, with M30's Done when in full and the rest marked as drafts.
+
 ## The frame rate's readout moved (2026-10-15)
 
 Evan: "Move the fps banner". In dev mode (`?dev=1`) the frame rate's readout sat over the screen: under the builder's Hull button, over the chart and the colony, and in a fight beside the orders.
