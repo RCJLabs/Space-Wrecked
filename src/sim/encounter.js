@@ -65,6 +65,7 @@ import { createBattle } from './battle.js';
 import { crewUnit, endFight } from './campaign.js';
 import { defaultSquad, squadMembers, squadProblem } from './crew.js';
 import { deploy } from './deploy.js';
+import { stationEdge } from './edges.js';
 import { tally } from './flags.js';
 import { generateShip } from './gen/ship.js';
 import { withHeat } from './heat.js';
@@ -76,12 +77,18 @@ import { enemyBonus } from './settings.js';
 const MAX_SEED = 0xffffffff;
 
 // The approach as approach.js plays it: { you, them, round, tactics }, or
-// null with none open.
+// null with none open. The player's side carries the crew's edge: the
+// gunnery and evasion their jobs add aboard (edges.js, M32).
 export function approachState(campaign, rules) {
   const approach = campaign.run?.approach;
   if (!approach) return null;
   const tactics = rules.ships.get(approach.enemy.ship)?.tactics ?? { aim: [] };
-  return { you: { ship: campaign.ship, ...approach.you }, them: approach.them, round: approach.round, tactics };
+  return { you: { ship: campaign.ship, ...approach.you, edge: crewEdge(campaign.crew, rules) }, them: approach.them, round: approach.round, tactics };
+}
+
+// What a crew's jobs add to its ship in the approach: { gunnery, evasion }.
+export function crewEdge(crew, rules) {
+  return { gunnery: stationEdge(crew, rules, 'gunnery'), evasion: stationEdge(crew, rules, 'evasion') };
 }
 
 // The other ship's order for the round to come, or null when no approach

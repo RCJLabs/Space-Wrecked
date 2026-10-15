@@ -61,11 +61,13 @@ export function aimedAt(def, aim) {
   return AIM_TAGS[aim].some((tag) => hasTag(def, tag));
 }
 
-// A side's numbers, from the modules it has working: { guns, damages (each
-// gun's damage a hit, in the order they fire), shields (what they hold in a
-// round), intercept (what its point defense takes off the other ship's hit
-// chance), thrust, mass, ratio (thrust for mass), evasion, powered, moving,
-// disabled }.
+// A side's numbers, from the modules it has working and its crew's edge:
+// { guns, damages (each gun's damage a hit, in the order they fire), shields
+// (what they hold in a round), intercept (what its point defense takes off
+// the other ship's hit chance), thrust, mass, ratio (thrust for mass),
+// evasion, gunnery (what its crew adds to its guns' hit chance), powered,
+// moving, disabled }. side.edge, where given, is { gunnery, evasion }: what
+// the crew's jobs add (edges.js; encounter.js approachState, M32).
 export function sideStats(side, rules) {
   const { balance } = rules;
   const working = side.ship.modules.filter((module) => !(module.uid in side.wrecked) && rules.modules.has(module.type)).map((module) => rules.modules.get(module.type));
@@ -84,7 +86,8 @@ export function sideStats(side, rules) {
     thrust,
     mass,
     ratio,
-    evasion: Math.round(balance.evasionPerThrust * ratio),
+    evasion: Math.round(balance.evasionPerThrust * ratio) + (side.edge?.evasion ?? 0),
+    gunnery: side.edge?.gunnery ?? 0,
     powered,
     moving,
     disabled: !powered || !moving,
@@ -103,10 +106,11 @@ export function targetsOf(side, aim, rules) {
     .sort((a, b) => a.left - b.left || a.uid - b.uid);
 }
 
-// The chance each gun hits a target with these stats, evading or not.
-export function hitChance(target, evading, rules) {
-  const { gunnery, evadeBonus } = rules.balance;
-  return within(gunnery - target.evasion - target.intercept - (evading ? evadeBonus : 0), rules);
+// The chance each gun hits a target with these stats, evading or not,
+// with the shooting ship's crew's gunnery added.
+export function hitChance(target, evading, rules, gunnery = 0) {
+  const { gunnery: base, evadeBonus } = rules.balance;
+  return within(base + gunnery - target.evasion - target.intercept - (evading ? evadeBonus : 0), rules);
 }
 
 // The chance a ship gets away from another, by their thrust for mass.
@@ -166,9 +170,9 @@ export function choicesFor(state, intent, rules) {
   const choices = AIMS.map((at) => {
     const targets = targetsOf(state.them, at, rules);
     const why = !you.guns ? 'Your guns are out.' : !targets.length ? `They have no working ${at === 'reactor' ? 'reactor' : at}.` : null;
-    return { order: { kind: 'fire', at }, ok: !why, why, guns: you.guns, chance: hitChance(them, intent.kind === 'evade', rules), damages: you.damages, shields: them.shields, targets };
+    return { order: { kind: 'fire', at }, ok: !why, why, guns: you.guns, chance: hitChance(them, intent.kind === 'evade', rules, you.gunnery), damages: you.damages, shields: them.shields, targets };
   });
-  const theirs = intent.kind === 'fire' ? { chance: hitChance(you, true, rules), was: hitChance(you, false, rules) } : { chance: null, was: null };
+  const theirs = intent.kind === 'fire' ? { chance: hitChance(you, true, rules, them.gunnery), was: hitChance(you, false, rules, them.gunnery) } : { chance: null, was: null };
   choices.push({ order: { kind: 'evade' }, ok: true, why: null, ...theirs });
   choices.push({ order: { kind: 'flee' }, ok: you.moving, why: you.moving ? null : 'Your engines are out.', chance: fleeChance(you, them, rules) });
   choices.push({ order: { kind: 'close' }, ok: you.moving, why: you.moving ? null : 'Your engines are out.', chance: closeChance(you, them, rules) });
@@ -258,7 +262,7 @@ export function playRound(state, order, rng, rules) {
 // fires once, at the chance shown, for its own damage. Returns { side (the
 // target after it), rng, chance, shots }.
 function volley(shooter, target, side, aim, evading, rng, rules) {
-  const chance = hitChance(target, evading, rules);
+  const chance = hitChance(target, evading, rules, shooter.gunnery);
   let r = rng;
   let hit = side;
   let shields = target.shields;
