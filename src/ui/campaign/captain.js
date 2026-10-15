@@ -43,6 +43,8 @@ export const captainScreen = {
     nameLabel.append(nameInput);
     const jobRow = node('div', 'cap-jobs');
     const numbers = node('p', 'cap-numbers');
+    // What the job picked brings (M32): its order, aboard, at the colony.
+    const does = node('div', 'cap-does');
     const traitGrid = node('div', 'cap-traits');
     const flavor = node('p', 'cap-flavor');
     const foot = node('footer', 'cap-foot');
@@ -52,7 +54,7 @@ export const captainScreen = {
     startButton.disabled = true;
     foot.append(backButton, hint, startButton);
     const traitsPanel = panel(`Traits · pick ${CAPTAIN_TRAITS}`, traitGrid, flavor);
-    el.append(head, panel('Look', look), panel('Captain', nameLabel, node('p', 'cap-label', 'Job'), jobRow, numbers), traitsPanel, foot);
+    el.append(head, panel('Look', look), panel('Captain', nameLabel, node('p', 'cap-label', 'Job'), jobRow, numbers, does), traitsPanel, foot);
     root.append(el);
 
     let alive = true;
@@ -160,6 +162,7 @@ export const captainScreen = {
       for (const button of jobRow.children) button.setAttribute('aria-pressed', String(button.dataset.id === draft.job));
       for (const button of traitGrid.children) button.setAttribute('aria-pressed', String(draft.traits.includes(button.dataset.id)));
       setText(numbers, text.captain);
+      if (does.textContent !== text.does.join('')) does.replaceChildren(...text.does.map((line) => node('p', null, line)));
       startButton.disabled = !text.ready;
       const replaces = text.ready && game.getState().campaign ? ' This replaces the campaign under way.' : '';
       setText(hint, text.hint.text + replaces);

@@ -95,6 +95,7 @@ export function mountFight(root, source) {
       reload: () => order({ type: 'fight/reload' }),
       stabilize: () => order({ type: 'fight/stabilize' }),
       open: () => order({ type: 'fight/open' }),
+      job: () => order({ type: 'fight/order' }),
       grab: () => order({ type: 'fight/grab' }),
       hack: () => order({ type: 'fight/hack' }),
       skip,
@@ -294,7 +295,8 @@ export function mountFight(root, source) {
     } else if (fight.battle !== prev.battle || fight.preview !== prev.preview) {
       flash = null;
     }
-    if (fight.preview?.type === 'shoot') openOdds(fight);
+    // A shot's odds, or a dart's (a Sedate, M32), on the card.
+    if (fight.preview?.type === 'shoot' || fight.preview?.odds) openOdds(fight);
     else if (cardKind === 'odds') closeCard();
     sync();
   }
@@ -415,7 +417,11 @@ export function mountFight(root, source) {
       doorsShown = battle.doors;
     }
     const figures = battle.units.map((u) => figure(u, battle, frame));
-    const aimed = fight.preview?.type === 'shoot' ? battle.units.find((u) => u.id === fight.preview.target) : null;
+    const { preview } = fight;
+    const aimed = preview?.type === 'shoot' ? battle.units.find((u) => u.id === preview.target) : null;
+    // An order shown (M32): the unit it reaches, or the door it welds.
+    const ordered = preview?.type === 'order' ? battle.units.find((u) => u.id === preview.at) ?? null : null;
+    const welding = preview?.type === 'order' && preview.kind === 'weld' ? preview.at : null;
     // The figures and marks are made again only when something in them
     // changed: a banner or words rising leave the board's last frame as
     // it was.
@@ -431,14 +437,20 @@ export function mountFight(root, source) {
           selected: [orders.unit.x, orders.unit.y],
           targets: orders.targets.map(({ target }) => [target.x, target.y]),
           aimed: aimed && [aimed.x, aimed.y],
+          ordered: ordered && [ordered.x, ordered.y],
+          welding,
         })
         : { faces: [] };
       mapView.setActors({ faces: marks.faces, glows: [], figures: unitsScene(figures).figures });
     }
     labels = {
-      units: battle.units.map((u, i) => ({ at: figures[i].at, status: u.status, hp: u.hp, maxHp: u.maxHp, color: colors.get(u.id) ?? palette.enemyTrim, overwatch: u.overwatch, bleed: u.bleed, selected: u.id === orders?.unit.id })),
-      badges: (orders?.targets ?? []).map(({ target, odds }) => ({ at: [target.x, target.y], text: `${odds.hit}%`, strong: target.id === aimed?.id })),
+      units: battle.units.map((u, i) => ({ at: figures[i].at, status: u.status, hp: u.hp, maxHp: u.maxHp, color: colors.get(u.id) ?? palette.enemyTrim, overwatch: u.overwatch, bleed: u.bleed, selected: u.id === orders?.unit.id, marked: Boolean(u.mark), suppressed: Boolean(u.suppressed), asleep: u.asleep })),
+      badges: [
+        ...(orders?.targets ?? []).filter(({ target }) => target.id !== ordered?.id).map(({ target, odds }) => ({ at: [target.x, target.y], text: `${odds.hit}%`, strong: target.id === aimed?.id })),
+        ...orderBadge(preview, orders, ordered),
+      ],
       marks: objectiveMarks(battle.objective),
+      welds: weldLabels(battle),
       floats: frame?.floats ?? [],
       shot: frame?.done ? null : frame?.shot ?? null,
       banner: frame?.event?.type === 'turn' ? { text: frame.event.side === 'crew' ? 'YOUR TURN' : 'ENEMY TURN', progress: frame.progress } : null,
@@ -516,11 +528,14 @@ export function mountFight(root, source) {
 
   // Cards
 
-  // The shot shown: its odds part by part, Fire, and the next target.
+  // The shot shown: its odds part by part, Fire, and the next target. A
+  // dart (Sedate, M32) shows as a shot does, with its order to give.
   function openOdds(fight) {
     const shooter = selectedUnit(fight);
-    const target = fight.battle.units.find((u) => u.id === fight.preview.target);
-    const text = oddsText(shooter, target, fight.preview.odds, defs);
+    const { preview } = fight;
+    const dart = preview.type === 'order';
+    const target = fight.battle.units.find((u) => u.id === (dart ? preview.at : preview.target));
+    const text = oddsText(shooter, target, preview.odds, defs);
     const head = node('h3');
     head.append(node('span', null, text.title), node('b', 'fgt-hit', `${text.hit}%`));
     const rows = node('dl', 'fgt-odds');
@@ -530,10 +545,11 @@ export function mountFight(root, source) {
       rows.append(row);
     }
     const lines = [text.note, text.crit, text.damage].filter(Boolean).map((line) => node('p', null, line));
-    const fire = toolButton('fgt-fire', icons.shoot, 'Fire');
+    const job = dart ? ordersFor(fight, defs).order : null;
+    const fire = job ? toolButton('fgt-fire', icons[job.kind] ?? icons.shoot, job.name) : toolButton('fgt-fire', icons.shoot, 'Fire');
     const buttons = node('div', 'fgt-card-row');
     buttons.append(fire);
-    const others = ordersFor(fight, defs).targets.length > 1;
+    const others = !dart && ordersFor(fight, defs).targets.length > 1;
     const next = others && toolButton('fgt-next', icons.skip, 'Next');
     if (next) buttons.append(next);
     for (const cleanup of cardCleanups) cleanup();
@@ -660,6 +676,26 @@ function objectiveMarks(objective) {
   }
   if (objective?.type === 'hack') return [{ at: objective.at, text: `HACK ${Math.min(objective.progress, objective.turns)}/${objective.turns}`, done: objectiveDone(objective) }];
   return [];
+}
+
+// Each welded door (M32): the middle of its edge, and the rounds it still
+// holds, this one counted.
+function weldLabels(battle) {
+  return (battle.welds ?? []).map(({ key, until }) => {
+    const [x, y, side] = key.split(',').map((part, i) => (i < 2 ? Number(part) : part));
+    return { at: side === 'n' ? [x + 0.5, y] : [x, y + 0.5], text: `WELDED ${until - battle.round + 1}` };
+  });
+}
+
+// The badge over what an order shown reaches (M32): the unit, filled, with
+// the order's name (and a dart's odds); or a weld's door. None without one.
+function orderBadge(preview, orders, ordered) {
+  if (preview?.type !== 'order' || !orders?.order) return [];
+  const name = orders.order.name.toUpperCase();
+  if (ordered) return [{ at: [ordered.x, ordered.y], text: preview.odds ? `${name} ${preview.odds.hit}%` : name, strong: true, tone: 'order' }];
+  const { x, y } = orders.unit;
+  const edge = { n: [0, -0.5], e: [0.5, 0], s: [0, 0.5], w: [-0.5, 0] }[preview.at];
+  return edge ? [{ at: [x + edge[0], y + edge[1]], text: name, strong: true, tone: 'order' }] : [];
 }
 
 function middle(box) {

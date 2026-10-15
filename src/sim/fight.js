@@ -26,8 +26,11 @@
 //   preview   null, or what a second tap (or Fire) does:
 //             { type: 'move', to: [x, y], cost, dash, path }
 //             { type: 'shoot', target, odds }
-//             { type: 'order', kind, at, odds }: at is the unit it reaches,
-//             or the door's side for a weld; odds a dart's, or null
+//             { type: 'order', kind, at, odds, change }: at is the unit it
+//             reaches, or the door's side for a weld; odds a dart's, or
+//             null; change what a Mark or Suppress does to a shot's odds,
+//             { shooter, target, was, now } (the unit's own at the enemy
+//             marked; the enemy's best at the crew, suppressed), or null
 //   played    [{ action, events, battle }]: the actions the last dispatch
 //             played, in order, each with its events and the battle after
 //   log       every event so far
@@ -53,7 +56,9 @@
 //   fight/load { battle, events }   a new battle
 import { aiAction } from './ai.js';
 import { act, targetsFor } from './battle.js';
+import { shotOdds } from './odds.js';
 import { dartOdds, ORDER_KINDS, orderOf, orderTargets } from './orders.js';
+import { canSee } from './sight.js';
 import { SIDES } from './grid.js';
 import { reachable } from './moves.js';
 import { pressAction } from './press.js';
@@ -155,10 +160,12 @@ export function ordersFor(fight, rules) {
   };
 }
 
+// The unit's order, when it can be given now: { kind, name, uses (left),
+// reaches, def (the job's order, with its numbers) }.
 function orderNow(battle, unit, rules) {
   const order = orderOf(unit, rules);
   if (!order || !orderTargets(battle, unit, rules).length) return null;
-  return { kind: order.type, name: order.name, uses: unit.uses, reaches: ORDER_KINDS[order.type].reaches };
+  return { kind: order.type, name: order.name, uses: unit.uses, reaches: ORDER_KINDS[order.type].reaches, def: order };
 }
 
 // The tiles a unit can move to this turn, with its actions as they are.
@@ -241,7 +248,23 @@ function orderAt(fight, unit, given, rules) {
   if (at === null || !orderTargets(battle, unit, rules).includes(at)) return withNotice({ ...fight, preview: null }, 'info', noOrder(battle, unit, order, at));
   const target = battle.units.find((u) => u.id === at);
   const odds = order.type === 'sedate' ? dartOdds(battle, unit, target, rules) : null;
-  return { ...fight, preview: { type: 'order', kind: order.type, at, odds } };
+  return { ...fight, preview: { type: 'order', kind: order.type, at, odds, change: oddsChange(battle, unit, order, target, rules) } };
+}
+
+// What a Mark or a Suppress does to a shot's odds, for its preview: the
+// unit's own shot at the enemy marked, or the suppressed enemy's best shot
+// at one of the crew it can see. { shooter, target, was, now } (ids and
+// percent), or null.
+function oddsChange(battle, unit, order, target, rules) {
+  if (order.type === 'mark') {
+    const marked = { ...target, mark: { aim: order.aim, turns: 1 } };
+    return { shooter: unit.id, target: target.id, was: shotOdds(battle, unit, target, rules).hit, now: shotOdds(battle, unit, marked, rules).hit };
+  }
+  if (order.type !== 'suppress') return null;
+  const suppressed = { ...target, suppressed: { aim: order.aim } };
+  const crew = battle.units.filter((u) => u.side === unit.side && u.status === 'active' && canSee(battle, [target.x, target.y], [u.x, u.y], rules));
+  const best = crew.map((u) => ({ u, hit: shotOdds(battle, target, u, rules).hit })).sort((a, b) => b.hit - a.hit)[0];
+  return best ? { shooter: target.id, target: best.u.id, was: best.hit, now: shotOdds(battle, suppressed, best.u, rules).hit } : null;
 }
 
 // Whom or what an order would likeliest reach: the enemy likeliest hit

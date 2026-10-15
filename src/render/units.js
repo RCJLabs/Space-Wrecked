@@ -85,7 +85,7 @@ export function colorsOf(side, status, trim, flash = false) {
 //   targets    [[x, y]]: the enemies it can shoot
 //   aimed      [x, y]: the one whose shot is shown, or null
 // }
-export function ordersScene({ reach = null, preview = null, battle = null, rules = null, selected = null, targets = [], aimed = null }) {
+export function ordersScene({ reach = null, preview = null, battle = null, rules = null, selected = null, targets = [], aimed = null, ordered = null, welding = null }) {
   const faces = [];
   for (const spot of reach?.values() ?? []) {
     const color = spot.dash ? palette.dash : palette.reach;
@@ -94,6 +94,10 @@ export function ordersScene({ reach = null, preview = null, battle = null, rules
   if (selected) ring(faces, selected, 0.34, 0.44, palette.accent, 0.95);
   for (const at of targets) ring(faces, at, 0.36, 0.42, palette.target, 0.6);
   if (aimed) ring(faces, aimed, 0.32, 0.46, palette.target, 1);
+  // A job's order shown (M32): the unit it reaches, or the door beside the
+  // selected unit it would weld, a pane standing in the doorway.
+  if (ordered) ring(faces, ordered, 0.3, 0.46, palette.good, 1);
+  if (welding && selected) shield(faces, selected, welding, 'full', palette.good);
   if (preview?.type === 'move') {
     const { path, to } = preview;
     for (let i = 1; i < path.length; i++) strip(faces, path[i - 1], path[i]);
@@ -129,7 +133,7 @@ function strip(out, [ax, ay], [bx, by]) {
 // Cover on one side of a tile: a pane standing just inside that edge, low
 // for half cover and higher for full. Both faces, so it shows from either
 // side.
-function shield(out, [x, y], side, cover) {
+function shield(out, [x, y], side, cover, color = palette.cover) {
   const inset = 0.1;
   const along = side === 'n' || side === 's';
   const at = { n: y + inset, s: y + 1 - inset, w: x + inset, e: x + 1 - inset }[side];
@@ -137,6 +141,6 @@ function shield(out, [x, y], side, cover) {
   const h = COVER_H[cover];
   const pts = [[...p, 0], [...q, 0], [...q, h], [...p, h]];
   const normal = along ? [0, 1, 0] : [1, 0, 0];
-  const look = { color: palette.cover, emissive: true, alpha: cover === 'full' ? 0.55 : 0.4, edge: rgba(palette.cover, 0.9) };
+  const look = { color, emissive: true, alpha: cover === 'full' ? 0.55 : 0.4, edge: rgba(color, 0.9) };
   out.push({ pts, normal, ...look }, { pts: [...pts].reverse(), normal: normal.map((n) => -n), ...look });
 }

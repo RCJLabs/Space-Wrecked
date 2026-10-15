@@ -41,6 +41,26 @@ export const COLONY_WORDS = {
   stores: (n) => `the stores keep ${n} more food and ${n} more materials`,
 };
 
+// The same, short, for a crew list's line (jobBrief).
+export const STATION_SHORT = {
+  heal: (n) => `med bay +${n}`,
+  gunnery: (n) => `guns ${signed(n)}`,
+  evasion: (n) => `evasion ${signed(n)}`,
+  repair: (n) => (n === 1 ? 'fixes a wreck a jump' : `fixes ${n} wrecks a jump`),
+  scan: (n) => `scans +${n} ${plural(n, 'link', 'links')}`,
+  freeSurvey: () => 'free surveys',
+  lockers: (n) => `lockers +${n}`,
+};
+export const COLONY_SHORT = {
+  heal: (n) => `infirmary +${n}`,
+  landing: (n) => `lander shots ${signed(n)}`,
+  mines: (n) => `mines +${n}`,
+  tripDays: (n) => `trips −${n} ${plural(n, 'day', 'days')}`,
+  places: (n) => `+${n} ${plural(n, 'place', 'places')}`,
+  farms: (n) => `farms +${n}`,
+  stores: (n) => `stores +${n}`,
+};
+
 // A job's name, or its id for one the data no longer has.
 export function jobName(job, rules) {
   return rules.jobs.get(job)?.name ?? job;
@@ -63,6 +83,16 @@ export function jobSaid(job, rules) {
     ship: effectsSaid('Aboard', def.station, STATION_WORDS),
     colony: effectsSaid('At the colony', def.colony, COLONY_WORDS),
   };
+}
+
+// What a job brings, on one short line: "Mark ×2 · scans +1 link · +1
+// place" (its order and uses, then aboard, then at the colony). '' for a
+// job the data lacks.
+export function jobBrief(job, rules) {
+  const def = rules.jobs.get(job);
+  if (!def) return '';
+  const short = (effects, words) => Object.entries(effects ?? {}).filter(([key]) => words[key]).map(([key, n]) => words[key](n));
+  return [def.order ? `${def.order.name} ×${def.order.uses}` : null, ...short(def.station, STATION_SHORT), ...short(def.colony, COLONY_SHORT)].filter(Boolean).join(' · ');
 }
 
 function effectsSaid(where, effects, words) {

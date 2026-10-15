@@ -253,11 +253,13 @@ test('on the Fight screen an order is shown first and taken only by a second pre
   const battle = fight(openMap(8, 3), [{ kind: 'scout', x: 0, y: 1 }, { kind: 'xenobiologist', x: 0, y: 2 }, { kind: 'pirate', x: 7, y: 0 }, { kind: 'pirate', x: 7, y: 2 }]);
   tweak(battle, { e2: { hp: 2 } });
   let screen = reduceFight(createFight(battle, rules), { type: 'fight/select', unit: 'c1' }, rules);
-  assert.deepEqual(ordersFor(screen, rules).order, { kind: 'mark', name: 'Mark', uses: 2, reaches: 'enemy' });
+  assert.deepEqual(ordersFor(screen, rules).order, { kind: 'mark', name: 'Mark', uses: 2, reaches: 'enemy', def: rules.jobs.get('scout').order });
   // The likeliest hit first, then the fewest hit points: the nearer pirate
   // is the same distance off, so the one with 2 hit points.
   screen = reduceFight(screen, { type: 'fight/order' }, rules);
-  assert.deepEqual(screen.preview, { type: 'order', kind: 'mark', at: 'e2', odds: null });
+  // What the Mark does to the scout's own shot at it is shown with it.
+  const own = shotOdds(battle, who(battle, 'c1'), who(battle, 'e2'), rules).hit;
+  assert.deepEqual(screen.preview, { type: 'order', kind: 'mark', at: 'e2', odds: null, change: { shooter: 'c1', target: 'e2', was: own, now: Math.min(100, own + 15) } });
   assert.equal(screen.battle, battle, 'nothing spent');
   // A tap on the other pirate shows the Mark at it instead...
   screen = reduceFight(screen, { type: 'fight/tap', x: 7, y: 0 }, rules);
@@ -274,6 +276,20 @@ test('on the Fight screen an order is shown first and taken only by a second pre
   assert.deepEqual(screen.preview.odds, dartOdds(screen.battle, who(screen.battle, 'c2'), who(screen.battle, 'e1'), rules));
   screen = reduceFight(screen, { type: 'fight/confirm' }, rules);
   assert.equal(who(screen.battle, 'c2').uses, 1, 'Fire takes the order shown');
+});
+
+test("a Suppress shows what it does to the enemy's best shot at the crew", () => {
+  const battle = fight(openMap(8, 2), [{ kind: 'marine', x: 0, y: 0 }, { kind: 'medic', x: 3, y: 1 }, { kind: 'pirate', x: 7, y: 0 }]);
+  let screen = reduceFight(createFight(battle, rules), { type: 'fight/select', unit: 'c1' }, rules);
+  screen = reduceFight(screen, { type: 'fight/order' }, rules);
+  const pirate = who(battle, 'e1');
+  const best = Math.max(...['c1', 'c2'].map((id) => shotOdds(battle, pirate, who(battle, id), rules).hit));
+  const at = shotOdds(battle, pirate, who(battle, 'c2'), rules).hit === best ? 'c2' : 'c1';
+  assert.deepEqual(screen.preview.change, { shooter: 'e1', target: at, was: best, now: Math.max(0, best - 30) });
+  // A Patch, a Hustle or a Kit out changes no odds.
+  const kit = fight(openMap(4, 1), [{ kind: 'quartermaster', x: 0, y: 0 }, { kind: 'pirate', x: 3, y: 0 }]);
+  const kitting = reduceFight(reduceFight(createFight(kit, rules), { type: 'fight/select', unit: 'c1' }, rules), { type: 'fight/order' }, rules);
+  assert.deepEqual([kitting.preview.at, kitting.preview.change], ['c1', null]);
 });
 
 test("an order that can't be used now isn't offered, and pressing it says why", () => {

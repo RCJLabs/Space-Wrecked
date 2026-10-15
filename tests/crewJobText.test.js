@@ -5,13 +5,38 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { COLONY_EFFECTS, STATION_EFFECTS } from '../src/sim/edges.js';
 import { ORDER_KINDS } from '../src/sim/orders.js';
-import { byJob, COLONY_WORDS, jobName, jobSaid, ORDER_WORDS, STATION_WORDS } from '../src/ui/campaign/crewJobText.js';
+import { captainText } from '../src/ui/campaign/captainText.js';
+import { byJob, COLONY_SHORT, COLONY_WORDS, jobBrief, jobName, jobSaid, ORDER_WORDS, STATION_SHORT, STATION_WORDS } from '../src/ui/campaign/crewJobText.js';
+import { crewCardText } from '../src/ui/campaign/crewText.js';
 import { rules } from './battleKit.js';
+import { readyToLaunch } from './launchKit.js';
 
 test('every order kind and every ship and colony effect has its words', () => {
   assert.deepEqual(Object.keys(ORDER_WORDS).sort(), Object.keys(ORDER_KINDS).sort());
   assert.deepEqual(Object.keys(STATION_WORDS).sort(), Object.keys(STATION_EFFECTS).sort());
   assert.deepEqual(Object.keys(COLONY_WORDS).sort(), Object.keys(COLONY_EFFECTS).sort());
+  assert.deepEqual(Object.keys(STATION_SHORT).sort(), Object.keys(STATION_EFFECTS).sort());
+  assert.deepEqual(Object.keys(COLONY_SHORT).sort(), Object.keys(COLONY_EFFECTS).sort());
+});
+
+test('the crew card and the recruits say what each job brings on a line; the captain screen in full', () => {
+  assert.deepEqual([...rules.jobs.keys()].map((job) => jobBrief(job, rules)), [
+    'Suppress ×2 · guns +10 · lander shots +10',
+    'Weld ×2 · fixes a wreck a jump · mines +1',
+    'Patch ×2 · med bay +1 · infirmary +1',
+    'Hustle ×1 · evasion +10 · trips −1 day',
+    'Mark ×2 · scans +1 link · +1 place',
+    'Sedate ×2 · free surveys · farms +1',
+    'Kit out ×2 · lockers +10 · stores +20',
+  ]);
+  assert.equal(jobBrief('cook', rules), '');
+  const card = crewCardText(readyToLaunch(), rules);
+  assert.deepEqual(card.members.map((member) => member.brief), card.members.map((member, i) => jobBrief(readyToLaunch().crew[i].job, rules)));
+  const draft = { name: 'Ash', job: 'pilot', traits: [], look: null };
+  const deserter = captainText(rules, draft, 'deserter');
+  assert.deepEqual(deserter.jobs.map((job) => job.id), ['marine', 'pilot', 'medic']);
+  assert.deepEqual(deserter.does, Object.values(jobSaid('pilot', rules)));
+  assert.deepEqual(captainText(rules, { ...draft, job: null }, 'deserter').does, []);
 });
 
 test("each job says its order, what it does aboard and what it does at the colony, from its numbers", () => {

@@ -20,6 +20,7 @@ import { landingPlan } from '../src/sim/raids.js';
 import { initialState, saveData } from '../src/sim/root.js';
 import { survey, surveyPlan } from '../src/sim/survey.js';
 import { beginRun, jump, jumpPlan, knownNodes, leaveSector, linked, scan, scanPlan, suppliesOver, supplyCapacity, within } from '../src/sim/travel.js';
+import { planText } from '../src/ui/campaign/tripText.js';
 import { rules } from './battleKit.js';
 import { settled } from './colonyKit.js';
 import { CUTTER_SEED, readyToLaunch } from './launchKit.js';
@@ -240,6 +241,9 @@ test('pilot in the squad: each leg of a trip is a day shorter, never under 1', (
   assert.deepEqual(flown.days, { out: rock.days - 1, back: rock.days - 1 });
   assert.deepEqual(tripPlan(listed, rules, 0, [1]).days, { out: rock.days, back: rock.days }, 'the pilot at home');
   assert.deepEqual(tripPlan(listed, rules, 1, [2]).days, { out: 1, back: 1 }, 'never under a day');
+  // The plan names who flies it shorter.
+  assert.match(planText(flown, listed, rules).lines[0], new RegExp(`· 1 day there, 1 back, ${landed.crew[1].name} the pilot flying$`));
+  assert.doesNotMatch(planText(tripPlan(listed, rules, 0, [1]), listed, rules).lines[0], /flying/);
   // Out and home again: a day each way, the trip's days as planned.
   const out = flyOut(listed, rules, 0, [2]);
   assert.equal(out.ok, true, out.error);

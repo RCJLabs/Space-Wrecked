@@ -210,7 +210,7 @@ test("Next day's two taps: what the day will bring, then the day's report, fed o
   assert.deepEqual(dayReport(nextDay(hurt, rules)), { text: 'Day 2. The farms grew 1 food and the mines dug 3 materials; the crew ate 3 and rested, healing 9 hit points. Food 25, materials 3.', tone: 'good' });
   const starving = { ...hurt, supplies: 1 };
   assert.deepEqual(dayText(dayPlan(starving, rules)), { text: 'Day 1 ends: the farms grow 1 food and the mines dig 3 materials; the crew needs 3 and goes hungry, losing 2 hit points each. Food 1 → 0, materials 0 → 3. Tap again for day 2.', tone: 'warn' });
-  assert.deepEqual(dayReport(nextDay(starving, rules)), { text: 'Day 2. The farms grew 1 food and the mines dug 2 materials; short of food, the crew went hungry: 6 hit points lost. Food 0, materials 2.', tone: 'bad' });
+  assert.deepEqual(dayReport(nextDay(starving, rules)), { text: 'Day 2. The farms grew 1 food and the mines dug 3 materials; short of food, the crew went hungry: 6 hit points lost. Food 0, materials 3.', tone: 'bad' });
   // Nothing made, and the stores full.
   const full = { ...settled(), supplies: 35 };
   assert.equal(dayText(dayPlan(full, rules)).text, 'Day 1 ends: nothing grows; the crew eats 3 and rests. Food 35 → 30, materials 20 → 20. The stores are full: 2 food will be lost. Tap again for day 2.');

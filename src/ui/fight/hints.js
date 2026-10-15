@@ -39,11 +39,44 @@ export function hintFor(fight, orders, ending = null) {
     const target = battle.units.find((u) => u.id === preview.target);
     return { tone: 'good', text: `${preview.odds.hit}% to hit ${target.name} ${target.id}. Tap Fire, or the target again.` };
   }
+  if (preview?.type === 'order' && orders.order) return { tone: 'good', text: orderHint(battle, unit, orders.order, preview) };
   if (orders.grab) return { tone: 'good', text: `${unit.name} can reach a crate: tap Grab, or a tile to move.` };
   if (orders.hack) return { tone: 'good', text: `${unit.name} can reach the terminal: tap Hack to work it. It takes the rest of the turn.` };
   const shoot = orders.targets.length ? ', or an enemy to shoot' : '';
   return { tone: 'info', text: `${unit.name}: tap a tile to move${shoot}.` };
 }
+
+// What an order shown will do, and how to give it (M32): short enough for
+// the cover screen's hint line, with the second tap last.
+function orderHint(battle, unit, order, preview) {
+  const { name, def } = order;
+  const target = battle.units.find((u) => u.id === preview.at);
+  const who = target ? `${target.name} ${target.id}` : '';
+  const again = `Tap ${name} again.`;
+  const change = preview.change;
+  switch (preview.kind) {
+    case 'suppress':
+      return `Suppress ${who}: its shots ${signed(def.aim)} till its turn ends${change ? ` (${change.was}% → ${change.now}%)` : ''}. Ends the turn. ${again}`;
+    case 'weld':
+      return `Weld the ${SIDE_NAMES[preview.at]} door shut till round ${battle.round + def.rounds}. ${again}`;
+    case 'patch': {
+      const up = target.status !== 'active';
+      return up ? `Patch ${who}: up again with ${Math.min(target.maxHp, def.hp)} hit points. ${again}` : `Patch ${who}: ${target.hp} → ${Math.min(target.maxHp, target.hp + def.hp)} hit points. ${again}`;
+    }
+    case 'hustle':
+      return `Hustle: ${def.ap} more action${def.ap === 1 ? '' : 's'} this turn, ${unit.ap + def.ap} in all. ${again}`;
+    case 'mark':
+      return `Mark ${who}: the crew's shots at it ${signed(def.aim)} till your next turn${change ? ` (${change.was}% → ${change.now}%)` : ''}. ${again}`;
+    case 'sedate':
+      return `${preview.odds.hit}% to put ${who} to sleep for its next turn. Ends the turn. ${again}`;
+    case 'kit':
+      return `Kit out ${target.id === unit.id ? unit.name : who}: a full clip and ${signed(def.armor)} armor for the fight. ${again}`;
+    default:
+      return again;
+  }
+}
+
+const SIDE_NAMES = { n: 'north', e: 'east', s: 'south', w: 'west' };
 
 // Round and whose turn it is, for the chip on the board.
 export function chipFor(battle) {
@@ -62,6 +95,8 @@ export function oddsText(shooter, target, odds, rules) {
     cover: (part) => `${part.cover === 'full' ? 'Full' : 'Half'} cover`,
     defense: () => 'Defense',
     overwatch: () => 'Overwatch',
+    suppressed: () => `${shooter.name} suppressed`,
+    marked: () => `${target.name} marked`,
     forgiving: () => 'Forgiving odds',
   };
   const rows = odds.hitParts.map((part) => [label[part.why](part), signed(part.value, part.why === 'aim')]);
@@ -89,18 +124,32 @@ export function stateText(unit) {
   return `${unit.ap} AP · ${unit.ammo} shot${unit.ammo === 1 ? '' : 's'}`;
 }
 
-// A unit's card: { title, lines }.
+// A unit's card: { title, lines }: its numbers, its job's order and the
+// uses left (M32), and what orders left on it.
 export function unitText(unit, rules) {
   const weapon = rules.weapons.get(unit.weapon);
   const side = unit.side === 'crew' ? 'Crew' : 'Enemy';
+  const order = unit.side === 'crew' ? rules.jobs.get(unit.kind)?.order : null;
   return {
     title: `${unit.name} ${unit.id}`,
     lines: [
       `${side} · ${unit.hp}/${unit.maxHp} hit points · ${stateText(unit)}.`,
       `Aim ${unit.aim} · defense ${unit.defense} · armor ${unit.armor} · moves ${unit.mobility}.`,
       `${weapon.name}: damage ${weapon.damage[0]}–${weapon.damage[1]}, crit ${weapon.crit}%, ${unit.ammo}/${weapon.clip} shots.`,
+      ...(order ? [`${order.name}: ${unit.uses} of ${order.uses} left this fight.`] : []),
+      ...ordersOn(unit),
     ],
   };
+}
+
+// What orders left on a unit, a line each.
+function ordersOn(unit) {
+  const lines = [];
+  if (unit.mark) lines.push(`Marked: the crew's shots at it +${unit.mark.aim}, ${unit.mark.turns === 1 ? 'until your turn ends' : 'through your next turn'}.`);
+  if (unit.suppressed) lines.push(`Suppressed: its shots ${signed(unit.suppressed.aim)} to hit until its turn ends.`);
+  if (unit.asleep) lines.push('Asleep: it loses its next turn.');
+  if (unit.kitted) lines.push('Kitted out for the fight.');
+  return lines;
 }
 
 function signed(value, bare) {
