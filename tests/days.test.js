@@ -40,11 +40,16 @@ test('a day: farms grow food and mines dig materials by the world, the crew eats
   const plan = dayPlan(campaign, rules);
   // Each crew member's heal (M28: it can differ, away from home).
   const heals = Object.fromEntries(campaign.crew.map((member) => [member.id, regroupHp]));
-  assert.deepEqual(plan, { ok: true, day: 1, made: { food: 2, materials: 2 }, eats: 3, fed: true, heals, hunger: 0, rough: [], food: [27, 26], materials: [20, 22], lost: { food: 0, materials: 0 }, stores: 30 });
+  // found: the odds of the pursuer finding the colony at the day's end
+  // (M29), none at the settled colony's heat.
+  assert.deepEqual(plan, { ok: true, day: 1, made: { food: 2, materials: 2 }, eats: 3, fed: true, heals, hunger: 0, rough: [], food: [27, 26], materials: [20, 22], lost: { food: 0, materials: 0 }, stores: 30, found: 0 });
   const { campaign: after, healed, hurt } = nextDay(campaign, rules);
   assert.deepEqual([after.colony.day, after.supplies, after.colony.materials, healed, hurt], [2, 26, 22, 0, 0]);
   assert.deepEqual(after.flags, { ...campaign.flags, colonyDays: 1, foodGrown: 2, materialsDug: 2 });
-  for (const key of ['act', 'place', 'ship', 'parts', 'credits', 'heat', 'run', 'rng', 'wrecks']) assert.deepEqual(after[key], campaign[key], key);
+  for (const key of ['act', 'place', 'ship', 'parts', 'credits', 'run', 'rng', 'wrecks']) assert.deepEqual(after[key], campaign[key], key);
+  // Heat falls a little each day (M29). Below rumorHeat the pursuer can't
+  // find the colony, so nothing is rolled.
+  assert.equal(after.heat, campaign.heat - rules.balance.colonyHeatFall);
   assert.deepEqual(after.colony.buildings, campaign.colony.buildings);
   assert.deepEqual(campaignProblems(after), []);
   // Thirty days on: food falls by one a day until it runs out, then the
@@ -146,9 +151,10 @@ test('days pass only at the colony, through the game; a save keeps the day', () 
 test('a v20 save in act 3 opens on day 1 with 20 materials, its buildings standing', () => {
   const now = settled();
   const given = withBuildings(now, [['quarters', 0, 0]]);
-  // A v20 colony had no day or materials, and no places or trip (M28).
-  const { day, materials, places, trip, ...v20colony } = given.colony;
-  assert.deepEqual([day, materials, places, trip], [1, 20, [], null]);
+  // A v20 colony had no day or materials, no places or trip (M28) and no
+  // raid (M29).
+  const { day, materials, places, trip, raid, ...v20colony } = given.colony;
+  assert.deepEqual([day, materials, places, trip, raid], [1, 20, [], null, null]);
   const v20 = { ...given, colony: v20colony };
   const old = (campaign) => ({ ...saveData(initialState(3)), campaign });
   const step = MIGRATIONS.find((s) => s.from === 20);
@@ -167,6 +173,6 @@ test('a v20 save in act 3 opens on day 1 with 20 materials, its buildings standi
   assert.deepEqual(campaign.colony, given.colony);
   assert.equal(nextDay(campaign, rules).campaign.colony.day, 2);
   // A new colony starts the same way, with no places yet and the ship home
-  // (M28).
-  assert.deepEqual(newColony(now.colony.world, 20), { world: now.colony.world, buildings: [], nextUid: 1, day: 1, materials: 20, places: [], trip: null });
+  // (M28), and no raid coming (M29).
+  assert.deepEqual(newColony(now.colony.world, 20), { world: now.colony.world, buildings: [], nextUid: 1, day: 1, materials: 20, places: [], trip: null, raid: null });
 });

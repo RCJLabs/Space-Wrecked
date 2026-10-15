@@ -1,10 +1,11 @@
 // Text for trips from the colony (src/sim/expeditions.js, M28): the places
 // within reach, a trip's plan, where the squad is and what is there, and
-// what each leg's days came to. rules are the content tables
-// (src/sim/defs.js).
+// what each leg's days came to; since M29 a leg a raid stopped, and Fly
+// on. rules are the content tables (src/sim/defs.js).
 import { maxHp } from '../../sim/campaign.js';
 import { choiceProblem } from '../../sim/events.js';
-import { homePlan, kindOf, otherWorlds, placeFightDue, tripHere } from '../../sim/expeditions.js';
+import { homePlan, kindOf, onPlan, otherWorlds, placeFightDue, tripHere } from '../../sim/expeditions.js';
+import { pursuerOf } from '../../sim/heat.js';
 import { faceOf } from './crewText.js';
 import { changesText, effectsText } from './eventText.js';
 
@@ -72,34 +73,43 @@ export function planText(plan, campaign, rules) {
 
 // Where the squad is while the ship is away, for the side panel, or null
 // with the ship home: { title (the place), where ("Ore rock · 2 days from
-// home"), squad (their names), event, held, result, home }.
+// home"), squad (their names), event, held, result, home, leg, on }.
 //   event   the event to decide there: { title, text, choices: [{ id,
 //           label, ok, why, odds, ask }] }, as the run's (eventText.js)
 //   held    the squatters' derelict, still to fight for: { lines, ask }
 //   result  what came of it: { title, text }
 //   home    Fly home: { ok, ask (its first tap's words), why }
+//   leg     a leg a raid stopped (M29), or null: { dir, left, line }
+//   on      Fly on, with a leg stopped: { ok, ask, why }, else null
 export function awayText(campaign, rules) {
   const here = tripHere(campaign, rules);
   if (!here) return null;
-  const { place } = here;
+  const { place, leg } = here;
   const squad = listed(campaign.colony.trip.squad.map((id) => campaign.crew.find((member) => member.id === id)?.name ?? '?'));
   const plan = homePlan(campaign, rules);
+  const on = leg ? onPlan(campaign, rules) : null;
+  const days = (n) => `${n} day${n === 1 ? '' : 's'}`;
   return {
     title: place.name,
-    where: `${kindName(place, campaign, rules)} · ${place.days} day${place.days === 1 ? '' : 's'} from home`,
+    where: `${kindName(place, campaign, rules)} · ${days(place.days)} from home`,
     squad: squad || 'nobody',
     event: here.event ? eventAt(here.event, campaign, rules) : null,
     held: here.held ? heldText(campaign, rules) : null,
     result: here.result ? resultAt(here.result, campaign, rules) : null,
     home: plan.ok
-      ? { ok: true, ask: `Fly home: ${plan.days} day${plan.days === 1 ? '' : 's'} back, the days eating ${plan.eats} food (${plan.food[0]} → ${plan.food[1]}). Tap again to fly.`, why: null }
+      ? { ok: true, ask: `Fly home: ${days(plan.days)} back, the days eating ${plan.eats} food (${plan.food[0]} → ${plan.food[1]}). Tap again to fly.`, why: null }
       : { ok: false, ask: null, why: plan.error },
+    leg: leg && { dir: leg.dir, left: leg.left, line: `On the way ${leg.dir === 'out' ? 'out' : 'home'}, ${days(leg.left)} still to fly` },
+    on: !on ? null
+      : on.ok ? { ok: true, ask: `Fly on ${on.dir === 'out' ? `to ${place.name}` : 'home'}: ${days(on.days)} still to fly, the days eating ${on.eats} food (${on.food[0]} → ${on.food[1]}). Tap again to fly.`, why: null }
+      : { ok: false, ask: null, why: on.error },
   };
 }
 
-// What a leg's days came to (expeditions.js flyOut's or flyHome's result),
-// for the hint: { text, tone }. leg: 'out' or 'home'; before: the campaign
-// as the leg began.
+// What a leg's days came to (expeditions.js flyOut's, flyHome's or
+// flyOn's result), for the hint: { text, tone }. leg: 'out' or 'home';
+// before: the campaign as the leg began. A leg a raid's lander stopped
+// (M29) says so, and the days still to fly.
 export function legReport(result, leg, before, rules) {
   const sum = (key) => result.days.reduce((total, day) => total + key(day), 0);
   const grown = sum((day) => day.plan.made.food);
@@ -112,9 +122,11 @@ export function legReport(result, leg, before, rules) {
   if (hungry) said.push(`Short of food on ${hungry} day${hungry === 1 ? '' : 's'}: ${hurt} hit points lost.`);
   const rough = result.days[0]?.plan.rough ?? [];
   if (rough.length) said.push(`With no bed and air at the colony, ${listed(rough.map((id) => before.crew.find((member) => member.id === id)?.name ?? '?'))} didn't rest.`);
-  if (leg === 'out') said.push(`The squad is at ${result.plan.place.name}.`);
+  const left = result.stopped ? result.campaign.colony.trip?.leg?.left ?? 0 : 0;
+  if (left) said.push(`${pursuerOf(before, rules)?.name ?? 'The pursuer'}'s lander is down at the colony: the ship waits, ${left} day${left === 1 ? '' : 's'} still to fly, while those at home face it.`);
+  else if (leg === 'out') said.push(`The squad is at ${result.plan.place.name}.`);
   else said.push(`The ship is home. ${broughtText(before.colony.trip?.result ?? null, before, rules)}`);
-  return { text: said.join(' '), tone: hungry ? 'bad' : 'good' };
+  return { text: said.join(' '), tone: hungry || left ? 'bad' : 'good' };
 }
 
 // What a trip brought home, in words.

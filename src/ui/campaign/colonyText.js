@@ -1,12 +1,14 @@
 // Text for the colony (src/sim/colony.js, M26; days and building by hand,
-// M27): what act 3's home shows. rules are the content tables
+// M27; raids, M29): what act 3's home shows. rules are the content tables
 // (src/sim/defs.js).
 import { actOf } from '../../sim/campaign.js';
 import { buildingOf, colonyStats, shipParts, storesOf } from '../../sim/colony.js';
 import { buildList } from '../../sim/colonyBuild.js';
 import { dayPlan, planDay } from '../../sim/days.js';
-import { actTitle, crewText } from './hubText.js';
+import { colonyPursuer, raidIn } from '../../sim/raids.js';
+import { actTitle, crewText, heatText } from './hubText.js';
 import { runRecord } from './launchText.js';
+import { defenseRow, raidHint, raidStatus } from './raidText.js';
 import { worldSaid } from './sectorText.js';
 
 // What the colony screen shows:
@@ -17,9 +19,15 @@ import { worldSaid } from './sectorText.js';
 //               the crew at home and who sleeps aboard (while the ship is
 //               away, who goes without, and who is away); food and
 //               materials against the stores, with what a day makes and
-//               eats; defenses and the infirmary once the colony has any.
-//               ok is false for a need short (for food, a day that would
-//               go hungry).
+//               eats; the infirmary once the colony has one; defenses
+//               (M29: what fires at a lander and what the defenders gain)
+//               once it has any or a raid is coming; and the raid's line:
+//               the day's odds of being found, or the lander's days. ok is
+//               false for a need short (for food, a day that would go
+//               hungry) and for a raid coming.
+//   heat        the heat meter (hubText.js heatText): the run's levels,
+//               with the pursuer's words for them at the colony
+//   raid        raidText.js raidStatus's: the raid's line and its state
 //   power       how the power is made: "1 from its plants, 3 the ship's"
 //   stores      what the stores keep of each: "30 each, in the landed
 //               ship's holds"
@@ -71,15 +79,19 @@ export function colonyText(campaign, rules) {
     { label: 'Food', value: `${campaign.supplies} of ${stores.total} · +${stats.made.food}, eats ${eats}`, ok: day.ok ? day.fed : true },
     { label: 'Materials', value: `${materials} of ${stores.total} · +${stats.made.materials} a day`, ok: true },
   ];
-  const guard = defenseText(stats.defense);
-  if (guard) needs.push({ label: 'Defense', value: guard, ok: true });
   if (stats.infirmary) needs.push({ label: 'Infirmary', value: `Heals ${stats.infirmary}`, ok: true });
+  const guard = defenseRow(campaign, rules);
+  if (guard) needs.push(guard);
+  const raid = raidStatus(campaign, rules);
+  needs.push({ label: raid.label, value: raid.value, ok: raid.ok });
   const list = buildList(campaign, rules);
   return {
     act: actTitle(campaign.act, rules),
     home: `${world.name} · ${kind} · Day ${campaign.colony.day}${trip ? ' · the ship away' : ''}`,
     day: campaign.colony.day,
     needs,
+    heat: heatText(campaign, rules),
+    raid,
     power: trip ? `${stats.power.plants} from power plants; the ship is away` : `${stats.power.plants} from power plants, ${stats.power.ship} spare from the landed ship`,
     stores: `${stores.total} each, ${stores.colony ? `${stores.ship} in the ${trip ? '' : 'landed '}ship's holds and ${stores.colony} in storehouses` : `in the ${trip ? '' : 'landed '}ship's holds`}`,
     buildings: stats.buildings.map((b) => ({
@@ -163,17 +175,6 @@ export function makesText(makes) {
   return `${what.charAt(0).toUpperCase()}${what.slice(1)} +${n} a day`;
 }
 
-// "Guns 15 · shield 10 · 1 armory", or '' with no defenses.
-function defenseText({ damage, shield, intercept, armories }) {
-  const said = [];
-  if (damage) said.push(`guns ${damage}`);
-  if (shield) said.push(`shield ${shield}`);
-  if (intercept) said.push(`flak ${intercept}`);
-  if (armories) said.push(`${armories} arm${armories === 1 ? 'ory' : 'ories'}`);
-  const text = said.join(' · ');
-  return text && `${text.charAt(0).toUpperCase()}${text.slice(1)}, for raids to come`;
-}
-
 // What a tap on a row that can't be built says: { text, tone }. verb:
 // 'given' (the ship's parts), 'set down' (the hold's) or 'built'.
 export function whyNotText(row, verb) {
@@ -242,24 +243,38 @@ export function takenText(result) {
 }
 
 // What a first tap on Next day says (days.js dayPlan's plan): what the day
-// will bring, and the second tap's ask.
+// will bring, the odds of the pursuer finding the colony at its end (M29),
+// and the second tap's ask.
 export function dayText(plan) {
   if (!plan.ok) return { text: plan.error, tone: 'warn' };
   const made = madeText(plan.made, 'grow', 'dig');
   const eat = plan.fed ? `the crew eats ${plan.eats} and rests` : `the crew needs ${plan.eats} and goes hungry, losing ${plan.hunger} hit points each`;
   const lost = lostText(plan.lost, 'will be lost');
-  return { text: `Day ${plan.day} ends: ${made}; ${eat}. Food ${plan.food[0]} → ${plan.food[1]}, materials ${plan.materials[0]} → ${plan.materials[1]}.${lost} Tap again for day ${plan.day + 1}.`, tone: plan.fed ? 'info' : 'warn' };
+  const found = plan.found ? ` ${plan.found}% the colony is found tonight.` : '';
+  return { text: `Day ${plan.day} ends: ${made}; ${eat}. Food ${plan.food[0]} → ${plan.food[1]}, materials ${plan.materials[0]} → ${plan.materials[1]}.${lost}${found} Tap again for day ${plan.day + 1}.`, tone: plan.fed ? 'info' : 'warn' };
 }
 
 // What passing the day came to (days.js nextDay's result): the day's
-// report.
-export function dayReport(result) {
+// report, and (M29) the raid's: if the pursuer found the colony, its
+// words, the roll against the odds and the lander's days; while one is
+// coming, its days; and on the day it lands, the raid's hint, Defend.
+export function dayReport(result, rules) {
   const { plan } = result;
   const made = madeText(plan.made, 'grew', 'dug');
   let eat = `the crew ate ${plan.eats} and rested${result.healed ? `, healing ${result.healed} hit points` : ''}`;
   if (!plan.fed) eat = `short of food, the crew went hungry${result.hurt ? `: ${result.hurt} hit points lost` : ''}${result.healed ? `, ${result.healed} healed` : ''}`;
   const lost = lostText(plan.lost, 'lost');
-  return { text: `Day ${plan.day + 1}. ${made.charAt(0).toUpperCase()}${made.slice(1)}; ${eat}. Food ${plan.food[1]}, materials ${plan.materials[1]}.${lost}`, tone: plan.fed ? 'good' : 'bad' };
+  const text = `Day ${plan.day + 1}. ${made.charAt(0).toUpperCase()}${made.slice(1)}; ${eat}. Food ${plan.food[1]}, materials ${plan.materials[1]}.${lost}`;
+  const days = (n) => `${n} day${n === 1 ? '' : 's'}`;
+  const tone = plan.fed ? 'good' : 'bad';
+  if (result.found) {
+    const words = colonyPursuer(result.campaign, rules)?.found;
+    return { text: `${text}${words ? ` ${words}` : ''} Rolled ${result.roll}, under the ${plan.found}%: the lander comes down in ${days(result.found.lands - (plan.day + 1))}.`, tone: 'bad' };
+  }
+  const left = rules ? raidIn(result.campaign) : null;
+  if (left === 0) return { text: `${text} ${raidHint(result.campaign, rules).text}`, tone: 'bad' };
+  if (left) return { text: `${text} The lander comes down in ${days(left)}.`, tone: plan.fed ? 'warn' : 'bad' };
+  return { text, tone };
 }
 
 // "the farms grow 4 food and the mines dig 2 materials", or "nothing

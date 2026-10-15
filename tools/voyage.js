@@ -66,7 +66,7 @@ import { buildingOf, colonyStats, donate, storesOf } from '../src/sim/colony.js'
 import { build } from '../src/sim/colonyBuild.js';
 import { crewRoom } from '../src/sim/crew.js';
 import { nextDay } from '../src/sim/days.js';
-import { chooseAtPlace, flyHome, flyOut, tripHere, withPlaces } from '../src/sim/expeditions.js';
+import { chooseAtPlace, flyHome, flyOn, flyOut, tripHere, withPlaces } from '../src/sim/expeditions.js';
 import { flightChecklist } from '../src/sim/constraints.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { FACED } from '../src/sim/approach.js';
@@ -75,6 +75,7 @@ import { chooseEvent, partsOnHand } from '../src/sim/events.js';
 import { launch } from '../src/sim/launch.js';
 import { patchCrew } from '../src/sim/patch.js';
 import { raidLoss } from '../src/sim/raid.js';
+import { landingPlan, raidDown } from '../src/sim/raids.js';
 import { huntersOf } from '../src/sim/hunt.js';
 import { hireRecruit } from '../src/sim/recruits.js';
 import { regroup } from '../src/sim/regroup.js';
@@ -85,12 +86,12 @@ import { swapTransponder } from '../src/sim/transponder.js';
 import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer } from '../src/sim/travel.js';
 import { runRecord } from '../src/ui/campaign/launchText.js';
 import { captainOrder } from './approachPlan.js';
-import { fightBoarding, fightPlace } from './boarding.js';
+import { fightBoarding, fightPlace, fightRaid } from './boarding.js';
 import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
 import { withPart } from './startShip.js';
-import { bestChoice, boardIt, HEAT_POLICIES, hireWho, homeBuild, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, refitAt, refitForSquad, restNow, scanNow, swapNow, systemMove, tripSquad, worldScore } from './voyagePlan.js';
+import { bestChoice, boardIt, HEAT_POLICIES, hireWho, homeBuild, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, swapNow, systemMove, tripSquad, worldScore } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
@@ -364,6 +365,15 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
         travelled = flown.campaign;
         tally.trips = flown.trips;
         lines.push(`   ${tripsLine(defs, flown.trips)}`);
+        tally.raids = {
+          faced: [...played.raids.faced, ...flown.raids.faced],
+          set: [...played.raids.set, ...flown.raids.set],
+          found: travelled.flags.raidsFound ?? 0,
+          heat: [campaign.heat, travelled.heat],
+          lanes: travelled.colony.world.lanes,
+          coming: Boolean(travelled.colony.raid),
+        };
+        lines.push(`   ${raidsLine(defs, tally.raids)}`);
         break;
       }
       jumped(before, jump(campaign, defs, move.to));
@@ -509,13 +519,17 @@ export function foundColony(campaign, defs) {
 
 // The colony's first days as the careful player plays them (M27): before
 // each day it builds what voyagePlan.js's nextBuild says, as long as it
-// says to, then passes the day. { campaign, days: { built ([{ day, type,
-// name }], in order), fedOn (the first day its farms fed the crew, what
-// they grow a day covering what the crew eats, or null), hungry (hungry
-// days), farms, mines, food and materials ([at the landing, at the end]),
-// stores (at the end), healed, hurt } }.
+// says to, then passes the day. From M29, while a raid is coming it sets
+// down from the hold what raidPrep says, and a raid that is down it faces
+// before the day (faceRaid below). { campaign, days: { built ([{ day,
+// type, name }], in order), fedOn (the first day its farms fed the crew,
+// what they grow a day covering what the crew eats, or null), hungry
+// (hungry days), farms, mines, food and materials ([at the landing, at the
+// end]), stores (at the end), healed, hurt }, raids ({ faced, set }:
+// raidsLog's) }.
 export function playColony(campaign, defs, days = COLONY_DAYS) {
   const built = [];
+  const raids = raidsLog();
   const start = { food: campaign.supplies, materials: campaign.colony.materials };
   let fedOn = null;
   let healed = 0;
@@ -527,6 +541,7 @@ export function playColony(campaign, defs, days = COLONY_DAYS) {
       built.push({ day: campaign.colony.day, type: done.plan.type, name: done.plan.name });
       campaign = done.campaign;
     }
+    campaign = readyForRaid(campaign, defs, raids);
     if (fedOn === null && colonyStats(campaign, defs).made.food >= campaign.crew.length * defs.balance.jumpSupplies) fedOn = campaign.colony.day;
     const day = nextDay(campaign, defs);
     if (!day.ok) throw new Error(day.error);
@@ -549,7 +564,53 @@ export function playColony(campaign, defs, days = COLONY_DAYS) {
       healed,
       hurt,
     },
+    raids,
   };
+}
+
+// What the raids came to, as the test player keeps it (M29): faced ([{
+// day, landed (the raiders that landed), stopped (those the guns
+// stopped), home (who was home to fight), away (true with the ship away),
+// fought, won, taken (what a lost raid took, raids.js raidTake, or null)
+// }]) and set ([{ day, type, name }]: the defenses it set down from the
+// hold for them).
+function raidsLog() {
+  return { faced: [], set: [] };
+}
+
+// Ready for a raid (M29): while one is coming, what raidPrep says set down
+// from the hold (nothing while the ship is away: building waits for it);
+// one that is down, faced (faceRaid). Returns the campaign.
+function readyForRaid(campaign, defs, raids) {
+  if (!campaign.colony.raid) return campaign;
+  for (let what = raidPrep(campaign, defs); what; what = raidPrep(campaign, defs)) {
+    const done = build(campaign, defs, what);
+    if (!done.ok) throw new Error(done.error);
+    raids.set.push({ day: campaign.colony.day, type: done.plan.type, name: done.plan.name });
+    campaign = done.campaign;
+  }
+  return raidDown(campaign) ? faceRaid(campaign, defs, raids) : campaign;
+}
+
+// The raid that is down, faced: the guns fire at the lander, and those at
+// home fight whoever lands, played by the AI (tools/boarding.js
+// fightRaid). Its record goes on raids.faced. Returns the campaign.
+function faceRaid(campaign, defs, raids) {
+  const plan = landingPlan(campaign, defs);
+  if (!plan.ok) throw new Error(plan.error);
+  const day = campaign.colony.day;
+  const done = fightRaid(campaign, defs);
+  raids.faced.push({
+    day,
+    landed: done.landing.landed.length,
+    stopped: plan.raiders.length - done.landing.landed.length,
+    home: plan.defenders.length,
+    away: Boolean(campaign.colony.trip),
+    fought: done.fought,
+    won: done.won,
+    taken: done.taken,
+  });
+  return done.campaign;
 }
 
 // The colony's days of trips as the careful player plays them (M28), after
@@ -571,6 +632,7 @@ export function playTrips(campaign, defs, days = TRIP_DAYS) {
   const flown = [];
   const built = [];
   const moved = [];
+  const raids = raidsLog();
   const put = (what) => {
     const done = build(campaign, defs, what);
     if (!done.ok) throw new Error(done.error);
@@ -580,6 +642,17 @@ export function playTrips(campaign, defs, days = TRIP_DAYS) {
   while (campaign.colony.day < until) {
     campaign = withPlaces(campaign, defs);
     for (let what = nextBuild(campaign, defs); what; what = nextBuild(campaign, defs)) put(what);
+    // A raid coming (M29): it gets ready, faces it once it is down, and
+    // stays home until then.
+    if (campaign.colony.raid) {
+      campaign = readyForRaid(campaign, defs, raids);
+      if (campaign.colony.raid) {
+        const day = nextDay(campaign, defs);
+        if (!day.ok) throw new Error(day.error);
+        campaign = day.campaign;
+      }
+      continue;
+    }
     let squad = tripSquad(campaign, defs);
     if (squad.length) {
       const refit = refitForSquad(campaign, defs, squad.length);
@@ -591,7 +664,7 @@ export function playTrips(campaign, defs, days = TRIP_DAYS) {
       for (let what = homeBuild(campaign, defs, squad); what; what = homeBuild(campaign, defs, squad)) put(what);
       const index = nextPlace(campaign, defs, squad, until - campaign.colony.day);
       if (index !== null) {
-        const trip = flyTrip(campaign, defs, index, squad);
+        const trip = flyTrip(campaign, defs, index, squad, raids);
         campaign = trip.campaign;
         flown.push(trip.record);
         continue;
@@ -619,16 +692,18 @@ export function playTrips(campaign, defs, days = TRIP_DAYS) {
       healed: since('colonyHealed'),
       hurt: since('hungerHurt'),
     },
+    raids,
   };
 }
 
-// One trip, out and home: { campaign, record }.
-function flyTrip(campaign, defs, index, squad) {
+// One trip, out and home: { campaign, record }. A raid that lands on the
+// way (M29) is faced by those at home, and the ship flies on (onWay).
+function flyTrip(campaign, defs, index, squad, raids) {
   const place = campaign.colony.places[index];
   const day = campaign.colony.day;
   const out = flyOut(campaign, defs, index, squad);
   if (!out.ok) throw new Error(out.error);
-  let now = out.campaign;
+  let now = onWay(out.campaign, defs, raids);
   const here = tripHere(now, defs);
   let what = 'left her';
   if (here.event) {
@@ -642,9 +717,23 @@ function flyTrip(campaign, defs, index, squad) {
     now = fought.campaign;
     what = fought.won ? 'boarded her and won' : 'boarded her and lost';
   }
+  if (raidDown(now)) now = faceRaid(now, defs, raids);
   const home = flyHome(now, defs);
   if (!home.ok) throw new Error(home.error);
-  return { campaign: home.campaign, record: { day, name: place.name, kind: place.kind, days: place.days, squad: squad.length, what } };
+  return { campaign: onWay(home.campaign, defs, raids), record: { day, name: place.name, kind: place.kind, days: place.days, squad: squad.length, what } };
+}
+
+// A leg a raid stopped (M29): those at home face it, and the ship flies
+// on, as long as raids keep stopping it. Returns the campaign.
+function onWay(campaign, defs, raids) {
+  let now = campaign;
+  while (now.colony.trip?.leg) {
+    if (raidDown(now)) now = faceRaid(now, defs, raids);
+    const on = flyOn(now, defs);
+    if (!on.ok) throw new Error(on.error);
+    now = on.campaign;
+  }
+  return now;
 }
 
 // What the trips came to, as a line of its report: "30 days of trips: 4
@@ -660,6 +749,35 @@ function tripsLine(defs, trips) {
     `Brought ${trips.parts} part${trips.parts === 1 ? '' : 's'}, ${trips.materials} materials and ${trips.food} food; boardings won ${trips.won}, lost ${trips.lost}, left ${trips.left}; ` +
     `built ${builds || 'nothing'}; refitted ${trips.moved.length ? trips.moved.map((type) => defs.modules.get(type)?.name ?? type).join(', ') : 'nothing'} aboard; ${trips.hungry} hungry day${trips.hungry === 1 ? '' : 's'}.`
   );
+}
+
+// What the raids came to over the colony's days (M29), as a line of its
+// report: "Raids over 60 days (off the lanes; heat 52 to 31): found 2,
+// faced 2. Day 14: the guns stopped 1 of 4, 3 at home, won. Day 41, the
+// ship away: the guns stopped 0 of 4, 2 at home, lost: they took 12 food,
+// 15 materials and a Shield generator. Set down Gun emplacement (day 13)."
+function raidsLine(defs, raids) {
+  const lanes = ['near the lanes', 'off the lanes', 'far from the lanes'][raids.lanes - 1];
+  const each = raids.faced.map((raid) => {
+    const fight = !raid.home ? 'nobody home' : raid.fought ? `${raid.home} at home` : 'no fight';
+    const outcome = raid.won ? 'won' : `lost: they took ${tookText(defs, raid.taken)}`;
+    return `Day ${raid.day}${raid.away ? ', the ship away' : ''}: the guns stopped ${raid.stopped} of ${raid.stopped + raid.landed}, ${fight}, ${outcome}.`;
+  });
+  const set = raids.set.map((b) => `${b.name} (day ${b.day})`).join(', ');
+  return [
+    `Raids over ${COLONY_DAYS + TRIP_DAYS} days (${lanes}; heat ${raids.heat[0]} to ${raids.heat[1]}): found ${raids.found}, faced ${raids.faced.length}.`,
+    ...each,
+    ...(set ? [`Set down ${set}.`] : []),
+    ...(raids.coming ? ['A raid still coming at the end.'] : []),
+  ].join(' ');
+}
+
+// What a lost raid took, in words: "12 food, 15 materials and a Shield
+// generator", or "nothing".
+function tookText(defs, taken) {
+  const part = taken?.part ? defs.modules.get(taken.part)?.name ?? taken.part : null;
+  const said = [...(taken?.food ? [`${taken.food} food`] : []), ...(taken?.materials ? [`${taken.materials} materials`] : []), ...(part ? [`${/^[aeiou]/i.test(part) ? 'an' : 'a'} ${part}`] : [])];
+  return said.length < 2 ? said[0] ?? 'nothing' : `${said.slice(0, -1).join(', ')} and ${said.at(-1)}`;
 }
 
 // What the colony's days came to, as a line of its report: "30 days at the
@@ -745,6 +863,7 @@ export function manyVoyages(defs, runs, options = {}) {
     colonySummary(defs, done),
     daysSummary(done),
     tripsSummary(done),
+    raidsSummary(defs, done),
     `Jumps: ${spread(of('jumps'))}, long ${spread(of('longJumps'))}, hungry ${spread(of('hungryJumps'))}.`,
     `At the nodes: ${spread(of('events'))} events, ${spread(of('eventCredits'))} credits and ${spread(of('eventSupplies'))} supplies from them, ${spread(of('found'))} parts found, ${spread(of('sold'))} sold, ${spread(of('wounds'))} hit points lost; ${spread(of('scans'))} scans.`,
     `Hostile ships: ${spread(of('approaches'))} met, ${spread(of('approachesWon'))} disabled or blown up, ${spread(of('approachesLost'))} boarding us. Boarded her ${spread(of('boardings'))} times (won ${spread(of('boardingsWon'))}), left her ${spread(of('left'))}; fought off ${spread(of('defencesWon'))} of ${spread(of('defences'))} boardings. Salvage: ${spread(of('salvaged'))} parts and ${spread(of('salvageCredits'))} credits. Lost: ${spread(of('partsLost'))} parts and ${spread(of('creditsLost'))} credits; ${spread(of('fightHp'))} hit points in the fights. Lost a boarding at home: ${done.filter((r) => r.steps.some((step) => step.kind === 'boarding' && step.dir === 'you' && !step.won)).length} of ${done.length}; dragged past 40 rounds: ${done.reduce((sum, r) => sum + r.tally.dragged, 0)}.`,
@@ -822,6 +941,34 @@ function tripsSummary(done) {
     `The colony's ${TRIP_DAYS} days of trips: trips ${median(played.map((trips) => trips.flown.length))}, flown in ${played.filter((trips) => trips.flown.length > 0).length} of ${played.length}; days away ${median(played.map((trips) => trips.away))}; ` +
     `brought parts ${median(played.map((trips) => trips.parts))}, materials ${median(played.map((trips) => trips.materials))}, food ${median(played.map((trips) => trips.food))}; ` +
     `boardings won ${sum('won')}, lost ${sum('lost')}; built ${Object.entries(built).map(([name, n]) => `${name} ${n}`).join(', ') || 'nothing'}; refitted aboard in ${played.filter((trips) => trips.moved.length > 0).length}; hungry days ${median(played.map((trips) => trips.hungry))}.`
+  );
+}
+
+// The raids over the colonies' days (M29): how often found, by the lanes,
+// faced, won and lost, what the guns stopped, the raids that came while the
+// ship was away, what lost raids took, and what was set down for them.
+function raidsSummary(defs, done) {
+  const played = done.map((r) => r.tally.raids).filter(Boolean);
+  const median = (values) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted.length ? `${sorted[Math.floor((sorted.length - 1) / 2)]} (${sorted[0]} to ${sorted.at(-1)})` : '-';
+  };
+  const faced = played.flatMap((raids) => raids.faced);
+  const lost = faced.filter((raid) => !raid.won);
+  const byLanes = [1, 2, 3].map((lanes) => {
+    const here = played.filter((raids) => raids.lanes === lanes);
+    const found = here.reduce((sum, raids) => sum + raids.found, 0);
+    return `${['near', 'off', 'far'][lanes - 1]} ${found} in ${here.length} run${here.length === 1 ? '' : 's'}`;
+  });
+  const set = {};
+  for (const raids of played) for (const b of raids.set) set[b.name] = (set[b.name] ?? 0) + 1;
+  const sum = (list, key) => list.reduce((total, raid) => total + (raid.taken?.[key] ?? 0), 0);
+  return (
+    `Raids over the colony's ${COLONY_DAYS + TRIP_DAYS} days: found ${median(played.map((raids) => raids.found))} a run, in ${played.filter((raids) => raids.found > 0).length} of ${played.length} (by the lanes: ${byLanes.join(', ')}); ` +
+    `faced ${faced.length}: won ${faced.length - lost.length}, lost ${lost.length}; the guns stopped ${faced.reduce((sum, raid) => sum + raid.stopped, 0)} of ${faced.reduce((sum, raid) => sum + raid.stopped + raid.landed, 0)} raiders; ` +
+    `${faced.filter((raid) => raid.away).length} while the ship was away (${faced.filter((raid) => !raid.home).length} with nobody home); ` +
+    `lost raids took ${sum(lost, 'food')} food, ${sum(lost, 'materials')} materials and ${lost.filter((raid) => raid.taken?.part).length} parts; heat at the end ${median(played.map((raids) => raids.heat[1]))}; ` +
+    `set down ${Object.entries(set).map(([name, n]) => `${name} ${n}`).join(', ') || 'nothing'}.`
   );
 }
 

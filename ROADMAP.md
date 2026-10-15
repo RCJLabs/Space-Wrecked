@@ -56,7 +56,7 @@ Act length targets (proposed, to check in play): act 1 under an hour, act 2 the 
 - **Farms and mines** (M27, `data/colony.json` builds): 10 materials each, 2 × 2, no power. A farm grows soil + water food a day and a mine digs ore materials a day, each at least 1: the world's numbers (M25) at work. A colony lands with 20 materials, salvaged from the landing.
 - **Days** (M27, `src/sim/days.js`): act 3 counts days from the landing, and Next day passes one in two taps. The farms and mines make; the crew eats a jump's food each (food is the run's supplies); a fed crew rests, healing a day's regroup and a powered infirmary's heal (and a medic's, as on the run), and short of food everyone goes hungry, as on a hungry jump, never below 1. Food and materials are each kept up to the stores, the landed ship's holds and the powered storehouses; the rest is lost. Since M28 the days also pass while the ship is away, one by one as it flies (Trips, below).
 - **A solar array and a shelter** (M28, `data/colony.json` builds): built from materials by hand, as farms and mines are, 2 × 2 each. The array (15 materials) makes 3 power; the shelter (10) beds and breathes for two and takes 1 power. A build either makes (food, materials) or gives (power, beds, air).
-- **What it gives:** power from its power plants and, while the ship is home, from the landed ship (what its reactors make beyond its own parts' use), taken by the buildings in the order built, each while enough is left; one it doesn't reach is dark. Beds and air from the powered quarters, bunks, life support and shelters, one each a crew member; whoever goes without sleeps aboard the landed ship. A powered infirmary heals a day at a time (since M28, one opening heals nobody at once). Storehouses keep food and materials (M27); defenses (guns, shields and armories, for M29) say what they guard, and do nothing else yet.
+- **What it gives:** power from its power plants and, while the ship is home, from the landed ship (what its reactors make beyond its own parts' use), taken by the buildings in the order built, each while enough is left; one it doesn't reach is dark. Beds and air from the powered quarters, bunks, life support and shelters, one each a crew member; whoever goes without sleeps aboard the landed ship. A powered infirmary heals a day at a time (since M28, one opening heals nobody at once). Storehouses keep food and materials (M27). Since M29 the defenses fight raids (below): a powered gun emplacement or flak tower fires once at a raid's lander as it comes down, a cannon emplacement twice (`shots`, `data/colony.json`); a powered shield dome or shield array gives the defenders 1 armor, and a powered armory 10 aim.
 - **Refits** (M27): construction mode on the landed ship with the parts on hand, as at a station, so quarters that hold the ship together can be freed and a part taken down can go back aboard. A ship refitted past flying shows it in its flight checks, and its power going short darkens the buildings that took it. Since M28 those checks count a full squad aboard (`squadSize`, or the whole crew if fewer): what a trip needs.
 - **Trips** (M28, `src/sim/expeditions.js`, pure; `data/expeditions.json`):
   - **The places:** three within reach at a time, rolled from the campaign's RNG: derelicts, wreck fields, ore rocks and the system's other worlds, each 1 to 3 days away. Squatters hold half the derelicts. A new list comes after each trip.
@@ -65,6 +65,12 @@ Act length targets (proposed, to check in play): act 1 under an hour, act 2 the 
   - **At the place:** an event like the run's (`data/events.json`, of the place's kind) giving food, materials or parts, its wounds only on the squad. Or the squatters' derelict, boarded in a fight on her map (§4.3) for 2 of her parts and 4 to 8 materials, or left alone.
   - **Fly home** passes the days back, and the ship lands.
   - Nothing is built, moved, given or refitted while the ship is away.
+- **Raids** (M29, `src/sim/raids.js` and `colonyMap.js`, pure; the numbers in `data/balance.json`, the pursuer's words and raiders for the colony in `data/backgrounds.json`). §4.4 has heat at the colony.
+  - **Found:** at each day's end with no raid coming, the pursuer may find the colony, at odds by heat's level and how far the colony lies from the lanes. Found, its lander comes down 3 days later (`raidWarning`), counted down on the colony screen.
+  - **The landing:** on its day the raid is down, and Next day, Fly out and Fly on wait until it is faced. Defend, two taps: the first says what fires at the lander, at what odds, and who fights. Each powered defense fires its shots at 50% (`landingHit`), and each hit is a raider fewer of the pursuer's four (an agent, a heavy, an agent and a guard, the last first).
+  - **The fight** on the colony's grid (`colonyMap.js`), a tile a cell: open ground, a farm's fields half cover and every other building full cover. The crew at home starts by the landed ship's edge (the 3 west columns) and the raiders at the far edge, pressing on as at the hangar. A powered shield gives each defender 1 armor (`raidShieldArmor`), a powered armory 10 aim (`raidArmoryAim`).
+  - **Afterwards,** won or lost, heat falls to 40 (`heatAfterRaid`), or stays if under it. Lost, the raiders take half the food, half the materials and the dearest part in the hold. Downed crew come home hurt, as from any fight.
+  - **The ship away:** a raid landing during a leg stops it that day. Those at home face it, the squad doesn't fight, and Fly on flies the rest. With nobody home, the landing's hits are all the colony has: it holds if they stop every raider, and is lost without a fight if not.
 
 ---
 
@@ -274,7 +280,13 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - **Not built:** agents at stations from 25, docking in pursuer space, bribes, and payments on the debt in act 2 (§9). 100's confrontation is the gunship, certain.
   - **Past the charts** (M25): a day's survey of a world adds 2 heat (`surveyHeat`), and the hunters may find the ship at a jump's odds, as when regrouping; a jump between the worlds is a jump like any other. The system has no station and no nebula, so nothing sheds heat there. The careful test player managing heat meets the hunters there in 9 runs of 30 (11 times), besides the 6 of 30 that meet them crossing the sectors: 10 of 30 over the whole act. Ignoring heat, 15 of 30 meet them there (§9).
   - **Balance** (M24's test player, `tools/voyage.js`, campaign seeds 1 to 30). Managing heat (`--heat manage`): transponder swaps at stations from heat 15 when the credits leave half a holdful, hiding in a nebula on its way from 15 with 8 jumps' supplies aboard, long jumps from 45 and in place of any jump where the hunters may wait, and scans only below 45. It meets the hunters in 6 of 30 runs (none a run at the median, 0 to 2), the gunship never, and crosses all five sectors fed in 25 of 30 (24 without refits). It swaps once a run at the median (0 to 4), for 40 credits, hides 1 day (0 to 7) and never regroups; heat peaks at 51 (47 to 80). Ignoring heat (`--heat ignore`: none of that and no long jumps): the hunters in 30 of 30 runs, 8 a run (3 to 13), the gunship 5 of them; heat peaks at 100 at the median (84 to 100); a boarding lost at home in every run; crosses fed in 23 of 30. Evan's pick from three trades: the hunters at 10% from heat 50, so a careful player keeps them off most runs, but not all (at most 6 of 30); the others were 3 of 30 with the fed target down to 22, or 20% and at most 10 of 30. Over 60 seeds the careful player meets them in 14 (23%): 8 of seeds 31 to 60.
-- **In act 3**, heat decays slowly, distance from pursuer space lowers what you gain, and raid frequency follows heat.
+- **Act 3 as built** (M29; `src/sim/raids.js`, the numbers in `data/balance.json`, the pursuer's words for the colony in `data/backgrounds.json`). Evan's picks (2026-10-15) are in M29's entry (§7).
+  - **Levels at the colony** are the run's (`runLevel`), with the pursuer's words for the colony on the meter.
+  - **Heat falls** 1 at each of the colony's days' end (`colonyHeatFall`), trips' days included. **A trip adds** 4 as the ship flies out (`tripHeat`), 6 near the lanes and 2 far from them (`lanesNear` 150%, `lanesFar` 50%, of the world's lanes, M25).
+  - **Found:** each day's end with no raid coming, at the day's heat: 3% a day from 25 (`raidOddsRumors`), 6% from 50 (`raidOddsHunters`), 10% from 75 (`raidOddsTaskForce`) and 15% at 100 (`raidOddsCornered`), off the lanes; near them half as much again and far from them half, rounded (near 5, 9, 15 and 23; far 2, 3, 5 and 8). None below 25. The roll is the campaign's, as shown (Law 4), and Next day's first tap gives the night's odds.
+  - **A raid** (§2, Raids): the guns fire at the lander, whoever is home fights the rest, and heat falls to 40 after it.
+  - **Not built:** danger (the worlds' fourth number) does nothing yet, and nothing at the colony sheds heat but the days (§9).
+  - **Balance** (M29's careful test player, `tools/voyage.js`, campaign seeds 1 to 30, the colony's 60 days): found in 13 runs of 30, 20 times: near the lanes 7 times in 2 runs, off them 9 in 10, far 4 in 18. Faced 18 (two still coming at day 60): won 12, lost 6. The guns stopped 8 raiders of 72. Heat at the end is 14 at the median (0 to 40): raids taper off as heat falls.
 
 ### 4.5 Characters
 
@@ -385,6 +397,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - The colony's buildings (v20, M26): `colony.buildings`, the parts given in the order given, each where it stands on the colony's grid as a ship's modules are saved (`{ uid, type, x, y, rot }`), and `colony.nextUid`. A v19 colony has no buildings yet, every part still aboard.
 - The colony's days and materials (v21, M27): `colony.day` (1 at the landing) and `colony.materials`. A building's type is a part's or, for a farm or a mine, its build's id. A v20 colony opens on day 1 with 20 materials, the landing's salvage when M27 came in.
 - Trips (v22, M28): `colony.places`, the places within reach, each `{ kind, name, days, event, held, seed }` (a held derelict's ship is generated from her seed); and `colony.trip`, null with the ship home, else `{ place, squad, done, result }`: the place, the squad's ids, whether it is done there, and what came of it. A boarding at a place is saved as a fight, as on the run. A v21 colony has no places and no trip; its places are rolled when the colony is first shown.
+- Raids (v23, M29): `colony.raid`, null with none coming, else `{ found, lands }`: the day the pursuer found the colony and the day its lander comes down; and `trip.leg`, null, else `{ dir, left }`: a leg a raid stopped, out or home, and the days still to fly. A raid fight is saved as a fight (`raid: true`), as at the hangar. A v22 colony has no raid coming, and its trip no leg.
 - The builder keeps up to six ships in slots, each with the build log its replay plays back. A single ship travels between devices as a blueprint code.
 
 ---
@@ -726,7 +739,72 @@ Detailed at the start of M26, once v0.2 was done. The Done whens past M26 are dr
   - **Saves:** `SAVE_VERSION` 22 for the places and the trip. A v21 colony opens with no trip, and its places are rolled when the colony is first shown (tested).
   - **The test player:** over 30 voyages (campaign seeds 1 to 30) the careful test player plays 60 days at the colony. It builds as in M27, puts berths and air for its squad back aboard, and flies trips, building a generator and shelters when someone stays home. In every run it flies at least one trip and the ship comes home from every one. Its report says each run's trips, days away, what they brought, the boardings won and lost, and the hungry days (`tools/voyage.js`).
   - **Touch:** every new button is 48 px or more at the three sizes. By touch: a place and a squad picked; Fly out refused for a failing flight check, and a refit that puts life support aboard; Fly out; an event decided at a place; a boarding fought; Fly home and its report; a generator and a shelter built; and a quit and reopen while the ship is away.
-- [ ] M29 Raids. Draft: heat in act 3 falls slowly, and the pursuer raids the colony by heat and how far it lies from the lanes; guns, shields and armories defend; a raid is fought on the colony's grid.
+- [x] **M29 Raids.** The colony stands as M28 left it. Heat is where the landing left it, and nothing in act 3 moves it. The defenses given from the ship stand there doing nothing: guns, flak towers, shield domes and armories.
+
+  Evan's picks (2026-10-15), each the recommended option:
+  - **Found:** heat falls a little each day, and trips add some, less the further the colony lies from the lanes. Each day the pursuer may find the colony, at odds shown on the colony screen. Found, its lander comes 3 days later.
+  - **Defenses:** the defenses fight the landing, each hit a raider fewer in the fight. Shield domes and the armory help the crew in the fight itself.
+  - **Losing:** a lost raid takes half the food and materials, and the dearest part in the hold.
+  - **The ship away:** a raid can land while the ship is away, and whoever is home fights it.
+
+  Measured before settling this (the careful test player's colonies after M28's 60 days, seeds 1 to 30):
+  - heat is 50 at the median (26 to 75), as it landed;
+  - 24 colonies have a powered gun emplacement and 1 a flak tower. None has set down a shield dome or an armory, though several hold them as parts;
+  - the colonies lie near the lanes in 2 runs, off them in 10 and far in 18.
+
+  A prototype raid on each colony's grid, buildings as blocks of cover (the crew played by the AI, the raiders pressing on, 150 fights a row), gave these crew win rates:
+
+  | Raiders | Whole crew | Two at home | One at home |
+  | --- | --- | --- | --- |
+  | 4: the pursuer's (agent, heavy, agent, guard) | 39% | 10% | 0% |
+  | 3 | 90% | 53% | 9% |
+  | 2 | 99% | 86% | 34% |
+
+  **Done when:**
+  - **Heat at the colony:**
+    - in act 3 heat falls by `colonyHeatFall` at each day's end;
+    - a trip adds heat as it flies out, less the further the colony lies from the lanes (`tripHeat`, by lanes);
+    - the colony screen shows heat with the pursuer's words for act 3 (`data/backgrounds.json`) (tested).
+  - **Found:**
+    - at each day's end, while no raid is coming, the pursuer may find the colony;
+    - the odds go by heat's level and the colony's lanes (`raidOdds`, `data/balance.json`), with none below `rumorHeat`, shown on the colony screen as they will be rolled;
+    - found, the raid lands `raidWarning` days later, and the colony screen counts them down;
+    - a trip's days roll the same way, and the same seed always rolls the same (tested).
+  - **The landing:**
+    - on its day the raid is down, and Next day and Fly out wait until it is faced;
+    - two taps on Defend. First the landing: each powered gun emplacement and flak tower fires once at the lander as it comes down, a cannon emplacement twice, each at `landingHit`%, shown before the tap. Each hit is a raider fewer;
+    - then the fight with the rest (tested).
+  - **The fight** on the colony's grid (`src/sim/colonyMap.js`):
+    - open ground, each building a block of cover where it stands (fields half cover, the rest full);
+    - the crew at home starts by the landed ship's edge, and the pursuer's raiders (`data/backgrounds.json`) at the far edge, pressing on as at the hangar;
+    - a powered shield dome or shield array gives the defenders `raidShieldArmor` armor, and a powered armory `raidArmoryAim` aim (tested).
+  - **Afterwards:**
+    - won or lost, heat falls to `heatAfterRaid`;
+    - lost, the raiders take half the food, half the materials and the dearest part in the hold;
+    - downed crew come home hurt, as from any fight (tested).
+  - **While the ship is away:**
+    - a raid that lands during a leg stops it on that day. Those at home face it, and the leg flies on after; the squad doesn't fight;
+    - with nobody home, the landing's hits are all the colony has: it holds if they stop every raider, and is lost if not (tested).
+  - **The colony screen:**
+    - heat and its words, and the day's odds of being found;
+    - a raid coming, and its days;
+    - Defend in two taps, the first saying what the guns will fire and at what odds;
+    - the landing's report, the fight, and what came of it.
+
+    Act 3's words say what is still to come.
+  - **Saves:** `SAVE_VERSION` 23 for a raid coming and a leg stopped by one. A v22 colony opens with none coming (tested).
+  - **The test player:** over 30 voyages (campaign seeds 1 to 30) the careful test player plays its colony's 60 days with raids: M27's 30 days, then M28's 30 of trips.
+    - It stays home while a raid is coming, sets down the guns, shields and armories in the hold, and faces every raid.
+    - Its report says each run's raids found, faced, won and lost, the raiders the guns stopped, and what lost raids took (`tools/voyage.js`).
+    - The odds are tuned so that a careful colony is found more often near the lanes than far from them. The numbers are measured and reported.
+  - **Touch:** every new button is 48 px or more at the three sizes. By touch:
+    - the odds and the warning;
+    - Defend's two taps, with the landing's report;
+    - a raid fought and won, and one lost with what was taken;
+    - a raid landing while the ship is away;
+    - a quit and reopen with a raid coming.
+
+**Gate 5:** act 3 plays on the phone from the landing to a colony that feeds itself, flies trips and has faced a raid, and Evan wants to keep going. ROADMAP named no gate for Phase 5; this one was drafted at M29's close. Evan's call: until PROGRESS.md records it passed, Phase 6 waits. Passing it makes v0.3 done.
 
 ### Phase 6: Breadth (v0.4)
 
@@ -845,11 +923,17 @@ These ideas wait until v0.4 or later:
 - heat past the charts: nothing sheds it in the system (no station, no nebula), and each survey and jump adds 2, so the careful test player managing heat meets the hunters there in 9 runs of 30, which makes 10 of 30 over the whole act against M24's 6. A nebula among the worlds, surveys that add no heat, or the hunters slower to follow past the charts would each cool it (raised in M25)
 - the landing over the world itself: M25's landing is the lift-off backwards against the stars. A world drawn under the ship, by its kind, or a scene in M34's image pass (raised in M25)
 - a mark on the chart for each kind of world: M25 gives every world the same mark, its kind in words beside it (raised in M25)
-- what the worlds' numbers do in act 3: since M27 soil and water grow a farm's food and ore a mine's materials; danger and lanes wait for M29's raids. The test player's score (soil + water + ore + lanes − danger) weighs them all alike until then (raised in M25)
+- what danger does in act 3: since M27 soil and water grow a farm's food and ore a mine's materials, and since M29 lanes set how often the pursuer finds the colony and the heat a trip adds. Danger still does nothing: it could raise the raid's odds or its party, or roll a hazard at the places. The test player's score (soil + water + ore + lanes − danger) weighs them all alike (raised in M25, narrowed in M29)
 - supplies past the charts: no station is there, so a ship arrives with what the last sector left it. The careful test player surveys every world in only 15 runs of 30; ignoring heat, 8 runs arrive with less than a jump's worth (raised in M25)
 - food at the colony: on 24 of 30 careful colonies one or two farms feed the crew from day 1 (ocean, ice and jungle worlds); only rock and desert need mines first, and go hungry up to 8 days. Fewer crops a farm, a farm that needs power or water, or a crew that eats more would make food a thing to plan (raised in M27)
 - the test player at the colony doesn't set spare parts down or move buildings. Since M28 it takes buildings down and refits, but only to put berths and air back aboard for its squad, so the 17 colonies whose quarters hold the ship together still sleep aboard at home. A test player that frees them would measure what that is worth (raised in M27, narrowed in M28)
-- time away costs nothing at home yet: the careful test player is away 28 of its 30 days of trips, since the colony runs without the ship once a solar array and a shelter stand. A raid that can come while the ship is away (M29), or work at home that wants the crew, would weigh a trip against staying (raised in M28)
+- time away costs little at home: the careful test player is away 28 of its 30 days of trips. Since M29 a raid can land while the ship is away, and those at home fight it, but the careful test player stays home while one is coming and over 30 runs met none while away. A test player that flies out with a raid coming, or work at home that wants the crew, would measure what a trip risks (raised in M28, narrowed in M29)
+- the buildings' raid numbers in their rows: a building's row says its part's own numbers (a gun emplacement's "Guns 15", a shield dome's "Shield 10"), not what it does in a raid. The colony's Defense line and Defend's first tap say that: the shots at a lander, and the defenders' armor and aim (raised in M29)
+- shedding heat at the colony: only the days do, 1 a day, and after a raid it falls to 40. A payment as in act 1, or lying low (no trips, the lights out) for faster cooling, would give the player a lever (raised in M29)
+- a raid that grows with heat: the party is always the pursuer's four, whatever the heat. A bigger party at a task force or cornered, or a second lander, would make heat at the colony matter more than its odds (raised in M29)
+- the guns in the fight: the colony's defenses fire only at the lander as it comes down. A gun emplacement that fires as overwatch over its corner of the grid in the fight, or a shield dome's cover, would keep them in play after the landing (raised in M29)
+- the landing seen: M29's landing is a line of words. The lander coming down over the colony, the guns' tracers and its hits, would make it read at a glance, as M21's shots would in the approach (raised in M29)
+- the colony's fight at a size: the colony's grid is 20 × 12, so its tiles open at about 29 px on the cover screen, under the 48 px a ship's open at. The two taps keep it safe, and a pinch zooms; opening on the crew's half would make them bigger (raised in M29)
 - more events at the places: M28 has 8, two a kind, so a colony's 9 trips in 30 days meet them again (raised in M28)
 - a trip's lift-off and landing: the ship's pad empties and fills at once. M17's lift-off and M25's landing could play over the colony (raised in M28)
 - a warning on giving a part a trip needs: the colony can take the ship's life support or quarters, and the trip's plan is the first to say it can't fly. Giving could count a full squad, as construction mode at the colony does (raised in M28)

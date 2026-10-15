@@ -18,16 +18,20 @@
 //     bay still heal;
 //   - food and materials are each kept up to the colony's stores (colony.js
 //     storesOf): what is past them is lost;
-//   - the day count rises.
+//   - the day count rises;
+//   - from M29, with no raid coming, the pursuer may find the colony, at
+//     the day's odds, and heat falls (raids.js raidDayEnd).
 // While the ship is away the colony runs on its own power (colony.js
-// colonyStats). Giving, building, moving and taking down take no time. The
+// colonyStats). Giving, building, moving and taking down take no time.
+// While a raid's lander is down (M29) no day passes until it is faced. The
 // flags count the days, the hungry ones, the food grown, the materials dug,
 // what the stores couldn't keep, and the hit points the days healed and
-// hunger took. Nothing is rolled. Pure.
+// hunger took. The only roll is the pursuer's, the campaign's. Pure.
 import { atColony } from './acts.js';
 import { colonyStats, storesOf } from './colony.js';
 import { tally } from './flags.js';
 import { healCrew, healRate, stationHeal } from './medbay.js';
+import { downText, foundOdds, raidDayEnd, raidDown } from './raids.js';
 import { jumpSupplies } from './travel.js';
 
 // More days than a colony will see: a guard on what a save can hold.
@@ -39,6 +43,7 @@ export const MAX_DAYS = 99999;
 export function dayPlan(campaign, rules) {
   if (!atColony(campaign, rules)) return { ok: false, error: 'Days pass at the colony.' };
   if (campaign.colony.trip) return { ok: false, error: 'The ship is away: the days pass as it flies.' };
+  if (raidDown(campaign)) return { ok: false, error: downText(campaign, rules) };
   return planDay(campaign, rules);
 }
 
@@ -49,8 +54,9 @@ export function dayPlan(campaign, rules) {
 // hunger (what each loses going hungry, 0 when fed), rough (the ids at home
 // who don't rest for want of a bed and air, while the ship is away), food
 // and materials ([now, after the day]), lost ({ food, materials }: what
-// the stores can't keep), stores (what they keep of each) }, or { ok:
-// false, error }.
+// the stores can't keep), stores (what they keep of each), found (the
+// odds, percent, of the pursuer finding the colony at the day's end, M29)
+// }, or { ok: false, error }.
 export function planDay(campaign, rules) {
   const { day, materials, trip } = campaign.colony;
   if (day >= MAX_DAYS) return { ok: false, error: 'The colony has counted all the days it can.' };
@@ -84,12 +90,14 @@ export function planDay(campaign, rules) {
     materials: [materials, Math.min(dug, stores)],
     lost: { food: Math.max(0, food - stores), materials: Math.max(0, dug - stores) },
     stores,
+    found: foundOdds(campaign, rules),
   };
 }
 
 // Passes Next day (see dayPlan). Returns { ok: true, plan, campaign, healed
-// (hit points healed in all), hurt (hit points hunger took in all) } or
-// { ok: false, error }.
+// (hit points healed in all), hurt (hit points hunger took in all), found
+// (the raid the pursuer found at the day's end, or null), roll (its roll,
+// or null when there were no odds) } or { ok: false, error }.
 export function nextDay(campaign, rules) {
   const plan = dayPlan(campaign, rules);
   return plan.ok ? passPlanned(campaign, rules, plan) : plan;
@@ -124,5 +132,6 @@ function passPlanned(campaign, rules, plan) {
   });
   const colony = { ...campaign.colony, day: plan.day + 1, materials: plan.materials[1] };
   const changed = hurt || healed ? crew : campaign.crew;
-  return { ok: true, plan, campaign: { ...campaign, supplies: plan.food[1], crew: changed, colony, flags }, healed, hurt };
+  const ended = raidDayEnd(campaign, { ...campaign, supplies: plan.food[1], crew: changed, colony, flags }, rules);
+  return { ok: true, plan, campaign: ended.campaign, healed, hurt, found: ended.found, roll: ended.roll };
 }

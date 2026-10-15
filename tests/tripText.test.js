@@ -84,7 +84,7 @@ test('away: the place, its event and choices with their odds, what came of it, a
   assert.deepEqual(text.needs.find((need) => need.label === 'Away'), { label: 'Away', value: '1 on the trip, 2 home without a bed', ok: false });
   assert.deepEqual([text.power, text.stores], ['0 from power plants; the ship is away', "30 each, in the ship's holds"]);
   assert.deepEqual(text.crew.map((row) => [row.away, row.rough, row.aboard]), [[true, false, false], [false, true, false], [false, true, false]]);
-  assert.match(colonyText(listed, rules).ahead, /raids to hold the colony against/);
+  assert.match(colonyText(listed, rules).ahead, /Still to come in v0\.4/);
 });
 
 test("a held derelict: who holds her, what a win brings, Board her's ask; the fight's words; and what it came to", () => {

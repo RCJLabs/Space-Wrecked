@@ -19,7 +19,10 @@ import { isId, isIntIn, isObject, isText, knownKeys, listOf } from './checks.js'
 
 const FILE_KEYS = ['site', 'aboard', 'text', 'materials', 'builds', 'buildings'];
 const SITE_KEYS = ['width', 'height', 'gap'];
-const BUILDING_KEYS = ['part', 'name', 'text'];
+// shots (M29): how many times a defense fires at a raid's lander as it
+// comes down (src/sim/raids.js).
+const BUILDING_KEYS = ['part', 'name', 'shots', 'text'];
+const MAX_SHOTS = 4;
 const BUILD_KEYS = ['id', 'name', 'size', 'cost', 'makes', 'from', 'least', 'gives', 'text'];
 const MAX_TEXT = 200;
 const SITE = { width: [8, 40], height: [6, 30], gap: [0, 2] };
@@ -103,6 +106,7 @@ export function checkColony(file, modules, fail) {
     else if (names.has(building.name)) fail(at, 'name used twice');
     names.add(building.name);
     if (!isText(building.text) || building.text.length > MAX_TEXT) fail(at, `text must be a non-empty string of up to ${MAX_TEXT} letters`);
+    if (building.shots !== undefined && !isIntIn(building.shots, 1, MAX_SHOTS)) fail(at, `shots must be a whole number from 1 to ${MAX_SHOTS}, or left out for a building that doesn't fire`);
   });
 }
 

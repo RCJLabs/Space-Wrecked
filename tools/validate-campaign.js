@@ -38,7 +38,7 @@ const MAX_CAPTAINS = 20;
 // The words as the ship lifts off (launch.js), and the pursuer's when it
 // lifts off with a raid at the door.
 const LAUNCH_KEYS = ['text', 'escaped'];
-const PURSUER_KEYS = ['name', 'blurb', 'levels', 'hunters', 'raiders', 'payment', 'run'];
+const PURSUER_KEYS = ['name', 'blurb', 'levels', 'hunters', 'raiders', 'payment', 'run', 'colony'];
 // Heat's levels (src/sim/heat.js), each with the pursuer's words for it:
 // act 1's, and on the run (act 2) its own.
 const HEAT_LEVELS = ['calm', 'rumors', 'hunters', 'raid'];
@@ -47,6 +47,11 @@ const RUN_LEVELS = ['calm', 'rumors', 'hunters', 'taskForce', 'cornered'];
 // hunters' level and from the task force's (ship presets with tactics and
 // a party), and its words once they have been faced (src/sim/hunt.js).
 const RUN_KEYS = ['levels', 'hunters', 'taskForce', 'faced'];
+// At the colony (act 3, src/sim/raids.js, M29): its words for each of the
+// run's levels of heat, the encounter its lander brings down, and its words
+// as it finds the colony, as the lander comes down, and once a raid has
+// been faced.
+const COLONY_KEYS = ['levels', 'raiders', 'found', 'landing', 'faced'];
 const PAYMENT_KEYS = ['name', 'text', 'credits', 'heat'];
 const MAX_HUNTERS = 2;
 // A raid's raiders, at the hangar's doors (hangarMap.js).
@@ -302,6 +307,7 @@ function checkPursuer(pursuer, where, { enemyIds, encounters, presets }, fail) {
     return;
   }
   checkRun(pursuer.run, `${where} run`, presets, fail);
+  checkPursuerColony(pursuer.colony, `${where} colony`, encounters, fail);
   knownKeys(pursuer, PURSUER_KEYS, where, fail);
   if (!isText(pursuer.name) || !isText(pursuer.blurb)) fail(where, 'name and blurb must be non-empty strings');
   const { levels } = pursuer;
@@ -343,6 +349,28 @@ function checkRun(run, where, presets, fail) {
     else if (!preset.tactics || !preset.party) fail(where, `${key}: the ${preset.name} needs tactics for the approach and a party for the boardings`);
   }
   if (!isText(run.faced)) fail(where, 'faced must be a non-empty string');
+}
+
+// The pursuer at the colony (act 3, src/sim/raids.js): its words for each
+// of the run's levels of heat, the encounter its lander brings down (the
+// raiders, at the colony grid's far edge), and its words as it finds the
+// colony, as the lander comes down and once a raid has been faced.
+function checkPursuerColony(colony, where, encounters, fail) {
+  if (!isObject(colony)) {
+    fail(where, `must be { ${COLONY_KEYS.join(', ')} }`);
+    return;
+  }
+  knownKeys(colony, COLONY_KEYS, where, fail);
+  const { levels } = colony;
+  if (!isObject(levels) || Object.keys(levels).length !== RUN_LEVELS.length || !RUN_LEVELS.every((level) => isText(levels[level]))) {
+    fail(where, `levels must say something for each of ${RUN_LEVELS.join(', ')}`);
+  }
+  const raiders = encounters.get(colony.raiders);
+  if (!raiders) fail(where, `unknown raiders encounter "${colony.raiders}"`);
+  else if (raiders.length > MAX_RAIDERS) fail(where, `a raid of ${raiders.length}: a lander brings ${MAX_RAIDERS} at most`);
+  for (const key of ['found', 'landing', 'faced']) {
+    if (!isText(colony[key])) fail(where, `${key} must be a non-empty string`);
+  }
 }
 
 // Returns the start's ship script if it is well formed, else null.

@@ -26,6 +26,7 @@
 //   places     the places within reach (M28, expeditions.js): [] until
 //              they are rolled, and after each trip until the next list
 //   trip       the trip under way (M28), or null while the ship is home
+//   raid       the raid coming (M29, raids.js): { found, lands }, or null
 import { atColony } from './acts.js';
 import { applyCommand, occupancy, placeModule } from './builder.js';
 import { shipChecklist } from './campaign.js';
@@ -48,9 +49,10 @@ export const RESOURCES = ['soil', 'water', 'ore'];
 export const BUILD_GIVES = ['power', 'beds', 'air', 'storage'];
 
 // A colony on the world settled, with nothing built yet: day 1, with the
-// materials the landing salvaged, no places rolled and the ship home.
+// materials the landing salvaged, no places rolled, the ship home and no
+// raid coming.
 export function newColony(world, materials = 0) {
-  return { world, buildings: [], nextUid: 1, day: 1, materials, places: [], trip: null };
+  return { world, buildings: [], nextUid: 1, day: 1, materials, places: [], trip: null, raid: null };
 }
 
 // The colony's build of id type (data/colony.json builds: a farm, a mine,
@@ -109,8 +111,10 @@ export function buildingOf(type, rules) {
 //   beds, air  the crew it beds and breathes for (berths, life support)
 //   storage    what it holds (cargo), for M27's production
 //   heal       an infirmary's (a med bay's or surgery's)
-//   damage, shield, intercept   a defense's, for M29's raids
-//   armory     true for an armory, also for the raids
+//   damage, shield, intercept   a defense's part's own numbers; in a
+//              raid (M29, raids.js) a defense fires its data/colony.json
+//              shots, and any shield guards the defenders
+//   armory     true for an armory, which arms the defenders in a raid
 export function givesOf(def) {
   const stats = def.stats ?? {};
   return {

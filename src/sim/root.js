@@ -11,10 +11,11 @@ import { endJob, takeJob, withBoard } from './contracts.js';
 import { buyPart, sellPart } from './economy.js';
 import { beginBoarding, closeApproach, endBoarding, giveOrder } from './encounter.js';
 import { chooseEvent } from './events.js';
-import { boardPlace, chooseAtPlace, endPlaceFight, flyHome, flyOut, withPlaces } from './expeditions.js';
+import { boardPlace, chooseAtPlace, endPlaceFight, flyHome, flyOn, flyOut, withPlaces } from './expeditions.js';
 import { makePayment } from './heat.js';
 import { launch } from './launch.js';
 import { beginRaid, endRaid } from './raid.js';
+import { endColonyRaid, faceRaid } from './raids.js';
 import { patchCrew } from './patch.js';
 import { dismissCrew, hireRecruit } from './recruits.js';
 import { regroup } from './regroup.js';
@@ -127,6 +128,11 @@ export function initialState(seed) {
 //                                  begins
 //   campaign/trip/home { rules }   the ship flies home: the days back pass,
 //                                  it lands, and a new list is rolled
+//   campaign/trip/on { rules }     the ship flies on with the leg a raid
+//                                  stopped, once it is faced (M29)
+//   campaign/raid/face { rules }   Defend: the colony faces the raid that
+//                                  is down, the guns first (raids.js, M29):
+//                                  the fight, or what came of it without one
 //   campaign/approach/order { order, rules }   the player's order for a
 //                                  round of the approach (encounter.js)
 //   campaign/approach/close        Carry on, once the approach is over, or
@@ -150,7 +156,8 @@ export function initialState(seed) {
 //                                  fight is won or lost: a job's pay and
 //                                  heat, and a new board; what a raid cost;
 //                                  or what a boarding came to, on the run
-//                                  or at a place on a trip (M28)
+//                                  or at a place on a trip (M28); or what
+//                                  a raid on the colony came to (M29)
 export function reduce(state, action) {
   switch (action.type) {
     case 'save/restore':
@@ -203,11 +210,15 @@ export function reduce(state, action) {
       const begun = state.campaign && begin(state.campaign);
       return begun?.ok ? { ...state, campaign: begun.campaign, screen: PLACE_SCREENS.fight } : state;
     }
+    case 'campaign/raid/face': {
+      const faced = state.campaign && faceRaid(state.campaign, action.rules, fightSettings(state.settings));
+      return faced?.ok ? { ...state, campaign: faced.campaign, screen: campaignScreen(faced.campaign) } : state;
+    }
     case 'campaign/fight/save':
       return withCampaign(state, state.campaign && saveFight(state.campaign, action.battle, action.log));
     case 'campaign/fight/end': {
       const fight = state.campaign?.fight;
-      const end = fight?.raid ? endRaid : fight?.boarding ? (state.campaign.colony?.trip ? endPlaceFight : endBoarding) : endJob;
+      const end = fight?.raid ? (state.campaign.colony ? endColonyRaid : endRaid) : fight?.boarding ? (state.campaign.colony?.trip ? endPlaceFight : endBoarding) : endJob;
       const next = withCampaign(state, state.campaign && end(state.campaign, action.rules));
       return next === state ? state : { ...next, screen: campaignScreen(next.campaign) };
     }
@@ -241,7 +252,8 @@ export function reduce(state, action) {
     case 'campaign/day':
     case 'campaign/trip/out':
     case 'campaign/trip/choose':
-    case 'campaign/trip/home': {
+    case 'campaign/trip/home':
+    case 'campaign/trip/on': {
       const move = {
         'campaign/run/begin': (c) => beginRun(c, action.rules),
         'campaign/jump': (c) => jump(c, action.rules, action.to),
@@ -266,6 +278,7 @@ export function reduce(state, action) {
         'campaign/trip/out': (c) => flyOut(c, action.rules, action.index, action.squad),
         'campaign/trip/choose': (c) => chooseAtPlace(c, action.rules, action.choice),
         'campaign/trip/home': (c) => flyHome(c, action.rules),
+        'campaign/trip/on': (c) => flyOn(c, action.rules),
       }[action.type];
       const done = state.campaign && move(state.campaign);
       if (!done?.ok) return state;

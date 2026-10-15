@@ -145,6 +145,24 @@ const BALANCE = {
   swapHeat: [-100, 0],
   swapPrice: [0, 1000],
   surveyHeat: [0, 50],
+  // Raids on the colony (src/sim/raids.js, M29): the heat a colony day
+  // sheds and a trip adds, off the lanes; what lying near the lanes and far
+  // from them makes of that and of the odds, in percent; the odds a day of
+  // the pursuer finding the colony, off the lanes, at each level of heat;
+  // the days its lander takes to come; a defense's chance of hitting the
+  // lander; and what a powered shield and armory give the defenders.
+  colonyHeatFall: [0, 20],
+  tripHeat: [0, 50],
+  lanesNear: [100, 400],
+  lanesFar: [0, 100],
+  raidOddsRumors: [0, 100],
+  raidOddsHunters: [0, 100],
+  raidOddsTaskForce: [0, 100],
+  raidOddsCornered: [0, 100],
+  raidWarning: [1, 10],
+  landingHit: [0, 100],
+  raidShieldArmor: [0, 5],
+  raidArmoryAim: [0, 50],
 };
 // A weapon's held shape and a fighter's look are how the fight draws them
 // (src/render/figures/looks.js).
@@ -254,6 +272,10 @@ export function validateData(data) {
     if (!(balance.heatAfterRaid < balance.raidHeat)) fail('balance.json', 'heatAfterRaid must be under raidHeat, or one raid brings the next');
     if (!(balance.heatAfterRaid < balance.huntHeat)) fail('balance.json', 'heatAfterRaid must be under huntHeat, or facing the hunters leaves them on the trail');
     if (balance.taskForceChance < balance.huntChance) fail('balance.json', 'taskForceChance must be at least huntChance: the chance rises with heat');
+    if (!(balance.raidOddsRumors <= balance.raidOddsHunters && balance.raidOddsHunters <= balance.raidOddsTaskForce && balance.raidOddsTaskForce <= balance.raidOddsCornered)) {
+      fail('balance.json', 'the raid odds must rise with heat: raidOddsRumors, raidOddsHunters, raidOddsTaskForce, then raidOddsCornered');
+    }
+    if (Math.round((balance.raidOddsCornered * balance.lanesNear) / 100) > 100) fail('balance.json', 'raidOddsCornered near the lanes (lanesNear) must be at most 100');
     if (balance.loudJobHeat < balance.jobHeat) fail('balance.json', 'loudJobHeat must be at least jobHeat');
     if (balance.sellPercent > balance.buyPercent) fail('balance.json', 'sellPercent must be at most buyPercent, or buying and selling makes money');
   }

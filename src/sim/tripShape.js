@@ -39,7 +39,15 @@ export function tripProblem(trip, crew) {
   }
   if (trip.result !== null && !isResult(trip.result)) return 'has an unreadable result';
   if ((trip.result !== null) !== trip.done) return "doesn't match what was done";
+  if (trip.leg !== null && !isLeg(trip.leg)) return 'has an unreadable leg';
+  if (trip.leg?.dir === 'out' && trip.done) return "is done at a place it hasn't reached";
   return null;
+}
+
+// A leg a raid stopped (M29, expeditions.js): which way, and the days still
+// to fly.
+function isLeg(leg) {
+  return isRecord(leg) && (leg.dir === 'out' || leg.dir === 'home') && isInt(leg.left, 1, MAX_AWAY);
 }
 
 // What came of the place: an event's (events.js: { event, choice, outcome,

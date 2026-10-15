@@ -61,5 +61,17 @@
   "hideHeat": -10,
   "swapHeat": -30,
   "swapPrice": 40,
-  "surveyHeat": 2
+  "surveyHeat": 2,
+  "colonyHeatFall": 1,
+  "tripHeat": 4,
+  "lanesNear": 150,
+  "lanesFar": 50,
+  "raidOddsRumors": 3,
+  "raidOddsHunters": 6,
+  "raidOddsTaskForce": 10,
+  "raidOddsCornered": 15,
+  "raidWarning": 3,
+  "landingHit": 50,
+  "raidShieldArmor": 1,
+  "raidArmoryAim": 10
 }

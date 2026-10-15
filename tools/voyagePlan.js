@@ -80,9 +80,13 @@
 // or that would come home past the days it plays. At an event it makes the
 // choice worth most (placeChoice): materials and food a point each, as far
 // as the stores take them, a part PLACE_PART, a wound PLACE_HP a hit point.
+// From M29, while a raid is coming it stays home and sets down from the
+// hold what will help when the lander comes (raidPrep): guns that fire at
+// it, then a shield and an armory for the defenders, each only where it
+// would stand powered.
 import { canRefit, maxHp, refitShip, shipChecklist } from '../src/sim/campaign.js';
-import { colonyStats, shipParts, storesOf, yieldOf } from '../src/sim/colony.js';
-import { buildPlan, takeDown } from '../src/sim/colonyBuild.js';
+import { buildingOf, colonyStats, givesOf, shipParts, storesOf, yieldOf } from '../src/sim/colony.js';
+import { build, buildPlan, takeDown } from '../src/sim/colonyBuild.js';
 import { crewRoom } from '../src/sim/crew.js';
 import { sellPriceOf } from '../src/sim/economy.js';
 import { choiceProblem } from '../src/sim/events.js';
@@ -564,6 +568,37 @@ export function placeChoice(campaign, rules, event) {
     if (!best || value > best.worth) best = { choice, worth: value };
   }
   return best;
+}
+
+// What the player sets down from the hold while a raid is coming (M29),
+// before the lander comes: { part: type } or null. A part whose building
+// fires at the lander (data/colony.json shots), most shots first; then,
+// while none stands powered, a shield and an armory for the defenders;
+// each only where it would stand powered, so nothing it sets down is dark.
+// Ties go to the part's id.
+export function raidPrep(campaign, rules) {
+  const stats = colonyStats(campaign, rules);
+  const lit = stats.buildings.filter((b) => b.powered && b.gives);
+  const shielded = lit.some((b) => b.gives.shield > 0);
+  const armed = lit.some((b) => b.gives.armory);
+  const worth = (type) => {
+    const def = rules.modules.get(type);
+    const shots = buildingOf(type, rules)?.shots ?? 0;
+    if (shots) return 100 + shots;
+    const gives = def ? givesOf(def) : null;
+    if (gives?.shield > 0 && !shielded) return 50;
+    if (gives?.armory && !armed) return 40;
+    return 0;
+  };
+  const held = Object.keys(campaign.parts).filter((type) => worth(type) > 0).sort((a, b) => worth(b) - worth(a) || a.localeCompare(b));
+  for (const part of held) {
+    if (!buildPlan(campaign, rules, { part }).ok) continue;
+    const set = build(campaign, rules, { part });
+    if (!set.ok) continue;
+    const standing = colonyStats(set.campaign, rules).buildings.at(-1);
+    if (standing?.powered) return { part };
+  }
+  return null;
 }
 
 // What a world is worth to the player as a colony: soil, water and ore a

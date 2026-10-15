@@ -4084,6 +4084,24 @@ textarea {
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85);
 }
 
+/* With heat in it (M29), the head stays one line: on a narrow screen the
+   world's line gives way, cut short, so the panels keep their room. */
+.cln .hgr-head {
+  flex-wrap: nowrap;
+}
+
+.cln .hgr-head h1,
+.cln .hgr-heat {
+  flex: none;
+}
+
+.cln .hgr-home {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .cln-info h2:not(:first-child) {
   margin-top: 10px;
 }
@@ -4259,6 +4277,20 @@ textarea {
   border-color: var(--c-accent);
   background: var(--c-accent);
   color: var(--c-space);
+}
+
+/* Defend (M29), in Next day's place while a raid's lander is down: red,
+   and the accent while its first tap waits for the second. */
+#ui .cln-defend {
+  padding: 0 14px;
+  border-color: var(--c-bad);
+  background: var(--c-bad);
+  color: var(--c-space);
+}
+
+#ui .cln-defend[data-armed='true'] {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
 }
 
 /* Trips from the colony (M28, colonyTrip.js): a failing flight check in a

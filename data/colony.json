@@ -20,9 +20,9 @@
     { "part": "medbay", "name": "Infirmary", "text": "The med bay, with a proper floor under it. It patches the crew up between scrapes." },
     { "part": "surgery", "name": "Clinic", "text": "Surgery, set down where nobody falls out of a hull breach mid-stitch." },
     { "part": "armory", "name": "Armory", "text": "The ship's gun racks, kept where the crew can reach them when a raid comes." },
-    { "part": "weapon", "name": "Gun emplacement", "text": "A weapon mount bolted to the ground and pointed at the sky." },
-    { "part": "cannon", "name": "Cannon emplacement", "text": "A ship's cannon dug in and aimed up. Anything coming down will think twice." },
-    { "part": "pointdefense", "name": "Flak tower", "text": "Point defense up a tower, for whatever falls from the sky faster than it should." },
+    { "part": "weapon", "name": "Gun emplacement", "shots": 1, "text": "A weapon mount bolted to the ground and pointed at the sky." },
+    { "part": "cannon", "name": "Cannon emplacement", "shots": 2, "text": "A ship's cannon dug in and aimed up. Anything coming down will think twice." },
+    { "part": "pointdefense", "name": "Flak tower", "shots": 1, "text": "Point defense up a tower, for whatever falls from the sky faster than it should." },
     { "part": "shield", "name": "Shield dome", "text": "A shield generator throwing its field over the rooftops." },
     { "part": "shieldarray", "name": "Shield array", "text": "The big shield array, with the whole colony under it." }
   ]
