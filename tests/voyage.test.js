@@ -58,12 +58,15 @@ const RUNS = 30;
 // its rate within MARGIN of main's over those seeds before M31 (MAIN, in
 // every 100 runs; MARGIN_RARE for what main saw under 10 times). Two sets
 // of 100 runs differ by about 7 in 100 by chance alone at these rates, so
-// MARGIN is about two of those. The rest fly the first RUNS, as before.
+// MARGIN is about two of those. M32's jobs and orders did the same to four
+// more (every careful run scans; fed with a med bay; fed with surgery; the
+// large hold against the lockers), and they fly 100 seeds the same way,
+// against main's before M32. The rest fly the first RUNS, as before.
 const RATE_RUNS = 100;
 const MARGIN = 15;
 const MARGIN_RARE = 5;
 const MAIN = {
-  miner: { metSectors: 33, ignoringMet: 100, fed: 73, metAny: 42, lost: 29, systemHungry: 14, shortOfAir: 0, surveyed: 68, housed: 41 },
+  miner: { metSectors: 33, ignoringMet: 100, fed: 73, metAny: 42, lost: 29, systemHungry: 14, shortOfAir: 0, surveyed: 68, housed: 41, noScan: 0, medbayFed: 79, surgeryFed: 81 },
   deserter: { fed: 80, metAny: 45, lost: 20 },
   smuggler: { fed: 89, metAny: 19, lost: 18 },
 };
@@ -74,19 +77,23 @@ const lifts = Array.from({ length: RATE_RUNS }, (_, i) => launchedAt(rules, i + 
 // M31 some act 1 runs buy a Scrapline engine, which draws 1 more.
 const powered = (lifted, fit = []) => (shipStats(lifted.campaign.ship, rules).power + fit.reduce((sum, type) => sum + rules.modules.get(type).stats.power, 0) >= 0 ? fit : ['smallreactor', ...fit]);
 const fly = (options, runs = RUNS) => lifts.slice(0, runs).map((lifted, i) => voyage(rules, i + 1, { refit: 'no', ...options, fit: powered(lifted, options.fit) }, lifted));
-const trips = fly({});
+const carefulAll = fly({}, RATE_RUNS);
+const trips = carefulAll.slice(0, RUNS);
 const careful = trips;
 // The careful player with a cargo hold fitted, room to feed a recruit; and
 // with a med bay.
 const cargo = fly({ fit: ['cargo'] });
-const medbay = fly({ fit: ['medbay'] });
+const medbayAll = fly({ fit: ['medbay'] }, RATE_RUNS);
+const medbay = medbayAll.slice(0, RUNS);
 // M23e's parts for the voyage: surgery; bunks, with a cargo hold to feed
 // whoever they make room for; and the large hold. Surgery takes more power
 // than the start ship has spare, so a small reactor goes on with it: a ship
 // failing a flight check can't leave a station (M23h).
-const surgery = fly({ fit: ['smallreactor', 'surgery'] });
+const surgeryAll = fly({ fit: ['smallreactor', 'surgery'] }, RATE_RUNS);
+const surgery = surgeryAll.slice(0, RUNS);
 const bunks = fly({ fit: ['cargo', 'bunks'] });
-const largehold = fly({ fit: ['largehold'] });
+const largeholdAll = fly({ fit: ['largehold'] }, RATE_RUNS);
+const largehold = largeholdAll.slice(0, RUNS);
 // M23h: the careful player refitting at stations, as tools/voyage.js plays
 // by default; and M24: the same, ignoring heat. Over RATE_RUNS seeds, the
 // first RUNS of them as every other set.
@@ -120,7 +127,14 @@ test('supplies and heat move as data/balance.json and data/events.json say, step
   const hold = (type) => rules.modules.get(type).stats.cargo;
   const runs = [[trips, 0], [careful, 0], [cargo, hold('cargo')], [medbay, 0], [surgery, 0], [bunks, hold('cargo')], [largehold, hold('largehold')]];
   for (const [voyages, hold] of runs) {
-    for (const trip of voyages) for (const step of trip.steps) checkStep(step, balance.baseSupplies + hold, kinds);
+    for (const trip of voyages) {
+      // A quartermaster signed on holds 10 more in the lockers from then on (M32).
+      let lockers = 0;
+      for (const step of trip.steps) {
+        if (step.kind === 'hire' && step.job === 'quartermaster') lockers = rules.jobs.get('quartermaster').station.lockers;
+        checkStep(step, balance.baseSupplies + hold + lockers, kinds);
+      }
+    }
   }
   assert.deepEqual([...kinds].sort(), ['approach', 'boarding', 'buy', 'event', 'hide', 'hire', 'jump', 'long', 'patch', 'repair', 'scan', 'sector', 'settle', 'survey', 'swap', 'system'], 'every kind of step comes up');
 });
@@ -150,10 +164,15 @@ function checkStep(step, capacity, kinds) {
   }
   if (step.kind === 'survey') {
     // M25: a day in orbit: a jump's supplies and surveyHeat, and the
-    // hunters' roll at the heat it leaves.
+    // hunters' roll at the heat it leaves. M32: with a xenobiologist
+    // aboard, none of them.
+    assert.deepEqual([step.credits[1], step.hp[1], step.parts[1]], [step.credits[0], step.hp[0], step.parts[0]]);
+    if (step.free) {
+      assert.deepEqual([after, step.heat[1], step.hunt], [supplies, step.heat[0], null]);
+      return;
+    }
     assert.equal(after, supplies - balance.jumpSupplies * step.crew);
     assert.equal(step.heat[1], clamp(step.heat[0] + balance.surveyHeat, HEAT_MAX));
-    assert.deepEqual([step.credits[1], step.hp[1], step.parts[1]], [step.credits[0], step.hp[0], step.parts[0]]);
     checkHunt(step);
     return;
   }
@@ -198,7 +217,9 @@ function checkStep(step, capacity, kinds) {
     assert.equal(step.credits[1] - step.credits[0], step.won ? salvage.credits : 0 - (step.lost?.credits ?? 0));
     assert.equal(step.parts[1] - step.parts[0], (step.won ? salvage.parts.length : 0) - lostPart);
     if (!step.won && step.dir === 'you') assert.ok(step.lost !== null || step.credits[0] < 10, 'they take a part or half the credits');
-    assert.ok(step.hp[1].every((hp, i) => hp >= 1 && hp <= step.hp[0][i]), 'wounds stay, never the last hit point');
+    // Never the last hit point. Since M32 a medic's Patch in the fight can
+    // give back hit points lost before it, so a wound can close.
+    assert.ok(step.hp[1].every((hp) => hp >= 1), 'never the last hit point');
     assert.deepEqual([after, step.heat[1]], [supplies, step.heat[0]]);
     // Law 3: it left parts, credits or wounds behind.
     const hurt = step.hp[1].some((hp, i) => hp < step.hp[0][i]);
@@ -284,7 +305,9 @@ test('ten events play from data, hostile ships are met and boardings fought, and
   // What the nodes paid, on balance, in credits and supplies.
   const paid = careful.map((trip) => trip.tally.eventCredits + balance.supplyPrice * trip.tally.eventSupplies).sort((a, b) => a - b);
   assert.ok(paid[Math.floor(RUNS / 2)] > 0, `the median run comes out ahead at the nodes: ${paid}`);
-  assert.ok(trips.every((trip) => trip.tally.scans > 0), 'every run scans');
+  // Every run scans: since M32 over RATE_RUNS seeds, as main's did.
+  const unscanned = carefulAll.filter((trip) => trip.tally.scans === 0).length;
+  assert.ok(unscanned <= MAIN.miner.noScan + MARGIN_RARE, `${unscanned} of ${RATE_RUNS} runs never scan`);
 });
 
 test('recruits sign on where the holds can feed them, and the run still pays its way: with a cargo hold, 24 or more of 30 careful runs cross fed', () => {
@@ -310,14 +333,16 @@ test('a med bay heals the wounded over jumps: fitted, the careful player patches
   assert.ok(sum(medbay, 'healed') > 0 && sum(careful, 'healed') === 0, `healed ${sum(medbay, 'healed')} with a med bay`);
   assert.ok(sum(medbay, 'patchedHp') < sum(careful, 'patchedHp'), `patched ${sum(medbay, 'patchedHp')} with a med bay, ${sum(careful, 'patchedHp')} without`);
   assert.ok(hp(medbay) > hp(careful), `crew at the end, over ${RUNS} runs: ${hp(medbay)} hit points with, ${hp(careful)} without`);
-  const fed = medbay.filter((trip) => trip.tally.hungryJumps === 0).length;
-  assert.ok(fed >= 24, `fed all the way in ${fed} of ${RUNS} with a med bay`);
+  const fed = medbayAll.filter((trip) => trip.tally.hungryJumps === 0).length;
+  assert.ok(fed >= MAIN.miner.medbayFed - MARGIN, `fed all the way in ${fed} of ${RATE_RUNS} with a med bay`);
 });
 
 test('surgery, bunks and the large hold each change the voyage (Law 1)', () => {
   const sum = (voyages, key) => voyages.reduce((total, trip) => total + trip.tally[key], 0);
   const fed = (voyages) => voyages.filter((trip) => trip.tally.hungryJumps === 0).length;
-  for (const voyages of [surgery, bunks, largehold]) assert.ok(voyages.every((trip) => trip.launched && trip.ended) && fed(voyages) >= 24, `fed all the way in ${fed(voyages)} of ${RUNS}`);
+  for (const voyages of [surgery, bunks, largehold]) assert.ok(voyages.every((trip) => trip.launched && trip.ended), 'every run settles a world past the charts');
+  for (const voyages of [bunks, largehold]) assert.ok(fed(voyages) >= 24, `fed all the way in ${fed(voyages)} of ${RUNS}`);
+  assert.ok(fed(surgeryAll) >= MAIN.miner.surgeryFed - MARGIN, `fed all the way in ${fed(surgeryAll)} of ${RATE_RUNS} with surgery`);
   // Surgery heals more a jump than a med bay (each with the medic aboard),
   // so the crew needs patching less.
   const heal = (voyages) => Math.max(...voyages.flatMap((trip) => trip.steps.filter((step) => step.kind === 'jump').map((step) => step.heal)));
@@ -329,10 +354,11 @@ test('surgery, bunks and the large hold each change the voyage (Law 1)', () => {
   assert.ok(bunks.some((trip) => trip.campaign.crew.length > 4) && cargo.every((trip) => trip.campaign.crew.length <= 4));
   // The large hold carries twice a cargo hold's supplies: its holds fill past
   // a cargo hold's, and the careful player goes hungry less than on the
-  // lockers alone.
+  // lockers alone, over RATE_RUNS seeds since M32 (on seeds 1 to 30 one run
+  // that launches broke starves either way).
   const most = (voyages) => Math.max(...voyages.flatMap((trip) => trip.steps.map((step) => step.supplies[1])));
   assert.ok(most(largehold) > balance.baseSupplies + rules.modules.get('cargo').stats.cargo, `carried ${most(largehold)}`);
-  assert.ok(sum(largehold, 'hungryJumps') < sum(careful, 'hungryJumps'), `hungry jumps: ${sum(largehold, 'hungryJumps')} with a large hold, ${sum(careful, 'hungryJumps')} on the lockers`);
+  assert.ok(sum(largeholdAll, 'hungryJumps') < sum(carefulAll, 'hungryJumps'), `hungry jumps over ${RATE_RUNS} runs: ${sum(largeholdAll, 'hungryJumps')} with a large hold, ${sum(carefulAll, 'hungryJumps')} on the lockers`);
 });
 
 test('the same seed always gives the same sectors, none named twice in a run', () => {
@@ -556,7 +582,9 @@ test("the colony's trips: the careful player flies 30 days more, a squad aboard 
     assert.equal(travelled.flags.trips, trips.flown.length);
     assert.equal(travelled.flags.tripsHome, trips.flown.length, `seed ${seed}: the ship came home from every trip`);
     assert.equal(travelled.colony.day, home.colony.day + TRIP_DAYS);
-    assert.equal(trips.away, trips.flown.reduce((sum, flown) => sum + 2 * flown.days, 0));
+    // A trip's days are out and home, each its own since a pilot in the
+    // squad can shorten them (M32).
+    assert.equal(trips.away, trips.flown.reduce((sum, flown) => sum + flown.days, 0));
     assert.ok(trips.flown.every((flown) => flown.squad >= 1 && flown.squad <= balance.squadSize));
     // Berths and air aboard for the squads it took; nobody lost.
     assert.ok(crewRoom(travelled.ship, rules) >= Math.max(...trips.flown.map((flown) => flown.squad)), `seed ${seed}: room aboard for its squads`);

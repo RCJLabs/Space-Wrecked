@@ -342,7 +342,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
         const done = survey(campaign, defs);
         if (!done.ok) throw new Error(done.error);
         campaign = done.campaign;
-        record('survey', before, { world: here.name, hunt: done.hunt });
+        record('survey', before, { world: here.name, hunt: done.hunt, free: done.plan.free });
         tally.surveys += 1;
         tally.peak = Math.max(tally.peak, campaign.heat);
         lines.push(`   Surveyed ${here.name} (${kindName(defs, here.world)}): ${numbersText(here.world)}; scores ${worldScore(defs, here.world, true)}. ${hold()}${done.plan.free ? ', a free survey' : ''}${done.hunt?.found ? '. The hunters found the ship' : ''}.`);

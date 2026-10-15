@@ -384,5 +384,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 6 weapons, 7 crew jobs, 6 traits, 14 enemies, 19 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 26 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 18 events\)/);
+  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 6 weapons, 7 crew jobs, 6 traits, 14 enemies, 21 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 26 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 18 events\)/);
 });
