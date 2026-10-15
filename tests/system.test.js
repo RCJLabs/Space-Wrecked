@@ -178,7 +178,7 @@ test('Settle here: act 2 ends, surveyed or not, and the world goes with the camp
   assert.deepEqual(plan, { ok: true, world: { name: node.name, ...node.world, surveyed: false } });
   const { campaign: after } = settle(campaign, rules);
   assert.deepEqual([after.act, after.place], [COLONY_ACT, 'hub']);
-  assert.deepEqual(after.colony, { world: plan.world, buildings: [], nextUid: 1 });
+  assert.deepEqual(after.colony, { world: plan.world, buildings: [], nextUid: 1, day: 1, materials: rules.colony.materials });
   assert.equal(after.flags.settled, 1);
   // The ship, crew, credits, parts on hand and heat go with it; the run
   // stays as it ended, for the act's record.

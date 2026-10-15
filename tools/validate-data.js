@@ -795,6 +795,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       `${count(data.encounters.encounters.length, 'encounter')}, ${count(data.ships.ships.length, 'ship preset')}, ` +
       `${count(data.campaign.acts.length, 'act')}, ${count(data.backgrounds.backgrounds.length, 'background')}, ` +
       `${count(data.districts.districts.length, 'district')}, ${count(data.sites.maps.length, 'site map')}, ` +
-      `${count(data.contracts.jobs.length, 'job template')}, ${count(data.sectors.nodes.length, 'kind')} of sector node, ${count(data.worlds.kinds.length, 'kind')} of world, ${count(data.colony.buildings.length, 'colony building')}, ${count(data.events.events.length, 'event')})`,
+      `${count(data.contracts.jobs.length, 'job template')}, ${count(data.sectors.nodes.length, 'kind')} of sector node, ${count(data.worlds.kinds.length, 'kind')} of world, ${count(data.colony.buildings.length, 'colony building')}, ${count(data.colony.builds.length, 'colony build')}, ${count(data.events.events.length, 'event')})`,
   );
 }

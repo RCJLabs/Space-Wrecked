@@ -74,8 +74,19 @@ export function indexDefs(files) {
     worlds: worlds ? { system: worlds.system, lanes: worlds.lanes ?? [], kinds: byId(worlds.kinds), names: worlds.names ?? {} } : null,
     // The colony (M26, colony.js): its grid, the tags of the parts that
     // stay aboard, its words, and the building each useful part becomes,
-    // by the part's base id, in data order.
-    colony: colony ? { site: colony.site, aboard: colony.aboard ?? [], text: colony.text, buildings: new Map((colony.buildings ?? []).map((b) => [b.part, b])) } : null,
+    // by the part's base id, in data order. From M27 (days.js), the
+    // materials it starts with and what it builds from them, the farms and
+    // mines, by id in data order.
+    colony: colony
+      ? {
+          site: colony.site,
+          aboard: colony.aboard ?? [],
+          text: colony.text,
+          materials: colony.materials ?? 0,
+          builds: byId(colony.builds),
+          buildings: new Map((colony.buildings ?? []).map((b) => [b.part, b])),
+        }
+      : null,
     // What happens at a sector's nodes (events.js): each event by id, and
     // the drop tables its outcomes draw parts from.
     events: byId(events?.events),

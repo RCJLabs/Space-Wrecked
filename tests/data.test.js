@@ -313,6 +313,21 @@ const cases = [
   ['a building with no words', (d) => delete d.colony.buildings[0].text, /colony.json building reactor: text must be a non-empty string/],
   ['a building with a stray field', (d) => (d.colony.buildings[0].power = 9), /colony.json building reactor: unknown field "power"/],
   ['a building too big for the grid', (d) => Object.assign(d.colony.site, { width: 8, height: 6 }) && (d.modules.modules.find((m) => m.id === 'reactor').size = [9, 3]), /colony.json building reactor: part: doesn't fit on the colony's grid/],
+  // M27: what the colony builds.
+  ['a colony that lands with materials past counting', (d) => (d.colony.materials = 500), /colony.json: materials must be a whole number from 0 to 200/],
+  ['no builds', (d) => (d.colony.builds = []), /colony.json: needs a build at least/],
+  ["a build with a part's id", (d) => (d.colony.builds[0].id = 'reactor'), /colony.json build reactor: id: "reactor" is a part's: a build needs an id of its own/],
+  ['a build id twice', (d) => (d.colony.builds[1].id = 'farm'), /colony.json build farm: id used twice/],
+  ["a build with a building's name", (d) => (d.colony.builds[0].name = 'Power plant'), /colony.json building reactor: name used twice/],
+  ['a build too big for the grid', (d) => (d.colony.builds[0].size = [5, 2]), /colony.json build farm: size must be \[width, height\], each from 1 to 4/],
+  ['a build that costs nothing', (d) => (d.colony.builds[0].cost = 0), /colony.json build farm: cost must be a whole number from 1 to 100/],
+  ['a build that makes credits', (d) => (d.colony.builds[0].makes = 'credits'), /colony.json build farm: makes must be one of food, materials/],
+  ['a build that makes from danger', (d) => (d.colony.builds[0].from = ['soil', 'danger']), /colony.json build farm: from must be a list of the world's numbers it makes from: soil, water, ore, each once/],
+  ['a build that makes from soil twice', (d) => (d.colony.builds[0].from = ['soil', 'soil']), /colony.json build farm: from must be a list/],
+  ['a build that makes nothing from nothing', (d) => (d.colony.builds[0].from = []), /colony.json build farm: from must be a list/],
+  ['a build whose least is unbounded', (d) => (d.colony.builds[0].least = -1), /colony.json build farm: least must be a whole number from 0 to 9/],
+  ['a build with a stray field', (d) => (d.colony.builds[0].power = 2), /colony.json build farm: unknown field "power"/],
+  ['a build with no words', (d) => delete d.colony.builds[1].text, /colony.json build mine: text must be a non-empty string/],
 ];
 
 function pursuerRun(d) {
@@ -349,5 +364,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(42 modules, 1 frame, 2 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 5 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 10 events\)/);
+  assert.match(run.stdout, /OK \(42 modules, 1 frame, 2 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 7 enemies, 9 encounters, 5 ship presets, 3 acts, 1 background, 1 district, 4 site maps, 10 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 2 colony builds, 10 events\)/);
 });

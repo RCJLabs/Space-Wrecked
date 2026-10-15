@@ -60,9 +60,15 @@
 // At the colony (M26) it gives the ship's parts one at a time (nextGift):
 // a part that beds or breathes for the crew first, while any can go, then
 // the rest, each in the ship's order, until the flight checks let no more
-// go.
+// go. Then (M27), before each day, it builds what its crew's food needs
+// (nextBuild): the farms that feed the crew, what they eat a day over
+// what a farm grows there, each as soon as the materials allow; while it
+// can't yet pay for them all, a mine first whenever the mine would pay for
+// them sooner, its own cost counted. Each goes in the first spot that
+// fits. Once its farms feed the crew it builds nothing more.
 import { canRefit, maxHp, refitShip } from '../src/sim/campaign.js';
-import { shipParts } from '../src/sim/colony.js';
+import { shipParts, yieldOf } from '../src/sim/colony.js';
+import { buildPlan } from '../src/sim/colonyBuild.js';
 import { crewRoom } from '../src/sim/crew.js';
 import { sellPriceOf } from '../src/sim/economy.js';
 import { choiceProblem } from '../src/sim/events.js';
@@ -419,6 +425,29 @@ export function nextGift(campaign, rules) {
   const ready = shipParts(campaign, rules).filter((part) => part.ok);
   const housing = ready.find((part) => part.gives.beds > 0 || part.gives.air > 0);
   return (housing ?? ready[0])?.uid ?? null;
+}
+
+// What the player builds at the colony next, before the day passes (see
+// the top of the file): { build: id }, a farm or a mine in the first spot
+// that fits, or null to let the day pass.
+export function nextBuild(campaign, rules) {
+  const builds = [...rules.colony.builds.values()];
+  const farm = builds.find((build) => build.makes === 'food');
+  const mine = builds.find((build) => build.makes === 'materials');
+  if (!farm) return null;
+  const { world, materials, buildings } = campaign.colony;
+  const count = (build) => buildings.filter((building) => building.type === build.id).length;
+  const needed = Math.ceil(jumpSupplies(campaign, rules) / yieldOf(farm, world)) - count(farm);
+  if (needed <= 0) return null;
+  const can = (build) => buildPlan(campaign, rules, { build: build.id }).ok;
+  const short = needed * farm.cost - materials;
+  if (short > 0 && mine && can(mine)) {
+    const income = count(mine) * yieldOf(mine, world);
+    const days = income > 0 ? Math.ceil(short / income) : Infinity;
+    const withMine = Math.ceil((short + mine.cost) / (income + yieldOf(mine, world)));
+    if (withMine < days) return { build: mine.id };
+  }
+  return can(farm) ? { build: farm.id } : null;
 }
 
 // What a world is worth to the player as a colony: soil, water and ore a

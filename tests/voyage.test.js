@@ -21,7 +21,10 @@
 // best, in every run, which ends the voyage and the act. And M26's: it
 // founds the colony, giving every useful part the flight checks let go,
 // beds and air first; the ship still passes every flight check counting
-// nobody aboard, and every building is powered, in every run.
+// nobody aboard, and every building is powered, in every run. And M27's: it
+// plays the colony's first 30 days, building farms and mines by its own
+// judgment, and in every run its farms feed the crew within 15 days of the
+// landing.
 // Each voyage launches from a test run of act 1 (tools/run.js) and is
 // played by the test player in tools/voyage.js. The voyages before M23h's
 // fly as fitted, with no refits, so each compares one part's difference.
@@ -33,7 +36,7 @@ import { FACED } from '../src/sim/approach.js';
 import { HEAT_MAX, maxHp, shipChecklist } from '../src/sim/campaign.js';
 import { colonyStats, donate, shipParts } from '../src/sim/colony.js';
 import { outcomeFor } from '../src/sim/events.js';
-import { foundColony, launchedAt, manyVoyages, voyage } from '../tools/voyage.js';
+import { COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, playColony, voyage } from '../tools/voyage.js';
 import { bestWorld, FIT_ORDER, nextGift, systemMove } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 
@@ -436,4 +439,46 @@ test('the colony: the careful player founds it in every run, giving every useful
   assert.ok(housed >= 10, `everyone housed in ${housed} of ${RUNS}`);
   const summary = manyVoyages(rules, 2, { refit: 'no' }).lines.join('\n');
   assert.match(summary, /The colony: founded in 2 of 2, \d+ \(\d+ to \d+\) parts given: /);
+});
+
+test("the colony's days: the careful player plays 30, building farms and mines by its own judgment, and in every run its farms feed the crew within 15 days of the landing (M27)", () => {
+  assert.deepEqual([COLONY_DAYS, FED_WITHIN], [30, 15]);
+  const eats = (campaign) => campaign.crew.length * balance.jumpSupplies;
+  for (const [i, trip] of refitting.entries()) {
+    const seed = i + 1;
+    const { days, colony } = trip.tally;
+    const { home } = trip;
+    assert.ok(days && home, `seed ${seed} plays the colony's days`);
+    assert.equal(home.colony.day, 1 + COLONY_DAYS);
+    assert.equal(home.flags.colonyDays, COLONY_DAYS);
+    // Its farms feed the crew within 15 days of the landing, and go on
+    // feeding them.
+    assert.ok(days.fedOn !== null && days.fedOn - 1 <= FED_WITHIN, `seed ${seed}: fed by its farms from day ${days.fedOn}`);
+    assert.ok(colonyStats(home, rules).made.food >= eats(home), `seed ${seed}: the farms feed the crew at the end`);
+    // What it built stands after what it gave, farms and mines, each paid
+    // for: the materials it had, dug and spent add up, the stores keeping
+    // the rest.
+    assert.deepEqual(home.colony.buildings.map((b) => b.type), [...colony.given, ...days.built.map((b) => b.type)]);
+    assert.equal(days.farms + days.mines, days.built.length);
+    const spent = days.built.reduce((sum, b) => sum + rules.colony.builds.get(b.type).cost, 0);
+    assert.equal(home.flags.materialsSpent ?? 0, spent);
+    assert.equal(days.materials[1], days.materials[0] + (home.flags.materialsDug ?? 0) - spent - (home.flags.materialsLost ?? 0), `seed ${seed}: materials add up`);
+    assert.ok(days.materials[1] <= days.stores && days.food[1] <= days.stores);
+    // Nobody died of hunger: the crew is the one that landed.
+    assert.deepEqual(home.crew.map((m) => m.id), trip.campaign.crew.map((m) => m.id));
+    // The same founding plays the same days.
+    assert.deepEqual(playColony(trip.campaign, rules), { campaign: home, days }, `seed ${seed}: the same days again`);
+    // The report says the farms, mines, food, materials and hungry days.
+    assert.ok(
+      trip.lines.some((line) => /^   30 days at the colony: built .+; its farms feed the crew from day \d+; \d+ hungry days?.*; food \d+ to \d+, materials \d+ to \d+, of \d+ each; \d+ farms? and \d+ mines?\.$/.test(line)),
+      `seed ${seed} reports its days`,
+    );
+  }
+  // A world without soil needs a mine first: the careful player digs before
+  // it farms where the farms it needs cost more than it landed with.
+  const dug = refitting.filter((trip) => trip.tally.days.mines > 0);
+  assert.ok(dug.length >= 1, 'some colony needs mines');
+  for (const trip of dug) assert.equal(trip.tally.days.built[0].type, 'mine');
+  const summary = manyVoyages(rules, 2, { refit: 'no' }).lines.join('\n');
+  assert.match(summary, /The colony's first 30 days: its farms feed the crew within 15 days of the landing in 2 of 2, from day \d+ /);
 });

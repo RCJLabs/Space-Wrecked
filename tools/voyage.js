@@ -37,7 +37,10 @@
 //     allow, and settle the world it scores best (voyagePlan.js
 //     systemMove), which ends the voyage;
 //   - at the colony (M26), give it every useful part of the ship the
-//     flight checks let go, beds and air first (voyagePlan.js nextGift).
+//     flight checks let go, beds and air first (voyagePlan.js nextGift);
+//   - then play the colony's first COLONY_DAYS days (M27), building the
+//     farms that feed the crew, and the mines that pay for them sooner,
+//     before each day (voyagePlan.js nextBuild).
 //
 //   node tools/voyage.js               a voyage from campaign seed 1, step by step
 //   node tools/voyage.js --seed 7      another seed
@@ -53,7 +56,9 @@
 //                                      only (as many --set as you like)
 import { pathToFileURL } from 'node:url';
 import { maxHp, shipChecklist } from '../src/sim/campaign.js';
-import { buildingOf, colonyStats, donate } from '../src/sim/colony.js';
+import { buildingOf, colonyStats, donate, storesOf } from '../src/sim/colony.js';
+import { build } from '../src/sim/colonyBuild.js';
+import { nextDay } from '../src/sim/days.js';
 import { flightChecklist } from '../src/sim/constraints.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { FACED } from '../src/sim/approach.js';
@@ -77,22 +82,27 @@ import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
 import { withPart } from './startShip.js';
-import { bestChoice, boardIt, HEAT_POLICIES, hireWho, LONG_FROM, nextGift, nextJump, refitAt, restNow, scanNow, swapNow, systemMove, worldScore } from './voyagePlan.js';
+import { bestChoice, boardIt, HEAT_POLICIES, hireWho, LONG_FROM, nextBuild, nextGift, nextJump, refitAt, restNow, scanNow, swapNow, systemMove, worldScore } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
 export const REFIT_POLICIES = ['yes', 'no'];
 const MAX_JUMPS = 100; // a voyage still going after this many stops
+// The colony's days the test player plays, and the days from the landing
+// within which its farms are to feed the crew (M27's Done when).
+export const COLONY_DAYS = 30;
+export const FED_WITHIN = 15;
 
 // A voyage from a launched campaign (act 2, the run not yet begun) to a
-// world settled and its colony founded: { ended, steps, sectors, system,
-// tally, lines, campaign, landed }.
+// world settled, its colony founded and its first days played: { ended,
+// steps, sectors, system, tally, lines, campaign, landed, home }.
 // ended: whether it settled a world, ending the act; steps: every jump,
 // purchase, event, approach, boarding, patch, repair, scan and survey, with
 // what it moved, [before, after], and the settling; sectors: each sector as
 // the ship entered it; system: the system past the charts, as it entered
-// it, or null; landed: the campaign as it settled, before the colony was
-// founded, or null.
+// it, or null; campaign: as it ended, the colony founded; landed: the
+// campaign as it settled, before the colony was founded, or null; home:
+// the colony after its first COLONY_DAYS days (M27), or null.
 export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 'yes', refit = 'yes', heat = 'manage', label = '' } = {}) {
   if (!LONG_POLICIES.includes(longPolicy)) throw new Error(`--long is one of ${LONG_POLICIES.join(', ')}`);
   if (!HEAT_POLICIES.includes(heat)) throw new Error(`--heat is one of ${HEAT_POLICIES.join(', ')}`);
@@ -199,6 +209,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
   // A jump made: its step, the tallies and the log.
   let system = null;
   let landed = null;
+  let home = null;
   const jumped = (before, moved) => {
     if (!moved.ok) throw new Error(moved.error);
     campaign = moved.campaign;
@@ -333,6 +344,10 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
         campaign = founded.campaign;
         tally.colony = founded.colony;
         lines.push(`   ${colonyLine(defs, founded.colony)}`);
+        const played = playColony(campaign, defs);
+        home = played.campaign;
+        tally.days = played.days;
+        lines.push(`   ${daysLine(played.days)}`);
         break;
       }
       jumped(before, jump(campaign, defs, move.to));
@@ -444,7 +459,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     `${where}, ${tally.crossed} sectors crossed, ${tally.surveys} world${tally.surveys === 1 ? '' : 's'} surveyed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits; boarded ${tally.boardings} (won ${tally.boardingsWon}), left ${tally.left}, fought off ${tally.defencesWon} of ${tally.defences}; salvage ${tally.salvaged} parts and ${tally.salvageCredits} credits, lost ${tally.partsLost} parts and ${tally.creditsLost} credits, ${tally.fightHp} hit points; patched ${tally.patchedHp} for ${tally.patchCredits} credits; ${tally.repairs} repairs for ${tally.repairCredits} credits; signed on ${tally.hired}, healed ${tally.healed} in the med bay; refitted ${tally.fitted} parts at ${tally.refits} stations. The hunters: met ${tally.hunts} (${tally.taskForces} the task force), faced ${tally.huntsFaced}; ${tally.hotJumps} jumps where they might wait; ${tally.regroups} regroups and ${tally.hides} days hidden, healing ${tally.rested}; ${tally.swaps} transponder swaps for ${tally.swapCredits} credits. Heat ${tally.heat[0]} to ${tally.heat[1]}, at most ${tally.peak}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
   );
   if (ended) lines.push(`The act's record: ${tally.settled.record.map(([label, value]) => `${label} ${value}`).join('; ')}.`);
-  return { ended, steps, sectors, system, tally, lines, campaign, landed };
+  return { ended, steps, sectors, system, tally, lines, campaign, landed, home };
 }
 
 // The colony founded as the careful player would (M26): the ship's parts
@@ -477,6 +492,66 @@ export function foundColony(campaign, defs) {
     flies: shipChecklist(campaign, defs).every((line) => line.ok === true),
   };
   return { campaign, colony };
+}
+
+// The colony's first days as the careful player plays them (M27): before
+// each day it builds what voyagePlan.js's nextBuild says, as long as it
+// says to, then passes the day. { campaign, days: { built ([{ day, type,
+// name }], in order), fedOn (the first day its farms fed the crew, what
+// they grow a day covering what the crew eats, or null), hungry (hungry
+// days), farms, mines, food and materials ([at the landing, at the end]),
+// stores (at the end), healed, hurt } }.
+export function playColony(campaign, defs, days = COLONY_DAYS) {
+  const built = [];
+  const start = { food: campaign.supplies, materials: campaign.colony.materials };
+  let fedOn = null;
+  let healed = 0;
+  let hurt = 0;
+  for (let n = 0; n < days; n++) {
+    for (let what = nextBuild(campaign, defs); what; what = nextBuild(campaign, defs)) {
+      const done = build(campaign, defs, what);
+      if (!done.ok) throw new Error(done.error);
+      built.push({ day: campaign.colony.day, type: done.plan.type, name: done.plan.name });
+      campaign = done.campaign;
+    }
+    if (fedOn === null && colonyStats(campaign, defs).made.food >= campaign.crew.length * defs.balance.jumpSupplies) fedOn = campaign.colony.day;
+    const day = nextDay(campaign, defs);
+    if (!day.ok) throw new Error(day.error);
+    campaign = day.campaign;
+    healed += day.healed;
+    hurt += day.hurt;
+  }
+  const count = (makes) => campaign.colony.buildings.filter((b) => defs.colony.builds.get(b.type)?.makes === makes).length;
+  return {
+    campaign,
+    days: {
+      built,
+      fedOn,
+      hungry: campaign.flags.hungryDays ?? 0,
+      farms: count('food'),
+      mines: count('materials'),
+      food: [start.food, campaign.supplies],
+      materials: [start.materials, campaign.colony.materials],
+      stores: storesOf(campaign, defs).total,
+      healed,
+      hurt,
+    },
+  };
+}
+
+// What the colony's days came to, as a line of its report: "30 days at the
+// colony: built Mine 2 (day 1), Farm 4 (days 4, 6, 9, 11); its farms feed
+// the crew from day 11; 6 hungry days; food 4 to 25, materials 20 to 30, of
+// 30 each."
+function daysLine(days) {
+  const named = new Map();
+  for (const { day, name } of days.built) named.set(name, [...(named.get(name) ?? []), day]);
+  const builds = [...named].map(([name, on]) => `${name}${on.length > 1 ? ` ${on.length}` : ''} (day${on.length > 1 ? 's' : ''} ${on.join(', ')})`).join(', ');
+  const fed = days.fedOn === null ? 'its farms never feed the crew' : `its farms feed the crew from day ${days.fedOn}`;
+  return (
+    `${COLONY_DAYS} days at the colony: built ${builds || 'nothing'}; ${fed}; ${days.hungry} hungry day${days.hungry === 1 ? '' : 's'}${days.hurt ? ` (${days.hurt} hit points)` : ''}; ` +
+    `food ${days.food[0]} to ${days.food[1]}, materials ${days.materials[0]} to ${days.materials[1]}, of ${days.stores} each; ${days.farms} farm${days.farms === 1 ? '' : 's'} and ${days.mines} mine${days.mines === 1 ? '' : 's'}.`
+  );
 }
 
 // What a run's colony came to, as a line of its report.
@@ -545,6 +620,7 @@ export function manyVoyages(defs, runs, options = {}) {
     `Sectors crossed: ${spread(of('crossed'))}; ${done.filter((r) => r.system).length} of ${done.length} entered the system past the charts, ${done.filter((r) => r.ended).length} settled a world; fed all the way in ${done.filter((r) => r.tally.hungryJumps === 0).length} of ${done.length}.`,
     systemLine(defs, done),
     colonySummary(defs, done),
+    daysSummary(done),
     `Jumps: ${spread(of('jumps'))}, long ${spread(of('longJumps'))}, hungry ${spread(of('hungryJumps'))}.`,
     `At the nodes: ${spread(of('events'))} events, ${spread(of('eventCredits'))} credits and ${spread(of('eventSupplies'))} supplies from them, ${spread(of('found'))} parts found, ${spread(of('sold'))} sold, ${spread(of('wounds'))} hit points lost; ${spread(of('scans'))} scans.`,
     `Hostile ships: ${spread(of('approaches'))} met, ${spread(of('approachesWon'))} disabled or blown up, ${spread(of('approachesLost'))} boarding us. Boarded her ${spread(of('boardings'))} times (won ${spread(of('boardingsWon'))}), left her ${spread(of('left'))}; fought off ${spread(of('defencesWon'))} of ${spread(of('defences'))} boardings. Salvage: ${spread(of('salvaged'))} parts and ${spread(of('salvageCredits'))} credits. Lost: ${spread(of('partsLost'))} parts and ${spread(of('creditsLost'))} credits; ${spread(of('fightHp'))} hit points in the fights. Lost a boarding at home: ${done.filter((r) => r.steps.some((step) => step.kind === 'boarding' && step.dir === 'you' && !step.won)).length} of ${done.length}; dragged past 40 rounds: ${done.reduce((sum, r) => sum + r.tally.dragged, 0)}.`,
@@ -586,6 +662,23 @@ function colonySummary(defs, done) {
     `The colony: founded in ${colonies.length} of ${done.length}, ${median(colonies.map((colony) => colony.given.length))} parts given: ${namesOf(defs, colonies.flatMap((colony) => colony.given)) || 'none'}. ` +
     `Everyone housed in ${housed} of ${colonies.length}, ${median(colonies.map((colony) => colony.aboard))} sleeping aboard; every building powered in ${colonies.filter((colony) => colony.dark === 0).length}, power to spare ${median(colonies.map((colony) => colony.power.spare))}; ` +
     `the ship flies with nobody aboard in ${colonies.filter((colony) => colony.flies).length}; the infirmary healed in ${colonies.filter((colony) => colony.healed > 0).length}.`
+  );
+}
+
+// The colonies' first days (M27): when their farms fed the crew, what
+// was built, the hungry days, and the stocks at the end.
+function daysSummary(done) {
+  const played = done.map((r) => r.tally.days).filter(Boolean);
+  const median = (values) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted.length ? `${sorted[Math.floor((sorted.length - 1) / 2)]} (${sorted[0]} to ${sorted.at(-1)})` : '-';
+  };
+  const fed = played.filter((days) => days.fedOn !== null);
+  const soon = fed.filter((days) => days.fedOn - 1 <= FED_WITHIN).length;
+  return (
+    `The colony's first ${COLONY_DAYS} days: its farms feed the crew within ${FED_WITHIN} days of the landing in ${soon} of ${played.length}, from day ${median(fed.map((days) => days.fedOn))}; ` +
+    `farms ${median(played.map((days) => days.farms))}, mines ${median(played.map((days) => days.mines))}; hungry days ${median(played.map((days) => days.hungry))}, in ${played.filter((days) => days.hungry > 0).length} runs; ` +
+    `at the end, food ${median(played.map((days) => days.food[1]))} and materials ${median(played.map((days) => days.materials[1]))}, stores ${median(played.map((days) => days.stores))}.`
   );
 }
 

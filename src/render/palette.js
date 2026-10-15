@@ -148,6 +148,25 @@ export function groundFor(kind) {
   return grounds[kind] ?? grounds.rock;
 }
 
+// The colony's own buildings (M27, colonyBuilds.js): a farm's soil, crops
+// and water tank; a mine's gravel, pit, timbers, steel and ore, and the
+// lamp on its headframe; and the shed anything else is.
+export const buildColors = {
+  soil: '#4b3a27',
+  crop: '#79b552',
+  cropDark: '#558c3c',
+  tank: '#a7b3bf',
+  water: '#4fa8d6',
+  shed: '#8a7e6e',
+  gravel: '#6b665f',
+  pit: '#151311',
+  timber: '#8a6a45',
+  steel: '#9aa4ae',
+  ore: '#b8743f',
+  oreDark: '#86512c',
+  lamp: '#ffd36b',
+};
+
 // Bastion Arms (M23g): gunmetal fittings, orange hazard chevrons, engines
 // burning orange, and amber lines on the plans. Its parts take the ship's
 // paint and trim like any other's (FITTINGS).

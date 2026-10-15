@@ -5,6 +5,8 @@ import { int } from '../core/rng.js';
 import { emptyBuilds, reduceBuilds } from './builds.js';
 import { beginFight, captainProblem, newCampaign, refitShip, saveFight } from './campaign.js';
 import { donate } from './colony.js';
+import { build, moveBuilding, takeDown } from './colonyBuild.js';
+import { nextDay } from './days.js';
 import { endJob, takeJob, withBoard } from './contracts.js';
 import { buyPart, sellPart } from './economy.js';
 import { beginBoarding, closeApproach, endBoarding, giveOrder } from './encounter.js';
@@ -105,6 +107,13 @@ export function initialState(seed) {
 //                                  ends, and the landing plays (settle.js)
 //   campaign/donate { uid, rules } the ship's part uid given to the colony,
 //                                  where it stands as a building (colony.js)
+//   campaign/build { what, placement, rules }   a farm or a mine built, a
+//                                  spare part set down or a ship's part
+//                                  given, where the player put it
+//                                  (colonyBuild.js, M27)
+//   campaign/move { uid, placement, rules }   a building moved or turned
+//   campaign/takedown { uid, rules }   a building taken down
+//   campaign/day { rules }         the colony's day passed (days.js)
 //   campaign/approach/order { order, rules }   the player's order for a
 //                                  round of the approach (encounter.js)
 //   campaign/approach/close        Carry on, once the approach is over, or
@@ -207,7 +216,11 @@ export function reduce(state, action) {
     case 'campaign/patch':
     case 'campaign/hire':
     case 'campaign/dismiss':
-    case 'campaign/donate': {
+    case 'campaign/donate':
+    case 'campaign/build':
+    case 'campaign/move':
+    case 'campaign/takedown':
+    case 'campaign/day': {
       const move = {
         'campaign/run/begin': (c) => beginRun(c, action.rules),
         'campaign/jump': (c) => jump(c, action.rules, action.to),
@@ -225,6 +238,10 @@ export function reduce(state, action) {
         'campaign/hire': (c) => hireRecruit(c, action.rules, action.slot),
         'campaign/dismiss': (c) => dismissCrew(c, action.rules, action.id),
         'campaign/donate': (c) => donate(c, action.rules, action.uid),
+        'campaign/build': (c) => build(c, action.rules, action.what, action.placement ?? null),
+        'campaign/move': (c) => moveBuilding(c, action.rules, action.uid, action.placement),
+        'campaign/takedown': (c) => takeDown(c, action.rules, action.uid),
+        'campaign/day': (c) => nextDay(c, action.rules),
       }[action.type];
       const done = state.campaign && move(state.campaign);
       if (!done?.ok) return state;
