@@ -126,6 +126,23 @@ test("a Bastion part's card has its maker's word and how it differs from the Yar
   assert.equal(cardFor(defs, defs.modules.get('engine')).lines.length, 3);
 });
 
+test("Kestrel's and Scrapline's cards say how theirs differ: lighter, frailer and dearer; cheaper, frailer and short of power (M31)", () => {
+  assert.deepEqual(cardFor(defs, defs.modules.get('kestrel-engine')).lines.slice(1), [
+    'Power −1 · Thrust 12 · Mass 2 · Hull points 8',
+    "Built light: lighter than the yard's and dearer, and quicker to break.",
+    "Next to the Yard's: Mass −1 · Hull points −7 · Cost +40",
+    'Cost 240 · Kestrel Dynamics',
+  ]);
+  // A reactor making 1 less and an engine drawing 1 more are both Power −1.
+  assert.deepEqual(cardFor(defs, defs.modules.get('scrapline-reactor')).lines.slice(1), [
+    'Power +7 · Mass 6 · Hull points 23',
+    "Built cheap: a third off the yard's price, weaker, and hungrier for power.",
+    "Next to the Yard's: Power −1 · Hull points −7 · Cost −70",
+    'Cost 130 · Scrapline',
+  ]);
+  assert.equal(cardFor(defs, defs.modules.get('scrapline-engine')).lines.at(-2), "Next to the Yard's: Power −1 · Hull points −4 · Cost −70");
+});
+
 test("a wrecked part's card says it stays on until a station repairs it, and the run's chip says Ready to jump (M23h)", () => {
   const engine = defs.modules.get('engine');
   const card = cardFor(defs, engine, { module: { uid: 4, type: 'engine', x: 0, y: 2, rot: 0 }, joined: true, wrecked: true });

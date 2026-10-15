@@ -3,7 +3,7 @@ eeRRRRRR...WBB
 eeRRRRRRL+++BB
 EERRRRRRLQQQBB
 EE.AA....QQQWW
-  1 bridge at (17, 5), turned 1
+  1 kestrel-bridge at (17, 5), turned 1
   2 corridor at (16, 6), turned 0
   3 corridor at (15, 6), turned 1
   4 corridor at (14, 6), turned 2
@@ -14,9 +14,9 @@ EE.AA....QQQWW
   9 engine at (5, 7), turned 0
   10 lightengine at (5, 6), turned 0
   11 lightengine at (5, 5), turned 0
-  12 weapon at (16, 5), turned 0
-  13 weapon at (18, 8), turned 1
-  14 weapon at (17, 8), turned 2
+  12 kestrel-weapon at (16, 5), turned 0
+  13 kestrel-weapon at (18, 8), turned 1
+  14 kestrel-weapon at (17, 8), turned 2
   15 airlock at (8, 8), turned 0
 Wrecked: none
 
@@ -32,9 +32,9 @@ eeRRRQQQW.
   4 quarters at (12, 7), turned 2
   5 lifesupport at (13, 5), turned 2
   6 reactor at (9, 6), turned 0
-  7 engine at (7, 6), turned 0
+  7 kestrel-engine at (7, 6), turned 0
   8 lightengine at (7, 8), turned 0
-  9 weapon at (15, 8), turned 1
+  9 kestrel-weapon at (15, 8), turned 1
   10 weapon at (12, 6), turned 0
   11 airlock at (10, 4), turned 1
 Wrecked: none
@@ -45,18 +45,18 @@ EE.A..L..BB
 EERRR.L++BB
 eeRRRQQQXBB
 eeRRRQQQXW.
-  1 bridge at (15, 5), turned 1
+  1 kestrel-bridge at (15, 5), turned 1
   2 corridor at (14, 6), turned 1
   3 corridor at (13, 6), turned 0
-  4 armory at (14, 7), turned 3
+  4 kestrel-armory at (14, 7), turned 3
   5 quarters at (11, 7), turned 2
-  6 lifesupport at (12, 5), turned 1
+  6 kestrel-lifesupport at (12, 5), turned 1
   7 reactor at (8, 6), turned 1
-  8 engine at (6, 5), turned 0
+  8 kestrel-engine at (6, 5), turned 0
   9 lightengine at (6, 7), turned 0
   10 lightengine at (6, 8), turned 0
-  11 weapon at (15, 8), turned 1
-  12 weapon at (16, 4), turned 1
+  11 kestrel-weapon at (15, 8), turned 1
+  12 kestrel-weapon at (16, 4), turned 1
   13 airlock at (9, 4), turned 1
 Wrecked: none
 
@@ -189,24 +189,24 @@ EEOOOOCCCCCCLQQQBB
 EERRR..AA...LQQQ..
 EERRR.............
 EERRR.............
-  1 bridge at (19, 5), turned 1
-  2 corridor at (18, 6), turned 2
-  3 corridor at (17, 6), turned 3
-  4 corridor at (16, 6), turned 3
-  5 corridor at (15, 6), turned 0
-  6 quarters at (16, 4), turned 0
-  7 quarters at (16, 7), turned 2
+  1 scrapline-bridge at (19, 5), turned 1
+  2 scrapline-corridor at (18, 6), turned 2
+  3 scrapline-corridor at (17, 6), turned 3
+  4 scrapline-corridor at (16, 6), turned 3
+  5 scrapline-corridor at (15, 6), turned 0
+  6 scrapline-quarters at (16, 4), turned 0
+  7 scrapline-quarters at (16, 7), turned 2
   8 lifesupport at (15, 4), turned 1
   9 lifesupport at (15, 7), turned 3
-  10 cargo at (12, 5), turned 2
-  11 cargo at (9, 5), turned 1
-  12 largehold at (5, 5), turned 2
-  13 reactor at (5, 2), turned 3
-  14 reactor at (5, 8), turned 1
+  10 scrapline-cargo at (12, 5), turned 2
+  11 scrapline-cargo at (9, 5), turned 1
+  12 scrapline-largehold at (5, 5), turned 2
+  13 scrapline-reactor at (5, 2), turned 3
+  14 scrapline-reactor at (5, 8), turned 1
   15 engine at (3, 4), turned 0
   16 engine at (3, 7), turned 0
-  17 engine at (3, 2), turned 0
-  18 engine at (3, 9), turned 0
+  17 scrapline-engine at (3, 2), turned 0
+  18 scrapline-engine at (3, 9), turned 0
   19 airlock at (10, 4), turned 0
   20 airlock at (10, 8), turned 2
 Wrecked: 7 fire, 11 rubble, 13 fire
@@ -222,24 +222,24 @@ EERRRCCCLQQ..
 EERRRCCC.QQ..
 EERRRCCC.....
   1 bridge at (16, 5), turned 1
-  2 corridor at (15, 6), turned 1
+  2 scrapline-corridor at (15, 6), turned 1
   3 corridor at (14, 6), turned 1
-  4 corridor at (13, 6), turned 1
-  5 quarters at (14, 3), turned 1
-  6 quarters at (14, 7), turned 3
-  7 lifesupport at (13, 4), turned 1
-  8 lifesupport at (13, 7), turned 3
-  9 cargo at (10, 5), turned 3
-  10 cargo at (10, 2), turned 1
-  11 cargo at (10, 8), turned 3
-  12 reactor at (7, 2), turned 2
-  13 reactor at (7, 8), turned 0
+  4 scrapline-corridor at (13, 6), turned 1
+  5 scrapline-quarters at (14, 3), turned 1
+  6 scrapline-quarters at (14, 7), turned 3
+  7 scrapline-lifesupport at (13, 4), turned 1
+  8 scrapline-lifesupport at (13, 7), turned 3
+  9 scrapline-cargo at (10, 5), turned 3
+  10 scrapline-cargo at (10, 2), turned 1
+  11 scrapline-cargo at (10, 8), turned 3
+  12 scrapline-reactor at (7, 2), turned 2
+  13 scrapline-reactor at (7, 8), turned 0
   14 engine at (5, 4), turned 0
   15 engine at (5, 7), turned 0
   16 engine at (5, 2), turned 0
   17 engine at (5, 9), turned 0
-  18 airlock at (8, 5), turned 0
-  19 airlock at (8, 7), turned 2
+  18 scrapline-airlock at (8, 5), turned 0
+  19 scrapline-airlock at (8, 7), turned 2
 Wrecked: 11 vacuum
 
 Derelict hauler, seed 3: 15 parts, 12 × 9 cells, crew 3
@@ -252,21 +252,21 @@ EERRRCCCQQBB
 EE.AACCCQQL.
 .....CCCQQL.
 .....CCC....
-  1 bridge at (16, 5), turned 1
-  2 corridor at (15, 6), turned 1
-  3 corridor at (14, 6), turned 2
+  1 scrapline-bridge at (16, 5), turned 1
+  2 scrapline-corridor at (15, 6), turned 1
+  3 scrapline-corridor at (14, 6), turned 2
   4 quarters at (14, 3), turned 1
   5 quarters at (14, 7), turned 3
   6 lifesupport at (16, 3), turned 1
   7 lifesupport at (16, 8), turned 3
-  8 cargo at (11, 5), turned 2
+  8 scrapline-cargo at (11, 5), turned 2
   9 cargo at (11, 2), turned 1
   10 cargo at (11, 8), turned 3
   11 reactor at (8, 5), turned 1
   12 engine at (6, 4), turned 0
   13 engine at (6, 7), turned 0
-  14 airlock at (9, 4), turned 0
-  15 airlock at (9, 8), turned 2
+  14 scrapline-airlock at (9, 4), turned 0
+  15 scrapline-airlock at (9, 8), turned 2
 Wrecked: 8 rubble, 11 rubble, 12 fire
 
 Con-Reg repo tug, seed 1: 13 parts, 10 × 5 cells, crew 3
@@ -537,18 +537,18 @@ eeRRR.XXBB
 eeRRR+++BB
 EERRRQQQBB
 EE.AAQQQ..
-  1 bridge at (15, 5), turned 1
+  1 kestrel-bridge at (15, 5), turned 1
   2 corridor at (14, 6), turned 1
   3 corridor at (13, 6), turned 0
   4 corridor at (12, 6), turned 1
-  5 armory at (13, 5), turned 2
-  6 quarters at (12, 7), turned 0
-  7 lifesupport at (13, 4), turned 2
+  5 kestrel-armory at (13, 5), turned 2
+  6 kestrel-quarters at (12, 7), turned 0
+  7 kestrel-lifesupport at (13, 4), turned 2
   8 reactor at (9, 5), turned 2
-  9 engine at (7, 7), turned 0
+  9 kestrel-engine at (7, 7), turned 0
   10 lightengine at (7, 6), turned 0
   11 lightengine at (7, 5), turned 0
-  12 weapon at (15, 4), turned 0
+  12 kestrel-weapon at (15, 4), turned 0
   13 airlock at (10, 8), turned 0
 Wrecked: none
 
@@ -562,14 +562,14 @@ eeRRRLLW.
   1 bridge at (14, 6), turned 1
   2 corridor at (13, 7), turned 2
   3 corridor at (12, 7), turned 1
-  4 armory at (12, 8), turned 2
-  5 quarters at (12, 4), turned 3
-  6 lifesupport at (12, 9), turned 2
+  4 kestrel-armory at (12, 8), turned 2
+  5 kestrel-quarters at (12, 4), turned 3
+  6 kestrel-lifesupport at (12, 9), turned 2
   7 reactor at (9, 7), turned 2
-  8 engine at (7, 6), turned 0
+  8 kestrel-engine at (7, 6), turned 0
   9 lightengine at (7, 9), turned 0
   10 lightengine at (7, 8), turned 0
-  11 weapon at (14, 9), turned 2
+  11 kestrel-weapon at (14, 9), turned 2
   12 airlock at (9, 6), turned 0
 Wrecked: none
 
@@ -579,14 +579,14 @@ eeRRRQQXXBB
 eeRRRQQ++BB
 .EE.AALL.BB
 .EE.......W
-  1 bridge at (15, 5), turned 1
+  1 kestrel-bridge at (15, 5), turned 1
   2 corridor at (14, 6), turned 2
   3 corridor at (13, 6), turned 0
-  4 armory at (13, 5), turned 2
-  5 quarters at (11, 4), turned 1
+  4 kestrel-armory at (13, 5), turned 2
+  5 kestrel-quarters at (11, 4), turned 1
   6 lifesupport at (12, 7), turned 2
   7 reactor at (8, 4), turned 0
-  8 engine at (7, 7), turned 0
+  8 kestrel-engine at (7, 7), turned 0
   9 lightengine at (6, 5), turned 0
   10 lightengine at (6, 6), turned 0
   11 weapon at (16, 8), turned 1

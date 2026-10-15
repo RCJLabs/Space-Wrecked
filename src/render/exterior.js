@@ -353,7 +353,24 @@ const MARKS = {
       f.push({ pts: pts.map(([x, y]) => [x, y, MARK_Z + 0.002]), normal: [0, 0, 1], color: k.mark });
     }
   },
+  // Two thin stripes down the part's near edge (Kestrel, M31).
+  stripes(f, k, def) {
+    const h = def.size[1];
+    for (const x of [0.07, 0.17]) quad(f, x, 0.07, x + 0.05, h - 0.07, k.mark);
+  },
+  // Bare patches of unpainted metal, one in each far corner (Scrapline,
+  // M31).
+  patches(f, k, def) {
+    const [w, h] = def.size;
+    quad(f, 0.08, 0.08, 0.08 + Math.min(0.5, w * 0.3), 0.08 + Math.min(0.42, h * 0.3), k.mark);
+    quad(f, w - 0.08 - Math.min(0.36, w * 0.22), h - 0.08 - Math.min(0.3, h * 0.25), w - 0.08, h - 0.08, k.markDark);
+  },
 };
+
+// A flat patch of a mark on the roof, from (x0, y0) to (x1, y1).
+function quad(f, x0, y0, x1, y1, color) {
+  f.push({ pts: [[x0, y0, MARK_Z], [x1, y0, MARK_Z], [x1, y1, MARK_Z], [x0, y1, MARK_Z]], normal: [0, 0, 1], color });
+}
 export const MARKED = Object.keys(MARKS);
 
 // Roof fittings from the interior template: machinery under raised plates,

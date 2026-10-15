@@ -70,7 +70,7 @@
 // healthiest up to squadSize of those healed to FIT_SHARE of their most;
 // with none fit, it rests. Before it flies, it refits the ship for the
 // squad (refitForSquad): while the flight checks with them aboard fail for
-// berths or air, it takes down the building that gives most of what is
+// berths, air or power, it takes down the building that gives most of what is
 // short and fits its part back aboard where it touches most of the ship;
 // a squad the ship still can't carry shrinks to what it can. Whoever stays
 // home gets a shelter, with a solar array to run it while the ship is away,
@@ -486,18 +486,20 @@ export function tripSquad(campaign, rules, size = rules.balance.squadSize) {
 }
 
 // The refit that puts berths and air for a squad of `size` aboard: while
-// the flight checks with them aboard fail for berths or life support, the
-// colony's building that gives most of what is short comes down and its
-// part goes back aboard (fitPart); one whose part fits nowhere aboard stays
-// standing, and the refit stops there. { campaign, moved (the types put
-// aboard) }.
+// the flight checks with them aboard fail for berths, life support or the
+// power to run them (M31: Scrapline's parts draw more, and a ship that gave
+// its spare reactor away can be left short), the colony's building that
+// gives most of what is short comes down and its part goes back aboard
+// (fitPart); one whose part fits nowhere aboard stays standing, and the
+// refit stops there. { campaign, moved (the types put aboard) }.
+const SHORT = { berths: 'beds', lifeSupport: 'air', power: 'power' };
 export function refitForSquad(campaign, rules, size) {
   let now = campaign;
   const moved = [];
   for (let n = 0; n < 4; n++) {
-    const short = shipChecklist(now, rules, size).find((line) => line.ok !== true && ['berths', 'lifeSupport'].includes(line.id));
+    const short = shipChecklist(now, rules, size).find((line) => line.ok !== true && line.id in SHORT);
     if (!short) break;
-    const key = short.id === 'berths' ? 'beds' : 'air';
+    const key = SHORT[short.id];
     const giver = colonyStats(now, rules).buildings.filter((b) => rules.modules.has(b.type) && b.gives?.[key] > 0).sort((a, b) => b.gives[key] - a.gives[key] || a.uid - b.uid)[0];
     if (!giver) break;
     const down = takeDown(now, rules, giver.uid);

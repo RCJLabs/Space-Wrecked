@@ -123,25 +123,39 @@ test("every part has a blueprint icon for the drawer, new types included; a make
   assert.ok(svg.includes('<rect') && closesEveryTag(svg), 'drawn from its interior template');
 });
 
-test("on the plans a Bastion part is drawn in Bastion's line, what sticks out of the hull for it too; the rest in the blueprint's (M23g)", async () => {
+test("on the plans a maker's part is drawn in its maker's line, what sticks out of the hull for it too; the rest in the blueprint's (M23g, M31)", async () => {
   const { BLUEPRINT_ORDER, BLUEPRINT_STYLES, MAKER_LINES } = await import('../src/render/blueprintStyles.js');
-  assert.deepEqual(MAKER_LINES, { bastion: '#ffc45e' });
+  const { palette } = await import('../src/render/palette.js');
+  assert.deepEqual(MAKER_LINES, { bastion: '#ffc45e', kestrel: '#ff9ad2', scrapline: '#c8ee6e' });
+  // Each line stands apart from the others and from the plans' own colors:
+  // the Yard's blue, styling's violet, the ghosts' green and red and the
+  // selection's white (at least 60 apart in red, green, blue).
+  const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const apart = (a, b) => Math.hypot(...rgb(a).map((v, i) => v - rgb(b)[i]));
+  const others = [palette.bpLine, palette.bpStyle, palette.good, palette.bad, palette.ink];
+  for (const [maker, line] of Object.entries(MAKER_LINES)) {
+    for (const other of [...others, ...Object.values(MAKER_LINES).filter((l) => l !== line)]) assert.ok(apart(line, other) >= 60, `${maker}'s ${line} against ${other}: ${Math.round(apart(line, other))}`);
+  }
   const plain = [at('bridge', 10, 5, 1), at('corridor', 9, 5), at('engine', 7, 4), at('airlock', 9, 6)];
   const yard = buildShip(defs, 'starter', plain).ship;
-  const bastion = buildShip(defs, 'starter', plain.map((p) => (p.type === 'engine' ? { ...p, type: 'bastion-engine' } : p))).ship;
-  const { model } = scene(bastion);
-  const styled = [...model.faces, ...model.lines].map((p) => p.style);
-  const theirs = styled.filter((style) => style.endsWith('@bastion'));
-  // The engine's room, its fittings and its nozzles; nothing else.
-  assert.ok(theirs.includes('wallTop@bastion') && theirs.includes('propEdge@bastion') && theirs.includes('nozzleFace@bastion'));
   const { model: before } = scene(yard);
-  assert.equal(styled.length, [...before.faces, ...before.lines].length, 'the same drawing, restyled');
-  assert.equal(count(model, 'lines', 'wallTop') + count(model, 'lines', 'wallTop@bastion'), count(before, 'lines', 'wallTop'));
-  assert.ok(model.glows.some((g) => g.color === '#ffc45e'), "the nozzles' glow");
-  // Every style drawn is known and in the order, each maker's copy right after its own.
-  for (const style of new Set(styled)) assert.ok(style in BLUEPRINT_STYLES && BLUEPRINT_ORDER.includes(style), style);
-  assert.equal(BLUEPRINT_ORDER.indexOf('wallTop@bastion'), BLUEPRINT_ORDER.indexOf('wallTop') + 1);
-  assert.equal(BLUEPRINT_STYLES['wallTop@bastion'].stroke, '#ffc45e');
+  for (const [maker, line] of Object.entries(MAKER_LINES)) {
+    const made = buildShip(defs, 'starter', plain.map((p) => (p.type === 'engine' ? { ...p, type: `${maker}-engine` } : p))).ship;
+    const { model } = scene(made);
+    const styled = [...model.faces, ...model.lines].map((p) => p.style);
+    const theirs = styled.filter((style) => style.endsWith(`@${maker}`));
+    // The engine's room, its fittings and its nozzles; nothing else.
+    assert.ok(theirs.includes(`wallTop@${maker}`) && theirs.includes(`propEdge@${maker}`) && theirs.includes(`nozzleFace@${maker}`), maker);
+    assert.ok(styled.every((style) => !style.includes('@') || style.endsWith(`@${maker}`)), maker);
+    assert.equal(styled.length, [...before.faces, ...before.lines].length, 'the same drawing, restyled');
+    assert.equal(count(model, 'lines', 'wallTop') + count(model, 'lines', `wallTop@${maker}`), count(before, 'lines', 'wallTop'));
+    assert.ok(model.glows.some((g) => g.color === line), "the nozzles' glow");
+    // Every style drawn is known and in the order, each maker's copy after its own.
+    for (const style of new Set(styled)) assert.ok(style in BLUEPRINT_STYLES && BLUEPRINT_ORDER.includes(style), style);
+    assert.ok(BLUEPRINT_ORDER.indexOf(`wallTop@${maker}`) > BLUEPRINT_ORDER.indexOf('wallTop'));
+    assert.ok(BLUEPRINT_ORDER.indexOf(`wallTop@${maker}`) <= BLUEPRINT_ORDER.indexOf('wallTop') + Object.keys(MAKER_LINES).length);
+    assert.equal(BLUEPRINT_STYLES[`wallTop@${maker}`].stroke, line);
+  }
 });
 
 test('a wrecked part is crossed out on the plans, in the wreck styles, and its label says so when picked (M23h)', () => {

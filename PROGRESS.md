@@ -2,6 +2,235 @@
 
 Newest entry first.
 
+## M31 Manufacturers (2026-10-15)
+
+**Status:** done, and the ROADMAP.md box is ticked. Two more makers join the Yard and Bastion Arms, four in all, one past §5's target of three:
+- **Kestrel Dynamics**, light and dear: a version of 16 parts, every one that weighs 2 or more but the reactor. Each has about a third less mass, half the hit points, and costs about a fifth more. Pearl fittings, coral stripes, violet flames, rose on the plans.
+- **Scrapline**, cheap and power-hungry: a version of all 21 parts. Each costs about a third less and has a quarter fewer hit points. A part that draws power draws 1 more, and a reactor makes 1 less. Rust fittings, bare patches, green flames, lime on the plans.
+
+Every act 1 shop carries some of both, five jobs drop them, and act 2's salvage has them. The pirates' cutters and the Hallorans' runner fly Kestrel's parts, and the derelict haulers Scrapline's.
+
+**How it was picked:** Evan answered four questions (2026-10-15), each the recommended answer but the first:
+- **Which maker:** "Both": Kestrel Dynamics and Scrapline.
+- **Kestrel's trade:** "A real trade". Its ships get away more often, but its parts break sooner when hit, so a ship of them fares worse than the Yard's against some preset.
+- **Enemy ships:** "The side that fits it": Kestrel's on the pirates' cutters and the Hallorans' runner, Scrapline's on the derelict haulers.
+- **Where they come from:** "Shops and salvage, like Bastion".
+
+Then three calls once measured, each the recommended answer:
+- **"Judge it shielded":** at the mockups' fifth fewer hit points, Kestrel's start ship did better than the Yard's against every preset, shielded or not. Without a shield, every preset's first targets (engines and guns) die to one gun hit whoever made them, so fewer hit points don't show. Kestrel went to half the hit points, and its trade is judged with a shield fitted.
+- **"No Kestrel reactor":** at half the hit points a Kestrel reactor had 15, so one 15-damage gun hit disabled any ship that flew one. The start ship's score against the pirate cutter went from −11 to +42 (wins less losses in 100 approaches), and in 100 test voyages the careful player won 59 approaches against main's 23. Kestrel's ships keep the Yard's reactor now.
+- **"Rates over 100 seeds":** M31's new parts change how every test voyage rolls out, and five checks from M24 to M30 missed on seeds 1 to 30. Over 100 seeds M31's voyages were close to main's (better on most counts, a little worse on colonies short of air, surveys and housing), and main misses several of those limits past seed 30 as well. Those checks now fly 100 seeds, each within 15 in 100 of main's rate before M31.
+
+Done when (ROADMAP.md, M31, in full there):
+- **Data:** both makers in `data/manufacturers.json`, their versions on the Yard part's footprint, interior, fittings and icon; none worse than another part in every way.
+- **Law 1:** Kestrel's start ship evades more against every preset, and with a shield fitted it fares worse than the Yard's against at least one. Scrapline's, with the reactor it then needs, fares differently, and its power counts in the flight checklist.
+- **At a glance:** each maker's line on the plans and in the drawer, and its fittings, mark and flames outside.
+- **The drawer:** each part's versions beside it, a maker picked from the sheet, construction mode with every maker's parts, every button 48 px or more.
+- **Where they come from:** the shops, some jobs' drops, act 2's salvage; act 1 about as before.
+- **Enemy ships:** the cutters and the runner on Kestrel's, the haulers on Scrapline's, rolled and kept only while the ship flies; boarding strips them; the golden ships file updated for the part names.
+- **Saves and codes** load as before, neither version number changed.
+- **The voyage** within 5 runs of 30 of M30's numbers, and the voyage checks M31's seeds broke as rates over 100 seeds.
+- **Budget** and **Touch** at the three sizes.
+
+How each is met:
+- **Data:** `tests/data.test.js` checks the order (the 21 parts, then Bastion's 21, Kestrel's 16 and Scrapline's 21) and the validator's counts (79 modules, 4 manufacturers). `tests/makers.test.js` checks each maker's line against its base part:
+  - the same shape, tags, interior and icon;
+  - Kestrel's mass at most three quarters, hit points at most half, cost up to a quarter more;
+  - Scrapline's cost at most 70%, fewer hit points, and power 1 worse wherever it isn't 0.
+
+  `tests/catalog.test.js` (M23e's test) finds no part worse than another in every way among all 79.
+- **Law 1** (`tests/approach.test.js`, 120 approaches a row):
+  - **Kestrel:** evasion 39 against the Yard's 30, so every preset's guns hit it at lower odds, and fewer of their shots hit over all of them (against the patrol corvette about as many: 29% against 26%). Shielded, its parts break more often for each hit against four presets, and it fares worse than the Yard's shielded ship against four.
+  - **Scrapline:** the reactor it needs costs evasion (25 against 30), and approaches end differently: against the Provost cutter it gets away in 64% against 27%.
+  - **Its power:** `tests/makers.test.js`. The launched start ship with Scrapline's engines fails "Power −2 (8 made, 10 used)", and the fix asks for a reactor; all Scrapline's, it is 7 short, and one Scrapline reactor makes it fly.
+- **At a glance:** `tests/scene.test.js`: each maker's rooms, fittings and nozzles in its own line on the plans (rose `#ff9ad2`, lime `#c8ee6e`), each line at least 60 apart from the others and from the plans' own colors. `tests/exterior.test.js`: each maker's fittings and mark (chevrons, stripes, patches) under the ship's paint, and its flames. By touch, below.
+- **The drawer:** `tests/catalog.test.js` (each part with its versions beside it; a maker picked; construction mode counting every maker's parts on hand). The sheet's categories now start on a row of their own under the five maker tiles. By touch, below.
+- **Where they come from:** each act 1 shop has Kestrel's and Scrapline's parts (the Tailings 6, the Strand 5, the Narrows 5); the scrap, breaking, insurance, hot cargo and seized jobs drop them; the salvage event has 6 more. Act 1 (`tools/run.js`, 50 runs a background): every run launches, with slow medians of 42, 41 and 41 minutes (M30: 45, 41 and 39).
+- **Enemy ships:** `tests/makers.test.js`. Over 40 seeds, Kestrel makes 78% of the cutters' parts that it makes and 76% of the runners', and Scrapline 64% of the haulers'. Layouts are unchanged, mirrored pairs are alike, and every ship passes its flight checklist. `tests/encounter.test.js`: boarded cutters strip Kestrel's parts. The golden ships file differs only in part names.
+- **Saves and codes:** `tests/makers.test.js`: `SAVE_VERSION` 23 and blueprint codes version 4; a code made by main opens with the Yard's parts; each maker's parts round-trip in codes, and in a saved campaign fitted and on hand. By touch, a save made by main opens.
+- **The voyage:** `node tools/voyage.js --runs 30 --background all`, under Verified: fed, met the hunters and runs with a raid lost each within 5 of M30's. `tests/voyage.test.js` flies the rate checks over 100 seeds (below).
+- **Budget:** the frame rates under Verified.
+- **Touch:** M31's browser check, under Verified.
+
+Some of this changes what was there before:
+- **Kestrel makes no reactor** (Evan's call above), so the Done when's "every part that weighs 2 or more" reads "but the reactor".
+- **The voyage tests** fly 100 seeds for seven checks, held within 15 in 100 of main's rates before M31 (5 for what main saw under 10 times):
+  - M24's hunters met managing heat and ignoring it, and fed managing it;
+  - M25's hunger in the system and its runs that survey two worlds or more;
+  - M26's colonies short of air and those that house everyone;
+  - M30's fed, met and raids lost from each background's start, each against main's own rate for that start.
+
+  The gaps to the original targets are in §9. CLAUDE.md's Testing section says how a check new content breaks is treated from now on.
+- **The trip test player** (`tools/voyagePlan.js` `refitForSquad`) takes a power plant back aboard from the colony when the squad's berths and air leave the ship short of power. Ships with Scrapline's engines from act 1 hit this, and flew no trip in 14 of 300 runs without it.
+- **The voyage tests' fitted runs** put a small reactor on first where the ship has no power to spare for the med bay or bunks.
+- **The approach harness** (`tools/approach.js`) counts the other ship's shots (a Hit column) and flies each maker's start ship twice: as made to fly (with the reactor it needs, if any), and with its maker's shield added.
+- **The drawer's sheet** starts its categories on a row of their own under the makers.
+- **The short name** in `data/manufacturers.json` may be 9 letters ("Scrapline"), up from 8.
+- **`SAVE_VERSION` stays 23**, and blueprint codes stay version 4.
+- **Tests changed on purpose:**
+  - `data.test.js`: the order and counts, the short name's 9 letters, and a maker with no skin named `orrery`;
+  - `scene.test.js`, `exterior.test.js`, `catalog.test.js` and `makers.test.js`: every maker, not just Bastion. The cutters and haulers fly their makers now, and Scrapline's power in the flight checklist is a new test in `makers.test.js`;
+  - `approach.test.js`:
+    - Law 1 for Kestrel and Scrapline;
+    - the shield array's mass lets the Kestrel runner board the ship more often (4 points of score at 300 approaches before the reactor change, and at 120 since), a trade now named in the test;
+    - the gun damage test reads the cutter's own reactor;
+    - the round order test finds a cutter that still closes with its last reactor about to go;
+  - `encounter.test.js`: boarded cutters strip Kestrel's parts (new);
+  - `builderText.test.js`: Kestrel's and Scrapline's cards (new);
+  - `voyage.test.js`: the rate checks and the fitted runs, above;
+  - `tests/golden/ships.txt`, regenerated: part names only.
+
+### Shipped
+
+- **Data:**
+  - `manufacturers.json`: Kestrel Dynamics and Scrapline, each with its short name, card line and mark;
+  - `modules.json`: Kestrel's 16 versions and Scrapline's 21;
+  - `ships.json`: `makers` on the cutter and the runner (Kestrel, 80 in 100) and the hauler (Scrapline, 80);
+  - `districts.json`: both makers in each shop;
+  - `contracts.json`: five jobs' drops;
+  - `events.json`: the salvage event.
+- **The render:**
+  - `palette.js`: Kestrel's and Scrapline's skins (fittings, flames, marks and plans lines);
+  - `exterior.js`: the stripes and patches marks;
+  - `style.css`: the sheet's categories on a row of their own.
+- **The sim:** no rule changed. `gen/ship.js`'s note says a version hungry for power stays the base part when it would fail the flight checklist, as a heavy one does.
+- **Tools:**
+  - `approach.js`: `madeToFly`, the shielded rows, and the shots and hits counted;
+  - `voyagePlan.js`: `refitForSquad` for power;
+  - `validate-data.js`: a short name of up to 9 letters.
+- **Tests:** three new (Kestrel's and Scrapline's cards in `builderText.test.js`, boarded cutters in `encounter.test.js`, Scrapline's power in `makers.test.js`), and the changes above. 780 tests in all, 777 on M30.
+- **Docs:**
+  - ROADMAP.md: §4 (the makers as built, the drawer, saves), §5 and §6 (four makers), M31 with Evan's three later calls, ticked, and §9 (three new, two resolved, two updated);
+  - CLAUDE.md: the Testing section's rule for voyage checks.
+
+Decisions made along the way, not asked (each easy to change):
+- **The numbers**, from M23g's mockups and Evan's call:
+  - Kestrel: mass × 0.7 and hit points × 0.5, rounded (at least 1), cost × 1.2 to the nearest 5;
+  - Scrapline: hit points × 0.75 rounded, power 1 worse where it isn't 0, cost × 0.65 to the nearest 5 (at least 5).
+- **The lines on the plans:** Kestrel's rose `#ff9ad2` and Scrapline's lime `#c8ee6e`. The closest pair among the plans' colors is Kestrel's rose and styling's violet, 66 apart in red, green and blue.
+- **The marks:** two coral stripes along a Kestrel part's roof; two bare patches on a Scrapline part's, light and dark grey.
+- **The shops:**
+  - the Tailings: Scrapline's engine, reactor, quarters and cargo hold, and Kestrel's engine and gun;
+  - the Strand: Kestrel's engine, gun and shield, and Scrapline's gun and reactor;
+  - the Narrows: Kestrel's engine, cargo hold and life support, and Scrapline's engine and shield.
+
+  Each is weight 1 in the shop's draw, as most parts are (the Yard's engine is 9).
+- **The drops:**
+  - the scrap and breaking jobs: Scrapline's engine and small reactor;
+  - insurance: Kestrel's engine and cargo hold;
+  - hot cargo: Kestrel's cargo hold;
+  - seized: Kestrel's shield.
+- **The salvage event:** Kestrel's engine, shield and gun, and Scrapline's engine, reactor and shield, 1 each.
+- **The enemy makers' odds:** 80 in 100 a part, as the corvettes' Bastion.
+
+### Known issues
+
+- **The pirates are a little harder than main's.** Over 120 approaches each, the start ship scores −19 against the cutter and −33 against the runner, against main's −10 and −22. The Kestrel runner boards it in 33 against 23. The cutter boards it about as often (21 against 18), but the start ship boards or wrecks the cutter in 2 against 8, and gets away from it in 53 against 30. Every other preset's row is main's.
+- **Kestrel's start ship takes about as many hits as the Yard's against the patrol corvette** (29% of its shots against 26%), which aims at guns and the reactor first. Against every other preset fewer land.
+- **The shield array against the Kestrel runner:** its mass lets the runner board the ship more often, 4 points of score worse than without it. Law 1 names it as a trade.
+- **Act 1's long tails:** the deserter's slowest run takes 146 minutes at the slow pace and the smuggler's 170, against 131 and 121 on M30. The medians hold.
+- **Some ships launch with no power to spare:** act 1's test player buys Scrapline's engines (in 7 of the miner's 30 runs), which draw 1 more. A med bay fitted then needs a reactor with it.
+- **The voyage tests hold main's rates, not the original targets:** the miner managing heat meets the hunters in about a third of runs (M24's pick: a fifth), 3 to 9 runs in 100 go hungry in the system (5 to 14 on main; M25: none), and the smuggler meets them about half as often as the miner (M30: about as often). §9, for Phase 7.
+- **Colonies short of air:** a part fitted on the run can hang off the life support, which then can't go. 7 of the deserter's 100 colonies (3 on main), 1 of the miner's (0). §9.
+- **The test suite is slower:** about 4 min 15 s here, the voyage tests 3 min 20 s alone.
+- **Kestrel's stripes are thin:** on the folded screen they read as a coral edge (§9).
+- **Scrapline's rust on a rust-painted hull** blends in (§9, since M23g).
+- **The Enemy ships sandbox on the folded screen** draws a ship a few cells across under its two rows of preset buttons (since M30).
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **The drawer:** All, each part with its versions beside it, in amber, rose and lime. Open the sheet: five makers above the categories. Pick Kestrel, then Engines (2); then Scrapline (3).
+2. **Fit** a Kestrel engine and a Scrapline engine. The chip asks for a reactor: Scrapline's engine draws 2. Long-press each for its card ("Next to the Yard's: …").
+3. **Hull:** the Kestrel engine in pearl with coral stripes and a violet flame, the Scrapline one in rust with grey patches and a green flame.
+4. **The shop:** a Kestrel or Scrapline part in stock; buy one in two taps.
+5. **The Enemy ships sandbox** (`?dev=1`): the pirate cutter in Kestrel's parts, the derelict hauler in Scrapline's, on the plans and outside.
+6. **On the run:** pirates in Kestrel's parts; board one, and its salvage may be Kestrel's.
+7. **Tell me:**
+   - whether the four makers read apart at a glance, and whether Kestrel's stripes need to be bolder;
+   - whether Kestrel's lightness and Scrapline's price feel like choices worth weighing;
+   - whether the pirates feel right: a little tougher than before.
+
+### Next session
+
+M32 All jobs, traits and talents (Phase 6, v0.4). First task: settle its Done when with Evan; ROADMAP.md has a draft (four more crew jobs, traits toward 20, and talents still to define).
+
+### Verified here
+
+- `node --test`: 780 pass, in about 4 min 15 s. `node tools/validate-data.js`: OK (79 modules, 4 manufacturers).
+- **`tests/golden/ships.txt`, regenerated on purpose:** 66 lines, the cutters', runners' and haulers' part names; with the makers' prefixes taken off, it is main's.
+- **Law 1** (`node tools/approach.js --runs 120`), the start ship's score against each preset (wins less losses in 100):
+
+  | Ship | Cutter | Corvette | Repo tug | Gunship | Provost cutter | Frigate | Runner | Yacht | Evasion |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | Yard's | −19 | −18 | −22 | −13 | −17 | −12 | −33 | −12 | 30 |
+  | Kestrel's | −4 | −4 | −8 | −3 | −11 | −3 | −12 | −3 | 39 |
+  | Yard's, shielded | −3 | −10 | −13 | −9 | −2 | −8 | −26 | −8 | 28 |
+  | Kestrel's, shielded | 3 | −2 | −6 | −11 | −8 | −11 | −17 | −11 | 30 |
+  | Scrapline's | −28 | −12 | −23 | −16 | −16 | −16 | −35 | −17 | 25 |
+  | Bastion's | −32 | −17 | −10 | −12 | −7 | −10 | −57 | −12 | 21 |
+
+  The share of the other's shots that hit the Yard's ship is 20% to 38%, and Kestrel's 14% to 29%.
+- **Act 1** (`node tools/run.js --runs 50 --background …`), every run reaching launch:
+
+  | Background | Jobs | Done | Quick | Slow |
+  | --- | --- | --- | --- | --- |
+  | Debt-bound miner | 6 (3 to 16) | 72% of 334 | 26 (11 to 68) | 42 (19 to 108) |
+  | Navy deserter | 5 (3 to 18) | 65% of 335 | 25 (12 to 92) | 41 (19 to 146) |
+  | Burned smuggler | 6 (2 to 26) | 76% of 374 | 25 (9 to 107) | 41 (16 to 170) |
+- **The run and the colony** (`node tools/voyage.js --runs 30 --background all`), with M30's in brackets:
+
+  | Background | Fed | Met | Raids | Won | Lost | Runs lost |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | Debt-bound miner | 26 (25) | 12 (10) | 34 | 21 | 13 | 8 (5) |
+  | Navy deserter | 25 (27) | 10 (12) | 26 | 21 | 5 | 4 (5) |
+  | Burned smuggler | 29 (28) | 3 (5) | 32 | 25 | 7 | 6 (8) |
+- **Over 100 seeds**, the careful player managing heat and refitting, main before M31 against M31 (in 100 runs; main's smuggler 99, seed 70's boarding stalling):
+
+  | | Miner | Deserter | Smuggler |
+  | --- | --- | --- | --- |
+  | Met the hunters in the act's sectors | 33 / 31 | 31 / 27 | 9 / 11 |
+  | Met them at all | 42 / 44 | 45 / 34 | 19 / 22 |
+  | Crossed fed | 73 / 83 | 80 / 82 | 89 / 92 |
+  | Hungry in the system | 14 / 9 | 11 / 6 | 5 / 3 |
+  | A colony short of air | 0 / 1 | 3 / 7 | 0 / 0 |
+  | A raid lost | 29 / 26 | 20 / 10 | 18 / 13 |
+
+  Ignoring heat, the miner met the hunters in all 100 runs, on main and here. Two worlds or more surveyed: 68 on main, 65 here; everyone housed: 41, 36. The trips flown: every run here; on main the deserter flew none in 2.
+- **The frame budget** (scratchpad `m31/fps.mjs`): a finger circling 4 s on each view while the page times its frames; frames a second, lowest and middle half-second window:
+
+  | View | 905 × 370 | 821 × 283 | 960 × 825 |
+  | --- | --- | --- | --- |
+  | Plans, main's Yard ship | 58 / 60 | 60 / 60 | 54 / 60 |
+  | Plans, Kestrel's and Scrapline's | 60 / 60 | 60 / 60 | 56 to 58 / 60 |
+  | Hull, main's Yard ship | 58 / 60 | 60 / 60 | 52 / 60 |
+  | Hull, Kestrel's and Scrapline's | 58 / 60 | 60 / 60 | 52 to 54 / 58 to 60 |
+  | Sandbox cutter, main and here | 60 / 60 and 58 / 60 | 60 / 60 | 44 / 46 and 48 / 52 |
+  | Sandbox hauler, main and here | 56 / 60 and 60 / 60 | 60 / 60 | 40 / 42 both |
+  | Lift-off, main and Kestrel's engines | 56 to 58 / 58 to 60 and 48 to 50 / 58 to 60 | 58 / 60 and 60 / 60 | 32 to 42 / 38 to 42 and 24 to 42 / 38 to 42 |
+
+  At 960 × 825 the lift-off was measured six times each; its lowest windows vary from run to run on both, and the middles match.
+- **M31's browser check by touch:** 28 of 28 at each of 905 × 370, 821 × 283 and 960 × 825. It covers:
+  - the Parts tab: 79 parts, each with its versions beside it, each maker's icons in its line (21, 16, 21);
+  - the sheet's five maker tiles, each 48 px or more and in sight, Scrapline's name in its tile; Kestrel's engines (2) and Scrapline's (3);
+  - a Kestrel engine and a Scrapline engine in two taps each, saved by id; the plans drawing rose and lime; their cards;
+  - outside, Kestrel's coral and Scrapline's rust;
+  - the copied code carrying both, still version 4, and main's code and save opening with the Yard's parts;
+  - construction mode with Kestrel's and Scrapline's parts on hand, counted by maker; a Kestrel engine bought in two taps;
+  - the Enemy ships sandbox's pirate cutter and derelict hauler, drawn in their makers' lines, and the builder copy keeping them;
+  - offline, the drawer's 79 icons; no console errors.
+
+  Its screenshots showed the sheet's categories running on from the makers' row; they now start a row of their own. On the folded screen the sandbox's ship is small and Kestrel's stripes are a few pixels, so those two pixel counts only ask that the color is there.
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named:
+  - M30 27, M29 34, M28 32, M27 32, M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 20 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 41 (its count goes with the jobs it rolls), and M8's extras.
+
+  Two copies were adapted, not the game, for what M31 changes on purpose:
+  - M23g's (`m23g/verify31.mjs`): All shows 79 parts, the maker row has five tiles with their counts, construction mode counts Kestrel 0 and Scrapline 0, and offline the drawer draws 79 icons;
+  - M23e's (`m23e/verify31.mjs`): the Weapons and Engines lists carry Kestrel's and Scrapline's versions beside each part, read from the data in the drawer's order (11 of each).
+
 ## M30 Backgrounds 2 and 3, and their pursuers (2026-10-15)
 
 **Status:** done, and the ROADMAP.md box is ticked. It is Phase 6's first milestone. New game opens a pick of three backgrounds, each with its own start, district and pursuer:

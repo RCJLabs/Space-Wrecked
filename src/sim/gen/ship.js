@@ -122,8 +122,9 @@ function wreckRooms(defs, preset, ship, state) {
 // chance in 100) roll for it, and a maker's version takes its place; the
 // rest stay the base part. From a roll of its own, so the layout and the
 // look are what they were before ships had makers: the parts keep their
-// places and only their types change. A version heavy enough to leave the
-// ship failing the flight checklist stays the base part.
+// places and only their types change. A version heavy enough (Bastion's)
+// or hungry enough for power (Scrapline's, M31) to leave the ship failing
+// the flight checklist stays the base part.
 function makersOf(defs, preset, ship, seed) {
   const chances = Object.entries(preset.makers ?? {});
   if (!chances.length) return ship;

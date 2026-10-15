@@ -19,6 +19,7 @@
         "engine": 1,
         "lightengine": [1, 2]
       },
+      "makers": { "kestrel": 80 },
       "tactics": { "aim": ["engines", "weapons"], "board": 2, "flee": 50 },
       "scrap": [10, 25],
       "party": "boarders",
@@ -71,6 +72,7 @@
         "reactor": 1,
         "engine": [2, 4]
       },
+      "makers": { "scrapline": 80 },
       "wrecks": [1, 3],
       "look": { "paint": "olive", "trim": "amber", "pieces": { "armorplate": [2, 4], "dish": [0, 1], "lightstrip": [0, 2] } }
     },
@@ -200,6 +202,7 @@
         "engine": 1,
         "lightengine": 2
       },
+      "makers": { "kestrel": 80 },
       "tactics": { "aim": ["engines", "weapons"], "board": 2, "flee": 50 },
       "scrap": [15, 30],
       "party": "collectors",

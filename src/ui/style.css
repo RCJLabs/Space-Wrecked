@@ -2460,6 +2460,12 @@ textarea {
   touch-action: pan-y;
 }
 
+/* The categories start a row of their own under the makers, however many
+   makers there are (M31: five tiles fill a row and a half). */
+.bld-sheet .bld-cat[data-category="all"] {
+  grid-column-start: 1;
+}
+
 .bld-palette,
 .bld-look-tiles {
   touch-action: none;

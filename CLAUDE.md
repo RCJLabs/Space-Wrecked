@@ -101,6 +101,7 @@ PROGRESS.md
 - `node --test` covers `src/sim/` and `tools/`.
 - Golden files in `tests/golden/`: a ship always converts to the identical battle map (`tools/battle-map.js --golden` writes the example ship's), and fixed-seed battles and generators must reproduce identical results. Update a golden file only on purpose, and say so in PROGRESS.md.
 - Every rules change ships with a test.
+- New content changes how every test voyage rolls out. A voyage check it breaks on seeds 1 to 30 becomes a rate over 100 seeds, held within a margin of main's 100-seed rate (`MAIN` in `tests/voyage.test.js`), not a new limit picked to pass (Evan's call, M31).
 
 ## Deploy
 
