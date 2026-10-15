@@ -482,14 +482,6 @@
       "cost": 145
     },
     {
-      "id": "kestrel-reactor",
-      "base": "reactor",
-      "manufacturer": "kestrel",
-      "name": "Kestrel reactor",
-      "stats": { "mass": 4, "hp": 15 },
-      "cost": 240
-    },
-    {
       "id": "kestrel-engine",
       "base": "engine",
       "manufacturer": "kestrel",

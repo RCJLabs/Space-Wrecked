@@ -76,8 +76,9 @@ export function hostilePresets(rules) {
   return [...rules.ships.values()].filter((preset) => preset.tactics).map((preset) => preset.id);
 }
 
-// One approach, played to its end: { outcome, rounds, fired, hits, you,
-// them }, hits being the other's shots that hit the player's ship.
+// One approach, played to its end: { outcome, rounds, fired, shots, hits,
+// you, them }, shots being the other's shots at the player's ship and hits
+// those that hit.
 // made: the enemy ship, if it has been generated already.
 export function playApproach(rules, ship, presetId, seed, { order = captainOrder, made = generateShip(rules, presetId, seed) } = {}) {
   if (!made.ok) throw new Error(made.error);
@@ -89,23 +90,28 @@ export function playApproach(rules, ship, presetId, seed, { order = captainOrder
   };
   let rng = seedFrom(`approach ${seed}`);
   let fired = false;
+  let shots = 0;
   let hits = 0;
   for (;;) {
     const played = playRound(state, order(state, rules), rng, rules);
     if (!played.ok) throw new Error(played.error);
     fired = fired || played.fired;
-    hits += played.events.filter((event) => event.kind === 'volley' && event.side === 'them').reduce((sum, volley) => sum + volley.shots.filter((shot) => shot.hit).length, 0);
+    for (const volley of played.events.filter((event) => event.kind === 'volley' && event.side === 'them')) {
+      shots += volley.shots.length;
+      hits += volley.shots.filter((shot) => shot.hit).length;
+    }
     rng = played.rng;
-    if (played.outcome) return { outcome: played.outcome, rounds: played.round, fired, hits, you: played.you, them: played.them };
+    if (played.outcome) return { outcome: played.outcome, rounds: played.round, fired, shots, hits, you: played.you, them: played.them };
     state = { ...state, you: played.you, them: played.them, round: played.round };
   }
 }
 
 // Every ship against every hostile preset, `runs` times each: [{ ship,
 // preset, outcomes: { [kind]: count }, runs, wins, losses, score, wrecked,
-// hits, evasion }], score being wins less losses for every 100 approaches,
-// wrecked the parts wrecked on the player's ship in all of them, hits the
-// shots that hit it, and evasion the ship's at the start.
+// shots, hits, evasion }], score being wins less losses for every 100
+// approaches, wrecked the parts wrecked on the player's ship in all of
+// them, shots the other's shots at it and hits those that hit, and evasion
+// the ship's at the start.
 export function runApproaches(rules, { runs = 300 } = {}) {
   const rows = [];
   const enemies = new Map(hostilePresets(rules).map((preset) => [preset, Array.from({ length: runs }, (_, i) => generateShip(rules, preset, i + 1))]));
@@ -114,16 +120,18 @@ export function runApproaches(rules, { runs = 300 } = {}) {
     for (const preset of hostilePresets(rules)) {
       const outcomes = Object.fromEntries(OUTCOMES.map((kind) => [kind, 0]));
       let wrecked = 0;
+      let shots = 0;
       let hits = 0;
       for (let seed = 1; seed <= runs; seed++) {
         const played = playApproach(rules, ship, preset, seed, { made: enemies.get(preset)[seed - 1] });
         outcomes[played.outcome.kind] += 1;
         wrecked += Object.keys(played.you.wrecked).length;
+        shots += played.shots;
         hits += played.hits;
       }
       const wins = WINS.reduce((sum, kind) => sum + outcomes[kind], 0);
       const losses = LOSSES.reduce((sum, kind) => sum + outcomes[kind], 0);
-      rows.push({ ship: name, preset, outcomes, runs, wins, losses, score: Math.round((100 * (wins - losses)) / runs), wrecked, hits, evasion });
+      rows.push({ ship: name, preset, outcomes, runs, wins, losses, score: Math.round((100 * (wins - losses)) / runs), wrecked, shots, hits, evasion });
     }
   }
   return rows;
@@ -132,13 +140,13 @@ export function runApproaches(rules, { runs = 300 } = {}) {
 // The rows as a table.
 export function approachText(rules, rows) {
   const pct = (n, of) => `${Math.round((100 * n) / of)}%`.padStart(5);
-  const head = `${'Ship'.padEnd(24)}${'Against'.padEnd(18)}${OUTCOMES.map((kind) => kind.padStart(10)).join('')}${'Score'.padStart(8)}${'Wrecked'.padStart(9)}${'Per hit'.padStart(9)}${'Evasion'.padStart(9)}`;
-  const lines = rows.map((row) => `${row.ship.padEnd(24)}${rules.ships.get(row.preset).name.padEnd(18)}${OUTCOMES.map((kind) => pct(row.outcomes[kind], row.runs).padStart(10)).join('')}${String(row.score).padStart(8)}${(row.wrecked / row.runs).toFixed(2).padStart(9)}${(row.hits ? row.wrecked / row.hits : 0).toFixed(2).padStart(9)}${String(row.evasion).padStart(9)}`);
+  const head = `${'Ship'.padEnd(24)}${'Against'.padEnd(18)}${OUTCOMES.map((kind) => kind.padStart(10)).join('')}${'Score'.padStart(8)}${'Wrecked'.padStart(9)}${'Per hit'.padStart(9)}${'Hit'.padStart(6)}${'Evasion'.padStart(9)}`;
+  const lines = rows.map((row) => `${row.ship.padEnd(24)}${rules.ships.get(row.preset).name.padEnd(18)}${OUTCOMES.map((kind) => pct(row.outcomes[kind], row.runs).padStart(10)).join('')}${String(row.score).padStart(8)}${(row.wrecked / row.runs).toFixed(2).padStart(9)}${(row.hits ? row.wrecked / row.hits : 0).toFixed(2).padStart(9)}${pct(row.hits, row.shots || 1).padStart(6)}${String(row.evasion).padStart(9)}`);
   return [
     `${rows[0]?.runs ?? 0} approaches a preset for each ship: the launched start ship, it with one part more, and it with every part by another maker (and that maker's reactor, if it needs one to fly), without a shield and with that maker's. The test player against each preset's tactics.`,
     head,
     ...lines,
-    "Score: wins (boarded, destroyed) less losses (boardedBy), in every 100. Wrecked: the player's parts wrecked in an approach, on average. Per hit: parts wrecked for each hit the ship takes. Evasion: the ship's.",
+    "Score: wins (boarded, destroyed) less losses (boardedBy), in every 100. Wrecked: the player's parts wrecked in an approach, on average. Per hit: parts wrecked for each hit the ship takes. Hit: the share of the other's shots that hit it. Evasion: the ship's.",
   ].join('\n');
 }
 

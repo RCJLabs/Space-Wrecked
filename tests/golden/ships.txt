@@ -9,8 +9,8 @@ EE.AA....QQQWW
   4 corridor at (14, 6), turned 2
   5 quarters at (14, 7), turned 2
   6 lifesupport at (13, 6), turned 3
-  7 kestrel-reactor at (10, 5), turned 3
-  8 kestrel-reactor at (7, 5), turned 2
+  7 reactor at (10, 5), turned 3
+  8 reactor at (7, 5), turned 2
   9 engine at (5, 7), turned 0
   10 lightengine at (5, 6), turned 0
   11 lightengine at (5, 5), turned 0
@@ -31,7 +31,7 @@ eeRRRQQQW.
   3 corridor at (13, 6), turned 1
   4 quarters at (12, 7), turned 2
   5 lifesupport at (13, 5), turned 2
-  6 kestrel-reactor at (9, 6), turned 0
+  6 reactor at (9, 6), turned 0
   7 kestrel-engine at (7, 6), turned 0
   8 lightengine at (7, 8), turned 0
   9 kestrel-weapon at (15, 8), turned 1
@@ -544,7 +544,7 @@ EE.AAQQQ..
   5 kestrel-armory at (13, 5), turned 2
   6 kestrel-quarters at (12, 7), turned 0
   7 kestrel-lifesupport at (13, 4), turned 2
-  8 kestrel-reactor at (9, 5), turned 2
+  8 reactor at (9, 5), turned 2
   9 kestrel-engine at (7, 7), turned 0
   10 lightengine at (7, 6), turned 0
   11 lightengine at (7, 5), turned 0
@@ -565,7 +565,7 @@ eeRRRLLW.
   4 kestrel-armory at (12, 8), turned 2
   5 kestrel-quarters at (12, 4), turned 3
   6 kestrel-lifesupport at (12, 9), turned 2
-  7 kestrel-reactor at (9, 7), turned 2
+  7 reactor at (9, 7), turned 2
   8 kestrel-engine at (7, 6), turned 0
   9 lightengine at (7, 9), turned 0
   10 lightengine at (7, 8), turned 0
@@ -585,7 +585,7 @@ eeRRRQQ++BB
   4 kestrel-armory at (13, 5), turned 2
   5 kestrel-quarters at (11, 4), turned 1
   6 lifesupport at (12, 7), turned 2
-  7 kestrel-reactor at (8, 4), turned 0
+  7 reactor at (8, 4), turned 0
   8 kestrel-engine at (7, 7), turned 0
   9 lightengine at (6, 5), turned 0
   10 lightengine at (6, 6), turned 0

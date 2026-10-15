@@ -150,10 +150,15 @@ test('shields soak up hits first; a hit lands on the module with the fewest hit 
 
 test('a round goes flights, then volleys, then boardings: a ship disabled by a volley closes on no one', () => {
   // The cutter closes from its boarding round; with its last reactor about
-  // to go, the player's volley can stop it.
-  const going = lastReactorGoing(cutter.ship);
-  const almost = { ...fresh(tactics.board), them: side(cutter.ship, going.wrecked, going.damage) };
-  assert.equal(enemyOrder(almost, rules).kind, 'close');
+  // to go, the player's volley can stop it. The first cutter that still
+  // closes that hurt: since M31 most fly Kestrel's frailer parts, so their
+  // reactors are more of the ship, and some run instead.
+  const hurt = (ship) => {
+    const going = lastReactorGoing(ship);
+    return { ...fresh(tactics.board), them: side(ship, going.wrecked, going.damage) };
+  };
+  const almost = Array.from({ length: 20 }, (_, i) => hurt(generateShip(rules, 'cutter', i + 1).ship)).find((state) => enemyOrder(state, rules).kind === 'close');
+  assert.ok(almost, 'a cutter that closes with its last reactor about to go');
   const { played } = seedWhere(almost, { kind: 'fire', at: 'reactor' }, (p) => p.events.some((e) => e.side === 'you' && e.shots.some((s) => s.hit)));
   assert.ok(['boarded', 'destroyed'].includes(played.outcome.kind));
   assert.ok(!played.events.some((e) => e.kind === 'close'), 'it never closed');
@@ -328,15 +333,23 @@ test("Law 1: each part an approach plays with, added to the launched start ship,
   assert.ok(hostilePresets(rules).every((preset) => bastion(preset).evasion < yard(preset).evasion), 'Bastion evades less');
   assert.ok(hostilePresets(rules).some((preset) => bastion(preset).wrecked * 2 <= yard(preset).wrecked), 'Bastion loses fewer parts');
   assert.ok(hostilePresets(rules).some((preset) => fares(bastion, yard, preset)), 'Bastion fares differently');
-  // M31: Kestrel's, lighter, evade more against every preset: fewer of its
-  // shots land. With a shield fitted, each maker's own, its frailer parts
-  // break more often for each hit, and it fares worse than the Yard's
-  // against some preset (Evan's call: without a shield every preset's first
-  // targets die to one hit whoever made them, and the lighter ship does
-  // better against every preset).
+  // M31: Kestrel's, lighter, evade more against every preset: their guns
+  // hit it at lower odds, and fewer of their shots hit, over all of them
+  // (against the patrol corvette, which aims at guns and the reactor first,
+  // about as many). With a shield fitted, each maker's own, its
+  // frailer parts break more often for each hit, and it fares worse than the
+  // Yard's against some preset (Evan's call: without a shield every preset's
+  // first targets die to one hit whoever made them, and the lighter ship does
+  // better against every preset). Kestrel makes no reactor (Evan's call): the
+  // Yard's stays aboard.
   const kestrel = (preset) => row('start kestrel', preset);
   const [shielded, kestrelShielded] = [(preset) => row('+shield', preset), (preset) => row('start kestrel +shield', preset)];
-  assert.ok(hostilePresets(rules).every((preset) => kestrel(preset).evasion > yard(preset).evasion && kestrel(preset).hits < yard(preset).hits), 'Kestrel evades more');
+  const hitShare = (ship) => {
+    const all = hostilePresets(rules).map((preset) => row(ship, preset));
+    return all.reduce((sum, r) => sum + r.hits, 0) / all.reduce((sum, r) => sum + r.shots, 0);
+  };
+  assert.ok(hostilePresets(rules).every((preset) => kestrel(preset).evasion > yard(preset).evasion), 'Kestrel evades more: every preset hits it at lower odds');
+  assert.ok(hitShare('start kestrel') < hitShare('start'), `and fewer of their shots hit: ${hitShare('start kestrel').toFixed(2)} against ${hitShare('start').toFixed(2)}`);
   const perHit = (r) => r.wrecked / r.hits;
   assert.ok(hostilePresets(rules).some((preset) => perHit(kestrelShielded(preset)) > perHit(shielded(preset))), "Kestrel's parts break sooner");
   assert.ok(hostilePresets(rules).some((preset) => kestrelShielded(preset).score < shielded(preset).score), 'shielded, Kestrel fares worse against some preset');

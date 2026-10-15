@@ -9,7 +9,7 @@ test('the shipped data is valid', () => {
   assert.deepEqual(validateData(readData()), []);
 });
 
-test("the shipped data has the 12 v0.1 module types, first, then M23e's nine, then Bastion's version of each (M23g), Kestrel's of each that weighs 2 or more and Scrapline's of each (M31)", () => {
+test("the shipped data has the 12 v0.1 module types, first, then M23e's nine, then Bastion's version of each (M23g), Kestrel's of each that weighs 2 or more but the reactor, and Scrapline's of each (M31)", () => {
   const modules = readData().modules.modules;
   const ids = modules.map((m) => m.id);
   assert.deepEqual(ids.slice(0, 12).sort(), [
@@ -20,7 +20,7 @@ test("the shipped data has the 12 v0.1 module types, first, then M23e's nine, th
     'bunks', 'cannon', 'heavyengine', 'largehold', 'lightengine',
     'pointdefense', 'shieldarray', 'smallreactor', 'surgery',
   ]);
-  const heavy = modules.slice(0, 21).filter((m) => m.stats.mass >= 2).map((m) => m.id);
+  const heavy = modules.slice(0, 21).filter((m) => m.stats.mass >= 2 && m.id !== 'reactor').map((m) => m.id);
   const lines = [['bastion', 'Bastion', ids.slice(0, 21)], ['kestrel', 'Kestrel', heavy], ['scrapline', 'Scrapline', ids.slice(0, 21)]];
   let at = 21;
   for (const [maker, name, bases] of lines) {
@@ -30,7 +30,7 @@ test("the shipped data has the 12 v0.1 module types, first, then M23e's nine, th
     at += bases.length;
   }
   assert.equal(at, modules.length);
-  assert.equal(heavy.length, 17, 'all but the four that weigh 1');
+  assert.equal(heavy.length, 16, 'all but the four that weigh 1, and the reactor');
 });
 
 // Each case breaks one thing in a copy of the real data and expects the
@@ -374,5 +374,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(80 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 14 enemies, 19 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 26 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 18 events\)/);
+  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 14 enemies, 19 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 26 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 18 events\)/);
 });

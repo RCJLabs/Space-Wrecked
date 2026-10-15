@@ -1,7 +1,8 @@
 // The makers (ROADMAP §7): M23g's Bastion Arms makes a version of every
 // part, on the Yard part's footprint, interior and fittings, with more hit
 // points and more mass; M31's Kestrel Dynamics, of every part that weighs 2
-// or more, lighter, frailer and dearer; and M31's Scrapline, of every part,
+// or more but the reactor, lighter, frailer and dearer; and M31's Scrapline,
+// of every part,
 // cheaper and frailer, each drawing 1 more power and each reactor making 1
 // less. Where the game asks for a part, any maker's version will do. Saves
 // and codes name parts by id, so neither version changes: old ones load
@@ -14,7 +15,7 @@ import { buildShip } from '../src/sim/builder.js';
 import { campaignProblems, newCampaign } from '../src/sim/campaign.js';
 import { withBoard } from '../src/sim/contracts.js';
 import { withBases } from '../src/sim/defs.js';
-import { baseOf, countOfAny, versionAtHand, versionsOf } from '../src/sim/makers.js';
+import { baseOf, countOfAny, versionAtHand, versionBy, versionsOf } from '../src/sim/makers.js';
 import { initialState, saveData } from '../src/sim/root.js';
 import { hangarText } from '../src/ui/campaign/hubText.js';
 import { offerText, shopText } from '../src/ui/campaign/shopText.js';
@@ -47,10 +48,12 @@ const LINES = {
   },
   // About a third less mass, half the hit points (Evan's call, 2026-10-15:
   // the trade has to show on a shielded ship) and a fifth dearer. The four
-  // parts that weigh 1 can't get lighter in whole numbers.
+  // parts that weigh 1 can't get lighter in whole numbers, and it makes no
+  // reactor (Evan's call, 2026-10-15): at half the hit points one gun hit
+  // disabled every ship that flew one.
   kestrel: {
     name: 'Kestrel Dynamics',
-    makes: (def) => def.stats.mass >= 2,
+    makes: (def) => def.stats.mass >= 2 && def.id !== 'reactor',
     keeps: ['power', 'thrust', 'berths', 'lifeSupport', 'cargo'],
     differs: (made, def) =>
       made.stats.mass < def.stats.mass && made.stats.mass <= Math.ceil(def.stats.mass * 0.75) &&
@@ -88,7 +91,7 @@ test("each maker makes its line of parts on the Yard part's shape: Bastion's tou
       made[maker] += 1;
     }
   }
-  assert.deepEqual(made, { bastion: 21, kestrel: 17, scrapline: 21 });
+  assert.deepEqual(made, { bastion: 21, kestrel: 16, scrapline: 21 });
   for (const [maker, line] of Object.entries(LINES)) assert.equal(rules.manufacturers.get(maker).name, line.name);
 });
 
@@ -138,9 +141,10 @@ test("saves and codes keep their versions: old ones load with the Yard's parts, 
   assert.ok(old.ok, old.error);
   assert.deepEqual(old.ship.modules.map((m) => m.type), example.map((p) => p.type));
   assert.ok(old.ship.modules.every((m) => rules.modules.get(m.type).manufacturer === 'yard'));
-  // The same ship with each maker's engines, reactor and gun.
+  // The same ship with each maker's engines, reactor and gun (Kestrel makes
+  // no reactor: the Yard's stays).
   for (const maker of Object.keys(LINES)) {
-    const swap = (type) => (['engine', 'reactor', 'weapon'].includes(type) ? `${maker}-${type}` : type);
+    const swap = (type) => (['engine', 'reactor', 'weapon'].includes(type) ? versionBy(rules, type, maker) : type);
     const built = buildShip(rules, 'starter', example.map((p) => ({ ...p, type: swap(p.type) })));
     assert.deepEqual(built.rejected, [], maker);
     const back = decodeBlueprint(encodeBlueprint(built.ship), rules);
@@ -150,8 +154,8 @@ test("saves and codes keep their versions: old ones load with the Yard's parts, 
   // A campaign with every maker's parts fitted and on hand saves and loads.
   const onHand = { 'bastion-engine': 1, 'kestrel-weapon': 1, 'scrapline-reactor': 2, corridor: 2 };
   const campaign = { ...newCampaign(rules, 5), parts: onHand };
-  campaign.ship = { ...campaign.ship, modules: campaign.ship.modules.map((m) => (m.type === 'reactor' ? { ...m, type: 'kestrel-reactor' } : m)) };
-  assert.ok(campaign.ship.modules.some((m) => m.type === 'kestrel-reactor'));
+  campaign.ship = { ...campaign.ship, modules: campaign.ship.modules.map((m) => (m.type === 'bridge' ? { ...m, type: 'kestrel-bridge' } : m)) };
+  assert.ok(campaign.ship.modules.some((m) => m.type === 'kestrel-bridge'));
   assert.deepEqual(campaignProblems(campaign), []);
   const state = { ...initialState(), campaign };
   const loaded = parseSave(JSON.stringify(makeSave(saveData(state))));
@@ -231,6 +235,6 @@ test("Scrapline's power counts in the flight checklist: the launched start ship 
   assert.deepEqual(flies.modules.slice(yard.modules.length).map((m) => m.type), ['scrapline-reactor']);
   assert.deepEqual(failing(flies), []);
   const kestrel = madeToFly(yard, rules, 'kestrel');
-  assert.deepEqual([kestrel.modules.length, shipStats(kestrel, rules).mass, shipStats(yard, rules).mass], [yard.modules.length, 21, 30]);
+  assert.deepEqual([kestrel.modules.length, shipStats(kestrel, rules).mass, shipStats(yard, rules).mass], [yard.modules.length, 23, 30]);
   assert.deepEqual(failing(kestrel), []);
 });
