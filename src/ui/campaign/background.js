@@ -28,9 +28,9 @@ export const backgroundScreen = {
     const facts = node('dl', 'bkg-facts');
     detail.append(name, blurb, facts);
     const foot = node('footer', 'cap-foot');
-    const backButton = toolButton('cap-back', icons.leave, 'Title');
+    const backButton = toolButton('cap-back bkg-back', icons.leave, 'Title');
     const hint = node('p', 'cap-hint', 'Loading…');
-    const nextButton = toolButton('cap-start', icons.next, 'Next');
+    const nextButton = toolButton('cap-start bkg-next', icons.next, 'Next');
     nextButton.disabled = true;
     foot.append(backButton, hint, nextButton);
     el.append(head, cards, detail, foot);
