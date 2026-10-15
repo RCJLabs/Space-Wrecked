@@ -4,15 +4,16 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { seedFrom } from '../src/core/rng.js';
+import { makeSave, parseSave } from '../src/core/save.js';
 import { newCampaign } from '../src/sim/campaign.js';
 import { contractsIn, withBoard } from '../src/sim/contracts.js';
 import { shopOf } from '../src/sim/economy.js';
-import { huntersFor, paymentFor } from '../src/sim/heat.js';
+import { huntersFor, paymentFor, pursuerOf } from '../src/sim/heat.js';
 import { huntOdds } from '../src/sim/hunt.js';
 import { launch } from '../src/sim/launch.js';
 import { beginRaid } from '../src/sim/raid.js';
 import { faceRaid } from '../src/sim/raids.js';
-import { initialState, reduce } from '../src/sim/root.js';
+import { initialState, reduce, saveData } from '../src/sim/root.js';
 import { beginRun } from '../src/sim/travel.js';
 import { backgroundText } from '../src/ui/campaign/backgroundText.js';
 import { captainText } from '../src/ui/campaign/captainText.js';
@@ -66,6 +67,31 @@ test('campaign/new starts from the background picked, the first if none is, and 
   // The deserter's crew has no engineer, so an engineer can't lead it.
   assert.equal(reduce(initialState(3), { type: 'campaign/new', rules, background: 'deserter', captain: captain('engineer') }).campaign, null);
   assert.equal(reduce(initialState(3), { type: 'campaign/new', rules, background: 'smuggler', captain: captain('engineer') }).campaign.background, 'smuggler');
+});
+
+test("a save keeps the campaign's background, and a v23 save from before M30 opens as the miner's, as before", () => {
+  // Quitting and reopening, as main.js does: the save as text, read back
+  // into a fresh game, and Continue.
+  const reopen = (save) => {
+    const loaded = parseSave(JSON.stringify(save));
+    assert.ok(loaded.ok, loaded.error);
+    return reduce(reduce(initialState(12345), { type: 'save/restore', data: loaded.save.data }), { type: 'campaign/continue' }).campaign;
+  };
+  for (const id of IDS) {
+    const started = reduce(initialState(seedFrom(`m30 save ${id}`)), { type: 'campaign/new', rules, background: id, captain: captain('medic') });
+    const back = reopen(makeSave(saveData(started)));
+    assert.deepEqual(back, started.campaign, id);
+    const offered = new Set(contractsIn(rules, rules.backgrounds.get(id).district).map((contract) => contract.id));
+    assert.ok(back.board.every((job) => offered.has(job.contract)), `${id}: still its district's board`);
+    assert.equal(pursuerOf(back, rules), rules.backgrounds.get(id).pursuer, id);
+  }
+  // Every campaign before M30 was the miner's, and v23 is still the
+  // schema: a save written then opens as the miner's, with no migration.
+  const miner = reduce(initialState(seedFrom('m30 save v23')), { type: 'campaign/new', rules });
+  const back = reopen({ version: 23, data: saveData(miner) });
+  assert.equal(back.background, 'miner');
+  assert.equal(pursuerOf(back, rules).name, 'Con-Reg Recovery');
+  assert.equal(shopOf(back, rules).name, rules.districts.get('tailings').shop.name);
 });
 
 test('the pursuer is the background\'s in act 1: its words, its hunters on jobs, its raid at the hangar and its launch words', () => {

@@ -2,6 +2,230 @@
 
 Newest entry first.
 
+## M30 Backgrounds 2 and 3, and their pursuers (2026-10-15)
+
+**Status:** done, and the ROADMAP.md box is ticked. It is Phase 6's first milestone. New game opens a pick of three backgrounds, each with its own start, district and pursuer:
+- **The debt-bound miner**, as before: Con-Reg Recovery, in the Tailings.
+- **The Navy deserter** walked off a Fleet tender with a crate of its spares.
+  - Two marines and a medic, no credits.
+  - Its half-built ship has a shield generator and a small reactor fitted beside the gun. An engine, crew quarters and two corridors are on hand.
+  - It works the Strand, the spaceport's sailors' quarter.
+  - The Fleet Provost is after it, and takes no payments.
+- **The burned smuggler** dumped the Hallorans' cargo to outrun customs.
+  - Two engineers and a medic, 75 credits.
+  - Its ship has a light engine and a cargo hold fitted. Life support and two corridors are on hand.
+  - It works the Narrows, the old town's back streets.
+  - The Halloran family is after it, and takes a vig of 75 credits for 15 heat.
+
+Each new district has 6 clients, 4 sites (one on each site map), a shop and 8 jobs. Each new pursuer has its own words in all three acts, and:
+- **on jobs from heat 50:** a Provost MP (armored, aim 75), or a Halloran collector (quick and lightly armed);
+- **raiders at the hangar:** the Provost's three MPs, or six Hallorans;
+- **raiders at the colony:** three MPs, or five Hallorans;
+- **hunters on the run:** the Provost cutter from heat 50 and the Fleet frigate from 75, in navy and white; or the Halloran runner and the armed yacht, in slate or bone with violet.
+
+Some of this changes what was there before:
+- **New game** opens the backgrounds first, the miner picked. Next goes to the captain's screen. The captain's Back now returns to the backgrounds; it went to the title.
+- **The captain's screen** offers each of the start crew's jobs once (the deserter has two marines).
+- **A pursuer can take no payments** (`payment` may be left out in `data/backgrounds.json`). The hangar then shows no Pay. Its hints say "The Fleet Provost takes no payments: heat only falls once a raid is faced." and, with a raid due, "Defend the ship."
+- **Act 3's words** look ahead to the rest of v0.4: "Three backgrounds are here, each with its own pursuer. Still to come in v0.4: a third maker; every job, trait and talent; factions, quests and companions; pictures and sound."
+- **`SAVE_VERSION` stays 23.** The campaign has kept its background since v5.
+- **Tests changed on purpose:**
+  - `data.test.js`:
+    - the validator's counts (14 enemies, 19 encounters, 9 ship presets, 3 backgrounds, 3 districts, 26 job templates);
+    - the pursuer's shape, with `payment?` and `colony`;
+    - a new case, a payment that is no payment;
+    - the board-size case now names the Tailings;
+  - `contracts.test.js`: a board's jobs are its district's (`contractsIn`). Each district's boards offer all its jobs, clients and sites, and every job belongs to one district;
+  - `harness.test.js`: the ships list has the four new presets, and the summary's fights are 4 a ship;
+  - `raidText.test.js`: act 3's new words;
+  - `tests/golden/ships.txt`, regenerated (below).
+
+No phone results have come back yet for M14 to M29.
+
+**How it was picked:** Evan answered four questions (2026-10-15), each the recommended answer:
+- **Which two:** "Burned smuggler, Navy deserter".
+- **Act 1:** "A district each". Each plays in a district of its own on the same rock, with its own clients, sites, shop and jobs.
+- **The pursuers:** "Fighters, ships, terms". Each has its own fighters, its own two ships on the run, its own payment terms or none, and its own words. Heat's numbers are the same for all three.
+- **Difficulty:** "About the same". The three are about equally hard, and the difficulty setting stays the place for harder.
+
+Measured before settling this (`tools/run.js`, seeds 1 to 50 from the miner's start): every run reaches launch after 6 jobs at the median (3 to 13), with no raid in any run, in 45 minutes at the slow pace (21 to 93).
+
+Done when (ROADMAP.md, M30, in full there):
+- **Picking a background:** a screen before the captain's with the three, each showing its words and pursuer, its district and what its start gives; a tap picks one and Next goes on; the captain screen follows the pick (tested).
+- **The Navy deserter** and **the burned smuggler**, each with its start, its district (6 clients, 4 sites, a shop and 8 jobs) and its pursuer as Evan picked.
+- **Everything that reads the background reads the campaign's:** the board and the shop; the heat meter's words, the hunters on jobs, the payment or its absence, and the raid at the hangar; the launch's words and the hunters' ships; the colony's words and raiders. A background is data only (tested).
+- **Saves:** `SAVE_VERSION` stays 23; a v23 save opens as the miner's (tested).
+- **About as hard as the miner:** act 1 (every run launches, the slow median within 10 minutes), raids (within 10 points, at the hangar and the colony), and the run and the colony (fed, met and raids won within 5 runs of 30), reported side by side.
+- **Touch:** every new button 48 px or more at the three sizes; by touch, each background picked through to its hangar, board and shop, a job with its pursuer's fighter, its raid at the hangar, its launch, and a quit and reopen that keeps it.
+
+How each is met:
+- **Picking a background:** `tests/backgrounds.test.js` (new):
+  - the screen's words: a card for each background with its pursuer, and the one picked in full (After you, with its payment terms; Home; Crew; Credits; On hand; Fitted; To find), and the hint;
+  - the captain's screen offers the background's jobs once and names it;
+  - `campaign/new` starts from the background picked (the first if none), and refuses one not in the data or a captain whose job its crew hasn't got.
+
+  By touch, below.
+- **The deserter and the smuggler:** `tests/backgrounds.test.js`:
+  - the three have different districts, pursuers, hunters, raiders and ships;
+  - each campaign starts with its crew, credits, parts and ship, its district's board (its 8 or 10 jobs) and its shop.
+
+  `node tools/validate-data.js` checks the new data.
+- **Everything reads the campaign's background:** `tests/backgrounds.test.js`, for each of the three:
+  - act 1: the heat meter's words at 10, 30 and 55, the hunters on jobs, the raid's party at the hangar and the launch's words;
+  - the run and the colony: the meter's words, the hunters' two ships, the colony's words and its raiders;
+  - the Provost: no Pay, and the hints. The Hallorans: 75 credits for 15 heat, dearer than Con-Reg's 50.
+
+  `tests/voyage.test.js` (M30's test): from the deserter's and the smuggler's starts, every one of 30 runs launches and settles a world. So each background plays to the colony from data alone.
+- **Saves:** `tests/backgrounds.test.js`:
+  - each background's campaign comes back from a quit and reopen as it was, its board its district's and its pursuer its own;
+  - a v23 save from before M30 opens as the miner's, with no migration.
+
+  By touch: a save made by main opens as the miner's.
+- **About as hard:**
+  - **Act 1:** `tests/run.test.js` (M30's test, seeds 1 to 10): every run launches from each start, with the slow median within 10 minutes of the miner's. Over 50 seeds (below) the slow medians are 45, 41 and 39 minutes.
+  - **Raids:** `tests/backgrounds.test.js` (`tools/raids.js`, 150 fights a row): each pursuer's raiders are beaten within 10 points of Con-Reg's, at the hangar and at the colony.
+  - **The run and the colony:** `tests/voyage.test.js` (M30's test, 30 runs each): runs crossed fed, runs that met the hunters and runs with a raid lost are each within 5 of the miner's. `node tools/voyage.js --runs 30 --background all` puts them side by side.
+- **Touch:** M30's browser check, below.
+
+### Shipped
+
+- **Data:**
+  - `backgrounds.json`: the deserter and the smuggler. Each has its blurb, captains' names, district, start (crew, credits, parts on hand, ship) and launch words. Its pursuer has words for each act, hunters on jobs, raiders, a payment or none, the run's two ships, and the colony's raiders and words;
+  - `districts.json`: the Strand and the Narrows, each with 6 clients, 4 sites and a shop (Voss's chandlery; Ferris's back room);
+  - `contracts.json`: 16 jobs, 8 a district. Each district has a once-only job that pays an engine (Impounded; Left luggage), like the Tailings' repossession;
+  - `enemies.json`: 7 fighters: the Provost MP, customs officer, docker, fleet rating, Halloran collector, Halloran enforcer and Pike soldier, each with a look of its own;
+  - `encounters.json`: 9 parties for the jobs, the raids and the boardings;
+  - `ships.json`: 4 presets, the Provost cutter, the Fleet frigate, the Halloran runner and the Halloran yacht;
+  - `campaign.json`: act 3's `ahead`.
+- **Validation:** `validate-campaign.js`: a pursuer's `payment` may be left out.
+- **The sim:** `root.js`: `campaign/new` takes the background picked, refusing one not in the data, and checks the captain against its crew.
+- **The UI:**
+  - `background.js` (new): the backgrounds' screen, a card each down the left and the one picked in full beside them, with Title and Next;
+  - `backgroundText.js` (new): its words, read off a new campaign from the background (what is fitted, on hand and still to find);
+  - `newGame.js` (new): the pick, carried between the two screens and not saved;
+  - `captain.js` and `captainText.js`: the captain for the pick, each job once, and Back to the backgrounds;
+  - `title.js` and `screens.js`: New game opens the backgrounds;
+  - `hubText.js`: the hints for a pursuer that takes no payments;
+  - `style.css`: the backgrounds' screen.
+- **Tools:**
+  - `run.js --background`, and the measured odds of the new jobs (`JOB_ODDS`);
+  - `voyage.js --background`, and `--background all` side by side (`voyagesByBackground`);
+  - `raids.js` (new): each pursuer's raids, at the hangar and at the colony.
+- **Tests:**
+  - new: `tests/backgrounds.test.js` (10);
+  - added to: `run.test.js` and `voyage.test.js` (M30's tests);
+  - changed, above.
+
+  777 tests in all.
+- **Docs:**
+  - ROADMAP.md: §2 (backgrounds), §4.2 (the other pursuers' hunters), §4.4 (their fighters, raiders and payments), §4.5, §4.6, §5 (the three as built), M30 ticked, and §9 (five new);
+  - CLAUDE.md: its data and tools lists.
+
+Decisions made along the way, not asked (each easy to change):
+- **The fighters' numbers:**
+  - the MP: 11 hit points, aim 75, defense 5, armor 1, a rifle;
+  - the collector: 6 hit points, aim 55, defense 5, mobility 5, a pistol;
+  - the enforcer: 11 hit points, aim 60, armor 1, a shotgun.
+
+  They were tuned with `tools/raids.js` until each pursuer's raids landed within 10 points of Con-Reg's. The first MPs were beaten too often (61% at the hangar, 44% at the colony); at 12 hit points the crew of three beat them at the colony only 6% of the time. 11 lands both within 10 points.
+- **The parties:**
+  - the Provost raids with three MPs at the hangar and at the colony;
+  - the Hallorans raid the hangar with six, and the colony with five: with six there, the careful test player lost a raid in too many runs;
+  - the Provost cutter's boarders are two MPs and a fleet rating, and the yacht's are five Hallorans. Three MPs and six Hallorans stalled more boardings than the harness allows (2 in 100).
+- **The ships** are Con-Reg's two builds with their own looks, makers and parties. The Provost cutter is half Bastion's and the frigate 80%. The yacht is half Bastion's: with yard parts a gun and a cannon did worse against it, which Law 1 forbids.
+- **The starts:**
+  - The deserter has crew quarters and an engine on hand. Crew quarters were act 1's bottleneck: before they were on hand for the deserter, with more of them in both new shops and in House call's drops, the deserter took 71 minutes at the slow pace with 6 runs of 50 never launching, and 2 of the smuggler's runs stuck.
+  - The smuggler has life support on hand and 75 credits. Without the life support it took 55 minutes.
+  - The Strand's shop leans to the Fleet's surplus (armories, guns, shields), with quarters and life support. The Narrows' leans to cargo holds, light engines and quarters.
+- **The jobs:** each district's 8 cover the three missions. Each district has a once-only engine job, and jobs that drop the parts its start still needs. `tools/run.js` plays the new jobs at odds measured on the first boards of 250 new campaigns (85 to 106 fights a job; `JOB_ODDS`).
+- **The background screen:** the miner is picked at first. The pick is kept coming back from the captain's screen, and isn't saved: a quit on either screen reopens at the title, and New game starts from the miner again.
+
+### Known issues
+
+- **The deserter's long tail in act 1:** its slow median is 41 minutes, but its slowest run took 131 (the miner's slowest, 93). It also loses more jobs: 61% done against the miner's 73%. Its hardest job, Dock war (a clear-out against three dockers and a heavy), is done 1 time in 5 by its start crew.
+- **The smuggler meets the hunters less, and is raided more at the colony.** It meets the hunters in 5 runs of 30 against the miner's 10, at the edge of "within 5". Its colonies are found in 20 runs of 30 against 13, with 33 raids against 18, most of the difference far from the lanes (12 raids in 16 runs, against 4 in 18). It wins 21 of the 33, and loses a raid in 8 runs against the miner's 5. Why is not known. It doesn't land hotter (heat 48 at the median as it settles, against 50), and it flies about as many trips (10 against 9). (§9)
+- **The Fleet frigate's boardings stall at the test's limit:** 2 in 100 when its crew boards the start ship (`tests/boarding.test.js` allows 2 a row), as Con-Reg's gunship's already did.
+- **The Provost cutter's party is harder than the repo tug's:** the start crew wins 25% at home and 38% boarding her, against 44% and 44% for the tug.
+- **Crew quarters decide act 1's slow runs** for all three: the longest runs wait on quarters from a drop or the shop.
+- **The background screen's facts need a swipe on the folded screen** (905 × 370 and 821 × 283): they run past the panel's foot, below Fitted or Home (§9). The panel scrolls, as the hangar's do.
+- **Recruits still have no background** (§9; M32's draft).
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+1. **New game:** the three backgrounds. Tap each and read its details (on the cover screen, swipe the panel for the rest). Next, then Back: is the pick kept?
+2. **The captain's screen** for each: the names, the jobs (the deserter offers Marine and Medic, the smuggler Engineer and Medic) and the background's words.
+3. **The deserter:** the Strand's board and Voss's chandlery, and no Pay at the hangar. Take jobs to heat 50, and an MP comes along. At 75 the raid: three MPs.
+4. **The smuggler:** the Narrows' board and Ferris's back room, and Pay 75 at the hangar. Six Hallorans raid at 75.
+5. **Launch** each: its own words. On the run, the hunters' ships in their colors: a Provost cutter or Fleet frigate, a Halloran runner or yacht.
+6. **Quit and reopen** with each: the background, district and pursuer are kept.
+7. **Tell me:**
+   - whether the three feel different enough, in the starts, the districts and the pursuers;
+   - whether the Provost's no payments is a good squeeze or just a wall;
+   - whether the new fighters read apart from each other and from Con-Reg's in a fight;
+   - whether either new start feels harder or easier than the miner's.
+
+### Next session
+
+M31 Manufacturers (Phase 6, v0.4). First task: settle its Done when with Evan; ROADMAP.md has a draft (a third maker, Kestrel Dynamics or Scrapline from §9, with its version of each part, its numbers and its look).
+
+### Verified here
+
+- `node --test`: 777 pass. `node tools/validate-data.js`: OK.
+- **`tests/golden/ships.txt`, regenerated on purpose:** the four new presets added (262 lines), every other ship unchanged.
+- **Act 1** (`node tools/run.js --runs 50 --background …`, seeds 1 to 50), every run reaching launch:
+
+  | Background | Jobs | Done | Raids | Quick | Slow |
+  | --- | --- | --- | --- | --- | --- |
+  | Debt-bound miner | 6 (3 to 13) | 73% of 337 | 0 (0 to 0) | 28 (12 to 58) | 45 (21 to 93) |
+  | Navy deserter | 5 (3 to 18) | 61% of 346 | 0 (0 to 3) | 25 (13 to 83) | 41 (22 to 131) |
+  | Burned smuggler | 6 (3 to 18) | 76% of 350 | 0 (0 to 1) | 24 (13 to 76) | 39 (22 to 121) |
+
+  The minutes are the median, then the least and most.
+- **Raids** (`node tools/raids.js`, 150 fights a row): the crew's wins against each pursuer's raiders, the start crew at the hangar and the crew of three at the colony:
+
+  | Background | At the hangar | At the colony |
+  | --- | --- | --- |
+  | Debt-bound miner | 28% of 4 | 17% of 4 |
+  | Navy deserter | 33% of 3 | 15% of 3 |
+  | Burned smuggler | 35% of 6 | 19% of 5 |
+- **The run and the colony** (`node tools/voyage.js --runs 30 --background all`, the careful test player):
+
+  | Background | Launched | Fed | Met | Raids | Won | Lost | Runs lost |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | Debt-bound miner | 30 | 25 | 10 | 18 | 12 | 6 | 5 |
+  | Navy deserter | 30 | 27 | 12 | 21 | 16 | 5 | 5 |
+  | Burned smuggler | 30 | 28 | 5 | 33 | 21 | 12 | 8 |
+- **Boardings** (`node tools/sim.js --boardings`, 63 fights a row): the start crew's wins against each pursuer's ships' parties, at home and boarding her:
+
+  | Ship | Party | At home | Boarding her |
+  | --- | --- | --- | --- |
+  | Con-Reg repo tug | two agents and a heavy | 44% | 44% |
+  | Con-Reg gunship | two agents, a heavy and a guard | 6% (2 stalled) | 14% |
+  | Provost cutter | two MPs and a fleet rating | 25% | 38% (1 stalled) |
+  | Fleet frigate | three MPs | 19% (2 stalled) | 22% |
+  | Halloran runner | two collectors and an enforcer | 49% | 56% |
+  | Halloran yacht | four collectors and an enforcer | 14% | 17% |
+- **Law 1** (`tests/approach.test.js`): each fighting part added to the start ship does worse against none of the 9 presets, the four new ones among them.
+- **The miner's game is main's:**
+  - act 1's 100 test runs are main's, seed by seed: the campaign at launch, the jobs and the log, but for the log's first line, which now names the background;
+  - the careful test player's 30 voyages are main's in everything they return;
+  - the fights (`node tools/sim.js` on M29's six ships; no balance number changed) are main's but for the time taken.
+- **M30's browser check by touch:** 27 of 27 at each of 905 × 370, 821 × 283 and 960 × 825. It covers:
+  - New game opening the backgrounds, the miner picked, its details in full;
+  - a tap picking the deserter, its details (the last fact in sight after a swipe where the panel scrolls) and the hint;
+  - Next to the deserter's captain (its names, Marine and Medic, its words), Back keeping the pick, and Start beginning the deserter's campaign at the Strand;
+  - the deserter's hangar: the Strand's board and Voss's chandlery, no Pay, and at heat 55 the Provost's words and the hint; a job taken with an MP along;
+  - the Provost's raid: Defend, and three MPs in the fight;
+  - the smuggler by touch: Engineer and Medic, then the Narrows' board, Pay 75, and a quit and reopen that keeps it;
+  - the Hallorans' raid of six, and the smuggler's launch words;
+  - a save made by main opening as the miner's;
+  - offline, the backgrounds draw; every button 48 px or more; no console errors.
+
+  Its screenshots showed the deserter's details running past the panel's foot at 905 × 370 and 821 × 283. The panel scrolls, and the check now swipes it to the last fact.
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named: REGRESSION
+
+  Six copies were adapted, not the game, for New game's new first screen: M23c's, M18's, M17's, M16's, M14's and M13's tap Next on the backgrounds, the miner picked (`m30/old.mjs`).
+
 ## Gate 5 (2026-10-15)
 
 **Passed.** Evan's answer after M29: "Move the fps banner and start the next phase".

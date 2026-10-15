@@ -43,6 +43,8 @@ The game has three acts, and the home moves at each gate.
 
 Every act runs the same mission loop: hub, travel, node, mission, aftermath, then push on or regroup.
 
+**Backgrounds** (M30, `data/backgrounds.json`): New game opens a pick of three before the captain's screen. Each has its own start, its own district for act 1 (`data/districts.json`) and its own pursuer, whose fighters, ships, words and payment terms (or none) follow the campaign through all three acts. §5 has the three as built.
+
 **Launch** (M17, `src/sim/launch.js`): once every flight check passes, Launch at the hangar ends act 1. The ship lifts off, and the campaign moves on to act 2 with its ship, crew, credits, parts and heat. The hangar's job board, shop, payments and raids stay behind. A raid at the door doesn't stop it: the pursuer finds an empty hangar. From M19 act 2's home is the sector map (§4.7): the run crosses the act's sectors by jumps, eating supplies (§4.6). Since M20 the nodes along the way hold events: derelicts, distress calls, traders and hazards. Since M21 some hold hostile ships, met in the approach phase (§4.2), and since M22 a boarding either way is fought out (§4.3). Since M25, past the last sector's jump point lies a system past the charts with three worlds (§4.7): a day's survey from orbit shows what one is worth, and Settle here at one ends act 2, surveyed or not. The ship lands, and since M26 act 3's home is the colony on that world.
 
 Act length targets (proposed, to check in play): act 1 under an hour, act 2 the longest, act 3 open-ended.
@@ -67,7 +69,7 @@ Act length targets (proposed, to check in play): act 1 under an hour, act 2 the 
   - Nothing is built, moved, given or refitted while the ship is away.
 - **Raids** (M29, `src/sim/raids.js` and `colonyMap.js`, pure; the numbers in `data/balance.json`, the pursuer's words and raiders for the colony in `data/backgrounds.json`). §4.4 has heat at the colony.
   - **Found:** at each day's end with no raid coming, the pursuer may find the colony, at odds by heat's level and how far the colony lies from the lanes. Found, its lander comes down 3 days later (`raidWarning`), counted down on the colony screen.
-  - **The landing:** on its day the raid is down, and Next day, Fly out and Fly on wait until it is faced. Defend, two taps: the first says what fires at the lander, at what odds, and who fights. Each powered defense fires its shots at 50% (`landingHit`), and each hit is a raider fewer of the pursuer's four (an agent, a heavy, an agent and a guard, the last first).
+  - **The landing:** on its day the raid is down, and Next day, Fly out and Fly on wait until it is faced. Defend, two taps: the first says what fires at the lander, at what odds, and who fights. Each powered defense fires its shots at 50% (`landingHit`), and each hit is a raider fewer of the pursuer's party, the last first: Con-Reg's four (an agent, a heavy, an agent and a guard), and since M30 the Fleet Provost's three MPs or the Hallorans' five (four collectors and an enforcer).
   - **The fight** on the colony's grid (`colonyMap.js`), a tile a cell: open ground, a farm's fields half cover and every other building full cover. The crew at home starts by the landed ship's edge (the 3 west columns) and the raiders at the far edge, pressing on as at the hangar. A powered shield gives each defender 1 armor (`raidShieldArmor`), a powered armory 10 aim (`raidArmoryAim`).
   - **Afterwards,** won or lost, heat falls to 40 (`heatAfterRaid`), or stays if under it. Lost, the raiders take half the food, half the materials and the dearest part in the hold. Downed crew come home hurt, as from any fight.
   - **The ship away:** a raid landing during a leg stops it that day. Those at home face it, the squad doesn't fight, and Fly on flies the rest. With nobody home, the landing's hits are all the colony has: it holds if they stop every raider, and is lost without a fight if not.
@@ -184,6 +186,11 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - **The pursuer's hunters** (M24, §4.4) fly two presets of their own, in Con-Reg's graphite and amber, each firing at engines, then guns, and closing from round 2:
     - the **repo tug** (a crew of 3; a gun, an armory, an engine and two light engines) runs at half lost. Blown up it leaves 15 to 30 credits, and boarded, 1 part. Its party is Con-Reg's recovery team: two agents and a heavy;
     - the **gunship** (a crew of 4; two guns and sometimes a cannon, a shield, two engines and two reactors, about half its parts Bastion's) runs at 70% lost: 25 to 45 credits, or 2 parts. Its party is the task force: two agents, a heavy and a guard.
+  - **The other pursuers' hunters** (M30, `data/ships.json`) fly the same two builds, with their own looks and parties:
+    - the Fleet Provost's **Provost cutter** (the tug's build, half its parts Bastion's; two MPs and a fleet rating) and **Fleet frigate** (the gunship's, 80% Bastion's; three MPs), in navy and white;
+    - the Hallorans' **runner** (the tug's; two collectors and an enforcer) and armed **yacht** (the gunship's, half Bastion's; four collectors and an enforcer), in slate or bone with violet.
+
+    Law 1 holds against all four (`tests/approach.test.js`). PROGRESS.md's M30 entry has their boardings (`tools/sim.js --boardings`): the start crew beats the Provost's parties less often than Con-Reg's, and the runner's more often.
   - **Balance against them** (`tools/approach.js`, 300 a row, M24): the start ship scores −20 against the tug (gets away 64%, boarded 20%) and −13 against the gunship (65% and 13%). A gun makes the tug +15 and a cannon +31. The gunship can only be run from: its shield takes 10 off each round's hits, leaving the start ship's one gun 5 a hit, too little to disable it in three rounds (firing at its engines and at its guns came out the same over 400 approaches). A heavy engine gets away from it 90% of the time. Boarding fights (`tools/sim.js --boardings`, 125 a row): the start crew beats the tug's party 38% of the time at home and 46% aboard her, and the gunship's 9% and 14%.
 
 ### 4.3 Squad battles
@@ -260,9 +267,9 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - 100: a forced confrontation event
 - **Act 1 as built** (M15, `src/sim/heat.js`; the numbers in `data/balance.json`, the pursuer's part in `data/backgrounds.json`):
   - A job adds 8 heat, done or lost, and a loud one 15: clear-outs and the fire twist are loud (`loud` in `data/contracts.json`).
-  - From 25 the pursuer's words change, and that's all in act 1. From 50 a Recovery agent goes along on every job (the pursuer's hunters).
-  - From 75 a raid is due at the hangar, and no job can be taken until it has been faced. The player picks when: Defend fights it on the hangar map (§4.3) against the pursuer's raiders, four of them, who press on. Won or lost, heat falls to 40 after it. Lost, the raiders take the dearest part on hand, or with none, half the credits, never a part off the ship.
-  - **The one loss in act 1** is a payment on the debt: 50 credits for 15 heat, at the hangar. It can also head off a raid that is due.
+  - From 25 the pursuer's words change, and that's all in act 1. From 50 a Recovery agent goes along on every job (the pursuer's hunters; since M30 the background's: an MP for the Fleet Provost, a collector for the Hallorans).
+  - From 75 a raid is due at the hangar, and no job can be taken until it has been faced. The player picks when: Defend fights it on the hangar map (§4.3) against the pursuer's raiders, who press on: Con-Reg's four, the Provost's three MPs, the Hallorans' six. Won or lost, heat falls to 40 after it. Lost, the raiders take the dearest part on hand, or with none, half the credits, never a part off the ship.
+  - **The one loss in act 1** is a payment on the debt: 50 credits for 15 heat, at the hangar. It can also head off a raid that is due. Since M30 the payment is the pursuer's (`payment`, optional): the Hallorans' vig is 75 credits for 15 heat, and the Fleet Provost takes none, so a deserter's heat only falls once a raid is faced.
   - Heat doesn't fall on its own, and 100's confrontation isn't in act 1: the raid comes first.
   - Heat goes along when the ship launches (M17), raid or no raid, into act 2.
 - **Act 2 before M24** (M19, `src/sim/travel.js`): a jump added 3 heat and a long jump takes 10 off (`jumpHeat`, `longJumpHeat`), from 0 to 100. Nothing in act 2 read heat until M24. Leaving a sector is a jump. Without long jumps, heat was at or near 100 by the end of the third sector (87 to 100 over 30 test runs, M19).
@@ -291,7 +298,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 ### 4.5 Characters
 
 - **Captain:** background, 2 traits and a starting job. **Crew:** generated recruits with a background, a trait and a job.
-- **As built in M18:** New game opens captain creation. The background is fixed in v0.1. The name comes filled in from the background's list and can be changed. The job is one of the three, and the captain takes its place in the crew. Two of the 6 traits in `data/traits.json` are picked. A trait adds to the job's numbers (hit points, aim, defense, mobility, armor) in every fight; the attributes below aren't in yet.
+- **As built in M18:** New game opens captain creation. The background is fixed in v0.1 (since M30 it is picked on a screen before the captain's, §2). The name comes filled in from the background's list and can be changed. The job is one of the start crew's (each offered once), and the captain takes its place in the crew. Two of the 6 traits in `data/traits.json` are picked. A trait adds to the job's numbers (hit points, aim, defense, mobility, armor) in every fight; the attributes below aren't in yet.
 - **Attributes:** Grit, Aim, Wits, Nerve.
 - **Recruits** (M23, `src/sim/recruits.js`): each station offers 2 (`recruitOffer`), each a name from `data/recruits.json`, a job and a trait, at full health. They are rolled from the campaign's seed, the sector and the station, not the campaign's RNG, so a station offers the same recruits on every visit and no other roll moves. Signing one on costs 50 credits (`recruitFee`) and takes two taps on the crew card, while the ship has room: as many as its berths and its life support both carry, 4 on the start ship. At a station anyone but the captain can be let go, two taps, with nothing paid back. Recruits have no background yet; since M23c each comes with a look, rolled with them.
 - **Jobs:** Marine, Engineer and Medic in v0.1; Pilot, Scout, Xenobiologist and Quartermaster later. Each job has a ship station effect, battle abilities and a colony effect. The first station effect is the medic's (M23, `station` in `data/jobs.json`): one more hit point a jump from a working med bay.
@@ -301,7 +308,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 ### 4.6 Economy
 
 - **Credits** buy parts and services. **Parts** are modules held in inventory. **Salvage** is raw material for repairs and, later, crafting.
-- **Act 1 starts** (M13; since M14 the background's start in `data/backgrounds.json`) with a half-built hull: bridge, reactor, corridors, airlock and a gun, with no quarters, life support or engines. On hand are crew quarters, life support and two corridors, so a new player's first minute fixes two flight checks. The engines have to come from jobs.
+- **Act 1 starts** (M13; since M14 the background's start in `data/backgrounds.json`) with a half-built hull: bridge, reactor, corridors, airlock and a gun, with no quarters, life support or engines. On hand are crew quarters, life support and two corridors, so a new player's first minute fixes two flight checks. The engines have to come from jobs. Since M30 each background starts its own way (§5): the deserter with a shield generator and small reactor fitted and an engine on hand, the smuggler with a light engine and cargo hold fitted and 75 credits.
 - **Jobs pay** (M14) credits, and on some jobs a part from the job's drop table (M16, §4.7): the repossession always pays an engine, once; the scrap run sometimes. Credits also buy heat off: a payment on the debt, 50 credits for 15 (M15, §4.4). A lost raid can take half of them.
 - **Prices** (M16, `src/sim/economy.js`): a part costs its module's cost (`buyPercent` 100 in `data/balance.json`), and the shop buys one back for half (`sellPercent` 50), rounded down to 5 credits. The engine, at 200, is the dear part.
 - **The shop** (M16): the district's dealer, Dutch's yard (`shop` in `data/districts.json`). It has 4 different parts at a time, picked by weight from its table (engines weigh most) when each job board is rolled, so it turns over after every job. A price is fixed when it is offered. It buys any part on hand.
@@ -348,7 +355,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - a twist half the time: an enemy more or fewer, fire or a cave-in on site, the lights out (sight cut to 6), a deadline, or the pay changed;
   - the pay, in steps of 5 credits, and the part, if any, from the job's drop table: a chance, and parts by weight (M16, `src/sim/drops.js`).
 
-  All of it is rolled, with the fight's seed, when the board is, from the campaign's RNG, so an offer never changes once it is made. After each job, done or lost, the board is rolled again with none of the jobs it had, so no job comes twice in a row, and the shop's stock with it (M16). A job marked once (the repossession) never comes back once it is done. Clients and sites belong to the background's district (`data/districts.json`).
+  All of it is rolled, with the fight's seed, when the board is, from the campaign's RNG, so an offer never changes once it is made. After each job, done or lost, the board is rolled again with none of the jobs it had, so no job comes twice in a row, and the shop's stock with it (M16). A job marked once (the repossession) never comes back once it is done. Clients and sites belong to the background's district (`data/districts.json`), and since M30 so do the jobs, by their sites: each district's board offers only its own 8 to 10.
 - **Act 2's sectors** (M19 and M20, `src/sim/gen/sector.js`, pure; `data/sectors.json`) are node maps in 7 columns: the way in alone in the first, the jump point alone in the last, and 2 or 3 nodes in each column between.
   - **Links** join each node to the next column by its height in its column, so none cross and every node can be reached both ways. Between any two columns, 35% of the time (`extraLinkChance`), one link more is added where it crosses nothing.
   - **Stations**, 2 a sector since M20 (1 or 2 in M19), each stand in a column of their own, and so does a **nebula**, 1 a sector since M24: a cloud the hunters can't see into (§4.4), with no event or ship in it. The kinds the data counts (`counts` in `data/sectors.json`) are placed so; a kind's flags say whether it is on the charts (`charted`), safe from the hunters (`safe`) or hides the ship (`hides`).
@@ -424,7 +431,10 @@ The v1.0 column is a set of targets, not commitments.
 
 **M23e's variants** (21 module types in all): light engine, heavy engine, small reactor, point defense, cannon, shield array, bunks, surgery and large hold.
 
-**v0.1 background** (M14, `data/backgrounds.json`): debt-bound miner. Con-Reg Recovery, the company's repo crews, hunt you by tracking your ship's registration. Act 1's district is the Tailings: six clients and four job sites (`data/districts.json`).
+**Backgrounds as built** (`data/backgrounds.json`), each with its district in `data/districts.json`: six clients, four job sites (one on each site map), a shop, and its jobs in `data/contracts.json`:
+- **Debt-bound miner** (M14). Con-Reg Recovery, the company's repo crews, hunt you by tracking your ship's registration, and take payments on the debt. Act 1's district is the Tailings, with 10 jobs.
+- **Navy deserter** (M30). The Fleet Provost, the Navy's police, take no payments. The district is the Strand, the spaceport's sailors' quarter, with 8 jobs. Two marines and a medic, no credits.
+- **Burned smuggler** (M30). The Halloran family want their cargo's worth, and take a dearer vig. The district is the Narrows, the old town's back streets, with 8 jobs. Two engineers and a medic, 75 credits.
 
 ---
 
@@ -810,7 +820,7 @@ Detailed at the start of M26, once v0.2 was done. The Done whens past M26 are dr
 
 Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are drafts, to settle as each milestone starts.
 
-- [ ] **M30 Backgrounds 2 and 3, and their pursuers.** One background plays from New game to the colony: the debt-bound miner, hunted by Con-Reg Recovery, in the Tailings. The captain screen names it, and there is nothing to pick.
+- [x] **M30 Backgrounds 2 and 3, and their pursuers.** One background plays from New game to the colony: the debt-bound miner, hunted by Con-Reg Recovery, in the Tailings. The captain screen names it, and there is nothing to pick.
 
   Evan's picks (2026-10-15), each the recommended option:
   - **The backgrounds:** the Navy deserter, hunted by the Fleet Provost, and the burned smuggler, hunted by the Halloran family.
@@ -861,6 +871,8 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
     - its pursuer's raid at the hangar;
     - its launch;
     - a quit and reopen that keeps the background.
+
+  As built (PROGRESS.md has the measurements): the deserter also has a small reactor fitted, and an engine, crew quarters and two corridors on hand. The smuggler's credits are 75, with life support and two corridors on hand. Over 50 runs each, act 1's slow median is 45 minutes for the miner, 41 for the deserter and 39 for the smuggler.
 - [ ] M31 Manufacturers. Draft: a third maker (§9 has M23g's two candidates, Kestrel Dynamics and Scrapline), with its version of each part, its own numbers and its look outside and on the plans; makers for the other sides (§9); the shop and drops carrying it. §5's target is 3.
 - [ ] M32 All jobs, traits and talents. Draft: Pilot, Scout, Xenobiologist and Quartermaster join the Marine, Engineer and Medic (§4.5). Each has its numbers and weapon, a ship station effect, a battle ability and a colony effect. Traits go from 6 toward §5's 20. Talents: what they are and how they are earned is to settle. Recruits get a background (§9).
 - [ ] M33 Factions, quests and companions. Draft: factions whose standing moves with the jobs and events the crew takes; quests that chain jobs and events across the acts; named companions with loyalty quests (§9).
@@ -990,5 +1002,10 @@ These ideas wait until v0.4 or later:
 - a trip's lift-off and landing: the ship's pad empties and fills at once. M17's lift-off and M25's landing could play over the colony (raised in M28)
 - a warning on giving a part a trip needs: the colony can take the ship's life support or quarters, and the trip's plan is the first to say it can't fly. Giving could count a full squad, as construction mode at the colony does (raised in M28)
 - a tap on the ship in the colony's view: a part is given from the list on the right in M26. Tapping it on the landed ship would do the same, but a cell there is about 13 px on the cover screen, too small to tap (raised in M26)
+- a lever for the Fleet Provost in place of a payment: a deserter's heat only falls in act 1 when a raid is faced, so a hot deserter has to fight. A job that buys a pardon's paperwork, or turning in someone else's name, would be its way to shed heat (raised in M30)
+- the backgrounds past act 1: from the launch on, a background is its pursuer's ships, words and raiders. Its own events on the run (the deserter's old shipmates at a station, the smuggler's contacts in the nebulae) and its own colony build would carry it further (raised in M30)
+- a background's hunters by name in the jump plan: the plan says the pursuer's chance, and the approach screen names the ship. Naming it in the plan too ("a Provost cutter, 10%") would tell a new player what is coming (raised in M30)
+- why the smuggler's colony is raided more: from the smuggler's start the careful test player's colonies are found in 20 runs of 30 (33 raids) against the miner's 13 (18 raids), most of the difference far from the lanes, though it settles no hotter and flies about as many trips. Finding out would take the voyage report's days at the colony, heat by heat (raised in M30)
+- the background screen's details at a glance: on the cover screen the facts below Fitted need a swipe of the panel. A two-column layout of the facts, or the start's ship drawn small beside them, would show the whole start at once (raised in M30)
 
 Ideas that come up during a session go here, not into code.
