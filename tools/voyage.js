@@ -91,7 +91,7 @@ import { swapTransponder } from '../src/sim/transponder.js';
 import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer } from '../src/sim/travel.js';
 import { runRecord } from '../src/ui/campaign/launchText.js';
 import { captainOrder } from './approachPlan.js';
-import { fightBoarding, fightPlace, fightRaid } from './boarding.js';
+import { fightBoarding, fightPlace, fightRaid, SealedIn } from './boarding.js';
 import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
@@ -630,7 +630,9 @@ function faceRaid(campaign, defs, raids) {
 // in order), away (days away), parts, materials and food (what the trips
 // brought), won and lost (the boardings), left (held derelicts left
 // alone), built ([{ day, type, name }]), moved (the parts refitted
-// aboard), hungry (hungry days in these days), healed, hurt } }.
+// aboard), hungry (hungry days in these days), healed, hurt, sealed (null,
+// or the trip whose fight could never end, { day, name }: the trips stop
+// there, M32) } }.
 export function playTrips(campaign, defs, days = TRIP_DAYS) {
   const until = campaign.colony.day + days;
   const start = { flags: campaign.flags };
@@ -638,6 +640,7 @@ export function playTrips(campaign, defs, days = TRIP_DAYS) {
   const built = [];
   const moved = [];
   const raids = raidsLog();
+  let sealed = null;
   const put = (what) => {
     const done = build(campaign, defs, what);
     if (!done.ok) throw new Error(done.error);
@@ -669,10 +672,21 @@ export function playTrips(campaign, defs, days = TRIP_DAYS) {
       for (let what = homeBuild(campaign, defs, squad); what; what = homeBuild(campaign, defs, squad)) put(what);
       const index = nextPlace(campaign, defs, squad, until - campaign.colony.day);
       if (index !== null) {
-        const trip = flyTrip(campaign, defs, index, squad, raids);
-        campaign = trip.campaign;
-        flown.push(trip.record);
-        continue;
+        const logged = { faced: raids.faced.length, set: raids.set.length };
+        try {
+          const trip = flyTrip(campaign, defs, index, squad, raids);
+          campaign = trip.campaign;
+          flown.push(trip.record);
+          continue;
+        } catch (error) {
+          if (!(error instanceof SealedIn)) throw error;
+          // A fight at the place that can't end (boarding.js sealedIn): the
+          // trips stop, with the campaign as it was before this one.
+          sealed = { day: campaign.colony.day, name: campaign.colony.places[index].name };
+          raids.faced.length = logged.faced;
+          raids.set.length = logged.set;
+          break;
+        }
       }
     }
     const day = nextDay(campaign, defs);
@@ -696,6 +710,7 @@ export function playTrips(campaign, defs, days = TRIP_DAYS) {
       hungry: since('hungryDays'),
       healed: since('colonyHealed'),
       hurt: since('hungerHurt'),
+      sealed,
     },
     raids,
   };
@@ -752,7 +767,8 @@ function tripsLine(defs, trips) {
   return (
     `${TRIP_DAYS} days of trips: ${trips.flown.length} trip${trips.flown.length === 1 ? '' : 's'}, ${trips.away} days away${each ? `: ${each}` : ''}. ` +
     `Brought ${trips.parts} part${trips.parts === 1 ? '' : 's'}, ${trips.materials} materials and ${trips.food} food; boardings won ${trips.won}, lost ${trips.lost}, left ${trips.left}; ` +
-    `built ${builds || 'nothing'}; refitted ${trips.moved.length ? trips.moved.map((type) => defs.modules.get(type)?.name ?? type).join(', ') : 'nothing'} aboard; ${trips.hungry} hungry day${trips.hungry === 1 ? '' : 's'}.`
+    `built ${builds || 'nothing'}; refitted ${trips.moved.length ? trips.moved.map((type) => defs.modules.get(type)?.name ?? type).join(', ') : 'nothing'} aboard; ${trips.hungry} hungry day${trips.hungry === 1 ? '' : 's'}.` +
+    (trips.sealed ? ` On day ${trips.sealed.day} the fight at ${trips.sealed.name} sealed itself in, no one able to reach the other side: the trips stop there.` : '')
   );
 }
 
