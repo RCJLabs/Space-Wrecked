@@ -99,7 +99,16 @@ test("the day: Next day's first tap gives the odds of the colony being found ton
   assert.equal(report.tone, 'bad');
   assert.ok(report.text.endsWith(` ${words.found} Rolled ${foundDay.roll}, under the 23%: the lander comes down in 3 days.`), report.text);
   assert.ok(report.text.startsWith(dayReport(quietDay, rules).text.slice(0, 6)));
-  assert.doesNotMatch(dayReport(quietDay, rules).text, /Rolled/);
+  assert.doesNotMatch(dayReport(quietDay, rules).text, /Rolled|lander/);
+  // While it is coming, each day's report counts its days; the day it
+  // lands, the report ends with the raid's hint.
+  const found = foundDay.campaign;
+  const next = nextDay(found, rules);
+  assert.equal(dayReport(next, rules).tone, 'warn');
+  assert.ok(dayReport(next, rules).text.endsWith(' The lander comes down in 2 days.'));
+  const landed = nextDay(nextDay(next.campaign, rules).campaign, rules);
+  assert.deepEqual(dayReport(landed, rules), { text: `${dayReport(landed).text} ${raidHint(landed.campaign, rules).text}`, tone: 'bad' });
+  assert.match(dayReport(landed, rules).text, /Tap Defend: the guns fire as it comes down, then whoever is home fights the rest\.$/);
 });
 
 test("the defenses: what fires at a lander and what the defenders gain, and None with a raid coming and nothing to stop it", () => {

@@ -5,10 +5,10 @@ import { actOf } from '../../sim/campaign.js';
 import { buildingOf, colonyStats, shipParts, storesOf } from '../../sim/colony.js';
 import { buildList } from '../../sim/colonyBuild.js';
 import { dayPlan, planDay } from '../../sim/days.js';
-import { colonyPursuer } from '../../sim/raids.js';
+import { colonyPursuer, raidIn } from '../../sim/raids.js';
 import { actTitle, crewText, heatText } from './hubText.js';
 import { runRecord } from './launchText.js';
-import { defenseRow, raidStatus } from './raidText.js';
+import { defenseRow, raidHint, raidStatus } from './raidText.js';
 import { worldSaid } from './sectorText.js';
 
 // What the colony screen shows:
@@ -255,8 +255,9 @@ export function dayText(plan) {
 }
 
 // What passing the day came to (days.js nextDay's result): the day's
-// report, and (M29) if the pursuer found the colony, its words, the roll
-// against the odds and the lander's days.
+// report, and (M29) the raid's: if the pursuer found the colony, its
+// words, the roll against the odds and the lander's days; while one is
+// coming, its days; and on the day it lands, the raid's hint, Defend.
 export function dayReport(result, rules) {
   const { plan } = result;
   const made = madeText(plan.made, 'grew', 'dug');
@@ -264,10 +265,16 @@ export function dayReport(result, rules) {
   if (!plan.fed) eat = `short of food, the crew went hungry${result.hurt ? `: ${result.hurt} hit points lost` : ''}${result.healed ? `, ${result.healed} healed` : ''}`;
   const lost = lostText(plan.lost, 'lost');
   const text = `Day ${plan.day + 1}. ${made.charAt(0).toUpperCase()}${made.slice(1)}; ${eat}. Food ${plan.food[1]}, materials ${plan.materials[1]}.${lost}`;
-  if (!result.found) return { text, tone: plan.fed ? 'good' : 'bad' };
-  const words = colonyPursuer(result.campaign, rules)?.found;
-  const days = result.found.lands - (plan.day + 1);
-  return { text: `${text}${words ? ` ${words}` : ''} Rolled ${result.roll}, under the ${plan.found}%: the lander comes down in ${days} day${days === 1 ? '' : 's'}.`, tone: 'bad' };
+  const days = (n) => `${n} day${n === 1 ? '' : 's'}`;
+  const tone = plan.fed ? 'good' : 'bad';
+  if (result.found) {
+    const words = colonyPursuer(result.campaign, rules)?.found;
+    return { text: `${text}${words ? ` ${words}` : ''} Rolled ${result.roll}, under the ${plan.found}%: the lander comes down in ${days(result.found.lands - (plan.day + 1))}.`, tone: 'bad' };
+  }
+  const left = rules ? raidIn(result.campaign) : null;
+  if (left === 0) return { text: `${text} ${raidHint(result.campaign, rules).text}`, tone: 'bad' };
+  if (left) return { text: `${text} The lander comes down in ${days(left)}.`, tone: plan.fed ? 'warn' : 'bad' };
+  return { text, tone };
 }
 
 // "the farms grow 4 food and the mines dig 2 materials", or "nothing
