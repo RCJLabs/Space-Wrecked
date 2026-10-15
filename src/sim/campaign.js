@@ -54,7 +54,7 @@
 //            home against boarders (beginFight), which no screen starts any
 //            more.
 import { int, isState, pick, seedFrom } from '../core/rng.js';
-import { actOf, atHangar, atStation } from './acts.js';
+import { actOf, atColony, atHangar, atStation } from './acts.js';
 import { battleProblem } from './battleShape.js';
 import { createBattle } from './battle.js';
 import { buildShip, isShipData } from './builder.js';
@@ -95,6 +95,10 @@ const MAX_SALVAGE = 20;
 // More buildings than the biggest colony grid has cells (40 x 30,
 // tools/validate-colony.js): a guard on what a save can hold.
 const MAX_BUILDINGS = 1200;
+// More days and materials than a colony will count (M27): the same kind of
+// guard.
+const MAX_DAYS = 99999;
+const MAX_MATERIALS = 9999;
 // Who boards the ship in a fight (data/encounters.json).
 export const FIGHT_ENCOUNTER = 'boarders';
 const MAX_SEED = 0xffffffff;
@@ -262,8 +266,8 @@ export function stockOf(campaign) {
 
 // The ship after a refit, and the parts on hand after it: a part fitted
 // comes out of the parts on hand, one taken off goes back. Only at the
-// hangar (act 1) or at a station on the run (act 2), on the same frame, and
-// only with the parts the campaign has. A wrecked part stays aboard, as
+// hangar (act 1), at a station on the run (act 2) or at the colony (act 3,
+// M27), on the same frame, and only with the parts the campaign has. A wrecked part stays aboard, as
 // the same part, until a station repairs it (repair.js): it can move, and
 // its damage moves with it, but it can't come off. A refit is free.
 // Otherwise the campaign is left as it was.
@@ -274,9 +278,10 @@ export function refitShip(campaign, ship, rules) {
   return parts ? { ...campaign, ship, parts } : campaign;
 }
 
-// True where the ship can be refitted: at the hangar, or at a station.
+// True where the ship can be refitted: at the hangar, at a station, or at
+// the colony, where it has landed (M27).
 export function canRefit(campaign, rules) {
-  return Boolean(rules) && (atHangar(campaign, rules) || atStation(campaign, rules));
+  return Boolean(rules) && (atHangar(campaign, rules) || atStation(campaign, rules) || atColony(campaign, rules));
 }
 
 // The uids of the ship's wrecked parts: those a refit can't take off.
@@ -423,11 +428,12 @@ function fightProblem(fight, crew) {
 }
 
 // The colony (settle.js, colony.js): the world settled, with its name and
-// whether it was surveyed, and the buildings on it, laid out as a ship's
-// modules are (builder.js).
+// whether it was surveyed, the buildings on it, laid out as a ship's
+// modules are (builder.js), its day and its materials (M27, days.js).
 function isColony(colony) {
   const world = colony?.world;
   if (!isRecord(colony) || !isWorld(world) || typeof world.name !== 'string' || world.name.trim() === '' || world.name.length > MAX_NAME || typeof world.surveyed !== 'boolean') return false;
+  if (!isInt(colony.day, 1, MAX_DAYS) || !isInt(colony.materials, 0, MAX_MATERIALS)) return false;
   return Array.isArray(colony.buildings) && colony.buildings.length <= MAX_BUILDINGS && isShipData({ frame: 'colony', modules: colony.buildings, nextUid: colony.nextUid });
 }
 

@@ -1,7 +1,12 @@
 {
   "site": { "width": 20, "height": 12, "gap": 1 },
   "aboard": ["bridge", "engine", "corridor", "airlock"],
-  "text": "The colony: the ship's parts set down on the world, one by one. What they make, the colony runs on.",
+  "text": "The colony: the ship's parts set down on the world, one by one, and what the world gives built up around them.",
+  "materials": 20,
+  "builds": [
+    { "id": "farm", "name": "Farm", "size": [2, 2], "cost": 10, "makes": "food", "from": ["soil", "water"], "least": 1, "text": "Fields under clear sheeting, watered from whatever the world has. Every day it grows what the soil and water allow." },
+    { "id": "mine", "name": "Mine", "size": [2, 2], "cost": 10, "makes": "materials", "from": ["ore"], "least": 1, "text": "A shaft and a headframe over the best seam the landing found. Every day it brings up what the ore allows." }
+  ],
   "buildings": [
     { "part": "reactor", "name": "Power plant", "text": "The ship's reactor on a slab of its own, humming. It runs everything the colony plugs in." },
     { "part": "smallreactor", "name": "Generator", "text": "A small reactor in a shed. Enough to keep the lights on and the air moving." },

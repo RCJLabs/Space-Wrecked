@@ -13,9 +13,13 @@ export function healRate(campaign, rules) {
   const wrecks = campaign.wrecks ?? {};
   const bays = campaign.ship.modules.map((module) => (String(module.uid) in wrecks ? 0 : rules.modules.get(module.type)?.heal ?? 0));
   const bay = Math.max(0, ...bays);
-  if (!bay) return 0;
-  const station = Math.max(0, ...campaign.crew.map((member) => rules.jobs.get(member.job)?.station?.heal ?? 0));
-  return bay + station;
+  return bay ? bay + stationHeal(campaign.crew, rules) : 0;
+}
+
+// What the crew's best station heal adds to a med bay's (a medic's,
+// data/jobs.json), or 0: the colony's infirmary takes it too (days.js).
+export function stationHeal(crew, rules) {
+  return Math.max(0, ...crew.map((member) => rules.jobs.get(member.job)?.station?.heal ?? 0));
 }
 
 // The crew after hp healed each, up to each one's most: { crew, healed }

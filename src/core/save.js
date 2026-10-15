@@ -55,7 +55,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      (M25)
 //  20  the colony's buildings: the ship's parts given to it, each where it
 //      stands on the colony's grid (M26)
-export const SAVE_VERSION = 20;
+//  21  the colony's days and materials: act 3 counts days from the
+//      landing, and the colony builds farms and mines from its materials
+//      (M27)
+export const SAVE_VERSION = 21;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -267,6 +270,16 @@ export const MIGRATIONS = [
     up: (data) => {
       if (!isObject(data) || !isObject(data.campaign) || !isObject(data.campaign.colony)) return data;
       return { ...data, campaign: { ...data.campaign, colony: { ...data.campaign.colony, buildings: [], nextUid: 1 } } };
+    },
+  },
+  // The colony's days and materials (M27). A colony settled before them
+  // opens on day 1 with what a landing salvaged when they came in: the 20
+  // materials data/colony.json gave then.
+  {
+    from: 20,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign) || !isObject(data.campaign.colony)) return data;
+      return { ...data, campaign: { ...data.campaign, colony: { ...data.campaign.colony, day: 1, materials: 20 } } };
     },
   },
 ];
