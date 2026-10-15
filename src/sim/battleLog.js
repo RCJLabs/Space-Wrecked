@@ -48,8 +48,43 @@ export function describeEvent(event, battle) {
       return `${who} grabs the crate at (${event.at[0]}, ${event.at[1]}): ${event.left ? `${event.left} to go` : 'that was the last one'}.`;
     case 'hack':
       return `${who} works the terminal: ${event.progress} of ${turns(event.turns)}.`;
+    case 'order':
+      return orderLine(event, who, name);
+    case 'asleep':
+      return `${who} is asleep and does nothing.`;
+    case 'awake':
+      return `${who} wakes up.`;
+    case 'unweld': {
+      const [x, y, side] = event.key.split(',');
+      return `The weld on the door on the ${SIDE_NAME[side]} side of (${x}, ${y}) gives way: the door is shut.`;
+    }
     case 'over':
       return `${event.winner === 'crew' ? 'The crew wins' : 'The enemy wins'}${REASON[event.reason] ?? ''}.`;
+    default:
+      return JSON.stringify(event);
+  }
+}
+
+// An order's line (orders.js): who did what to whom, and what it left.
+function orderLine(event, who, name) {
+  const them = name(event.target);
+  switch (event.order) {
+    case 'suppress':
+      return `${who} suppresses ${them}: its shots ${event.aim} until its side's turn ends.`;
+    case 'weld':
+      return `${who} welds the door on the ${SIDE_NAME[event.side]} side of (${event.at[0]}, ${event.at[1]}) shut, to round ${event.until}.`;
+    case 'patch':
+      return event.up ? `${who} patches ${them} up: back on their feet with ${event.hp}.` : `${who} patches ${them}: ${event.healed} back, ${event.hp} now.`;
+    case 'hustle':
+      return `${who} hustles: ${event.ap} more action${event.ap === 1 ? '' : 's'} this turn.`;
+    case 'mark':
+      return `${who} marks ${them}: the crew's shots at it +${event.aim}.`;
+    case 'sedate': {
+      const dart = `${who} darts ${them}: ${event.chance}%, rolled ${event.roll}`;
+      return event.hit ? `${dart}, asleep.` : `${dart}, missed.`;
+    }
+    case 'kit':
+      return `${who} kits ${event.target === event.unit ? 'up' : `${them} out`}: armor +${event.armor}, ${event.ammo} shots.`;
     default:
       return JSON.stringify(event);
   }
