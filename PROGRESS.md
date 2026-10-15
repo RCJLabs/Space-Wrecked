@@ -149,6 +149,7 @@ Decisions made along the way, not asked (each easy to change):
 - **Crew quarters decide act 1's slow runs** for all three: the longest runs wait on quarters from a drop or the shop.
 - **The background screen's facts need a swipe on the folded screen** (905 × 370 and 821 × 283): they run past the panel's foot, below Fitted or Home (§9). The panel scrolls, as the hangar's do.
 - **Recruits still have no background** (§9; M32's draft).
+- **The Enemy ships dev sandbox** (`?dev=1`) lists 9 presets, whose buttons wrap to two rows on the cover screen, so the ship draws smaller there. It is a dev tool, and every ship still draws and reads.
 
 ### What to test on the phone (Galaxy Z Fold 6)
 
@@ -222,9 +223,16 @@ M31 Manufacturers (Phase 6, v0.4). First task: settle its Done when with Evan; R
   - offline, the backgrounds draw; every button 48 px or more; no console errors.
 
   Its screenshots showed the deserter's details running past the panel's foot at 905 × 370 and 821 × 283. The panel scrolls, and the check now swipes it to the last fact.
-- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named: REGRESSION
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named:
+  - M29 34, M28 32, M27 32, M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 20 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 40 (its count goes with the jobs it rolls), and M8's extras.
 
-  Six copies were adapted, not the game, for New game's new first screen: M23c's, M18's, M17's, M16's, M14's and M13's tap Next on the backgrounds, the miner picked (`m30/old.mjs`).
+  Seven copies were adapted, not the game, for what M30 changes on purpose:
+  - M23c's, M18's, M17's, M16's, M14's and M13's tap Next on the new backgrounds screen, the miner picked (`m30/old.mjs`);
+  - M10's steps back through more seeds to reach seed 1 in the Enemy ships sandbox, whose seed carries from preset to preset: 4 seeds through each of 9 presets ends at seed 37, past its 20 taps back. With 9 presets the sandbox's buttons wrap to two rows on the cover screen, so its long-press goes where the ship now sits, lower down.
 
 ## Gate 5 (2026-10-15)
 

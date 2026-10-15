@@ -1,6 +1,6 @@
 // Maps state.screen to a screen module: the title and its settings, a new
-// game's background and captain, the campaign's screens (src/sim/root.js CAMPAIGN_SCREENS) and
-// the dev sandboxes.
+// game's background and captain, the campaign's screens (src/sim/root.js
+// CAMPAIGN_SCREENS) and the dev sandboxes.
 import { approachScreen } from './campaign/approach.js';
 import { backgroundScreen } from './campaign/background.js';
 import { captainScreen } from './campaign/captain.js';

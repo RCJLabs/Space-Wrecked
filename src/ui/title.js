@@ -1,8 +1,9 @@
 // The title screen: the title over a seeded starfield, with Continue for a
 // campaign under way, New game and Settings (settings.js). New game opens
 // the backgrounds (campaign/background.js), then the captain's screen, over
-// a campaign only after a second tap, since starting one can't be undone. The game always reopens
-// here, and Continue goes back to where the campaign was.
+// a campaign only after a second tap, since starting one can't be undone.
+// The game always reopens here, and Continue goes back to where the
+// campaign was.
 import { config } from '../config.js';
 import { seedFrom } from '../core/rng.js';
 import { loadContent } from '../platform/content.js';
