@@ -61,16 +61,18 @@ export function createTrips(ctx) {
         if (i >= 2 && !plan.ok) small.dataset.tone = 'bad';
         return small;
       }));
+      // The buttons under the plan, so Fly out is in view on a short
+      // screen; the squad below them.
       return [
         node('h2', null, 'Fly out'),
         about,
-        node('h2', null, `Squad · ${squad.length} of up to ${rules.balance.squadSize}`),
-        squadList(campaign, rules, squad),
         actionRow([
           ['Fly out', icons.launch, () => tapFly(campaign), armed() === 'fly' ? 'cln-confirm cln-armed' : 'cln-confirm', plan.ok],
           ['Refit', icons.build, () => game.dispatch({ type: 'screen/show', screen: 'construction' }), null, true],
           ['Back', icons.prev, () => back(), null, true],
         ]),
+        node('h2', null, `Squad · ${squad.length} of up to ${rules.balance.squadSize}`),
+        squadList(campaign, rules, squad),
       ];
     },
 
