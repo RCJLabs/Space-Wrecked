@@ -2,11 +2,15 @@
 // against the crew, its buildings (the dark ones marked), who sleeps
 // aboard, the ship's parts with what each would give or why not, the world
 // and how the run went, and the act's words for what is still to come.
+// M27: the day, food and materials against the stores, what can be built,
+// a ghost's words, taking a building down, and the day's report.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { donate, givesOf } from '../src/sim/colony.js';
+import { build, buildPlan, movePlan, takeDown, takeDownPlan } from '../src/sim/colonyBuild.js';
+import { dayPlan, nextDay } from '../src/sim/days.js';
 import { continueText } from '../src/ui/campaign/hubText.js';
-import { colonyText, givenText, givesText, giveText } from '../src/ui/campaign/colonyText.js';
+import { buildingInfo, builtText, colonyText, dayReport, dayText, givenText, givesText, giveText, makesText, placeText, takeDownText, takenText, whyNotText } from '../src/ui/campaign/colonyText.js';
 import { worldSaid } from '../src/ui/campaign/sectorText.js';
 import { rules } from './battleKit.js';
 import { settled, uidOf } from './colonyKit.js';
@@ -17,13 +21,17 @@ test('the colony as it opens: nothing built, everyone aboard, every part still o
   const { world } = campaign.colony;
   const kind = rules.worlds.kinds.get(world.kind);
   assert.equal(text.act, 'Act 3 · The colony');
-  assert.equal(text.home, `${world.name} · ${kind.name}`);
+  assert.equal(text.home, `${world.name} · ${kind.name} · Day 1`);
   assert.deepEqual(text.needs, [
     { label: 'Power', value: '0 used of 1', ok: true },
     { label: 'Beds', value: '0 for 3', ok: false },
     { label: 'Air', value: '0 for 3', ok: false },
     { label: 'Aboard', value: '3 sleep on the ship', ok: false },
+    // The survey ate a day's food.
+    { label: 'Food', value: '24 of 30 · +0, eats 3', ok: true },
+    { label: 'Materials', value: '20 of 30 · +0 a day', ok: true },
   ]);
+  assert.equal(text.stores, "30 each, in the landed ship's holds");
   assert.equal(text.power, '0 from power plants, 1 spare from the landed ship');
   assert.deepEqual(text.buildings, []);
   assert.ok(text.crew.every((member) => member.aboard));
@@ -70,6 +78,8 @@ test('parts given: the needs met, the buildings and what they give, and who stil
     { label: 'Beds', value: '4 for 3', ok: true },
     { label: 'Air', value: '4 for 3', ok: true },
     { label: 'Aboard', value: 'Nobody', ok: true },
+    { label: 'Food', value: '27 of 30 · +0, eats 3', ok: true },
+    { label: 'Materials', value: '20 of 30 · +0 a day', ok: true },
     { label: 'Defense', value: 'Guns 15, for raids to come', ok: true },
   ]);
   assert.deepEqual(text.buildings.map((b) => [b.name, b.gives, b.powered]), [
@@ -109,4 +119,86 @@ test('what a tap on a part says, and what giving it came to', () => {
   assert.equal(gives('pointdefense'), 'Flak 10 · power −1');
   assert.equal(gives('armory'), 'Arms the crew');
   assert.equal(gives('shieldarray'), 'Shield 25 · power −4');
+});
+
+test("the day, food and materials against the stores, and what can be built: farms and mines, the hold's spare parts, the ship's parts", () => {
+  const landed = { ...settled(), parts: { quarters: 1, cargo: 1, corridor: 2, engine: 1 } };
+  let campaign = build(landed, rules, { build: 'mine' }).campaign;
+  campaign = build(campaign, rules, { part: 'cargo' }).campaign;
+  const text = colonyText(campaign, rules);
+  assert.equal(text.day, 1);
+  assert.deepEqual(text.needs.filter((need) => ['Food', 'Materials'].includes(need.label)), [
+    { label: 'Food', value: '27 of 50 · +0, eats 3', ok: true },
+    { label: 'Materials', value: '10 of 50 · +2 a day', ok: true },
+  ]);
+  assert.equal(text.stores, "50 each, 30 in the landed ship's holds and 20 in storehouses");
+  assert.deepEqual(text.buildings.map((b) => [b.name, b.gives]), [['Mine', 'Materials +2 a day'], ['Storehouse', 'Stores 20']]);
+  assert.deepEqual(text.builds, [
+    { what: { build: 'farm' }, id: 'farm', name: 'Farm', cost: 10, makes: 'Food +1 a day here', ok: true, why: null },
+    { what: { build: 'mine' }, id: 'mine', name: 'Mine', cost: 10, makes: 'Materials +2 a day here', ok: true, why: null },
+  ]);
+  // The hold: a row a kind that can be set down, then a row a reason.
+  assert.deepEqual(text.hold.map((row) => [row.name, row.count, row.ok, row.building ?? row.why]), [
+    ['Crew quarters', 1, true, 'Barracks'],
+    ['Corridor ×2, Engine', null, false, 'Stays aboard: no use to the colony.'],
+  ]);
+  assert.deepEqual(text.hold[0].what, { part: 'quarters' });
+  assert.equal(text.hold[0].gives, 'Beds 4 · power −1');
+  // Out of materials: why not.
+  const broke = colonyText({ ...campaign, colony: { ...campaign.colony, materials: 4 } }, rules);
+  assert.deepEqual(broke.builds.map((row) => [row.ok, row.why]), [[false, 'A farm takes 10 materials, and the stores have 4.'], [false, 'A mine takes 10 materials, and the stores have 4.']]);
+  assert.deepEqual(whyNotText(broke.builds[0], 'built'), { text: "Farm: can't be built. A farm takes 10 materials, and the stores have 4.", tone: 'warn' });
+  assert.equal(whyNotText(text.hold[1], 'set down').text, "Corridor ×2, Engine: can't be set down. Stays aboard: no use to the colony.");
+  // Short of food tomorrow: the line says so.
+  const hungry = colonyText({ ...campaign, supplies: 2 }, rules);
+  assert.deepEqual(hungry.needs.find((need) => need.label === 'Food'), { label: 'Food', value: '2 of 50 · +0, eats 3', ok: false });
+  assert.equal(makesText({ food: 5 }), 'Food +5 a day');
+});
+
+test("a ghost's words, what building and taking down came to, and the building looked at", () => {
+  const campaign = { ...settled(), parts: { quarters: 1 } };
+  assert.deepEqual(placeText(buildPlan(campaign, rules, { build: 'farm' }, { x: 4, y: 4, rot: 0 })), {
+    ok: true,
+    text: 'A farm here, for 10 materials: food +1 a day. Tap it again to build it, or tap the grid to put it somewhere else.',
+    tone: 'info',
+  });
+  assert.equal(placeText(buildPlan(campaign, rules, { part: 'quarters' })).text, 'The barracks here, from the hold: beds 4 · power −1. Tap it again to set it down, or tap the grid to put it somewhere else.');
+  assert.equal(placeText(buildPlan(campaign, rules, { uid: uidOf(campaign, 'lifesupport') })).text, 'The air plant here: air 4 · power −1. It comes off the ship. Tap it again to give it, or tap the grid to put it somewhere else.');
+  assert.deepEqual(placeText(buildPlan(campaign, rules, { build: 'farm' }, { x: 19, y: 0, rot: 0 })), { ok: false, text: "The farm would stand past the edge of the colony's grid. Tap the grid where it can go.", tone: 'warn' });
+  const farm = build(campaign, rules, { build: 'farm' }, { x: 4, y: 4, rot: 0 });
+  assert.deepEqual(builtText(farm), { text: 'The farm stands at the colony: food +1 a day. 10 materials left.', tone: 'good' });
+  const barracks = build(farm.campaign, rules, { part: 'quarters' });
+  assert.deepEqual(builtText(barracks), { text: 'The barracks stands at the colony: beds 4 · power −1.', tone: 'good' });
+  assert.equal(builtText({ ...barracks, healed: 6 }).text, 'The barracks stands at the colony: beds 4 · power −1. It patched the crew up: 6 hit points.');
+  const [farmUid, barracksUid] = barracks.campaign.colony.buildings.map((b) => b.uid);
+  assert.equal(placeText(movePlan(barracks.campaign, rules, barracksUid, { x: 10, y: 0, rot: 0 }), { moving: true }).text, 'The barracks here: tap it again to move it, or tap the grid to put it somewhere else.');
+  // Taking down: what comes back, what goes dark.
+  assert.deepEqual(takeDownText(takeDownPlan(barracks.campaign, rules, barracksUid)), { text: 'Take the barracks down? Its part goes back into the hold. Tap again to take it down.', tone: 'info' });
+  assert.equal(takeDownText(takeDownPlan(barracks.campaign, rules, farmUid)).text, 'Take the farm down? Its 10 materials come back. Tap again to take it down.');
+  const full = { ...barracks.campaign, colony: { ...barracks.campaign.colony, materials: 26 } };
+  assert.equal(takeDownText(takeDownPlan(full, rules, farmUid)).text, 'Take the farm down? Its 10 materials come back, and the stores take 4. Tap again to take it down.');
+  assert.deepEqual(takeDownText({ name: 'Power plant', back: { part: 'reactor' }, darkens: ['Barracks', 'Air plant'] }), { text: 'Take the power plant down? Its part goes back into the hold. The barracks and air plant go dark. Tap again to take it down.', tone: 'warn' });
+  assert.deepEqual(takenText(takeDown(barracks.campaign, rules, barracksUid)), { text: 'The barracks came down: its part is in the hold.', tone: 'good' });
+  assert.deepEqual(takenText(takeDown(full, rules, farmUid)), { text: 'The farm came down: 4 materials back.', tone: 'good' });
+  // The building looked at.
+  const row = colonyText(barracks.campaign, rules).buildings[0];
+  assert.deepEqual(buildingInfo(row), { text: 'Farm: food +1 a day. Move or turn it, or take it down.', tone: 'info' });
+  assert.equal(buildingInfo({ name: 'Shield array', gives: 'Dark: needs 4 power', powered: false }).tone, 'warn');
+});
+
+test("Next day's two taps: what the day will bring, then the day's report, fed or hungry", () => {
+  let campaign = settled();
+  campaign = build(campaign, rules, { build: 'farm' }).campaign;
+  campaign = build(campaign, rules, { build: 'mine' }).campaign;
+  const plan = dayPlan(campaign, rules);
+  assert.deepEqual(dayText(plan), { text: 'Day 1 ends: the farms grow 1 food and the mines dig 2 materials; the crew eats 3 and rests. Food 27 → 25, materials 0 → 2. Tap again for day 2.', tone: 'info' });
+  const hurt = { ...campaign, crew: campaign.crew.map((member) => ({ ...member, hp: 4 })) };
+  assert.deepEqual(dayReport(nextDay(hurt, rules)), { text: 'Day 2. The farms grew 1 food and the mines dug 2 materials; the crew ate 3 and rested, healing 9 hit points. Food 25, materials 2.', tone: 'good' });
+  const starving = { ...hurt, supplies: 1 };
+  assert.deepEqual(dayText(dayPlan(starving, rules)), { text: 'Day 1 ends: the farms grow 1 food and the mines dig 2 materials; the crew needs 3 and goes hungry, losing 2 hit points each. Food 1 → 0, materials 0 → 2. Tap again for day 2.', tone: 'warn' });
+  assert.deepEqual(dayReport(nextDay(starving, rules)), { text: 'Day 2. The farms grew 1 food and the mines dug 2 materials; short of food, the crew went hungry: 6 hit points lost. Food 0, materials 2.', tone: 'bad' });
+  // Nothing made, and the stores full.
+  const full = { ...settled(), supplies: 35 };
+  assert.equal(dayText(dayPlan(full, rules)).text, 'Day 1 ends: nothing grows; the crew eats 3 and rests. Food 35 → 30, materials 20 → 20. The stores are full: 2 food will be lost. Tap again for day 2.');
+  assert.equal(dayReport(nextDay(full, rules)).text, 'Day 2. Nothing grew; the crew ate 3 and rested. Food 30, materials 20. The stores are full: 2 food lost.');
 });

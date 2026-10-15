@@ -1,14 +1,17 @@
 // Construction mode: the builder on the campaign's ship, with only the parts
-// the campaign has, at the hangar (act 1) or at a station on the run (M23h).
-// The palette shows what is on hand; a part fitted comes out of the parts on
-// hand and one taken off goes back, for nothing (campaign.js refitShip).
-// Every change is saved through the campaign at once. On the run, the parts
-// an approach wrecked stay on until the station repairs them: they move and
-// turn with their damage, and the plans mark them. The way out, at the end
-// of the drawer's tabs, goes home: Hangar to the hangar, where Launch is
-// once every flight check passes, or Map to the sector map, where the ship
-// can't jump until they all do. The board is ../builder/view.js's.
-import { actOf, canRefit, stockOf, wreckedUids } from '../../sim/campaign.js';
+// the campaign has, at the hangar (act 1), at a station on the run (M23h) or
+// at the colony, where the ship has landed (M27). The palette shows what is
+// on hand; a part fitted comes out of the parts on hand and one taken off
+// goes back, for nothing (campaign.js refitShip). Every change is saved
+// through the campaign at once. On the run, the parts an approach wrecked
+// stay on until the station repairs them: they move and turn with their
+// damage, and the plans mark them. The way out, at the end of the drawer's
+// tabs, goes home: Hangar to the hangar, where Launch is once every flight
+// check passes; Map to the sector map, where the ship can't jump until they
+// all do; or Colony to the colony, the flight checks counting only who is
+// aboard (nobody, until M28's expeditions). The board is
+// ../builder/view.js's.
+import { actOf, canRefit, crewAboard, stockOf, wreckedUids } from '../../sim/campaign.js';
 import { mountBuilder } from '../builder/view.js';
 import { icons } from '../icons.js';
 
@@ -20,17 +23,28 @@ let kept = null;
 export const constructionScreen = {
   mount(root, { store: game }) {
     let defs = null;
-    // On the run (act 2) the ship refits at a station, and goes back to the
-    // sector map; in act 1, at the hangar.
-    const onRun = Boolean(game.getState().campaign?.run);
+    // In act 1 the ship refits at the hangar; on the run (act 2) at a
+    // station, and goes back to the sector map; in act 3 at the colony.
+    const campaign = game.getState().campaign;
+    const home = campaign?.colony ? 'colony' : campaign?.run ? 'run' : 'hangar';
+    const leave = {
+      hangar: { icon: icons.home, label: 'Hangar', screen: 'hub' },
+      run: { icon: icons.map, label: 'Map', screen: 'sector' },
+      colony: { icon: icons.settle, label: 'Colony', screen: 'colony' },
+    }[home];
     return mountBuilder(root, {
       launch: false,
-      ready: onRun ? 'Every flight check passes: the ship can jump. Tap Map.' : 'Every flight check passes. Launch is at the hangar: tap Hangar.',
-      cleared: onRun ? 'Ready to jump' : 'Ready to launch',
-      leave: onRun
-        ? { icon: icons.map, label: 'Map', onTap: () => game.dispatch({ type: 'screen/show', screen: 'sector' }) }
-        : { icon: icons.home, label: 'Hangar', onTap: () => game.dispatch({ type: 'screen/show', screen: 'hub' }) },
-      crew: () => game.getState().campaign?.crew.length ?? 0,
+      ready: {
+        hangar: 'Every flight check passes. Launch is at the hangar: tap Hangar.',
+        run: 'Every flight check passes: the ship can jump. Tap Map.',
+        colony: 'Every flight check passes: the ship can fly. Tap Colony.',
+      }[home],
+      cleared: { hangar: 'Ready to launch', run: 'Ready to jump', colony: 'Ready to fly' }[home],
+      leave: { icon: leave.icon, label: leave.label, onTap: () => game.dispatch({ type: 'screen/show', screen: leave.screen }) },
+      crew: () => {
+        const now = game.getState().campaign;
+        return now ? crewAboard(now) : 0;
+      },
       liftOff: () => {
         const { campaign } = game.getState();
         return (campaign && defs && actOf(campaign, defs)?.liftOff) ?? null;

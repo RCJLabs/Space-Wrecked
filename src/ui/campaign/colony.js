@@ -1,31 +1,33 @@
-// The colony: act 3's home (M26). The world's ground fills the middle, the
-// ship landed at the edge of the colony's grid and each building standing
-// on it as the part it was (render/colonyScene.js). On the left, the
-// colony's power, beds and air against what the crew needs, its buildings
-// (the dark ones marked), the crew, the world and how the run went; on the
-// right, the ship's
-// parts: those that can be given, each with what it would give, and the
-// rest with why not. A part is given in two taps (src/sim/colony.js): the
-// first shows what it becomes, glows on the ship and marks out where it
-// would stand; the second gives it. The act's words say what is still to
-// come. The campaign is saved after every change, so Continue on the title
-// comes back here.
+// The colony: act 3's home (M26, M27). The world's ground fills the middle,
+// the ship landed at the edge of the colony's grid and each building
+// standing on it (render/colonyScene.js); a drag pans the view, a pinch
+// zooms it and a twist turns it (colonyStand.js). On the left, the colony's
+// power, beds and air against what the crew needs, its food and materials
+// against its stores, its buildings, the crew, the world and how the run
+// went. On the right, what can be built: a farm or a mine from materials,
+// a spare part from the hold or one of the ship's parts, each with what it
+// costs and gives, and why not for the rest. A tap on one shows it as a
+// ghost on the grid, in the first spot that fits; a tap on the grid moves
+// the ghost there, or says why it can't stand there; Turn turns it; a
+// second tap on it, or Build here, builds it (src/sim/colonyBuild.js). A tap
+// on a building looks at it: Move and Turn take it up as a ghost the same
+// way, and Take down takes it down in two taps. In the foot, Next day
+// passes a day in two taps (src/sim/days.js), with the day's report in the
+// hint, and Refit opens construction mode on the landed ship. The campaign
+// is saved after every change, so Continue on the title comes back here.
 import { loadContent } from '../../platform/content.js';
-import { colonyScene } from '../../render/colonyScene.js';
-import { drawColony, prepareColony } from '../../render/colonyView.js';
-import { traceHull } from '../../render/hull.js';
-import { fitOrbit } from '../../render/orbit.js';
-import { palette, skinFor } from '../../render/palette.js';
-import { BOARD_VIEW } from '../../render/shipView.js';
-import { colonyStats, donate, donatePlan } from '../../sim/colony.js';
+import { buildPlan, build, movePlan, takeDown, takeDownPlan, turnedSpot } from '../../sim/colonyBuild.js';
+import { buildingName, siteDef } from '../../sim/colony.js';
+import { dayPlan, nextDay } from '../../sim/days.js';
+import { footprint } from '../../sim/modules.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
-import { colonyText, givenText, giveText } from './colonyText.js';
+import { buildingInfo, builtText, colonyText, dayReport, dayText, givenText, placeText, takeDownText, takenText, whyNotText } from './colonyText.js';
+import { createStand } from './colonyStand.js';
 import { crewRows, listRows } from './hubParts.js';
 
-const ARM_MS = 4000; // a part's first tap waits this long for its second
-const MARGIN = 10; // pixels round the colony in its place
+const ARM_MS = 4000; // a first tap on Next day or Take down waits this long for its second
 
 export const colonyScreen = {
   mount(root, { store: game }) {
@@ -38,37 +40,47 @@ export const colonyScreen = {
     const info = node('section', 'hgr-panel cln-info');
     const needs = node('dl', 'hgr-hold cln-needs');
     const powerLine = node('p', 'cln-note');
+    const storesLine = node('p', 'cln-note');
     const buildingList = node('ul', 'cln-buildings');
     const crewList = node('ul', 'hgr-crew');
     const worldTitle = node('h2', 'cln-world');
     const worldLines = node('ul', 'cln-lines');
     const recordTitle = node('h2');
     const record = node('dl', 'hgr-hold');
-    info.append(node('h2', null, 'The colony'), needs, powerLine, node('h2', null, 'Buildings'), buildingList, node('h2', null, 'Crew'), crewList, worldTitle, worldLines, recordTitle, record);
-    const sceneArea = node('div', 'hgr-ship');
-    const partsPanel = node('section', 'hgr-panel cln-parts');
-    const partList = node('ul');
-    partsPanel.append(node('h2', null, "The ship's parts"), partList);
+    info.append(node('h2', null, 'The colony'), needs, powerLine, storesLine, node('h2', null, 'Buildings'), buildingList, node('h2', null, 'Crew'), crewList, worldTitle, worldLines, recordTitle, record);
+    const sceneArea = node('div', 'hgr-ship cln-scene');
+    // What can be built, or the ghost's controls, or the building looked at.
+    const side = node('section', 'hgr-panel cln-parts');
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const hint = node('p', 'hgr-hint', 'Loading…');
-    foot.append(titleButton, hint);
-    el.append(head, info, sceneArea, partsPanel, foot);
+    const refitButton = toolButton('hgr-tool cln-refit', icons.build, 'Refit');
+    const dayButton = toolButton('hgr-tool cln-day', icons.day, 'Next day');
+    foot.append(titleButton, hint, refitButton, dayButton);
+    el.append(head, info, sceneArea, side, foot);
     root.append(el);
 
     let defs = null;
     let alive = true;
     let shown = null; // the campaign last drawn
-    let armed = null; // the uid a part's first tap armed
+    // What the player is doing: { kind: 'browse' }; { kind: 'place', what,
+    // type, placement, uid } (uid: the building being moved, else null);
+    // or { kind: 'look', uid }.
+    let mode = { kind: 'browse' };
+    let armed = null; // 'day' or 'down': a first tap waiting for its second
     let said = null; // { text, tone }: what the last tap came to, until the next
-    let marked = null; // { uids, spot }: what the scene marks for a refusal
+    let marked = null; // the ship's parts a refusal is about
     let armTimer = 0;
-    let partButtons = [];
-    const stand = createStand(sceneArea);
+    let rowButtons = [];
+    let drawn = null; // { campaign, whole, mark }: what the stand last showed
+    const stand = createStand(sceneArea, { onTap: tapScene });
     const cleanups = [
       onTap(titleButton, () => game.dispatch({ type: 'screen/show', screen: 'title' })),
+      onTap(refitButton, () => game.dispatch({ type: 'screen/show', screen: 'construction' })),
+      onTap(dayButton, tapDay),
       () => clearTimeout(armTimer),
-      () => partButtons.forEach((entry) => entry.detach()),
+      () => rowButtons.forEach((detach) => detach()),
+      () => stand.dispose(),
       game.subscribe(() => alive && render()),
     ];
     const observer = new ResizeObserver(() => stand.layout());
@@ -89,7 +101,6 @@ export const colonyScreen = {
     function render(force = false) {
       const { campaign } = game.getState();
       if (!defs || !campaign?.colony || (campaign === shown && !force)) return;
-      const changed = campaign !== shown;
       shown = campaign;
       const text = colonyText(campaign, defs);
       setText(actLine, text.act);
@@ -101,27 +112,49 @@ export const colonyScreen = {
         return row;
       }));
       setText(powerLine, `Power: ${text.power}.`);
-      buildingList.replaceChildren(...(text.buildings.length ? text.buildings.map(buildingRow) : [node('li', 'cln-none', 'None yet: give the colony a part of the ship.')]));
+      setText(storesLine, `Stores: ${text.stores}.`);
+      buildingList.replaceChildren(...(text.buildings.length ? text.buildings.map(buildingRow) : [node('li', 'cln-none', 'None yet: build a farm or a mine, or give the colony a part of the ship.')]));
       crewList.replaceChildren(...crewRows(text.crew.map((row) => (row.aboard ? { ...row, job: [row.job, 'sleeps aboard'].filter(Boolean).join(' · ') } : row))));
       setText(worldTitle, text.world.title);
       worldLines.replaceChildren(...text.world.lines.map((line) => node('li', null, line)));
       setText(recordTitle, text.record.title);
       record.replaceChildren(...listRows(text.record.lines));
 
-      // The ship's parts, as buttons. One armed that can't be given any
-      // more is disarmed.
-      const armedRow = text.parts.find((row) => row.ok && row.uid === armed);
-      if (armed !== null && !armedRow) disarm();
-      for (const entry of partButtons) entry.detach();
-      partButtons = text.parts.map((row) => partButton(row));
-      partList.replaceChildren(...partButtons.map((entry) => entry.item));
+      // A building looked at that is gone, or a ghost whose part is: back
+      // to the list.
+      if (mode.kind === 'look' && !campaign.colony.buildings.some((b) => b.uid === mode.uid)) mode = { kind: 'browse' };
+      if (mode.kind === 'place' && mode.uid !== null && !campaign.colony.buildings.some((b) => b.uid === mode.uid)) mode = { kind: 'browse' };
+      const plan = mode.kind === 'place' ? planOf(campaign) : null;
+      sideFor(text, campaign, plan);
+      dayButton.dataset.armed = String(armed === 'day');
 
-      const words = armedRow ? giveText(armedRow) : said ?? { text: text.ahead, tone: 'info' };
+      const words = armed === 'day' ? dayText(dayPlan(campaign, defs))
+        : armed === 'down' ? takeDownText(takeDownPlan(campaign, defs, mode.uid))
+        : said ?? (plan?.same ? { text: `Tap the grid where the ${lowerFirst(buildingName(mode.type, defs))} should go, or turn it.`, tone: 'info' }
+          : plan ? placeText(plan, { moving: mode.uid !== null })
+          : mode.kind === 'look' ? buildingInfo(text.buildings.find((b) => b.uid === mode.uid))
+          : { text: text.ahead, tone: 'info' });
       setText(hint, words.text);
       hint.dataset.tone = words.tone;
 
-      const mark = armedRow ? markFor(campaign, armedRow.uid) : marked;
-      if (changed || JSON.stringify(mark) !== JSON.stringify(stand.mark)) stand.show(campaign, defs, mark);
+      const ghost = plan ? { type: mode.type, ...mode.placement, ok: plan.ok || plan.same === true } : null;
+      const uids = mode.kind === 'place' && mode.what?.uid !== undefined ? [mode.what.uid] : marked ?? [];
+      const mark = { uids, ghost, selected: mode.kind === 'look' ? mode.uid : mode.kind === 'place' ? mode.uid : null };
+      const whole = mode.kind === 'place';
+      el.dataset.mode = mode.kind;
+      if (!drawn || campaign !== drawn.campaign || whole !== drawn.whole || JSON.stringify(mark) !== JSON.stringify(drawn.mark)) {
+        drawn = { campaign, whole, mark };
+        stand.show(campaign, defs, mark, whole);
+      }
+    }
+
+    // The ghost's plan where it stands: buildPlan's, or movePlan's for a
+    // building being moved (same: true where it already stands).
+    function planOf(campaign) {
+      if (mode.uid === null) return buildPlan(campaign, defs, mode.what, mode.placement);
+      const building = campaign.colony.buildings.find((b) => b.uid === mode.uid);
+      const same = building && building.x === mode.placement.x && building.y === mode.placement.y && building.rot === mode.placement.rot;
+      return { ...movePlan(campaign, defs, mode.uid, mode.placement), same };
     }
 
     function buildingRow(building) {
@@ -131,66 +164,251 @@ export const colonyScreen = {
       return row;
     }
 
-    // A part's row as a button of 48 px or more: its name and count, and
-    // the building it would be with what that gives; or the parts a reason
-    // holds back, and the reason.
-    function partButton(row) {
+    // The right-hand panel for what the player is doing.
+    function sideFor(text, campaign, plan) {
+      for (const detach of rowButtons) detach();
+      rowButtons = [];
+      if (mode.kind === 'place') {
+        const moving = mode.uid !== null;
+        const confirm = moving ? 'Move here' : mode.what.uid !== undefined ? 'Give here' : mode.what.part ? 'Set down here' : 'Build here';
+        const about = node('p', 'cln-placing', buildingName(mode.type, defs));
+        about.append(node('small', null, placingLine(text, campaign)));
+        side.replaceChildren(
+          node('h2', null, moving ? 'Moving' : 'Placing'),
+          about,
+          actionRow([
+            [confirm, icons.done, confirmPlace, 'cln-confirm', plan.ok],
+            ['Turn', icons.turn, turnGhost, null, true],
+            ['Cancel', icons.leave, cancelPlace, null, true],
+          ]),
+        );
+        return;
+      }
+      if (mode.kind === 'look') {
+        const building = text.buildings.find((b) => b.uid === mode.uid);
+        side.replaceChildren(
+          node('h2', null, building.name),
+          node('p', 'cln-placing', building.gives),
+          actionRow([
+            ['Move', icons.move, () => startMove(false), null, true],
+            ['Turn', icons.turn, () => startMove(true), null, true],
+            ['Take down', icons.remove, tapDown, armed === 'down' ? 'cln-down cln-armed' : 'cln-down', true],
+            ['Back', icons.prev, () => leaveLook(), null, true],
+          ]),
+        );
+        return;
+      }
+      const sections = [node('h2', null, 'Build'), list(text.builds.map((row) => rowButton(row.name, row.ok ? `${row.cost} materials · ${row.makes}` : row.why, row.ok, () => tapRow(row, 'build'))))];
+      if (text.hold.length) sections.push(node('h2', null, 'From the hold'), list(text.hold.map((row) => rowButton(row.name, row.ok ? `${row.building} · ${row.gives}` : row.why, row.ok, () => tapRow(row, 'hold'), row.count))));
+      sections.push(node('h2', null, 'From the ship'), list(text.parts.map((row) => rowButton(row.name, row.ok ? `${row.building} · ${row.gives}` : row.why, row.ok, () => tapRow(row, 'ship'), row.count))));
+      side.replaceChildren(...sections);
+    }
+
+    // What the ghost costs, makes or gives, under its name.
+    function placingLine(text, campaign) {
+      if (mode.uid !== null) return text.buildings.find((b) => b.uid === mode.uid)?.gives ?? '';
+      if (mode.what.build) {
+        const row = text.builds.find((b) => b.id === mode.what.build);
+        return `${row.cost} materials of ${campaign.colony.materials} · ${row.makes}`;
+      }
+      const row = mode.what.part ? text.hold.find((r) => r.type === mode.what.part) : text.parts.find((r) => r.uids?.includes(mode.what.uid));
+      return row?.gives ?? '';
+    }
+
+    function list(items) {
+      const ul = node('ul');
+      ul.append(...items);
+      return ul;
+    }
+
+    // A row of the build list as a button of 48 px or more: its name (and
+    // count), and what it costs and gives or why it can't be built.
+    function rowButton(name, detail, ok, handler, count = null) {
       const item = node('li');
       const button = node('button', 'btn cln-part');
       button.type = 'button';
-      button.dataset.ok = String(row.ok);
-      button.dataset.armed = String(row.ok && row.uid === armed);
-      const name = node('span', 'cln-name', row.name);
-      if (row.ok && row.count > 1) name.append(node('small', null, ` ×${row.count}`));
-      const what = node('small', null, row.ok ? `${row.building} · ${row.gives}` : row.why);
-      button.append(name, what);
-      button.setAttribute('aria-label', row.ok ? `${row.name}: give it to the colony as the ${row.building}. ${row.gives}.` : `${row.name}: ${row.why}`);
+      button.dataset.ok = String(ok);
+      const title = node('span', 'cln-name', name);
+      if (ok && count > 1) title.append(node('small', null, ` ×${count}`));
+      button.append(title, node('small', null, detail));
+      button.setAttribute('aria-label', `${name}: ${detail}`);
       item.append(button);
-      return { item, detach: onTap(button, () => tapPart(row)) };
+      rowButtons.push(onTap(button, handler));
+      return item;
     }
 
-    // The first tap on a part that can be given arms it; the second gives
-    // it. A tap on one that can't says why.
-    function tapPart(row) {
+    // Buttons side by side, each 48 px or more: [label, icon, handler,
+    // class, enabled].
+    function actionRow(actions) {
+      const row = node('div', 'cln-actions');
+      for (const [label, icon, handler, className, enabled] of actions) {
+        const button = toolButton(`hgr-tool cln-act${className ? ` ${className}` : ''}`, icon, label);
+        button.disabled = !enabled;
+        rowButtons.push(onTap(button, handler));
+        row.append(button);
+      }
+      return row;
+    }
+
+    // A tap on a row: one that can be built becomes a ghost in the first
+    // spot that fits; one that can't says why.
+    function tapRow(row, from) {
       const { campaign } = game.getState();
       if (!defs || !campaign) return;
+      disarm();
       if (!row.ok) {
-        disarm();
-        said = giveText(row);
-        marked = { uids: row.uids, spot: null };
+        said = whyNotText(row, { build: 'built', hold: 'set down', ship: 'given' }[from]);
+        marked = from === 'ship' ? row.uids : null;
         render(true);
         return;
       }
-      if (armed !== row.uid) {
-        armed = row.uid;
-        said = null;
-        marked = null;
-        clearTimeout(armTimer);
-        armTimer = setTimeout(() => {
-          disarm();
-          if (alive) render(true);
-        }, ARM_MS);
+      const what = from === 'ship' ? { uid: row.uid } : row.what;
+      const plan = buildPlan(campaign, defs, what);
+      said = plan.ok ? null : { text: plan.error, tone: 'warn' };
+      marked = null;
+      if (plan.ok) mode = { kind: 'place', what, type: plan.type, placement: plan.placement, uid: null };
+      render(true);
+    }
+
+    // A tap on the colony: on the ghost, the second tap that builds it; on
+    // the grid, the ghost moves there; otherwise the building under the
+    // finger is looked at, or none.
+    function tapScene(x, y) {
+      const { campaign } = game.getState();
+      if (!defs || !campaign) return;
+      disarm();
+      said = null;
+      marked = null;
+      if (mode.kind === 'place') {
+        if (stand.onGhost(x, y)) return confirmPlace();
+        const cell = stand.cellAt(x, y);
+        if (!cell) said = { text: "Tap the colony's grid where it should go.", tone: 'warn' };
+        else mode = { ...mode, placement: centered(mode.type, cell, mode.placement.rot) };
         render(true);
+        return;
+      }
+      const uid = stand.buildingAt(x, y);
+      mode = uid === null ? { kind: 'browse' } : { kind: 'look', uid };
+      render(true);
+    }
+
+    // The placement with a building of type centered on cell [i, j], kept
+    // on the grid.
+    function centered(type, [i, j], rot) {
+      const [w, h] = footprint(siteDef(type, defs), rot);
+      const { width, height } = defs.colony.site;
+      return { x: clamp(i - Math.floor((w - 1) / 2), 0, width - w), y: clamp(j - Math.floor((h - 1) / 2), 0, height - h), rot };
+    }
+
+    function turnGhost() {
+      disarm();
+      said = null;
+      mode = { ...mode, placement: turnedSpot(defs, mode.type, mode.placement) };
+      render(true);
+    }
+
+    function cancelPlace() {
+      disarm();
+      said = null;
+      mode = mode.uid !== null ? { kind: 'look', uid: mode.uid } : { kind: 'browse' };
+      render(true);
+    }
+
+    // The second tap: builds the ghost, or moves the building, where it
+    // stands; or says why it can't.
+    function confirmPlace() {
+      const { campaign } = game.getState();
+      if (!defs || !campaign || mode.kind !== 'place') return;
+      disarm();
+      const plan = planOf(campaign);
+      if (!plan.ok) {
+        said = plan.same ? { text: `${plan.error} Tap the grid where it should go.`, tone: 'warn' } : placeText(plan, { moving: mode.uid !== null });
+        render(true);
+        return;
+      }
+      if (mode.uid !== null) {
+        const uid = mode.uid;
+        said = { text: `The ${lowerFirst(plan.name)} stands in its new place.`, tone: 'good' };
+        mode = { kind: 'look', uid };
+        game.dispatch({ type: 'campaign/move', uid, placement: plan.placement, rules: defs });
+      } else {
+        const result = build(campaign, defs, mode.what, mode.placement);
+        said = !result.ok ? { text: result.error, tone: 'bad' } : result.plan.from === 'ship' ? givenText(result, defs) : builtText(result);
+        const action = { type: 'campaign/build', what: mode.what, placement: mode.placement, rules: defs };
+        mode = { kind: 'browse' };
+        game.dispatch(action);
+      }
+      if (alive) render(true);
+    }
+
+    // Move or Turn on the building looked at: it is taken up as a ghost
+    // where it stands, turned a quarter for Turn.
+    function startMove(turn) {
+      const { campaign } = game.getState();
+      const building = campaign?.colony.buildings.find((b) => b.uid === mode.uid);
+      if (!defs || !building) return;
+      disarm();
+      said = null;
+      const placement = { x: building.x, y: building.y, rot: building.rot };
+      mode = { kind: 'place', what: null, type: building.type, placement: turn ? turnedSpot(defs, building.type, placement) : placement, uid: building.uid };
+      render(true);
+    }
+
+    function leaveLook() {
+      disarm();
+      said = null;
+      mode = { kind: 'browse' };
+      render(true);
+    }
+
+    // Take down: the first tap says what comes back and what goes dark;
+    // the second takes it down.
+    function tapDown() {
+      const { campaign } = game.getState();
+      if (!defs || !campaign || mode.kind !== 'look') return;
+      if (armed !== 'down') {
+        arm('down');
         return;
       }
       disarm();
-      const result = donate(campaign, defs, row.uid);
-      said = result.ok ? givenText(result, defs) : { text: result.error, tone: 'bad' };
-      marked = null;
-      game.dispatch({ type: 'campaign/donate', uid: row.uid, rules: defs });
+      const result = takeDown(campaign, defs, mode.uid);
+      said = result.ok ? takenText(result) : { text: result.error, tone: 'bad' };
+      const uid = mode.uid;
+      mode = { kind: 'browse' };
+      game.dispatch({ type: 'campaign/takedown', uid, rules: defs });
       if (alive) render(true);
+    }
+
+    // Next day: the first tap says what the day will bring; the second
+    // passes it, and the hint gives the day's report.
+    function tapDay() {
+      const { campaign } = game.getState();
+      if (!defs || !campaign) return;
+      if (armed !== 'day') {
+        said = null;
+        arm('day');
+        return;
+      }
+      disarm();
+      const result = nextDay(campaign, defs);
+      said = result.ok ? dayReport(result) : { text: result.error, tone: 'bad' };
+      game.dispatch({ type: 'campaign/day', rules: defs });
+      if (alive) render(true);
+    }
+
+    function arm(what) {
+      armed = what;
+      clearTimeout(armTimer);
+      armTimer = setTimeout(() => {
+        disarm();
+        if (alive) render(true);
+      }, ARM_MS);
+      render(true);
     }
 
     function disarm() {
       armed = null;
       clearTimeout(armTimer);
-    }
-
-    // What the scene marks for a part armed: it on the ship, and where it
-    // would stand.
-    function markFor(campaign, uid) {
-      const plan = donatePlan(campaign, defs, uid);
-      return { uids: [uid], spot: plan.ok ? { type: plan.type, ...plan.placement } : null };
     }
 
     return {
@@ -210,59 +428,10 @@ export const colonyScreen = {
   },
 };
 
-// The colony in its place on the screen, fitted to it:
-//   stand.show(campaign, defs, mark)   when the colony or the mark changes
-//   stand.layout()                     when the place may have moved
-//   stand.draw(ctx, view)              every frame; draws after a change
-//   stand.mark                         the mark last shown
-function createStand(area) {
-  let scene = null;
-  let box = null;
-  let camera = null;
-  let dirty = true;
-  const stand = {
-    mark: null,
-    show(campaign, defs, mark) {
-      stand.mark = mark;
-      const { ship, colony } = campaign;
-      const stats = colonyStats(campaign, defs);
-      const powered = new Map(stats.buildings.map((b) => [b.uid, b.powered]));
-      const built = colonyScene({
-        ship,
-        hull: traceHull(ship, defs),
-        buildings: colony.buildings.map((b) => ({ ...b, powered: powered.get(b.uid) ?? false })),
-        site: defs.colony.site,
-        kind: colony.world.kind,
-        defs,
-        skin: skinFor('yard'),
-        mark,
-      });
-      scene = prepareColony(built, colony.world.kind);
-      // The view keeps its fit while only the mark changes.
-      if (!box || box.x0 !== built.box.x0 || box.y0 !== built.box.y0 || box.x1 !== built.box.x1 || box.y1 !== built.box.y1) {
-        box = built.box;
-        camera = null;
-      }
-      stand.layout();
-    },
-    layout() {
-      dirty = true;
-      if (!box) return;
-      const r = area.getBoundingClientRect();
-      if (r.width < 48 || r.height < 48) return; // hidden, e.g. behind the rotate prompt
-      const rect = { x: r.left, y: r.top, w: r.width, h: r.height };
-      camera = fitOrbit({ ...BOARD_VIEW, pivot: [(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2] }, rect, box, MARGIN);
-    },
-    draw(ctx, view) {
-      if (!dirty) return;
-      dirty = false;
-      if (!scene || !camera) {
-        ctx.fillStyle = palette.space;
-        ctx.fillRect(0, 0, view.width, view.height);
-        return;
-      }
-      drawColony(ctx, { x: 0, y: 0, w: view.width, h: view.height }, camera, scene);
-    },
-  };
-  return stand;
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function lowerFirst(text) {
+  return text.charAt(0).toLowerCase() + text.slice(1);
 }
