@@ -69,7 +69,7 @@ Some of this changes what was there before:
 - **`SAVE_VERSION` stays 23**, and blueprint codes stay version 4.
 - **Tests changed on purpose:**
   - `data.test.js`: the order and counts, the short name's 9 letters, and a maker with no skin named `orrery`;
-  - `scene.test.js`, `exterior.test.js`, `catalog.test.js` and `makers.test.js`: every maker, not just Bastion. The cutters and haulers fly their makers now;
+  - `scene.test.js`, `exterior.test.js`, `catalog.test.js` and `makers.test.js`: every maker, not just Bastion. The cutters and haulers fly their makers now, and Scrapline's power in the flight checklist is a new test in `makers.test.js`;
   - `approach.test.js`:
     - Law 1 for Kestrel and Scrapline;
     - the shield array's mass lets the Kestrel runner board the ship more often (4 points of score at 300 approaches before the reactor change, and at 120 since), a trade now named in the test;
@@ -98,7 +98,7 @@ Some of this changes what was there before:
   - `approach.js`: `madeToFly`, the shielded rows, and the shots and hits counted;
   - `voyagePlan.js`: `refitForSquad` for power;
   - `validate-data.js`: a short name of up to 9 letters.
-- **Tests:** two new (`encounter.test.js`, `builderText.test.js`), and the changes above. TESTCOUNT tests in all.
+- **Tests:** three new (Kestrel's and Scrapline's cards in `builderText.test.js`, boarded cutters in `encounter.test.js`, Scrapline's power in `makers.test.js`), and the changes above. 780 tests in all, 777 on M30.
 - **Docs:**
   - ROADMAP.md: §4 (the makers as built, the drawer, saves), §5 and §6 (four makers), M31 with Evan's three later calls, ticked, and §9 (three new, two resolved, two updated);
   - CLAUDE.md: the Testing section's rule for voyage checks.
@@ -125,12 +125,12 @@ Decisions made along the way, not asked (each easy to change):
 
 ### Known issues
 
-- **The pirates are a little harder than main's.** Kestrel's lighter parts around the Yard's reactor close to board more often: the start ship scores −19 against the cutter and −33 against the runner, against main's −11 and −23 (120 and 200 approaches).
+- **The pirates are a little harder than main's.** Over 120 approaches each, the start ship scores −19 against the cutter and −33 against the runner, against main's −10 and −22. The Kestrel runner boards it in 33 against 23. The cutter boards it about as often (21 against 18), but the start ship boards or wrecks the cutter in 2 against 8, and gets away from it in 53 against 30. Every other preset's row is main's.
 - **Kestrel's start ship takes about as many hits as the Yard's against the patrol corvette** (29% of its shots against 26%), which aims at guns and the reactor first. Against every other preset fewer land.
 - **The shield array against the Kestrel runner:** its mass lets the runner board the ship more often, 4 points of score worse than without it. Law 1 names it as a trade.
 - **Act 1's long tails:** the deserter's slowest run takes 146 minutes at the slow pace and the smuggler's 170, against 131 and 121 on M30. The medians hold.
 - **Some ships launch with no power to spare:** act 1's test player buys Scrapline's engines (in 7 of the miner's 30 runs), which draw 1 more. A med bay fitted then needs a reactor with it.
-- **The voyage tests hold main's rates, not the original targets:** managing heat meets the hunters in about a third of runs (M24's pick: a fifth), 9 to 14 in 100 go hungry in the system (M25: none), and the smuggler meets them about half as often as the miner (M30: about as often). §9, for Phase 7.
+- **The voyage tests hold main's rates, not the original targets:** the miner managing heat meets the hunters in about a third of runs (M24's pick: a fifth), 3 to 9 runs in 100 go hungry in the system (5 to 14 on main; M25: none), and the smuggler meets them about half as often as the miner (M30: about as often). §9, for Phase 7.
 - **Colonies short of air:** a part fitted on the run can hang off the life support, which then can't go. 7 of the deserter's 100 colonies (3 on main), 1 of the miner's (0). §9.
 - **The test suite is slower:** about 4 min 15 s here, the voyage tests 3 min 20 s alone.
 - **Kestrel's stripes are thin:** on the folded screen they read as a coral edge (§9).
