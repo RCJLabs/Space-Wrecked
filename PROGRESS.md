@@ -63,7 +63,7 @@ Some of this changes what was there before:
   The gaps to the original targets are in §9. CLAUDE.md's Testing section says how a check new content breaks is treated from now on.
 - **The trip test player** (`tools/voyagePlan.js` `refitForSquad`) takes a power plant back aboard from the colony when the squad's berths and air leave the ship short of power. Ships with Scrapline's engines from act 1 hit this, and flew no trip in 14 of 300 runs without it.
 - **The voyage tests' fitted runs** put a small reactor on first where the ship has no power to spare for the med bay or bunks.
-- **The approach harness** (`tools/approach.js`) counts the other ship's shots (a Hit column) and flies each maker's start ship twice: as made, with the reactor it needs to fly, and with its maker's shield.
+- **The approach harness** (`tools/approach.js`) counts the other ship's shots (a Hit column) and flies each maker's start ship twice: as made to fly (with the reactor it needs, if any), and with its maker's shield added.
 - **The drawer's sheet** starts its categories on a row of their own under the makers.
 - **The short name** in `data/manufacturers.json` may be 9 letters ("Scrapline"), up from 8.
 - **`SAVE_VERSION` stays 23**, and blueprint codes stay version 4.
@@ -156,7 +156,7 @@ M32 All jobs, traits and talents (Phase 6, v0.4). First task: settle its Done wh
 
 ### Verified here
 
-- `node --test`: TESTCOUNT pass, in about 4 min 15 s. `node tools/validate-data.js`: OK (79 modules, 4 manufacturers).
+- `node --test`: 780 pass, in about 4 min 15 s. `node tools/validate-data.js`: OK (79 modules, 4 manufacturers).
 - **`tests/golden/ships.txt`, regenerated on purpose:** 66 lines, the cutters', runners' and haulers' part names; with the makers' prefixes taken off, it is main's.
 - **Law 1** (`node tools/approach.js --runs 120`), the start ship's score against each preset (wins less losses in 100):
 
@@ -220,7 +220,16 @@ M32 All jobs, traits and talents (Phase 6, v0.4). First task: settle its Done wh
   - offline, the drawer's 79 icons; no console errors.
 
   Its screenshots showed the sheet's categories running on from the makers' row; they now start a row of their own. On the folded screen the sandbox's ship is small and Kestrel's stripes are a few pixels, so those two pixel counts only ask that the color is there.
-- REGRESSION
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named:
+  - M30 27, M29 34, M28 32, M27 32, M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 20 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 41 (its count goes with the jobs it rolls), and M8's extras.
+
+  Two copies were adapted, not the game, for what M31 changes on purpose:
+  - M23g's (`m23g/verify31.mjs`): All shows 79 parts, the maker row has five tiles with their counts, construction mode counts Kestrel 0 and Scrapline 0, and offline the drawer draws 79 icons;
+  - M23e's (`m23e/verify31.mjs`): the Weapons and Engines lists carry Kestrel's and Scrapline's versions beside each part, read from the data in the drawer's order (11 of each).
 
 ## M30 Backgrounds 2 and 3, and their pursuers (2026-10-15)
 
