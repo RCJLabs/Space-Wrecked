@@ -3,7 +3,8 @@
 // data/tiles.json says what each kind of tile does: whether units stand on
 // it, the cover it gives a unit beside it, and whether it blocks sight. On
 // the edges, a wall, the hull or a hatch always stands in the way; a door
-// does while it is closed, and a unit walking through opens it.
+// does while it is closed, and a unit walking through opens it, unless it
+// is welded shut (orders.js, M32).
 import { cellAt } from './grid.js';
 import { edgeKey, wallAt } from './mapFromShip.js';
 
@@ -24,6 +25,18 @@ export function walkable(battle, x, y, rules) {
 export function edgeAt(battle, x, y, side) {
   const edge = wallAt(battle.map, x, y, side);
   return edge === 'door' && battle.doors.includes(edgeKey(x, y, side)) ? null : edge;
+}
+
+// True if the door on `side` of (x, y) is welded shut now.
+export function weldedAt(battle, x, y, side) {
+  const key = edgeKey(x, y, side);
+  return (battle.welds ?? []).some((w) => w.key === key);
+}
+
+// True if there is a closed door on `side` of (x, y) that a unit there can
+// open: not open already, and not welded shut.
+export function shutDoor(battle, x, y, side) {
+  return wallAt(battle.map, x, y, side) === 'door' && !battle.doors.includes(edgeKey(x, y, side)) && !weldedAt(battle, x, y, side);
 }
 
 // The hazard on the tile at (x, y): null, 'fire', 'vacuum' or 'rubble'.

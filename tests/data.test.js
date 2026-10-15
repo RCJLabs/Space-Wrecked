@@ -242,8 +242,18 @@ const cases = [
   ['a squad of six', (d) => (d.balance.squadSize = 6), /squadSize must be a whole number from 1 to 5/],
   ['a station offering a crowd', (d) => (d.balance.recruitOffer = 9), /recruitOffer must be a whole number from 0 to 4/],
   ['a med bay that heals nothing', (d) => (d.modules.modules.find((m) => m.id === 'medbay').heal = 0), /medbay: heal must be the hit points it heals each of the wounded a jump, 1 to 10/],
-  ['a medic with an unknown station effect', (d) => (d.jobs.jobs.find((j) => j.id === 'medic').station = { cook: 1 }), /medic: station: unknown effect "cook"/],
+  ['a medic with an unknown station effect', (d) => (d.jobs.jobs.find((j) => j.id === 'medic').station = { cook: 1 }), /medic station: unknown effect "cook"/],
   ['a station effect on an enemy', (d) => (d.enemies.enemies[0].station = { heal: 1 }), /enemies\.json \w+: unknown field "station"/],
+  ['a ship effect past its range', (d) => (d.jobs.jobs.find((j) => j.id === 'quartermaster').station = { lockers: 500 }), /quartermaster station: lockers must be a whole number from 1 to 99/],
+  ['an unknown colony effect', (d) => (d.jobs.jobs.find((j) => j.id === 'scout').colony = { cook: 1 }), /scout colony: unknown effect "cook"/],
+  ['a colony effect as a word', (d) => (d.jobs.jobs.find((j) => j.id === 'engineer').colony = { mines: 'two' }), /engineer colony: mines must be a whole number from 1 to 5/],
+  ['an order of an unknown kind', (d) => (d.jobs.jobs.find((j) => j.id === 'marine').order.type = 'fireball'), /marine order: type must be one of suppress, weld/],
+  ['an order with no uses', (d) => (d.jobs.jobs.find((j) => j.id === 'scout').order.uses = 0), /scout order: uses must be a whole number from 1 to 9/],
+  ['an order missing its number', (d) => delete d.jobs.jobs.find((j) => j.id === 'medic').order.hp, /medic order: hp must be a whole number from 1 to 99/],
+  ['an order with a number its kind lacks', (d) => (d.jobs.jobs.find((j) => j.id === 'pilot').order.aim = 10), /pilot order: unknown field "aim" for hustle/],
+  ['a Suppress that helps', (d) => (d.jobs.jobs.find((j) => j.id === 'marine').order.aim = 30), /marine order: aim must be a whole number from -100 to -1/],
+  ['an order with no name', (d) => (d.jobs.jobs.find((j) => j.id === 'engineer').order.name = ''), /engineer order: name must be a non-empty string/],
+  ['an order on an enemy', (d) => (d.enemies.enemies[0].order = { type: 'hustle', name: 'Hustle', uses: 1, ap: 1 }), /enemies\.json \w+: unknown field "order"/],
   ['a recruit name twice', (d) => d.recruits.first.push(d.recruits.first[0]), /recruits\.json: first has a name twice/],
   ['a recruit name too long for a crew member', (d) => d.recruits.last.push('Wolfeschlegelsteinhausen'), /recruits\.json: last must be a list of 2 to 200 names of up to 11 letters/],
   // M23b: figures.
@@ -374,5 +384,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 14 enemies, 19 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 26 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 18 events\)/);
+  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 6 weapons, 7 crew jobs, 6 traits, 14 enemies, 19 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 26 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 18 events\)/);
 });

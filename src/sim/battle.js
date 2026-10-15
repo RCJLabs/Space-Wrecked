@@ -9,12 +9,15 @@
 //   map      the battle map; it never changes
 //   units    [{ id, side, kind, name, x, y, hp, maxHp, aim, defense,
 //              mobility, armor, weapon, ammo, ap, overwatch, status,
-//              bleed, air }]
+//              bleed, air, uses, mark, suppressed, asleep, kitted }]
 //            side is 'crew' or 'enemy'. status is 'active', 'down'
 //            (bleeding out: `bleed` more of its side's turns), 'stable',
 //            'dead', or 'out' (bled out where death isn't permanent). ap is
 //            the actions left this turn and air the suit air left, in turns.
+//            uses, mark, suppressed, asleep and kitted are what the crew's
+//            orders leave (orders.js, M32)
 //   doors    the keys of the doors opened so far (mapFromShip.js edgeKey)
+//   welds    the doors welded shut, [{ key, until }] (orders.js)
 //   side     whose turn it is; first, the side that started
 //   round    from 1; a round is both sides' turns
 //   rng      the RNG state
@@ -53,6 +56,8 @@
 //   { type: 'hack', unit }               ends the unit's turn: the crew works
 //                                        the terminal in its reach, a turn of
 //                                        work, once a round
+//   { type: 'order', unit, target?, side? }  the unit's job's order, at a
+//                                        unit or a door's side (orders.js)
 //   { type: 'end' }                      ends the side's turn
 // A side's turn also ends by itself once none of its units has an action
 // left.
@@ -61,8 +66,9 @@ import { SIDES } from './grid.js';
 import { edgeKey, wallAt } from './mapFromShip.js';
 import { reachable, sideToward } from './moves.js';
 import { shotOdds } from './odds.js';
+import { doOrder, endOrders, endWelds, freshOrders, wakeTurn } from './orders.js';
 import { canSee } from './sight.js';
-import { hazardAt, inReach, walkable } from './terrain.js';
+import { hazardAt, inReach, walkable, weldedAt } from './terrain.js';
 
 // setup: { map, units: [{ kind, x, y, name?, hp?, bonus? }], seed, first?,
 // options?, objective? }. kind is a crew job (data/jobs.json), which puts
@@ -112,9 +118,11 @@ export function createBattle({ map, units, seed, first = 'crew', options = {}, o
         status: 'active',
         bleed: 0,
         air: rules.balance.suitAir,
+        ...freshOrders(job?.order),
       };
     }),
     doors: [],
+    welds: [],
     side: first,
     first,
     round: 1,
@@ -184,7 +192,7 @@ export function targetsFor(battle, unit, rules) {
 }
 
 function draft(battle) {
-  return { ...battle, units: battle.units.map((u) => ({ ...u })), doors: [...battle.doors], misses: { ...battle.misses } };
+  return { ...battle, units: battle.units.map((u) => ({ ...u })), doors: [...battle.doors], welds: [...(battle.welds ?? [])], misses: { ...battle.misses } };
 }
 
 function readyToAct(battle, unit, action) {
@@ -238,6 +246,7 @@ function doAction(battle, unit, action, events, rules) {
       if (!SIDES.includes(action.side) || wallAt(battle.map, unit.x, unit.y, action.side) !== 'door') return `There's no door on that side of ${unit.name}.`;
       const key = edgeKey(unit.x, unit.y, action.side);
       if (battle.doors.includes(key)) return 'That door is open already.';
+      if (weldedAt(battle, unit.x, unit.y, action.side)) return 'That door is welded shut.';
       unit.ap -= 1;
       battle.doors = [...battle.doors, key].sort();
       events.push({ type: 'door', unit: unit.id, at: [unit.x, unit.y], side: action.side });
@@ -269,6 +278,8 @@ function doAction(battle, unit, action, events, rules) {
       decide(battle, events);
       return null;
     }
+    case 'order':
+      return doOrder(battle, unit, action, events, rules);
     default:
       return `Unknown action "${action.type}".`;
   }
@@ -360,23 +371,28 @@ function hurt(battle, unit, damage, events, rules) {
   decide(battle, events);
 }
 
-// A side's turn ends. The crew's, in its deadline's round, ends the battle.
+// A side's turn ends, and with it what the other side's orders left on it
+// (orders.js). The crew's, in its deadline's round, ends the battle.
 function endTurn(battle, events, rules) {
   events.push({ type: 'end', side: battle.side });
   for (const unit of battle.units) if (unit.side === battle.side) unit.ap = 0;
+  endOrders(battle, battle.side, events);
   const { deadline } = battle.options;
   if (deadline && battle.side === 'crew' && battle.round >= deadline) {
     win(battle, 'enemy', events, 'deadline');
     return;
   }
   battle.side = battle.side === 'crew' ? 'enemy' : 'crew';
-  if (battle.side === battle.first) battle.round += 1;
+  if (battle.side === battle.first) {
+    battle.round += 1;
+    endWelds(battle, events);
+  }
   startTurn(battle, events, rules);
 }
 
 // A side's turn begins: its units' overwatch ends and their actions come
-// back; then, unit by unit, fire burns, suits use air in vacuum, and the
-// downed bleed.
+// back, but for those asleep; then, unit by unit, fire burns, suits use air
+// in vacuum, and the downed bleed.
 function startTurn(battle, events, rules) {
   const { balance } = rules;
   events.push({ type: 'turn', side: battle.side, round: battle.round });
@@ -385,6 +401,7 @@ function startTurn(battle, events, rules) {
     if (unit.status === 'active') {
       unit.overwatch = false;
       unit.ap = balance.actionPoints;
+      wakeTurn(battle, unit, events);
       const hazard = hazardAt(battle, unit.x, unit.y);
       if (hazard === 'fire' && balance.fireDamage > 0) {
         events.push({ type: 'hazard', unit: unit.id, hazard, damage: balance.fireDamage });

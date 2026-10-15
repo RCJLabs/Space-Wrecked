@@ -34,6 +34,7 @@ import { edgeKey, wallAt } from './mapFromShip.js';
 import { reachable, sideToward, stepsFrom } from './moves.js';
 import { shotOdds } from './odds.js';
 import { canSee } from './sight.js';
+import { shutDoor } from './terrain.js';
 
 export const WEIGHTS = {
   kill: 4, // a kill, on top of the damage, in hit points: one less gun
@@ -103,9 +104,8 @@ export function plansFor(battle, unit, rules) {
   if (unit.ap >= 2) {
     const here = { x: unit.x, y: unit.y, cost: 0, path: [[unit.x, unit.y]] };
     for (const side of SIDES) {
-      const key = edgeKey(unit.x, unit.y, side);
-      if (wallAt(battle.map, unit.x, unit.y, side) !== 'door' || battle.doors.includes(key)) continue;
-      consider({ ...battle, doors: [...battle.doors, key] }, here, 1, side);
+      if (!shutDoor(battle, unit.x, unit.y, side)) continue;
+      consider({ ...battle, doors: [...battle.doors, edgeKey(unit.x, unit.y, side)] }, here, 1, side);
     }
   }
   for (const plan of plans) plan.score = plan.attack - WEIGHTS.safety * (plan.threat + plan.risk) - (isShot(plan) ? 0 : WEIGHTS.near * plan.steps);

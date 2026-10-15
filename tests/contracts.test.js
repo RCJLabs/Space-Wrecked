@@ -150,7 +150,7 @@ test('taking a job begins its fight, and says why when it can\'t', () => {
   assert.deepEqual(takeJob(campaign, rules, 3), { ok: false, error: 'That job is gone.' });
   assert.deepEqual(takeJob({ ...campaign, board: [{ ...campaign.board[0], contract: 'heist' }] }, rules, 0), { ok: false, error: 'That job is gone.' });
   assert.deepEqual(takeJob({ ...campaign, crew: [] }, rules, 0), { ok: false, error: 'There is no one to send.' });
-  assert.deepEqual(takeJob({ ...campaign, crew: [{ ...campaign.crew[0], job: 'pilot' }] }, rules, 0), { ok: false, error: `${campaign.crew[0].name}'s job "pilot" is unknown.` });
+  assert.deepEqual(takeJob({ ...campaign, crew: [{ ...campaign.crew[0], job: 'cook' }] }, rules, 0), { ok: false, error: `${campaign.crew[0].name}'s job "cook" is unknown.` });
   const crowd = Array.from({ length: 6 }, (_, i) => ({ ...campaign.crew[0], id: i + 1 }));
   assert.match(takeJob({ ...campaign, crew: crowd }, rules, 0).error, /^That job can't start: .* room for 5 crew/);
 });

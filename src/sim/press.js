@@ -11,9 +11,9 @@
 // the crew the tools send on jobs (jobAi.js).
 import { aiAction } from './ai.js';
 import { SIDES } from './grid.js';
-import { edgeKey, wallAt } from './mapFromShip.js';
 import { reachable, stepsFrom } from './moves.js';
 import { canSee } from './sight.js';
+import { shutDoor } from './terrain.js';
 
 export function pressAction(battle, rules, goals = null) {
   const unit = battle.units.find((u) => u.side === battle.side && u.status === 'active' && u.ap > 0);
@@ -27,6 +27,6 @@ export function pressAction(battle, rules, goals = null) {
     if (d < best.d || (d === best.d && spot.cost < best.cost)) best = { d, cost: spot.cost, x: spot.x, y: spot.y };
   }
   if (best.x !== unit.x || best.y !== unit.y) return { type: 'move', unit: unit.id, to: [best.x, best.y] };
-  const door = SIDES.find((side) => wallAt(battle.map, unit.x, unit.y, side) === 'door' && !battle.doors.includes(edgeKey(unit.x, unit.y, side)));
+  const door = SIDES.find((side) => shutDoor(battle, unit.x, unit.y, side));
   return door ? { type: 'open', unit: unit.id, side: door } : aiAction(battle, rules);
 }

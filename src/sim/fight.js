@@ -46,10 +46,9 @@
 import { aiAction } from './ai.js';
 import { act, targetsFor } from './battle.js';
 import { SIDES } from './grid.js';
-import { edgeKey, wallAt } from './mapFromShip.js';
 import { reachable } from './moves.js';
 import { pressAction } from './press.js';
-import { inReach, walkable } from './terrain.js';
+import { inReach, shutDoor, walkable } from './terrain.js';
 
 // More actions than any side's turn can take: a guard, should the enemy
 // player ever stall.
@@ -257,7 +256,7 @@ function terminalInReach(battle, unit) {
 }
 
 function doorBeside(battle, unit) {
-  return SIDES.find((side) => wallAt(battle.map, unit.x, unit.y, side) === 'door' && !battle.doors.includes(edgeKey(unit.x, unit.y, side))) ?? null;
+  return SIDES.find((side) => shutDoor(battle, unit.x, unit.y, side)) ?? null;
 }
 
 function withNotice(fight, tone, text) {

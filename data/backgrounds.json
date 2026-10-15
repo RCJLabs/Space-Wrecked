@@ -121,7 +121,7 @@
       "start": {
         "credits": 0,
         "parts": { "engine": 1, "quarters": 1, "corridor": 2 },
-        "crew": ["marine", "marine", "medic"],
+        "crew": ["marine", "pilot", "medic"],
         "ship": {
           "frame": "starter",
           "placements": [
@@ -194,7 +194,7 @@
       "start": {
         "credits": 75,
         "parts": { "lifesupport": 1, "corridor": 2 },
-        "crew": ["engineer", "engineer", "medic"],
+        "crew": ["engineer", "quartermaster", "medic"],
         "ship": {
           "frame": "starter",
           "placements": [
