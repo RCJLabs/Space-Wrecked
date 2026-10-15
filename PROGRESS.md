@@ -2,6 +2,244 @@
 
 Newest entry first.
 
+## M28 Expeditions from the colony (2026-10-15)
+
+**Status:** done, and the ROADMAP.md box is ticked. The ship flies again:
+- **Places within reach:** the colony lists three at a time: derelicts, wreck fields, ore rocks and the system's other worlds, each 1 to 3 days away. Squatters hold half the derelicts.
+- **A trip:** pick a place and a squad. The flight checks count the squad aboard, and Fly out takes two taps. The days out pass at the colony with the ship away. At the place the squad decides an event, or boards the squatters' derelict in a fight. Fly home passes the days back, and a new list comes.
+- **The colony on its own:** while the ship is away the colony runs without the ship's power, and whoever stays home without a bed and air doesn't rest. Materials now buy a **solar array** (power) and a **shelter** (beds and air for two) for them.
+- **Healing day by day:** an infirmary heals only a day at a time. One opening heals nobody.
+
+Some of this changes what was there before, not only adds to it:
+- **An infirmary opening no longer heals the crew to full** (Evan's pick). M26's heal on opening (`healIfOpened`) is gone, and so are its words in the reports for giving a part, building and setting one down. A powered infirmary heals a day at a time, as since M27.
+- **In act 3 the flight checks count whoever is aboard** (`campaign.js` `crewAboard`): nobody while the ship is home, the squad on a trip.
+  - Giving a part still counts nobody aboard, so a colony can give away the life support a trip needs. The trip's plan says so, and a refit puts it back.
+  - **Construction mode at the colony counts a full squad aboard** (`fullSquad`: `squadSize`, or the whole crew if fewer), so its flight checks show what a trip needs. In M27 it counted nobody. Its ready line: "Every flight check passes with a full squad aboard: the ship can fly out. Tap Colony."
+- **The day's plan works per person** (`days.js`): each crew member's heal (`heals`, by id) in place of one heal for all, and who goes without rest (`rough`). A trip's days pass the same way, one by one.
+- **While the ship is away, nothing changes at home but the days.**
+  - Next day is off, since a leg's days pass as it flies.
+  - Building, moving, taking down, giving and refits are refused: "The ship is away: building waits until it is home."
+- **Events can give materials** (`events.js`). At a place an event's wounds fall only on the squad (`applyEffects` `among`). The run's events are as they were.
+- **A colony build can give instead of make** (`data/colony.json` `gives`: power, beds and air, in place of `makes`), and the validator checks either.
+- **The colony screen:**
+  - the places head the right-hand panel;
+  - while the ship is away, the panel is where the squad is, and Refit and Next day are off;
+  - the crew rows say who is away and who has no bed or air;
+  - the ship's pad stands empty in the view.
+- **Act 3's words** say only the raids are still to come.
+- **`SAVE_VERSION` 22.**
+- **The careful test player flies 30 days of trips** after M27's 30 days (`playTrips`).
+  - Each run's report has a line for them, and the summary has one over the runs.
+  - `voyage()` returns the colony after them as `travelled`; `home` is still the colony after M27's days.
+  - The summary's colony line no longer counts the infirmary's heal on opening (0 in all of M27's runs).
+- **Tests changed on purpose:**
+  - the infirmary: one opening heals nobody, and its first day heals a day's rest and its own heal, the medic adding theirs (`colony.test.js`). Giving and building say nothing of healing (`colonyBuild.test.js`, `colonyText.test.js`);
+  - the build list has the solar array and the shelter (`colonyBuild.test.js`, `colonyText.test.js`);
+  - the day's plan gives each one's heal and who goes without rest (`days.test.js`);
+  - a new colony, a settled one and a migrated v20 one have no places and no trip (`days.test.js`, `system.test.js`);
+  - the run's events are the 10 of a kind of node; the places have the other 8 (`sector.test.js`, `voyage.test.js`);
+  - the validator's summary line (`data.test.js`).
+
+No phone results have come back yet for M14 to M27.
+
+**How it was picked:** Evan answered four questions (2026-10-15), each the recommended answer:
+- **Where trips go:** "Places within reach": a few places at a time, rolled from the seed, each a few days away. Derelicts (some held by scavengers, boarded in a fight), wreck fields, rocks and the system's other worlds, with events like act 2's.
+- **What the ship needs to fly a squad:** "Berths and air": the flight checks count the squad aboard, so a trip needs berths and life support for each. The colony runs on its own power while the ship is away.
+- **What materials buy:** "Generator and shelter": a power plant, and a home for whoever stays behind.
+- **Healing:** "Day by day": a crew home hurt heals at the infirmary over the days, and the heal to full on opening goes.
+
+The snag, measured before asking (the careful test player's colonies after their first 30 days, seeds 1 to 30): no ship could fly a squad of 3, since all 30 had given the colony their life support. All 30 could once the colony's life support and quarters went back aboard. 29 colonies ran on the landed ship's spare power, with no power plant of their own.
+
+Done when (ROADMAP.md, M28):
+- **Places within reach** (`data/expeditions.json`): "the colony lists three places at a time, rolled from the campaign's RNG: derelicts, wreck fields, ore-rich rocks and the system's other worlds, each with its name, its kind and how many days away it is (1 to 3). Some derelicts are held by scavengers, and the list says so. A new list comes after each trip. The same seed always gives the same places (tested)."
+- **A trip:** "a place and a squad of 1 to `squadSize` picked from the crew. The plan says the days there and back, what the days eat, and the flight checks with the squad aboard (berths and air for each of them). Two taps on Fly out, refused with the reason while a flight check fails. The days out pass at the colony one by one, then the squad is at the place: an event like act 2's (choices with their odds, paying parts, materials or food, or hurting someone in the squad) or the scavengers. Fly home passes the days back, and the ship lands. Each leg's report says what the days at home came to (tested)."
+- **Boarding a derelict:** "at a derelict the scavengers hold, Board her starts a fight on her map (a derelict hauler, some rooms wrecked), the squad at her hatches. A win brings her salvage home (her working parts, and materials); a loss brings the squad home hurt with nothing. Fly home leaves her without a fight (tested)."
+- **While the ship is away:** "the days pass as Next day passes them, but the colony runs on its own power: the buildings the ship's spare power ran go dark. Whoever stays home without a bed and air doesn't rest, since the ship isn't there to sleep aboard. The squad aboard heals what the ship's med bay heals, as on a jump. Food and materials stay one store, the ship's holds counted (tested)."
+- **A generator and a shelter** (`data/colony.json` builds): "built by hand from materials, as farms and mines are. The generator (a solar array) makes power; the shelter beds and breathes for two, and needs power (tested)."
+- **Healing day by day:** "an infirmary heals the crew a day at a time, as since M27, and one opening no longer heals everyone to full. A squad home hurt heals over the days (tested)."
+- **Refit:** "construction mode at the colony counts a full squad aboard (up to `squadSize`), so its flight checks show what a trip needs."
+- **The colony screen:** "the places within reach, each with its kind, its days and what is known of it; a trip's plan with the squad picked and the flight checks; Fly out and Fly home, each in two taps; while the ship is away, the colony without it, where the squad is, the place's event or its scavengers, and each leg's report. Act 3's words say what is still to come."
+- **Saves:** "`SAVE_VERSION` 22 for the places and the trip. A v21 colony opens with no trip, and its places are rolled when the colony is first shown (tested)."
+- **The test player:** "over 30 voyages (campaign seeds 1 to 30) the careful test player plays 60 days at the colony. It builds as in M27, puts berths and air for its squad back aboard, and flies trips, building a generator and shelters when someone stays home. In every run it flies at least one trip and the ship comes home from every one. Its report says each run's trips, days away, what they brought, the boardings won and lost, and the hungry days (`tools/voyage.js`)."
+- **Touch:** "every new button is 48 px or more at the three sizes. By touch: a place and a squad picked; Fly out refused for a failing flight check, and a refit that puts life support aboard; Fly out; an event decided at a place; a boarding fought; Fly home and its report; a generator and a shelter built; and a quit and reopen while the ship is away."
+
+How each is met:
+- **Places within reach:** `tests/expeditions.test.js` (new):
+  - a settled colony has none until they are rolled, and then has three, of their kinds and days, none named twice. A world is named for one of the system's other worlds, and a held derelict has no event;
+  - the same seed gives the same places, and a colony with places keeps them;
+  - over 300 seeds every kind comes up, squatters hold some derelicts but not all, and every place's event is met.
+
+  `tests/tripText.test.js` (new): the rows' words ("Ore rock · 2 days away", "Derelict · 1 day away · squatters aboard", a world by its own kind: "Ice world · 3 days away").
+- **A trip:** `tests/expeditions.test.js`:
+  - the plan: 2 days there and 2 back, 12 food for three (27 → 15), every flight check passing;
+  - the refusals: a place not listed, nobody picked, someone not of the crew, the ship away already, and the life support given to the colony: "The ship can't fly with 3 aboard: life support 0 of 3 crew.";
+  - flying out uses up the list, and the days out pass at home, the colony on its own power;
+  - at the place, the event decided (a sure choice rolls nothing), its wound only ever on the squad, and a find past the stores lost;
+  - home: the days back, the ship landed and a new list. Fly home refuses until the event is decided.
+
+  `tests/tripText.test.js`: the plan's lines, Fly out's ask and why not, the squad picker's rows, the event's choices with their odds, Fly home's ask, and each leg's report ("2 days out: everyone ate 6. With no bed and air at the colony, Quill Petrov and Lark Ibarra didn't rest. The squad is at The Anvil."). The reducer test in `tests/expeditions.test.js` takes a trip out, through a choice and home.
+- **Boarding a derelict:** `tests/expeditions.test.js`:
+  - a held derelict is a generated hauler (her own seed), with the squatters' party, 2 parts and 4 to 8 materials to win. Left alone, the ship flies home with nothing;
+  - boarded, the squad is at her hatches and the squatters on her bridge. The same place gives the same fight;
+  - won: her 2 parts into the hold and her materials into the stores;
+  - lost: home with nothing;
+  - played out by the AI it ends one way or the other, everyone alive;
+  - the reducer gives the fight its screen and brings it back to the colony.
+
+  `tests/tripText.test.js`: who holds her and what a win brings, Board her's ask, the fight's objective ("Aboard Long Haul", "3 squatters left") and its end ("Long Haul is yours", "Beaten back").
+- **While the ship is away:** `tests/expeditions.test.js`:
+  - a gun given to the colony goes dark;
+  - the two at home with no bed and air don't rest (the same day at home, all three would have);
+  - Next day, building, taking down and refits are refused;
+  - the squad aboard heals the ship's med bay's heal, a medic aboard adding theirs, and an infirmary given from that med bay heals nobody at home while the ship's power is away.
+
+  `tests/tripText.test.js`: the colony's words while away ("Copperhill · Desert world · Day 3 · the ship away", "1 on the trip, 2 home without a bed", "0 from power plants; the ship is away").
+- **A generator and a shelter:** `tests/expeditions.test.js`: built for 15 and 10 materials, the array gives 3 power and the shelter takes 1, beds 2 and air 2. With the ship away, the array runs the gun and the shelter, and the two at home rest. `tests/colonyBuild.test.js` and `tests/colonyText.test.js`: their rows in the build list ("Solar array — 15 materials · Power +3", "Shelter — 10 materials · Beds 2 · air 2 · power −1"). `tests/colonyScene.test.js`: the array's panels and the hut, the hut's window dark without power, and the ship's pad empty while it's away. `tests/data.test.js`: the validator's line ("4 colony builds").
+- **Healing day by day:** `tests/colony.test.js`: an infirmary opening heals nobody; its first day heals a day's rest and its own heal, the medic adding theirs. `tests/expeditions.test.js`: the squad heals day by day aboard, and those at home rest in the shelter.
+- **Refit:** `tests/expeditions.test.js`: `fullSquad` is 3, or 2 for a crew of two. By touch: the air plant taken down, its life support fitted aboard in construction mode with its checks counting 3, and Colony home.
+- **The colony screen:** `tests/tripText.test.js` and `tests/colonyText.test.js` for the words; by touch at the three sizes, below.
+- **Saves:** `tests/expeditions.test.js`:
+  - the step from 21 gives a colony no places and no trip, and no campaign is left alone;
+  - a v21 save through the front door opens with neither, and the colony screen's ask rolls the seed's places;
+  - a campaign out on a trip, at a held derelict and in the fight there each reloads as it was;
+  - a trip or places a save can't hold is caught.
+
+  By touch: a save made by main (v21) opens with its places rolled and saves as v22.
+- **The test player:** `tests/voyage.test.js` (M28's test). In all 30 runs it:
+  - plays 30 days of trips after M27's 30, flies at least one, and the ship comes home from every one, every day played;
+  - has room aboard for every squad it took (1 to 3), and loses nobody;
+  - plays the same trips from the same colony.
+
+  Some trips board a held derelict, and each run's report has its line.
+- **Touch:** M28's browser check, below.
+
+### Shipped
+
+- **Data:**
+  - `expeditions.json` (new): 3 places at a time, and the 4 kinds: Derelict (weight 3, 1 to 2 days, half held), Wreck field and Ore rock (2, 1 to 3 days), and World (2, 2 to 3 days, the system's others). Each has its words, and all but the worlds have names of their own;
+  - `events.json`: 8 events at places, 2 a kind, and the `colony` drop table their parts come from;
+  - `encounters.json`: the Squatters (two scavvers and a hired heavy);
+  - `colony.json`: the Solar array and the Shelter;
+  - `campaign.json`: act 3's `ahead`.
+- **Validation:**
+  - `tools/validate-expeditions.js` (new): the list's size and words; each kind's id (no sector node's), name, weight, days and words, and its names or the system's worlds (one such kind at most); a held derelict's chance, ship, party, salvage and materials;
+  - `validate-campaign.js` wires it in, and asks every kind not always held for events;
+  - `validate-colony.js`: a build's `gives`;
+  - `validate-events.js`: an event at a place does and needs only what a place can (food, materials, wounds and parts; no credits or heat), and only such an event brings materials;
+  - `validate-data.js`: counts the places.
+- **The sim:**
+  - `expeditions.js` (new): the places (`rollPlaces`, `withPlaces`), the plan and flying out (`tripPlan`, `flyOut`), the place (`tripHere`, `chooseAtPlace`), the boarding (`placeFightDue`, `boardPlace`, `endPlaceFight`), and home (`homePlan`, `flyHome`);
+  - `tripShape.js` (new): what a save's places and trip may hold;
+  - `days.js`: the days with the ship away (`planDay`, `passDay`), each crew member healing where they are;
+  - `colony.js`: the colony on its own power, who is away and who goes without (`colonyStats` `away`, `rough`), the builds that give, and the heal on opening gone;
+  - `colonyBuild.js`: nothing built, moved or taken down while away;
+  - `campaign.js`: the flight checks with the squad aboard (`crewAboard`, `fullSquad`), no refits while away, and the trip checked;
+  - `events.js` (materials, and wounds among the squad), `defs.js`, `root.js` (`campaign/places`, `campaign/trip/out`, `campaign/trip/choose`, `campaign/trip/board`, `campaign/trip/home`; a fight at a place ends back at the colony), `save.js` (v22 and the migration from 21).
+- **The colony screen:**
+  - `colonyTrip.js` (new): the places, the plan, the squad picker, the panel while away, and the two-tap buttons;
+  - `tripText.js` (new): their words;
+  - `colony.js`, `colonyText.js` (away), `construction.js` (a full squad), `boardingText.js` (a place's fight), `eventText.js` (food and materials), `style.css`.
+- **The scene:**
+  - `colonyBuilds.js`: the solar array (panels leaning at the star, the inverter's light) and the shelter (a half-round hut, its door and lit window);
+  - `colonyScene.js`: the ship's pad empty while it's away;
+  - `palette.js` `buildColors`.
+- **Tools:**
+  - `voyage.js` plays 30 days of trips (`playTrips`, `TRIP_DAYS`), with a report line a run and a summary line;
+  - `voyagePlan.js`: the squad, the refit for it, the home builds, the place and the choice there (`tripSquad`, `refitForSquad`, `homeBuild`, `nextPlace`, `placeChoice`);
+  - `boarding.js` `fightPlace`.
+- **Tests:**
+  - new: `tests/expeditions.test.js` (9), `tests/tripText.test.js` (4);
+  - added to: `tests/colonyScene.test.js` (1 more), M28's voyage test.
+
+  752 tests in all.
+- **Docs:** ROADMAP.md: §2 (the colony), §4.8 (v22), M28 ticked, and §9 (two of M27's ideas taken in, one narrowed; four new). CLAUDE.md: the places in its lists.
+
+Decisions made along the way, not asked (each easy to change):
+- **The places:**
+  - three at a time, rolled when the colony has none (on its first showing, and after each trip home);
+  - a derelict comes up 3 times in 9, the other kinds 2 each;
+  - a world is one of the system's two others, and no name comes twice in a list.
+- **A place's event is rolled with the list,** so it stays the same once listed, and a reload doesn't reroll it. The list shows its kind, not the event.
+- **The squatters:** two scavvers and a hired heavy. Measured (200 fights each, the scripted squad of three at full health, `m28/parties2.mjs`):
+
+  | Party | Squad wins | Squad hit points after (of 26) |
+  | --- | --- | --- |
+  | The run's scavengers (three scavvers and a heavy) | 33% | 5.2 |
+  | Three scavvers | 100% | 18.1 |
+  | Two scavvers and a heavy (taken) | 77% | 10.9 |
+  | Three pirates | 99% | 16.3 |
+- **A held derelict's prize:** 2 parts by a roll among her working ones, never a corridor, as on the run, and 4 to 8 materials, as far as the stores take them.
+- **A place's events** give food, materials and parts (from the `colony` drop table, weighted to life support and bunks), and wound only the squad. Credits buy nothing at the colony, and heat waits for M29.
+- **The days of a leg pass as Next day's would,** one by one, and the leg's report sums them. The squad eats from the one store, so a trip's food is the colony's.
+- **The squad heals aboard what the ship's med bay heals** (and a medic aboard theirs), not a day's rest: the same as a jump.
+- **Nothing is built, moved, given or taken down while the ship is away,** and there is no refit. The legs pass in one go, so the only time to build would be while the squad waits at the place.
+- **The plan panel** puts Fly out, Refit and Back above the squad list, so Fly out stays in view on the cover screen.
+- **The test player:**
+  - takes the healthiest crew healed to three quarters of their most (`FIT_SHARE`), up to 3;
+  - before flying, takes down the buildings that give the berths or air its squad lacks aboard and fits their parts back;
+  - builds a shelter for whoever stays home, and a solar array to run it, as far as the materials go;
+  - flies to a held derelict only with a full squad at full health, and otherwise to the nearest place its food covers;
+  - at an event, picks the choice worth most: materials and food a point each as far as the stores take them, a part 8, a hit point lost −2.
+
+### Known issues
+
+- **Nothing calls the ship home yet.** The test player is away 28 of its 30 days, since the colony runs without the ship once a solar array and a shelter stand. M29's raids could make an empty colony a risk. (§9)
+- **The derelict's prize can be a part the colony can't use:** a bridge, an engine or an airlock stays aboard and can't be set down. It can only be fitted to the ship. §9 has had picking what to strip since M22.
+- **Trips bring little food:** 0 at the median, since the farms keep the food store full. Materials come from trips now (32 at the median), more than from the mines (0 mines at the median).
+- **Eight events for the places,** two a kind, so a colony's 9 trips meet them again within 30 days. (§9)
+- **Giving a part doesn't warn that a trip will need it:** the colony can take the ship's life support, and the trip's plan is the first to say so. (§9)
+- **No lift-off or landing for a trip:** the ship's pad empties and fills again. (§9)
+- **Trips add no heat** (M29).
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+The quickest way there: settle a world in a run, or ask me for a save code at a colony.
+1. **A trip's plan:** tap a place in the right-hand panel. Tap a crew member to leave them home. Is the plan clear: the days, the food, and the flight checks?
+2. **A refused Fly out:** if your colony has the ship's life support, Fly out says why. Take the air plant down (two taps), then Refit, fit the life support aboard, and Colony. Is the way there clear?
+3. **Fly out:** two taps. Read the report. Does the colony read right with the ship away: the pad empty, who is away, Refit and Next day off?
+4. **At the place:** an event's choice in two taps, the first with its odds. Or a derelict the squatters hold: Board her, and the fight.
+5. **Fly home** and its report, and the new list.
+6. **A solar array and a shelter:** build both, then fly out with someone home. Do they rest?
+7. **Quit and reopen** while the ship is away, and again in the fight at a derelict.
+8. **Tell me:**
+   - whether trips feel cheap: the test player is away 28 days in 30 (§9);
+   - whether the squatters are too hard or too soft;
+   - whether building should wait for the ship;
+   - and the M14 to M27 questions still open.
+
+### Next session
+
+M29 Raids. First task: settle its Done when with Evan. ROADMAP.md has a draft: heat in act 3 falls slowly, and the pursuer raids the colony by heat and how far it lies from the lanes; guns, shields and armories defend; a raid is fought on the colony's grid. Ask too whether trips should add heat, and whether a raid can come while the ship is away (the test player is away 28 days in 30).
+
+### Verified here
+
+- `node --test`: 752 pass. `node tools/validate-data.js`: OK ("15 colony buildings, 4 colony builds, 4 kinds of place, 18 events"). No golden file changed.
+- **The test player, 30 voyages** (`node tools/voyage.js --runs 30`, managing heat), the summary's colony lines:
+  ```
+  The colony: founded in 30 of 30, 2 (1 to 5) parts given: Air plant 30, Gun emplacement 27, Barracks 13, Infirmary 2, Storehouse 2, Bunkhouse, Flak tower, Generator, Warehouse. Everyone housed in 13 of 30, 3 (0 to 3) sleeping aboard; every building powered in 30, power to spare 1 (0 to 3); the ship flies with nobody aboard in 30.
+  The colony's first 30 days: its farms feed the crew within 15 days of the landing in 30 of 30, from day 1 (1 to 9); farms 1 (1 to 3), mines 0 (0 to 2); hungry days 0 (0 to 8), in 4 runs; at the end, food 30 (0 to 58) and materials 10 (0 to 70), stores 30 (30 to 90).
+  The colony's 30 days of trips: trips 9 (7 to 12), flown in 30 of 30; days away 28 (26 to 30); brought parts 3 (1 to 7), materials 32 (0 to 61), food 0 (0 to 59); boardings won 21, lost 11; built Solar array 23, Shelter 23; refitted aboard in 30; hungry days 0 (0 to 0).
+  ```
+  - The first two lines are M27's, but for the infirmary's count.
+  - Over the runs:
+    - the places flown to were 105 derelicts, 71 rocks, 66 wreck fields and 36 worlds;
+    - a squad of fewer than 3 flew in 26 runs;
+    - life support went back aboard in all 30 and quarters in 13.
+  - A rock world's line (seed 4): "30 days of trips: 12 trips, 28 days away: Old Red (day 31, 2 days, 3 aboard: Rich seam: Skim the face); … Overdue (day 49, 4 days, 3 aboard: boarded her and won); … Quiet Ellen (day 57, 2 days, 3 aboard: boarded her and lost). Brought 4 parts, 7 materials and 44 food; boardings won 1, lost 1, left 0; built Solar array (day 39), Shelter (day 39); refitted Crew quarters, Life support aboard; 0 hungry days."
+- **M28's browser check by touch:** 32 of 32 at each of 905 × 370, 821 × 283 and 960 × 825. It covers:
+  - the places, rolled as the colony first shows, heading the right-hand panel;
+  - a place and a squad picked, a tap leaving someone home. Fly out is refused with why, the colony having the life support;
+  - a refit: the air plant taken down, its life support fitted in construction mode (its checks counting a full squad), and Colony home;
+  - Fly out in two taps, the days out reported, the pad empty, and Refit and Next day off;
+  - an event decided at the place in two taps, the first with its odds;
+  - Fly home with its report, and a new list;
+  - a quit and reopen while away at the squatters' derelict, Board her in two taps, the fight on her map won (played by the AI), its end panel, and Continue back to the colony with her salvage;
+  - a solar array and a shelter built;
+  - a save made by main (v21) opening with its places rolled and saving as v22;
+  - offline, the colony draws; every button 48 px or more in each mode; no console errors.
+- **Act 1:** 100 test runs identical to main's, seed by seed, the campaign at launch and the log. **Act 2:** all 30 voyages' steps are main's, settling included, but for an event's changes now naming its materials (0 on the run).
+- **The fights** (`node tools/sim.js`; no balance number changed): identical to M27's output.
+
 ## M27 Colony builder and production (2026-10-15)
 
 **Status:** done, and the ROADMAP.md box is ticked. The colony grows now:
