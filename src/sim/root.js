@@ -3,7 +3,7 @@
 // content tables (rules) for the actions that need them.
 import { int } from '../core/rng.js';
 import { emptyBuilds, reduceBuilds } from './builds.js';
-import { beginFight, captainProblem, newCampaign, refitShip, saveFight } from './campaign.js';
+import { beginFight, captainProblem, firstBackground, newCampaign, refitShip, saveFight } from './campaign.js';
 import { donate } from './colony.js';
 import { build, moveBuilding, takeDown } from './colonyBuild.js';
 import { nextDay } from './days.js';
@@ -61,9 +61,11 @@ export function initialState(seed) {
 }
 
 // Campaign actions:
-//   campaign/new { rules, captain }   a new campaign, in place of any
-//                                  other, led by the captain made for it
-//                                  (campaign.js captainProblem; none: the
+//   campaign/new { rules, captain, background }
+//                                  a new campaign, in place of any other,
+//                                  from the background picked (M30; none:
+//                                  the first), led by the captain made for
+//                                  it (campaign.js captainProblem; none: the
 //                                  first crew member as they are); its seed
 //                                  is the game's next roll, and its first
 //                                  job board is rolled
@@ -175,9 +177,11 @@ export function reduce(state, action) {
       return action.screen === state.screen ? state : { ...state, screen: action.screen };
     case 'campaign/new': {
       const captain = action.captain ?? null;
-      if (captain && captainProblem(captain, action.rules)) return state;
+      const background = action.background ?? firstBackground(action.rules);
+      if (!action.rules.backgrounds.has(background)) return state;
+      if (captain && captainProblem(captain, action.rules, background)) return state;
       const { value: seed, state: rng } = int(state.rng, 0, 0xffffffff);
-      return { ...state, rng, campaign: withBoard(newCampaign(action.rules, seed, { captain }), action.rules), screen: PLACE_SCREENS.hub };
+      return { ...state, rng, campaign: withBoard(newCampaign(action.rules, seed, { background, captain }), action.rules), screen: PLACE_SCREENS.hub };
     }
     case 'campaign/continue':
       return state.campaign ? { ...state, screen: campaignScreen(state.campaign) } : state;

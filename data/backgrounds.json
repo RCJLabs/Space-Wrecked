@@ -70,6 +70,146 @@
           ]
         }
       }
+    },
+    {
+      "id": "deserter",
+      "name": "Navy deserter",
+      "blurb": "Six years a gunner's mate on the Fleet tender Resolute, keeping other people's guns working for pay that came when it felt like it. When she put in at the Strand you walked off with a crate of her spares. The half-built hull in Nell Achebe's dry dock is yours now. The Fleet Provost has a warrant that says otherwise.",
+      "pursuer": {
+        "name": "The Fleet Provost",
+        "blurb": "The Navy's police. They never forget a deserter, and they never take cash.",
+        "levels": {
+          "calm": "The Provost has a desk full of deserters, and yours is near the bottom. For now.",
+          "rumors": "A Provost lieutenant is asking round the Strand's bars after a gunner's mate and a missing crate.",
+          "hunters": "A Provost MP tails the crew to every job, taking notes.",
+          "raid": "The Fleet Provost is at the dry dock's gate with a warrant and a squad of MPs."
+        },
+        "hunters": ["mp"],
+        "raiders": "provost",
+        "run": {
+          "levels": {
+            "calm": "Out here the Provost is a name on a wanted list nobody reads. Keep it that way.",
+            "rumors": "Your face is on the Fleet's wanted board at every station: desertion, and theft of stores.",
+            "hunters": "A Provost cutter is working the lanes, checking every transponder it meets.",
+            "taskForce": "The Fleet has sent a frigate after one gunner's mate. Somebody upstairs is taking it personally.",
+            "cornered": "The Provost knows where you'll come out. The next jump meets them."
+          },
+          "hunters": "provostcutter",
+          "taskForce": "frigate",
+          "faced": "The Provost will have to file for another ship. The Fleet runs on forms, and that buys some quiet."
+        },
+        "colony": {
+          "levels": {
+            "calm": "No Fleet ship has come this far out. The Provost doesn't know there's a colony to find.",
+            "rumors": "A Fleet survey drone passed the system's edge. Someone in an office will read its report eventually.",
+            "hunters": "Provost cutters are working the system's edges, asking after a deserter and a colony nobody filed.",
+            "taskForce": "A Fleet frigate has put in nearby. They know there's a colony out here, just not which world.",
+            "cornered": "The Provost knows which world. Their lander is fueled; it's a matter of days."
+          },
+          "raiders": "provost",
+          "found": "The Provost has found the colony. A lander is on its way with a warrant and a squad of MPs.",
+          "landing": "The Provost's lander is coming down on the colony.",
+          "faced": "The Provost will have to file for another lander. That buys some quiet."
+        }
+      },
+      "launch": {
+        "text": "The dry dock drops away, then the Strand, then the whole grey rock. Six years of the Fleet's guns, and you leave in a ship that's yours, with a few of theirs aboard. The Provost will be along.",
+        "escaped": "The Fleet Provost storms the dry dock with its warrant and finds an empty cradle. They'll add it to the charges."
+      },
+      "captains": ["Ada Kessler", "Marcus Bell", "Ines Ferro", "Theo Grant", "Ruth Adeyemi", "Sam Calder", "Noor Haddad", "Cole Brennan"],
+      "district": "strand",
+      "start": {
+        "credits": 0,
+        "parts": { "engine": 1, "quarters": 1, "corridor": 2 },
+        "crew": ["marine", "marine", "medic"],
+        "ship": {
+          "frame": "starter",
+          "placements": [
+            { "type": "bridge", "x": 15, "y": 6, "rot": 1 },
+            { "type": "reactor", "x": 12, "y": 5, "rot": 0 },
+            { "type": "corridor", "x": 9, "y": 7, "rot": 0 },
+            { "type": "corridor", "x": 10, "y": 7, "rot": 0 },
+            { "type": "corridor", "x": 11, "y": 7, "rot": 0 },
+            { "type": "airlock", "x": 11, "y": 8, "rot": 0 },
+            { "type": "weapon", "x": 13, "y": 8, "rot": 2 },
+            { "type": "shield", "x": 15, "y": 5, "rot": 0 },
+            { "type": "smallreactor", "x": 10, "y": 5, "rot": 0 }
+          ]
+        }
+      }
+    },
+    {
+      "id": "smuggler",
+      "name": "Burned smuggler",
+      "blurb": "Five years running the Hallorans' cargo past customs without a scratch. Then a customs cutter got lucky, and forty crates of their merchandise went out the airlock so you could outrun it. The half-built ship in Kit Marlowe's lock-up is what's left of your share. The Hallorans would like the rest, with interest.",
+      "pursuer": {
+        "name": "The Halloran family",
+        "blurb": "They run the Narrows' back rooms and half its front ones. They'll take a payment, and then another.",
+        "levels": {
+          "calm": "The Hallorans have bigger debts to collect. Yours is gathering interest quietly.",
+          "rumors": "Word in the Narrows is that the Hallorans have put a number on you. Not a big one. Yet.",
+          "hunters": "A Halloran collector tails the crew to every job, smiling.",
+          "raid": "The Hallorans are at the lock-up's door with a ledger and a lot of friends."
+        },
+        "hunters": ["collector"],
+        "raiders": "hallorans",
+        "payment": {
+          "name": "Pay the vig",
+          "text": "Pay something toward the cargo. The Hallorans ease off while the money comes in, and add the interest to what's left.",
+          "credits": 75,
+          "heat": 15
+        },
+        "run": {
+          "levels": {
+            "calm": "Out here the Hallorans are a rumor in station bars. Keep it that way.",
+            "rumors": "Station talk has a Halloran price on your ship, payable on delivery.",
+            "hunters": "A Halloran runner is working the lanes, fast, and asking after you by name.",
+            "taskForce": "The Hallorans have sent the yacht. Old Halloran doesn't usually come himself.",
+            "cornered": "The Hallorans know where you'll come out. The next jump meets them."
+          },
+          "hunters": "runner",
+          "taskForce": "yacht",
+          "faced": "The Hallorans will have to hire another crew. That buys some quiet."
+        },
+        "colony": {
+          "levels": {
+            "calm": "Nobody from the Narrows has come this far out. The Hallorans don't know there's a colony to collect from.",
+            "rumors": "A Halloran runner passed the system's edge. Somewhere, someone is selling them a rumor.",
+            "hunters": "Halloran runners are working the system's edges, asking after a colony and its rent.",
+            "taskForce": "The Halloran yacht has put in nearby. They know there's a colony out here, just not which world.",
+            "cornered": "The Hallorans know which world. Their lander is fueled; it's a matter of days."
+          },
+          "raiders": "halloranparty",
+          "found": "The Hallorans have found the colony. A lander is on its way with a ledger and a lot of friends.",
+          "landing": "The Hallorans' lander is coming down on the colony.",
+          "faced": "The Hallorans will have to send another lander. That buys some quiet."
+        }
+      },
+      "launch": {
+        "text": "The lock-up drops away, then the Narrows, then the whole grey rock. Five years of the Hallorans' cargo, and the one load you kept is the ship under you. They'll want it back, with interest.",
+        "escaped": "The Hallorans kick in the lock-up's door with their ledger and find an empty cradle. They'll add it to what you owe."
+      },
+      "captains": ["Vic Moreau", "Lou Santos", "Jem Hartley", "Rafe Corrigan", "Tess Navarro", "Mina Cho", "Del Fitch", "Olly Brannigan"],
+      "district": "narrows",
+      "start": {
+        "credits": 75,
+        "parts": { "lifesupport": 1, "corridor": 2 },
+        "crew": ["engineer", "engineer", "medic"],
+        "ship": {
+          "frame": "starter",
+          "placements": [
+            { "type": "bridge", "x": 15, "y": 6, "rot": 1 },
+            { "type": "reactor", "x": 12, "y": 5, "rot": 0 },
+            { "type": "corridor", "x": 9, "y": 7, "rot": 0 },
+            { "type": "corridor", "x": 10, "y": 7, "rot": 0 },
+            { "type": "corridor", "x": 11, "y": 7, "rot": 0 },
+            { "type": "airlock", "x": 11, "y": 8, "rot": 0 },
+            { "type": "weapon", "x": 13, "y": 8, "rot": 2 },
+            { "type": "lightengine", "x": 10, "y": 6, "rot": 0 },
+            { "type": "cargo", "x": 12, "y": 2, "rot": 0 }
+          ]
+        }
+      }
     }
   ]
 }

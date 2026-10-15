@@ -10,6 +10,15 @@
     { "id": "recovery", "name": "Con-Reg Recovery", "enemies": ["agent", "heavy", "agent"] },
     { "id": "raid", "name": "Recovery task force", "enemies": ["agent", "heavy", "agent", "guard"] },
     { "id": "patrol", "name": "Patrol crew", "enemies": ["guard", "heavy", "guard"] },
-    { "id": "squatters", "name": "Squatters", "enemies": ["scavver", "heavy", "scavver"] }
+    { "id": "squatters", "name": "Squatters", "enemies": ["scavver", "heavy", "scavver"] },
+    { "id": "provostpatrol", "name": "Provost patrol", "enemies": ["mp", "mp"] },
+    { "id": "provost", "name": "Provost squad", "enemies": ["mp", "mp", "mp"] },
+    { "id": "customs", "name": "Customs men", "enemies": ["customs", "customs", "customs"] },
+    { "id": "dockers", "name": "Dockers", "enemies": ["docker", "docker", "heavy", "docker"] },
+    { "id": "provostboarders", "name": "Provost boarding party", "enemies": ["mp", "rating", "mp"] },
+    { "id": "collectors", "name": "Halloran collectors", "enemies": ["collector", "enforcer", "collector"] },
+    { "id": "hallorans", "name": "The Hallorans", "enemies": ["collector", "collector", "enforcer", "collector", "collector", "collector"] },
+    { "id": "halloranparty", "name": "Old Halloran's crew", "enemies": ["collector", "enforcer", "collector", "collector", "collector"] },
+    { "id": "pikes", "name": "Pike crew", "enemies": ["pike", "heavy", "pike"] }
   ]
 }

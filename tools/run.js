@@ -28,11 +28,13 @@
 //   node tools/run.js --heat never   never pay
 //   node tools/run.js --difficulty easy   (or hard) the enemy as the
 //                                    difficulty setting has it
+//   node tools/run.js --background deserter   from another background's
+//                                    start (M30; data/backgrounds.json)
 import { pathToFileURL } from 'node:url';
 import { aiAction } from '../src/sim/ai.js';
 import { playFrom } from '../src/sim/autoplay.js';
 import { applyCommand, layoutProblems, occupancy } from '../src/sim/builder.js';
-import { newCampaign, partsNeeded, refitShip, shipChecklist } from '../src/sim/campaign.js';
+import { firstBackground, newCampaign, partsNeeded, refitShip, shipChecklist } from '../src/sim/campaign.js';
 import { canLaunch } from '../src/sim/constraints.js';
 import { endJob, takeJob, withBoard } from '../src/sim/contracts.js';
 import { indexDefs } from '../src/sim/defs.js';
@@ -59,9 +61,14 @@ export const PACE = {
 };
 // How often the test crew wins each job at heat 0, and how a twist moves
 // that: its record over 750 jobs in M16 (every job on the first board of
-// campaign seeds 1 to 250). A careful player learns which jobs go badly.
-// A job not here counts at its mission's rate.
-const JOB_ODDS = { payroll: 0.86, repo: 0.89, ledger: 0.78, manifest: 0.66, supplies: 0.61, jumpers: 0.56, scrap: 0.54, debts: 0.48, rent: 0.42, picket: 0.03 };
+// campaign seeds 1 to 250), and the same for the Strand's and the Narrows'
+// jobs in M30, each with its background's start crew. A careful player
+// learns which jobs go badly. A job not here counts at its mission's rate.
+const JOB_ODDS = {
+  payroll: 0.86, repo: 0.89, ledger: 0.78, manifest: 0.66, supplies: 0.61, jumpers: 0.56, scrap: 0.54, debts: 0.48, rent: 0.42, picket: 0.03,
+  impounded: 0.98, signedfor: 0.8, coal: 0.76, hotcargo: 0.76, breaking: 0.62, pressgang: 0.59, pawn: 0.48, dockwar: 0.2,
+  luggage: 0.92, seized: 0.86, housecall: 0.78, papertrail: 0.73, lastorders: 0.66, turf: 0.66, insurance: 0.51, divers: 0.49,
+};
 const MISSION_ODDS = { clear: 0.39, grab: 0.69, hack: 0.76 };
 const TWIST_ODDS = { overtime: 0.6, cavein: 0.75, hazard: 0.75, rush: 0.75, lights: 1, skeleton: 1.4 };
 const HEAT_POLICIES = ['raids', 'hunters', 'never'];
@@ -117,11 +124,12 @@ function needOf(needed, type, defs) {
 // slow], tally, lines, campaign }. tally counts what the run did; lines say
 // it step by step; campaign is where it ended, ready to launch if it got
 // there.
-export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal' } = {}) {
+export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal', background = firstBackground(defs) } = {}) {
   if (!HEAT_POLICIES.includes(heat)) throw new Error(`--heat is one of ${HEAT_POLICIES.join(', ')}`);
   if (!DIFFICULTIES.includes(difficulty)) throw new Error(`--difficulty is one of ${DIFFICULTIES.join(', ')}`);
-  let campaign = withBoard(newCampaign(defs, seed), defs);
-  const lines = [`Campaign seed ${seed}, paying heat down ${{ raids: 'before a raid', hunters: 'before the hunters', never: 'never' }[heat]}:`];
+  if (!defs.backgrounds.has(background)) throw new Error(`--background is one of ${[...defs.backgrounds.keys()].join(', ')}`);
+  let campaign = withBoard(newCampaign(defs, seed, { background }), defs);
+  const lines = [`Campaign seed ${seed}, ${defs.backgrounds.get(background).name.toLowerCase()}, paying heat down ${{ raids: 'before a raid', hunters: 'before the hunters', never: 'never' }[heat]}:`];
   const say = (text) => lines.push(text);
   const name = (type) => defs.modules.get(type)?.name ?? type;
   // waited: visits where a part the checklist needed was affordable, but
@@ -265,7 +273,7 @@ export function manyRuns(defs, runs, options = {}) {
     return sorted.length ? `${sorted[Math.floor((sorted.length - 1) / 2)]} (${sorted[0]} to ${sorted.at(-1)})` : '-';
   };
   const lines = [
-    `${runs} runs, seeds 1 to ${runs}: ${launched.length} ready to launch.`,
+    `${runs} runs, seeds 1 to ${runs}${options.background ? `, the ${defs.backgrounds.get(options.background)?.name.toLowerCase()}` : ''}: ${launched.length} ready to launch.`,
     `Jobs: ${spread(launched.map((r) => r.jobs))}. Raids: ${spread(launched.map((r) => r.raids))}. Jobs done: ${Math.round((100 * sum(results, 'done')) / Math.max(1, sum(results, 'jobs')))}% of ${sum(results, 'jobs')}.`,
     `Minutes, quick: ${spread(launched.map((r) => r.minutes[0]))}; slow: ${spread(launched.map((r) => r.minutes[1]))}. The median, then the least and most.`,
     ...results.filter((r) => !r.launched).map((r) => `Seed ${r.seed}: ${r.lines.at(-1)}`),
@@ -280,7 +288,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     return i >= 0 ? args[i + 1] : fallback;
   };
   const defs = indexDefs(readData());
-  const options = { heat: value('--heat', 'hunters'), difficulty: value('--difficulty', 'normal') };
+  const options = { heat: value('--heat', 'hunters'), difficulty: value('--difficulty', 'normal'), background: value('--background', undefined) };
   const runs = Number(value('--runs', 0));
   console.log((runs ? manyRuns(defs, runs, options) : runToLaunch(defs, Number(value('--seed', 1)), options)).lines.join('\n'));
 }

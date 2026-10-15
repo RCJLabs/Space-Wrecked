@@ -78,7 +78,7 @@ test("heat at the colony: the run's levels with the pursuer's words for the colo
   assert.deepEqual(raidHint(found, rules), { text: `${words.found} It lands in 3 days: set down guns, a shield and an armory from the hold.`, tone: 'warn' });
   assert.equal(raidHint(at(base, { heat: 50 }), rules), null);
   // The act's words say what is still to come.
-  assert.match(colonyText(base, rules).ahead, /^Act 3 is all here in v0\.3\. Still to come in v0\.4: /);
+  assert.match(colonyText(base, rules).ahead, /^Three backgrounds are here, each with its own pursuer\. Still to come in v0\.4: /);
 });
 
 test("the day: Next day's first tap gives the odds of the colony being found tonight, and the report says when it was, with the roll", () => {

@@ -1,13 +1,15 @@
 // The title screen: the title over a seeded starfield, with Continue for a
 // campaign under way, New game and Settings (settings.js). New game opens
-// captain creation (campaign/captain.js), over a campaign only after a
-// second tap, since starting one can't be undone. The game always reopens
-// here, and Continue goes back to where the campaign was.
+// the backgrounds (campaign/background.js), then the captain's screen, over
+// a campaign only after a second tap, since starting one can't be undone.
+// The game always reopens here, and Continue goes back to where the
+// campaign was.
 import { config } from '../config.js';
 import { seedFrom } from '../core/rng.js';
 import { loadContent } from '../platform/content.js';
 import { drawStars, makeStarfield, paintBackdrop } from '../render/starfield.js';
 import { continueText } from './campaign/hubText.js';
+import { newGameDraft } from './campaign/newGame.js';
 import { onTap } from './gestures.js';
 import { motionReduced } from './motion.js';
 
@@ -84,7 +86,8 @@ export const titleScreen = {
       }
       armed = false;
       clearTimeout(armTimer);
-      game.dispatch({ type: 'screen/show', screen: 'captain' });
+      newGameDraft.background = null;
+      game.dispatch({ type: 'screen/show', screen: 'background' });
     }
 
     let backdrop = null;

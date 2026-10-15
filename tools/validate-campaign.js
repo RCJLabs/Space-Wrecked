@@ -299,11 +299,12 @@ function checkBackgrounds(file, { districts }, { jobIds, enemyIds, moduleIds, fr
 
 // The pursuer: who they are, their words for each level of heat, the
 // hunters they send along on jobs once heat is high, the encounter they
-// raid the hangar with, the payment that buys some heat off, and how they
-// hunt the ship on the run.
+// raid the hangar with, the payment that buys some heat off (none for a
+// pursuer that takes no payments, M30), and how they hunt the ship on the
+// run.
 function checkPursuer(pursuer, where, { enemyIds, encounters, presets }, fail) {
   if (!isObject(pursuer)) {
-    fail(where, 'must be { name, blurb, levels, hunters, raiders, payment, run }');
+    fail(where, 'must be { name, blurb, levels, hunters, raiders, payment?, run, colony }');
     return;
   }
   checkRun(pursuer.run, `${where} run`, presets, fail);
@@ -319,8 +320,9 @@ function checkPursuer(pursuer, where, { enemyIds, encounters, presets }, fail) {
   if (!raiders) fail(where, `unknown raiders encounter "${pursuer.raiders}"`);
   else if (raiders.length > MAX_RAIDERS) fail(where, `a raid of ${raiders.length}: the hangar's doors take ${MAX_RAIDERS}`);
   const { payment } = pursuer;
+  if (payment === undefined) return;
   if (!isObject(payment)) {
-    fail(where, 'payment must be { name, text, credits, heat }');
+    fail(where, 'payment must be { name, text, credits, heat }, or left out for a pursuer that takes none');
     return;
   }
   knownKeys(payment, PAYMENT_KEYS, `${where} payment`, fail);

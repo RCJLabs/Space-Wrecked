@@ -29,7 +29,10 @@
 // the ship comes home from every one. And M29's: over those 60 days the
 // pursuer may find the colony and raid it; the careful player stays home
 // while a raid is coming, sets down the defenses in its hold, and faces
-// every raid that lands, and its report says each run's raids.
+// every raid that lands, and its report says each run's raids. And M30's:
+// from the deserter's and the smuggler's starts, the careful player crosses
+// fed, meets the hunters and loses a raid at the colony in about as many
+// runs as from the miner's, and its report puts them side by side.
 // Each voyage launches from a test run of act 1 (tools/run.js) and is
 // played by the test player in tools/voyage.js. The voyages before M23h's
 // fly as fitted, with no refits, so each compares one part's difference.
@@ -42,7 +45,7 @@ import { HEAT_MAX, maxHp, shipChecklist } from '../src/sim/campaign.js';
 import { colonyStats, donate, shipParts } from '../src/sim/colony.js';
 import { outcomeFor } from '../src/sim/events.js';
 import { crewRoom } from '../src/sim/crew.js';
-import { COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, playColony, playTrips, TRIP_DAYS, voyage } from '../tools/voyage.js';
+import { COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, playColony, playTrips, TRIP_DAYS, voyage, voyagesByBackground } from '../tools/voyage.js';
 import { bestWorld, FIT_ORDER, nextGift, systemMove } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 
@@ -68,6 +71,10 @@ const largehold = fly({ fit: ['largehold'] });
 // by default; and M24: the same, ignoring heat.
 const refitting = fly({ refit: 'yes' });
 const ignoring = fly({ refit: 'yes', heat: 'ignore' });
+// M30: the careful player from the other backgrounds' starts, as it
+// plays from the miner's (refitting).
+const deserters = Array.from({ length: RUNS }, (_, i) => voyage(rules, i + 1, { background: 'deserter' }));
+const smugglers = Array.from({ length: RUNS }, (_, i) => voyage(rules, i + 1, { background: 'smuggler' }));
 const SEEDS = [1, 2, 3];
 const LAST = rules.acts.get(2).sectors;
 const clamp = (value, max) => Math.max(0, Math.min(max, value));
@@ -577,4 +584,21 @@ test("the colony's raids: over its 60 days the careful player stays home while o
   assert.ok(per(1) > per(3), `near ${per(1)} a run, far ${per(3)}`);
   const summary = manyVoyages(rules, 2).lines.join('\n');
   assert.match(summary, /Raids over the colony's 60 days: found \d+ \(\d+ to \d+\) a run, in \d+ of 2 /);
+});
+
+test("from the deserter's and the smuggler's starts, the careful player crosses fed, meets the hunters and loses a raid at the colony in about as many runs as from the miner's, 5 of 30 either way (M30)", () => {
+  const count = (fleet) => ({
+    fed: fleet.filter((r) => r.tally.hungryJumps === 0).length,
+    met: fleet.filter((r) => r.tally.hunts > 0).length,
+    lost: fleet.filter((r) => (r.tally.raids?.faced ?? []).some((raid) => !raid.won)).length,
+  });
+  const miner = count(refitting);
+  for (const [id, fleet] of [['deserter', deserters], ['smuggler', smugglers]]) {
+    assert.ok(fleet.every((r) => r.launched && r.ended), `${id}: every run launches and settles a world`);
+    const theirs = count(fleet);
+    for (const key of Object.keys(miner)) assert.ok(Math.abs(theirs[key] - miner[key]) <= 5, `${id} ${key}: ${theirs[key]} against the miner's ${miner[key]}`);
+  }
+  const side = voyagesByBackground(rules, 1);
+  assert.deepEqual(side.rows.map((row) => row.id), [...rules.backgrounds.keys()]);
+  assert.match(side.lines[1], /^Background +Launched +Fed +Met +Raids +Won +Lost +Runs lost$/);
 });
