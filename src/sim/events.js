@@ -2,17 +2,22 @@
 // data/events.json. A node of a kind that holds events (a derelict, a
 // distress call, a trader, a hazard) is given one as its sector is rolled
 // (gen/sector.js). It opens when the ship gets there and holds every jump
-// until a choice is made (travel.js openEvent).
+// until a choice is made (travel.js openEvent). From M28 the colony's
+// places within reach hold events of their own kinds too (expeditions.js),
+// which only the squad there can be hurt by.
 //
 // A choice can need credits, supplies or parts on hand. Its outcomes each
 // have a chance in 100, shown as they are rolled: one roll from 0 to 99
 // picks the outcome whose share of the hundred it falls in, in the order
 // written. An outcome's effects:
-//   credits, supplies, heat   added: supplies up to what the holds take,
+//   credits, supplies, heat   added: supplies up to what the holds take
+//                             (in act 3, food up to the colony's stores),
 //                             heat from 0 to HEAT_MAX
+//   materials                 the colony's (M28), added up to its stores
 //   wound { hp, all }         hit points off one crew member, picked by a
 //                             roll from those with more than 1, or off
-//                             everyone (all); never the last one
+//                             everyone (all); never the last one. At a
+//                             place, only the squad there
 //   part                      a part of that type, on hand
 //   drop                      a part on hand from the drop table named
 //                             (data/events.json drops)
@@ -22,13 +27,14 @@
 // settled, until the next jump (travel.js). The flags count the events
 // settled. Pure: every roll is the campaign's.
 import { int } from '../core/rng.js';
+import { storesOf } from './colony.js';
 import { pickWeighted } from './drops.js';
 import { sellPriceOf } from './economy.js';
 import { withHeat } from './heat.js';
 import { tally } from './flags.js';
 import { openEvent, supplyCapacity } from './travel.js';
 
-export const EFFECTS = ['credits', 'supplies', 'heat', 'wound', 'part', 'drop', 'sell'];
+export const EFFECTS = ['credits', 'supplies', 'heat', 'materials', 'wound', 'part', 'drop', 'sell'];
 export const NEEDS = ['credits', 'supplies', 'parts'];
 
 // The parts on hand, counted.
@@ -85,20 +91,33 @@ export function chooseEvent(campaign, rules, id) {
 }
 
 // An outcome's effects on the campaign: { campaign, changes }. changes say
-// what they came to: { credits, supplies, heat } as added, wounds [{ id,
-// hp }] as lost, parts [type] as gained, sold [{ part, credits }].
-export function applyEffects(campaign, rules, effects) {
+// what they came to: { credits, supplies, heat, materials } as added,
+// wounds [{ id, hp }] as lost, parts [type] as gained, sold [{ part,
+// credits }]. among: the ids a wound can fall on (a trip's squad), or null
+// for the whole crew.
+export function applyEffects(campaign, rules, effects, { among = null } = {}) {
   let next = { ...campaign };
-  const changes = { credits: 0, supplies: 0, heat: 0, wounds: [], parts: [], sold: [] };
+  const changes = { credits: 0, supplies: 0, heat: 0, materials: 0, wounds: [], parts: [], sold: [] };
+  // What the holds take: in act 3, the colony's stores (colony.js).
+  const room = () => (next.colony ? storesOf(next, rules).total : supplyCapacity(next.ship, rules));
   if (effects.credits) {
     const credits = Math.max(0, next.credits + effects.credits);
     changes.credits += credits - next.credits;
     next.credits = credits;
   }
   if (effects.supplies) {
-    const supplies = Math.max(0, Math.min(supplyCapacity(next.ship, rules), next.supplies + effects.supplies));
+    // On the run the holds' room is what it was; at the colony a find never
+    // costs food the stores were already over by.
+    const cap = next.colony ? Math.max(room(), next.supplies) : room();
+    const supplies = Math.max(0, Math.min(cap, next.supplies + effects.supplies));
     changes.supplies = supplies - next.supplies;
     next.supplies = supplies;
+  }
+  if (effects.materials && next.colony) {
+    const had = next.colony.materials;
+    const materials = Math.max(0, Math.min(Math.max(room(), had), had + effects.materials));
+    changes.materials = materials - had;
+    next.colony = { ...next.colony, materials };
   }
   if (effects.heat) {
     const heat = withHeat(next.heat, effects.heat);
@@ -107,7 +126,8 @@ export function applyEffects(campaign, rules, effects) {
   }
   if (effects.wound) {
     const { hp, all } = effects.wound;
-    const able = next.crew.filter((member) => member.hp > 1);
+    const going = among && new Set(among);
+    const able = next.crew.filter((member) => member.hp > 1 && (!going || going.has(member.id)));
     let hurt = all ? able : [];
     if (!all && able.length) {
       const picked = int(next.rng, 0, able.length - 1);

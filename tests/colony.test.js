@@ -10,6 +10,7 @@ import { makeSave, MIGRATIONS, parseSave, SAVE_VERSION } from '../src/core/save.
 import { applyCommand, buildShip } from '../src/sim/builder.js';
 import { campaignProblems, crewAboard, maxHp, shipChecklist } from '../src/sim/campaign.js';
 import { colonyStats, donate, donatePlan, newColony, shipParts, spotFor } from '../src/sim/colony.js';
+import { nextDay } from '../src/sim/days.js';
 import { footprint } from '../src/sim/modules.js';
 import { campaignScreen, initialState, reduce, saveData } from '../src/sim/root.js';
 import { rules } from './battleKit.js';
@@ -24,8 +25,7 @@ test('a part given comes off the ship and stands at the colony as the building o
   assert.equal(plan.ok, true, plan.error);
   assert.deepEqual([plan.type, plan.building.name, plan.placement], ['quarters', 'Barracks', { x: 0, y: 0, rot: 0 }]);
   assert.deepEqual(plan.gives, { power: -1, beds: 4, air: 0, storage: 0, heal: 0, damage: 0, shield: 0, intercept: 0, armory: false });
-  const { campaign: after, healed } = donate(campaign, rules, uid);
-  assert.equal(healed, 0);
+  const { campaign: after } = donate(campaign, rules, uid);
   assert.equal(after.ship.modules.some((module) => module.uid === uid), false);
   assert.equal(after.ship.modules.length, campaign.ship.modules.length - 1);
   assert.deepEqual(after.colony.buildings, [{ uid: 1, type: 'quarters', x: 0, y: 0, rot: 0 }]);
@@ -158,22 +158,22 @@ test('what the colony gives: power taken in the order given, the dark ones, beds
   assert.deepEqual(colonyStats(campaign, rules).power, { plants: 0, ship: 1, made: 1, used: 0, spare: 1 });
 });
 
-test('a powered infirmary heals the crew to full as it opens', () => {
+test('an infirmary heals a day at a time: one opening heals nobody (M28)', () => {
   const campaign = settled();
   const ship = applyCommand(campaign.ship, rules, { op: 'place', type: 'medbay', x: 12, y: 3, rot: 0 }).ship;
   const hurt = { ...campaign, ship, crew: campaign.crew.map((member) => ({ ...member, hp: 3 })) };
   assert.ok(shipChecklist(hurt, rules).every((line) => line.ok === true));
-  const missing = hurt.crew.reduce((sum, member) => sum + maxHp(member, rules) - member.hp, 0);
+  // M26 healed everyone to full as an infirmary opened, which taking it down
+  // and setting it down again could have again; since M28 it doesn't.
   const opened = donate(hurt, rules, uidOf(hurt, 'medbay'));
   assert.equal(opened.ok, true, opened.error);
-  assert.equal(opened.healed, missing);
-  assert.ok(opened.campaign.crew.every((member) => member.hp === maxHp(member, rules)));
+  assert.deepEqual(opened.campaign.crew, hurt.crew);
   assert.equal(colonyStats(opened.campaign, rules).infirmary, 1);
-  // Open already, it heals nothing more as other parts come.
-  const later = { ...opened.campaign, crew: hurt.crew };
-  assert.equal(donate(later, rules, uidOf(later, 'quarters')).healed, 0);
-  // Another part given heals nobody.
-  assert.equal(donate(hurt, rules, uidOf(hurt, 'quarters')).healed, 0);
+  // The day heals a day's rest and the infirmary's heal, the medic adding
+  // theirs, up to each one's most.
+  const { regroupHp } = rules.balance;
+  const day = nextDay(opened.campaign, rules);
+  assert.deepEqual(day.campaign.crew.map((member) => member.hp), hurt.crew.map((member) => Math.min(maxHp(member, rules), 3 + regroupHp + 1 + 1)));
 });
 
 test('a v19 save in act 3 opens at the colony with no buildings yet and every part still aboard', () => {

@@ -231,8 +231,11 @@ function checkHunt(step) {
 test('ten events play from data, hostile ships are met and boardings fought, and the run pays its way: 24 or more of 30 careful runs cross all five sectors fed', () => {
   assert.ok(careful.every((trip) => trip.launched && trip.ended), 'every run launches and settles a world past the charts');
   const played = new Set(trips.flatMap((trip) => trip.steps.filter((step) => step.kind === 'event').map((step) => step.event)));
-  assert.equal(played.size, rules.events.size, `events played: ${[...played].join(', ')}`);
-  assert.equal(rules.events.size, 10);
+  // The run's events: those of a kind of node (the colony's places have the
+  // rest, M28).
+  const runEvents = [...rules.events.values()].filter((event) => rules.nodeTypes.get(event.kind)?.events);
+  assert.equal(played.size, runEvents.length, `events played: ${[...played].join(', ')}`);
+  assert.equal(runEvents.length, 10);
   const met = careful.flatMap((trip) => trip.steps.filter((step) => step.kind === 'approach'));
   assert.ok(met.length >= RUNS, `hostile ships met: ${met.length}`);
   assert.ok(['escaped', 'boardedBy'].every((kind) => met.some((step) => step.outcome === kind)), `outcomes: ${[...new Set(met.map((step) => step.outcome))]}`);

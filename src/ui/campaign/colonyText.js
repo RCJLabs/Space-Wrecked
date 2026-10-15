@@ -24,9 +24,10 @@ import { worldSaid } from './sectorText.js';
 //               each gives or makes, or that it is dark and what it needs
 //   crew        crewText's rows (hubText.js), each with aboard: true for
 //               whoever sleeps aboard the landed ship
-//   builds      [{ what, id, name, cost, makes, ok, why }]: the farms and
-//               mines, what each costs and would make a day here, and why
-//               one can't be built now
+//   builds      [{ what, id, name, cost, makes, ok, why }]: the farms,
+//               mines, solar arrays and shelters, what each costs and would
+//               make a day here or give (makes: the words for either), and
+//               why one can't be built now
 //   hold        [{ what, uids, type, name, count, ok, building, gives, why
 //               }]: the spare parts in the hold, as parts are below
 //   parts       [{ uid, uids, type, name, count, ok, building, gives, why }]:
@@ -76,7 +77,7 @@ export function colonyText(campaign, rules) {
       powered: b.powered,
     })),
     crew: crew.map((row, i) => ({ ...row, aboard: aboard.has(campaign.crew[i].id) })),
-    builds: list.builds.map((row) => ({ what: row.what, id: row.id, name: row.name, cost: row.cost, makes: `${makesText(row.makes)} here`, ok: row.ok, why: row.error })),
+    builds: list.builds.map((row) => ({ what: row.what, id: row.id, name: row.name, cost: row.cost, makes: row.makes ? `${makesText(row.makes)} here` : givesText(row.gives), ok: row.ok, why: row.error })),
     hold: holdRows(list.hold, rules),
     parts: partRows(campaign, rules),
     world: { title: `${world.name} · ${kind}`, lines: [...worldSaid(world, rules, true), ...(world.surveyed ? [] : ['Settled without a survey: these are what the landing found.'])] },
@@ -176,7 +177,7 @@ export function placeText(plan, { moving = false } = {}) {
   const name = plan.name;
   const after = 'or tap the grid to put it somewhere else.';
   if (moving) return { ok: true, text: `The ${lowerFirst(name)} here: tap it again to move it, ${after}`, tone: 'info' };
-  if (plan.from === 'build') return { ok: true, text: `A ${lowerFirst(name)} here, for ${plan.cost} materials: ${lowerFirst(makesText(plan.makes))}. Tap it again to build it, ${after}`, tone: 'info' };
+  if (plan.from === 'build') return { ok: true, text: `A ${lowerFirst(name)} here, for ${plan.cost} materials: ${lowerFirst(plan.makes ? makesText(plan.makes) : givesText(plan.gives))}. Tap it again to build it, ${after}`, tone: 'info' };
   if (plan.from === 'hold') return { ok: true, text: `The ${lowerFirst(name)} here, from the hold: ${lowerFirst(givesText(plan.gives))}. Tap it again to set it down, ${after}`, tone: 'info' };
   return { ok: true, text: `The ${lowerFirst(name)} here: ${lowerFirst(givesText(plan.gives))}. It comes off the ship. Tap it again to give it, ${after}`, tone: 'info' };
 }
@@ -191,16 +192,15 @@ export function giveText(row) {
 // What giving a part came to (colony.js donate's result).
 export function givenText(result, rules) {
   const name = buildingOf(result.plan.type, rules)?.name ?? result.plan.type;
-  const healed = result.healed ? ` It patched the crew up: ${result.healed} hit points.` : '';
-  return { text: `The ${lowerFirst(name)} stands at the colony: ${lowerFirst(givesText(result.plan.gives))}.${healed}`, tone: 'good' };
+  return { text: `The ${lowerFirst(name)} stands at the colony: ${lowerFirst(givesText(result.plan.gives))}.`, tone: 'good' };
 }
 
 // What building came to (colonyBuild.js build's result): { text, tone }.
 export function builtText(result) {
   const { plan, campaign } = result;
-  const healed = result.healed ? ` It patched the crew up: ${result.healed} hit points.` : '';
-  const what = plan.makes ? `${lowerFirst(makesText(plan.makes))}. ${campaign.colony.materials} materials left` : lowerFirst(givesText(plan.gives));
-  return { text: `The ${lowerFirst(plan.name)} stands at the colony: ${what}.${healed}`, tone: 'good' };
+  const does = lowerFirst(plan.makes ? makesText(plan.makes) : givesText(plan.gives));
+  const what = plan.from === 'build' ? `${does}. ${campaign.colony.materials} materials left` : does;
+  return { text: `The ${lowerFirst(plan.name)} stands at the colony: ${what}.`, tone: 'good' };
 }
 
 // What a building being looked at says: its name and what it gives or

@@ -126,7 +126,9 @@ test('the nodes between roll their kinds from the mix, and those that hold event
     }
   }
   for (const kind of Object.keys(spec.mix)) assert.ok(kinds.get(kind) > 100, `${kind} comes up: ${kinds.get(kind)}`);
-  assert.equal(events.size, rules.events.size, 'every event comes up');
+  // Every event of a kind of node comes up; the colony's places have the
+  // rest (M28).
+  assert.equal(events.size, [...rules.events.values()].filter((event) => rules.nodeTypes.get(event.kind)?.events).length, 'every event comes up');
   // The mix's weights show: empty space comes as many times as often as a
   // trader as its weight is times the trader's.
   const ratio = kinds.get('empty') / kinds.get('trader');

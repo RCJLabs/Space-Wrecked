@@ -1,5 +1,6 @@
 // Boardings, played by the AI (M22): the harness behind `node tools/sim.js
-// --boardings`, and the test player's boarding fights in tools/voyage.js.
+// --boardings`, and the test player's boarding fights in tools/voyage.js:
+// on the run, and from M28 at the colony's places the scavengers hold.
 // Both sides are played as the campaign's boardings go (encounter.js): the
 // side aboard the other's ship presses on (press.js), and the side at home
 // plays the AI (ai.js). Seeded: the same options always give the same
@@ -17,6 +18,7 @@ import { autoplay, playFrom } from '../src/sim/autoplay.js';
 import { saveFight } from '../src/sim/campaign.js';
 import { deploy } from '../src/sim/deploy.js';
 import { beginBoarding, endBoarding } from '../src/sim/encounter.js';
+import { boardPlace, endPlaceFight } from '../src/sim/expeditions.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { mapFromShip } from '../src/sim/mapFromShip.js';
 import { pressAction } from '../src/sim/press.js';
@@ -41,7 +43,21 @@ const BOTH_PRESS = { crew: pressAction, enemy: pressAction };
 export function fightBoarding(campaign, rules) {
   const begun = beginBoarding(campaign, rules);
   if (!begun.ok) throw new Error(begun.error);
-  const { fight } = begun.campaign;
+  return fightThrough(begun.campaign, rules, endBoarding);
+}
+
+// The fight at a place the scavengers hold, on a trip from the colony
+// (M28: expeditions.js boardPlace, endPlaceFight), fought out by the AI and
+// ended, as fightBoarding's.
+export function fightPlace(campaign, rules) {
+  const begun = boardPlace(campaign, rules);
+  if (!begun.ok) throw new Error(begun.error);
+  return fightThrough(begun.campaign, rules, endPlaceFight);
+}
+
+// A boarding fight begun in campaign, played to its end, and ended.
+function fightThrough(campaign, rules, end) {
+  const { fight } = campaign;
   let played = playFrom(fight.battle, rules, BOARDING_PLAYERS[fight.boarding.dir], { maxRounds: DRAGGING });
   const dragged = !played.battle.winner;
   if (dragged) {
@@ -49,8 +65,8 @@ export function fightBoarding(campaign, rules) {
     played = { battle: rest.battle, events: [...played.events, ...rest.events] };
   }
   if (!played.battle.winner) throw new Error(`A boarding fight stalled after ${MAX_ROUNDS} rounds.`);
-  const over = saveFight(begun.campaign, played.battle, [...fight.log, ...played.events]);
-  return { campaign: endBoarding(over, rules), won: played.battle.winner === 'crew', rounds: played.battle.round, dir: fight.boarding.dir, salvage: fight.boarding.salvage, dragged };
+  const over = saveFight(campaign, played.battle, [...fight.log, ...played.events]);
+  return { campaign: end(over, rules), won: played.battle.winner === 'crew', rounds: played.battle.round, dir: fight.boarding.dir, salvage: fight.boarding.salvage, dragged };
 }
 
 // The harness's rows: two for each hostile preset with a party.

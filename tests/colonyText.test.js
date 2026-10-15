@@ -109,8 +109,9 @@ test('what a tap on a part says, and what giving it came to', () => {
   const reactor = rows.find((row) => row.name === 'Reactor');
   assert.deepEqual(giveText(reactor), { ok: false, ask: null, text: "Reactor: can't be given. The ship couldn't fly without it: power −7 (0 made, 7 used).", tone: 'warn' });
   const result = donate(campaign, rules, quarters.uid);
+  // Since M28 an infirmary opening heals nobody, so giving a part never
+  // says so.
   assert.deepEqual(givenText(result, rules), { text: 'The barracks stands at the colony: beds 4 · power −1.', tone: 'good' });
-  assert.equal(givenText({ ...result, healed: 9 }, rules).text, 'The barracks stands at the colony: beds 4 · power −1. It patched the crew up: 9 hit points.');
   // Every building's numbers, as the rows say them.
   const gives = (type) => givesText(givesOf(rules.modules.get(type)));
   assert.equal(gives('reactor'), 'Power +8');
@@ -133,9 +134,12 @@ test("the day, food and materials against the stores, and what can be built: far
   ]);
   assert.equal(text.stores, "50 each, 30 in the landed ship's holds and 20 in storehouses");
   assert.deepEqual(text.buildings.map((b) => [b.name, b.gives]), [['Mine', 'Materials +2 a day'], ['Storehouse', 'Stores 20']]);
+  // A solar array and a shelter (M28) give rather than make.
   assert.deepEqual(text.builds, [
     { what: { build: 'farm' }, id: 'farm', name: 'Farm', cost: 10, makes: 'Food +1 a day here', ok: true, why: null },
     { what: { build: 'mine' }, id: 'mine', name: 'Mine', cost: 10, makes: 'Materials +2 a day here', ok: true, why: null },
+    { what: { build: 'solar' }, id: 'solar', name: 'Solar array', cost: 15, makes: 'Power +3', ok: false, why: 'A solar array takes 15 materials, and the stores have 10.' },
+    { what: { build: 'shelter' }, id: 'shelter', name: 'Shelter', cost: 10, makes: 'Beds 2 · air 2 · power −1', ok: true, why: null },
   ]);
   // The hold: a row a kind that can be set down, then a row a reason.
   assert.deepEqual(text.hold.map((row) => [row.name, row.count, row.ok, row.building ?? row.why]), [
@@ -146,7 +150,12 @@ test("the day, food and materials against the stores, and what can be built: far
   assert.equal(text.hold[0].gives, 'Beds 4 · power −1');
   // Out of materials: why not.
   const broke = colonyText({ ...campaign, colony: { ...campaign.colony, materials: 4 } }, rules);
-  assert.deepEqual(broke.builds.map((row) => [row.ok, row.why]), [[false, 'A farm takes 10 materials, and the stores have 4.'], [false, 'A mine takes 10 materials, and the stores have 4.']]);
+  assert.deepEqual(broke.builds.map((row) => [row.ok, row.why]), [
+    [false, 'A farm takes 10 materials, and the stores have 4.'],
+    [false, 'A mine takes 10 materials, and the stores have 4.'],
+    [false, 'A solar array takes 15 materials, and the stores have 4.'],
+    [false, 'A shelter takes 10 materials, and the stores have 4.'],
+  ]);
   assert.deepEqual(whyNotText(broke.builds[0], 'built'), { text: "Farm: can't be built. A farm takes 10 materials, and the stores have 4.", tone: 'warn' });
   assert.equal(whyNotText(text.hold[1], 'set down').text, "Corridor ×2, Engine: can't be set down. Stays aboard: no use to the colony.");
   // Short of food tomorrow: the line says so.
@@ -169,7 +178,6 @@ test("a ghost's words, what building and taking down came to, and the building l
   assert.deepEqual(builtText(farm), { text: 'The farm stands at the colony: food +1 a day. 10 materials left.', tone: 'good' });
   const barracks = build(farm.campaign, rules, { part: 'quarters' });
   assert.deepEqual(builtText(barracks), { text: 'The barracks stands at the colony: beds 4 · power −1.', tone: 'good' });
-  assert.equal(builtText({ ...barracks, healed: 6 }).text, 'The barracks stands at the colony: beds 4 · power −1. It patched the crew up: 6 hit points.');
   const [farmUid, barracksUid] = barracks.campaign.colony.buildings.map((b) => b.uid);
   assert.equal(placeText(movePlan(barracks.campaign, rules, barracksUid, { x: 10, y: 0, rot: 0 }), { moving: true }).text, 'The barracks here: tap it again to move it, or tap the grid to put it somewhere else.');
   // Taking down: what comes back, what goes dark.

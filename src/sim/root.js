@@ -11,6 +11,7 @@ import { endJob, takeJob, withBoard } from './contracts.js';
 import { buyPart, sellPart } from './economy.js';
 import { beginBoarding, closeApproach, endBoarding, giveOrder } from './encounter.js';
 import { chooseEvent } from './events.js';
+import { boardPlace, chooseAtPlace, endPlaceFight, flyHome, flyOut, withPlaces } from './expeditions.js';
 import { makePayment } from './heat.js';
 import { launch } from './launch.js';
 import { beginRaid, endRaid } from './raid.js';
@@ -114,6 +115,18 @@ export function initialState(seed) {
 //   campaign/move { uid, placement, rules }   a building moved or turned
 //   campaign/takedown { uid, rules }   a building taken down
 //   campaign/day { rules }         the colony's day passed (days.js)
+//   campaign/places { rules }      the places within reach rolled, for a
+//                                  colony without them (expeditions.js, M28)
+//   campaign/trip/out { index, squad, rules }   the ship flies out to the
+//                                  place listed at index with the squad
+//                                  (crew ids): the days out pass at home
+//   campaign/trip/choose { choice, rules }   a choice made at the event
+//                                  where the squad is
+//   campaign/trip/board { rules }  the squad boards the derelict the
+//                                  scavengers hold where it is: the fight
+//                                  begins
+//   campaign/trip/home { rules }   the ship flies home: the days back pass,
+//                                  it lands, and a new list is rolled
 //   campaign/approach/order { order, rules }   the player's order for a
 //                                  round of the approach (encounter.js)
 //   campaign/approach/close        Carry on, once the approach is over, or
@@ -136,7 +149,8 @@ export function initialState(seed) {
 //   campaign/fight/end { rules }   back to the hub (or the run) once the
 //                                  fight is won or lost: a job's pay and
 //                                  heat, and a new board; what a raid cost;
-//                                  or what a boarding came to
+//                                  or what a boarding came to, on the run
+//                                  or at a place on a trip (M28)
 export function reduce(state, action) {
   switch (action.type) {
     case 'save/restore':
@@ -162,6 +176,8 @@ export function reduce(state, action) {
       return state.campaign ? { ...state, screen: campaignScreen(state.campaign) } : state;
     case 'campaign/board':
       return withCampaign(state, state.campaign && withBoard(state.campaign, action.rules));
+    case 'campaign/places':
+      return withCampaign(state, state.campaign && withPlaces(state.campaign, action.rules));
     case 'campaign/ship':
       return withCampaign(state, state.campaign && refitShip(state.campaign, action.ship, action.rules));
     case 'campaign/pay':
@@ -174,12 +190,14 @@ export function reduce(state, action) {
     case 'campaign/job/take':
     case 'campaign/raid/begin':
     case 'campaign/boarding/begin':
+    case 'campaign/trip/board':
     case 'campaign/fight/begin': {
       const setup = fightSettings(state.settings);
       const begin = {
         'campaign/job/take': (c) => takeJob(c, action.rules, action.index, setup),
         'campaign/raid/begin': (c) => beginRaid(c, action.rules, setup),
         'campaign/boarding/begin': (c) => beginBoarding(c, action.rules, { ...setup, squad: action.squad ?? null }),
+        'campaign/trip/board': (c) => boardPlace(c, action.rules, setup),
         'campaign/fight/begin': (c) => beginFight(c, action.rules, setup),
       }[action.type];
       const begun = state.campaign && begin(state.campaign);
@@ -189,7 +207,7 @@ export function reduce(state, action) {
       return withCampaign(state, state.campaign && saveFight(state.campaign, action.battle, action.log));
     case 'campaign/fight/end': {
       const fight = state.campaign?.fight;
-      const end = fight?.raid ? endRaid : fight?.boarding ? endBoarding : endJob;
+      const end = fight?.raid ? endRaid : fight?.boarding ? (state.campaign.colony?.trip ? endPlaceFight : endBoarding) : endJob;
       const next = withCampaign(state, state.campaign && end(state.campaign, action.rules));
       return next === state ? state : { ...next, screen: campaignScreen(next.campaign) };
     }
@@ -220,7 +238,10 @@ export function reduce(state, action) {
     case 'campaign/build':
     case 'campaign/move':
     case 'campaign/takedown':
-    case 'campaign/day': {
+    case 'campaign/day':
+    case 'campaign/trip/out':
+    case 'campaign/trip/choose':
+    case 'campaign/trip/home': {
       const move = {
         'campaign/run/begin': (c) => beginRun(c, action.rules),
         'campaign/jump': (c) => jump(c, action.rules, action.to),
@@ -242,6 +263,9 @@ export function reduce(state, action) {
         'campaign/move': (c) => moveBuilding(c, action.rules, action.uid, action.placement),
         'campaign/takedown': (c) => takeDown(c, action.rules, action.uid),
         'campaign/day': (c) => nextDay(c, action.rules),
+        'campaign/trip/out': (c) => flyOut(c, action.rules, action.index, action.squad),
+        'campaign/trip/choose': (c) => chooseAtPlace(c, action.rules, action.choice),
+        'campaign/trip/home': (c) => flyHome(c, action.rules),
       }[action.type];
       const done = state.campaign && move(state.campaign);
       if (!done?.ok) return state;

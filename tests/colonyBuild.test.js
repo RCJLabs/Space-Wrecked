@@ -26,7 +26,7 @@ test('a farm or a mine is built from materials, where the player puts it', () =>
   const one = build(campaign, rules, farm, { x: 5, y: 3, rot: 0 });
   assert.equal(one.ok, true, one.error);
   assert.deepEqual(one.campaign.colony.buildings, [{ uid: 1, type: 'farm', x: 5, y: 3, rot: 0 }]);
-  assert.deepEqual([one.campaign.colony.materials, one.campaign.colony.nextUid, one.healed], [10, 2, 0]);
+  assert.deepEqual([one.campaign.colony.materials, one.campaign.colony.nextUid], [10, 2]);
   assert.deepEqual(one.campaign.flags, { ...campaign.flags, built: 1, materialsSpent: 10 });
   for (const key of ['ship', 'parts', 'crew', 'supplies', 'credits']) assert.deepEqual(one.campaign[key], campaign[key], key);
   assert.deepEqual(campaignProblems(one.campaign), []);
@@ -39,8 +39,20 @@ test('a farm or a mine is built from materials, where the player puts it', () =>
   // The build list: what each costs and would make here, and whether it can
   // be built now.
   const list = buildList(one.campaign, rules);
-  assert.deepEqual(list.builds.map((row) => [row.id, row.name, row.cost, row.makes, row.ok]), [['farm', 'Farm', 10, { food: 1 }, true], ['mine', 'Mine', 10, { materials: 2 }, true]]);
-  assert.deepEqual(buildList(two.campaign, rules).builds.map((row) => row.error), ['A farm takes 10 materials, and the stores have 0.', 'A mine takes 10 materials, and the stores have 0.']);
+  // From M28 a solar array and a shelter too, which give instead of make.
+  assert.deepEqual(list.builds.map((row) => [row.id, row.name, row.cost, row.makes, row.ok]), [
+    ['farm', 'Farm', 10, { food: 1 }, true],
+    ['mine', 'Mine', 10, { materials: 2 }, true],
+    ['solar', 'Solar array', 15, null, false],
+    ['shelter', 'Shelter', 10, null, true],
+  ]);
+  assert.deepEqual(list.builds.slice(2).map((row) => [row.gives.power, row.gives.beds, row.gives.air]), [[3, 0, 0], [-1, 2, 2]]);
+  assert.deepEqual(buildList(two.campaign, rules).builds.map((row) => row.error), [
+    'A farm takes 10 materials, and the stores have 0.',
+    'A mine takes 10 materials, and the stores have 0.',
+    'A solar array takes 15 materials, and the stores have 0.',
+    'A shelter takes 10 materials, and the stores have 0.',
+  ]);
 });
 
 test('each refusal says why: past the edge, on another building, too close, a turn, unknown, away from the colony, no room', () => {

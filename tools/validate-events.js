@@ -5,8 +5,12 @@
 // tables that exist. An outcome never takes more credits, supplies or
 // parts than its choice needs, so a choice that can be made can be paid,
 // and every event has a choice that needs nothing, since an open event
-// holds every jump.
+// holds every jump. From M28 an event can be of a kind of place within
+// reach of the colony (data/expeditions.json): it does and needs only what
+// a place can (expeditions.js PLACE_EFFECTS, PLACE_NEEDS), and only such
+// an event brings materials.
 import { EFFECTS, NEEDS } from '../src/sim/events.js';
+import { PLACE_EFFECTS, PLACE_NEEDS } from '../src/sim/expeditions.js';
 import { isId, isIntIn, isObject, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 
 const FILE_KEYS = ['drops', 'events'];
@@ -24,8 +28,9 @@ const MAX_WOUND = 20;
 const MAX_SELL = 5;
 
 // kinds: the node kinds that hold events (data/sectors.json, events: true).
-// moduleIds: the parts. Returns the kinds the events cover, as a Set.
-export function checkEvents(file, kinds, moduleIds, fail) {
+// moduleIds: the parts. places: the kinds of place (validate-expeditions.js).
+// Returns the kinds the events cover, as a Set.
+export function checkEvents(file, kinds, moduleIds, fail, places = new Set()) {
   const where = 'events.json';
   const covered = new Set();
   if (!isObject(file)) {
@@ -51,7 +56,8 @@ export function checkEvents(file, kinds, moduleIds, fail) {
     const at = `${where} event ${event?.id ?? `#${i}`}`;
     if (!isObject(event)) return;
     knownKeys(event, EVENT_KEYS, at, fail);
-    if (!kinds.has(event.kind)) fail(at, `kind must be a node kind that holds events (${[...kinds].join(', ')})`);
+    const atPlace = places.has(event.kind);
+    if (!kinds.has(event.kind) && !atPlace) fail(at, `kind must be a node kind that holds events or a kind of place (${[...kinds, ...places].join(', ')})`);
     else covered.add(event.kind);
     if (!isText(event.title) || event.title.length > MAX_TITLE) fail(at, `title must be a non-empty string of up to ${MAX_TITLE} letters`);
     if (!isText(event.text) || event.text.length > MAX_TEXT) fail(at, `text must be a non-empty string of up to ${MAX_TEXT} letters`);
@@ -60,7 +66,7 @@ export function checkEvents(file, kinds, moduleIds, fail) {
       return;
     }
     uniqueIds(event.choices, at, fail);
-    event.choices.forEach((choice, c) => checkChoice(choice, `${at} choice ${choice?.id ?? `#${c}`}`, drops, moduleIds, fail));
+    event.choices.forEach((choice, c) => checkChoice(choice, `${at} choice ${choice?.id ?? `#${c}`}`, drops, moduleIds, fail, atPlace));
     // An open event holds every jump: one choice must always be there to make.
     if (!event.choices.some((choice) => isObject(choice) && (choice.needs === undefined || (isObject(choice.needs) && !Object.keys(choice.needs).length)))) {
       fail(at, 'needs a choice that needs nothing, so the ship is never stuck at it');
@@ -69,14 +75,14 @@ export function checkEvents(file, kinds, moduleIds, fail) {
   return covered;
 }
 
-function checkChoice(choice, at, drops, moduleIds, fail) {
+function checkChoice(choice, at, drops, moduleIds, fail, atPlace) {
   if (!isObject(choice)) return;
   knownKeys(choice, CHOICE_KEYS, at, fail);
   if (!isText(choice.label) || choice.label.length > MAX_LABEL) fail(at, `label must be a non-empty string of up to ${MAX_LABEL} letters`);
   const needs = choice.needs ?? {};
   if (choice.needs !== undefined && !isObject(choice.needs)) fail(at, 'needs must be an object');
   else {
-    knownKeys(needs, NEEDS, `${at} needs`, fail);
+    knownKeys(needs, atPlace ? PLACE_NEEDS : NEEDS, `${at} needs`, fail);
     for (const [key, value] of Object.entries(needs)) if (!isIntIn(value, 1, MAX_AMOUNT)) fail(`${at} needs`, `${key} must be a whole number from 1 to ${MAX_AMOUNT}`);
   }
   if (!Array.isArray(choice.outcomes) || choice.outcomes.length < 1 || choice.outcomes.length > MAX_OUTCOMES) {
@@ -95,14 +101,14 @@ function checkChoice(choice, at, drops, moduleIds, fail) {
     else total += outcome.chance;
     if (!isText(outcome.text) || outcome.text.length > MAX_OUTCOME_TEXT) fail(where, `text must be a non-empty string of up to ${MAX_OUTCOME_TEXT} letters`);
     if (!isObject(outcome.effects)) fail(where, 'effects must be an object (empty for none)');
-    else checkEffects(outcome.effects, needs, `${where} effects`, drops, moduleIds, fail);
+    else checkEffects(outcome.effects, needs, `${where} effects`, drops, moduleIds, fail, atPlace);
   });
   if (total !== 100) fail(at, `outcome chances must add up to 100, not ${total}`);
 }
 
-function checkEffects(effects, needs, at, drops, moduleIds, fail) {
-  knownKeys(effects, EFFECTS, at, fail);
-  for (const key of ['credits', 'supplies', 'heat']) {
+function checkEffects(effects, needs, at, drops, moduleIds, fail, atPlace) {
+  knownKeys(effects, atPlace ? PLACE_EFFECTS : EFFECTS.filter((key) => key !== 'materials'), at, fail);
+  for (const key of ['credits', 'supplies', 'heat', 'materials']) {
     if (effects[key] !== undefined && (!isIntIn(effects[key], -MAX_AMOUNT, MAX_AMOUNT) || effects[key] === 0)) fail(at, `${key} must be a whole number other than 0, from ${-MAX_AMOUNT} to ${MAX_AMOUNT}`);
   }
   // What an outcome takes, its choice must need.
