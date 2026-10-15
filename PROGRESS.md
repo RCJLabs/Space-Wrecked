@@ -2,6 +2,206 @@
 
 Newest entry first.
 
+## M27 Colony builder and production (2026-10-15)
+
+**Status:** done, and the ROADMAP.md box is ticked. The colony grows now:
+- **Farms and mines** are built from materials where the player puts them: a ghost on the grid, a tap on the grid to move it, a second tap to build it.
+- **Any building** moves, turns and comes down, and spare parts from the hold are set down like the ship's own.
+- **Next day** passes a day: the farms grow food and the mines dig materials by the world's numbers, the crew eats and rests or goes hungry, and the stores keep what they can.
+- **Refit** opens construction mode on the landed ship.
+
+Some of this changes what was there before, not only adds to it:
+- **Giving a ship's part goes through the ghost now.** A tap on its row shows where it would stand; a second tap on it, or Give here, gives it. In M26 it was two taps on the row. It stands where the player puts it, or in the first spot that fits, as before.
+- **A ship refitted past flying can still give what breaks nothing more** (`colony.js` `donatePlan`). A part is refused when taking it off would make a passing flight check fail. Before, any failing check refused every part; with no refits at the colony that never came up.
+- **The colony screen:**
+  - the home line gives the day;
+  - the needs go on to food and materials against the stores;
+  - the right panel is the build list (Build, From the hold, From the ship);
+  - the foot has Refit and Next day.
+
+  Placing a building hides the head and the left panel, so the grid is bigger. It is drawn square to the screen, with its cells.
+- **Construction mode at the colony** goes home to it (Colony), and its flight checks count nobody aboard.
+- **Act 3's words** say what is left to come: the expeditions and the raids.
+- **`SAVE_VERSION` 21.**
+- **The careful test player plays the colony's first 30 days** after founding it. Each run's report has a line for them, and the summary has one over the runs. `voyage()` returns the colony after the days as `home`; `campaign` is still the colony as founded, so the earlier voyage tests read the same.
+- **Tests changed on purpose:**
+  - the system test's settled colony has its day and materials;
+  - the colony text tests' home line has the day, and their needs go on to food and materials;
+  - the colony scene's mark has a ghost in place of M26's spot.
+
+No phone results have come back yet for M14 to M26.
+
+**How it was picked:** Evan answered four questions (2026-10-14), each the recommended answer, and took in all three of M26's open questions:
+- **What to build:** "Farms and mines": two buildings only the colony has, built from materials where you tap on the grid, a ghost first and a second tap to build. Any building can be moved and turned by hand. Neither needs power, since most colonies land with 1 power to spare.
+- **Food:** "By the world's numbers":
+  - each day a farm grows soil + water food and a mine digs ore materials, each at least 1;
+  - food is the run's supplies, and the crew eats 1 each a day;
+  - short of food, everyone loses 2 hit points, as on a hungry jump (never below 1);
+  - the colony lands with 20 materials, and its stores are the landed ship's holds and the storehouses.
+- **Days:** "Next day button": two taps on Next day, and the buildings make, the crew eats and the day count rises, with a short report. Giving, building and moving take no time.
+- **M26's open questions, all three:**
+  - spare parts set down as buildings;
+  - buildings taken down: back into the hold as a part, a farm or mine giving back its materials;
+  - a refit of the landed ship, which can free quarters that hold the ship together (17 of 30 test runs).
+
+Done when (ROADMAP.md, M27):
+- **Days:** "act 3 counts days from the landing, day 1 first. Two taps on Next day pass one: each farm grows its food and each mine digs its materials; the crew eats a food each; a fed crew rests, healing what a day's regroup heals (`regroupHp`) and a powered infirmary's heal on top; short of food, everyone loses `hungerHp` instead, never below 1, as on a hungry jump. Food is the run's supplies. Food and materials are each kept up to the colony's storage: the landed ship's holds, as on the run, and its storehouses; what is made past that is lost. The day's report says what it came to (tested)."
+- **Farms and mines:** "built by hand from materials, 10 each, 2 × 2, needing no power. A farm grows soil + water food a day and a mine digs ore materials a day, each at least 1: the world's numbers (M25) at work. A colony begins with 20 materials, salvaged at the landing (tested)."
+- **Building by hand:** "a farm, a mine, a spare part from the hold or one of the ship's parts goes where it is put. The first tap shows it as a ghost in the first spot that fits; a tap on the grid moves the ghost there, or says why it can't go; Turn turns it; a second tap on it builds it. The builder's rules place it (on the grid, nothing in the way) with a cell of path round every building. Any building moves and turns the same way, and comes down in two taps: a part goes back into the hold, a farm or a mine gives back its materials. Spare parts follow M26's rules for what becomes a building. Each refusal says why (tested)."
+- **Refit:** "construction mode at the colony with the parts on hand, as at a station: quarters that hold the ship together can be freed, and a part taken down can go back aboard. Wrecked parts stay as they are. A ship refitted past flying shows it in its flight checks, as at a station (M28's expeditions need them to pass), and its power going short darkens the colony's buildings that took it (tested)."
+- **The colony screen:** "the day; food and materials against storage, with what a day makes and eats; the build list (a farm and a mine with their cost and what each would make here, the hold's parts, the ship's parts) and each building's Move, Turn and Take down; Next day, whose first tap says what the day will bring; and Refit."
+- **Saves:** "`SAVE_VERSION` 21 for the day and the materials. A v20 colony opens on day 1 with 20 materials (tested)."
+- **The test player:** "over 30 voyages (campaign seeds 1 to 30) the careful test player founds the colony and plays 30 days, building mines and farms by its own judgment. In every run its farms feed its crew within 15 days of the landing, and its report says each run's farms, mines, food, materials and hungry days (`tools/voyage.js`)."
+- **Touch:** "every new button is 48 px or more at the three sizes. By touch: a farm built where the grid was tapped; a building moved, turned and taken down; a spare part set down; Next day with its report, and a hungry one; a refit at the colony; and a quit and reopen on the same day."
+
+How each is met:
+- **Days:** `tests/days.test.js` (new):
+  - a desert colony (soil 1, water 0, ore 2) with two farms and a mine makes 2 food and 2 materials a day; the crew of three eats 3; the plan and the day after it are as reckoned;
+  - thirty days on, the food runs down by one a day and then 4 days go hungry, while the materials fill the stores;
+  - a fed crew heals `regroupHp` each. A medic and a powered med bay add 1 and 1. Short of food everyone loses 2, never below 1 (a crew member at 1 loses nothing), and the infirmary still heals the hungry. A farm's harvest feeds the same day it is grown. A dark infirmary heals nothing;
+  - the stores keep 30 each (the ship's lockers) and 50 with a storehouse; what is past them is lost and counted, after the crew eats.
+
+  `tests/colonyText.test.js`: the ask and the report, fed, hungry, with nothing made and with the stores full.
+- **Farms and mines:** `tests/days.test.js`: each costs 10 and is 2 × 2, a farm makes from soil and water and a mine from ore, at least 1 (5, 3, 1 and 1 for four worlds' numbers); a jungle colony's farm makes 5 and its mine 1; both take no power. `tests/data.test.js`: 14 bad-data cases for the builds and the materials.
+- **Building by hand:** `tests/colonyBuild.test.js` (new):
+  - a farm's ghost in the first spot that fits, then built where it was put, for 10 materials;
+  - a mine refused when the stores have 0;
+  - the refusals: past the edge (three ways and half a cell), on the farm, too close to it on two sides, a turn it can't take, a build that doesn't exist, away from the colony, and no room;
+  - spare parts set down (a Bastion hold as the same Storehouse), the corridor and engine refused as staying aboard, a part not in the hold, an unknown one;
+  - a ship's part given where it was put, and refused where it can't stand;
+  - a building moved where only its own cells were, turned about its middle and slid back onto the grid at the edge, keeping its uid and its place in the order;
+  - taken down: a part back into the hold, a farm's 10 materials back (4 when the stores are nearly full), and what it would leave dark named.
+
+  Through the reducer, each refusal changes nothing.
+- **Refit:** `tests/colonyBuild.test.js`: `canRefit` at the colony; a corridor from the hold fitted aboard; a wrecked part can't come off; a ship refitted without its engines fails its thrust and parts checks; a barracks running on the ship's spare power goes dark when a shield generator is fitted aboard. By touch: the barracks taken down, its quarters back aboard in construction mode, and Colony home again.
+- **The colony screen:** `tests/colonyText.test.js`: the day, food and materials against the stores, the stores' line, the build rows (each with its cost and what it would make here, or why not), the hold's rows (a kind a row, the rest a row a reason), a ghost's words for a build, a hold part and a ship's part, take-down's words (parts, materials, what goes dark) and the building looked at. By touch at the three sizes, below.
+- **Saves:** `tests/days.test.js`: the step from 20 gives a colony day 1 and 20 materials and leaves act 2 and no campaign alone; a v20 save through the front door opens at the colony with its buildings, and a day passes; a day or materials a save can't hold is caught. By touch: a save made by main (v20) opens on day 1 with 20 materials and saves as v21 once a day passes.
+- **The test player:** `tests/voyage.test.js` (M27's test):
+  - in all 30 runs it plays 30 days, and its farms feed the crew within 15 days of the landing (from day 9 at the latest) and are still feeding them at the end;
+  - its buildings are the parts given and then what it built, each paid for, the materials adding up;
+  - nobody is lost, and the same founding plays the same days;
+  - where it digs before it farms, a mine comes first;
+  - each run's report has its line.
+- **Touch:** M27's browser check, below.
+
+### Shipped
+
+- **Data:** `colony.json`: `materials` (20) and `builds`: a Farm (2 × 2, 10 materials, food from soil and water, at least 1) and a Mine (2 × 2, 10, materials from ore, at least 1), each with its words. `campaign.json`: act 3's `ahead`.
+- **Validation:** `tools/validate-colony.js` checks the materials and each build: an id no part has, a name no other building has, a size that fits, a cost, what it makes and from which of the world's numbers, the least it makes, and its words. `validate-data.js` counts the builds.
+- **The sim:**
+  - `colonyBuild.js` (new): building a farm, a mine, a spare part or a ship's part where it is put (`buildPlan`, `build`), moving and turning (`movePlan`, `moveBuilding`, `turnedSpot`), taking down (`takeDownPlan`, `takeDown`) and the build list (`buildList`);
+  - `days.js` (new): the day (`dayPlan`, `nextDay`);
+  - `colony.js`: the builds (`buildOf`, `siteDef`, `yieldOf`, `buildingName`), what the farms and mines make (`colonyStats` `made`), the stores (`storesOf`), placing by hand (`siteError`, `placeBuilding`), a part given where it is put, the infirmary's heal as it opens shared (`healIfOpened`);
+  - `settle.js` (the landing's materials), `campaign.js` (refits at the colony; the colony's day and materials checked), `medbay.js` (`stationHeal`), `defs.js`, `root.js` (`campaign/build`, `campaign/move`, `campaign/takedown`, `campaign/day`), `save.js` (v21 and the migration from 20).
+- **The colony screen:** `colony.js` (rewritten), `colonyStand.js` (new: the view in its place, taps, drag, pinch, twist and the wheel), `colonyText.js`; `construction.js`; `icons.js` (Next day's and Move's); `style.css`.
+- **The scene:**
+  - `colonyScene.js`: farms and mines, the ghost on its plate, the frame round a building looked at, the grid's cells while placing, and each building's box for a tap;
+  - `colonyBuilds.js` (new): the farm's fields and the mine's headframe, drawn in code;
+  - `palette.js` `buildColors`.
+- **Tools:** `voyage.js` plays the colony's first 30 days (`playColony`), with a report line a run and a summary line; `voyagePlan.js` `nextBuild`.
+- **Tests:**
+  - new: `tests/days.test.js` (6), `tests/colonyBuild.test.js` (7);
+  - added to: `tests/colonyText.test.js` (3 more), `tests/colonyScene.test.js` (1 more), M27's voyage test, 14 bad-data cases.
+
+  737 tests in all.
+- **Docs:** ROADMAP.md: §2 (the colony), §4.8 (v21), M27 ticked, and §9 (two of M26's ideas taken in; four new). CLAUDE.md: the colony's builds and days in its lists.
+
+Decisions made along the way, not asked (each easy to change):
+- **What the crew eats is a jump's supplies** (`jumpSupplies`, 1 each), so the run and the colony stay in step if it changes.
+- **A day's order:** the farms and mines make first, so a farm built today feeds today. Then the crew eats, then rests or goes hungry, then the stores drop what they can't keep, after the crew has eaten.
+- **Rest and the infirmary:**
+  - a fed day heals `regroupHp` and a powered infirmary's heal, a medic adding theirs, as a med bay on the run;
+  - a hungry day still has the infirmary's heal after the hunger, as a hungry jump has the med bay's;
+  - M26's heal to full as an infirmary opens stays, for setting one down too.
+- **The stores:**
+  - food and materials are each kept up to the landed ship's supply capacity (30 and its holds) and the powered storehouses' cargo;
+  - materials given back by a take-down are kept as far as the stores take them, at once;
+  - supplies past the stores (after a refit takes a hold off) are lost at the day's end.
+- **Placing:**
+  - the ghost starts in the first spot that fits, and a tap on the grid centres it on that cell;
+  - a ghost that can't stand there turns its plate red and says why, and Build here goes grey;
+  - the second tap can be on the ghost or on Build here (Give here, Set down here, Move here).
+- **The view while placing:**
+  - the head and the left panel step aside, and the grid is square to the screen with its cells drawn;
+  - cells are 22.7 px on the cover screen, 16.4 px in a browser tab and 27.8 px unfolded;
+  - a drag pans, a pinch zooms (0.7 to 4 times) and a twist turns, and leaving placing fits the view again.
+- **Moving keeps the order built,** so a moved building takes power where it did. Turn on a building starts a move, a quarter turned.
+- **Taking down:**
+  - any building that came from a part goes back into the hold as that part, whether given from the ship or set down;
+  - a farm or a mine gives back its whole cost;
+  - its first tap names what would go dark.
+- **Farms and mines turn,** and their look goes by what they make, not their id: a new build that grows food is drawn as fields.
+- **The flags count** the colony's days, the hungry ones, the food grown and lost, the materials dug, lost and spent, the hit points healed and lost to hunger, and the buildings built, set down and taken down.
+- **The test player** builds the farms its crew needs as soon as it can pay. While it can't yet pay for them all, it builds a mine first whenever one would pay for them sooner, its own cost counted. Once fed, it builds nothing more.
+
+### Known issues
+
+- **Food is easy on most worlds.**
+  - On 24 of 30 careful colonies, one or two farms feed the crew from day 1 (ocean, ice and jungle).
+  - Only rock and desert need mines first, and they go hungry up to 8 days (4 runs).
+  - Food at the end is 30 at the median, the stores full. (§9)
+- **Materials have nothing to buy after the farms.** They pile up to the stores: 10 at the median after 30 days, 70 at most. (§9)
+- **The test player builds farms and mines only.** It doesn't set spare parts down, move or take buildings down, or refit at the colony; those are tested by hand and by touch. So in 17 of 30 runs the quarters still hold the ship together and the crew sleeps aboard, though a refit could free them. (§9)
+- **The infirmary's heal as it opens can be had again** by taking it down and setting it down. Nothing but hunger hurts the crew at the colony yet. (§9)
+- **A refit that frees the ship's power** lights a dark infirmary without its heal to full; the next day's rest heals as usual.
+- **Cells while placing are 16.4 px in a browser tab** (821 × 283); zoom covers the rest. The colony's own view keeps M26's fit, where a building is two or three cells, about 30 px, to tap.
+- **Danger and lanes do nothing yet** (M29), nor do defenses.
+
+### What to test on the phone (Galaxy Z Fold 6)
+
+The quickest way there: settle a world in a run, or ask me for a save code at a colony.
+1. **A farm:** tap Farm, then the grid where you want it, then the ghost. Can you aim at a cell folded and unfolded? Does a pinch help, and does the view feel right while placing, with the left panel gone?
+2. **A refusal:** put a mine right beside the farm. Are the red plate and the reason in the foot clear?
+3. **Move, turn and take down:** tap a building, then Move and tap elsewhere and the ghost again; Turn; Take down in two taps.
+4. **A spare part:** set one down from the hold.
+5. **Next day:** two taps, and read the report. On a rock or desert world, can you feed the crew before they starve? How does the hunger feel?
+6. **A refit:** if your quarters hold the ship together, refit the landed ship (corridors from the hold can join the engines or the airlock), then give the quarters.
+7. **Quit and reopen:** the same day.
+8. **Tell me:**
+   - whether food should take more work (§9);
+   - what materials should buy next, in M28 or M29 (§9);
+   - and the M14 to M26 questions still open.
+
+### Next session
+
+M28 Expeditions from the colony. First task: settle its Done when with Evan. ROADMAP.md has a draft: the ship flies out with a squad (berths and air for whoever is aboard), to nodes for salvage and materials, and back; the colony runs on its own power while it is gone. Ask too what materials should buy (§9), and whether a crew coming home hurt should heal at the infirmary each day only, now that days pass (the heal as it opens can be had again, §9).
+
+### Verified here
+
+- `node --test`: 737 pass. `node tools/validate-data.js`: OK ("15 colony buildings, 2 colony builds"). No golden file changed.
+- **The test player, 30 voyages** (`node tools/voyage.js --runs 30`, managing heat), the summary's colony lines:
+  ```
+  The colony: founded in 30 of 30, 2 (1 to 5) parts given: Air plant 30, Gun emplacement 27, Barracks 13, Infirmary 2, Storehouse 2, Bunkhouse, Flak tower, Generator, Warehouse. Everyone housed in 13 of 30, 3 (0 to 3) sleeping aboard; every building powered in 30, power to spare 1 (0 to 3); the ship flies with nobody aboard in 30; the infirmary healed in 0.
+  The colony's first 30 days: its farms feed the crew within 15 days of the landing in 30 of 30, from day 1 (1 to 9); farms 1 (1 to 3), mines 0 (0 to 2); hungry days 0 (0 to 8), in 4 runs; at the end, food 30 (0 to 58) and materials 10 (0 to 70), stores 30 (30 to 90).
+  ```
+  A rock world's line (seed 4): "30 days at the colony: built Mine 2 (days 1, 1), Farm 3 (days 3, 5, 6); its farms feed the crew from day 6; 0 hungry days; food 14 to 3, materials 20 to 70, of 70 each; 3 farms and 2 mines." The 6 runs not fed on day 1 are the 5 rock worlds and a desert.
+- **M27's browser check by touch:** 32 of 32 at each of 905 × 370, 821 × 283 and 960 × 825. It covers:
+  - the colony on day 1: "Act 3 · The colony | Copperhill · Desert world · Day 1", food 27 of 30 and materials 20 of 30, and the build list (Farm and Mine with their cost and what each would make here; the hold's crew quarters and corridors; the ship's parts);
+  - a farm: a tap on Farm shows its ghost with nothing built. A tap on the grid moves it to the cell tapped, and a second tap on it builds it there for 10 materials;
+  - a mine's ghost tapped beside the farm: "Too close to the farm: every building needs a cell of path round it. Tap the grid where it can go.", Build here greyed, and its second tap builds nothing. Tapped clear, Build here builds it, and out of materials the Farm row says so;
+  - the farm tapped and looked at: Move, a tap on the grid and a second on the ghost moves it, keeping its place in the order; Turn and Move here turns it; Take down in two taps gives back its 10 materials;
+  - the hold's crew quarters set down as the barracks, beds 4 for 3;
+  - Next day: its first tap ("Day 1 ends: the mines dig 2 materials; the crew eats 3 and rests. Food 27 → 24, materials 10 → 12. Tap again for day 2."), its second (the report, and "Day 2" in the head);
+  - a refit: the barracks taken down, its quarters back aboard in two taps in construction mode (the way out reads Colony, the chip "Ready to fly"), and Colony home on day 2;
+  - a quit and reopen on day 2;
+  - a hungry day from a colony with 1 food: the food need marked short, the ask, and "Day 2. Nothing grew; short of food, the crew went hungry: 6 hit points lost. Food 0, materials 20.", the crew 10/8/8 to 8/6/6;
+  - a save made by main (v20) opens on day 1 with 20 materials and saves as v21 once a day passes;
+  - offline, the colony draws; every button 48 px or more while browsing, placing and looking; no console errors.
+- **Act 1:** 100 test runs identical to main's, seed by seed, the campaign at launch and the log. **Act 2:** all 30 voyages' steps main's, settling included; the campaign as it landed, and as it founded the colony, main's but for the colony's day and materials.
+- **The fights** (`node tools/sim.js`; no balance number changed): identical to M26's output.
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named:
+  - M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 40 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 46, and M8's extras.
+
+  Two copies were adapted, not the game, for what M27 changes on purpose:
+  - M26's reads the home line with its day and the needs with food and materials; it gives a part with a tap on its row and Give here; it reads the ship's rows as the build list's last; and its save made by main comes back as v21;
+  - M25's reads the home line with its day.
+
+  The copies that make saves the way main did open them from checkouts of the M25 merge (v19, for M26's), the M24 merge (v18, M25's) and the M23h merge (v17), as before. M14 ran 46 checks (39 in M26): its count follows the jobs its run plays.
+
 ## M26 Settling and donated modules (2026-10-14)
 
 **Status:** done, and the ROADMAP.md box is ticked. Act 3 has a home now: the colony on the world settled. Two taps on one of the ship's useful parts take it off the ship, and it stands on the colony's grid as the building of its kind, drawn as the part it was. The colony's power, beds and air are set against what the crew needs, and the crew lives there, so the ship's flight checks count nobody aboard.
