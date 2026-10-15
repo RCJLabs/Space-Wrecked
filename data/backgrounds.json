@@ -32,6 +32,19 @@
           "hunters": "repotug",
           "taskForce": "repogunship",
           "faced": "Con-Reg will have to send for another crew. That buys some quiet."
+        },
+        "colony": {
+          "levels": {
+            "calm": "Nobody from Con-Reg has come asking after this world. Keep it quiet and it stays that way.",
+            "rumors": "A Con-Reg skiff passed the system's edge. Somewhere, someone is checking registrations.",
+            "hunters": "Con-Reg's repo tugs are working the system's edges, asking after a colony nobody filed.",
+            "taskForce": "A Con-Reg task force has put in nearby. They know there's a colony out here, just not which world.",
+            "cornered": "Con-Reg knows which world. Their lander is fuelled; it's a matter of days."
+          },
+          "raiders": "raid",
+          "found": "Con-Reg has found the colony. A lander is on its way with a court order and a lot of friends.",
+          "landing": "Con-Reg's lander is coming down on the colony.",
+          "faced": "Con-Reg will have to send another lander. That buys some quiet."
         }
       },
       "launch": {

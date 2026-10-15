@@ -109,7 +109,8 @@ test("flying out: the list used up, and the days out pass at home with the ship 
   const out = flyOut(hurt, rules, 0, [1]);
   assert.equal(out.ok, true, out.error);
   const away = out.campaign;
-  assert.deepEqual(away.colony.trip, { place: rock, squad: [1], done: false, result: null });
+  // leg: none stopped by a raid (M29).
+  assert.deepEqual(away.colony.trip, { place: rock, squad: [1], done: false, result: null, leg: null });
   assert.deepEqual([away.colony.places, away.colony.day, away.supplies], [[], 3, 27 - 2 * 3]);
   assert.deepEqual([away.flags.trips, away.flags.daysAway, away.flags.colonyDays], [1, 2, 2]);
   assert.equal(out.days.length, 2);
@@ -205,7 +206,7 @@ test('a derelict the scavengers hold: boarded in a fight on her map, her salvage
   const parts = { ...out.parts };
   for (const type of salvage.parts) parts[type] = (parts[type] ?? 0) + 1;
   assert.deepEqual([won.place, won.fight, won.parts, won.colony.materials], ['hub', null, parts, 20 + salvage.materials]);
-  assert.deepEqual(won.colony.trip, { place: hulk, squad: [1, 2, 3], done: true, result: { won: true, parts: salvage.parts, materials: salvage.materials } });
+  assert.deepEqual(won.colony.trip, { place: hulk, squad: [1, 2, 3], done: true, result: { won: true, parts: salvage.parts, materials: salvage.materials }, leg: null });
   assert.deepEqual([won.flags.placeFightsWon, won.flags.fightsWon, won.flags.tripParts, won.flags.tripMaterials], [1, 1, 2, salvage.materials]);
   assert.deepEqual(campaignProblems(won), []);
   assert.equal(placeFightDue(won, rules), null);
@@ -268,7 +269,8 @@ test('saves: v22 for the places and the trip; a v21 colony opens with no trip, i
   assert.equal(step.up(old(null)).campaign, null);
   const opened = parseSave(JSON.stringify({ version: 21, data: old({ ...listed, colony: v21colony }) }));
   assert.equal(opened.ok, true, opened.error);
-  assert.equal(SAVE_VERSION, 22);
+  // 23 since M29's raids.
+  assert.equal(SAVE_VERSION, 23);
   const reopened = opened.save.data.campaign;
   assert.deepEqual([reopened.colony.places, reopened.colony.trip], [[], null]);
   // The colony screen asks for its places, and they are the seed's.

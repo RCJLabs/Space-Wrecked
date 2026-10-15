@@ -26,6 +26,7 @@
 //   places     the places within reach (M28, expeditions.js): [] until
 //              they are rolled, and after each trip until the next list
 //   trip       the trip under way (M28), or null while the ship is home
+//   raid       the raid coming (M29, raids.js): { found, lands }, or null
 import { atColony } from './acts.js';
 import { applyCommand, occupancy, placeModule } from './builder.js';
 import { shipChecklist } from './campaign.js';
@@ -48,9 +49,10 @@ export const RESOURCES = ['soil', 'water', 'ore'];
 export const BUILD_GIVES = ['power', 'beds', 'air', 'storage'];
 
 // A colony on the world settled, with nothing built yet: day 1, with the
-// materials the landing salvaged, no places rolled and the ship home.
+// materials the landing salvaged, no places rolled, the ship home and no
+// raid coming.
 export function newColony(world, materials = 0) {
-  return { world, buildings: [], nextUid: 1, day: 1, materials, places: [], trip: null };
+  return { world, buildings: [], nextUid: 1, day: 1, materials, places: [], trip: null, raid: null };
 }
 
 // The colony's build of id type (data/colony.json builds: a farm, a mine,

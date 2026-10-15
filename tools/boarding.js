@@ -1,6 +1,8 @@
 // Boardings, played by the AI (M22): the harness behind `node tools/sim.js
 // --boardings`, and the test player's boarding fights in tools/voyage.js:
 // on the run, and from M28 at the colony's places the scavengers hold.
+// From M29 the test player's raids on the colony too (fightRaid): those at
+// home play the AI, the raiders press on, as at the hangar.
 // Both sides are played as the campaign's boardings go (encounter.js): the
 // side aboard the other's ship presses on (press.js), and the side at home
 // plays the AI (ai.js). Seeded: the same options always give the same
@@ -19,6 +21,7 @@ import { saveFight } from '../src/sim/campaign.js';
 import { deploy } from '../src/sim/deploy.js';
 import { beginBoarding, endBoarding } from '../src/sim/encounter.js';
 import { boardPlace, endPlaceFight } from '../src/sim/expeditions.js';
+import { endColonyRaid, faceRaid, raidTake } from '../src/sim/raids.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { mapFromShip } from '../src/sim/mapFromShip.js';
 import { pressAction } from '../src/sim/press.js';
@@ -35,6 +38,9 @@ export const MAX_ROUNDS = 60;
 // two sides on overwatch either side of a door can't hold a voyage up.
 const DRAGGING = 40;
 const BOTH_PRESS = { crew: pressAction, enemy: pressAction };
+// Who plays a raid on the colony (M29): those at home the AI, the raiders
+// pressing on.
+const RAID_PLAYERS = { crew: aiAction, enemy: pressAction };
 
 // The boarding fight that is due in a campaign, fought out by the AI and
 // ended (encounter.js beginBoarding, endBoarding): { campaign, won, rounds,
@@ -55,18 +61,35 @@ export function fightPlace(campaign, rules) {
   return fightThrough(begun.campaign, rules, endPlaceFight);
 }
 
-// A boarding fight begun in campaign, played to its end, and ended.
-function fightThrough(campaign, rules, end) {
+// The raid that is down at the colony, faced (raids.js faceRaid: the guns
+// fire at the lander first) and, with any raiders landed and anyone home,
+// fought out by the AI and ended (endColonyRaid): { campaign, landing,
+// fought (true with a fight), won, rounds, dragged, taken (what a lost
+// raid took, raids.js raidTake, or null) }.
+export function fightRaid(campaign, rules) {
+  const faced = faceRaid(campaign, rules);
+  if (!faced.ok) throw new Error(faced.error);
+  if (!faced.fight) return { campaign: faced.campaign, landing: faced.landing, fought: false, won: faced.won, rounds: 0, dragged: false, taken: faced.taken };
+  const done = fightThrough(faced.campaign, rules, endColonyRaid, RAID_PLAYERS);
+  // The fight's end takes from the stores as they stood (raids.js
+  // settleRaid).
+  const taken = done.won ? null : raidTake(faced.campaign, rules);
+  return { campaign: done.campaign, landing: faced.landing, fought: true, won: done.won, rounds: done.rounds, dragged: done.dragged, taken };
+}
+
+// A fight begun in campaign, played to its end, and ended: a boarding, its
+// players by which way it goes; or a raid's (players given).
+function fightThrough(campaign, rules, end, players = BOARDING_PLAYERS[campaign.fight.boarding?.dir]) {
   const { fight } = campaign;
-  let played = playFrom(fight.battle, rules, BOARDING_PLAYERS[fight.boarding.dir], { maxRounds: DRAGGING });
+  let played = playFrom(fight.battle, rules, players, { maxRounds: DRAGGING });
   const dragged = !played.battle.winner;
   if (dragged) {
     const rest = playFrom(played.battle, rules, BOTH_PRESS, { maxRounds: MAX_ROUNDS });
     played = { battle: rest.battle, events: [...played.events, ...rest.events] };
   }
-  if (!played.battle.winner) throw new Error(`A boarding fight stalled after ${MAX_ROUNDS} rounds.`);
+  if (!played.battle.winner) throw new Error(`A ${fight.raid ? 'raid' : 'boarding'} fight stalled after ${MAX_ROUNDS} rounds.`);
   const over = saveFight(campaign, played.battle, [...fight.log, ...played.events]);
-  return { campaign: end(over, rules), won: played.battle.winner === 'crew', rounds: played.battle.round, dir: fight.boarding.dir, salvage: fight.boarding.salvage, dragged };
+  return { campaign: end(over, rules), won: played.battle.winner === 'crew', rounds: played.battle.round, dir: fight.boarding?.dir ?? null, salvage: fight.boarding?.salvage ?? null, dragged };
 }
 
 // The harness's rows: two for each hostile preset with a party.

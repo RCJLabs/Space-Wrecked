@@ -26,7 +26,10 @@
 // judgment, and in every run its farms feed the crew within 15 days of the
 // landing. And M28's: it plays 30 days more, flying trips with a squad the
 // ship has berths and air for, and in every run it flies at least one and
-// the ship comes home from every one.
+// the ship comes home from every one. And M29's: over those 60 days the
+// pursuer may find the colony and raid it; the careful player stays home
+// while a raid is coming, sets down the defenses in its hold, and faces
+// every raid that lands, and its report says each run's raids.
 // Each voyage launches from a test run of act 1 (tools/run.js) and is
 // played by the test player in tools/voyage.js. The voyages before M23h's
 // fly as fitted, with no refits, so each compares one part's difference.
@@ -462,18 +465,23 @@ test("the colony's days: the careful player plays 30, building farms and mines b
     assert.ok(days.fedOn !== null && days.fedOn - 1 <= FED_WITHIN, `seed ${seed}: fed by its farms from day ${days.fedOn}`);
     assert.ok(colonyStats(home, rules).made.food >= eats(home), `seed ${seed}: the farms feed the crew at the end`);
     // What it built stands after what it gave, farms and mines, each paid
-    // for: the materials it had, dug and spent add up, the stores keeping
-    // the rest.
-    assert.deepEqual(home.colony.buildings.map((b) => b.type), [...colony.given, ...days.built.map((b) => b.type)]);
+    // for, and from M29 the defenses it set down from the hold while a
+    // raid was coming, each in the day's order (builds, then defenses).
+    const set = trip.tally.raids.set.filter((b) => b.day <= COLONY_DAYS);
+    const put = [...days.built.map((b) => [b.day, 0, b.type]), ...set.map((b) => [b.day, 1, b.type])].sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(([, , type]) => type);
+    assert.deepEqual(home.colony.buildings.map((b) => b.type), [...colony.given, ...put]);
     assert.equal(days.farms + days.mines, days.built.length);
+    // The materials it had, dug and spent add up, the stores keeping the
+    // rest and lost raids taking theirs (M29).
     const spent = days.built.reduce((sum, b) => sum + rules.colony.builds.get(b.type).cost, 0);
     assert.equal(home.flags.materialsSpent ?? 0, spent);
-    assert.equal(days.materials[1], days.materials[0] + (home.flags.materialsDug ?? 0) - spent - (home.flags.materialsLost ?? 0), `seed ${seed}: materials add up`);
+    assert.equal(days.materials[1], days.materials[0] + (home.flags.materialsDug ?? 0) - spent - (home.flags.materialsLost ?? 0) - (home.flags.raidMaterialsTaken ?? 0), `seed ${seed}: materials add up`);
     assert.ok(days.materials[1] <= days.stores && days.food[1] <= days.stores);
     // Nobody died of hunger: the crew is the one that landed.
     assert.deepEqual(home.crew.map((m) => m.id), trip.campaign.crew.map((m) => m.id));
     // The same founding plays the same days.
-    assert.deepEqual(playColony(trip.campaign, rules), { campaign: home, days }, `seed ${seed}: the same days again`);
+    const again = playColony(trip.campaign, rules);
+    assert.deepEqual({ campaign: again.campaign, days: again.days }, { campaign: home, days }, `seed ${seed}: the same days again`);
     // The report says the farms, mines, food, materials and hungry days.
     assert.ok(
       trip.lines.some((line) => /^   30 days at the colony: built .+; its farms feed the crew from day \d+; \d+ hungry days?.*; food \d+ to \d+, materials \d+ to \d+, of \d+ each; \d+ farms? and \d+ mines?\.$/.test(line)),
@@ -511,7 +519,8 @@ test("the colony's trips: the careful player flies 30 days more, a squad aboard 
     assert.ok(travelled.crew.every((m) => m.hp >= 1 && m.hp <= maxHp(m, rules)));
     fought += trips.won + trips.lost;
     // The same colony plays the same trips.
-    assert.deepEqual(playTrips(home, rules), { campaign: travelled, trips }, `seed ${seed}: the same trips again`);
+    const again = playTrips(home, rules);
+    assert.deepEqual({ campaign: again.campaign, trips: again.trips }, { campaign: travelled, trips }, `seed ${seed}: the same trips again`);
     // The report says the trips, the days away, what they brought, the
     // boardings and the hungry days.
     assert.ok(
@@ -522,4 +531,50 @@ test("the colony's trips: the careful player flies 30 days more, a squad aboard 
   assert.ok(fought >= 1, 'some trips board a held derelict');
   const summary = manyVoyages(rules, 2).lines.join('\n');
   assert.match(summary, /The colony's 30 days of trips: trips \d+ \(\d+ to \d+\), flown in 2 of 2; /);
+});
+
+test("the colony's raids: over its 60 days the careful player stays home while one is coming, sets down the defenses in its hold, and faces every raid that lands; found more near the lanes than far from them (M29)", () => {
+  const rate = { 1: [0, 0], 2: [0, 0], 3: [0, 0] };
+  let faced = 0;
+  for (const [i, trip] of refitting.entries()) {
+    const seed = i + 1;
+    const { raids } = trip.tally;
+    const { travelled, campaign: founded } = trip;
+    assert.ok(raids, `seed ${seed} keeps its raids`);
+    // Every raid found is faced once it lands; one may still be coming at
+    // the end of the days played.
+    assert.equal(raids.found, travelled.flags.raidsFound ?? 0);
+    assert.equal(raids.faced.length, raids.found - (raids.coming ? 1 : 0), `seed ${seed}: every raid that landed is faced`);
+    assert.equal(raids.coming, Boolean(travelled.colony.raid));
+    assert.equal(travelled.flags.colonyRaidsWon ?? 0, raids.faced.filter((raid) => raid.won).length);
+    assert.equal(travelled.flags.colonyRaidsLost ?? 0, raids.faced.filter((raid) => !raid.won).length);
+    for (const raid of raids.faced) {
+      assert.ok(raid.landed + raid.stopped === 4 && raid.home >= 0, `seed ${seed}: a raid of 4`);
+      // A raid is won only with every raider stopped or beaten; a lost one
+      // takes, a won one doesn't.
+      assert.equal(raid.taken === null, raid.won);
+      if (!raid.fought) assert.ok(raid.landed === 0 || raid.home === 0);
+    }
+    // Nobody dies in a raid: the crew is the one that landed.
+    assert.deepEqual(travelled.crew.map((m) => m.id), founded.crew.map((m) => m.id));
+    // Heat over the colony's days: falls a little each day, a trip adds
+    // some, and a raid brings it down to heatAfterRaid.
+    assert.ok(travelled.heat >= 0 && travelled.heat <= 100);
+    if (raids.faced.length) assert.ok(travelled.heat <= Math.max(balance.heatAfterRaid, raids.heat[0]));
+    rate[raids.lanes][0] += raids.found;
+    rate[raids.lanes][1] += 1;
+    faced += raids.faced.length;
+    // The report says the raids.
+    assert.ok(
+      trip.lines.some((line) => /^   Raids over 60 days \((near|off|far from) the lanes; heat \d+ to \d+\): found \d+, faced \d+\./.test(line)),
+      `seed ${seed} reports its raids`,
+    );
+  }
+  assert.ok(faced >= 1, 'some colony is raided');
+  // Found more often near the lanes than far from them, a run.
+  const per = (lanes) => rate[lanes][0] / Math.max(1, rate[lanes][1]);
+  assert.ok(rate[1][1] > 0 && rate[3][1] > 0, 'colonies near and far from the lanes');
+  assert.ok(per(1) > per(3), `near ${per(1)} a run, far ${per(3)}`);
+  const summary = manyVoyages(rules, 2).lines.join('\n');
+  assert.match(summary, /Raids over the colony's 60 days: found \d+ \(\d+ to \d+\) a run, in \d+ of 2 /);
 });

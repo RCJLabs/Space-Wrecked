@@ -60,7 +60,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      (M27)
 //  22  expeditions: the colony's places within reach and the trip under
 //      way, and a boarding fight's salvage may bring materials (M28)
-export const SAVE_VERSION = 22;
+//  23  raids: the raid coming at the colony, and a trip's leg a raid
+//      stopped (M29)
+export const SAVE_VERSION = 23;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -291,6 +293,17 @@ export const MIGRATIONS = [
     up: (data) => {
       if (!isObject(data) || !isObject(data.campaign) || !isObject(data.campaign.colony)) return data;
       return { ...data, campaign: { ...data.campaign, colony: { ...data.campaign.colony, places: [], trip: null } } };
+    },
+  },
+  // Raids (M29). A colony from before them has no raid coming, and a trip
+  // under way has flown its legs whole.
+  {
+    from: 22,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign) || !isObject(data.campaign.colony)) return data;
+      const { colony } = data.campaign;
+      const trip = isObject(colony.trip) ? { ...colony.trip, leg: null } : colony.trip;
+      return { ...data, campaign: { ...data.campaign, colony: { ...colony, trip, raid: null } } };
     },
   },
 ];

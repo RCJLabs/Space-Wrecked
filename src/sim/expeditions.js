@@ -10,8 +10,10 @@
 // like the run's (events.js), whose wounds fall only on the squad; or a
 // derelict the scavengers hold, boarded in a fight on her map, her parts
 // and materials the prize, or left alone. Fly home passes the days back,
-// the ship lands, and a new list is rolled. Pure: every roll is the
-// campaign's.
+// the ship lands, and a new list is rolled. From M29 a trip adds heat as
+// the ship flies out (raids.js tripHeatOf), and a leg stops on the day a
+// raid's lander comes down at the colony: those at home face it, and Fly
+// on passes the rest of the leg. Pure: every roll is the campaign's.
 //
 // A place (colony.places, and the trip's; tripShape.js):
 //   kind    its kind's id (data/expeditions.json kinds)
@@ -27,6 +29,8 @@
 //   result  what came of it, once done: the event's ({ event, choice,
 //           outcome, roll, changes }) or the fight's ({ won, parts,
 //           materials })
+//   leg     a leg a raid stopped (M29): { dir ('out' or 'home'), left
+//           (its days still to fly) }, or null
 // The flags count the trips, the days away and the trips home, the events
 // decided and the fights won and lost at places, and what trips brought:
 // parts, materials and food.
@@ -37,11 +41,13 @@ import { crewUnit, endFight, shipChecklist } from './campaign.js';
 import { storesOf } from './colony.js';
 import { squadMembers, squadProblem } from './crew.js';
 import { passDay } from './days.js';
+import { downText, raidDown, tripHeatOf } from './raids.js';
 import { deploy } from './deploy.js';
 import { pickWeighted } from './drops.js';
 import { applyEffects, choiceProblem, outcomeFor } from './events.js';
 import { tally } from './flags.js';
 import { generateShip } from './gen/ship.js';
+import { withHeat } from './heat.js';
 import { mapFromShip } from './mapFromShip.js';
 import { hasTag } from './modules.js';
 import { enemyBonus } from './settings.js';
@@ -122,6 +128,7 @@ export function withPlaces(campaign, rules) {
 export function tripPlan(campaign, rules, index, squad) {
   if (!atColony(campaign, rules)) return { ok: false, error: 'Trips leave from the colony.' };
   if (campaign.colony.trip) return { ok: false, error: 'The ship is away already.' };
+  if (raidDown(campaign)) return { ok: false, error: downText(campaign, rules) };
   const place = campaign.colony.places[index];
   const kind = place ? kindOf(place, rules) : null;
   if (!kind) return { ok: false, error: "There's no such place within reach." };
@@ -129,7 +136,7 @@ export function tripPlan(campaign, rules, index, squad) {
   if (why) return { ok: false, error: why };
   const ids = squadMembers(campaign.crew, squad).map((member) => member.id);
   const checks = shipChecklist(campaign, rules, ids.length);
-  const away = passDays({ ...campaign, colony: { ...campaign.colony, trip: newTrip(place, ids) } }, rules, place.days * 2);
+  const away = passDays({ ...campaign, colony: { ...campaign.colony, trip: newTrip(place, ids) } }, rules, place.days * 2, { stop: false });
   const failing = checks.find((line) => line.ok !== true);
   return {
     ok: !failing,
@@ -146,28 +153,48 @@ export function tripPlan(campaign, rules, index, squad) {
 }
 
 // Flies out to the place listed at index with the squad (see tripPlan):
-// the ship leaves, the list is used up (a new one comes once it is home),
-// and the days out pass at the colony one by one with it away. Then the
-// squad is at the place. Returns { ok: true, plan, campaign, days (each
-// day's, days.js passDay) } or { ok: false, error }.
+// the ship leaves, adding the trip's heat (M29, raids.js tripHeatOf), the
+// list is used up (a new one comes once it is home), and the days out pass
+// at the colony one by one with it away. Then the squad is at the place,
+// unless a raid's lander came down on the way (M29): the leg stops that day
+// (the trip's leg), and Fly on flies the rest once it is faced. Returns {
+// ok: true, plan, campaign, days (each day's, days.js passDay), stopped
+// (true when a raid stopped the leg) } or { ok: false, error }.
 export function flyOut(campaign, rules, index, squad) {
   const plan = tripPlan(campaign, rules, index, squad);
   if (!plan.ok) return { ok: false, error: plan.error };
-  const leaving = { ...campaign, colony: { ...campaign.colony, places: [], trip: newTrip(plan.place, plan.squad) }, flags: tally(campaign.flags, { trips: 1 }) };
-  const out = passDays(leaving, rules, plan.place.days);
-  return { ok: true, plan, campaign: out.campaign, days: out.days };
+  const heat = withHeat(campaign.heat, tripHeatOf(campaign, rules));
+  const leaving = { ...campaign, heat, colony: { ...campaign.colony, places: [], trip: newTrip(plan.place, plan.squad) }, flags: tally(campaign.flags, { trips: 1, tripHeat: heat - campaign.heat }) };
+  const out = flyLeg(leaving, rules, 'out', plan.place.days);
+  return { ok: true, plan, campaign: out.campaign, days: out.days, stopped: out.stopped };
+}
+
+// Flies on with the leg a raid stopped, once it is faced: the rest of its
+// days pass, as flyOut's or flyHome's would have, and it may stop again.
+// The squad is then at the place, or the ship is home. Returns { ok: true,
+// campaign, days, dir ('out' or 'home'), stopped } or { ok: false, error }.
+export function flyOn(campaign, rules) {
+  const trip = atColony(campaign, rules) ? campaign.colony.trip : null;
+  if (!trip?.leg) return { ok: false, error: 'The ship is not on its way anywhere.' };
+  if (raidDown(campaign)) return { ok: false, error: downText(campaign, rules) };
+  const going = { ...campaign, colony: { ...campaign.colony, trip: { ...trip, leg: null } } };
+  const on = flyLeg(going, rules, trip.leg.dir, trip.leg.left);
+  return { ok: true, campaign: on.campaign, days: on.days, dir: trip.leg.dir, stopped: on.stopped };
 }
 
 // Where the squad is on a trip, for the screens: { place, kind, event (the
 // event to decide there, until it is), held (true while the scavengers'
-// derelict is still to fight for), done, result }, or null with the ship
-// home.
+// derelict is still to fight for), done, result, leg (a leg a raid
+// stopped, M29, or null: on the way out, the squad isn't there yet) }, or
+// null with the ship home.
 export function tripHere(campaign, rules) {
   const trip = campaign.colony?.trip;
   if (!trip) return null;
   const { place } = trip;
-  const event = !trip.done && !place.held && place.event ? rules.events.get(place.event) ?? null : null;
-  return { place, kind: kindOf(place, rules), event, held: place.held && !trip.done, done: trip.done, result: trip.result };
+  const leg = trip.leg ?? null;
+  const there = !leg;
+  const event = there && !trip.done && !place.held && place.event ? rules.events.get(place.event) ?? null : null;
+  return { place, kind: kindOf(place, rules), event, held: there && place.held && !trip.done, done: trip.done, result: trip.result, leg };
 }
 
 // Makes choice id at the event where the squad is: rolls its outcome, if
@@ -202,7 +229,7 @@ export function chooseAtPlace(campaign, rules, id) {
 // most] a win brings) }, or null with none due.
 export function placeFightDue(campaign, rules) {
   const trip = campaign.colony?.trip;
-  if (!trip?.place.held || trip.done || campaign.fight) return null;
+  if (!trip?.place.held || trip.done || trip.leg || campaign.fight) return null;
   const held = kindOf(trip.place, rules)?.held;
   const preset = held ? rules.ships.get(held.ship) : null;
   const party = held ? rules.encounters.get(held.party)?.enemies : null;
@@ -290,9 +317,11 @@ export function endPlaceFight(campaign, rules) {
 export function homePlan(campaign, rules) {
   const trip = atColony(campaign, rules) ? campaign.colony.trip : null;
   if (!trip) return { ok: false, error: 'The ship is home.' };
+  if (trip.leg) return { ok: false, error: 'The ship is on its way: it flies on once the raid at home is faced.' };
+  if (raidDown(campaign)) return { ok: false, error: downText(campaign, rules) };
   const here = tripHere(campaign, rules);
   if (here.event) return { ok: false, error: `Decide first: ${here.event.title}.` };
-  const back = passDays(campaign, rules, trip.place.days);
+  const back = passDays(campaign, rules, trip.place.days, { stop: false });
   return {
     ok: true,
     days: trip.place.days,
@@ -304,28 +333,44 @@ export function homePlan(campaign, rules) {
 
 // Flies home (see homePlan): the days back pass at the colony one by one
 // with the ship away, then it lands, the squad is home, and a new list of
-// places is rolled. Returns { ok: true, plan, campaign, days } or { ok:
-// false, error }.
+// places is rolled. A raid's lander coming down on the way stops the leg
+// that day (M29), as flyOut's. Returns { ok: true, plan, campaign, days,
+// stopped } or { ok: false, error }.
 export function flyHome(campaign, rules) {
   const plan = homePlan(campaign, rules);
   if (!plan.ok) return plan;
-  const back = passDays(campaign, rules, campaign.colony.trip.place.days);
-  const landed = { ...back.campaign, colony: { ...back.campaign.colony, trip: null }, flags: tally(back.campaign.flags, { tripsHome: 1 }) };
-  return { ok: true, plan, campaign: withPlaces(landed, rules), days: back.days };
+  const back = flyLeg(campaign, rules, 'home', campaign.colony.trip.place.days);
+  return { ok: true, plan, campaign: back.campaign, days: back.days, stopped: back.stopped };
 }
 
 // A trip to place with the squad (ids), just under way.
 function newTrip(place, squad) {
-  return { place, squad, done: false, result: null };
+  return { place, squad, done: false, result: null, leg: null };
+}
+
+// A leg of the trip, dir 'out' or 'home', of n days: they pass at the
+// colony one by one, stopping on a day a raid's lander comes down (the
+// trip's leg keeps the rest). Home, the ship lands: the trip is over, and
+// a new list of places is rolled. { campaign, days, stopped }.
+function flyLeg(campaign, rules, dir, n) {
+  const flown = passDays(campaign, rules, n);
+  const left = n - flown.days.length;
+  const now = flown.campaign;
+  if (left > 0 && raidDown(now)) return { campaign: { ...now, colony: { ...now.colony, trip: { ...now.colony.trip, leg: { dir, left } } } }, days: flown.days, stopped: true };
+  if (dir === 'out') return { campaign: now, days: flown.days, stopped: false };
+  const landed = { ...now, colony: { ...now.colony, trip: null }, flags: tally(now.flags, { tripsHome: 1 }) };
+  return { campaign: withPlaces(landed, rules), days: flown.days, stopped: false };
 }
 
 // The campaign after n of the colony's days with the ship away, each
 // counted as a day away: { campaign, days (each day's passDay result) }.
-// Days stop at the most a colony counts (days.js MAX_DAYS).
-function passDays(campaign, rules, n) {
+// Days stop at the most a colony counts (days.js MAX_DAYS), and, unless
+// stop is false (a plan's look ahead), on a day a raid's lander is down.
+function passDays(campaign, rules, n, { stop = true } = {}) {
   let now = campaign;
   const days = [];
   for (let d = 0; d < n; d++) {
+    if (stop && raidDown(now)) break;
     const day = passDay(now, rules);
     if (!day.ok) break;
     days.push(day);

@@ -100,6 +100,9 @@ const MAX_BUILDINGS = 1200;
 // guard.
 const MAX_DAYS = 99999;
 const MAX_MATERIALS = 9999;
+// More days than a raid's lander takes to come (data/balance.json
+// raidWarning, held to 10 by tools/validate-data.js): M29's guard.
+const MAX_WARNING = 10;
 // Who boards the ship in a fight (data/encounters.json).
 export const FIGHT_ENCOUNTER = 'boarders';
 const MAX_SEED = 0xffffffff;
@@ -422,6 +425,8 @@ export function campaignProblems(value) {
     if (why) wrong(`fight ${why}`);
     else if (value.fight.boarding && !runWhy && value.run?.approach?.outcome?.boarding !== 'due' && !heldPlace(value.colony)) {
       wrong(value.colony?.trip ? 'boarding fight has no held derelict where the squad is' : 'boarding fight has no approach that ended in it');
+    } else if (value.fight.raid && value.colony && !(value.colony.raid && value.colony.day >= value.colony.raid.lands)) {
+      wrong('raid fight has no lander down at the colony');
     }
   }
   return problems;
@@ -454,7 +459,14 @@ function isColony(colony) {
   if (!isInt(colony.day, 1, MAX_DAYS) || !isInt(colony.materials, 0, MAX_MATERIALS)) return false;
   if (!Array.isArray(colony.places) || colony.places.length > MAX_PLACES || !colony.places.every(isPlace)) return false;
   if (colony.trip !== null && !isRecord(colony.trip)) return false;
+  if (colony.raid !== null && !isRaid(colony.raid)) return false;
   return Array.isArray(colony.buildings) && colony.buildings.length <= MAX_BUILDINGS && isShipData({ frame: 'colony', modules: colony.buildings, nextUid: colony.nextUid });
+}
+
+// A raid coming (M29, raids.js): the day the pursuer found the colony and
+// the day its lander comes down, after it.
+function isRaid(raid) {
+  return isRecord(raid) && isInt(raid.found, 1, MAX_DAYS) && isInt(raid.lands, raid.found + 1, MAX_DAYS + MAX_WARNING);
 }
 
 // True when the colony's trip is at a place the scavengers hold, not yet
