@@ -66,12 +66,27 @@
 // can't yet pay for them all, a mine first whenever the mine would pay for
 // them sooner, its own cost counted. Each goes in the first spot that
 // fits. Once its farms feed the crew it builds nothing more.
-import { canRefit, maxHp, refitShip } from '../src/sim/campaign.js';
-import { shipParts, yieldOf } from '../src/sim/colony.js';
-import { buildPlan } from '../src/sim/colonyBuild.js';
+// Then (M28) it flies trips from the colony. Its squad (tripSquad) is the
+// healthiest up to squadSize of those healed to FIT_SHARE of their most;
+// with none fit, it rests. Before it flies, it refits the ship for the
+// squad (refitForSquad): while the flight checks with them aboard fail for
+// berths or air, it takes down the building that gives most of what is
+// short and fits its part back aboard where it touches most of the ship;
+// a squad the ship still can't carry shrinks to what it can. Whoever stays
+// home gets a shelter, with a solar array to run it while the ship is away,
+// as far as the materials go (homeBuild). It flies to the place worth most
+// (nextPlace): a derelict the scavengers hold only with a full squad at
+// full health, else the nearest place, never one its food doesn't cover
+// or that would come home past the days it plays. At an event it makes the
+// choice worth most (placeChoice): materials and food a point each, as far
+// as the stores take them, a part PLACE_PART, a wound PLACE_HP a hit point.
+import { canRefit, maxHp, refitShip, shipChecklist } from '../src/sim/campaign.js';
+import { colonyStats, shipParts, storesOf, yieldOf } from '../src/sim/colony.js';
+import { buildPlan, takeDown } from '../src/sim/colonyBuild.js';
 import { crewRoom } from '../src/sim/crew.js';
 import { sellPriceOf } from '../src/sim/economy.js';
 import { choiceProblem } from '../src/sim/events.js';
+import { tripPlan } from '../src/sim/expeditions.js';
 import { LANES } from '../src/sim/gen/system.js';
 import { withHeat } from '../src/sim/heat.js';
 import { huntOdds } from '../src/sim/hunt.js';
@@ -448,6 +463,107 @@ export function nextBuild(campaign, rules) {
     if (withMine < days) return { build: mine.id };
   }
   return can(farm) ? { build: farm.id } : null;
+}
+
+// M28: the share of their most hit points a crew member is healed to
+// before they fly; and what a part and a hit point are worth at a place's
+// event, against a material or a food at 1.
+export const FIT_SHARE = 0.75;
+const PLACE_PART = 8;
+const PLACE_HP = 2;
+
+// Who flies on a trip now: the healthiest of those healed to FIT_SHARE of
+// their most, up to squadSize, the crew's order breaking ties; their ids,
+// in the crew's order. size: the most to take (the ship's room).
+export function tripSquad(campaign, rules, size = rules.balance.squadSize) {
+  const fit = campaign.crew.map((member, i) => ({ member, i })).filter(({ member }) => member.hp >= FIT_SHARE * maxHp(member, rules));
+  const going = new Set(fit.sort((a, b) => b.member.hp - a.member.hp || a.i - b.i).slice(0, Math.min(size, rules.balance.squadSize)).map(({ member }) => member.id));
+  return campaign.crew.filter((member) => going.has(member.id)).map((member) => member.id);
+}
+
+// The refit that puts berths and air for a squad of `size` aboard: while
+// the flight checks with them aboard fail for berths or life support, the
+// colony's building that gives most of what is short comes down and its
+// part goes back aboard (fitPart); one whose part fits nowhere aboard stays
+// standing, and the refit stops there. { campaign, moved (the types put
+// aboard) }.
+export function refitForSquad(campaign, rules, size) {
+  let now = campaign;
+  const moved = [];
+  for (let n = 0; n < 4; n++) {
+    const short = shipChecklist(now, rules, size).find((line) => line.ok !== true && ['berths', 'lifeSupport'].includes(line.id));
+    if (!short) break;
+    const key = short.id === 'berths' ? 'beds' : 'air';
+    const giver = colonyStats(now, rules).buildings.filter((b) => rules.modules.has(b.type) && b.gives?.[key] > 0).sort((a, b) => b.gives[key] - a.gives[key] || a.uid - b.uid)[0];
+    if (!giver) break;
+    const down = takeDown(now, rules, giver.uid);
+    if (!down.ok) break;
+    const placed = fitPart(down.campaign.ship, rules, giver.type);
+    const aboard = placed && refitShip(down.campaign, placed.ship, rules);
+    if (!aboard || aboard === down.campaign) break;
+    now = aboard;
+    moved.push(giver.type);
+  }
+  return { campaign: now, moved };
+}
+
+// What the player builds before a trip for whoever stays home (squad: the
+// ids flying): with someone home and no bed and air for them on the
+// colony's own power, a solar array where its own power can't run a
+// shelter, else a shelter, as far as the materials go. { build: id } or
+// null.
+export function homeBuild(campaign, rules, squad) {
+  const home = campaign.crew.length - squad.length;
+  if (!home) return null;
+  const shelter = [...rules.colony.builds.values()].find((b) => !b.makes && (b.gives?.beds ?? 0) > 0 && (b.gives?.air ?? 0) > 0);
+  const solar = [...rules.colony.builds.values()].find((b) => !b.makes && (b.gives?.power ?? 0) > 0);
+  if (!shelter || !solar) return null;
+  // The colony as it would be with the ship away.
+  const away = { ...campaign, colony: { ...campaign.colony, trip: { place: null, squad, done: false, result: null } } };
+  const stats = colonyStats(away, rules);
+  if (Math.min(stats.beds, stats.air) >= home && stats.buildings.every((b) => b.powered)) return null;
+  const need = Math.max(0, -(shelter.gives.power ?? 0));
+  const what = stats.power.spare >= need && Math.min(stats.beds, stats.air) < home ? shelter : solar;
+  return buildPlan(campaign, rules, { build: what.id }).ok ? { build: what.id } : null;
+}
+
+// The place the squad flies to (see the top of the file): its index in the
+// list, or null for none. days: the most days the trip can take.
+export function nextPlace(campaign, rules, squad, days = Infinity) {
+  const full = squad.length >= rules.balance.squadSize && squad.every((id) => {
+    const member = campaign.crew.find((m) => m.id === id);
+    return member.hp >= maxHp(member, rules);
+  });
+  // A held derelict first, then the nearest, then the first listed.
+  const before = (a, b) => a.findIndex((v, i) => v !== b[i]) !== -1 && a[a.findIndex((v, i) => v !== b[i])] < b[a.findIndex((v, i) => v !== b[i])];
+  let best = null;
+  campaign.colony.places.forEach((place, index) => {
+    if ((place.held && !full) || 2 * place.days > days) return;
+    const plan = tripPlan(campaign, rules, index, squad);
+    if (!plan.ok || plan.hungry > 0) return;
+    const rank = [place.held ? 0 : 1, place.days, index];
+    if (!best || before(rank, best.rank)) best = { index, rank };
+  });
+  return best?.index ?? null;
+}
+
+// The choice the player makes at a place's event: { choice, worth }, the
+// one worth most of those it can make, the first on a tie.
+export function placeChoice(campaign, rules, event) {
+  const stores = storesOf(campaign, rules).total;
+  const squad = campaign.colony.trip?.squad.length ?? 1;
+  const worth = (effects) =>
+    Math.min(Math.max(0, stores - campaign.colony.materials), effects.materials ?? 0) +
+    Math.min(Math.max(0, stores - campaign.supplies), Math.max(0, effects.supplies ?? 0)) +
+    (effects.drop || effects.part ? PLACE_PART : 0) -
+    (effects.wound ? PLACE_HP * effects.wound.hp * (effects.wound.all ? squad : 1) : 0);
+  let best = null;
+  for (const choice of event.choices) {
+    if (choiceProblem(campaign, choice)) continue;
+    const value = choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * worth(outcome.effects), 0);
+    if (!best || value > best.worth) best = { choice, worth: value };
+  }
+  return best;
 }
 
 // What a world is worth to the player as a colony: soil, water and ore a

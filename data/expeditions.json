@@ -7,7 +7,7 @@
       "name": "Derelict",
       "weight": 3,
       "days": [1, 2],
-      "held": { "chance": 50, "ship": "hauler", "party": "scavvers", "salvage": 2, "materials": [4, 8] },
+      "held": { "chance": 50, "ship": "hauler", "party": "squatters", "salvage": 2, "materials": [4, 8] },
       "text": "A ship adrift, dead or near enough. Whatever she carried may still be aboard, and so may whoever got there first."
     },
     {

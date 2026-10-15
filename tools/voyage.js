@@ -40,7 +40,13 @@
 //     flight checks let go, beds and air first (voyagePlan.js nextGift);
 //   - then play the colony's first COLONY_DAYS days (M27), building the
 //     farms that feed the crew, and the mines that pay for them sooner,
-//     before each day (voyagePlan.js nextBuild).
+//     before each day (voyagePlan.js nextBuild);
+//   - then TRIP_DAYS more (M28), flying trips to the places within reach
+//     with a squad of the fit, the ship refitted for them, a shelter and a
+//     solar array for whoever stays home, the place worth most, and its
+//     event's choice worth most, boarding a held derelict with the AI
+//     (voyagePlan.js tripSquad, refitForSquad, homeBuild, nextPlace,
+//     placeChoice); resting on the days it doesn't fly.
 //
 //   node tools/voyage.js               a voyage from campaign seed 1, step by step
 //   node tools/voyage.js --seed 7      another seed
@@ -58,7 +64,9 @@ import { pathToFileURL } from 'node:url';
 import { maxHp, shipChecklist } from '../src/sim/campaign.js';
 import { buildingOf, colonyStats, donate, storesOf } from '../src/sim/colony.js';
 import { build } from '../src/sim/colonyBuild.js';
+import { crewRoom } from '../src/sim/crew.js';
 import { nextDay } from '../src/sim/days.js';
+import { chooseAtPlace, flyHome, flyOut, tripHere, withPlaces } from '../src/sim/expeditions.js';
 import { flightChecklist } from '../src/sim/constraints.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { FACED } from '../src/sim/approach.js';
@@ -77,12 +85,12 @@ import { swapTransponder } from '../src/sim/transponder.js';
 import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer } from '../src/sim/travel.js';
 import { runRecord } from '../src/ui/campaign/launchText.js';
 import { captainOrder } from './approachPlan.js';
-import { fightBoarding } from './boarding.js';
+import { fightBoarding, fightPlace } from './boarding.js';
 import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
 import { withPart } from './startShip.js';
-import { bestChoice, boardIt, HEAT_POLICIES, hireWho, LONG_FROM, nextBuild, nextGift, nextJump, refitAt, restNow, scanNow, swapNow, systemMove, worldScore } from './voyagePlan.js';
+import { bestChoice, boardIt, HEAT_POLICIES, hireWho, homeBuild, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, refitAt, refitForSquad, restNow, scanNow, swapNow, systemMove, tripSquad, worldScore } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
@@ -92,17 +100,20 @@ const MAX_JUMPS = 100; // a voyage still going after this many stops
 // within which its farms are to feed the crew (M27's Done when).
 export const COLONY_DAYS = 30;
 export const FED_WITHIN = 15;
+// The days of trips it plays after those (M28's Done when).
+export const TRIP_DAYS = 30;
 
 // A voyage from a launched campaign (act 2, the run not yet begun) to a
 // world settled, its colony founded and its first days played: { ended,
-// steps, sectors, system, tally, lines, campaign, landed, home }.
+// steps, sectors, system, tally, lines, campaign, landed, home, travelled }.
 // ended: whether it settled a world, ending the act; steps: every jump,
 // purchase, event, approach, boarding, patch, repair, scan and survey, with
 // what it moved, [before, after], and the settling; sectors: each sector as
 // the ship entered it; system: the system past the charts, as it entered
 // it, or null; campaign: as it ended, the colony founded; landed: the
 // campaign as it settled, before the colony was founded, or null; home:
-// the colony after its first COLONY_DAYS days (M27), or null.
+// the colony after its first COLONY_DAYS days (M27), or null; travelled:
+// after TRIP_DAYS more of trips (M28), or null.
 export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 'yes', refit = 'yes', heat = 'manage', label = '' } = {}) {
   if (!LONG_POLICIES.includes(longPolicy)) throw new Error(`--long is one of ${LONG_POLICIES.join(', ')}`);
   if (!HEAT_POLICIES.includes(heat)) throw new Error(`--heat is one of ${HEAT_POLICIES.join(', ')}`);
@@ -210,6 +221,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
   let system = null;
   let landed = null;
   let home = null;
+  let travelled = null;
   const jumped = (before, moved) => {
     if (!moved.ok) throw new Error(moved.error);
     campaign = moved.campaign;
@@ -348,6 +360,10 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
         home = played.campaign;
         tally.days = played.days;
         lines.push(`   ${daysLine(played.days)}`);
+        const flown = playTrips(home, defs);
+        travelled = flown.campaign;
+        tally.trips = flown.trips;
+        lines.push(`   ${tripsLine(defs, flown.trips)}`);
         break;
       }
       jumped(before, jump(campaign, defs, move.to));
@@ -459,30 +475,27 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     `${where}, ${tally.crossed} sectors crossed, ${tally.surveys} world${tally.surveys === 1 ? '' : 's'} surveyed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits; boarded ${tally.boardings} (won ${tally.boardingsWon}), left ${tally.left}, fought off ${tally.defencesWon} of ${tally.defences}; salvage ${tally.salvaged} parts and ${tally.salvageCredits} credits, lost ${tally.partsLost} parts and ${tally.creditsLost} credits, ${tally.fightHp} hit points; patched ${tally.patchedHp} for ${tally.patchCredits} credits; ${tally.repairs} repairs for ${tally.repairCredits} credits; signed on ${tally.hired}, healed ${tally.healed} in the med bay; refitted ${tally.fitted} parts at ${tally.refits} stations. The hunters: met ${tally.hunts} (${tally.taskForces} the task force), faced ${tally.huntsFaced}; ${tally.hotJumps} jumps where they might wait; ${tally.regroups} regroups and ${tally.hides} days hidden, healing ${tally.rested}; ${tally.swaps} transponder swaps for ${tally.swapCredits} credits. Heat ${tally.heat[0]} to ${tally.heat[1]}, at most ${tally.peak}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
   );
   if (ended) lines.push(`The act's record: ${tally.settled.record.map(([label, value]) => `${label} ${value}`).join('; ')}.`);
-  return { ended, steps, sectors, system, tally, lines, campaign, landed, home };
+  return { ended, steps, sectors, system, tally, lines, campaign, landed, home, travelled };
 }
 
 // The colony founded as the careful player would (M26): the ship's parts
 // given one at a time, the next each time voyagePlan.js's nextGift, until
 // the flight checks let no more go. { campaign, colony: { given (types, in
-// the order given), healed (by an infirmary as it opened), power (as
-// colony.js colonyStats has it), beds, air, crew, aboard (how many sleep
-// aboard), dark (buildings without power), flies (every flight check
-// passing, counting nobody aboard) } }.
+// the order given), power (as colony.js colonyStats has it), beds, air,
+// crew, aboard (how many sleep aboard), dark (buildings without power),
+// flies (every flight check passing, counting nobody aboard) } }. Since
+// M28 an infirmary opening heals nobody, so giving heals nobody either.
 export function foundColony(campaign, defs) {
   const given = [];
-  let healed = 0;
   for (let uid = nextGift(campaign, defs); uid !== null; uid = nextGift(campaign, defs)) {
     const done = donate(campaign, defs, uid);
     if (!done.ok) throw new Error(done.error);
     given.push(done.plan.type);
-    healed += done.healed;
     campaign = done.campaign;
   }
   const stats = colonyStats(campaign, defs);
   const colony = {
     given,
-    healed,
     power: stats.power,
     beds: stats.beds,
     air: stats.air,
@@ -539,6 +552,116 @@ export function playColony(campaign, defs, days = COLONY_DAYS) {
   };
 }
 
+// The colony's days of trips as the careful player plays them (M28), after
+// its first: each day it builds what nextBuild says, as in M27; then, with
+// a squad fit to fly (tripSquad), it refits the ship for them
+// (refitForSquad), builds for whoever stays home (homeBuild) and flies to
+// the place worth most (nextPlace), coming home within the days it plays:
+// at the place it makes the event's choice worth most (placeChoice), or
+// boards the derelict the scavengers hold with the AI (tools/boarding.js
+// fightPlace), then flies home. With no squad or no place, it passes the
+// day. { campaign, trips: { flown ([{ day, name, kind, days, squad, what }],
+// in order), away (days away), parts, materials and food (what the trips
+// brought), won and lost (the boardings), left (held derelicts left
+// alone), built ([{ day, type, name }]), moved (the parts refitted
+// aboard), hungry (hungry days in these days), healed, hurt } }.
+export function playTrips(campaign, defs, days = TRIP_DAYS) {
+  const until = campaign.colony.day + days;
+  const start = { flags: campaign.flags };
+  const flown = [];
+  const built = [];
+  const moved = [];
+  const put = (what) => {
+    const done = build(campaign, defs, what);
+    if (!done.ok) throw new Error(done.error);
+    built.push({ day: campaign.colony.day, type: done.plan.type, name: done.plan.name });
+    campaign = done.campaign;
+  };
+  while (campaign.colony.day < until) {
+    campaign = withPlaces(campaign, defs);
+    for (let what = nextBuild(campaign, defs); what; what = nextBuild(campaign, defs)) put(what);
+    let squad = tripSquad(campaign, defs);
+    if (squad.length) {
+      const refit = refitForSquad(campaign, defs, squad.length);
+      campaign = refit.campaign;
+      moved.push(...refit.moved);
+      squad = tripSquad(campaign, defs, crewRoom(campaign.ship, defs));
+    }
+    if (squad.length) {
+      for (let what = homeBuild(campaign, defs, squad); what; what = homeBuild(campaign, defs, squad)) put(what);
+      const index = nextPlace(campaign, defs, squad, until - campaign.colony.day);
+      if (index !== null) {
+        const trip = flyTrip(campaign, defs, index, squad);
+        campaign = trip.campaign;
+        flown.push(trip.record);
+        continue;
+      }
+    }
+    const day = nextDay(campaign, defs);
+    if (!day.ok) throw new Error(day.error);
+    campaign = day.campaign;
+  }
+  const since = (flag) => (campaign.flags[flag] ?? 0) - (start.flags[flag] ?? 0);
+  return {
+    campaign,
+    trips: {
+      flown,
+      away: since('daysAway'),
+      parts: since('tripParts'),
+      materials: since('tripMaterials'),
+      food: since('tripFood'),
+      won: since('placeFightsWon'),
+      lost: since('placeFightsLost'),
+      left: flown.filter((trip) => trip.what === 'left her').length,
+      built,
+      moved,
+      hungry: since('hungryDays'),
+      healed: since('colonyHealed'),
+      hurt: since('hungerHurt'),
+    },
+  };
+}
+
+// One trip, out and home: { campaign, record }.
+function flyTrip(campaign, defs, index, squad) {
+  const place = campaign.colony.places[index];
+  const day = campaign.colony.day;
+  const out = flyOut(campaign, defs, index, squad);
+  if (!out.ok) throw new Error(out.error);
+  let now = out.campaign;
+  const here = tripHere(now, defs);
+  let what = 'left her';
+  if (here.event) {
+    const pick = placeChoice(now, defs, here.event);
+    const chose = chooseAtPlace(now, defs, pick.choice.id);
+    if (!chose.ok) throw new Error(chose.error);
+    now = chose.campaign;
+    what = `${here.event.title}: ${pick.choice.label}`;
+  } else if (here.held) {
+    const fought = fightPlace(now, defs);
+    now = fought.campaign;
+    what = fought.won ? 'boarded her and won' : 'boarded her and lost';
+  }
+  const home = flyHome(now, defs);
+  if (!home.ok) throw new Error(home.error);
+  return { campaign: home.campaign, record: { day, name: place.name, kind: place.kind, days: place.days, squad: squad.length, what } };
+}
+
+// What the trips came to, as a line of its report: "30 days of trips: 4
+// trips, 14 days away: The Anvil (day 31, 2 days, 3 aboard: Rich seam: Dig
+// deep), ...; brought 2 parts, 23 materials and 10 food; boardings won 1,
+// lost 0; built Shelter (day 40); refitted Life support aboard; 0 hungry
+// days."
+function tripsLine(defs, trips) {
+  const each = trips.flown.map((trip) => `${trip.name} (day ${trip.day}, ${trip.days * 2} days, ${trip.squad} aboard: ${trip.what})`).join('; ');
+  const builds = trips.built.map((b) => `${b.name} (day ${b.day})`).join(', ');
+  return (
+    `${TRIP_DAYS} days of trips: ${trips.flown.length} trip${trips.flown.length === 1 ? '' : 's'}, ${trips.away} days away${each ? `: ${each}` : ''}. ` +
+    `Brought ${trips.parts} part${trips.parts === 1 ? '' : 's'}, ${trips.materials} materials and ${trips.food} food; boardings won ${trips.won}, lost ${trips.lost}, left ${trips.left}; ` +
+    `built ${builds || 'nothing'}; refitted ${trips.moved.length ? trips.moved.map((type) => defs.modules.get(type)?.name ?? type).join(', ') : 'nothing'} aboard; ${trips.hungry} hungry day${trips.hungry === 1 ? '' : 's'}.`
+  );
+}
+
 // What the colony's days came to, as a line of its report: "30 days at the
 // colony: built Mine 2 (day 1), Farm 4 (days 4, 6, 9, 11); its farms feed
 // the crew from day 11; 6 hungry days; food 4 to 25, materials 20 to 30, of
@@ -560,7 +683,7 @@ function colonyLine(defs, colony) {
   const housed = colony.aboard ? `${colony.aboard} of them sleep aboard` : 'everyone has a bed and air';
   return (
     `Founded the colony: gave ${given.length ? namesOf(defs, given) : 'nothing'}; power ${power.made} (${power.plants} from its plants, ${power.ship} the ship's spare), ${power.used} used, ${colony.dark} dark; ` +
-    `beds ${colony.beds} and air ${colony.air} for a crew of ${colony.crew}: ${housed}${colony.healed ? `; the infirmary healed ${colony.healed}` : ''}. The ship ${colony.flies ? 'passes' : 'fails'} its flight checks with nobody aboard.`
+    `beds ${colony.beds} and air ${colony.air} for a crew of ${colony.crew}: ${housed}. The ship ${colony.flies ? 'passes' : 'fails'} its flight checks with nobody aboard.`
   );
 }
 
@@ -621,6 +744,7 @@ export function manyVoyages(defs, runs, options = {}) {
     systemLine(defs, done),
     colonySummary(defs, done),
     daysSummary(done),
+    tripsSummary(done),
     `Jumps: ${spread(of('jumps'))}, long ${spread(of('longJumps'))}, hungry ${spread(of('hungryJumps'))}.`,
     `At the nodes: ${spread(of('events'))} events, ${spread(of('eventCredits'))} credits and ${spread(of('eventSupplies'))} supplies from them, ${spread(of('found'))} parts found, ${spread(of('sold'))} sold, ${spread(of('wounds'))} hit points lost; ${spread(of('scans'))} scans.`,
     `Hostile ships: ${spread(of('approaches'))} met, ${spread(of('approachesWon'))} disabled or blown up, ${spread(of('approachesLost'))} boarding us. Boarded her ${spread(of('boardings'))} times (won ${spread(of('boardingsWon'))}), left her ${spread(of('left'))}; fought off ${spread(of('defencesWon'))} of ${spread(of('defences'))} boardings. Salvage: ${spread(of('salvaged'))} parts and ${spread(of('salvageCredits'))} credits. Lost: ${spread(of('partsLost'))} parts and ${spread(of('creditsLost'))} credits; ${spread(of('fightHp'))} hit points in the fights. Lost a boarding at home: ${done.filter((r) => r.steps.some((step) => step.kind === 'boarding' && step.dir === 'you' && !step.won)).length} of ${done.length}; dragged past 40 rounds: ${done.reduce((sum, r) => sum + r.tally.dragged, 0)}.`,
@@ -661,7 +785,7 @@ function colonySummary(defs, done) {
   return (
     `The colony: founded in ${colonies.length} of ${done.length}, ${median(colonies.map((colony) => colony.given.length))} parts given: ${namesOf(defs, colonies.flatMap((colony) => colony.given)) || 'none'}. ` +
     `Everyone housed in ${housed} of ${colonies.length}, ${median(colonies.map((colony) => colony.aboard))} sleeping aboard; every building powered in ${colonies.filter((colony) => colony.dark === 0).length}, power to spare ${median(colonies.map((colony) => colony.power.spare))}; ` +
-    `the ship flies with nobody aboard in ${colonies.filter((colony) => colony.flies).length}; the infirmary healed in ${colonies.filter((colony) => colony.healed > 0).length}.`
+    `the ship flies with nobody aboard in ${colonies.filter((colony) => colony.flies).length}.`
   );
 }
 
@@ -679,6 +803,25 @@ function daysSummary(done) {
     `The colony's first ${COLONY_DAYS} days: its farms feed the crew within ${FED_WITHIN} days of the landing in ${soon} of ${played.length}, from day ${median(fed.map((days) => days.fedOn))}; ` +
     `farms ${median(played.map((days) => days.farms))}, mines ${median(played.map((days) => days.mines))}; hungry days ${median(played.map((days) => days.hungry))}, in ${played.filter((days) => days.hungry > 0).length} runs; ` +
     `at the end, food ${median(played.map((days) => days.food[1]))} and materials ${median(played.map((days) => days.materials[1]))}, stores ${median(played.map((days) => days.stores))}.`
+  );
+}
+
+// The colonies' days of trips (M28): how many trips, days away, what they
+// brought, the boardings, what was built for whoever stayed home, and the
+// refits.
+function tripsSummary(done) {
+  const played = done.map((r) => r.tally.trips).filter(Boolean);
+  const median = (values) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted.length ? `${sorted[Math.floor((sorted.length - 1) / 2)]} (${sorted[0]} to ${sorted.at(-1)})` : '-';
+  };
+  const sum = (key) => played.reduce((total, trips) => total + trips[key], 0);
+  const built = {};
+  for (const trips of played) for (const b of trips.built) built[b.name] = (built[b.name] ?? 0) + 1;
+  return (
+    `The colony's ${TRIP_DAYS} days of trips: trips ${median(played.map((trips) => trips.flown.length))}, flown in ${played.filter((trips) => trips.flown.length > 0).length} of ${played.length}; days away ${median(played.map((trips) => trips.away))}; ` +
+    `brought parts ${median(played.map((trips) => trips.parts))}, materials ${median(played.map((trips) => trips.materials))}, food ${median(played.map((trips) => trips.food))}; ` +
+    `boardings won ${sum('won')}, lost ${sum('lost')}; built ${Object.entries(built).map(([name, n]) => `${name} ${n}`).join(', ') || 'nothing'}; refitted aboard in ${played.filter((trips) => trips.moved.length > 0).length}; hungry days ${median(played.map((trips) => trips.hungry))}.`
   );
 }
 

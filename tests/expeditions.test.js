@@ -176,7 +176,7 @@ test('a derelict the scavengers hold: boarded in a fight on her map, her salvage
   const here = tripHere(out, rules);
   assert.deepEqual([here.event, here.held], [null, true]);
   const due = placeFightDue(out, rules);
-  assert.deepEqual([due.preset.id, due.party, due.salvage, due.materials], ['hauler', rules.encounters.get('scavvers').enemies, 2, [4, 8]]);
+  assert.deepEqual([due.preset.id, due.party, due.salvage, due.materials], ['hauler', rules.encounters.get('squatters').enemies, 2, [4, 8]]);
   // She can be left: home with nothing.
   const left = flyHome(out, rules);
   assert.equal(left.ok, true, left.error);
@@ -186,7 +186,7 @@ test('a derelict the scavengers hold: boarded in a fight on her map, her salvage
   assert.equal(begun.ok, true, begun.error);
   const { fight } = begun.campaign;
   assert.equal(begun.campaign.place, 'fight');
-  assert.deepEqual([fight.encounter, fight.crew, fight.job, fight.raid, fight.boarding.dir], ['scavvers', [1, 2, 3], null, false, 'them']);
+  assert.deepEqual([fight.encounter, fight.crew, fight.job, fight.raid, fight.boarding.dir], ['squatters', [1, 2, 3], null, false, 'them']);
   assert.equal(fight.battle.units.filter((unit) => unit.side === 'crew').length, 3);
   assert.equal(fight.battle.units.filter((unit) => unit.side === 'enemy').length, due.party.length);
   const { salvage } = fight.boarding;
