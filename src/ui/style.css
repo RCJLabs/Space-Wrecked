@@ -3961,39 +3961,36 @@ textarea {
   transform: rotate(-90deg);
 }
 
-/* Dev overlay and menu (?dev=1) */
-/* Top right, beside DEV and under the board's Hull button: the left side
-   holds the builder's drawer tabs. */
-.fps {
-  position: absolute;
-  top: 60px;
-  right: 72px;
-  z-index: 2;
-  padding: 4px 6px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.6);
-  font: 11px/1.35 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
-  white-space: pre;
-  pointer-events: none;
-}
-
-/* In a fight the crew stand where it would be: bottom right of the board,
-   by the orders, instead. */
-#ui[data-screen='fight'] .fps,
-#ui[data-screen='campaign-fight'] .fps {
-  top: auto;
-  right: 88px;
-  bottom: 40px;
-}
-
+/* Dev menu (?dev=1). The DEV button sits top right, where every screen
+   leaves room for it, and shows the frame rate under its name, so the
+   rate covers nothing; the full readout heads the menu. */
 .dev-toggle {
   position: absolute;
   z-index: 2;
   top: 4px;
   right: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0 10px;
   font-size: 12px;
   letter-spacing: 0.08em;
   opacity: 0.85;
+}
+
+.dev-fps {
+  font: 600 10px/1.1 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.fps {
+  margin: 0;
+  font: 12px/1.5 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
+  white-space: pre;
+  overflow-x: auto;
 }
 
 .dev-panel {

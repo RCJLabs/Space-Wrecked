@@ -1,4 +1,6 @@
-// The ?dev=1 menu: sandboxes, frame cap, save export and import, and status.
+// The ?dev=1 menu: the frame rate's readout (fps.js), sandboxes, frame cap,
+// save export and import, and status. Returns { toggle (the DEV button),
+// readout (the section the frame rate's readout goes in) }.
 import { exportSave, importSave, makeSave } from '../../core/save.js';
 import { saveData } from '../../sim/root.js';
 import { FPS_CAPS } from '../../sim/settings.js';
@@ -25,8 +27,10 @@ export function createDevMenu(root, { store, getStatus }) {
     setOpen(false);
   }
 
-  // Header
+  // Header, then the frame rate's readout (fps.js fills it).
   panel.append(el('div', { className: 'dev-head' }, [el('h2', { text: 'Dev menu' }), button('Close', () => setOpen(false))]));
+  const readout = section('Frames', []);
+  panel.append(readout);
 
   // Sandboxes
   panel.append(section('Sandboxes', [row([button('Title', () => go('title')), ...sandboxes.map((s) => button(s.name, () => go(s.id)))])]));
@@ -95,6 +99,7 @@ export function createDevMenu(root, { store, getStatus }) {
   );
 
   panel.append(section('Status', [status]));
+  return { toggle, readout };
 }
 
 function el(tag, props = {}, children = []) {

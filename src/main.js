@@ -11,7 +11,7 @@ import { createLoop } from './render/loop.js';
 import { applyCssVars } from './render/palette.js';
 import { initialState, reduce, saveData } from './sim/root.js';
 import { createDevMenu } from './ui/dev/menu.js';
-import { createFpsOverlay } from './ui/dev/fps.js';
+import { createFpsReadout } from './ui/dev/fps.js';
 import { syncMotion } from './ui/motion.js';
 import { screenFor } from './ui/screens.js';
 import { startTips } from './ui/tips.js';
@@ -54,8 +54,8 @@ if (params.has('dev')) storage.writeFlag('dev', params.get('dev') !== '0');
 const dev = storage.readFlag('dev');
 // Panels that sit where the DEV button goes make room for it.
 if (dev) ui.dataset.dev = '';
-const fps = dev ? createFpsOverlay(ui) : null;
-if (dev) createDevMenu(ui, { store, getStatus });
+const devMenu = dev ? createDevMenu(ui, { store, getStatus }) : null;
+const fps = devMenu ? createFpsReadout(devMenu) : null;
 
 const loop = createLoop({
   getCap: () => store.getState().settings.fpsCap,
