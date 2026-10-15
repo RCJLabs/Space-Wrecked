@@ -917,7 +917,65 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
     - fitted and seen outside in the Hull view;
     - bought in a shop;
     - flown by an enemy ship in the Enemy ships sandbox.
-- [ ] M32 All jobs, traits and talents. Draft: Pilot, Scout, Xenobiologist and Quartermaster join the Marine, Engineer and Medic (§4.5). Each has its numbers and weapon, a ship station effect, a battle ability and a colony effect. Traits go from 6 toward §5's 20. Talents: what they are and how they are earned is to settle. Recruits get a background (§9).
+- [ ] **M32 All jobs.** Three jobs so far: the Marine, the Engineer and the Medic, each a set of numbers, a weapon and a look. The medic is the only one that does anything else: a working med bay heals 1 more a jump with one aboard (M23), and the infirmary 1 more at the colony (M26). In a fight every job has the same orders.
+
+  Evan's picks (2026-10-15):
+  - **Scope:** the draft (four jobs, every job's fight, ship and colony effect, traits toward 20, talents, recruits' backgrounds) was two milestones' worth. M32 is the jobs: the four new ones, and all seven with their three effects. Traits, talents and recruits' backgrounds are M32b, straight after.
+  - **Talents:** job ranks (for M32b).
+  - **In a fight:** an order each, with a few uses a fight.
+  - **Where the new jobs come from:** two start crews take one, and all seven sign on as recruits.
+
+  Measured before settling this (`tools/run.js`, 50 runs each, the new jobs' numbers alone, with no orders yet): the deserter with a pilot for its second marine launched in 49 of 50 runs, did 56% of its jobs (65% before) and took 40 minutes at the slow median (41). The smuggler with a quartermaster for an engineer launched in 49, did 71% (76%) and took 52 minutes (41). Their orders, and tuning, have to win that back.
+
+  **Done when:**
+  - **The four jobs** are in `data/jobs.json`, each with its numbers, weapon and look, and its own helmet, so the portrait badges tell all seven apart:
+    - **Pilot:** 8 hit points, aim 65, defense 10, mobility 5, no armor; a pistol. A skinsuit with a wrapped visor and a jump pack.
+    - **Scout:** 8, aim 75, defense 5, mobility 5; a long rifle (new in `data/weapons.json`: better at long range, worse close). A skinsuit with a mirrored visor.
+    - **Xenobiologist:** 7, aim 60, defense 5, mobility 4; a dart gun (new). An EVA suit with a band of light for a visor and twin tanks.
+    - **Quartermaster:** 10, aim 60, mobility 4, armor 1; a carbine. A heavy skinsuit with a crest and shoulder plates.
+
+    The numbers are starting values, tuned by measurement (below).
+  - **An order each in a fight** (`order` in `data/jobs.json`, the rules in `src/sim/battle.js`), with its uses a fight:
+    - **Marine, Suppress** (2): an enemy in sight takes −30 aim until its side's next turn ends. It ends the marine's turn and uses a round.
+    - **Engineer, Weld** (2): the door beside it closes and is welded for 3 rounds: no one walks or sees through it.
+    - **Medic, Patch** (2): an ally beside gets 3 hit points back, up to their most; one who is down gets up with 3.
+    - **Pilot, Hustle** (1): one more action this turn.
+    - **Scout, Mark** (2): an enemy in sight is marked until the crew's next turn ends: the crew's shots at it are +15 to hit. One action.
+    - **Xenobiologist, Sedate** (2): a dart at an enemy in sight, at the shot's odds, shown as a shot's are: a hit puts it to sleep through its side's next turn. It ends the turn and uses a round.
+    - **Quartermaster, Kit out** (2): itself or an ally beside gets a full clip and 1 more armor for the rest of the fight, once each.
+
+    Stabilize stays everyone's. Each order shows as a button of 48 px or more when the crew member selected can use it, naming the order and the uses left. A tap previews it (whom it reaches, the odds for Sedate, the odds a Mark or Suppress changes) and a second confirms it, as a shot does. Marks, sleep, suppression, welds and the uses left are part of the battle, saved with the fight.
+  - **The test players use the orders:** the crew's player in raids, boardings and trips (`aiAction`'s crew side) and on jobs (`jobAction`), each by a plain rule, so act 1, raids and the voyage are measured with them. The scripted player doesn't, so the golden battle stays as it is.
+  - **A ship effect each** (`station` in `data/jobs.json`), while one of the job is aboard on the run (a second adds nothing):
+    - **Marine:** the ship's guns are +10 to hit in the approach.
+    - **Engineer:** after each jump, a wrecked part is fixed, the cheapest first.
+    - **Medic:** a working med bay heals 1 more a jump (since M23).
+    - **Pilot:** the ship's evasion is +10 in the approach.
+    - **Scout:** a scan reaches 3 links (2 without).
+    - **Xenobiologist:** a survey takes no day: no supplies, no heat.
+    - **Quartermaster:** the lockers hold 10 more supplies.
+  - **A colony effect each** (`colony` in `data/jobs.json`), while one of the job is home:
+    - **Marine:** each defense's shot at a lander hits at 60% (50% without).
+    - **Engineer:** each mine digs 1 more material a day.
+    - **Medic:** a powered infirmary heals 1 more (since M26).
+    - **Pilot:** with a pilot in the squad, a trip is a day shorter each way, never under 1.
+    - **Scout:** with a scout in the crew, a fourth place is within reach.
+    - **Xenobiologist:** each farm grows 1 more food a day.
+    - **Quartermaster:** the stores keep 20 more food and 20 more materials.
+  - **Shown as used** (Law 4): the approach's odds, a scan's reach, a survey's cost, a day's plan, a trip's days, the places and the lander's odds all count the crew's effects. The crew card, the recruits on offer and the captain screen say each job's order, ship effect and colony effect.
+  - **Start crews:** the deserter's is a marine, a pilot and a medic; the smuggler's an engineer, a quartermaster and a medic; the miner's stays. The captain screen offers each background's three jobs, as before. Recruits are rolled from all seven jobs.
+  - **Every job counts:** each order, ship effect and colony effect has a test showing its rule at work. Each order is also measured: fights with the order used against the same fights without (`tools/sim.js`) come out differently.
+  - **Saves:** `SAVE_VERSION` 24, with a migration from 23. A fight saved mid-battle loads with every crew member's uses full and nothing marked, asleep, suppressed or welded, and an approach under way gets the crew's ship effects. Old crews keep their jobs (tested).
+  - **Balance:**
+    - **Act 1** (`tools/run.js`, 50 runs from each start): every run launches, and each slow median is within 10 minutes of M31's (42, 41 and 41).
+    - **Raids** (`tools/raids.js`): each pursuer's raiders, at the hangar and the colony, measured against M31's and reported.
+    - **The voyage** (`tools/voyage.js --background all`, 30 runs): fed, met the hunters and runs with a raid lost each no worse than M31's by more than 5 runs of 30. The voyage tests pass, a check new content breaks turned into a rate over 100 seeds (CLAUDE.md).
+  - **Touch,** at the three sizes:
+    - each order, previewed and confirmed;
+    - the pilot as the deserter's captain, and the quartermaster in the smuggler's crew;
+    - a recruit of a new job signed on, and the crew card's effects;
+    - a fight quit and reopened after an order.
+- [ ] M32b Talents, traits and recruits' backgrounds. Draft: talents are job ranks (Evan's pick, 2026-10-15). Each job has two of its own, earned on their own at 3 and 8 fights, by everyone who stood in them: its order, or its ship or colony effect, gets better (a medic's Patch heals more, a pilot's evasion grows). That is 14 talents, with nothing to pick. Traits go from 6 toward §5's 20, and recruits get a background (§9).
 - [ ] M33 Factions, quests and companions. Draft: factions whose standing moves with the jobs and events the crew takes; quests that chain jobs and events across the acts; named companions with loyalty quests (§9).
 - [ ] M34 Image pass: Base44 portraits and scenes. Draft: WebP portraits for named characters (companions, the districts' clients) and scenes (the hangar, the lift-off, the landing), each logged in `assets/LOG.md`. Recruits keep their layered portraits, drawn in code since M23c.
 - [ ] M35 Audio pass with ZzFX. Draft: sounds made in code with ZzFX (approved for M35): shots and hits, the builder's placing, and the menus; a mute and a volume in the settings; audio starts after the first tap.
