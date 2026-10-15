@@ -1,6 +1,8 @@
 // The enemy AI, v1: the next action for the side whose turn it is, unit by
 // unit, like any player (aiAction has scripted.js's shape). Pure and
 // deterministic: no random numbers, and ties go to the plan found first.
+// Playing the crew (the test players, M32), a unit first gives its job's
+// order where orderAi.js's plain rule for it says to; enemies have none.
 //
 // For the first unit of that side with an action left, every plan it could
 // make this turn: stay, move (one action) or dash (both), then shoot at an
@@ -29,6 +31,7 @@
 // only counts for a shot worth the risk (OPEN_SHOT) and better than any
 // covered tile offers, or when no covered tile is in reach.
 import { coverFrom } from './cover.js';
+import { orderAction } from './orderAi.js';
 import { SIDES } from './grid.js';
 import { edgeKey, wallAt } from './mapFromShip.js';
 import { reachable, sideToward, stepsFrom } from './moves.js';
@@ -52,6 +55,8 @@ export const RECKLESS = 3; // how much worse than holding back a shot may score 
 export function aiAction(battle, rules) {
   const unit = battle.units.find((u) => u.side === battle.side && u.status === 'active' && u.ap > 0);
   if (!unit) return { type: 'end' };
+  const order = orderAction(battle, unit, rules);
+  if (order) return order;
   if (unit.ammo < 1) return { type: 'reload', unit: unit.id };
   const plan = bestPlan(plansFor(battle, unit, rules));
   if (plan.open) return { type: 'open', unit: unit.id, side: plan.open };

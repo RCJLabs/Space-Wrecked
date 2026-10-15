@@ -7,7 +7,7 @@ import { indexDefs } from '../src/sim/defs.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { readData } from '../tools/data.js';
 import { EXAMPLE_SCRIPT } from '../tools/build-ship.js';
-import { DEFAULTS, parseArgs, reportText, rulesWith, runFights, setupText, share, shipsFor, summarize } from '../tools/sim.js';
+import { DEFAULTS, parseArgs, reportText, rulesFor, rulesWith, runFights, setupText, share, shipsFor, summarize } from '../tools/sim.js';
 
 const data = readData();
 const rules = indexDefs(data);
@@ -32,7 +32,7 @@ test('the command line: defaults, every option, and what is wrong with a bad one
     [['--fights'], /--fights needs a value/],
     [['--set', 'halfCover'], /--set needs name=number/],
     [['--boarders', 'human'], /--boarders is played by ai or scripted/],
-    [['--compare'], /--compare needs a --set/],
+    [['--compare'], /--compare needs a --set or --orders/],
     [['--bogus'], /Unknown option "--bogus"/],
   ];
   for (const [argv, message] of wrong) assert.throws(() => parseArgs(argv), message, argv.join(' '));
@@ -130,7 +130,7 @@ test('the report, and the same fights before and after a change', () => {
   const after = summarize(runFights(rulesWith(data, options.sets).rules, options));
   const before = summarize(runFights(rules, options));
   const text = reportText(after, setupText(rules, options, ships, data.balance));
-  assert.match(text, /^8 fights on example ship, pirate cutter\. The squad \(marine, engineer, medic\), played by the AI, against the boarding party/);
+  assert.match(text, /^8 fights on example ship, pirate cutter\. The squad \(marine, engineer, medic\), played by the AI with every job order, against the boarding party/);
   assert.match(text, /with halfCover 20 → 30\./);
   assert.match(text, /\nExample ship +4 +\d+% \(\d+–\d+\)/);
   assert.match(text, /\nAll +8 /);
@@ -138,6 +138,36 @@ test('the report, and the same fights before and after a change', () => {
   const compared = reportText(after, 'Compared.', before);
   assert.match(compared, /\nExample ship +4 +\d+% → \d+%/);
   assert.doesNotMatch(compared, /95% interval/);
+});
+
+test('another squad, and the orders the crew gives: all, none or some kinds (M32)', () => {
+  assert.deepEqual(parseArgs(['--squad', 'pilot, scout,medic', '--orders', 'mark,patch', '--compare']), { ...DEFAULTS, squad: ['pilot', 'scout', 'medic'], orders: 'mark,patch', compare: true });
+  const some = rulesFor(rules, { squad: ['pilot', 'scout', 'medic'], orders: 'mark,patch' });
+  assert.equal(some.ok, true, some.error);
+  assert.deepEqual(some.rules.squad, ['pilot', 'scout', 'medic']);
+  assert.deepEqual([...some.rules.jobs.values()].filter((job) => job.order).map((job) => job.order.type), ['patch', 'mark']);
+  assert.equal(rules.jobs.get('pilot').order.type, 'hustle', 'the rules themselves are left alone');
+  assert.ok([...rulesFor(rules, { orders: 'none' }).rules.jobs.values()].every((job) => job.order === null));
+  assert.equal(rulesFor(rules, {}).rules.jobs, rules.jobs);
+  assert.match(rulesFor(rules, { squad: ['cook'] }).error, /No job "cook"/);
+  assert.match(rulesFor(rules, { orders: 'juggle' }).error, /No order "juggle"/);
+  const text = setupText(rules, { ...DEFAULTS, ...parseArgs(['--orders', 'none', '--compare']) }, shipsFor(['example'], rules), data.balance);
+  assert.match(text, /The squad \(marine, engineer, medic\), played by the AI with no job orders \(before: every job order\)/);
+});
+
+test('every order is used by the crew\'s AI, and the same fights without it come out differently (M32)', () => {
+  const ships = shipsFor(['example', 'cutter', 'hauler'], rules);
+  const kinds = { marine: 'suppress', engineer: 'weld', medic: 'patch', pilot: 'hustle', scout: 'mark', xenobiologist: 'sedate', quartermaster: 'kit' };
+  for (const [job, kind] of Object.entries(kinds)) {
+    const squad = job === 'medic' ? ['medic', 'marine', 'engineer'] : [job, 'engineer', 'medic'];
+    const others = Object.values(kinds).filter((k) => k !== kind).join(',');
+    const fights = (orders) => runFights(rulesFor(rules, { squad, orders }).rules, { ...DEFAULTS, ships, fights: 24 });
+    const used = fights('all');
+    const unused = fights(others);
+    assert.ok(used.some((r) => r.given[kind] > 0), `${kind} is given`);
+    assert.ok(unused.every((r) => !r.given[kind]), `${kind} is not given without it`);
+    assert.notDeepEqual(used.map((r) => [r.winner, r.rounds]), unused.map((r) => [r.winner, r.rounds]), `${kind} changes the fights`);
+  }
 });
 
 test('the harness runs from the command line', () => {
