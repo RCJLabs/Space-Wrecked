@@ -2,6 +2,22 @@
 
 Newest entry first.
 
+## The frame rate's readout moved (2026-10-15)
+
+Evan: "Move the fps banner". In dev mode (`?dev=1`) the frame rate's readout sat over the screen: under the builder's Hull button, over the chart and the colony, and in a fight beside the orders.
+- **The DEV button shows the rate** under its name ("DEV", then "60 fps"), in the top right corner that every screen keeps clear for it. The button is 58 px wide, 4 px narrower than before, so it covers nothing it didn't already.
+- **The full readout heads the dev menu**, under Frames: the frame times, the cap, the screen's rate and size, and on a 3D board how moving frames were drawn and what a full frame costs (`src/ui/dev/fps.js`).
+- **Checked** at the three sizes, on the title, the hangar, the builder, the chart, the colony (placing a farm, and with the ship away) and a raid's fight:
+  - the button reads its rate and is 48 px or more;
+  - the menu's readout updates as the game runs;
+  - no console errors;
+  - every milestone's browser check passes.
+- **What the DEV button sits over is unchanged from main.** It still covers:
+  - the corner of the chart's crew card;
+  - the top of the line under the colony's Placing at 821 × 283;
+  - on the folded screens, the fight column's Title and Log once the column scrolls to the orders. That has been so since M8, and a swipe brings them back out from under it.
+- **On the phone:** open with `?dev=1`. The rate should read on the DEV button on every screen, and the menu's Frames section should show the full readout.
+
 ## M29 Raids (2026-10-15)
 
 **Status:** done, and the ROADMAP.md box is ticked. It is Phase 5's last milestone, so **Gate 5 is Evan's call** (ROADMAP.md, after M29: act 3 played on the phone from the landing to a colony that feeds itself, flies trips and has faced a raid). The pursuer comes for the colony:
