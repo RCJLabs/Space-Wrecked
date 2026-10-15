@@ -44,6 +44,7 @@ import { FACED } from '../src/sim/approach.js';
 import { HEAT_MAX, maxHp, shipChecklist } from '../src/sim/campaign.js';
 import { colonyStats, donate, shipParts } from '../src/sim/colony.js';
 import { outcomeFor } from '../src/sim/events.js';
+import { shipStats } from '../src/sim/constraints.js';
 import { crewRoom } from '../src/sim/crew.js';
 import { COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, playColony, playTrips, TRIP_DAYS, voyage, voyagesByBackground } from '../tools/voyage.js';
 import { bestWorld, FIT_ORDER, nextGift, systemMove } from '../tools/voyagePlan.js';
@@ -53,7 +54,11 @@ const { balance } = rules;
 const RUNS = 30;
 // Each seed's act 1 test run, once: the voyages below fly from it.
 const lifts = Array.from({ length: RUNS }, (_, i) => launchedAt(rules, i + 1));
-const fly = (options) => lifts.map((lifted, i) => voyage(rules, i + 1, { refit: 'no', ...options }, lifted));
+// What is fitted before a voyage, and a small reactor first where the ship
+// has no power to spare for it, as the flight checklist's fix asks: since
+// M31 some act 1 runs buy a Scrapline engine, which draws 1 more.
+const powered = (lifted, fit = []) => (shipStats(lifted.campaign.ship, rules).power + fit.reduce((sum, type) => sum + rules.modules.get(type).stats.power, 0) >= 0 ? fit : ['smallreactor', ...fit]);
+const fly = (options) => lifts.map((lifted, i) => voyage(rules, i + 1, { refit: 'no', ...options, fit: powered(lifted, options.fit) }, lifted));
 const trips = fly({});
 const careful = trips;
 // The careful player with a cargo hold fitted, room to feed a recruit; and

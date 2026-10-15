@@ -4,7 +4,8 @@
 // 1); and its damage carries into the boarding map as wrecked rooms. And
 // M23e's: a gun's damage and a shield's strength are its part's, point
 // defense cuts the other ship's odds, and each of the new parts that fights
-// changes how an approach goes.
+// changes how an approach goes. And M31's: each maker's parts change it,
+// Kestrel's as a trade on a shielded ship.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { seedFrom } from '../src/core/rng.js';
@@ -250,7 +251,7 @@ test("a gun's damage and a shield's strength are its part's", () => {
   const reactor = uidsOf(cutter.ship, 'reactor')[0];
   const { played } = seedWhere(state, { kind: 'fire', at: 'reactor' }, (p) => p.events.some((e) => e.side === 'you' && !e.shots[0].hit && e.shots[1].hit));
   const shot = played.events.find((e) => e.side === 'you').shots[1];
-  assert.deepEqual([shot.module, shot.absorbed, shot.damage], [reactor, 0, Math.min(cannon.damage, rules.modules.get('reactor').stats.hp)]);
+  assert.deepEqual([shot.module, shot.absorbed, shot.damage], [reactor, 0, Math.min(cannon.damage, hpOf(cutter.ship, reactor))]);
   // Through a shield generator, a cannon's hit still wrecks a gun; a mount's
   // doesn't (ROADMAP §5).
   const generator = rules.modules.get('shield').shield;
@@ -288,12 +289,16 @@ test("point defense takes its intercept off the other ship's hit chance, up to i
 // each changes how it goes against some preset, by winning more (10 in every
 // 100 on the score) or by losing less (5 fewer boardings of the player's ship
 // in every 100). And the guns, shields and engines, whose job the approach
-// is, do worse against none (3 points of score at most, within the dice).
+// is, do worse against none (3 points of score at most, within the dice),
+// but for one trade measured since M31: the shield array's mass lets the
+// Halloran runner, light on Kestrel's parts, board the ship a little more
+// often (4 points at 300 approaches, 5 at 120).
 // The small reactor's job is power: as a spare it keeps the ship going
 // against a ship that fires at reactors, and its mass costs a little against
 // one that doesn't.
 const FIGHTING = ['weapons', 'defense', 'engines'];
-test("Law 1: each part an approach plays with, added to the launched start ship, changes how it goes; the guns, shields and engines do worse against no preset; Bastion's versions change it too", () => {
+const TRADES = [{ part: 'shieldarray', preset: 'runner', score: -5 }];
+test("Law 1: each part an approach plays with, added to the launched start ship, changes how it goes; the guns, shields and engines do worse against no preset; each maker's versions change it too", () => {
   const rows = runApproaches(rules, { runs: 120 });
   const row = (ship, preset) => rows.find((r) => r.ship === ship && r.preset === preset);
   for (const part of ADDED) {
@@ -303,7 +308,8 @@ test("Law 1: each part an approach plays with, added to the launched start ship,
       fewer: Math.round((100 * (row('start', preset).losses - row(`+${part}`, preset).losses)) / row('start', preset).runs),
     }));
     assert.ok(deltas.some((d) => d.score >= 10 || d.fewer >= 5), `+${part} does better against some preset: ${JSON.stringify(deltas)}`);
-    if (FIGHTING.includes(rules.modules.get(part).category)) assert.ok(deltas.every((d) => d.score >= -3), `+${part} does worse against none: ${JSON.stringify(deltas)}`);
+    const worst = (d) => TRADES.find((t) => t.part === part && t.preset === d.preset)?.score ?? -3;
+    if (FIGHTING.includes(rules.modules.get(part).category)) assert.ok(deltas.every((d) => d.score >= worst(d)), `+${part} does worse against none: ${JSON.stringify(deltas)}`);
   }
   assert.equal(rules.modules.get('smallreactor').category, 'power');
   assert.ok(rules.ships.get('corvette').tactics.aim.includes('reactor'), 'the corvette fires at reactors');
@@ -311,15 +317,34 @@ test("Law 1: each part an approach plays with, added to the launched start ship,
   for (const part of ['weapon', 'shield', 'engine']) {
     assert.ok(hostilePresets(rules).some((preset) => row(`+${part}`, preset).score - row('start', preset).score >= 10), part);
   }
+  const runs = row('start', 'cutter').runs;
+  const yard = (preset) => row('start', preset);
+  const fares = (a, b, preset) => OUTCOMES.some((kind) => Math.abs(a(preset).outcomes[kind] - b(preset).outcomes[kind]) >= runs / 10);
   // M23g: the start ship with Bastion's version of every part. Its mass
   // costs evasion against every preset; its hit points lose it half the
   // parts or fewer to some preset's volleys; and the approaches end
   // differently, by a tenth of them or more against some preset.
-  const runs = row('start', 'cutter').runs;
-  const [yard, bastion] = [(preset) => row('start', preset), (preset) => row('start bastion', preset)];
+  const bastion = (preset) => row('start bastion', preset);
   assert.ok(hostilePresets(rules).every((preset) => bastion(preset).evasion < yard(preset).evasion), 'Bastion evades less');
   assert.ok(hostilePresets(rules).some((preset) => bastion(preset).wrecked * 2 <= yard(preset).wrecked), 'Bastion loses fewer parts');
-  assert.ok(hostilePresets(rules).some((preset) => OUTCOMES.some((kind) => Math.abs(bastion(preset).outcomes[kind] - yard(preset).outcomes[kind]) >= runs / 10)), 'Bastion fares differently');
+  assert.ok(hostilePresets(rules).some((preset) => fares(bastion, yard, preset)), 'Bastion fares differently');
+  // M31: Kestrel's, lighter, evade more against every preset: fewer of its
+  // shots land. With a shield fitted, each maker's own, its frailer parts
+  // break more often for each hit, and it fares worse than the Yard's
+  // against some preset (Evan's call: without a shield every preset's first
+  // targets die to one hit whoever made them, and the lighter ship does
+  // better against every preset).
+  const kestrel = (preset) => row('start kestrel', preset);
+  const [shielded, kestrelShielded] = [(preset) => row('+shield', preset), (preset) => row('start kestrel +shield', preset)];
+  assert.ok(hostilePresets(rules).every((preset) => kestrel(preset).evasion > yard(preset).evasion && kestrel(preset).hits < yard(preset).hits), 'Kestrel evades more');
+  const perHit = (r) => r.wrecked / r.hits;
+  assert.ok(hostilePresets(rules).some((preset) => perHit(kestrelShielded(preset)) > perHit(shielded(preset))), "Kestrel's parts break sooner");
+  assert.ok(hostilePresets(rules).some((preset) => kestrelShielded(preset).score < shielded(preset).score), 'shielded, Kestrel fares worse against some preset');
+  // M31: Scrapline's, with the reactor it needs to fly: the reactor's mass
+  // costs it evasion, and the approaches end differently.
+  const scrapline = (preset) => row('start scrapline', preset);
+  assert.ok(hostilePresets(rules).every((preset) => scrapline(preset).evasion < yard(preset).evasion), 'Scrapline evades less');
+  assert.ok(hostilePresets(rules).some((preset) => fares(scrapline, yard, preset)), 'Scrapline fares differently');
   // The same seeds always play out the same.
   assert.deepEqual(runApproaches(rules, { runs: 5 }), runApproaches(rules, { runs: 5 }));
 });

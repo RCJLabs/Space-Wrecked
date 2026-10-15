@@ -32,7 +32,7 @@ const VERSION_KEYS = ['id', 'base', 'manufacturer', 'name', 'stats', 'cost'];
 // maybe a line for its parts' cards and the mark on its parts' roofs
 // outside (exterior.js draws the marks; its skin is in palette.js).
 const MAKER_KEYS = ['id', 'name', 'short', 'blurb', 'mark'];
-const MAX_MAKER_SHORT = 8;
+const MAX_MAKER_SHORT = 9;
 // What a med bay heals each of the wounded in a jump (medbay.js): up to this.
 const MAX_HEAL = 10;
 // What a part does in the approach phase (src/sim/approach.js), by the tag

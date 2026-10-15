@@ -92,25 +92,34 @@ test("a curved surface's pieces are drawn grown by half a pixel, not outlined, s
   for (const d of [x0 - gx0, gx1 - x1, y0 - gy0, gy1 - y1]) assert.ok(Math.abs(d - 0.5) < 1e-9, `out by ${d}`);
 });
 
-test("a Bastion part wears its maker's fittings, chevrons and flame under the ship's paint; a Yard part, the yard's (M23g)", () => {
+test("a maker's part wears its maker's fittings, mark and flame under the ship's paint; a Yard part, the yard's (M23g, M31)", async () => {
+  const { readData: read } = await import('../tools/data.js');
+  const marks = Object.fromEntries(read().manufacturers.manufacturers.map((m) => [m.id, m.mark]));
+  assert.deepEqual(marks, { yard: undefined, bastion: 'chevrons', kestrel: 'stripes', scrapline: 'patches' });
   const ship = example();
-  const bastion = { ...ship, modules: ship.modules.map((m) => (m.type === 'engine' ? { ...m, type: 'bastion-engine' } : m)) };
-  const [yard, made] = [scene(ship), scene(bastion)];
+  const yard = scene(ship);
   const colors = (s) => new Set(s.faces.map((f) => f.color));
-  // Bastion's chevrons and gunmetal show only on the Bastion ship; the hull's
-  // paint is the same on both.
-  for (const color of [skins.bastion.mark, skins.bastion.markDark, skins.bastion.dark]) {
-    assert.ok(colors(made).has(color) && !colors(yard).has(color), color);
-  }
-  assert.ok(colors(made).has(skins.yard.hull) && colors(made).has(skins.yard.metal), "the hull and the Yard's parts keep their colors");
-  // The engines' flames, at rest and lifting off, are Bastion's.
-  assert.ok(made.exhausts.length > 0 && made.exhausts.every((e) => e.flame === skins.bastion.flame));
   assert.ok(yard.exhausts.every((e) => e.flame === skins.yard.flame));
-  assert.ok(made.glows.some((g) => g.color === skins.bastion.flame));
-  // Painted rust: the hull takes the paint, Bastion's fittings stay its own.
-  const rust = scene({ ...bastion, paint: 'rust' });
-  assert.ok(!colors(rust).has(skins.yard.hull) && colors(rust).has(skins.bastion.mark));
-  // A version's mark is the only thing it adds: the same shapes, a few faces more.
-  assert.equal(made.exhausts.length, yard.exhausts.length);
-  assert.ok(made.faces.length > yard.faces.length && made.faces.length < yard.faces.length + 40);
+  for (const maker of ['bastion', 'kestrel', 'scrapline']) {
+    const skin = skins[maker];
+    const engines = { ...ship, modules: ship.modules.map((m) => (m.type === 'engine' ? { ...m, type: `${maker}-engine` } : m)) };
+    const made = scene(engines);
+    // Its mark and its fittings show only on its ship (chevrons and patches
+    // in two colors, stripes in one); the hull's paint is the same on both.
+    const own = [skin.mark, skin.dark, ...(marks[maker] === 'stripes' ? [] : [skin.markDark])];
+    for (const color of own) assert.ok(colors(made).has(color) && !colors(yard).has(color), `${maker}: ${color}`);
+    assert.ok(colors(made).has(skins.yard.hull) && colors(made).has(skins.yard.metal), "the hull and the Yard's parts keep their colors");
+    // The engines' flames, at rest and lifting off, are the maker's.
+    assert.ok(made.exhausts.length > 0 && made.exhausts.every((e) => e.flame === skin.flame), maker);
+    assert.ok(made.glows.some((g) => g.color === skin.flame), maker);
+    // Painted rust: the hull takes the paint, the maker's fittings stay its own.
+    const rust = scene({ ...engines, paint: 'rust' });
+    assert.ok(!colors(rust).has(skins.yard.hull) && colors(rust).has(skin.mark), maker);
+    // A version's mark is the only thing it adds: the same shapes, a few faces more.
+    assert.equal(made.exhausts.length, yard.exhausts.length);
+    assert.ok(made.faces.length > yard.faces.length && made.faces.length < yard.faces.length + 40, `${maker}: ${made.faces.length - yard.faces.length} faces more`);
+  }
+  // Each maker's flames are its own.
+  const flames = ['yard', 'bastion', 'kestrel', 'scrapline'].map((maker) => skins[maker].flame);
+  assert.equal(new Set(flames).size, flames.length);
 });

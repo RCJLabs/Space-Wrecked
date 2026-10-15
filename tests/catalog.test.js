@@ -76,34 +76,45 @@ test("every part is in one of the drawer's categories, in the order they are sho
   for (const category of rules.categories) assert.ok(defs.some((def) => def.category === category.id), `${category.id} has parts`);
 });
 
-test("the Parts tab: all the parts by category, base parts first, each with Bastion's beside it; one category; a size; a maker; only those on hand", () => {
+test("the Parts tab: all the parts by category, base parts first, each with its makers' versions beside it; one category; a size; a maker; only those on hand", () => {
   const order = catalogOrder(rules);
-  assert.deepEqual(order.slice(0, 6), ['bridge', 'bastion-bridge', 'reactor', 'bastion-reactor', 'smallreactor', 'bastion-smallreactor']);
+  assert.deepEqual(order.slice(0, 8), ['bridge', 'bastion-bridge', 'kestrel-bridge', 'scrapline-bridge', 'reactor', 'bastion-reactor', 'kestrel-reactor', 'scrapline-reactor']);
   assert.equal(order.length, rules.modules.size);
   // All, at any size: every part, and each category's count.
   const all = catalogView(rules);
   assert.deepEqual([all.shown, all.empty], [order, null]);
   assert.equal(all.counts[ALL], rules.modules.size);
   for (const { id } of rules.categories) assert.equal(all.counts[id], defs.filter((def) => def.category === id).length, id);
-  // One category, then a size within it: the counts follow the size.
+  // One category, then a size within it: the counts follow the size. Kestrel
+  // makes no light engine (it weighs 1 already, M31).
   const engines = catalogView(rules, { category: 'engines' });
-  assert.deepEqual(engines.shown, ['engine', 'bastion-engine', 'lightengine', 'bastion-lightengine', 'heavyengine', 'bastion-heavyengine']);
-  assert.deepEqual(engines.makers, { [ALL]: 6, yard: 3, bastion: 3 });
+  assert.deepEqual(engines.shown, [
+    'engine', 'bastion-engine', 'kestrel-engine', 'scrapline-engine',
+    'lightengine', 'bastion-lightengine', 'scrapline-lightengine',
+    'heavyengine', 'bastion-heavyengine', 'kestrel-heavyengine', 'scrapline-heavyengine',
+  ]);
+  assert.deepEqual(engines.makers, { [ALL]: 11, yard: 3, bastion: 3, kestrel: 2, scrapline: 3 });
   const medium = catalogView(rules, { category: 'engines', size: 'medium' });
-  assert.deepEqual(medium.shown, ['engine', 'bastion-engine', 'heavyengine', 'bastion-heavyengine']);
+  assert.deepEqual(medium.shown, ['engine', 'bastion-engine', 'kestrel-engine', 'scrapline-engine', 'heavyengine', 'bastion-heavyengine', 'kestrel-heavyengine', 'scrapline-heavyengine']);
   assert.equal(medium.counts[ALL], defs.filter((def) => def.size[0] * def.size[1] > 2 && def.size[0] * def.size[1] <= 6).length);
-  assert.deepEqual(catalogView(rules, { size: 'large' }).shown, ['reactor', 'bastion-reactor', 'cargo', 'bastion-cargo', 'largehold', 'bastion-largehold']);
+  const makersOf = (types) => types.flatMap((type) => [type, `bastion-${type}`, `kestrel-${type}`, `scrapline-${type}`]);
+  assert.deepEqual(catalogView(rules, { size: 'large' }).shown, makersOf(['reactor', 'cargo', 'largehold']));
   const small = catalogView(rules, { size: 'small' });
-  assert.deepEqual(catalogView(rules, { category: 'command', size: 'small' }), { shown: [], counts: small.counts, makers: { [ALL]: 0, yard: 0, bastion: 0 }, empty: 'No parts that size here.' });
+  assert.deepEqual(catalogView(rules, { category: 'command', size: 'small' }), { shown: [], counts: small.counts, makers: { [ALL]: 0, yard: 0, bastion: 0, kestrel: 0, scrapline: 0 }, empty: 'No parts that size here.' });
   // One maker (M23g): its parts alone, and the categories count them alone.
   const bastion = catalogView(rules, { category: 'engines', maker: 'bastion' });
   assert.deepEqual(bastion.shown, ['bastion-engine', 'bastion-lightengine', 'bastion-heavyengine']);
   assert.deepEqual([bastion.counts[ALL], bastion.counts.engines, bastion.makers.yard], [21, 3, 3]);
-  // Construction mode: only what is on hand.
-  const onHand = (type) => ({ engine: 3, quarters: 1, corridor: 2, 'bastion-engine': 1 })[type] ?? 0;
+  const kestrel = catalogView(rules, { category: 'engines', maker: 'kestrel' });
+  assert.deepEqual(kestrel.shown, ['kestrel-engine', 'kestrel-heavyengine']);
+  assert.deepEqual([kestrel.counts[ALL], kestrel.counts.engines], [17, 2]);
+  assert.deepEqual(catalogView(rules, { category: 'engines', maker: 'scrapline' }).shown, ['scrapline-engine', 'scrapline-lightengine', 'scrapline-heavyengine']);
+  // Construction mode: only what is on hand, every maker's.
+  const onHand = (type) => ({ engine: 3, quarters: 1, corridor: 2, 'bastion-engine': 1, 'kestrel-engine': 1, 'scrapline-quarters': 2 })[type] ?? 0;
   const stocked = catalogView(rules, { onHand });
-  assert.deepEqual(stocked.shown, ['engine', 'bastion-engine', 'quarters', 'corridor']);
-  assert.deepEqual([stocked.counts.engines, stocked.counts.weapons, stocked.makers.bastion], [2, 0, 1]);
+  assert.deepEqual(stocked.shown, ['engine', 'bastion-engine', 'kestrel-engine', 'quarters', 'scrapline-quarters', 'corridor']);
+  assert.deepEqual([stocked.counts.engines, stocked.counts.crew, stocked.counts.weapons], [3, 2, 0]);
+  assert.deepEqual(stocked.makers, { [ALL]: 6, yard: 3, bastion: 1, kestrel: 1, scrapline: 1 });
   assert.equal(catalogView(rules, { category: 'weapons', onHand }).empty, 'Nothing on hand here.');
   assert.equal(catalogView(rules, { onHand: () => 0 }).empty, 'Nothing on hand to fit.');
   // The size filter goes round, a step a tap.

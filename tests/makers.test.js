@@ -1,8 +1,11 @@
-// M23g's second manufacturer (ROADMAP §7): Bastion Arms makes a version of
-// every part, on the Yard part's footprint, interior and fittings, with more
-// hit points and more mass. Where the game asks for a part, any maker's
-// version will do. Saves and codes name parts by id, so neither version
-// changes: old ones load with the Yard's parts, and Bastion's round-trip.
+// The makers (ROADMAP §7): M23g's Bastion Arms makes a version of every
+// part, on the Yard part's footprint, interior and fittings, with more hit
+// points and more mass; M31's Kestrel Dynamics, of every part that weighs 2
+// or more, lighter, frailer and dearer; and M31's Scrapline, of every part,
+// cheaper and frailer, each drawing 1 more power and each reactor making 1
+// less. Where the game asks for a part, any maker's version will do. Saves
+// and codes name parts by id, so neither version changes: old ones load
+// with the Yard's parts, and every maker's round-trip.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BLUEPRINT_VERSION, decodeBlueprint, encodeBlueprint } from '../src/core/blueprint.js';
@@ -33,21 +36,60 @@ test("a maker's version takes everything from its base part but what it changes,
   assert.equal(stray.size, undefined, 'a version of nothing is left for the validator to name');
 });
 
-test('Bastion makes every part, M23e\'s included, on its shape: tougher and heavier, and no cheaper', () => {
-  assert.deepEqual([...rules.manufacturers.keys()], ['yard', 'bastion']);
-  assert.equal(rules.manufacturers.get('bastion').name, 'Bastion Arms');
+// What each maker makes, and how its version differs from the Yard's part:
+// the stats it changes, and those it keeps.
+const LINES = {
+  bastion: {
+    name: 'Bastion Arms',
+    makes: () => true,
+    keeps: ['power', 'thrust', 'berths', 'lifeSupport', 'cargo'],
+    differs: (made, def) => made.stats.hp > def.stats.hp && made.stats.mass > def.stats.mass && made.cost >= def.cost,
+  },
+  // About a third less mass, half the hit points (Evan's call, 2026-10-15:
+  // the trade has to show on a shielded ship) and a fifth dearer. The four
+  // parts that weigh 1 can't get lighter in whole numbers.
+  kestrel: {
+    name: 'Kestrel Dynamics',
+    makes: (def) => def.stats.mass >= 2,
+    keeps: ['power', 'thrust', 'berths', 'lifeSupport', 'cargo'],
+    differs: (made, def) =>
+      made.stats.mass < def.stats.mass && made.stats.mass <= Math.ceil(def.stats.mass * 0.75) &&
+      made.stats.hp < def.stats.hp && made.stats.hp <= Math.ceil(def.stats.hp / 2) &&
+      made.cost > def.cost && made.cost <= def.cost * 1.25,
+  },
+  // About a third off the price, a quarter fewer hit points; 1 more power
+  // drawn by each part that draws any, and 1 less made by each reactor.
+  scrapline: {
+    name: 'Scrapline',
+    makes: () => true,
+    keeps: ['mass', 'thrust', 'berths', 'lifeSupport', 'cargo'],
+    differs: (made, def) =>
+      made.stats.hp < def.stats.hp && made.cost < def.cost && made.cost <= def.cost * 0.7 &&
+      made.stats.power === def.stats.power - (def.stats.power === 0 ? 0 : 1),
+  },
+};
+
+test("each maker makes its line of parts on the Yard part's shape: Bastion's tougher and heavier, Kestrel's lighter, frailer and dearer, Scrapline's cheaper, frailer and hungrier for power (M23g, M31)", () => {
+  assert.deepEqual([...rules.manufacturers.keys()], ['yard', ...Object.keys(LINES)]);
   assert.equal(parts.length, 21);
+  const made = Object.fromEntries(Object.keys(LINES).map((maker) => [maker, 0]));
   for (const def of parts) {
-    assert.deepEqual(versionsOf(rules, def.id), [def.id, `bastion-${def.id}`], def.id);
-    const bastion = rules.modules.get(`bastion-${def.id}`);
-    assert.equal(baseOf(bastion), def.id);
-    for (const key of ['size', 'rotates', 'facesSpace', 'tags', 'interior', 'category', 'glyph', 'damage', 'shield', 'intercept', 'heal']) {
-      assert.deepEqual(bastion[key], def[key], `${bastion.id}'s ${key} is its base part's`);
+    const makers = Object.keys(LINES).filter((maker) => LINES[maker].makes(def));
+    assert.deepEqual(versionsOf(rules, def.id), [def.id, ...makers.map((maker) => `${maker}-${def.id}`)], def.id);
+    for (const maker of makers) {
+      const version = rules.modules.get(`${maker}-${def.id}`);
+      assert.equal(baseOf(version), def.id);
+      assert.equal(version.manufacturer, maker);
+      for (const key of ['size', 'rotates', 'facesSpace', 'tags', 'interior', 'category', 'glyph', 'damage', 'shield', 'intercept', 'heal']) {
+        assert.deepEqual(version[key], def[key], `${version.id}'s ${key} is its base part's`);
+      }
+      for (const key of LINES[maker].keeps) assert.equal(version.stats[key], def.stats[key], `${version.id}'s ${key}`);
+      assert.ok(LINES[maker].differs(version, def), `${version.id}: ${JSON.stringify(version.stats)} for ${version.cost}, against ${JSON.stringify(def.stats)} for ${def.cost}`);
+      made[maker] += 1;
     }
-    for (const key of ['power', 'thrust', 'berths', 'lifeSupport', 'cargo']) assert.equal(bastion.stats[key], def.stats[key], `${bastion.id}'s ${key}`);
-    assert.ok(bastion.stats.hp > def.stats.hp && bastion.stats.mass > def.stats.mass, `${bastion.id} is tougher and heavier`);
-    assert.ok(bastion.cost >= def.cost, `${bastion.id} is no cheaper`);
   }
+  assert.deepEqual(made, { bastion: 21, kestrel: 17, scrapline: 21 });
+  for (const [maker, line] of Object.entries(LINES)) assert.equal(rules.manufacturers.get(maker).name, line.name);
 });
 
 test("a part asked for is any maker's: counted on hand, and the one at hand fitted", () => {
@@ -60,6 +102,10 @@ test("a part asked for is any maker's: counted on hand, and the one at hand fitt
   assert.equal(versionAtHand(rules, 'quarters', count), 'quarters');
   assert.equal(versionAtHand(rules, 'reactor', count), 'reactor', 'none at hand: the part asked for');
   assert.equal(versionAtHand(rules, 'engine', null), 'engine', 'endless parts (the sandbox): the base part');
+  // Every maker's counts (M31).
+  const mixed = { 'kestrel-engine': 1, 'scrapline-engine': 2, 'scrapline-reactor': 1 };
+  assert.equal(countOfAny(rules, 'engine', (type) => mixed[type] ?? 0), 3);
+  assert.equal(versionAtHand(rules, 'reactor', (type) => mixed[type] ?? 0), 'scrapline-reactor');
   assert.deepEqual(versionsOf(rules, 'galley'), ['galley'], 'an unknown part is its own');
 });
 
@@ -82,61 +128,81 @@ test("act 1's goal and the shop count either maker's part", () => {
   assert.equal(shopText({ ...stocked, parts: { 'bastion-engine': 1 } }, rules).held[0].warn, 'The ship needs the Bastion engine');
 });
 
-test("saves and codes keep their versions: old ones load with the Yard's parts, and Bastion's parts round-trip", () => {
-  // M23g needed neither number bumped (saves were 17 then; M24 made them 18).
-  assert.ok(SAVE_VERSION >= 17);
+test("saves and codes keep their versions: old ones load with the Yard's parts, and every maker's parts round-trip", () => {
+  // Neither number was bumped for M23g (saves were 17 then) or M31 (23,
+  // since M29's raids).
+  assert.equal(SAVE_VERSION, 23);
   assert.equal(BLUEPRINT_VERSION, 4);
   // The example ship's code as main made it before M23g.
   const old = decodeBlueprint('wtb.4.B3N0YXJ0ZXIHcm91bmRlZAVzbGF0ZQNza3kIBmJyaWRnZQdyZWFjdG9yCHF1YXJ0ZXJzCGNvcnJpZG9yBmVuZ2luZQtsaWZlc3VwcG9ydAdhaXJsb2NrBndlYXBvbgsADxkBDBQCCRQDCRwDChwDCxwEBxgFCSAEByAGCyAHDSIAAA.b6db7753', rules);
   assert.ok(old.ok, old.error);
   assert.deepEqual(old.ship.modules.map((m) => m.type), example.map((p) => p.type));
   assert.ok(old.ship.modules.every((m) => rules.modules.get(m.type).manufacturer === 'yard'));
-  // The same ship with Bastion's engines, reactor and gun.
-  const swap = (type) => (['engine', 'reactor', 'weapon'].includes(type) ? `bastion-${type}` : type);
-  const built = buildShip(rules, 'starter', example.map((p) => ({ ...p, type: swap(p.type) })));
-  assert.deepEqual(built.rejected, []);
-  const back = decodeBlueprint(encodeBlueprint(built.ship), rules);
-  assert.ok(back.ok, back.error);
-  assert.deepEqual(back.ship.modules.map((m) => m.type), built.ship.modules.map((m) => m.type));
-  // A campaign with Bastion's parts fitted and on hand saves and loads.
-  const campaign = { ...newCampaign(rules, 5), parts: { 'bastion-engine': 1, corridor: 2 } };
+  // The same ship with each maker's engines, reactor and gun.
+  for (const maker of Object.keys(LINES)) {
+    const swap = (type) => (['engine', 'reactor', 'weapon'].includes(type) ? `${maker}-${type}` : type);
+    const built = buildShip(rules, 'starter', example.map((p) => ({ ...p, type: swap(p.type) })));
+    assert.deepEqual(built.rejected, [], maker);
+    const back = decodeBlueprint(encodeBlueprint(built.ship), rules);
+    assert.ok(back.ok, back.error);
+    assert.deepEqual(back.ship.modules.map((m) => m.type), built.ship.modules.map((m) => m.type));
+  }
+  // A campaign with every maker's parts fitted and on hand saves and loads.
+  const onHand = { 'bastion-engine': 1, 'kestrel-weapon': 1, 'scrapline-reactor': 2, corridor: 2 };
+  const campaign = { ...newCampaign(rules, 5), parts: onHand };
+  campaign.ship = { ...campaign.ship, modules: campaign.ship.modules.map((m) => (m.type === 'reactor' ? { ...m, type: 'kestrel-reactor' } : m)) };
+  assert.ok(campaign.ship.modules.some((m) => m.type === 'kestrel-reactor'));
   assert.deepEqual(campaignProblems(campaign), []);
   const state = { ...initialState(), campaign };
   const loaded = parseSave(JSON.stringify(makeSave(saveData(state))));
   assert.ok(loaded.ok, loaded.error);
-  assert.deepEqual(loaded.save.data.campaign.parts, { 'bastion-engine': 1, corridor: 2 });
+  assert.deepEqual(loaded.save.data.campaign.parts, onHand);
+  assert.deepEqual(loaded.save.data.campaign.ship, campaign.ship);
 });
 
-test("the patrol's corvettes carry Bastion's parts for most of theirs, mirrored pairs alike, their layouts as they were", async () => {
+// Each side's ships and the maker that fits it (M23g's corvettes, M31's
+// cutters, runners and haulers).
+const SIDES = { corvette: 'bastion', cutter: 'kestrel', runner: 'kestrel', hauler: 'scrapline' };
+
+test("enemy ships fly their side's maker for most of the parts it makes, mirrored pairs alike, their layouts as they were, and still pass their flight checklists (M23g, M31)", async () => {
   const { generateShip } = await import('../src/sim/gen/ship.js');
+  const { canLaunch, flightChecklist } = await import('../src/sim/constraints.js');
   const noMakers = { ...rules, ships: new Map([...rules.ships].map(([id, preset]) => [id, { ...preset, makers: undefined }])) };
-  let bastion = 0;
-  let parts = 0;
-  for (let seed = 1; seed <= 40; seed++) {
-    const made = generateShip(rules, 'corvette', seed);
-    const plain = generateShip(noMakers, 'corvette', seed);
-    assert.ok(made.ok && plain.ok);
-    assert.deepEqual(made, generateShip(rules, 'corvette', seed), 'the same seed, the same makers');
-    // The same parts in the same places; only some types are Bastion's.
-    assert.deepEqual(made.ship.modules.map((m) => ({ ...m, type: baseOf(rules.modules.get(m.type)) })), plain.ship.modules);
-    assert.deepEqual([made.ship.styling, made.ship.hull, made.wrecked], [plain.ship.styling, plain.ship.hull, plain.wrecked]);
-    const makerOf = (m) => rules.modules.get(m.type).manufacturer;
-    // A part and its mirror image are one maker's.
-    const rows = made.ship.modules.flatMap((m) => [m.y, m.y + (m.rot % 2 ? rules.modules.get(m.type).size[0] : rules.modules.get(m.type).size[1]) - 1]);
-    const across = Math.min(...rows) + Math.max(...rows);
-    for (const m of made.ship.modules) {
-      const h = (m.rot % 2 ? rules.modules.get(m.type).size[0] : rules.modules.get(m.type).size[1]);
-      const twin = made.ship.modules.find((o) => o !== m && baseOf(rules.modules.get(o.type)) === baseOf(rules.modules.get(m.type)) && o.x === m.x && o.y === across - m.y - h + 1);
-      if (twin) assert.equal(makerOf(twin), makerOf(m), `corvette ${seed}: ${m.type} and its mirror`);
+  const makerOf = (m) => rules.modules.get(m.type).manufacturer;
+  const baseType = (m) => baseOf(rules.modules.get(m.type));
+  for (const [id, maker] of Object.entries(SIDES)) {
+    const preset = rules.ships.get(id);
+    assert.deepEqual(Object.keys(preset.makers), [maker], id);
+    let theirs = 0;
+    let could = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const made = generateShip(rules, id, seed);
+      const plain = generateShip(noMakers, id, seed);
+      assert.ok(made.ok && plain.ok);
+      assert.deepEqual(made, generateShip(rules, id, seed), 'the same seed, the same makers');
+      // The same parts in the same places; only some types are the maker's.
+      assert.deepEqual(made.ship.modules.map((m) => ({ ...m, type: baseType(m) })), plain.ship.modules);
+      assert.deepEqual([made.ship.styling, made.ship.hull, made.wrecked], [plain.ship.styling, plain.ship.hull, plain.wrecked]);
+      assert.ok(made.ship.modules.every((m) => [maker, 'yard'].includes(makerOf(m))), `${id} ${seed}: ${maker}'s or the Yard's`);
+      // A version that would leave her failing her checklist stays the Yard's.
+      assert.ok(canLaunch(flightChecklist(made.ship, rules, preset.crew)), `${id} ${seed} passes her checklist`);
+      // A part and its mirror image are one maker's.
+      const rows = made.ship.modules.flatMap((m) => [m.y, m.y + (m.rot % 2 ? rules.modules.get(m.type).size[0] : rules.modules.get(m.type).size[1]) - 1]);
+      const across = Math.min(...rows) + Math.max(...rows);
+      for (const m of made.ship.modules) {
+        const h = (m.rot % 2 ? rules.modules.get(m.type).size[0] : rules.modules.get(m.type).size[1]);
+        const twin = made.ship.modules.find((o) => o !== m && baseType(o) === baseType(m) && o.x === m.x && o.y === across - m.y - h + 1);
+        if (preset.symmetric && twin) assert.equal(makerOf(twin), makerOf(m), `${id} ${seed}: ${m.type} and its mirror`);
+      }
+      theirs += made.ship.modules.filter((m) => makerOf(m) === maker).length;
+      could += made.ship.modules.filter((m) => rules.modules.has(`${maker}-${baseType(m)}`)).length;
     }
-    bastion += made.ship.modules.filter((m) => makerOf(m) === 'bastion').length;
-    parts += made.ship.modules.length;
+    // Most, not all: each part rolls for it.
+    assert.ok(theirs / could > 0.5 && theirs / could < 0.95, `${id}: ${theirs} of the ${could} parts ${maker} makes`);
   }
-  assert.ok(bastion / parts > 0.65 && bastion / parts < 0.95, `${bastion} of ${parts} Bastion's`);
-  // The other sides fly the Yard's.
-  for (const id of ['cutter', 'hauler']) {
-    for (let seed = 1; seed <= 10; seed++) assert.ok(generateShip(rules, id, seed).ship.modules.every((m) => rules.modules.get(m.type).manufacturer === 'yard'), `${id} ${seed}`);
-  }
+  // The repo tug flies the Yard's.
+  assert.equal(rules.ships.get('repotug').makers, undefined);
+  for (let seed = 1; seed <= 10; seed++) assert.ok(generateShip(rules, 'repotug', seed).ship.modules.every((m) => makerOf(m) === 'yard'), `repotug ${seed}`);
 });
 
 test("Bastion's mass counts in thrust for mass, lift-off included: the launched start ship made by Bastion needs another engine to lift off", async () => {
@@ -148,4 +214,23 @@ test("Bastion's mass counts in thrust for mass, lift-off included: the launched 
   const failing = (ship) => flightChecklist(ship, rules, 3, { liftOff: rules.acts.get(1).liftOff }).filter((line) => line.ok !== true);
   assert.deepEqual(failing(yard), []);
   assert.deepEqual(failing(bastion).map((line) => [line.text, line.add]), [['Thrust 36 for mass 43: 0.84, needs 1.00 to lift off', 'engine']]);
+});
+
+test("Scrapline's power counts in the flight checklist: the launched start ship with Scrapline's engines is short of power, and the fix asks for a reactor (M31)", async () => {
+  const { launchedShip, madeBy, madeToFly } = await import('../tools/approach.js');
+  const { flightChecklist, shipStats } = await import('../src/sim/constraints.js');
+  const yard = launchedShip(rules);
+  const failing = (ship) => flightChecklist(ship, rules, 3, { liftOff: rules.acts.get(1).liftOff }).filter((line) => line.ok !== true);
+  const engines = { ...yard, modules: yard.modules.map((m) => (m.type === 'engine' ? { ...m, type: 'scrapline-engine' } : m)) };
+  assert.deepEqual(failing(engines).map((line) => [line.text, line.add]), [['Power −2 (8 made, 10 used)', 'reactor']]);
+  // Made all by Scrapline it is 7 short, and its own reactor makes it fly;
+  // Kestrel's is lighter, and flies as it is.
+  const scrapline = madeBy(yard, rules, 'scrapline');
+  assert.equal(shipStats(scrapline, rules).power, -7);
+  const flies = madeToFly(yard, rules, 'scrapline');
+  assert.deepEqual(flies.modules.slice(yard.modules.length).map((m) => m.type), ['scrapline-reactor']);
+  assert.deepEqual(failing(flies), []);
+  const kestrel = madeToFly(yard, rules, 'kestrel');
+  assert.deepEqual([kestrel.modules.length, shipStats(kestrel, rules).mass, shipStats(yard, rules).mass], [yard.modules.length, 21, 30]);
+  assert.deepEqual(failing(kestrel), []);
 });

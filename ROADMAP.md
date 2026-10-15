@@ -877,7 +877,7 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
 
   Evan's picks (2026-10-15), from mockups drawn by the game's renderer:
   - **The makers:** both of M23g's other candidates, Kestrel Dynamics and Scrapline. That makes four makers, one past §5's target of three.
-  - **Kestrel's trade:** a real one. Its ships get away more often, but its parts break sooner when hit, so a ship of them fares worse than the Yard's against some preset.
+  - **Kestrel's trade:** a real one. Its ships get away more often, but its parts break sooner when hit, so a ship of them fares worse than the Yard's against some preset. Judged on a shielded ship: with no shield, its fewer hit points don't show (Law 1, below).
   - **Enemy ships:** each flown by the side that fits it: Kestrel's by the pirates' cutters and the Hallorans' runner, Scrapline's by the derelict haulers.
   - **Where they come from:** shops and salvage, like Bastion's.
 
@@ -890,7 +890,7 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
     - **Kestrel**, light and dear: a version of every part that weighs 2 or more (the four that weigh 1 can't get lighter in whole numbers), with about a third less mass, fewer hit points and a higher price.
     - **Scrapline**, cheap and power-hungry: a version of every part, about a third cheaper, with fewer hit points. Each part that draws power draws 1 more, and a reactor makes 1 less.
   - **Law 1** (`tools/approach.js`, tested):
-    - the start ship with Kestrel's parts evades more against every preset and loses more parts for each hit it takes, and it fares worse than the Yard's against at least one preset;
+    - the start ship with Kestrel's parts evades more against every preset. With a shield fitted (each maker's own), as the careful test player fits one when it has one, it fares worse than the Yard's against at least one preset. Evan's call (2026-10-15), after the first measurements: unshielded, every preset's first targets (engines and guns) die to one gun hit whoever made them, so fewer hit points don't show, and a lighter ship does better against every preset;
     - with Scrapline's parts, and the reactor it then needs to fly, it fares differently from the Yard's against the presets. Its power counts in the flight checklist: the start ship with Scrapline's engines is short of power, and the fix asks for a reactor.
   - **At a glance:**
     - on the plans and in the drawer, each maker's rooms and icons are in its own line: Kestrel's rose, Scrapline's lime;

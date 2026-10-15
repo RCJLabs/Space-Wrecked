@@ -9,7 +9,7 @@ test('the shipped data is valid', () => {
   assert.deepEqual(validateData(readData()), []);
 });
 
-test("the shipped data has the 12 v0.1 module types, first, then M23e's nine, then Bastion's version of each (M23g)", () => {
+test("the shipped data has the 12 v0.1 module types, first, then M23e's nine, then Bastion's version of each (M23g), Kestrel's of each that weighs 2 or more and Scrapline's of each (M31)", () => {
   const modules = readData().modules.modules;
   const ids = modules.map((m) => m.id);
   assert.deepEqual(ids.slice(0, 12).sort(), [
@@ -20,8 +20,17 @@ test("the shipped data has the 12 v0.1 module types, first, then M23e's nine, th
     'bunks', 'cannon', 'heavyengine', 'largehold', 'lightengine',
     'pointdefense', 'shieldarray', 'smallreactor', 'surgery',
   ]);
-  assert.deepEqual(modules.slice(21).map((m) => m.base), ids.slice(0, 21), 'every part, M23e\'s included, in the same order');
-  for (const m of modules.slice(21)) assert.ok(m.manufacturer === 'bastion' && m.id === `bastion-${m.base}` && m.name.startsWith('Bastion '), m.id);
+  const heavy = modules.slice(0, 21).filter((m) => m.stats.mass >= 2).map((m) => m.id);
+  const lines = [['bastion', 'Bastion', ids.slice(0, 21)], ['kestrel', 'Kestrel', heavy], ['scrapline', 'Scrapline', ids.slice(0, 21)]];
+  let at = 21;
+  for (const [maker, name, bases] of lines) {
+    const made = modules.slice(at, at + bases.length);
+    assert.deepEqual(made.map((m) => m.base), bases, `${maker}: every part it makes, M23e's included, in the same order`);
+    for (const m of made) assert.ok(m.manufacturer === maker && m.id === `${maker}-${m.base}` && m.name.startsWith(`${name} `), m.id);
+    at += bases.length;
+  }
+  assert.equal(at, modules.length);
+  assert.equal(heavy.length, 17, 'all but the four that weigh 1');
 });
 
 // Each case breaks one thing in a copy of the real data and expects the
@@ -49,10 +58,10 @@ const cases = [
   ['duplicate id', (d) => d.modules.modules.push(structuredClone(d.modules.modules[0])), /duplicate id "bridge"/],
   ['unknown manufacturer', (d) => (d.modules.modules[0].manufacturer = 'acme'), /unknown manufacturer "acme"/],
   // M23g: makers, and their versions of the parts.
-  ['a maker with no short name', (d) => delete d.manufacturers.manufacturers[1].short, /bastion: short must be a name of up to 8 letters/],
+  ['a maker with no short name', (d) => delete d.manufacturers.manufacturers[1].short, /bastion: short must be a name of up to 9 letters/],
   ['a maker with no card line', (d) => (d.manufacturers.manufacturers[1].blurb = ''), /bastion: blurb must be a non-empty string/],
   ['a mark nobody draws', (d) => (d.manufacturers.manufacturers[1].mark = 'stars'), /bastion: mark must be one of chevrons/],
-  ['a maker with no skin', (d) => d.manufacturers.manufacturers.push({ id: 'kestrel', name: 'Kestrel Dynamics', short: 'Kestrel', blurb: 'Light.' }), /kestrel: has no skin in src\/render\/palette\.js/],
+  ['a maker with no skin', (d) => d.manufacturers.manufacturers.push({ id: 'orrery', name: 'Orrery Works', short: 'Orrery', blurb: 'Odd.' }), /orrery: has no skin in src\/render\/palette\.js/],
   ['a misspelled maker field', (d) => (d.manufacturers.manufacturers[1].colour = 'grey'), /bastion: unknown field "colour"/],
   ['a version with a shape of its own', (d) => (version(d).size = [3, 3]), /bastion-engine: unknown field "size"/],
   ['a version of nothing', (d) => (version(d).base = 'galley'), /base "galley" must be a part earlier in the file/],
@@ -365,5 +374,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(42 modules, 1 frame, 2 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 14 enemies, 19 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 26 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 18 events\)/);
+  assert.match(run.stdout, /OK \(80 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 4 weapons, 3 crew jobs, 6 traits, 14 enemies, 19 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 26 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 18 events\)/);
 });

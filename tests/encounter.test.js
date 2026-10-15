@@ -181,6 +181,25 @@ test("a boarding is fought on the boarded ship's map, wrecks and all: her crew o
   assert.equal(boardingDue(onRun(), rules), null);
 });
 
+
+test("a boarding strips her makers' parts as they are: a pirate cutter's, Kestrel's among them (M31)", () => {
+  const stripped = [];
+  for (let cutter = 1; cutter <= 6; cutter++) {
+    const start = atCutter({}, cutter);
+    for (let seed = 0; seed < 200; seed++) {
+      const ended = playOut({ ...start, rng: seedFrom(seed) }, () => ({ kind: 'fire', at: 'reactor' }));
+      if (ended.run.approach.outcome.kind !== 'boarded') continue;
+      const aboard = beginBoarding(ended, rules);
+      assert.ok(aboard.ok, aboard.error);
+      const ship = ended.run.approach.them.ship.modules.map((m) => m.type);
+      assert.ok(aboard.campaign.fight.boarding.salvage.parts.every((type) => ship.includes(type)));
+      stripped.push(...aboard.campaign.fight.boarding.salvage.parts);
+      break;
+    }
+  }
+  assert.equal(stripped.length, 6 * rules.ships.get('cutter').salvage);
+  assert.ok(stripped.some((type) => rules.modules.get(type).manufacturer === 'kestrel'), `${stripped}`);
+});
 test("what a boarding comes to: her salvage and scrap, her boarders' gear, what a raid takes, or wounds alone", () => {
   const parts = { corridor: 2, armory: 1 };
   // Won aboard her: her salvage and scrap; the crew keeps its wounds.

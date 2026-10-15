@@ -194,6 +194,42 @@ skins.bastion = {
   plans: '#ffc45e',
 };
 
+// Kestrel Dynamics (M31): pale pearl fittings, two coral stripes, engines
+// burning violet, and rose lines on the plans.
+skins.kestrel = {
+  ...skins.yard,
+  metal: '#c3ccd9',
+  metalHi: '#eef2f8',
+  dark: '#5a6479',
+  darker: '#3c4558',
+  domeHi: '#eef2f8',
+  domeLo: '#9fadc2',
+  rivet: '#e3e9f2',
+  hazard: '#ff7a59',
+  flame: '#d9ccff',
+  mark: '#ff7a59',
+  markDark: '#3c4558',
+  plans: '#ff9ad2',
+};
+
+// Scrapline (M31): rust-brown fittings with bare patches of unpainted
+// metal, engines burning green, and lime lines on the plans.
+skins.scrapline = {
+  ...skins.yard,
+  metal: '#7d5c41',
+  metalHi: '#a87f5c',
+  dark: '#3b2c21',
+  darker: '#2a1e16',
+  domeHi: '#a39d8f',
+  domeLo: '#5c5647',
+  rivet: '#d0a87e',
+  hazard: '#c9b45a',
+  flame: '#d8f07a',
+  mark: '#8f9196',
+  markDark: '#6f7177',
+  plans: '#c8ee6e',
+};
+
 // The skin for a manufacturer, or the yard's for one without a skin yet.
 export function skinFor(manufacturer) {
   return skins[manufacturer] ?? skins.yard;

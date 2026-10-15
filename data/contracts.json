@@ -35,7 +35,7 @@
       "sites": ["yard"],
       "encounter": "scavvers",
       "credits": [40, 60],
-      "drops": { "chance": 80, "parts": { "cargo": 1, "armory": 1, "shield": 1, "corridor": 1, "engine": 1, "lightengine": 1, "heavyengine": 1, "smallreactor": 1, "largehold": 1 } },
+      "drops": { "chance": 80, "parts": { "cargo": 1, "armory": 1, "shield": 1, "corridor": 1, "engine": 1, "lightengine": 1, "heavyengine": 1, "smallreactor": 1, "largehold": 1, "scrapline-engine": 1, "scrapline-smallreactor": 1 } },
       "pitch": "Scavvers are walking the good stuff out of {site}. {client} tagged what's his. Get it before they do."
     },
     {
@@ -138,7 +138,7 @@
       "sites": ["bonded"],
       "encounter": "customs",
       "credits": [60, 90],
-      "drops": { "chance": 50, "parts": { "cargo": 1, "armory": 1, "bunks": 1 } },
+      "drops": { "chance": 50, "parts": { "cargo": 1, "armory": 1, "bunks": 1, "kestrel-cargo": 1 } },
       "pitch": "Customs seized a load {client} had already sold twice. It's in {site}, two crates, tagged. She'd like them back before the buyers come asking."
     },
     {
@@ -173,7 +173,7 @@
       "sites": ["breakers"],
       "encounter": "scavvers",
       "credits": [40, 60],
-      "drops": { "chance": 80, "parts": { "cargo": 1, "shield": 1, "corridor": 1, "engine": 1, "lightengine": 1, "heavyengine": 1, "smallreactor": 1, "largehold": 1 } },
+      "drops": { "chance": 80, "parts": { "cargo": 1, "shield": 1, "corridor": 1, "engine": 1, "lightengine": 1, "heavyengine": 1, "smallreactor": 1, "largehold": 1, "scrapline-engine": 1, "scrapline-smallreactor": 1 } },
       "pitch": "A hulk came in for breaking this morning, and the scavvers got to it first. {client} has tagged what's his at {site}. Walk it out before they do."
     },
     {
@@ -232,7 +232,7 @@
       "sites": ["kettle"],
       "encounter": "scavvers",
       "credits": [40, 60],
-      "drops": { "chance": 80, "parts": { "cargo": 1, "engine": 1, "lightengine": 1, "heavyengine": 1, "smallreactor": 1, "corridor": 1, "largehold": 1 } },
+      "drops": { "chance": 80, "parts": { "cargo": 1, "engine": 1, "lightengine": 1, "heavyengine": 1, "smallreactor": 1, "corridor": 1, "largehold": 1, "kestrel-engine": 1, "kestrel-cargo": 1 } },
       "pitch": "{client} sold a load at {site} and then reported it stolen. Now it needs stealing. Three crates, and the scavvers there have the same idea."
     },
     {
@@ -244,7 +244,7 @@
       "sites": ["pound"],
       "encounter": "customs",
       "credits": [70, 100],
-      "drops": { "chance": 50, "parts": { "lightengine": 1, "cargo": 1, "shield": 1, "bunks": 1 } },
+      "drops": { "chance": 50, "parts": { "lightengine": 1, "cargo": 1, "shield": 1, "bunks": 1, "kestrel-shield": 1 } },
       "pitch": "Customs seized a shipment {client} had already cleared, then forgot she'd cleared it. Two crates in {site}. Bring them out before anyone remembers."
     },
     {
