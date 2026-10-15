@@ -239,6 +239,20 @@ M29 Raids. First task: settle its Done when with Evan. ROADMAP.md has a draft: h
   - offline, the colony draws; every button 48 px or more in each mode; no console errors.
 - **Act 1:** 100 test runs identical to main's, seed by seed, the campaign at launch and the log. **Act 2:** all 30 voyages' steps are main's, settling included, but for an event's changes now naming its materials (0 on the run).
 - **The fights** (`node tools/sim.js`; no balance number changed): identical to M27's output.
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named:
+  - M27 32, M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 40 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 46, and M8's extras.
+
+  M24's failed once on the cover screen, with `node --test` running beside it: two of the approach's Fire buttons (99 × 48) failed its hit test. Run alone it passes 20 of 20, as it did at the other two sizes. M28 doesn't touch the approach screen.
+
+  Two copies were adapted, not the game, for what M28 changes on purpose:
+  - M27's reads the places above the build list, the solar array and the shelter in it, and its save coming back as v22;
+  - M26's infirmary opens healing nobody, and its first day heals the crew.
+
+  The copies that make saves the way main did open them from checkouts of the M27 merge (v21, for M28's), the M26 merge (v20, M27's), the M25 merge (v19, M26's), the M24 merge (v18, M25's) and the M23h merge (v17), as before.
 
 ## M27 Colony builder and production (2026-10-15)
 
