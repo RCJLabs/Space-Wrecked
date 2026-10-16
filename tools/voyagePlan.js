@@ -144,8 +144,9 @@ const REST_HP = 3;
 const REST_JUMPS = 4;
 const HIDE_JUMPS = 8;
 // A side's chain is started (M33b: the Fleet's tender lent a hand) only
-// while the holds keep this many jumps' worth after the choice.
-export const HELP_JUMPS = { value: BUFFER_JUMPS };
+// while the holds keep this many jumps' worth after the choice: the buffer,
+// so it never spends into it for standing.
+const HELP_JUMPS = BUFFER_JUMPS;
 
 // Whether to board a ship the player has disabled: with at least half the
 // crew's hit points between them; a crew worn down leaves her.
@@ -312,7 +313,7 @@ function questWorth(campaign, rules, event, choice) {
   const starts = [...(rules.quests?.values() ?? [])].find((quest) => quest.start?.event === event.id && quest.start.choice === choice.id && !campaign.quests?.[quest.id]);
   if (!starts || !chainBefriends(campaign, rules, starts, choice)) return 0;
   const after = campaign.supplies + choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * (outcome.effects.supplies ?? 0), 0);
-  return after >= HELP_JUMPS.value * jumpSupplies(campaign, rules) ? WORTH.quest : 0;
+  return after >= HELP_JUMPS * jumpSupplies(campaign, rules) ? WORTH.quest : 0;
 }
 
 // Whether a side's chain (M33b), started with `choice` and each step done,

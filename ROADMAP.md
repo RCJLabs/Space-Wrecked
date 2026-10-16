@@ -426,11 +426,30 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - an event's outcome (`standing` in its effects): the company wreck stripped fast, the stalled miner helped, and M33's four (a Halloran drop, a Fleet tender in trouble, a Con-Reg survey skiff, a union co-op barge), each with a choice for its side and one against;
   - a side's ship boarded, blown up or left adrift by the crew: −3 with its side (`side` in `data/ships.json`: the patrol corvette the Fleet's, the hunters their pursuer's).
 
-  Raids and act 3 don't move it (§9).
+  Raids don't move it (§9). Since M33b a thread's pay-off at the colony raises the pursuer's side to cold (§4.10).
 - **What it changes:** the prices at its stations and act 1's pay (§4.6), the heat of trading at the pursuer's (§4.4), and the Fleet's patrols (§4.2).
 - **Stations** are a side's by name (`stations` in `data/factions.json`): three of the twelve names are the union's, two each Con-Reg's, the Fleet's and the Hallorans', and three nobody's. The sectors roll their stations as before.
 - **Shown** (Law 4): a Sides panel at the hangar and on the chart, and a Sides section at the colony, each side's level, number and how far to the next; a pip in the side's color on its stations on the chart, and a station's line with its prices; on the job board, whom a job is for and against, and its pay with the bonus; each change where it happens (the fight's end, an event's result, an approach's end), with the level it leaves or keeps; at a station of the pursuer's side, what the first trade adds, on its panel, in the hint and in each service's first tap, and in the jump plan ahead (since M33's fix); and in the jump plan, how the patrol ahead will greet the ship.
-- **Balance** (the careful test player, `tools/voyage.js --background all`): it prefers a friendly side's stations, and since M33's fix trades at the pursuer's only to stay fed or to swap the transponder, passing them by otherwise. Over 100 voyages from each start it trades with the pursuer in 14, 26 and 19 runs (the miner, the deserter, the smuggler) and passes one of its stations by in 39, 32 and 31; in M33, docking on the jump, it docked in 22, 27 and 8. The miner lands friendly with the union (+3 at the median, from Marta's jobs); the smuggler hostile with the Fleet (−8), from act 1's customs jobs, so its patrols fire first. No test voyage is waved through (M33b's draft). PROGRESS.md's M33 entry and its fixes' have the rest.
+- **Balance** (the careful test player, `tools/voyage.js --background all`): it prefers a friendly side's stations, and since M33's fix trades at the pursuer's only to stay fed or to swap the transponder, passing them by otherwise. Over 100 voyages from each start it trades with the pursuer in 14, 26 and 19 runs (the miner, the deserter, the smuggler) and passes one of its stations by in 39, 32 and 31; in M33, docking on the jump, it docked in 22, 27 and 8. The miner lands friendly with the union (+3 at the median, from Marta's jobs); the smuggler hostile with the Fleet (−8), from act 1's customs jobs, so its patrols fire first. No test voyage was waved through until M33b: since its Fleet's chain the miner is, in 14 voyages of 100 (§4.10). PROGRESS.md's M33 entry and its fixes' have the rest.
+
+### 4.10 Quests
+
+- **As built in M33b** (`src/sim/quests.js`; the quests in `data/quests.json`, their jobs in `data/contracts.json` and events in `data/events.json`, the odds in `data/balance.json`). Evan's picks (2026-10-16) are in M33b's entry (§7).
+- **Two kinds.** A background's thread starts with its campaign and has a step in each act. A side's chain starts at an event's choice: the Fleet's, lending its tender a hand (+2 with the Fleet). The union's, Con-Reg's and the Hallorans' chains are in §9.
+- **A step is done in its own act:**
+  - **act 1, a job:** a contract of the quest's own, on the board above its three jobs while the step is open, never in the rotation. Its client, site, pay and fight's seed come from the campaign's seed and the jobs done and lost so far, so the board's own rolls are as before. Lost, it is offered again;
+  - **the run, an event:** an event of the quest's own, put on a node of its kind in each sector the ship enters while the step is open, on the charts, marked with a diamond and named for its quest. A done choice does the step and a cold one ends the quest; any other leaves it for the next sector;
+  - **the colony, a place:** within reach beside the others until the step is done, its ship held by the pursuer's men, her own crew: a fight aboard her, as at a derelict the squatters hold. Lost, the crew comes home hurt, and she is still there.
+- **The threads:**
+  - **the miner's debt:** Rook's job at Depot 4, losing the debt's paper (heat −20); Con-Reg's courier with the paper filed again (heat −15, a wound one time in four); Con-Reg's claims tender, held by Recovery's crew;
+  - **the deserter's pardon:** Mother Ilse's job at the Brig, the warrant lost (heat −20); the Resolute short of spares (20 credits: heat −15, the Fleet +4); the Provost's courier, held by its patrol;
+  - **the smuggler's cargo:** Ferris's job at the customs pound (heat −20); the lost cargo (heat −15, the Hallorans +4); the Hallorans' runner, held by their collectors.
+- **The pay-off,** the colony's place won: heat −30, the pursuer's side raised to cold (−5) if lower, and from then on its raids find the colony at half the odds (`easedOdds` 50, rounded as the odds are).
+- **The Fleet's chain:** the tender's stolen stores pod, on the charts in the sectors after: tagged for the Fleet, 25 credits and the Fleet +4, and the chain is done; stripped, 8 supplies and 10 credits, the Fleet −2, and it goes cold.
+- **The trail goes cold:** a step not done in its act ends its quest, act 1's at the launch and the run's as the ship leaves the last sector. Launch's first tap and the last jump point's plan name the quests they would end.
+- **Shown** (Law 4): a Quests panel at the hangar, on the chart and at the colony, each quest's step and what is next, or done, or gone cold; the quest's job on the board, tagged with its name; the quest's node marked on the chart and named in its label; each choice's first tap saying what it does to a quest; each step's words and what it gave where it is done (the fight's end, the event's result, the homecoming); the colony's place tagged and held; the pay-off at the fight's end and the trip home; the halved odds in the colony's needs and Next day's first tap.
+- **Saves:** v28.
+- **Balance** (the test players, 100 voyages from each start): act 1's takes the thread's job before every launch; on the run the step is done in 99, 92 and 100 voyages (the miner, the deserter, the smuggler), most of them in the first sector, and the colony's place is won in 67, 61 and 86. After the pay-off the colony's odds of being found fall from 2.2, 1.6 and 1.3% a day to 0.1, 0.2 and 0.0%. The miner lends the tender a hand in 37 voyages and tags the pod in 28, and a patrol waves it through in 14. PROGRESS.md's M33b entry has the rest.
 
 ---
 
@@ -1143,6 +1162,12 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
     - the tender lent a hand, and the Fleet's chain with the quests;
     - the colony's quest place, flown to and won, and the halved odds after;
     - a quit and reopen that keeps the quests.
+
+  As built (2026-10-16), where it differs from the above (§4.10 has the whole):
+  - **The places' crews:** each pursuer's ship holds her own boarding crew of three: Recovery's, the collectors, and at the Provost's courier its patrol of two MPs. The colony's raiding parties, first written (three to five fighters), were harder than a derelict; with the courier's boarding party (two MPs and a rating) the deserter won 24% of its fights there, and with the patrol 58%, against 61% at the hulks the squatters hold.
+  - **The Resolute's spares** cost 20 credits. At 40 the run's step went cold in 26 of 100 deserter voyages, the ship short of the credits; at 20, in 8.
+  - **The test players:** act 1's prices the step's heat at the pursuer's payment (the deserter's, whose pursuer takes none, at the cheapest any pursuer takes). The voyage's counts a choice that does a step at 40 credits and one that ends it at −40; on the way a quest's node counts at the share of the act's sectors gone, all of it in the last; it lends the tender a hand only while the holds keep 4 jumps' worth after it, its buffer; and it flies to the colony's quest place first of the held.
+  - **Measured over 100 seeds,** by Evan's two calls above.
 - [ ] M33c Companions. Draft: named crew with a face, a past and a loyalty quest built on M33b's chains, joining through one; loyalty earns them something a recruit doesn't have (§9).
 - [ ] M34 Image pass: Base44 portraits and scenes. Draft: WebP portraits for named characters (companions, the districts' clients) and scenes (the hangar, the lift-off, the landing), each logged in `assets/LOG.md`. Recruits keep their layered portraits, drawn in code since M23c.
 - [ ] M35 Audio pass with ZzFX. Draft: sounds made in code with ZzFX (approved for M35): shots and hits, the builder's placing, and the menus; a mute and a volume in the settings; audio starts after the first tap.
@@ -1290,5 +1315,8 @@ These ideas wait until v0.4 or later:
 - a side in the Narrows: none of its clients has one, so in act 1 a smuggler's standing only moves against the Fleet (the customs jobs) and the Hallorans, never up. A union client there, or one who pays to see the Hallorans hurt, would give a smuggler a side to build (raised in M33)
 - standing in act 3: raids and the colony don't move it, and it changes nothing there. The sides could trade with a colony, call at it, or raid it (raised in M33)
 - the hangar's side column on the folded screen (821 × 283): with the Sides panel it scrolls as a whole, so the crew and the sides take a swipe. A tab between them, or the sides as a line under the heat meter, would keep both in sight (raised in M33)
+- the Fleet's chain's price in supplies: lending the tender a hand costs 3 and tagging the pod gives up its 8, about 11 fed voyages of 300 for the careful miner (M33b). A tagged pod could hand back some supplies as the Fleet's thanks, if the chain should cost less
+- the deserter's crew aboard ships: it wins 61% of its fights at the squatters' hulks, against the miner's 78% and the smuggler's 65%, and 58% at the Provost's courier, so its thread's pay-off comes in 61 voyages of 100 against 67 and 86 (M33b). For Phase 7's balance runs
+- the miner's voyages since M33b: the debt's steps take heat off, and it meets the hunters in 37 runs of 100 (45 in the M33 fix), near main's 35 before M33; it is fed in 73 against the fix's 84 (the Fleet's chain, above, and chance)
 
 Ideas that come up during a session go here, not into code.

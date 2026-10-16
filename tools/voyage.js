@@ -54,8 +54,9 @@
 // From M33b it takes the quests' steps (voyagePlan.js questWorth): on the
 // run it goes by a quest's node where the way allows and makes the step's
 // choice there, lends the Fleet's tender a hand where the chain would leave
-// the crew friendly with the Fleet, and at the colony flies to the quest's
-// place first of the held ones (nextPlace). The report says what came of
+// the crew friendly with the Fleet and the holds keep their buffer after
+// it, and at the colony flies to the quest's place first of the held ones
+// (nextPlace). The report says what came of
 // each quest, and the colony's odds of being found before and after the
 // thread's pay-off.
 //
