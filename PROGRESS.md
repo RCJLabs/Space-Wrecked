@@ -57,7 +57,14 @@ Calls I made, each easy to change:
 - **Where the miner's gap is** (per seed, 100 seeds, against M33 and main before M33 on the same seeds): on the 22 where M33 docked with Con-Reg it meets the hunters in 11 (14, 9), so the rule took 3 of the 5 docking added; on the other 78 in 34 (34, 26), and there the runs meeting them past the charts went 14 to 23 in M33 and 27 now, in the sectors 23 to 25. Past the charts it surveys no more than before (2 a run) and enters a little hotter (heat 44 at the median; 46 in M33, 43 before).
 - **The voyage tests** pass. Changed on purpose: each trade step's docking heat, none on a jump; the new once-a-visit check.
 - **By touch** (`fix33/verify.mjs`, M33's check adapted, at 905 × 370, 821 × 283 and 960 × 825): 38 of 38 at each size: M33's 29, the Depot's offer line one down and the jump plan's new words, and 9 more: the panel's line and the hint before trading, Buy's first tap, the heat after the second, the panel's line after it, a patch after it adding no heat, a quit and reopen keeping it, and the jump there adding only a jump's heat. M33's first copy (`m33/verify.mjs`) fails the two checks the fix changes on purpose: the offer line's place, and the jump plan's words.
-- **Every earlier milestone's browser check:** running as this is written (`fix33/regress.sh`); its results follow in this PR.
+- **Every earlier milestone's browser check** passes, run one after another (`fix33/regress.sh`), at the three sizes unless named:
+  - the M32b fix's 27, M32 22 and its orders 48, M31 28, M30 27, M29 34, M28 32, M27 32, M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 20 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 41 (its count goes with the jobs it rolls) and M8's extras (the cache holds all 234 files; offline, the fight sandbox and the builder open).
+
+  Five copies were adapted, not the game (`verify33fix.mjs` in each): M31's, M30's, M29's, M28's and M27's, from their copies for M33, each now expecting a save made by main to be saved again as v27, not v26. M33's first copy fails the two checks above, and M32b's first copy still looks for Suppress · 2 and Sedate · 2, as in M33's entry.
 
 ### Known issues
 
