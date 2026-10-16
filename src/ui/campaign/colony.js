@@ -24,8 +24,10 @@
 // down, Defend takes the place of Next day: the first tap says what the
 // guns will fire and at what odds, the second fires them and opens the
 // fight on the colony's grid (src/sim/raids.js), or says what came of the
-// landing without one. The campaign is saved after every change, so
-// Continue on the title comes back here.
+// landing without one. From M33c a tap on the crew opens the crew card
+// (crewCard.js) over the panel and the ground: each one's face, rank and
+// what they bring, a companion's past and loyalty. The campaign is saved
+// after every change, so Continue on the title comes back here.
 import { loadContent } from '../../platform/content.js';
 import { buildPlan, build, movePlan, takeDown, takeDownPlan, turnedSpot } from '../../sim/colonyBuild.js';
 import { buildingName, siteDef } from '../../sim/colony.js';
@@ -39,6 +41,8 @@ import { icons } from '../icons.js';
 import { buildingInfo, builtText, colonyText, dayReport, dayText, givenText, placeText, takeDownText, takenText, whyNotText } from './colonyText.js';
 import { createStand } from './colonyStand.js';
 import { createTrips } from './colonyTrip.js';
+import { createCrewCard } from './crewCard.js';
+import { crewCardText } from './crewText.js';
 import { crewRows, heatChip, listRows, questRows, sideRows } from './hubParts.js';
 import { easedSaid } from './questText.js';
 import { defendText, landingReport, raidHint } from './raidText.js';
@@ -60,13 +64,24 @@ export const colonyScreen = {
     const storesLine = node('p', 'cln-note');
     const buildingList = node('ul', 'cln-buildings');
     const crewList = node('ul', 'hgr-crew');
+    // The crew opens the crew card (M33c): a button lies over the heading
+    // and the list, so a tap anywhere on them does.
+    const crewTitle = node('h2');
+    crewTitle.append(node('span', null, 'Crew'), node('b', null, '›'));
+    crewTitle.setAttribute('aria-hidden', 'true');
+    const crewOpener = node('button', 'sct-crew-open');
+    crewOpener.type = 'button';
+    crewOpener.setAttribute('aria-label', 'Crew');
+    crewOpener.setAttribute('aria-expanded', 'false');
+    const crewBox = node('div', 'cln-crew');
+    crewBox.append(crewTitle, crewList, crewOpener);
     const sideList = node('ul', 'hgr-sides');
     const questList = node('ul', 'hgr-quests');
     const worldTitle = node('h2', 'cln-world');
     const worldLines = node('ul', 'cln-lines');
     const recordTitle = node('h2');
     const record = node('dl', 'hgr-hold');
-    info.append(node('h2', null, 'The colony'), needs, powerLine, storesLine, node('h2', null, 'Buildings'), buildingList, node('h2', null, 'Crew'), crewList, node('h2', null, 'Sides'), sideList, node('h2', null, 'Quests'), questList, worldTitle, worldLines, recordTitle, record);
+    info.append(node('h2', null, 'The colony'), needs, powerLine, storesLine, node('h2', null, 'Buildings'), buildingList, crewBox, node('h2', null, 'Sides'), sideList, node('h2', null, 'Quests'), questList, worldTitle, worldLines, recordTitle, record);
     const sceneArea = node('div', 'hgr-ship cln-scene');
     // What can be built, or the ghost's controls, or the building looked at.
     const side = node('section', 'hgr-panel cln-parts');
@@ -78,7 +93,8 @@ export const colonyScreen = {
     // In Next day's place while a raid's lander is down (M29).
     const defendButton = toolButton('hgr-tool cln-defend', icons.shoot, 'Defend');
     foot.append(titleButton, hint, refitButton, dayButton, defendButton);
-    el.append(head, info, sceneArea, side, foot);
+    const crewCard = createCrewCard({ tap: () => {}, done: () => toggleCrew(false) });
+    el.append(head, info, sceneArea, side, foot, crewCard.el);
     root.append(el);
 
     let defs = null;
@@ -95,6 +111,7 @@ export const colonyScreen = {
     let rowButtons = [];
     let drawn = null; // { campaign, whole, mark }: what the stand last showed
     let asked = null; // the campaign the places within reach were asked for
+    let crewOpen = false; // the crew card is up
     const trips = createTrips({
       game,
       defs: () => defs,
@@ -116,6 +133,8 @@ export const colonyScreen = {
       onTap(refitButton, () => game.dispatch({ type: 'screen/show', screen: 'construction' })),
       onTap(dayButton, tapDay),
       onTap(defendButton, tapDefend),
+      onTap(crewOpener, () => toggleCrew(!crewOpen)),
+      () => crewCard.detach(),
       () => clearTimeout(armTimer),
       () => rowButtons.forEach((detach) => detach()),
       () => stand.dispose(),
@@ -167,6 +186,14 @@ export const colonyScreen = {
       buildingList.replaceChildren(...(text.buildings.length ? text.buildings.map(buildingRow) : [node('li', 'cln-none', 'None yet: build a farm or a mine, or give the colony a part of the ship.')]));
       const where = (row) => (row.away ? 'away' : row.rough ? 'no bed or air' : row.aboard ? 'sleeps aboard' : null);
       crewList.replaceChildren(...crewRows(text.crew.map((row) => (where(row) ? { ...row, job: [row.job, where(row)].filter(Boolean).join(' · ') } : row))));
+      // The crew card, over the panel and the ground, which take no taps
+      // under it.
+      const crew = crewOpen ? crewCardText(campaign, defs) : null;
+      crewCard.show(crew, null);
+      el.dataset.crew = String(crewOpen);
+      crewOpener.setAttribute('aria-expanded', String(crewOpen));
+      info.inert = crewOpen;
+      sceneArea.inert = crewOpen;
       sideList.replaceChildren(...sideRows(text.sides));
       questList.replaceChildren(...questRows(text.quests));
       setText(worldTitle, text.world.title);
@@ -191,7 +218,8 @@ export const colonyScreen = {
 
       const tripArmed = armed !== null && !['day', 'defend', 'down'].includes(armed);
       const defend = armed === 'defend' ? defendText(campaign, defs) : null;
-      const words = armed === 'day' ? dayText(dayPlan(campaign, defs), easedSaid(campaign, defs))
+      const words = armed === null && crew ? crew.hint
+        : armed === 'day' ? dayText(dayPlan(campaign, defs), easedSaid(campaign, defs))
         : defend ? (defend.ok ? { text: defend.ask, tone: 'warn' } : { text: defend.why, tone: 'bad' })
         : armed === 'down' ? takeDownText(takeDownPlan(campaign, defs, mode.uid))
         : (tripArmed ? trips.hint(campaign) : null) ?? said ?? (down ? raidHint(campaign, defs) : null) ?? trips.hint(campaign) ?? (plan?.same ? { text: `Tap the grid where the ${lowerFirst(buildingName(mode.type, defs))} should go, or turn it.`, tone: 'info' }
@@ -210,6 +238,13 @@ export const colonyScreen = {
         drawn = { campaign, whole, mark };
         stand.show(campaign, defs, mark, whole);
       }
+    }
+
+    // The crew card up or down (M33c).
+    function toggleCrew(open) {
+      crewOpen = open;
+      disarm();
+      render(true);
     }
 
     // The ghost's plan where it stands: buildPlan's, or movePlan's for a

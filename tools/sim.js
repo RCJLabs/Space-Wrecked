@@ -32,6 +32,13 @@
 //                                        order as its rank sharpens it. With
 //                                        --compare, the same fights at rank 0
 //                                        first
+//   node tools/sim.js --talent varga     the crew at rank 2, and the first of
+//                                        the companion's job at the third rank
+//                                        with their talent (M33c,
+//                                        data/companions.json); the squad must
+//                                        have the job (--squad). With
+//                                        --compare, the same fights all at
+//                                        rank 2 first
 //   node tools/sim.js --rounds 30        fights still going after this many
 //                                        rounds stop with no winner
 //   node tools/sim.js --seed balance     the seed every fight's seeds come from
@@ -54,12 +61,16 @@ import { deploy } from '../src/sim/deploy.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { mapFromShip } from '../src/sim/mapFromShip.js';
 import { scriptedAction } from '../src/sim/scripted.js';
+import { TALENT_RANK } from '../src/sim/talents.js';
 import { exampleShipMap } from './battle-log.js';
 import { readData } from './data.js';
 import { validateData } from './validate-data.js';
 
 const PLAYERS = { ai: aiAction, scripted: scriptedAction };
-export const DEFAULTS = { fights: 1000, ships: null, sets: [], crew: 'ai', boarders: 'ai', rounds: 30, seed: 'balance', encounter: null, compare: false, json: false, boardings: false, squad: null, orders: 'all', rank: 0 };
+export const DEFAULTS = { fights: 1000, ships: null, sets: [], crew: 'ai', boarders: 'ai', rounds: 30, seed: 'balance', encounter: null, compare: false, json: false, boardings: false, squad: null, orders: 'all', rank: 0, talent: null };
+// A talent's run (M33c) puts the rest of the crew at this rank, the
+// talent's own rank's below.
+const TALENT_BELOW = TALENT_RANK - 1;
 // Shown hit chances, grouped for the check that shots land as often as shown.
 const BANDS = [[0, 19], [20, 39], [40, 59], [60, 79], [80, 100]];
 
@@ -85,9 +96,11 @@ export function parseArgs(argv) {
     else if (arg === '--squad') options.squad = value().split(',').map((s) => s.trim()).filter(Boolean);
     else if (arg === '--orders') options.orders = value();
     else if (arg === '--rank') options.rank = whole(value(), arg, 0);
+    else if (arg === '--talent') options.talent = value();
     else throw new Error(`Unknown option "${arg}".`);
   }
-  if (options.compare && !options.sets.length && options.orders === 'all' && !options.rank) throw new Error('--compare needs a --set, --orders or --rank to compare with.');
+  if (options.talent) options.rank = TALENT_BELOW;
+  if (options.compare && !options.sets.length && options.orders === 'all' && !options.rank) throw new Error('--compare needs a --set, --orders, --rank or --talent to compare with.');
   return options;
 }
 
@@ -167,17 +180,20 @@ export function shipsFor(names, rules) {
 }
 
 // Plays the fights, ships taking turns: fight i is on ships[i % n], the
-// crew at job rank `rank` (M32b). Each fight's seed (and a preset's ship)
-// comes from the run's seed, the ship and how many fights that ship has
-// had, so adding a ship to the list doesn't change the others' fights.
+// crew at job rank `rank` (M32b), and with `talent` (a companion's id,
+// M33c) the first of the companion's job at the third rank with their
+// talent. Each fight's seed (and a preset's ship) comes from the run's
+// seed, the ship and how many fights that ship has had, so adding a ship to
+// the list doesn't change the others' fights.
 // Returns one record a fight:
 //   { ship, winner, rounds, orders: { crew, enemy }, given, shots, downs, outs, deaths }
 // orders count each side's actions; given, the crew's job orders by kind
 // (M32); shots are { side, chance, hit, overwatch, crit, damage }; downs,
 // outs and deaths count crew downed, crew bled out and boarders killed.
-export function runFights(rules, { ships, fights, seed, crew, boarders, rounds, encounter, rank = 0 }) {
+export function runFights(rules, { ships, fights, seed, crew, boarders, rounds, encounter, rank = 0, talent = null }) {
   const party = encounter ? rules.encounters.get(encounter) : rules.encounters.values().next().value;
   if (!party) throw new Error(`No encounter "${encounter}" in data/encounters.json.`);
+  const talentJob = talent ? talentJobOf(rules, talent) : null;
   const players = { crew: PLAYERS[crew], enemy: PLAYERS[boarders] };
   const records = [];
   for (let i = 0; i < fights; i++) {
@@ -192,11 +208,33 @@ export function runFights(rules, { ships, fights, seed, crew, boarders, rounds, 
     }
     const placed = deploy(map, rules.squad, party.enemies, rules);
     if (!placed.ok) throw new Error(`${source.label}: ${placed.error}`);
-    const units = rank ? placed.units.map((unit) => (rules.jobs.has(unit.kind) ? { ...unit, rank } : unit)) : placed.units;
+    const units = ranked(placed.units, rules, rank, talent, talentJob);
     const played = autoplay({ map, units, seed: fightSeed }, rules, players, { maxRounds: rounds });
     records.push(record(source.label, played));
   }
   return records;
+}
+
+// The job of companion `talent` (M33c), which the squad must have.
+export function talentJobOf(rules, talent) {
+  const job = rules.companions?.get(talent)?.job;
+  if (!job) throw new Error(`No companion "${talent}" in data/companions.json (${[...(rules.companions?.keys() ?? [])].join(', ')}).`);
+  if (!rules.squad.includes(job)) throw new Error(`The squad (${rules.squad.join(', ')}) has no ${job} for ${talent}'s talent: name one with --squad.`);
+  return job;
+}
+
+// The crew's units at job rank `rank`, and the first of `job` at the third
+// rank with companion `talent`'s talent (M33c); the enemy's as they are.
+function ranked(units, rules, rank, talent, job) {
+  let given = false;
+  return units.map((unit) => {
+    if (!rules.jobs.has(unit.kind)) return unit;
+    if (talent && !given && unit.kind === job) {
+      given = true;
+      return { ...unit, rank: TALENT_RANK, talent };
+    }
+    return rank ? { ...unit, rank } : unit;
+  });
 }
 
 // What one fight comes to (see runFights).
@@ -352,7 +390,10 @@ export function setupText(rules, options, ships, balance) {
   const who = (side) => (options[side] === 'ai' ? 'the AI' : 'the scripted player');
   const sets = options.sets.map(({ name, value }) => `${name} ${balance[name]} → ${value}`).join(', ');
   const orders = options.orders === 'all' ? 'every job order' : options.orders === 'none' ? 'no job orders' : `only ${options.orders.split(',').join(' and ')}`;
-  const rank = options.rank ? ` at rank ${options.rank}${options.compare ? ' (before: rank 0)' : ''}` : '';
+  const companion = options.talent ? rules.companions?.get(options.talent) : null;
+  const rank = companion
+    ? ` at rank ${options.rank}, the ${rules.jobs.get(companion.job)?.name.toLowerCase() ?? companion.job} at rank ${TALENT_RANK} with ${companion.name}'s ${companion.talent.name}${options.compare ? ` (before: all at rank ${options.rank})` : ''}`
+    : options.rank ? ` at rank ${options.rank}${options.compare ? ' (before: rank 0)' : ''}` : '';
   const before = options.compare && !options.rank && options.orders !== 'all' ? ' (before: every job order)' : '';
   return [
     `${commas(options.fights)} fights on ${ships.map((s) => s.label.toLowerCase()).join(', ')}.`,
@@ -390,6 +431,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   let ships;
   try {
     ships = shipsFor(options.ships, changed.rules);
+    if (options.talent) talentJobOf(changed.rules, options.talent);
   } catch (err) {
     fail(err.message);
   }
@@ -399,7 +441,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const started = performance.now();
   const summary = summarize(runFights(changed.rules, { ...options, ships }));
   const plain = () => rulesFor(rulesWith(data, []).rules, { squad: options.squad }).rules;
-  const before = options.compare ? summarize(runFights(options.rank ? changed.rules : plain(), { ...options, ships, rank: 0 })) : null;
+  // A talent (M33c) compares with the same fights all at rank 2.
+  const before = options.compare ? summarize(runFights(options.rank ? changed.rules : plain(), { ...options, ships, rank: options.talent ? options.rank : 0, talent: null })) : null;
   const seconds = (performance.now() - started) / 1000;
   if (options.json) {
     console.log(JSON.stringify(before ? { before, after: summary } : summary, null, 2));

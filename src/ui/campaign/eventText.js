@@ -1,22 +1,30 @@
 // Text for an event at a node (src/sim/events.js): the event as it opens,
 // each choice with its odds and what each of its outcomes does, and what
 // happened once a choice is made, standing with the sides included (M33,
-// standingText.js), and what it did to a quest (M33b, questText.js). rules
-// are the content tables (src/sim/defs.js).
+// standingText.js), and what it did to a quest (M33b, questText.js). From
+// M33c a chain's step can offer a companion a berth: who they are, and who
+// signed on (companionText.js). rules are the content tables
+// (src/sim/defs.js).
+import { companionOf } from '../../sim/companions.js';
 import { sellPriceOf } from '../../sim/economy.js';
 import { choiceProblem } from '../../sim/events.js';
 import { openEvent } from '../../sim/travel.js';
+import { berthSaid, companionCard, feedSaid, joinedLines, joinsSaid, offeredBy } from './companionText.js';
 import { choiceQuestSaid, questNoteLines } from './questText.js';
 import { changeLines, sideCalled } from './standingText.js';
 
 // The event open where the ship is, or null:
 //   where     "Derelict · Old Beacon": the node's kind and name
 //   title, text
-//   choices   [{ id, label, ok, why, odds, outcomes, ask }]: odds is the
-//             chances in short ("70% · 30%", or '' for a sure thing),
-//             outcomes [{ chance, says }] what each does, ask what the first
-//             tap says: the odds in full, what it does to a quest (M33b)
-//             and "tap again"
+//   companion who a choice would sign on (M33c, companionText.js
+//             companionCard), or null
+//   choices   [{ id, label, ok, why, odds, berth, outcomes, ask }]: odds is
+//             the chances in short ("70% · 30%", or '' for a sure thing),
+//             berth what a choice needing one takes ("Takes a berth · 1
+//             free", or ''), outcomes [{ chance, says }] what each does, ask
+//             what the first tap says: the odds in full, what it does to a
+//             quest (M33b), what the crew eats with a companion signing on
+//             (M33c) and "tap again"
 export function eventText(campaign, rules) {
   const open = openEvent(campaign, rules);
   if (!open) return null;
@@ -25,6 +33,7 @@ export function eventText(campaign, rules) {
     where: whereText(node, rules),
     title: event.title,
     text: event.text,
+    companion: offeredBy(event, campaign, rules),
     choices: event.choices.map((choice) => {
       const why = choiceProblem(campaign, choice, rules);
       const outcomes = choice.outcomes.map((outcome) => ({ chance: outcome.chance, says: effectsText(outcome.effects, campaign, rules) }));
@@ -32,7 +41,10 @@ export function eventText(campaign, rules) {
       const odds = sure ? '' : outcomes.map((outcome) => `${outcome.chance}%`).join(' · ');
       const told = sure ? `${capital(outcomes[0].says)}.` : outcomes.map((outcome) => `${outcome.chance}%: ${outcome.says}.`).join(' ');
       const quest = choiceQuestSaid(campaign, rules, node, event.id, choice.id);
-      return { id: choice.id, label: choice.label, ok: !why, why, odds, outcomes, ask: `${choice.label}: ${told}${quest ? ` ${quest}` : ''} Tap again to choose.` };
+      const berth = choice.needs?.berth ? berthSaid(campaign, rules) : '';
+      const joins = choice.outcomes.find((outcome) => outcome.effects.joins)?.effects.joins;
+      const feed = joins ? feedSaid(joins, campaign, rules) : '';
+      return { id: choice.id, label: choice.label, ok: !why, why, odds, berth, outcomes, ask: `${choice.label}: ${told}${quest ? ` ${quest}` : ''}${feed ? ` ${feed}` : ''} Tap again to choose.` };
     }),
   };
 }
@@ -40,21 +52,24 @@ export function eventText(campaign, rules) {
 // What happened at the event settled last (the run's result), or null:
 //   where, title ("Dead hauler: Strip it"), text (the outcome's words),
 //   roll ("Rolled 24: the 70% came up", or '' for a sure thing), changes
-//   (what it came to, in words), quest (what it did to a quest, M33b, or
-//   '')
+//   (what it came to, in words), quest (what it did to a quest, M33b, and
+//   who signed on with the quest it opened, M33c, or ''), companion (who
+//   signed on, companionText.js companionCard, or null)
 export function resultText(campaign, rules) {
   const result = campaign.run?.result;
   if (!result) return null;
   const event = rules.events.get(result.event);
   const choice = event?.choices.find((entry) => entry.id === result.choice);
   const outcome = choice?.outcomes[result.outcome];
+  const joined = companionOf(rules, result.changes.joined);
   return {
     where: whereText(campaign.run.sector.nodes[result.node], rules),
     title: event && choice ? `${event.title}: ${choice.label}` : 'Done',
     text: outcome?.text ?? '',
     roll: result.roll === null || !outcome ? '' : `Rolled ${result.roll}: the ${outcome.chance}% came up.`,
     changes: changesText(result.changes, campaign, rules),
-    quest: questNoteLines(result.quest, rules, campaign).join(' '),
+    quest: [...questNoteLines(result.quest, rules, campaign), ...(joined ? joinedLines(joined.id, rules) : [])].join(' '),
+    companion: joined ? companionCard(joined, campaign, rules) : null,
   };
 }
 
@@ -81,6 +96,7 @@ export function effectsText(effects, campaign, rules) {
     said.push(dearest ? `your ${partName(dearest, rules)} sold for ${sellPriceOf(dearest, rules)} credits` : 'a part sold');
   }
   for (const [side, by] of Object.entries(effects.standing ?? {})) said.push(`${sideCalled(side, rules)} ${signed(by)}`);
+  if (effects.joins) said.push(joinsSaid(effects.joins, rules));
   return said.length ? said.join(', ') : 'nothing';
 }
 

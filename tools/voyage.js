@@ -58,7 +58,10 @@
 // it, and at the colony flies to the quest's place first of the held ones
 // (nextPlace). The report says what came of
 // each quest, and the colony's odds of being found before and after the
-// thread's pay-off.
+// thread's pay-off. From M33c it starts each side's chain where the start's
+// price leaves its buffer, signs the chain's companion on where a berth is
+// free, and flies to their loyalty place as to a quest's; the report says
+// who was met, signed on and loyal.
 //
 //   node tools/voyage.js               a voyage from campaign seed 1, step by step
 //   node tools/voyage.js --seed 7      another seed
@@ -224,6 +227,9 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     // sector }].
     quests: { launch: launched.quests ?? {}, landing: null, end: null },
     questNotes: [],
+    // The companions (M33c) met at their chain's step, and those who signed
+    // on, by id in the order they did.
+    companions: { met: [], joined: [] },
   };
   const hold = () => `${campaign.supplies} supplies, ${campaign.credits} credits, heat ${campaign.heat}`;
   // The parts a refit couldn't fit, and the ship then (voyagePlan.js refitAt).
@@ -250,6 +256,9 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       hp: [before.crew.map((m) => m.hp), campaign.crew.map((m) => m.hp)],
       parts: [partsOnHand(before), partsOnHand(campaign)],
       crew: before.crew.length,
+      // What the holds carried as it began (M33c: a companion's lockers
+      // count from the step they sign on, as a recruit's do).
+      room: supplyCapacity(before.ship, defs, before.crew),
       ...extra,
     };
     steps.push(step);
@@ -384,6 +393,13 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       const said = pick.choice.outcomes[result.outcome].text;
       lines.push(`   ${open.event.title}: ${pick.choice.label}${result.roll === null ? '' : ` (rolled ${result.roll})`}. ${said} ${hold()}.`);
       if (result.quest) questNote(result.quest, before.run.sector.index);
+      // A companion's chain step (M33c): met, and signed on or not.
+      const offered = open.event.choices.flatMap((choice) => choice.outcomes.map((outcome) => outcome.effects.joins)).find(Boolean);
+      if (offered && !tally.companions.met.includes(offered)) tally.companions.met.push(offered);
+      if (changes.joined) {
+        tally.companions.joined.push(changes.joined);
+        lines.push(`   ${defs.companions.get(changes.joined)?.name ?? changes.joined} signs on: a crew of ${campaign.crew.length}.`);
+      }
     }
     // The system past the charts (M25): a survey, a jump between its
     // worlds, or settling, which ends the voyage. There is nothing else to
@@ -823,7 +839,8 @@ function flyTrip(campaign, defs, index, squad, raids) {
     what = `${here.event.title}: ${pick.choice.label}`;
   } else if (here.held) {
     const fought = fightPlace(now, defs);
-    if (fought.won && place.quest) wonOn = now.colony.day;
+    // The thread's place (M33b), not a companion's loyalty place (M33c).
+    if (fought.won && defs.quests.get(place.quest)?.background) wonOn = now.colony.day;
     now = fought.campaign;
     what = fought.won ? 'boarded her and won' : 'boarded her and lost';
   }
@@ -852,7 +869,7 @@ function onWay(campaign, defs, raids) {
 // lost 0; built Shelter (day 40); refitted Life support aboard; 0 hungry
 // days."
 function tripsLine(defs, trips) {
-  const each = trips.flown.map((trip) => `${trip.name}${trip.quest ? `, ${(questOf(defs, trip.quest)?.name ?? trip.quest).toLowerCase()}` : ''} (day ${trip.day}, ${trip.days} days, ${trip.squad} aboard: ${trip.what})`).join('; ');
+  const each = trips.flown.map((trip) => `${trip.name}${trip.quest ? `, ${(questOf(defs, trip.quest)?.name ?? trip.quest).replace(/^The /, 'the ')}` : ''} (day ${trip.day}, ${trip.days} days, ${trip.squad} aboard: ${trip.what})`).join('; ');
   const builds = trips.built.map((b) => `${b.name} (day ${b.day})`).join(', ');
   return (
     `${TRIP_DAYS} days of trips: ${trips.flown.length} trip${trips.flown.length === 1 ? '' : 's'}, ${trips.away} days away${each ? `: ${each}` : ''}. ` +
@@ -976,6 +993,7 @@ export function voyagesByBackground(defs, runs, options = {}) {
       runsLost: done.filter((r) => (r.tally.raids?.faced ?? []).some((raid) => !raid.won)).length,
       standing: standingMedians(defs, done),
       quests: questCounts(defs, done),
+      companions: companionCounts(defs, done),
     };
   });
   const width = Math.max(...rows.map((row) => row.name.length), 10);
@@ -988,8 +1006,30 @@ export function voyagesByBackground(defs, runs, options = {}) {
     ...rows.map((row) => `${row.name.padEnd(width)}  ${standingLine(defs, row.standing)}`),
     'The quests (M33b):',
     ...rows.map((row) => `${row.name.padEnd(width)}  ${questsLine(row.quests)}`),
+    "The companions (M33c), each met at their chain's step, signed on, and loyal by the end:",
+    ...rows.map((row) => `${row.name.padEnd(width)}  ${companionsLine(row.companions)}`),
   ];
   return { lines, rows };
+}
+
+// What came of the companions in voyages that launched (M33c), each in the
+// data's order: [{ id, name, met (runs that came to their chain's step),
+// joined (runs they signed on in), loyal (runs they were loyal in by the
+// colony's last day) }].
+export function companionCounts(defs, done) {
+  return [...(defs.companions?.values() ?? [])].map(({ id, name }) => ({
+    id,
+    name,
+    met: done.filter((r) => r.tally.companions.met.includes(id)).length,
+    joined: done.filter((r) => r.tally.companions.joined.includes(id)).length,
+    loyal: done.filter((r) => (r.travelled ?? r.campaign).crew.some((member) => member.companion === id && member.loyal)).length,
+  }));
+}
+
+// companionCounts in words: "Ines Varga met in 12, signed on in 9, loyal
+// in 6; …".
+function companionsLine(counts) {
+  return counts.map((c) => `${c.name} met in ${c.met}, signed on in ${c.joined}, loyal in ${c.loyal}`).join('; ');
 }
 
 // What came of the quests in voyages that launched (M33b): { thread (its
@@ -1090,6 +1130,7 @@ export function manyVoyages(defs, runs, options = {}) {
     tripsSummary(done),
     raidsSummary(defs, done),
     `The quests (M33b): ${questsLine(questCounts(defs, done))}`,
+    `The companions (M33c): ${companionsLine(companionCounts(defs, done))}.`,
     `Jumps: ${spread(of('jumps'))}, long ${spread(of('longJumps'))}, hungry ${spread(of('hungryJumps'))}.`,
     `At the nodes: ${spread(of('events'))} events, ${spread(of('eventCredits'))} credits and ${spread(of('eventSupplies'))} supplies from them, ${spread(of('found'))} parts found, ${spread(of('sold'))} sold, ${spread(of('wounds'))} hit points lost; ${spread(of('scans'))} scans.`,
     `Hostile ships: ${spread(of('approaches'))} met, ${spread(of('approachesWon'))} disabled or blown up, ${spread(of('approachesLost'))} boarding us. Boarded her ${spread(of('boardings'))} times (won ${spread(of('boardingsWon'))}), left her ${spread(of('left'))}; fought off ${spread(of('defencesWon'))} of ${spread(of('defences'))} boardings. Salvage: ${spread(of('salvaged'))} parts and ${spread(of('salvageCredits'))} credits. Lost: ${spread(of('partsLost'))} parts and ${spread(of('creditsLost'))} credits; ${spread(of('fightHp'))} hit points in the fights. Lost a boarding at home: ${done.filter((r) => r.steps.some((step) => step.kind === 'boarding' && step.dir === 'you' && !step.won)).length} of ${done.length}; dragged past 40 rounds: ${done.reduce((sum, r) => sum + r.tally.dragged, 0)}.`,

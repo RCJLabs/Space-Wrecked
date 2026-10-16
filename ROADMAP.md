@@ -435,7 +435,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 ### 4.10 Quests
 
 - **As built in M33b** (`src/sim/quests.js`; the quests in `data/quests.json`, their jobs in `data/contracts.json` and events in `data/events.json`, the odds in `data/balance.json`). Evan's picks (2026-10-16) are in M33b's entry (§7).
-- **Two kinds.** A background's thread starts with its campaign and has a step in each act. A side's chain starts at an event's choice: the Fleet's, lending its tender a hand (+2 with the Fleet). The union's, Con-Reg's and the Hallorans' chains are in §9.
+- **Three kinds.** A background's thread starts with its campaign and has a step in each act. A side's chain starts at an event's choice: the Fleet's, lending its tender a hand (+2 with the Fleet); from M33c the union's, paying into the strike fund; Con-Reg's, towing the survey skiff; and the Hallorans', calling their drop in. Each chain brings its side's companion, and from M33c a companion's loyalty quest starts as they sign on (§4.11).
 - **A step is done in its own act:**
   - **act 1, a job:** a contract of the quest's own, on the board above its three jobs while the step is open, never in the rotation. Its client, site, pay and fight's seed come from the campaign's seed and the jobs done and lost so far, so the board's own rolls are as before. Lost, it is offered again;
   - **the run, an event:** an event of the quest's own, put on a node of its kind in each sector the ship enters while the step is open, on the charts, marked with a diamond and named for its quest. A done choice does the step and a cold one ends the quest; any other leaves it for the next sector;
@@ -450,6 +450,39 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Shown** (Law 4): a Quests panel at the hangar, on the chart and at the colony, each quest's step and what is next, or done, or gone cold; the quest's job on the board, tagged with its name; the quest's node marked on the chart and named in its label; each choice's first tap saying what it does to a quest; each step's words and what it gave where it is done (the fight's end, the event's result, the homecoming); the colony's place tagged and held; the pay-off at the fight's end and the trip home; the halved odds in the colony's needs and Next day's first tap.
 - **Saves:** v28.
 - **Balance** (the test players, 100 voyages from each start): act 1's takes the thread's job before every launch; on the run the step is done in 99, 92 and 100 voyages (the miner, the deserter, the smuggler), most of them in the first sector, and the colony's place is won in 67, 61 and 86. After the pay-off the colony's odds of being found fall from 2.2, 1.6 and 1.3% a day to 0.1, 0.2 and 0.0%. The miner lends the tender a hand in 37 voyages and tags the pod in 28, and a patrol waves it through in 14. PROGRESS.md's M33b entry has the rest.
+
+### 4.11 Companions
+
+- **As built in M33c** (`src/sim/companions.js`, `src/sim/talents.js`; the companions in `data/companions.json`, their chains and loyalty quests in `data/quests.json`, the chains' events in `data/events.json`). Evan's picks (2026-10-16) are in M33c's entry (§7).
+- **Four, one for each side,** each with two traits, three fights stood (rank 1), a face and a past:
+  - **Ines Varga,** the Fleet's: the tender's bosun, an engineer;
+  - **Teo Brandt,** the union's: a docker and shop steward on a striking hall's food run, a quartermaster;
+  - **Ama Osei,** Con-Reg's: the junior surveyor let go for logging the skiff's tow, a scout;
+  - **Dez Halloran,** the Hallorans': Old Halloran's nephew, the family's medic.
+- **The chains,** each started at its side's event and its step an event of its own from the next sector on, as the Fleet's stores pod is (§4.10):
+
+  | Side | Started by | The step | Signing on, against doing it without them |
+  | --- | --- | --- | --- |
+  | The Fleet | lending the tender a hand: 3 supplies, the Fleet +2 | the stolen stores pod | the Fleet +4 and Varga, against 25 credits and the Fleet +4 |
+  | The union | paying into the strike fund: 15 credits, the union +2 | the hall's food run | 4 supplies, the union +4 and Teo, against the same and 10 credits |
+  | Con-Reg | towing the survey skiff: 3 supplies, 15 credits, Con-Reg +2 | the surveyor's lifepod | Ama, against 2 supplies for 20 credits |
+  | The Hallorans | calling the drop in: the Hallorans +1 | the family's runner | 3 supplies, the Hallorans +1 and Dez, against 3 supplies and the Hallorans +4 |
+
+  At each step one choice ends the chain and another leaves it for the next sector. Signing on needs a free berth (`crew.js` crewRoom) and costs no fee.
+- **Loyalty:** a companion's loyalty quest opens as they sign on, with one step at the colony: a place within reach held by someone from their past (the pirates' cutter, the strikebreakers' tug, the survey chief's tug, the family's runner), a fight aboard her as at a thread's place, 2 days away. Won, they are loyal. Let go before then, at a station, it goes cold.
+- **Their talent,** loyal: their job's order at a third rank, rank 2's with numbers of their own, in every fight after:
+
+  | Companion | Talent | Over rank 2's |
+  | --- | --- | --- |
+  | Ines Varga | Bosun's weld | Weld ×3, a door shut 8 rounds against 5 |
+  | Teo Brandt | Steward's kit | Kit out ×3, +2 armor against +1 |
+  | Ama Osei | Surveyor's eye | Mark ×3, +30 to hit against +20 |
+  | Dez Halloran | Family medicine | Patch ×3, 8 hit points against 5 |
+
+  Their job's other ranks still come with fights: Varga's Running repairs at 8 fights, as anyone's.
+- **Shown** (Law 4): where a companion offers to come aboard, the event card shows their face, name, side, job and past, and with the result once they have; the choice signing them on says so, that it takes a berth and how many are free, and what the crew eats with them aboard; on the crew card, on the chart and (from M33c) at the colony, their side, past and loyalty: what earns it, or their talent and its numbers; the Quests panel with each chain and loyalty quest; their place at the colony, named for their quest and held, with who is aboard her; loyal, three chevrons on the crew card, the squad picker and the fight's buttons, rank 3 by their talent's name on the unit's card, its numbers in the order's preview, and the fight's end saying they are loyal.
+- **Saves:** v29.
+- **Balance** (the test players, 100 voyages from each start, as M33c's entry has them): companions sign on in 21, 19 and 56 voyages (the miner, the deserter, the smuggler); in the fight harness (1,000 fights against the same at rank 2) Steward's kit wins 75% against 47%, Surveyor's eye 45% against 41%, Family medicine 53% against 51%, and Bosun's weld 51% against 51%: the AI welds a door 0.2 times a fight. PROGRESS.md's M33c entry has the rest.
 
 ---
 
@@ -1168,7 +1201,7 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
   - **The Resolute's spares** cost 20 credits. At 40 the run's step went cold in 26 of 100 deserter voyages, the ship short of the credits; at 20, in 8.
   - **The test players:** act 1's prices the step's heat at the pursuer's payment (the deserter's, whose pursuer takes none, at the cheapest any pursuer takes). The voyage's counts a choice that does a step at 40 credits and one that ends it at −40; on the way a quest's node counts at the share of the act's sectors gone, all of it in the last; it lends the tender a hand only while the holds keep 4 jumps' worth after it, its buffer; and it flies to the colony's quest place first of the held.
   - **Measured over 100 seeds,** by Evan's two calls above.
-- [ ] **M33c Companions.** Everyone aboard is the captain or a hand off a station's board: a recruit is a name, a background's line and numbers, and nobody has a story of their own. The sides have chains waiting in §9, and the Fleet's tender chain ends in a fee.
+- [x] **M33c Companions.** Everyone aboard is the captain or a hand off a station's board: a recruit is a name, a background's line and numbers, and nobody has a story of their own. The sides have chains waiting in §9, and the Fleet's tender chain ends in a fee.
 
   Evan's picks (2026-10-16), each the recommended option:
   - **Four companions, one for each side,** met on the run at that side's event: the Fleet tender, the co-op barge, the survey skiff and the Halloran drop. The Fleet's tender chain is the Fleet companion's, and the union's, Con-Reg's and the Hallorans' chains, in §9 since M33b, come now.
@@ -1226,6 +1259,12 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
     - the loyalty place at the colony, flown to and won;
     - the third rank in a fight;
     - a quit and reopen.
+
+  As built (2026-10-16), where it differs from the above (§4.11 has the whole):
+  - **The test players** start a side's chain and sign its companion on only where the holds would feed them for 10 jumps, as they sign a recruit on, and one side's chain at a time; they still start the Fleet's where it would make the Fleet friendly, for its patrols' wave, as in M33b. Signing on wherever a berth was free, and starting every chain whose price left the buffer, 100 voyages from each start ended fed in 47, 53 and 81, against M33b's 73, 90 and 98: a fourth mouth empties the start ships' 30 supplies in 7 jumps, and the steps' detours cost more. Evan's call to confirm.
+  - **The crew card opens at the colony too:** the colony had only a list of names, and a companion turns loyal there.
+  - **The choice signing a companion on says what the crew eats with them aboard,** as a recruit's sign-on does.
+  - **A loyal companion's rank shows as the third** on the crew card, the squad picker and the crew panel's rows, as in fights; their job's next rank by fights is named for what it gives ("Running repairs at 8"), and reaching it says the same, without the order: their talent has it already.
 - [ ] M34 Image pass: Base44 portraits and scenes. Draft: WebP portraits for named characters (companions, the districts' clients) and scenes (the hangar, the lift-off, the landing), each logged in `assets/LOG.md`. Recruits keep their layered portraits, drawn in code since M23c.
 - [ ] M35 Audio pass with ZzFX. Draft: sounds made in code with ZzFX (approved for M35): shots and hits, the builder's placing, and the menus; a mute and a volume in the settings; audio starts after the first tap.
 
@@ -1270,7 +1309,6 @@ These ideas wait until v0.4 or later:
 - nemesis captains and legacy captains
 - black box derelicts and zero-g drift
 - a daily anomaly and a blueprint gallery
-- named companions with loyalty quests
 - decals: a name or a number on the hull, and a side's emblem. M23f brought paint and trim (raised before M4; narrowed in M23f)
 - vibration on hits
 - closing doors in battle, and locked doors: since M7 a unit can open a door beside it, but not shut one (raised in M7: defenders sealing a breach)
@@ -1368,12 +1406,15 @@ These ideas wait until v0.4 or later:
 - traits the test players weigh: the test players' captains have no traits, and the voyage's test player picks a recruit by the job the crew has fewest of, then hit points, so the 14 new traits reach its voyages only by chance, through recruits (raised in M32b)
 - a raid that hangs on where each one stands: the raiders deploy in their party's order, and the order alone moves the results a long way. The Hallorans' six with the enforcer first to sixth gave the smuggler's crew 68%, 46%, 19%, 63%, 41% and 67% at the hangar; two MPs and a rating, 31% with the rating last and 47% with it between. Parties are tuned by measurement, so a layout change can move them (raised in M32)
 - The miner meets the hunters more since M33: 45 runs of 100 against main's 35 before it (48 in M33, before its fix), and on seeds 1 to 30 in 15, one over M33's limit. Two parts: the seeds where M33 docked with Con-Reg meet them in 11 against 9 before M33 (14 in M33: the fix's trading rule took 3 off); the other 78 in 34 against 26, nearly all past the charts, where no station is (runs meeting them there 27 against 14, in the sectors 25 against 23). Past the charts the miner meets them in 34 runs against 20 before M33, surveying no more (2 a run) and entering a little hotter (heat 44 at the median against 43; 46 in M33); I couldn't pin the rest down. What docking still adds would ease with fewer of Con-Reg's names among the stations (two of the twelve: my call in M33, not Evan's) or a lighter docking heat (the 10 is Evan's pick); the part past the charts needs a look of its own. Evan's call at M33b's start (2026-10-16): on to quests, and this waits for Phase 7's balance runs (raised in M33, narrowed by its fix)
-- the other sides' chains: the union's, Con-Reg's and the Hallorans', each offered once the crew stands well with the side, as the Fleet's starts at its tender (Evan's call in M33b: later). No start can befriend its own pursuer's side, so each start could reach three of the four
 - a side in the Narrows: none of its clients has one, so in act 1 a smuggler's standing only moves against the Fleet (the customs jobs) and the Hallorans, never up. A union client there, or one who pays to see the Hallorans hurt, would give a smuggler a side to build (raised in M33)
 - standing in act 3: raids and the colony don't move it, and it changes nothing there. The sides could trade with a colony, call at it, or raid it (raised in M33)
 - the hangar's side column on the folded screen (821 × 283): with the Sides panel it scrolls as a whole, so the crew and the sides take a swipe. A tab between them, or the sides as a line under the heat meter, would keep both in sight (raised in M33)
 - the Fleet's chain's price in supplies: lending the tender a hand costs 3 and tagging the pod gives up its 8, about 11 fed voyages of 300 for the careful miner (M33b). A tagged pod could hand back some supplies as the Fleet's thanks, if the chain should cost less
 - the deserter's crew aboard ships: it wins 61% of its fights at the squatters' hulks, against the miner's 78% and the smuggler's 65%, and 58% at the Provost's courier, so its thread's pay-off comes in 61 voyages of 100 against 67 and 86 (M33b). For Phase 7's balance runs
 - the miner's voyages since M33b: the debt's steps take heat off, and it meets the hunters in 37 runs of 100 (45 in the M33 fix), near main's 35 before M33; it is fed in 73 against the fix's 84 (the Fleet's chain, above, and chance)
+- a side's chain started in act 2's last sector: its step comes from the next sector on, so it goes cold as the ship leaves, said only by the last jump point's plan. The start's first tap could say so, or the start wait for a sector to follow (raised in M33c)
+- the talents' worth: in 1,000 fights against the same at rank 2, Steward's kit wins 75% against 47%, Surveyor's eye 45% against 41%, Family medicine 53% against 51%, and Bosun's weld nothing the AI notices (it welds 0.2 times a fight). Kit's armor is a whole number, so +2 is the least past rank 2's +1. For Phase 7's balance runs (raised in M33c)
+- the companion at their own loyalty place: the squad that flies there needn't have them in it, and nothing changes if it does (raised in M33c)
+- companions on the start ships: a fourth mouth needs 40 supplies for 10 jumps, and the miner's and the deserter's ships carry 30, so their test voyages sign a companion on mostly where it is Teo, whose lockers carry him (raised in M33c)
 
 Ideas that come up during a session go here, not into code.
