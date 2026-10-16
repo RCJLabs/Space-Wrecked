@@ -28,6 +28,10 @@
 //                                        only some kinds, --orders mark,patch;
 //                                        all by default. With --compare, the
 //                                        same fights with every order first
+//   node tools/sim.js --rank 1           the crew at job rank 1 (M32b): each
+//                                        order as its rank sharpens it. With
+//                                        --compare, the same fights at rank 0
+//                                        first
 //   node tools/sim.js --rounds 30        fights still going after this many
 //                                        rounds stop with no winner
 //   node tools/sim.js --seed balance     the seed every fight's seeds come from
@@ -55,7 +59,7 @@ import { readData } from './data.js';
 import { validateData } from './validate-data.js';
 
 const PLAYERS = { ai: aiAction, scripted: scriptedAction };
-export const DEFAULTS = { fights: 1000, ships: null, sets: [], crew: 'ai', boarders: 'ai', rounds: 30, seed: 'balance', encounter: null, compare: false, json: false, boardings: false, squad: null, orders: 'all' };
+export const DEFAULTS = { fights: 1000, ships: null, sets: [], crew: 'ai', boarders: 'ai', rounds: 30, seed: 'balance', encounter: null, compare: false, json: false, boardings: false, squad: null, orders: 'all', rank: 0 };
 // Shown hit chances, grouped for the check that shots land as often as shown.
 const BANDS = [[0, 19], [20, 39], [40, 59], [60, 79], [80, 100]];
 
@@ -80,9 +84,10 @@ export function parseArgs(argv) {
     else if (arg === '--boardings') options.boardings = true;
     else if (arg === '--squad') options.squad = value().split(',').map((s) => s.trim()).filter(Boolean);
     else if (arg === '--orders') options.orders = value();
+    else if (arg === '--rank') options.rank = whole(value(), arg, 0);
     else throw new Error(`Unknown option "${arg}".`);
   }
-  if (options.compare && !options.sets.length && options.orders === 'all') throw new Error('--compare needs a --set or --orders to compare with.');
+  if (options.compare && !options.sets.length && options.orders === 'all' && !options.rank) throw new Error('--compare needs a --set, --orders or --rank to compare with.');
   return options;
 }
 
@@ -161,15 +166,16 @@ export function shipsFor(names, rules) {
   });
 }
 
-// Plays the fights, ships taking turns: fight i is on ships[i % n]. Each
-// fight's seed (and a preset's ship) comes from the run's seed, the ship
-// and how many fights that ship has had, so adding a ship to the list
-// doesn't change the others' fights. Returns one record a fight:
+// Plays the fights, ships taking turns: fight i is on ships[i % n], the
+// crew at job rank `rank` (M32b). Each fight's seed (and a preset's ship)
+// comes from the run's seed, the ship and how many fights that ship has
+// had, so adding a ship to the list doesn't change the others' fights.
+// Returns one record a fight:
 //   { ship, winner, rounds, orders: { crew, enemy }, given, shots, downs, outs, deaths }
 // orders count each side's actions; given, the crew's job orders by kind
 // (M32); shots are { side, chance, hit, overwatch, crit, damage }; downs,
 // outs and deaths count crew downed, crew bled out and boarders killed.
-export function runFights(rules, { ships, fights, seed, crew, boarders, rounds, encounter }) {
+export function runFights(rules, { ships, fights, seed, crew, boarders, rounds, encounter, rank = 0 }) {
   const party = encounter ? rules.encounters.get(encounter) : rules.encounters.values().next().value;
   if (!party) throw new Error(`No encounter "${encounter}" in data/encounters.json.`);
   const players = { crew: PLAYERS[crew], enemy: PLAYERS[boarders] };
@@ -186,7 +192,8 @@ export function runFights(rules, { ships, fights, seed, crew, boarders, rounds, 
     }
     const placed = deploy(map, rules.squad, party.enemies, rules);
     if (!placed.ok) throw new Error(`${source.label}: ${placed.error}`);
-    const played = autoplay({ map, units: placed.units, seed: fightSeed }, rules, players, { maxRounds: rounds });
+    const units = rank ? placed.units.map((unit) => (rules.jobs.has(unit.kind) ? { ...unit, rank } : unit)) : placed.units;
+    const played = autoplay({ map, units, seed: fightSeed }, rules, players, { maxRounds: rounds });
     records.push(record(source.label, played));
   }
   return records;
@@ -345,9 +352,11 @@ export function setupText(rules, options, ships, balance) {
   const who = (side) => (options[side] === 'ai' ? 'the AI' : 'the scripted player');
   const sets = options.sets.map(({ name, value }) => `${name} ${balance[name]} → ${value}`).join(', ');
   const orders = options.orders === 'all' ? 'every job order' : options.orders === 'none' ? 'no job orders' : `only ${options.orders.split(',').join(' and ')}`;
+  const rank = options.rank ? ` at rank ${options.rank}${options.compare ? ' (before: rank 0)' : ''}` : '';
+  const before = options.compare && !options.rank && options.orders !== 'all' ? ' (before: every job order)' : '';
   return [
     `${commas(options.fights)} fights on ${ships.map((s) => s.label.toLowerCase()).join(', ')}.`,
-    `The squad (${rules.squad.join(', ')}), played by ${who('crew')} with ${orders}${options.compare && options.orders !== 'all' ? ' (before: every job order)' : ''}, against the ${party.name.toLowerCase()} (${party.enemies.join(', ')}), played by ${who('boarders')}.`,
+    `The squad (${rules.squad.join(', ')}), played by ${who('crew')} with ${orders}${before}${rank}, against the ${party.name.toLowerCase()} (${party.enemies.join(', ')}), played by ${who('boarders')}.`,
     `${options.rounds} rounds at most, seed "${options.seed}"${sets ? `, with ${sets}` : ''}.`,
   ].join(' ');
 }
@@ -385,9 +394,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     fail(err.message);
   }
   // Balance numbers don't change the maps, so both runs share the ships.
+  // A rank compares with the same fights at rank 0; otherwise the data as it
+  // is, every order given.
   const started = performance.now();
   const summary = summarize(runFights(changed.rules, { ...options, ships }));
-  const before = options.compare ? summarize(runFights(rulesFor(rulesWith(data, []).rules, { squad: options.squad }).rules, { ...options, ships })) : null;
+  const plain = () => rulesFor(rulesWith(data, []).rules, { squad: options.squad }).rules;
+  const before = options.compare ? summarize(runFights(options.rank ? changed.rules : plain(), { ...options, ships, rank: 0 })) : null;
   const seconds = (performance.now() - started) / 1000;
   if (options.json) {
     console.log(JSON.stringify(before ? { before, after: summary } : summary, null, 2));

@@ -32,7 +32,8 @@ test('the command line: defaults, every option, and what is wrong with a bad one
     [['--fights'], /--fights needs a value/],
     [['--set', 'halfCover'], /--set needs name=number/],
     [['--boarders', 'human'], /--boarders is played by ai or scripted/],
-    [['--compare'], /--compare needs a --set or --orders/],
+    [['--compare'], /--compare needs a --set, --orders or --rank/],
+    [['--rank', 'one'], /--rank needs a whole number, 0 or more/],
     [['--bogus'], /Unknown option "--bogus"/],
   ];
   for (const [argv, message] of wrong) assert.throws(() => parseArgs(argv), message, argv.join(' '));
@@ -167,6 +168,22 @@ test('every order is used by the crew\'s AI, and the same fights without it come
     assert.ok(used.some((r) => r.given[kind] > 0), `${kind} is given`);
     assert.ok(unused.every((r) => !r.given[kind]), `${kind} is not given without it`);
     assert.notDeepEqual(used.map((r) => [r.winner, r.rounds]), unused.map((r) => [r.winner, r.rounds]), `${kind} changes the fights`);
+  }
+});
+
+test('the crew at a rank (M32b): each order as its rank sharpens it, against the same fights at rank 0', () => {
+  assert.deepEqual(parseArgs(['--rank', '1', '--compare']), { ...DEFAULTS, rank: 1, compare: true });
+  const text = setupText(rules, { ...DEFAULTS, ...parseArgs(['--orders', 'weld', '--rank', '1', '--compare']) }, shipsFor(['example'], rules), data.balance);
+  assert.match(text, /with only weld at rank 1 \(before: rank 0\), against/);
+  const ships = shipsFor(['example', 'cutter', 'hauler'], rules);
+  const kinds = { marine: 'suppress', engineer: 'weld', medic: 'patch', pilot: 'hustle', scout: 'mark', xenobiologist: 'sedate', quartermaster: 'kit' };
+  for (const [job, kind] of Object.entries(kinds)) {
+    const squad = job === 'medic' ? ['medic', 'marine', 'engineer'] : [job, 'engineer', 'medic'];
+    const only = rulesFor(rules, { squad, orders: kind }).rules;
+    const fights = (rank) => runFights(only, { ...DEFAULTS, ships, fights: 24, rank });
+    const [green, ranked] = [fights(0), fights(1)];
+    assert.ok(ranked.some((r) => r.given[kind] > 0), `${kind} is given at rank 1`);
+    assert.notDeepEqual(ranked, green, `${kind} at rank 1 changes the fights`);
   }
 });
 
