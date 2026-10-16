@@ -34,7 +34,9 @@
 // fed, meets the hunters and loses a raid at the colony in about as many
 // runs as from the miner's, and its report puts them side by side. And
 // M33's: a station charges the crew its side's share of each price, and
-// docking at one of the pursuer's side adds its heat after the jump's.
+// the first trade at one of the pursuer's side since the ship arrived adds
+// its docking heat (M33's fix: it was the jump there), which the managing
+// player pays only where it must.
 // Each voyage launches from a test run of act 1 (tools/run.js) and is
 // played by the test player in tools/voyage.js. The voyages before M23h's
 // fly as fitted, with no refits, so each compares one part's difference.
@@ -160,7 +162,7 @@ function checkStep(step, capacity, kinds) {
     assert.equal(after, supplies + step.count);
     assert.ok(SHARES.includes(step.share), `share ${step.share}`);
     assert.equal(step.credits[0] - step.credits[1], costAt(step.count, balance.supplyPrice, step.share));
-    assert.deepEqual(step.heat[1], step.heat[0]);
+    checkDock(step);
     return;
   }
   if (step.kind === 'scan') {
@@ -169,9 +171,10 @@ function checkStep(step, capacity, kinds) {
     return;
   }
   if (step.kind === 'swap') {
-    // M24: the transponder swapped, at its price, for its heat.
+    // M24: the transponder swapped, at its price, for its heat, after
+    // any docking heat.
     assert.equal(step.credits[0] - step.credits[1], balance.swapPrice);
-    assert.equal(step.heat[1], clamp(step.heat[0] + balance.swapHeat, HEAT_MAX));
+    checkDock(step, (heat) => clamp(heat + balance.swapHeat, HEAT_MAX));
     assert.deepEqual([after, step.hp[1]], [supplies, step.hp[0]]);
     return;
   }
@@ -244,12 +247,14 @@ function checkStep(step, capacity, kinds) {
     assert.ok(SHARES.includes(step.share), `share ${step.share}`);
     assert.deepEqual([healed, step.credits[0] - step.credits[1]], [step.patched, costAt(step.patched, balance.patchPrice, step.share)]);
     assert.ok(step.patched > 0);
-    assert.deepEqual([after, step.heat[1]], [supplies, step.heat[0]]);
+    assert.equal(after, supplies);
+    checkDock(step);
     return;
   }
   if (step.kind === 'repair') {
     assert.ok(step.repaired > 0 && step.credits[1] < step.credits[0]);
-    assert.deepEqual([after, step.heat[1]], [supplies, step.heat[0]]);
+    assert.equal(after, supplies);
+    checkDock(step);
     return;
   }
   if (step.kind === 'hire') {
@@ -258,7 +263,8 @@ function checkStep(step, capacity, kinds) {
     assert.ok(SHARES.includes(step.share), `share ${step.share}`);
     assert.equal(step.credits[0] - step.credits[1], feeOf({ job: step.job, traits: step.traits, fights: step.fights }, rules, step.share));
     assert.deepEqual(step.hp[1], [...step.hp[0], maxHp({ job: step.job, traits: step.traits }, rules)]);
-    assert.deepEqual([after, step.heat[1]], [supplies, step.heat[0]]);
+    assert.equal(after, supplies);
+    checkDock(step);
     return;
   }
   if (step.kind === 'event') {
@@ -282,16 +288,24 @@ function checkStep(step, capacity, kinds) {
   const cost = balance.jumpSupplies * step.crew * (long ? balance.longJumpFactor : 1);
   assert.equal(step.hungry, supplies < cost);
   assert.equal(after, Math.max(0, supplies - cost));
-  // Docking at a station of the pursuer's side adds its heat after the
-  // jump's (M33).
-  assert.ok([0, balance.dockHeat].includes(step.dock), `dock ${step.dock}`);
-  assert.equal(step.heat[1], clamp(clamp(step.heat[0] + (long ? balance.longJumpHeat : balance.jumpHeat), HEAT_MAX) + step.dock, HEAT_MAX));
+  // The jump's heat, and since M33's fix nothing for docking where it
+  // comes out: that is a trade's.
+  assert.equal(step.dock, undefined);
+  assert.equal(step.heat[1], clamp(step.heat[0] + (long ? balance.longJumpHeat : balance.jumpHeat), HEAT_MAX));
   // Hunger first, then the med bay's healing, up to each one's most.
   assert.deepEqual(step.hp[1], step.hp[0].map((hp, i) => Math.min(step.max[i], (step.hungry ? Math.max(1, hp - balance.hungerHp) : hp) + step.heal)));
   assert.equal(step.credits[1], step.credits[0]);
   // The hunters' chance where it came out (M24), by the heat it came out
   // with: none below huntHeat, and none at all where they never wait.
   checkHunt(step);
+}
+
+// A trade at a station (M33's fix): its docking heat, if it was the first
+// at one of the pursuer's side since the ship arrived, or none; then what
+// the trade itself does to heat (`then`), nothing but for the swap.
+function checkDock(step, then = (heat) => heat) {
+  assert.ok([0, balance.dockHeat].includes(step.dock), `dock ${step.dock}`);
+  assert.equal(step.heat[1], then(clamp(step.heat[0] + step.dock, HEAT_MAX)));
 }
 
 // The hunters' chance a jump showed and rolled (hunt.js): its level's, by
@@ -701,4 +715,27 @@ test("from each background's start, the careful player crosses fed, meets the hu
   const side = voyagesByBackground(rules, 1);
   assert.deepEqual(side.rows.map((row) => row.id), [...rules.backgrounds.keys()]);
   assert.match(side.lines[1], /^Background +Launched +Fed +Met +Raids +Won +Lost +Runs lost$/);
+});
+
+test("at a station of the pursuer's side the first trade since the ship arrived pays its docking heat, once a visit, and the managing player passes some by (M33's fix)", () => {
+  const trades = ['buy', 'hire', 'swap', 'patch', 'repair'];
+  let paid = 0;
+  let passed = 0;
+  for (const [i, trip] of [...refittingAll, ...desertersAll, ...smugglersAll].entries()) {
+    let traded = false;
+    for (const step of trip.steps) {
+      if (['jump', 'long', 'sector', 'system'].includes(step.kind)) traded = false;
+      if (!trades.includes(step.kind)) continue;
+      if (step.dock) {
+        // Seeds 1 to RATE_RUNS from the miner's start, then the deserter's
+        // and the smuggler's.
+        assert.equal(traded, false, `run ${i}: only a visit's first trade pays it`);
+        paid += 1;
+      }
+      traded = true;
+    }
+    passed += trip.tally.passedBy;
+  }
+  assert.ok(paid > 0, 'some runs trade with their pursuer');
+  assert.ok(passed > 0, 'and some pass one of its stations by');
 });
