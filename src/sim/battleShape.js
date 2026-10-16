@@ -26,6 +26,7 @@ export function battleProblem(value) {
     ids.add(unit.id);
   }
   if (!Array.isArray(value.doors) || !value.doors.every((key) => typeof key === 'string')) return 'has unreadable doors';
+  if (!Array.isArray(value.welds) || !value.welds.every((weld) => isRecord(weld) && typeof weld.key === 'string' && isInt(weld.until, 1, MAX))) return 'has unreadable welds';
   if (!TEAMS.includes(value.side) || !TEAMS.includes(value.first) || !isInt(value.round, 1, MAX) || !isState(value.rng)) {
     return 'has an unreadable turn';
   }
@@ -95,7 +96,10 @@ function isUnit(unit, map) {
     STATS.every((key) => isInt(unit[key], -MAX, MAX)) &&
     typeof unit.weapon === 'string' && isInt(unit.ammo, 0, MAX) && isInt(unit.ap, 0, MAX) &&
     typeof unit.overwatch === 'boolean' && STATUSES.includes(unit.status) &&
-    isInt(unit.bleed, 0, MAX) && isInt(unit.air, 0, MAX)
+    isInt(unit.bleed, 0, MAX) && isInt(unit.air, 0, MAX) &&
+    isInt(unit.uses, 0, MAX) && (unit.mark === null || (isRecord(unit.mark) && isInt(unit.mark.aim, -MAX, MAX) && isInt(unit.mark.turns, 1, MAX))) &&
+    (unit.suppressed === null || (isRecord(unit.suppressed) && isInt(unit.suppressed.aim, -MAX, MAX))) &&
+    typeof unit.asleep === 'boolean' && typeof unit.kitted === 'boolean'
   );
 }
 

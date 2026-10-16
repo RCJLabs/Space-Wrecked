@@ -5,8 +5,8 @@
 import { autoplay } from './autoplay.js';
 import { targetsFor } from './battle.js';
 import { SIDES } from './grid.js';
-import { edgeKey, wallAt } from './mapFromShip.js';
 import { reachable, stepsFrom } from './moves.js';
+import { shutDoor } from './terrain.js';
 
 // The scripted player's next action, for whichever side's turn it is. The
 // first unit of that side with an action left: if it can see an enemy, it
@@ -32,7 +32,7 @@ export function scriptedAction(battle, rules) {
     if (d < best.d || (d === best.d && spot.cost < best.cost)) best = { d, cost: spot.cost, x: spot.x, y: spot.y };
   }
   if (best.x !== unit.x || best.y !== unit.y) return { type: 'move', unit: unit.id, to: [best.x, best.y] };
-  const door = SIDES.find((side) => wallAt(battle.map, unit.x, unit.y, side) === 'door' && !battle.doors.includes(edgeKey(unit.x, unit.y, side)));
+  const door = SIDES.find((side) => shutDoor(battle, unit.x, unit.y, side));
   if (door) return { type: 'open', unit: unit.id, side: door };
   return unit.ammo < 1 ? { type: 'reload', unit: unit.id } : { type: 'overwatch', unit: unit.id };
 }

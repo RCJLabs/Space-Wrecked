@@ -66,9 +66,10 @@ export function createCrewCard({ tap, done }) {
     },
   };
 
-  // A row: their portrait, the name, what they are and their traits, hit
-  // points, and a button for what can be done with them here, if anything.
-  function row({ name, about, traits, hp, max, face }, action, armed) {
+  // A row: their portrait, the name, what they are, their traits and what
+  // their job brings (M32), hit points, and a button for what can be done
+  // with them here, if anything.
+  function row({ name, about, traits, brief, hp, max, face }, action, armed) {
     const item = node('li');
     item.dataset.wounded = String(hp < max);
     item.append(portraitImg('crew-face', portraitUrl(face.look, face.job, face.trim, 'face')));
@@ -76,6 +77,7 @@ export function createCrewCard({ tap, done }) {
     who.append(node('span', null, name));
     if (about) who.append(node('small', null, about));
     if (traits) who.append(node('small', null, traits));
+    if (brief) who.append(node('small', 'crew-brief', brief));
     const health = node('span', 'sct-crew-hp');
     const bar = node('span', 'hgr-hp');
     const fill = node('span');

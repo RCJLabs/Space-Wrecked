@@ -99,7 +99,7 @@ export function applyEffects(campaign, rules, effects, { among = null } = {}) {
   let next = { ...campaign };
   const changes = { credits: 0, supplies: 0, heat: 0, materials: 0, wounds: [], parts: [], sold: [] };
   // What the holds take: in act 3, the colony's stores (colony.js).
-  const room = () => (next.colony ? storesOf(next, rules).total : supplyCapacity(next.ship, rules));
+  const room = () => (next.colony ? storesOf(next, rules).total : supplyCapacity(next.ship, rules, next.crew));
   if (effects.credits) {
     const credits = Math.max(0, next.credits + effects.credits);
     changes.credits += credits - next.credits;

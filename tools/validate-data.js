@@ -15,7 +15,9 @@ import { DEFAULT_HULL, DEFAULT_PAINT, DEFAULT_TRIM } from '../src/sim/builder.js
 import { CAPTAIN_TRAITS } from '../src/sim/campaign.js';
 import { REQUIRED_TAGS } from '../src/sim/constraints.js';
 import { withBases } from '../src/sim/defs.js';
+import { COLONY_EFFECTS, STATION_EFFECTS } from '../src/sim/edges.js';
 import { SITE_CHARS } from '../src/sim/gen/site.js';
+import { ORDER_KINDS } from '../src/sim/orders.js';
 import { TRAIT_STATS } from '../src/sim/traits.js';
 import { TIP_IDS } from '../src/ui/tipSteps.js';
 import { isId, isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
@@ -169,9 +171,11 @@ const BALANCE = {
 const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', 'clip', 'held'];
 const RANGE_BANDS = ['close', 'mid', 'long'];
 // Crew jobs and enemies are both fighters, with the same fields. A job
-// can also have a ship station effect (§4.5): what it adds aboard.
+// can also have an order in a fight (src/sim/orders.js), a ship effect
+// (station) and a colony effect (colony, src/sim/edges.js) (§4.5, M32).
 const FIGHTER_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'weapon', 'look'];
-const STATION_KEYS = ['heal'];
+const JOB_KEYS = ['order', 'station', 'colony'];
+const MAX_USES = 9;
 const TILE_RULE_KEYS = ['walk', 'cover', 'blocksSight'];
 // Traits (src/sim/traits.js): what each can add to a fighter's numbers, up
 // or down, and how far.
@@ -669,21 +673,14 @@ function checkWeapon(weapon, where, fail) {
 }
 
 // A crew job or an enemy: what it brings to a battle, and its look. A job
-// (job: true) can also have a station effect: with a working med bay
-// aboard, heal adds to what it heals each of the wounded a jump
-// (medbay.js).
+// (job: true) can also have an order, a ship effect and a colony effect.
 function checkFighter(fighter, where, weaponIds, fail, { job = false } = {}) {
   for (const key of Object.keys(fighter)) {
-    if (!FIGHTER_KEYS.includes(key) && !(job && key === 'station')) fail(where, `unknown field "${key}"`);
+    if (!FIGHTER_KEYS.includes(key) && !(job && JOB_KEYS.includes(key))) fail(where, `unknown field "${key}"`);
   }
-  if (fighter.station !== undefined && job) {
-    const { station } = fighter;
-    if (!station || typeof station !== 'object' || Array.isArray(station) || !Object.keys(station).length) fail(where, `station must be an object of ${STATION_KEYS.join(', ')}`);
-    else {
-      for (const key of Object.keys(station)) if (!STATION_KEYS.includes(key)) fail(where, `station: unknown effect "${key}"`);
-      if (station.heal !== undefined && !isIntIn(station.heal, 1, MAX_HEAL)) fail(where, `station.heal must be a whole number from 1 to ${MAX_HEAL}`);
-    }
-  }
+  if (job && fighter.order !== undefined) checkOrder(fighter.order, `${where} order`, fail);
+  if (job && fighter.station !== undefined) checkEffects(fighter.station, STATION_EFFECTS, `${where} station`, fail);
+  if (job && fighter.colony !== undefined) checkEffects(fighter.colony, COLONY_EFFECTS, `${where} colony`, fail);
   if (!isText(fighter.name)) fail(where, 'name must be a non-empty string');
   const ranges = { hp: [1, 99], aim: [0, 100], defense: [0, 100], mobility: [1, 20], armor: [0, 20] };
   for (const [key, [min, max]] of Object.entries(ranges)) {
@@ -691,6 +688,40 @@ function checkFighter(fighter, where, weaponIds, fail, { job = false } = {}) {
   }
   if (!weaponIds.has(fighter.weapon)) fail(where, `unknown weapon "${fighter.weapon}"`);
   for (const problem of lookProblems(fighter.look)) fail(where, problem);
+}
+
+// A job's order: { type, name, uses, ...its kind's numbers }.
+function checkOrder(order, where, fail) {
+  if (!isObject(order)) {
+    fail(where, 'must be { type, name, uses, ... }');
+    return;
+  }
+  const kind = ORDER_KINDS[order.type];
+  if (!kind) {
+    fail(where, `type must be one of ${Object.keys(ORDER_KINDS).join(', ')}`);
+    return;
+  }
+  for (const key of Object.keys(order)) {
+    if (!['type', 'name', 'uses', ...Object.keys(kind.fields)].includes(key)) fail(where, `unknown field "${key}" for ${order.type}`);
+  }
+  if (!isText(order.name)) fail(where, 'name must be a non-empty string');
+  if (!isIntIn(order.uses, 1, MAX_USES)) fail(where, `uses must be a whole number from 1 to ${MAX_USES}`);
+  for (const [key, [min, max]] of Object.entries(kind.fields)) {
+    if (!isIntIn(order[key], min, max)) fail(where, `${key} must be a whole number from ${min} to ${max}`);
+  }
+}
+
+// A job's ship or colony effects: { effect: amount }, each known, within
+// its range.
+function checkEffects(effects, known, where, fail) {
+  if (!isObject(effects) || !Object.keys(effects).length) {
+    fail(where, `must be an object of ${Object.keys(known).join(', ')}`);
+    return;
+  }
+  for (const [key, value] of Object.entries(effects)) {
+    if (!known[key]) fail(where, `unknown effect "${key}"`);
+    else if (!isIntIn(value, ...known[key])) fail(where, `${key} must be a whole number from ${known[key][0]} to ${known[key][1]}`);
+  }
 }
 
 // What a kind of tile does in a battle: whether units can stand on it, the

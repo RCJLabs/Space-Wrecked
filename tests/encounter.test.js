@@ -183,10 +183,13 @@ test("a boarding is fought on the boarded ship's map, wrecks and all: her crew o
 
 
 test("a boarding strips her makers' parts as they are: a pirate cutter's, Kestrel's among them (M31)", () => {
-  // Six cutters boarded, the first six that a reactor fired at gives up.
+  const BOARDED = 10;
+  // Ten cutters boarded, the first ten that a reactor fired at gives up.
+  // (Six until M32, when the marine aboard made the guns surer and so
+  // changed which approaches end in a boarding.)
   const stripped = [];
   let boarded = 0;
-  for (let cutter = 1; cutter <= 20 && boarded < 6; cutter++) {
+  for (let cutter = 1; cutter <= 30 && boarded < BOARDED; cutter++) {
     const start = atCutter({}, cutter);
     for (let seed = 0; seed < 300; seed++) {
       const ended = playOut({ ...start, rng: seedFrom(seed) }, () => ({ kind: 'fire', at: 'reactor' }));
@@ -200,8 +203,8 @@ test("a boarding strips her makers' parts as they are: a pirate cutter's, Kestre
       break;
     }
   }
-  assert.equal(boarded, 6);
-  assert.equal(stripped.length, 6 * rules.ships.get('cutter').salvage);
+  assert.equal(boarded, BOARDED);
+  assert.equal(stripped.length, BOARDED * rules.ships.get('cutter').salvage);
   assert.ok(stripped.some((type) => rules.modules.get(type).manufacturer === 'kestrel'), `${stripped}`);
 });
 test("what a boarding comes to: her salvage and scrap, her boarders' gear, what a raid takes, or wounds alone", () => {

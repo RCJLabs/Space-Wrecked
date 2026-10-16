@@ -24,7 +24,10 @@ import { boardPlace, endPlaceFight } from '../src/sim/expeditions.js';
 import { endColonyRaid, faceRaid, raidTake } from '../src/sim/raids.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { mapFromShip } from '../src/sim/mapFromShip.js';
-import { pressAction } from '../src/sim/press.js';
+import { shotOdds } from '../src/sim/odds.js';
+import { reachable } from '../src/sim/moves.js';
+import { advance, pressAction } from '../src/sim/press.js';
+import { canSee } from '../src/sim/sight.js';
 import { launchedShip } from './startShip.js';
 
 // Who plays which side: the side aboard the other's ship presses on.
@@ -35,9 +38,14 @@ export const BOARDING_PLAYERS = {
 // A boarding fight still going after this many rounds has stalled.
 export const MAX_ROUNDS = 60;
 // The test player's fights: past this many rounds, both sides press on, so
-// two sides on overwatch either side of a door can't hold a voyage up.
+// two sides on overwatch either side of a door can't hold a voyage up; and
+// a shot with less than HOPELESS percent to hit, or overwatch, gives way to
+// a step nearer, or with none (the fallen lying in the only way through),
+// to a tile with an enemy in sight, so two sides can't trade misses or
+// watch for each other for ever (M32).
 const DRAGGING = 40;
-const BOTH_PRESS = { crew: pressAction, enemy: pressAction };
+const HOPELESS = 10;
+const BOTH_PRESS = { crew: charge, enemy: charge };
 // Who plays a raid on the colony (M29): those at home the AI, the raiders
 // pressing on.
 const RAID_PLAYERS = { crew: aiAction, enemy: pressAction };
@@ -77,19 +85,76 @@ export function fightRaid(campaign, rules) {
   return { campaign: done.campaign, landing: faced.landing, fought: true, won: done.won, rounds: done.rounds, dragged: done.dragged, taken };
 }
 
+// A battle played on by the players, and past DRAGGING rounds with both
+// sides pressing on (charge), to its end or maxRounds: playFrom's { battle,
+// actions, events }, and dragged (true when it went past DRAGGING). The
+// test player's fights in act 1 (tools/run.js, M32) play on the same way.
+export function playOn(battle, rules, players, { maxRounds = MAX_ROUNDS } = {}) {
+  const played = playFrom(battle, rules, players, { maxRounds: Math.min(DRAGGING, maxRounds) });
+  if (played.battle.winner || maxRounds <= DRAGGING) return { ...played, dragged: false };
+  const rest = playFrom(played.battle, rules, BOTH_PRESS, { maxRounds });
+  return { battle: rest.battle, actions: [...played.actions, ...rest.actions], events: [...played.events, ...rest.events], dragged: true };
+}
+
 // A fight begun in campaign, played to its end, and ended: a boarding, its
-// players by which way it goes; or a raid's (players given).
+// players by which way it goes; or a raid's (players given). Throws
+// SealedIn for a fight that can't end (sealedIn), and an Error for one
+// that stalled otherwise.
 function fightThrough(campaign, rules, end, players = BOARDING_PLAYERS[campaign.fight.boarding?.dir]) {
   const { fight } = campaign;
-  let played = playFrom(fight.battle, rules, players, { maxRounds: DRAGGING });
-  const dragged = !played.battle.winner;
-  if (dragged) {
-    const rest = playFrom(played.battle, rules, BOTH_PRESS, { maxRounds: MAX_ROUNDS });
-    played = { battle: rest.battle, events: [...played.events, ...rest.events] };
+  const played = playOn(fight.battle, rules, players);
+  const { dragged } = played;
+  if (!played.battle.winner) {
+    const what = fight.raid ? 'raid' : 'boarding';
+    if (sealedIn(played.battle, rules)) throw new SealedIn(`A ${what} fight sealed itself in: after ${MAX_ROUNDS} rounds no one standing can reach a tile with an enemy in sight.`);
+    throw new Error(`A ${what} fight stalled after ${MAX_ROUNDS} rounds.`);
   }
-  if (!played.battle.winner) throw new Error(`A ${fight.raid ? 'raid' : 'boarding'} fight stalled after ${MAX_ROUNDS} rounds.`);
   const over = saveFight(campaign, played.battle, [...fight.log, ...played.events]);
   return { campaign: end(over, rules), won: played.battle.winner === 'crew', rounds: played.battle.round, dir: fight.boarding?.dir ?? null, salvage: fight.boarding?.salvage ?? null, dragged };
+}
+
+// A fight that can't end (M32): no one standing on either side can get to
+// a tile with an enemy in sight, however far it walks. The fallen can shut
+// the only way through: no one passes the other side's (moves.js). These
+// fights have no objective, and a fight can't be left once begun (ROADMAP
+// §9), so a player would be held there for good; the test player's trips
+// stop (tools/voyage.js).
+export class SealedIn extends Error {}
+
+export function sealedIn(battle, rules) {
+  const standing = battle.units.filter((u) => u.status === 'active');
+  return standing.every((unit) => {
+    const foes = standing.filter((u) => u.side !== unit.side);
+    for (const spot of reachable(battle, unit, Infinity, rules).values()) {
+      if (foes.some((foe) => canSee(battle, [spot.x, spot.y], [foe.x, foe.y], rules))) return false;
+    }
+    return true;
+  });
+}
+
+// Pressing on, past DRAGGING rounds: as pressAction, but a hopeless shot
+// or overwatch gives way to a step nearer, or with none and no enemy in
+// sight, to the nearest tile with one in sight, where there is one.
+function charge(battle, rules) {
+  const action = pressAction(battle, rules);
+  if (action.type !== 'shoot' && action.type !== 'overwatch') return action;
+  const unit = battle.units.find((u) => u.id === action.unit);
+  const target = action.type === 'shoot' ? battle.units.find((u) => u.id === action.target) : null;
+  if (target && shotOdds(battle, unit, target, rules).hit >= HOPELESS) return action;
+  return advance(battle, unit, rules) ?? (target ? null : intoSight(battle, unit, rules)) ?? action;
+}
+
+// A move to the cheapest tile in one action's reach with an enemy in
+// sight, or null.
+function intoSight(battle, unit, rules) {
+  const foes = battle.units.filter((u) => u.side !== unit.side && u.status === 'active');
+  const sees = (x, y) => foes.some((foe) => canSee(battle, [x, y], [foe.x, foe.y], rules));
+  if (sees(unit.x, unit.y)) return null;
+  let best = null;
+  for (const spot of reachable(battle, unit, unit.mobility, rules).values()) {
+    if ((!best || spot.cost < best.cost) && sees(spot.x, spot.y)) best = spot;
+  }
+  return best && { type: 'move', unit: unit.id, to: [best.x, best.y] };
 }
 
 // The harness's rows: two for each hostile preset with a party.

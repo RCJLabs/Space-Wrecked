@@ -62,7 +62,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      way, and a boarding fight's salvage may bring materials (M28)
 //  23  raids: the raid coming at the colony, and a trip's leg a raid
 //      stopped (M29)
-export const SAVE_VERSION = 23;
+//  24  every job: a battle's units keep their order's uses and what orders
+//      left on them, the battle its welded doors, and each of the run's
+//      scans how far it reached (M32)
+export const SAVE_VERSION = 24;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -304,6 +307,29 @@ export const MIGRATIONS = [
       const { colony } = data.campaign;
       const trip = isObject(colony.trip) ? { ...colony.trip, leg: null } : colony.trip;
       return { ...data, campaign: { ...data.campaign, colony: { ...colony, trip, raid: null } } };
+    },
+  },
+  // Every job (M32). A fight under way carries on with orders: every crew
+  // member gets the 2 uses each of the three jobs then had (the Marine's
+  // Suppress, the Engineer's Weld and the Medic's Patch), the enemy none,
+  // nothing marked, suppressed, asleep or kitted out, and no door welded.
+  // The run's scans each keep how far they reached, which a scout now
+  // stretches: before, every scan reached balance.scanRange's 2 links.
+  {
+    from: 23,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign)) return data;
+      let { campaign } = data;
+      const { fight, run } = campaign;
+      if (isObject(run) && Array.isArray(run.scans)) campaign = { ...campaign, run: { ...run, scans: run.scans.map((at) => ({ at, reach: 2 })) } };
+      if (isObject(fight) && isObject(fight.battle)) {
+        const { battle } = fight;
+        const units = Array.isArray(battle.units)
+          ? battle.units.map((unit) => (isObject(unit) ? { ...unit, uses: unit.side === 'crew' ? 2 : 0, mark: null, suppressed: null, asleep: false, kitted: false } : unit))
+          : battle.units;
+        campaign = { ...campaign, fight: { ...fight, battle: { ...battle, units, welds: [] } } };
+      }
+      return { ...data, campaign };
     },
   },
 ];

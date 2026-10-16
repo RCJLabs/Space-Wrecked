@@ -10,6 +10,9 @@
 //   tap on that tile makes it.
 // - A tap on an enemy it can see shows the shot, with the odds part by
 //   part (odds.js). Only a second tap on that enemy, or Fire, takes it.
+// - Its job's order (orders.js) is shown first, at whom or what it would
+//   reach, and only a second press takes it. While an order that reaches an
+//   enemy is shown, a tap on another enemy shows it at them instead.
 // - A tap on another crew member selects them instead.
 // Every action goes through battle.js. When the crew's turn ends, the
 // enemy's whole turn is played at once by the enemy AI (ai.js), pressing
@@ -23,6 +26,11 @@
 //   preview   null, or what a second tap (or Fire) does:
 //             { type: 'move', to: [x, y], cost, dash, path }
 //             { type: 'shoot', target, odds }
+//             { type: 'order', kind, at, odds, change }: at is the unit it
+//             reaches, or the door's side for a weld; odds a dart's, or
+//             null; change what a Mark or Suppress does to a shot's odds,
+//             { shooter, target, was, now } (the unit's own at the enemy
+//             marked; the enemy's best at the crew, suppressed), or null
 //   played    [{ action, events, battle }]: the actions the last dispatch
 //             played, in order, each with its events and the battle after
 //   log       every event so far
@@ -41,15 +49,20 @@
 //                            the ally down beside it, open the door beside
 //                            it, grab a crate in its reach, work the
 //                            terminal in its reach (a job's objective)
+//   fight/order { at? }      the selected unit's job's order: shows it at
+//                            `at` (a unit's id or a door's side), or at its
+//                            likeliest; a second time at the same, takes it
 //   fight/end                ends the crew's turn
 //   fight/load { battle, events }   a new battle
 import { aiAction } from './ai.js';
 import { act, targetsFor } from './battle.js';
+import { shotOdds } from './odds.js';
+import { dartOdds, ORDER_KINDS, orderOf, orderTargets } from './orders.js';
+import { canSee } from './sight.js';
 import { SIDES } from './grid.js';
-import { edgeKey, wallAt } from './mapFromShip.js';
 import { reachable } from './moves.js';
 import { pressAction } from './press.js';
-import { inReach, walkable } from './terrain.js';
+import { inReach, shutDoor, walkable } from './terrain.js';
 
 // More actions than any side's turn can take: a guard, should the enemy
 // player ever stall.
@@ -73,7 +86,10 @@ export function reduceFight(fight, action, rules) {
     case 'fight/confirm':
       if (fight.preview?.type === 'move') return play(fight, { type: 'move', unit: unit.id, to: fight.preview.to }, rules);
       if (fight.preview?.type === 'shoot') return play(fight, { type: 'shoot', unit: unit.id, target: fight.preview.target }, rules);
+      if (fight.preview?.type === 'order') return orderAt(fight, unit, fight.preview.at, rules);
       return fight;
+    case 'fight/order':
+      return unit ? orderAt(fight, unit, action.at, rules) : fight;
     case 'fight/cancel':
       return fight.preview ? { ...fight, preview: null } : fight;
     case 'fight/overwatch':
@@ -122,6 +138,8 @@ export function canAct(battle, unit) {
 //   grab       the [x, y] of a crate to grab in its reach, or null
 //   hack       whether it can work the terminal now: in its reach, and not
 //              worked yet this round
+//   order      its job's order while it can use it on someone or something
+//              now: { kind, name, uses, reaches }, or null
 // Null when no one is selected.
 export function ordersFor(fight, rules) {
   const unit = selectedUnit(fight);
@@ -138,7 +156,16 @@ export function ordersFor(fight, rules) {
     door: doorBeside(battle, unit),
     grab: crateInReach(battle, unit),
     hack: terminalInReach(battle, unit) && battle.objective.worked !== battle.round,
+    order: orderNow(battle, unit, rules),
   };
+}
+
+// The unit's order, when it can be given now: { kind, name, uses (left),
+// reaches, def (the job's order, with its numbers) }.
+function orderNow(battle, unit, rules) {
+  const order = orderOf(unit, rules);
+  if (!order || !orderTargets(battle, unit, rules).length) return null;
+  return { kind: order.type, name: order.name, uses: unit.uses, reaches: ORDER_KINDS[order.type].reaches, def: order };
 }
 
 // The tiles a unit can move to this turn, with its actions as they are.
@@ -165,6 +192,7 @@ function tap(fight, x, y, rules) {
   const { battle } = fight;
   const there = battle.units.find((u) => u.status !== 'dead' && u.x === x && u.y === y);
   if (there?.side === 'crew') return select(fight, there);
+  if (there && fight.preview?.type === 'order' && ORDER_KINDS[fight.preview.kind]?.reaches === 'enemy') return orderAt(fight, selectedUnit(fight), there.id, rules);
   if (there) return aim(fight, there.id, rules);
   const unit = selectedUnit(fight);
   if (!unit) return fight;
@@ -204,6 +232,77 @@ function nextTarget(fight, rules) {
   const { target, odds } = targets[(shown + 1) % targets.length];
   if (target.id === fight.preview?.target) return fight;
   return { ...fight, preview: { type: 'shoot', target: target.id, odds } };
+}
+
+// Shows the unit's order at `at` (a unit's id, or a door's side for a
+// weld), or at its likeliest with none given; takes it if that is shown
+// already.
+function orderAt(fight, unit, given, rules) {
+  const order = unit && orderOf(unit, rules);
+  if (!order) return fight;
+  const { battle } = fight;
+  const shown = fight.preview?.type === 'order' ? fight.preview.at : undefined;
+  const at = given ?? shown ?? likeliest(battle, unit, order, rules);
+  const reaches = ORDER_KINDS[order.type].reaches;
+  if (shown !== undefined && at === shown) return play(fight, reaches === 'door' ? { type: 'order', unit: unit.id, side: at } : { type: 'order', unit: unit.id, target: at }, rules);
+  if (at === null || !orderTargets(battle, unit, rules).includes(at)) return withNotice({ ...fight, preview: null }, 'info', noOrder(battle, unit, order, at));
+  const target = battle.units.find((u) => u.id === at);
+  const odds = order.type === 'sedate' ? dartOdds(battle, unit, target, rules) : null;
+  return { ...fight, preview: { type: 'order', kind: order.type, at, odds, change: oddsChange(battle, unit, order, target, rules) } };
+}
+
+// What a Mark or a Suppress does to a shot's odds, for its preview: the
+// unit's own shot at the enemy marked, or the suppressed enemy's best shot
+// at one of the crew it can see. { shooter, target, was, now } (ids and
+// percent), or null.
+function oddsChange(battle, unit, order, target, rules) {
+  if (order.type === 'mark') {
+    const marked = { ...target, mark: { aim: order.aim, turns: 1 } };
+    return { shooter: unit.id, target: target.id, was: shotOdds(battle, unit, target, rules).hit, now: shotOdds(battle, unit, marked, rules).hit };
+  }
+  if (order.type !== 'suppress') return null;
+  const suppressed = { ...target, suppressed: { aim: order.aim } };
+  const crew = battle.units.filter((u) => u.side === unit.side && u.status === 'active' && canSee(battle, [target.x, target.y], [u.x, u.y], rules));
+  const best = crew.map((u) => ({ u, hit: shotOdds(battle, target, u, rules).hit })).sort((a, b) => b.hit - a.hit)[0];
+  return best ? { shooter: target.id, target: best.u.id, was: best.hit, now: shotOdds(battle, suppressed, best.u, rules).hit } : null;
+}
+
+// Whom or what an order would likeliest reach: the enemy likeliest hit
+// (then the fewest hit points), the ally down (then the most hurt), itself
+// before an ally for a kit-out, or the first door beside. Null for none.
+function likeliest(battle, unit, order, rules) {
+  const reach = orderTargets(battle, unit, rules);
+  if (!reach.length) return null;
+  const units = reach.map((id) => battle.units.find((u) => u.id === id)).filter(Boolean);
+  switch (ORDER_KINDS[order.type].reaches) {
+    case 'enemy': {
+      const odds = (u) => targetsFor(battle, { ...unit, ammo: 1 }, rules).find((t) => t.target.id === u.id)?.odds.hit ?? 0;
+      return [...units].sort((a, b) => odds(b) - odds(a) || a.hp - b.hp)[0].id;
+    }
+    case 'ally':
+      return [...units].sort((a, b) => Number(b.status !== 'active') - Number(a.status !== 'active') || a.hp / a.maxHp - b.hp / b.maxHp)[0].id;
+    default:
+      return reach[0];
+  }
+}
+
+// Why the order can't be used, in words.
+function noOrder(battle, unit, order, at) {
+  if (unit.uses < 1) return `${unit.name} has no ${order.name} left this fight.`;
+  if ((order.type === 'suppress' || order.type === 'sedate') && unit.ammo < 1) return `${unit.name} has to reload first.`;
+  const target = battle.units.find((u) => u.id === at);
+  switch (ORDER_KINDS[order.type].reaches) {
+    case 'enemy':
+      return target ? `${unit.name} can't ${order.name.toLowerCase()} ${target.name} ${target.id} from here.` : `${unit.name} can't see anyone to ${order.name.toLowerCase()}.`;
+    case 'ally':
+      return `No one beside ${unit.name} needs patching.`;
+    case 'kit':
+      return `Everyone beside ${unit.name} is kitted out.`;
+    case 'door':
+      return `There's no door beside ${unit.name} to weld.`;
+    default:
+      return `${unit.name} can't ${order.name.toLowerCase()} now.`;
+  }
 }
 
 // Carries out a crew action, then, if that ended the crew's turn, the
@@ -257,7 +356,7 @@ function terminalInReach(battle, unit) {
 }
 
 function doorBeside(battle, unit) {
-  return SIDES.find((side) => wallAt(battle.map, unit.x, unit.y, side) === 'door' && !battle.doors.includes(edgeKey(unit.x, unit.y, side))) ?? null;
+  return SIDES.find((side) => shutDoor(battle, unit.x, unit.y, side)) ?? null;
 }
 
 function withNotice(fight, tone, text) {

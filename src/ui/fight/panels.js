@@ -79,10 +79,12 @@ export function createCrewBar({ onSelect, onEnd }) {
   }
 }
 
-// handlers: { shoot, overwatch, reload, stabilize, open, grab, hack, skip }.
-// Stabilize, Open door, Grab and Hack show only when there is someone,
-// a door, a crate or the terminal to do it to. tools: the buttons for the
-// top of the column, made and wired by the caller.
+// handlers: { shoot, overwatch, reload, job, stabilize, open, grab, hack,
+// skip }. Stabilize, Open door, Grab and Hack show only when there is
+// someone, a door, a crate or the terminal to do it to; the job's order
+// (M32) only when the unit can give it, with its name and the uses left.
+// tools: the buttons for the top of the column, made and wired by the
+// caller.
 export function createActionBar(handlers, tools = []) {
   const el = node('div', 'fgt-actions');
   const top = node('div', 'fgt-tools');
@@ -92,6 +94,7 @@ export function createActionBar(handlers, tools = []) {
     hack: toolButton('fgt-act fgt-job', icons.hack, 'Hack'),
     stabilize: toolButton('fgt-act', icons.stabilize, 'Stabilize'),
     open: toolButton('fgt-act', icons.door, 'Open door'),
+    job: toolButton('fgt-act fgt-order', icons.shoot, 'Order'),
     shoot: toolButton('fgt-act', icons.shoot, 'Shoot'),
     overwatch: toolButton('fgt-act', icons.overwatch, 'Overwatch'),
     reload: toolButton('fgt-act', icons.reload, 'Reload'),
@@ -121,6 +124,8 @@ export function createActionBar(handlers, tools = []) {
       buttons.open.hidden = playing || !orders?.door;
       buttons.grab.hidden = playing || !orders?.grab;
       buttons.hack.hidden = playing || !orders?.hack;
+      buttons.job.hidden = playing || !orders?.order;
+      if (orders?.order) jobButton(buttons.job, orders.order);
       const now = Object.values(buttons).map((button) => (button.hidden ? '-' : '+')).join('');
       if (now !== shown) {
         shown = now;
@@ -154,6 +159,17 @@ export function createActionBar(handlers, tools = []) {
     if (el.scrollTop < el.scrollHeight - el.clientHeight - 1) more.push('below');
     el.dataset.more = more.join(' ');
   }
+}
+
+// The job order's button as the unit's order has it: its kind's icon, and
+// its name with the uses left ("Mark · 2").
+function jobButton(button, order) {
+  const label = `${order.name} · ${order.uses}`;
+  if (button.dataset.kind === order.kind && button.getAttribute('aria-label') === label) return;
+  button.dataset.kind = order.kind;
+  button.innerHTML = icons[order.kind] ?? icons.shoot;
+  button.append(node('span', null, label));
+  button.setAttribute('aria-label', label);
 }
 
 export function node(tag, className, text) {

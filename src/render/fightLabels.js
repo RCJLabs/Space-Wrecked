@@ -26,11 +26,12 @@ const TONES = { hit: palette.bpGlow, hurt: palette.bad, miss: palette.inkDim, go
 //   shot     playback.js frame shot, or null
 //   banner   { text, progress } or null
 // }
-export function paintFightLabels(ctx, cam, rect, { units = [], badges = [], marks = [], floats = [], shot = null, banner = null }) {
+export function paintFightLabels(ctx, cam, rect, { units = [], badges = [], marks = [], welds = [], floats = [], shot = null, banner = null }) {
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   for (const mark of marks) tag(ctx, cam, mark);
+  for (const weld of welds) seam(ctx, cam, weld);
   if (shot) tracer(ctx, cam, shot);
   for (const unit of units) if (unit.status !== 'dead') bar(ctx, cam, unit);
   for (const badge of badges) pill(ctx, cam, badge);
@@ -41,7 +42,7 @@ export function paintFightLabels(ctx, cam, rect, { units = [], badges = [], mark
 
 // Hit points over a standing unit, or over one lying on the deck, and a
 // word for its state.
-function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, overwatch, bleed, selected }) {
+function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, overwatch, bleed, selected, marked, suppressed, asleep }) {
   const standing = status === 'active';
   const [sx, sy] = project(cam, x, y, standing ? UNIT_TOP + 0.16 : LYING_TOP + 0.14);
   const seg = (BAR_W - (maxHp - 1)) / maxHp;
@@ -52,7 +53,7 @@ function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, overwatch, bleed,
     ctx.fillStyle = i < hp ? color : rgba(palette.ink, 0.16);
     ctx.fillRect(x0 + i * (seg + 1), y0, seg, 5);
   }
-  const word = status === 'down' ? [`DOWN · ${bleed}`, palette.bad] : status === 'stable' ? ['STABLE', palette.good] : status === 'out' ? ['OUT', palette.inkDim] : overwatch ? ['OVERWATCH', palette.accent] : null;
+  const word = status === 'down' ? [`DOWN · ${bleed}`, palette.bad] : status === 'stable' ? ['STABLE', palette.good] : status === 'out' ? ['OUT', palette.inkDim] : standing ? orderWord({ overwatch, marked, suppressed, asleep }) : null;
   let top = y0 - 2;
   if (word) {
     ctx.font = SMALL;
@@ -78,19 +79,45 @@ function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, overwatch, bleed,
   }
 }
 
-// A hit chance over an enemy the selected unit can shoot.
-function pill(ctx, cam, { at: [x, y], text, strong }) {
+// What a standing unit's word says, the first that holds: asleep,
+// suppressed or marked (M32: what orders left on it), or on overwatch.
+function orderWord({ overwatch, marked, suppressed, asleep }) {
+  if (asleep) return ['ASLEEP', palette.inkDim];
+  if (suppressed) return ['SUPPRESSED', palette.good];
+  if (marked) return [overwatch ? 'MARKED · WATCHING' : 'MARKED', palette.target];
+  return overwatch ? ['OVERWATCH', palette.accent] : null;
+}
+
+// A hit chance over an enemy the selected unit can shoot, or (tone
+// 'order', M32) what a job's order shown reaches.
+function pill(ctx, cam, { at: [x, y], text, strong, tone }) {
   const [sx, sy] = project(cam, x + 0.5, y + 0.5, UNIT_TOP + 0.62);
+  const color = tone === 'order' ? palette.good : palette.target;
   ctx.font = BADGE;
   const w = ctx.measureText(text).width + 12;
   ctx.beginPath();
   ctx.roundRect(sx - w / 2, sy - 9, w, 18, 9);
-  ctx.fillStyle = strong ? palette.target : rgba(palette.space, 0.85);
+  ctx.fillStyle = strong ? color : rgba(palette.space, 0.85);
   ctx.fill();
   ctx.lineWidth = 1.2;
-  ctx.strokeStyle = palette.target;
+  ctx.strokeStyle = color;
   ctx.stroke();
-  ctx.fillStyle = strong ? palette.space : palette.target;
+  ctx.fillStyle = strong ? palette.space : color;
+  ctx.fillText(text, sx, sy + 0.5);
+}
+
+// A welded door (M32): a plate low on its edge, under the units' bars,
+// with the rounds it still holds.
+function seam(ctx, cam, { at: [x, y], text }) {
+  const [sx, sy] = project(cam, x, y, 0.18);
+  ctx.font = SMALL;
+  const w = ctx.measureText(text).width + 8;
+  ctx.fillStyle = rgba(palette.space, 0.85);
+  ctx.fillRect(Math.round(sx - w / 2), Math.round(sy - 6), w, 12);
+  ctx.strokeStyle = palette.accent;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(Math.round(sx - w / 2) + 0.5, Math.round(sy - 6) + 0.5, w - 1, 11);
+  ctx.fillStyle = palette.accent;
   ctx.fillText(text, sx, sy + 0.5);
 }
 

@@ -5,8 +5,8 @@
 import { MAX_PLACE_NAME } from './runShape.js';
 
 // More places than the list holds (data/expeditions.json places, held to
-// this by tools/validate-expeditions.js), and more days away than any place
-// is.
+// this by tools/validate-expeditions.js, and a scout's more, capped at it:
+// expeditions.js rollPlaces), and more days away than any place is.
 export const MAX_PLACES = 6;
 export const MAX_AWAY = 9;
 // More crew than a squad takes, parts than a boarding strips and materials

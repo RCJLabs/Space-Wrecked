@@ -3,9 +3,11 @@
 // what each leg's days came to; since M29 a leg a raid stopped, and Fly
 // on. rules are the content tables (src/sim/defs.js).
 import { maxHp } from '../../sim/campaign.js';
+import { colonyBy } from '../../sim/edges.js';
 import { choiceProblem } from '../../sim/events.js';
 import { homePlan, kindOf, onPlan, otherWorlds, placeFightDue, tripHere } from '../../sim/expeditions.js';
 import { pursuerOf } from '../../sim/heat.js';
+import { byJob } from './crewJobText.js';
 import { faceOf } from './crewText.js';
 import { changesText, effectsText } from './eventText.js';
 
@@ -46,14 +48,16 @@ export function squadRows(campaign, rules, going) {
 
 // A trip's plan in words (expeditions.js tripPlan's): { title (the place),
 // lines, ok, ask (what Fly out's first tap says), why (why it can't fly,
-// or null) }. The lines: the place's kind and the days there and back;
-// what the days eat; and the flight checks with the squad aboard, each
-// one failing with its fix.
+// or null) }. The lines: the place's kind and the days there and back (a
+// pilot in the squad flying them shorter, M32); what the days eat; and the
+// flight checks with the squad aboard, each one failing with its fix.
 export function planText(plan, campaign, rules) {
   if (!plan.place) return { title: 'Fly out', lines: [], ok: false, ask: null, why: plan.error };
   const { place, days } = plan;
+  const squad = plan.squad.map((id) => campaign.crew.find((member) => member.id === id)).filter(Boolean);
+  const pilot = days.out < place.days ? colonyBy(squad, rules, 'tripDays') : null;
   const lines = [
-    `${kindName(place, campaign, rules)} · ${days.out} day${days.out === 1 ? '' : 's'} there, ${days.back} back${place.held ? ' · squatters aboard' : ''}`,
+    `${kindName(place, campaign, rules)} · ${days.out} day${days.out === 1 ? '' : 's'} there, ${days.back} back${pilot ? `, ${byJob(pilot, rules)} flying` : ''}${place.held ? ' · squatters aboard' : ''}`,
     `The days eat ${plan.eats} food: ${plan.food[0]} → ${plan.food[1]}${plan.hungry ? `, ${plan.hungry} day${plan.hungry === 1 ? '' : 's'} hungry` : ''}`,
   ];
   const failing = plan.checks.filter((line) => line.ok !== true);

@@ -21,6 +21,13 @@
 //                                        the same fights before and after
 //   node tools/sim.js --crew scripted    the crew played by the plain scripted
 //                                        player, not the AI (--boarders too)
+//   node tools/sim.js --squad pilot,scout,medic
+//                                        another squad: jobs from
+//                                        data/jobs.json (M32)
+//   node tools/sim.js --orders none      the crew gives no orders (M32); or
+//                                        only some kinds, --orders mark,patch;
+//                                        all by default. With --compare, the
+//                                        same fights with every order first
 //   node tools/sim.js --rounds 30        fights still going after this many
 //                                        rounds stop with no winner
 //   node tools/sim.js --seed balance     the seed every fight's seeds come from
@@ -48,7 +55,7 @@ import { readData } from './data.js';
 import { validateData } from './validate-data.js';
 
 const PLAYERS = { ai: aiAction, scripted: scriptedAction };
-export const DEFAULTS = { fights: 1000, ships: null, sets: [], crew: 'ai', boarders: 'ai', rounds: 30, seed: 'balance', encounter: null, compare: false, json: false, boardings: false };
+export const DEFAULTS = { fights: 1000, ships: null, sets: [], crew: 'ai', boarders: 'ai', rounds: 30, seed: 'balance', encounter: null, compare: false, json: false, boardings: false, squad: null, orders: 'all' };
 // Shown hit chances, grouped for the check that shots land as often as shown.
 const BANDS = [[0, 19], [20, 39], [40, 59], [60, 79], [80, 100]];
 
@@ -71,10 +78,27 @@ export function parseArgs(argv) {
     else if (arg === '--compare') options.compare = true;
     else if (arg === '--json') options.json = true;
     else if (arg === '--boardings') options.boardings = true;
+    else if (arg === '--squad') options.squad = value().split(',').map((s) => s.trim()).filter(Boolean);
+    else if (arg === '--orders') options.orders = value();
     else throw new Error(`Unknown option "${arg}".`);
   }
-  if (options.compare && !options.sets.length) throw new Error('--compare needs a --set to compare with.');
+  if (options.compare && !options.sets.length && options.orders === 'all') throw new Error('--compare needs a --set or --orders to compare with.');
   return options;
+}
+
+// The rules with the squad and the orders a run asks for: rules.squad as
+// given, and each job's order kept only if `orders` is 'all' or names its
+// kind ('none' keeps none). Returns { ok: true, rules } or { ok: false,
+// error }.
+export function rulesFor(rules, { squad = null, orders = 'all' } = {}) {
+  const unknown = (squad ?? []).find((job) => !rules.jobs.has(job));
+  if (unknown) return { ok: false, error: `No job "${unknown}": name jobs from data/jobs.json (${[...rules.jobs.keys()].join(', ')}).` };
+  const kinds = orders === 'all' ? null : orders === 'none' ? [] : orders.split(',').map((s) => s.trim());
+  const types = new Set([...rules.jobs.values()].map((job) => job.order?.type).filter(Boolean));
+  const stray = (kinds ?? []).find((kind) => !types.has(kind));
+  if (stray) return { ok: false, error: `No order "${stray}": --orders takes all, none or kinds (${[...types].join(', ')}).` };
+  const jobs = kinds ? new Map([...rules.jobs].map(([id, job]) => [id, job.order && !kinds.includes(job.order.type) ? { ...job, order: null } : job])) : rules.jobs;
+  return { ok: true, rules: { ...rules, jobs, squad: squad ?? rules.squad } };
 }
 
 function whole(text, arg, least) {
@@ -141,9 +165,10 @@ export function shipsFor(names, rules) {
 // fight's seed (and a preset's ship) comes from the run's seed, the ship
 // and how many fights that ship has had, so adding a ship to the list
 // doesn't change the others' fights. Returns one record a fight:
-//   { ship, winner, rounds, orders: { crew, enemy }, shots, downs, outs, deaths }
-// shots are { side, chance, hit, overwatch, crit, damage }; downs, outs and
-// deaths count crew downed, crew bled out and boarders killed.
+//   { ship, winner, rounds, orders: { crew, enemy }, given, shots, downs, outs, deaths }
+// orders count each side's actions; given, the crew's job orders by kind
+// (M32); shots are { side, chance, hit, overwatch, crit, damage }; downs,
+// outs and deaths count crew downed, crew bled out and boarders killed.
 export function runFights(rules, { ships, fights, seed, crew, boarders, rounds, encounter }) {
   const party = encounter ? rules.encounters.get(encounter) : rules.encounters.values().next().value;
   if (!party) throw new Error(`No encounter "${encounter}" in data/encounters.json.`);
@@ -173,10 +198,12 @@ function record(ship, { battle, actions, events }) {
   const orders = { crew: 0, enemy: 0 };
   for (const action of actions) if (action.unit) orders[sideOf(action.unit)] += 1;
   const shots = [];
+  const given = {};
   let downs = 0;
   let outs = 0;
   let deaths = 0;
   for (const event of events) {
+    if (event.type === 'order') given[event.order] = (given[event.order] ?? 0) + 1;
     if (event.type === 'shot') {
       shots.push({ side: sideOf(event.unit), chance: event.chance, hit: event.hit, overwatch: event.overwatch, crit: Boolean(event.crit), damage: event.damage ?? 0 });
     } else if (event.type === 'down') downs++;
@@ -184,7 +211,7 @@ function record(ship, { battle, actions, events }) {
     else if (event.type === 'dead' && sideOf(event.unit) === 'enemy') deaths++;
   }
   // A battle that ran out of rounds stopped one round past the limit.
-  return { ship, winner: battle.winner, rounds: battle.winner ? battle.round : battle.round - 1, orders, shots, downs, outs, deaths };
+  return { ship, winner: battle.winner, rounds: battle.winner ? battle.round : battle.round - 1, orders, given, shots, downs, outs, deaths };
 }
 
 // The records summed up: overall and ship by ship, the winners (with a 95%
@@ -217,6 +244,7 @@ export function summarize(records) {
       outs: mean(records.map((r) => r.outs)),
       deaths: mean(records.map((r) => r.deaths)),
     },
+    given: Object.fromEntries([...new Set(records.flatMap((r) => Object.keys(r.given ?? {})))].sort().map((kind) => [kind, mean(records.map((r) => r.given?.[kind] ?? 0))])),
   };
 }
 
@@ -294,6 +322,8 @@ export function reportText(summary, setup, before = null) {
   const f = summary.perFight;
   const g = before?.perFight;
   lines.push(`A fight: ${two(g?.downs, f.downs, (v) => v.toFixed(1))} crew go down, ${two(g?.outs, f.outs, (v) => v.toFixed(1))} bleed out, ${two(g?.deaths, f.deaths, (v) => v.toFixed(1))} boarders die.`);
+  const kinds = [...new Set([...Object.keys(summary.given ?? {}), ...Object.keys(before?.given ?? {})])].sort();
+  if (kinds.length) lines.push(`Job orders a fight: ${kinds.map((kind) => `${kind} ${two(before?.given?.[kind] ?? 0, summary.given?.[kind] ?? 0, (v) => v.toFixed(1))}`).join(', ')}.`);
   return lines.join('\n');
 }
 
@@ -314,9 +344,10 @@ export function setupText(rules, options, ships, balance) {
   const party = options.encounter ? rules.encounters.get(options.encounter) : rules.encounters.values().next().value;
   const who = (side) => (options[side] === 'ai' ? 'the AI' : 'the scripted player');
   const sets = options.sets.map(({ name, value }) => `${name} ${balance[name]} → ${value}`).join(', ');
+  const orders = options.orders === 'all' ? 'every job order' : options.orders === 'none' ? 'no job orders' : `only ${options.orders.split(',').join(' and ')}`;
   return [
     `${commas(options.fights)} fights on ${ships.map((s) => s.label.toLowerCase()).join(', ')}.`,
-    `The squad (${rules.squad.join(', ')}), played by ${who('crew')}, against the ${party.name.toLowerCase()} (${party.enemies.join(', ')}), played by ${who('boarders')}.`,
+    `The squad (${rules.squad.join(', ')}), played by ${who('crew')} with ${orders}${options.compare && options.orders !== 'all' ? ' (before: every job order)' : ''}, against the ${party.name.toLowerCase()} (${party.enemies.join(', ')}), played by ${who('boarders')}.`,
     `${options.rounds} rounds at most, seed "${options.seed}"${sets ? `, with ${sets}` : ''}.`,
   ].join(' ');
 }
@@ -335,6 +366,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const data = readData();
   const changed = rulesWith(data, options.sets);
   if (!changed.ok) fail(changed.error);
+  const shaped = rulesFor(changed.rules, options);
+  if (!shaped.ok) fail(shaped.error);
+  changed.rules = shaped.rules;
   if (options.boardings) {
     const { boardingRows, boardingText, runBoardings } = await import('./boarding.js');
     const perRow = Math.max(1, Math.round(options.fights / boardingRows(changed.rules).length));
@@ -353,7 +387,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   // Balance numbers don't change the maps, so both runs share the ships.
   const started = performance.now();
   const summary = summarize(runFights(changed.rules, { ...options, ships }));
-  const before = options.compare ? summarize(runFights(rulesWith(data, []).rules, { ...options, ships })) : null;
+  const before = options.compare ? summarize(runFights(rulesFor(rulesWith(data, []).rules, { squad: options.squad }).rules, { ...options, ships })) : null;
   const seconds = (performance.now() - started) / 1000;
   if (options.json) {
     console.log(JSON.stringify(before ? { before, after: summary } : summary, null, 2));

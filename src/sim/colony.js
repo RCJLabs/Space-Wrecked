@@ -10,6 +10,9 @@
 // (colonyBuild.js). From M28 the ship flies out on trips with a squad
 // (expeditions.js): while it is away the colony runs on its own power, and
 // materials build what keeps it going alone, a solar array and shelters.
+// From M32 the crew's jobs help (edges.js): a xenobiologist at home makes
+// each farm grow more, an engineer each mine dig more, and a quartermaster
+// anywhere in the crew makes the stores keep more.
 // Pure.
 //
 // The colony (campaign.colony):
@@ -31,6 +34,7 @@ import { atColony } from './acts.js';
 import { applyCommand, occupancy, placeModule } from './builder.js';
 import { shipChecklist } from './campaign.js';
 import { shipStats } from './constraints.js';
+import { colonyEdge } from './edges.js';
 import { tally } from './flags.js';
 import { cellAt } from './grid.js';
 import { baseOf } from './makers.js';
@@ -80,9 +84,22 @@ export function yieldOf(build, world) {
 
 // What a build makes a day here, as colonyStats has it: { food } or
 // { materials }, or null for one that makes nothing (a solar array, a
-// shelter).
-export function makesOf(build, world) {
-  return build.makes ? { [build.makes]: yieldOf(build, world) } : null;
+// shelter). more: what the crew adds to each (crewYields).
+export function makesOf(build, world, more = {}) {
+  return build.makes ? { [build.makes]: yieldOf(build, world) + (more[build.makes] ?? 0) } : null;
+}
+
+// What the crew at home adds to each farm's food and each mine's materials
+// a day (edges.js): { food, materials }.
+export function crewYields(campaign, rules) {
+  const home = homeCrew(campaign);
+  return { food: colonyEdge(home, rules, 'farms'), materials: colonyEdge(home, rules, 'mines') };
+}
+
+// The crew at home: all but the squad on a trip.
+export function homeCrew(campaign) {
+  const away = new Set(campaign.colony?.trip?.squad ?? []);
+  return campaign.crew.filter((member) => !away.has(member.id));
 }
 
 // What a build gives as a building, as givesOf has a part's: its gives
@@ -148,8 +165,10 @@ export function givesOf(def) {
 //              the landed ship (aboard: their ids), or while it is away go
 //              without (rough: their ids, M28). The squad on a trip is
 //              neither (away: their ids).
-//   storage    what the powered storehouses hold
-//   made       { food, materials }: what the farms and mines make a day
+//   storage    what the powered storehouses hold, and what a quartermaster
+//              anywhere in the crew adds (M32)
+//   made       { food, materials }: what the farms and mines make a day,
+//              with what the crew at home adds (crewYields)
 //   defense    { damage, shield, intercept, armories } of the powered
 //              defenses (M29)
 //   infirmary  the best powered infirmary's heal, 0 without one
@@ -157,10 +176,11 @@ export function colonyStats(campaign, rules) {
   const { colony, crew } = campaign;
   const trip = colony.trip ?? null;
   const ship = trip ? 0 : Math.max(0, shipStats(campaign.ship, rules).power);
+  const more = crewYields(campaign, rules);
   const known = colony.buildings.map((building) => {
     const build = buildOf(building.type, rules);
     const def = build ? null : rules.modules.get(building.type);
-    const makes = build ? makesOf(build, colony.world) : null;
+    const makes = build ? makesOf(build, colony.world, more) : null;
     return { ...building, makes, gives: build ? buildGives(build) : def ? givesOf(def) : null };
   });
   const plants = known.reduce((sum, { gives }) => sum + Math.max(0, gives?.power ?? 0), 0);
@@ -176,7 +196,7 @@ export function colonyStats(campaign, rules) {
   const made = (what) => lit.reduce((total, b) => total + (b.makes?.[what] ?? 0), 0);
   const [beds, air] = [sum('beds'), sum('air')];
   const away = new Set(trip?.squad ?? []);
-  const home = crew.filter((member) => !away.has(member.id));
+  const home = homeCrew(campaign);
   const housed = Math.min(home.length, beds, air);
   const without = home.slice(housed).map((member) => member.id);
   return {
@@ -188,7 +208,7 @@ export function colonyStats(campaign, rules) {
     aboard: trip ? [] : without,
     rough: trip ? without : [],
     away: [...away],
-    storage: sum('storage'),
+    storage: sum('storage') + colonyEdge(crew, rules, 'stores'),
     made: { food: made('food'), materials: made('materials') },
     defense: { damage: sum('damage'), shield: sum('shield'), intercept: sum('intercept'), armories: lit.filter((b) => b.gives.armory).length },
     infirmary: Math.max(0, ...lit.map((b) => b.gives.heal)),

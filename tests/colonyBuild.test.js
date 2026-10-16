@@ -32,7 +32,8 @@ test('a farm or a mine is built from materials, where the player puts it', () =>
   assert.deepEqual(campaignProblems(one.campaign), []);
   const two = build(one.campaign, rules, mine, { x: 9, y: 3, rot: 1 });
   assert.equal(two.ok, true, two.error);
-  assert.deepEqual(two.plan.makes, { materials: 2 });
+  // The world's ore, 2, and the engineer at home's 1 (M32).
+  assert.deepEqual(two.plan.makes, { materials: 3 });
   assert.equal(two.campaign.colony.materials, 0);
   // Out of materials.
   assert.deepEqual(buildPlan(two.campaign, rules, farm), { ok: false, error: 'A farm takes 10 materials, and the stores have 0.' });
@@ -42,7 +43,7 @@ test('a farm or a mine is built from materials, where the player puts it', () =>
   // From M28 a solar array and a shelter too, which give instead of make.
   assert.deepEqual(list.builds.map((row) => [row.id, row.name, row.cost, row.makes, row.ok]), [
     ['farm', 'Farm', 10, { food: 1 }, true],
-    ['mine', 'Mine', 10, { materials: 2 }, true],
+    ['mine', 'Mine', 10, { materials: 3 }, true],
     ['solar', 'Solar array', 15, null, false],
     ['shelter', 'Shelter', 10, null, true],
   ]);

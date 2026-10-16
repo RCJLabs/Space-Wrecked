@@ -55,9 +55,12 @@ export function approachText(campaign, rules) {
 
 // A side's name, numbers and wrecks. Point defense shows only on a ship
 // that has some: what it takes off the other ship's hit chance, as evasion
-// does.
+// does. The crew's edge (M32: a marine's gunnery, a pilot's evasion, both
+// counted in the odds shown) shows only on a side whose crew has one.
 function sideText(name, side, rules) {
   const stats = sideStats(side, rules);
+  const edge = side.edge ?? {};
+  const crew = [edge.gunnery ? `guns +${edge.gunnery}` : null, edge.evasion ? `evasion +${edge.evasion}` : null].filter(Boolean);
   const count = (tag) => {
     const all = side.ship.modules.filter((module) => rules.modules.get(module.type)?.tags.includes(tag));
     const working = all.filter((module) => !(module.uid in side.wrecked));
@@ -73,6 +76,7 @@ function sideText(name, side, rules) {
       ['Engines', count('engine').text],
       ['Reactor', count('reactor').text],
       ['Evasion', String(stats.evasion)],
+      ...(crew.length ? [['Crew', crew.join(' · ')]] : []),
     ],
     wrecked: side.wrecked,
   };

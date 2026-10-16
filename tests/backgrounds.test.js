@@ -161,7 +161,7 @@ test('the background screen: a card for each background, and the one picked in f
   assert.deepEqual(Object.fromEntries(text.facts), {
     'After you': 'The Fleet Provost. The Navy\'s police. They never forget a deserter, and they never take cash. Takes no payments.',
     Home: `The Strand. ${rules.districts.get('strand').blurb}`,
-    Crew: 'Marine ×2, Medic',
+    Crew: 'Marine, Pilot, Medic',
     Credits: '0',
     'On hand': 'Engine, Crew quarters, Corridor ×2',
     Fitted: 'Bridge, Reactor, Corridor ×3, Airlock, Weapon mount, Shield generator, Small reactor',
@@ -174,9 +174,9 @@ test('the background screen: a card for each background, and the one picked in f
 test('the captain screen offers each of the start crew\'s jobs once, and names the background picked', () => {
   const draft = { name: 'Ada Kessler', job: 'marine', traits: [], look: null };
   const text = captainText(rules, draft, 'deserter');
-  assert.deepEqual(text.jobs.map((job) => job.id), ['marine', 'medic']);
+  assert.deepEqual(text.jobs.map((job) => job.id), ['marine', 'pilot', 'medic']);
   assert.deepEqual(text.background, { name: 'Navy deserter', blurb: rules.backgrounds.get('deserter').blurb, pursuer: 'The Fleet Provost' });
-  assert.deepEqual(captainText(rules, draft, 'smuggler').jobs.map((job) => job.id), ['engineer', 'medic']);
+  assert.deepEqual(captainText(rules, draft, 'smuggler').jobs.map((job) => job.id), ['engineer', 'quartermaster', 'medic']);
 });
 
 test("each pursuer's raids are beaten about as often as Con-Reg's, at the hangar and at the colony: within 10 points over 150 fights (M30, tools/raids.js)", () => {

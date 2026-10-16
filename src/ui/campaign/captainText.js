@@ -4,6 +4,7 @@
 import { CAPTAIN_TRAITS, captainProblem, firstBackground } from '../../sim/campaign.js';
 import { FACES, LOOK_KEYS } from '../../sim/looks.js';
 import { TRAIT_STATS, traitBonus } from '../../sim/traits.js';
+import { jobSaid } from './crewJobText.js';
 
 // A fighter's numbers in words, in the order the traits move them.
 const STAT_NAMES = { hp: 'Hit points', aim: 'Aim', defense: 'Defense', mobility: 'Moves', armor: 'Armor' };
@@ -29,6 +30,8 @@ export const LOOK_WORDS = {
 //   traits      [{ id, name, text, effect, picked }]
 //   captain     the captain's numbers in words, with the traits picked
 //               ('' before a job is picked)
+//   does        the job picked's order, ship effect and colony effect in
+//               words (crewJobText.js jobSaid, M32): [] before one is
 //   ready       true when the captain can lead (captainProblem)
 //   hint        { tone, text }: what is left to do, or who is ready
 export function captainText(rules, draft, background = firstBackground(rules)) {
@@ -46,6 +49,7 @@ export function captainText(rules, draft, background = firstBackground(rules)) {
     }),
     traits: [...rules.traits.values()].map((trait) => ({ id: trait.id, name: trait.name, text: trait.text, effect: effectText(trait.effects), picked: picked.has(trait.id) })),
     captain: job ? statLine(withBonus(job, traitBonus(draft.traits, rules)), rules) : '',
+    does: job ? Object.values(jobSaid(job.id, rules)).filter(Boolean) : [],
     ready: !why,
     hint: why
       ? { tone: 'info', text: why === `Pick ${CAPTAIN_TRAITS} traits.` && left > 0 ? `Pick ${CAPTAIN_TRAITS} traits: ${left} to go.` : why }

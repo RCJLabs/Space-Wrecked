@@ -32,7 +32,6 @@
 //                                    start (M30; data/backgrounds.json)
 import { pathToFileURL } from 'node:url';
 import { aiAction } from '../src/sim/ai.js';
-import { playFrom } from '../src/sim/autoplay.js';
 import { applyCommand, layoutProblems, occupancy } from '../src/sim/builder.js';
 import { firstBackground, newCampaign, partsNeeded, refitShip, shipChecklist } from '../src/sim/campaign.js';
 import { canLaunch } from '../src/sim/constraints.js';
@@ -48,6 +47,7 @@ import { pressAction } from '../src/sim/press.js';
 import { beginRaid, endRaid } from '../src/sim/raid.js';
 import { DIFFICULTIES } from '../src/sim/settings.js';
 import { jobText } from '../src/ui/campaign/jobText.js';
+import { playOn } from './boarding.js';
 import { readData } from './data.js';
 
 // Seconds on the phone, [quick, slow].
@@ -139,7 +139,9 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
   const fightOut = (started, players) => {
     const { fight } = started;
     const sides = new Map(fight.battle.units.map((unit) => [unit.id, unit.side]));
-    const { battle, actions, events } = playFrom(fight.battle, defs, players, { maxRounds: MAX_ROUNDS });
+    // Past 40 rounds both sides press on, a hopeless shot giving way to a
+    // step nearer (boarding.js playOn, M32), so no fight drags for ever.
+    const { battle, actions, events } = playOn(fight.battle, defs, players, { maxRounds: MAX_ROUNDS });
     tally.orders += actions.filter((action) => action.unit && sides.get(action.unit) === 'crew').length;
     tally.rounds += battle.round;
     return { battle, events, campaign: { ...started, fight: { ...fight, battle, log: [...fight.log, ...events] } } };

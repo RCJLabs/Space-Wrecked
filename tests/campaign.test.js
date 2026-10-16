@@ -164,7 +164,7 @@ test("a fight that can't start says why", () => {
   const on = beginFight(campaign, rules).campaign;
   assert.deepEqual(beginFight(on, rules), { ok: false, error: 'A fight is on already.' });
   assert.deepEqual(beginFight({ ...campaign, crew: [] }, rules), { ok: false, error: 'There is no one aboard to fight.' });
-  assert.deepEqual(beginFight({ ...campaign, crew: [{ ...campaign.crew[0], job: 'pilot' }] }, rules), { ok: false, error: `${campaign.crew[0].name}'s job "pilot" is unknown.` });
+  assert.deepEqual(beginFight({ ...campaign, crew: [{ ...campaign.crew[0], job: 'cook' }] }, rules), { ok: false, error: `${campaign.crew[0].name}'s job "cook" is unknown.` });
   assert.deepEqual(beginFight({ ...campaign, ship: { ...campaign.ship, modules: [] } }, rules), { ok: false, error: 'The ship has no parts yet.' });
   const sealed = { ...campaign.ship, modules: campaign.ship.modules.filter((m) => m.type !== 'airlock') };
   assert.match(beginFight({ ...campaign, ship: sealed }, rules).error, /Boarders need a way in/);

@@ -1398,6 +1398,18 @@ textarea {
   color: var(--c-ink-dim);
 }
 
+/* What the job picked brings (M32): its order, aboard, at the colony. */
+.cap-does p {
+  margin: 0 0 4px;
+  color: var(--c-ink-dim);
+  font-size: 0.86em;
+}
+
+/* What a crew member's job brings, on one line in the crew card (M32). */
+.hgr-name small.crew-brief {
+  color: var(--c-good);
+}
+
 /* The look: the portrait beside a button a layer, each saying its choice,
    and Roll. */
 .cap-look {
@@ -3428,6 +3440,12 @@ textarea {
 #ui .fgt-job {
   border-color: var(--c-accent);
   color: var(--c-accent);
+}
+
+/* A crew job's order (M32): its name and the uses left, under its icon. */
+#ui .fgt-order {
+  border-color: var(--c-good);
+  color: var(--c-good);
 }
 
 /* The board's own: the round top left, a job's objective under it, the

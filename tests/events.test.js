@@ -151,10 +151,10 @@ test('what a node holds is known on the charts, next to where the ship has been,
   }
   const plan = scanPlan(campaign, rules);
   const reach = within(sector, sector.start, balance.scanRange);
-  assert.deepEqual(plan, { ok: true, heat: balance.scanHeat, reveals: [...reach.keys()].filter((id) => !known.has(id)) });
+  assert.deepEqual(plan, { ok: true, heat: balance.scanHeat, reach: balance.scanRange, reveals: [...reach.keys()].filter((id) => !known.has(id)) });
   const scanned = scan(campaign, rules).campaign;
   assert.equal(scanned.heat, 30 + balance.scanHeat);
-  assert.deepEqual(scanned.run.scans, [sector.start]);
+  assert.deepEqual(scanned.run.scans, [{ at: sector.start, reach: balance.scanRange }]);
   assert.equal(scanned.flags.scans, 1);
   for (const id of reach.keys()) assert.ok(knownNodes(scanned.run, rules).has(id));
   assert.match(scanPlan(scanned, rules).error, /Everything a scan would reach is known/);

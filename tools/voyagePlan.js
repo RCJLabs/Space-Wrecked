@@ -129,8 +129,8 @@ export function boardIt(campaign, rules) {
 export function hireWho(campaign, rules) {
   const offer = recruitOffer(campaign, rules);
   if (!offer.length || campaign.crew.length >= crewRoom(campaign.ship, rules)) return null;
-  if (supplyCapacity(campaign.ship, rules) < HIRE_JUMPS * rules.balance.jumpSupplies * (campaign.crew.length + 1)) return null;
-  const reserve = supplyCapacity(campaign.ship, rules) * rules.balance.supplyPrice;
+  if (supplyCapacity(campaign.ship, rules, campaign.crew) < HIRE_JUMPS * rules.balance.jumpSupplies * (campaign.crew.length + 1)) return null;
+  const reserve = supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice;
   if (campaign.credits - rules.balance.recruitFee < reserve) return null;
   const count = (job) => campaign.crew.filter((member) => member.job === job).length;
   return [...offer].sort((a, b) => count(a.job) - count(b.job) || b.hp - a.hp || a.slot - b.slot)[0].slot;
@@ -200,7 +200,7 @@ function fitOne(campaign, rules, type) {
 function suppliesWorth(campaign, rules, change) {
   const buffer = BUFFER_JUMPS * jumpSupplies(campaign, rules);
   const from = campaign.supplies;
-  const to = Math.max(0, Math.min(supplyCapacity(campaign.ship, rules), from + change));
+  const to = Math.max(0, Math.min(supplyCapacity(campaign.ship, rules, campaign.crew), from + change));
   const [low, high] = to > from ? [from, to] : [to, from];
   const short = Math.max(0, Math.min(high, buffer) - Math.min(low, buffer));
   const worth = short * WORTH.short + (high - low - short) * WORTH.supply;
@@ -297,7 +297,7 @@ export function fill(supplies, credits, room, price) {
 function wayCost(campaign, rules, way, { supplies, credits }, judge) {
   const { sector } = campaign.run;
   const price = rules.balance.supplyPrice;
-  const room = supplyCapacity(campaign.ship, rules);
+  const room = supplyCapacity(campaign.ship, rules, campaign.crew);
   const each = jumpSupplies(campaign, rules);
   let hungry = 0;
   let worth = 0;
@@ -375,11 +375,11 @@ export function nextJump(campaign, rules, policy, { heat = 'manage', from = LONG
   const judge = nodeJudge(campaign, rules, heat);
   const way = bestWay(campaign, rules, at, { supplies: campaign.supplies, credits: campaign.credits }, judge);
   if (policy !== 'heat' || campaign.heat < from) return way.way[1];
-  if (sector.nodes[way.way[1]].type === 'station' && campaign.supplies < supplyCapacity(campaign.ship, rules)) return way.way[1];
+  if (sector.nodes[way.way[1]].type === 'station' && campaign.supplies < supplyCapacity(campaign.ship, rules, campaign.crew)) return way.way[1];
   const cost = jumpSupplies(campaign, rules, true);
   if (campaign.supplies - cost < BUFFER_JUMPS * jumpSupplies(campaign, rules)) return way.way[1];
   const price = rules.balance.supplyPrice;
-  const room = supplyCapacity(campaign.ship, rules);
+  const room = supplyCapacity(campaign.ship, rules, campaign.crew);
   // What the heat a long jump sheds is worth, against the two jumps it
   // takes the place of.
   const shed = (heat === 'manage' ? WORTH.hot : WORTH.heat) * (2 * rules.balance.jumpHeat - rules.balance.longJumpHeat);
@@ -412,7 +412,7 @@ export function nextJump(campaign, rules, policy, { heat = 'manage', from = LONG
 export function swapNow(campaign, rules, heat) {
   if (heat !== 'manage' || campaign.heat < SWAP_FROM) return false;
   const plan = swapPlan(campaign, rules);
-  return plan.ok && campaign.credits - plan.price >= (supplyCapacity(campaign.ship, rules) * rules.balance.supplyPrice) / 2;
+  return plan.ok && campaign.credits - plan.price >= (supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice) / 2;
 }
 
 // Whether the player scans where a scan would show something ahead:
@@ -544,10 +544,10 @@ export function nextPlace(campaign, rules, squad, days = Infinity) {
   const before = (a, b) => a.findIndex((v, i) => v !== b[i]) !== -1 && a[a.findIndex((v, i) => v !== b[i])] < b[a.findIndex((v, i) => v !== b[i])];
   let best = null;
   campaign.colony.places.forEach((place, index) => {
-    if ((place.held && !full) || 2 * place.days > days) return;
+    if (place.held && !full) return;
     const plan = tripPlan(campaign, rules, index, squad);
-    if (!plan.ok || plan.hungry > 0) return;
-    const rank = [place.held ? 0 : 1, place.days, index];
+    if (!plan.ok || plan.hungry > 0 || plan.days.out + plan.days.back > days) return;
+    const rank = [place.held ? 0 : 1, plan.days.out, index];
     if (!best || before(rank, best.rank)) best = { index, rank };
   });
   return best?.index ?? null;

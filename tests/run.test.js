@@ -49,13 +49,15 @@ test('a test run reaches launch in under an hour, and act 1 is not over too soon
 
 // M30: each background's start launches as the miner's does, in about as
 // long: every run reaches launch, and at the slow pace the median run is
-// within 10 minutes of the miner's (ROADMAP.md M30; tools/run.js --runs 50
-// --background measures it over 50 seeds).
+// within 10 minutes of the miner's (ROADMAP.md M30). Over the 50 seeds
+// `tools/run.js --runs 50 --background` measures (M32): over 10, one slow
+// run moves a median by more than the gap the check allows.
+const BACKGROUND_RUNS = 50;
 test("from each background's start, every test run reaches launch, in about the miner's time (M30)", () => {
   const median = (values) => [...values].sort((a, b) => a - b)[Math.floor((values.length - 1) / 2)];
   const slow = {};
   for (const background of rules.backgrounds.keys()) {
-    const runs = Array.from({ length: 10 }, (_, i) => runToLaunch(rules, i + 1, { background }));
+    const runs = Array.from({ length: BACKGROUND_RUNS }, (_, i) => runToLaunch(rules, i + 1, { background }));
     for (const [i, run] of runs.entries()) assert.ok(run.launched, `${background} seed ${i + 1}: ${run.lines.at(-1)}`);
     assert.match(runs[0].lines[0], new RegExp(rules.backgrounds.get(background).name.toLowerCase()));
     slow[background] = median(runs.map((run) => run.minutes[1]));

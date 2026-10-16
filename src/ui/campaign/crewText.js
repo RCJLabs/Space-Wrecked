@@ -10,6 +10,7 @@ import { crewRoom, defaultSquad } from '../../sim/crew.js';
 import { healRate } from '../../sim/medbay.js';
 import { dismissPlan, hirePlan, recruitOffer } from '../../sim/recruits.js';
 import { hereOf, onTheRun, supplyCapacity } from '../../sim/travel.js';
+import { jobBrief } from './crewJobText.js';
 
 // How a trait's numbers read: "aim +5", "hit points +2".
 const STAT_NAMES = { hp: 'hit points', aim: 'aim', defense: 'defense', mobility: 'mobility', armor: 'armor' };
@@ -17,15 +18,16 @@ const STAT_NAMES = { hp: 'hit points', aim: 'aim', defense: 'defense', mobility:
 // The crew card:
 //   title    "Crew · 3 aboard, room for 4"
 //   text     the room, what the med bay heals, where crew come and go
-//   members  [{ id, name, about, traits, hp, max, face, dismiss }]: about
-//            is "Captain · Marine", or the job unless it is the name; face
-//            is what their portrait is drawn from (faceOf); dismiss { key,
-//            ok, label, ask, text, why } at a station, null elsewhere and
-//            for the captain
+//   members  [{ id, name, about, traits, brief, hp, max, face, dismiss }]:
+//            about is "Captain · Marine", or the job unless it is the name;
+//            brief what the job brings (crewJobText.js jobBrief, M32);
+//            face is what their portrait is drawn from (faceOf); dismiss
+//            { key, ok, label, ask, text, why } at a station, null
+//            elsewhere and for the captain
 //   hire     null away from a station, else { title, line, recruits: [{
-//            key, slot, name, about, traits, hp, max, face, ok, label, ask,
-//            text, why }] }: line says why no one can sign on, or that no
-//            one is left, or is null
+//            key, slot, name, about, traits, brief, hp, max, face, ok,
+//            label, ask, text, why }] }: line says why no one can sign on,
+//            or that no one is left, or is null
 //   hint     { tone, text } for the foot while nothing has had a first tap
 export function crewCardText(campaign, rules) {
   const room = crewRoom(campaign.ship, rules);
@@ -40,6 +42,7 @@ export function crewCardText(campaign, rules) {
       name: member.name,
       about: [captain ? 'Captain' : null, job === member.name ? null : job].filter(Boolean).join(' · '),
       traits: traitsText(member.traits, rules),
+      brief: jobBrief(member.job, rules),
       hp: member.hp,
       max: maxHp(member, rules),
       face: faceOf(member, rules, i),
@@ -120,13 +123,14 @@ function recruitText(campaign, rules, recruit, place) {
   const fee = rules.balance.recruitFee;
   const crew = campaign.crew.length + 1;
   const each = rules.balance.jumpSupplies * crew;
-  const jumps = Math.floor(supplyCapacity(campaign.ship, rules) / Math.max(1, each));
+  const jumps = Math.floor(supplyCapacity(campaign.ship, rules, [...campaign.crew, recruit]) / Math.max(1, each));
   return {
     key: `hire:${recruit.slot}`,
     slot: recruit.slot,
     name: recruit.name,
     about: jobName(recruit.job, rules),
     traits: traitsText(recruit.traits, rules),
+    brief: jobBrief(recruit.job, rules),
     hp: recruit.hp,
     max: recruit.hp,
     face: faceOf(recruit, rules, place),

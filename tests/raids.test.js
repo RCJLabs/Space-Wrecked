@@ -155,8 +155,12 @@ test('the landing: on its day Next day and Fly out wait; Defend fires each power
   assert.equal(landingPlan(base, rules).error, 'No lander is down at the colony.');
   const plan = landingPlan(ready, rules);
   assert.deepEqual(plan.guns.map((gun) => [gun.name, gun.shots]), [['Gun emplacement', 1], ['Flak tower', 1], ['Cannon emplacement', 2]]);
-  assert.deepEqual([plan.shots, plan.hit, plan.armor, plan.aim, plan.raiders, plan.defenders], [4, landingHit, raidShieldArmor, raidArmoryAim, raiders, [1, 2, 3]]);
-  assert.deepEqual([landingHit, raidShieldArmor, raidArmoryAim], [50, 1, 10]);
+  // A marine at home calls the shots: each is 10 more likely to hit (M32,
+  // tests/edges.test.js).
+  const called = landingHit + rules.jobs.get('marine').colony.landing;
+  assert.ok(ready.crew.some((member) => member.job === 'marine'));
+  assert.deepEqual([plan.shots, plan.hit, plan.armor, plan.aim, plan.raiders, plan.defenders], [4, called, raidShieldArmor, raidArmoryAim, raiders, [1, 2, 3]]);
+  assert.deepEqual([landingHit, called, raidShieldArmor, raidArmoryAim], [50, 60, 1, 10]);
   // The defenses are the colony's as they stand, a raid coming or not, for
   // the colony screen.
   assert.deepEqual(defensesOf(base, rules), { guns: plan.guns, shots: plan.shots, armor: plan.armor, aim: plan.aim });
@@ -167,15 +171,15 @@ test('the landing: on its day Next day and Fly out wait; Defend fires each power
   const darkPlan = landingPlan(dark, rules);
   assert.deepEqual(darkPlan.guns.map((gun) => gun.name), lit.filter((name) => ['Gun emplacement', 'Flak tower', 'Cannon emplacement'].includes(name)));
   assert.equal(darkPlan.armor, lit.includes('Shield dome') ? raidShieldArmor : 0);
-  // The shots are the campaign's rolls, each under landingHit to hit, and
-  // each hit a raider fewer, the last of the party first.
+  // The shots are the campaign's rolls, each under the plan's hit to hit,
+  // and each hit a raider fewer, the last of the party first.
   for (let n = 1; n <= 12; n++) {
     const tried = { ...ready, rng: seedFrom(n) };
     const faced = faceRaid(tried, rules);
     assert.equal(faced.ok, true, faced.error);
     const expected = rolls(tried.rng, 4);
-    assert.deepEqual(faced.landing.shots.map((shot) => [shot.roll, shot.hit]), expected.map((roll) => [roll, roll < landingHit]));
-    const hits = expected.filter((roll) => roll < landingHit).length;
+    assert.deepEqual(faced.landing.shots.map((shot) => [shot.roll, shot.hit]), expected.map((roll) => [roll, roll < called]));
+    const hits = expected.filter((roll) => roll < called).length;
     assert.deepEqual([faced.landing.hits, faced.landing.landed], [hits, raiders.slice(0, raiders.length - hits)]);
     assert.equal(faced.campaign.flags.landingShots, 4);
     assert.equal(faced.campaign.flags.landingHits ?? 0, hits);
@@ -330,7 +334,8 @@ test('while the ship is away: a leg stops on the raid\'s day, those at home face
 });
 
 test('saves: v23 for the raid coming and a leg it stopped; a v22 colony opens with none coming; broken ones are caught', () => {
-  assert.equal(SAVE_VERSION, 23);
+  // 24 since M32's orders in a fight.
+  assert.equal(SAVE_VERSION, 24);
   const base = { ...at(settled(), { places: [far] }), heat: 30 };
   const old = (campaign) => ({ ...saveData(initialState(3)), campaign });
   const step = MIGRATIONS.find((s) => s.from === 22);

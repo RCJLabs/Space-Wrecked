@@ -45,7 +45,11 @@ test('an approach: the two ships, their order, and every order with the odds the
   assert.equal(text.round, `Round 1 of ${rules.balance.approachRounds}`);
   assert.equal(text.you.name, 'Your ship');
   assert.equal(text.them.name, 'The cutter');
-  assert.deepEqual(text.you.stats.map(([label]) => label), ['Guns', 'Shields', 'Engines', 'Reactor', 'Evasion']);
+  // The crew's edge shows as it counts (M32): the miner's marine aboard
+  // makes the guns surer; the cutter's crew has none.
+  assert.deepEqual(text.you.stats.map(([label]) => label), ['Guns', 'Shields', 'Engines', 'Reactor', 'Evasion', 'Crew']);
+  assert.deepEqual(text.you.stats.at(-1), ['Crew', 'guns +10']);
+  assert.ok(!text.them.stats.some(([label]) => label === 'Crew'));
   const state = approachState(campaign, rules);
   const intent = enemyOrder(state, rules);
   const choices = choicesFor(state, intent, rules);

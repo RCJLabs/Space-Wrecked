@@ -306,7 +306,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **As built in M18:** New game opens captain creation. The background is fixed in v0.1 (since M30 it is picked on a screen before the captain's, §2). The name comes filled in from the background's list and can be changed. The job is one of the start crew's (each offered once), and the captain takes its place in the crew. Two of the 6 traits in `data/traits.json` are picked. A trait adds to the job's numbers (hit points, aim, defense, mobility, armor) in every fight; the attributes below aren't in yet.
 - **Attributes:** Grit, Aim, Wits, Nerve.
 - **Recruits** (M23, `src/sim/recruits.js`): each station offers 2 (`recruitOffer`), each a name from `data/recruits.json`, a job and a trait, at full health. They are rolled from the campaign's seed, the sector and the station, not the campaign's RNG, so a station offers the same recruits on every visit and no other roll moves. Signing one on costs 50 credits (`recruitFee`) and takes two taps on the crew card, while the ship has room: as many as its berths and its life support both carry, 4 on the start ship. At a station anyone but the captain can be let go, two taps, with nothing paid back. Recruits have no background yet; since M23c each comes with a look, rolled with them.
-- **Jobs:** Marine, Engineer and Medic in v0.1; Pilot, Scout, Xenobiologist and Quartermaster later. Each job has a ship station effect, battle abilities and a colony effect. The first station effect is the medic's (M23, `station` in `data/jobs.json`): one more hit point a jump from a working med bay.
+- **Jobs:** Marine, Engineer and Medic in v0.1; Pilot, Scout, Xenobiologist and Quartermaster since M32. Each job has an order in a fight with a few uses, an effect aboard on the run and an effect at the colony (`order`, `station` and `colony` in `data/jobs.json`; the rules in `src/sim/orders.js` and `src/sim/edges.js`). The first station effect was the medic's (M23): one more hit point a jump from a working med bay. The best of a job counts, once: a second of the same job adds nothing.
 - **Wounds** carry between battles and heal in the med bay over time. Since M12 a crew member's hit points carry through a fight, and anyone who went down comes back with 1. In act 1 the crew heals fully back at the hangar (Evan's call, 2026-10-12). In act 2, since M23 (`src/sim/medbay.js`), a working med bay heals each of the wounded 1 hit point a jump (`heal` in `data/modules.json`), 2 with a medic aboard, up to their most. A long jump counts as 3 (`longJumpFactor`), leaving a sector as 1, and a wrecked med bay heals nothing. Hunger comes off before the healing. A station still patches the crew up for credits (M22, §4.6).
 - **Portraits:** recruits use layered SVG portraits drawn in code, so scars and implants can appear mid-game. Named characters use hand-edited Base44 portraits. **As built in M23c:** every crew member has a look saved with them (`src/sim/looks.js`): a face shape, skin, hair, hair color, eyes, beard and a mark, two layers apart from everyone else aboard. It is drawn as a helmet badge (`src/render/portraits/`): the face through the helmet their job wears in a fight, on a card in their trim. The captain's look is picked at creation, layer by layer or rolled; a recruit's is rolled with them; the start crew's, and their names, come from the campaign's seed. Marks are layers already, so scars earned in play need only the rule (§9).
 
@@ -440,8 +440,10 @@ The v1.0 column is a set of targets, not commitments.
 
 **Backgrounds as built** (`data/backgrounds.json`), each with its district in `data/districts.json`: six clients, four job sites (one on each site map), a shop, and its jobs in `data/contracts.json`:
 - **Debt-bound miner** (M14). Con-Reg Recovery, the company's repo crews, hunt you by tracking your ship's registration, and take payments on the debt. Act 1's district is the Tailings, with 10 jobs.
-- **Navy deserter** (M30). The Fleet Provost, the Navy's police, take no payments. The district is the Strand, the spaceport's sailors' quarter, with 8 jobs. Two marines and a medic, no credits.
-- **Burned smuggler** (M30). The Halloran family want their cargo's worth, and take a dearer vig. The district is the Narrows, the old town's back streets, with 8 jobs. Two engineers and a medic, 75 credits.
+- **Navy deserter** (M30). The Fleet Provost, the Navy's police, take no payments. The district is the Strand, the spaceport's sailors' quarter, with 8 jobs. A marine, a pilot and a medic (two marines before M32), no credits.
+- **Burned smuggler** (M30). The Halloran family want their cargo's worth, and take a dearer vig. The district is the Narrows, the old town's back streets, with 8 jobs. An engineer, a quartermaster and a medic (two engineers before M32), 75 credits.
+
+**Jobs as built** (M32): all seven of §4.5's, each with an order, an effect aboard and an effect at the colony. Two weapons came with them, the scout's long rifle and the xenobiologist's dart gun, six in all.
 
 ---
 
@@ -917,7 +919,73 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
     - fitted and seen outside in the Hull view;
     - bought in a shop;
     - flown by an enemy ship in the Enemy ships sandbox.
-- [ ] M32 All jobs, traits and talents. Draft: Pilot, Scout, Xenobiologist and Quartermaster join the Marine, Engineer and Medic (§4.5). Each has its numbers and weapon, a ship station effect, a battle ability and a colony effect. Traits go from 6 toward §5's 20. Talents: what they are and how they are earned is to settle. Recruits get a background (§9).
+- [x] **M32 All jobs.** Three jobs so far: the Marine, the Engineer and the Medic, each a set of numbers, a weapon and a look. The medic is the only one that does anything else: a working med bay heals 1 more a jump with one aboard (M23), and the infirmary 1 more at the colony (M26). In a fight every job has the same orders.
+
+  Evan's picks (2026-10-15):
+  - **Scope:** the draft (four jobs, every job's fight, ship and colony effect, traits toward 20, talents, recruits' backgrounds) was two milestones' worth. M32 is the jobs: the four new ones, and all seven with their three effects. Traits, talents and recruits' backgrounds are M32b, straight after.
+  - **Talents:** job ranks (for M32b).
+  - **In a fight:** an order each, with a few uses a fight.
+  - **Where the new jobs come from:** two start crews take one, and all seven sign on as recruits.
+
+  Measured before settling this (`tools/run.js`, 50 runs each, the new jobs' numbers alone, with no orders yet): the deserter with a pilot for its second marine launched in 49 of 50 runs, did 56% of its jobs (65% before) and took 40 minutes at the slow median (41). The smuggler with a quartermaster for an engineer launched in 49, did 71% (76%) and took 52 minutes (41). Their orders, and tuning, have to win that back.
+
+  **Done when:**
+  - **The four jobs** are in `data/jobs.json`, each with its numbers, weapon and look, and its own helmet, so the portrait badges tell all seven apart:
+    - **Pilot:** 8 hit points, aim 65, defense 10, mobility 5, no armor; a pistol. A skinsuit with a wrapped visor and a jump pack.
+    - **Scout:** 8, aim 75, defense 5, mobility 5; a long rifle (new in `data/weapons.json`: better at long range, worse close). A skinsuit with a mirrored visor.
+    - **Xenobiologist:** 7, aim 60, defense 5, mobility 4; a dart gun (new). An EVA suit with a band of light for a visor and twin tanks.
+    - **Quartermaster:** 10, aim 60, mobility 4, armor 1; a carbine. A heavy skinsuit with a crest and shoulder plates.
+
+    The numbers are starting values, tuned by measurement (below).
+  - **An order each in a fight** (`order` in `data/jobs.json`, the rules in `src/sim/battle.js`), with its uses a fight:
+    - **Marine, Suppress** (2): an enemy in sight takes −30 aim until its side's next turn ends. It ends the marine's turn and uses a round.
+    - **Engineer, Weld** (2): the door beside it closes and is welded for 3 rounds: no one walks or sees through it.
+    - **Medic, Patch** (2): an ally beside gets 3 hit points back, up to their most; one who is down gets up with 3.
+    - **Pilot, Hustle** (1): one more action this turn.
+    - **Scout, Mark** (2): an enemy in sight is marked until the crew's next turn ends: the crew's shots at it are +15 to hit. One action.
+    - **Xenobiologist, Sedate** (2): a dart at an enemy in sight, at the shot's odds, shown as a shot's are: a hit puts it to sleep through its side's next turn. It ends the turn and uses a round.
+    - **Quartermaster, Kit out** (2): itself or an ally beside gets a full clip and 1 more armor for the rest of the fight, once each.
+
+    Stabilize stays everyone's. Each order shows as a button of 48 px or more when the crew member selected can use it, naming the order and the uses left. A tap previews it (whom it reaches, the odds for Sedate, the odds a Mark or Suppress changes) and a second confirms it, as a shot does. Marks, sleep, suppression, welds and the uses left are part of the battle, saved with the fight.
+  - **The test players use the orders:** the crew's player in raids, boardings and trips (`aiAction`'s crew side) and on jobs (`jobAction`), each by a plain rule, so act 1, raids and the voyage are measured with them. The scripted player doesn't, so the golden battle stays as it is.
+  - **A ship effect each** (`station` in `data/jobs.json`), while one of the job is aboard on the run (a second adds nothing):
+    - **Marine:** the ship's guns are +10 to hit in the approach.
+    - **Engineer:** after each jump, a wrecked part is fixed, the cheapest first.
+    - **Medic:** a working med bay heals 1 more a jump (since M23).
+    - **Pilot:** the ship's evasion is +10 in the approach.
+    - **Scout:** a scan reaches 3 links (2 without).
+    - **Xenobiologist:** a survey takes no day: no supplies, no heat.
+    - **Quartermaster:** the lockers hold 10 more supplies.
+  - **A colony effect each** (`colony` in `data/jobs.json`), while one of the job is home:
+    - **Marine:** each defense's shot at a lander hits at 60% (50% without).
+    - **Engineer:** each mine digs 1 more material a day.
+    - **Medic:** a powered infirmary heals 1 more (since M26).
+    - **Pilot:** with a pilot in the squad, a trip is a day shorter each way, never under 1.
+    - **Scout:** with a scout in the crew, a fourth place is within reach.
+    - **Xenobiologist:** each farm grows 1 more food a day.
+    - **Quartermaster:** the stores keep 20 more food and 20 more materials.
+  - **Shown as used** (Law 4): the approach's odds, a scan's reach, a survey's cost, a day's plan, a trip's days, the places and the lander's odds all count the crew's effects. The crew card, the recruits on offer and the captain screen say each job's order, ship effect and colony effect.
+  - **Start crews:** the deserter's is a marine, a pilot and a medic; the smuggler's an engineer, a quartermaster and a medic; the miner's stays. The captain screen offers each background's three jobs, as before. Recruits are rolled from all seven jobs.
+  - **Every job counts:** each order, ship effect and colony effect has a test showing its rule at work. Each order is also measured: fights with the order used against the same fights without (`tools/sim.js`) come out differently.
+  - **Saves:** `SAVE_VERSION` 24, with a migration from 23. A fight saved mid-battle loads with every crew member's uses full and nothing marked, asleep, suppressed or welded, and an approach under way gets the crew's ship effects. Old crews keep their jobs (tested).
+  - **Balance:**
+    - **Act 1** (`tools/run.js`, 50 runs from each start): every run launches, and each slow median is within 10 minutes of M31's (42, 41 and 41).
+    - **Raids** (`tools/raids.js`): each pursuer's raiders, at the hangar and the colony, measured against M31's and reported.
+    - **The voyage** (`tools/voyage.js --background all`, 30 runs): fed, met the hunters and runs with a raid lost each no worse than M31's by more than 5 runs of 30. The voyage tests pass, a check new content breaks turned into a rate over 100 seeds (CLAUDE.md).
+  - **Touch,** at the three sizes:
+    - each order, previewed and confirmed;
+    - the pilot as the deserter's captain, and the quartermaster in the smuggler's crew;
+    - a recruit of a new job signed on, and the crew card's effects;
+    - a fight quit and reopened after an order.
+
+  As built (2026-10-15), where it differs from the above:
+  - **The quartermaster's stores** count while one is in the crew, home or away, so a trip never leaves food or materials past what the stores keep.
+  - **A scan keeps its reach:** the run remembers how far each scan saw, so a scout who leaves hides nothing already seen. Saves v24 carry it; a v23 run's scans each reached 2.
+  - **The raids have parties of their own.** With the orders in use, the deserter's crew beat the Provost's three MPs at the hangar 9% of the time. Its raids are now an MP, a Provost cadet and an MP (`provostraid`); the frigate keeps its three MPs. The cadet is a new enemy, a junior MP: armored, as M30 asks of every Provost raider, but light (6 hit points, aim 65, a carbine). Old Halloran's colony raid has a second enforcer (`halloranraid`), while the yacht keeps its crew, and the Hallorans' hangar raid has its enforcer second. Each pursuer's raids land within 10 points of Con-Reg's again (M30's test).
+  - **The test players' fights** in act 1 play on as boardings do past 40 rounds, and a hopeless shot or overwatch then gives way to a step nearer (`tools/boarding.js`). A fight no one standing can ever see across is told apart and stops the test player's trips (§9).
+  - **The backgrounds' act 1 check** flies the 50 seeds measured above, not 10.
+  - **Four voyage checks** new content broke on seeds 1 to 30 fly 100 seeds, against main's rates (CLAUDE.md): every careful run scans, fed with a med bay, fed with surgery, and the large hold going hungry less than the lockers alone.
+- [ ] M32b Talents, traits and recruits' backgrounds. Draft: talents are job ranks (Evan's pick, 2026-10-15). Each job has two of its own, earned on their own at 3 and 8 fights, by everyone who stood in them: its order, or its ship or colony effect, gets better (a medic's Patch heals more, a pilot's evasion grows). That is 14 talents, with nothing to pick. Traits go from 6 toward §5's 20, and recruits get a background (§9).
 - [ ] M33 Factions, quests and companions. Draft: factions whose standing moves with the jobs and events the crew takes; quests that chain jobs and events across the acts; named companions with loyalty quests (§9).
 - [ ] M34 Image pass: Base44 portraits and scenes. Draft: WebP portraits for named characters (companions, the districts' clients) and scenes (the hangar, the lift-off, the landing), each logged in `assets/LOG.md`. Recruits keep their layered portraits, drawn in code since M23c.
 - [ ] M35 Audio pass with ZzFX. Draft: sounds made in code with ZzFX (approved for M35): shots and hits, the builder's placing, and the menus; a mute and a volume in the settings; audio starts after the first tap.
@@ -943,7 +1011,7 @@ A Capacitor build; a paid version with a web demo; optional cloud saves on Base4
 | The builder feels fiddly on a phone | Gate 1 fails | Fix it before Phase 2; fall back to bigger modules or a slot hull |
 | Two deep systems overrun scope | Phase 2 runs past about 8 sessions | Keep the shared grid; cut base building to slots first |
 | Players build chokepoint fortresses | Balance runs show defenders always win. AI against AI on the example ship, the crew of 3 wins 64% (58–70) against 4 boarders (`tools/sim.js`, M11). With the airlock moved under the bridge it wins 83% | Enemies breach walls and choose entry points; corridors stay two tiles wide. Since M9 the AI breaches doors: it opens one and shoots through, which overwatch can't punish |
-| Fights stall in standoffs | AI-against-AI fights reach the round limit. The harness's 1,000 fights in M11 stalled on 24% of cutters, 9% of corvettes and 5% of haulers, and none on the example ship. Both sides hold on overwatch either side of a chokepoint. Boarders never attack a crew that holds the bridge: with a crew that only ends its turn, 5 of 5 fights reached 60 rounds on the example ship and on the campaign's start ship (M12). A campaign fight can't be left until one side wins, so there the player has to go to them. On jobs (M14) the AI waits behind a closed door as the crew's AI would: `tools/jobs.js` plays the crew with a player that pushes in and opens doors, and then every job ends. Raiders press on (M15, `src/sim/press.js`): of 360 raids played out on three ships, one went past 60 rounds. In boarding fights (M22) the side aboard the other's ship presses on: of 1,000 played out by the AI, 5 went past 60 rounds. The test player's boardings have both sides press on after 40 rounds (`tools/boarding.js`), and none of its 30-run voyages needed it | Candidates, Evan's call: boarders press on as raiders do, cutting through walls, ships with a second way round. `tools/sim.js` reports the stalls ("No winner") |
+| Fights stall in standoffs | AI-against-AI fights reach the round limit. The harness's 1,000 fights in M11 stalled on 24% of cutters, 9% of corvettes and 5% of haulers, and none on the example ship. Both sides hold on overwatch either side of a chokepoint. Boarders never attack a crew that holds the bridge: with a crew that only ends its turn, 5 of 5 fights reached 60 rounds on the example ship and on the campaign's start ship (M12). A campaign fight can't be left until one side wins, so there the player has to go to them. On jobs (M14) the AI waits behind a closed door as the crew's AI would: `tools/jobs.js` plays the crew with a player that pushes in and opens doors, and then every job ends. Raiders press on (M15, `src/sim/press.js`): of 360 raids played out on three ships, one went past 60 rounds. In boarding fights (M22) the side aboard the other's ship presses on: of 1,000 played out by the AI, 5 went past 60 rounds. The test player's boardings have both sides press on after 40 rounds (`tools/boarding.js`), and none of its 30-run voyages needed it. In M32 one of the smuggler's 100 test voyages met a fight no one could end, on a trip: the crew's fallen filled the only way through, the scavengers behind them, and the last of the crew could reach no tile with them in sight. A player would be held in it for good (§9) | Candidates, Evan's call: boarders press on as raiders do, cutting through walls, ships with a second way round. `tools/sim.js` reports the stalls ("No winner") |
 | A raid's odds swing with the ship's layout | The AI crew against four raiders wins 11 of 60 on the example ship, 22 on the start ship and 39 once it has an engine (M15) | Candidates, Evan's call after the phone: three raiders, or raiders scaled to the ship; cover on the hangar deck; the crew choosing where to stand |
 | Hostile ships are only a cost | M21's test player, flying the start ship as act 1 leaves it, boards none in 30 runs and loses something to one in 11. M22's careful test player never closes to board and disabled no ship in 30 runs, so it boarded none; it fought off 6 of the 12 that boarded it, and the other 6 each took a part | A gun fitted before launch turns the cutter into a win (§4.2); refits in act 2 (M23h); since M22, Board (49% against the cutter in the checks), then a fight the AI wins about half the time, for a part and scrap |
 | Percentage misses feel unfair | Testers complain about high-odds misses | Clearer cover display, the forgiving-odds setting, the math always shown |
@@ -1052,5 +1120,10 @@ These ideas wait until v0.4 or later:
 - a background's hunters by name in the jump plan: the plan says the pursuer's chance, and the approach screen names the ship. Naming it in the plan too ("a Provost cutter, 10%") would tell a new player what is coming (raised in M30)
 - why the smuggler's colony is raided more: from the smuggler's start the careful test player's colonies are found in 20 runs of 30 (33 raids) against the miner's 13 (18 raids), most of the difference far from the lanes, though it settles no hotter and flies about as many trips. Finding out would take the voyage report's days at the colony, heat by heat (raised in M30)
 - the background screen's details at a glance: on the cover screen the facts below Fitted need a swipe of the panel. A two-column layout of the facts, or the start's ship drawn small beside them, would show the whole start at once (raised in M30)
+- a way out of a fight no one can end: no one passes the other side's fallen (moves.js), so the fallen in a doorway can leave both sides out of each other's sight for good, and a fight can't be left. The test player's trips stop there (`tools/boarding.js` sealedIn; one of the smuggler's 100 test voyages). Letting anyone pass those who have bled out (status out) ends it, but raiders then walk past the fallen: the start crew's hangar raid wins fell from 53% to 41% (Con-Reg) and from 46% to 27% (the Hallorans), and one smuggler's act 1 test run stopped launching. A Withdraw order away from home is the other candidate (raised in M32)
+- orders the test players seldom give: over 300 fights each, the crew's AI gives Suppress 0.3 times a fight and Weld 0.3, and neither raises its win rate (−1 point each, within chance), where Kit out adds 14 points, Patch 6 and Sedate 6. Plainer rules give the measurements; a player will use them better (raised in M32)
+- long job names in narrow places: the run's crew panel cuts "Quartermaster" to "Quarter…" on the cover screen, and "Xenobiologist" likewise. A short form for the panel, or a second line, would show them whole (raised in M32)
+- the job's three lines on the captain screen: on the cover screen they sit below the job buttons and need a swipe of the panel (raised in M32)
+- a raid that hangs on where each one stands: the raiders deploy in their party's order, and the order alone moves the results a long way. The Hallorans' six with the enforcer first to sixth gave the smuggler's crew 68%, 46%, 19%, 63%, 41% and 67% at the hangar; two MPs and a rating, 31% with the rating last and 47% with it between. Parties are tuned by measurement, so a layout change can move them (raised in M32)
 
 Ideas that come up during a session go here, not into code.

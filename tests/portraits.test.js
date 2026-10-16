@@ -41,8 +41,11 @@ test('every helmet a suit has draws a well-formed badge, close up and as a face,
       assert.ok(svg.includes('#5fd3e8'), 'in their trim');
     }
   }
-  // Each job's helmet in data is one of them.
+  // Each job's helmet in data is one of them, and its own (M32), so the
+  // badges tell all seven jobs apart.
   for (const job of rules.jobs.values()) assert.ok(helmets.some((h) => h.suit === job.look.suit && h.helmet === job.look.helmet), job.id);
+  const worn = [...rules.jobs.values()].map((job) => `${job.look.suit} ${job.look.helmet}`);
+  assert.equal(new Set(worn).size, rules.jobs.size, worn.join(', '));
 });
 
 test('every choice in every layer draws its own way, through glass that shows the hair', () => {

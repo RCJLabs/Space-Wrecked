@@ -87,7 +87,7 @@ test("Jump on from the act's last jump point reaches the system, rolled from the
   const exit = atLastExit({ heat: 10 });
   assert.deepEqual(campaignProblems(exit), []);
   const plan = leavePlan(exit, rules);
-  assert.deepEqual(plan, { ok: true, kind: 'system', supplies: 3, left: 0, heat: balance.jumpHeat, hungry: false, heal: 0, hunt: { chance: 0, ship: null, why: null } });
+  assert.deepEqual(plan, { ok: true, kind: 'system', supplies: 3, left: 0, heat: balance.jumpHeat, hungry: false, heal: 0, fixes: [], hunt: { chance: 0, ship: null, why: null } });
   const { campaign } = leaveSector(exit, rules);
   const { run } = campaign;
   assert.deepEqual(run.sector, generateSystem(rules, int(exit.rng, 0, 0xffffffff).value, SECTORS + 1));
@@ -131,7 +131,7 @@ test('the worlds are known from afar, and jumps go between them as on any map', 
 test("a survey: a jump's supplies and surveyHeat for a world's numbers, once a world", () => {
   const campaign = at(inSystem({ heat: 10 }), 2);
   const plan = surveyPlan(campaign, rules);
-  assert.deepEqual(plan, { ok: true, supplies: jumpSupplies(campaign, rules), heat: balance.surveyHeat, hunt: { chance: 0, ship: null, why: null } });
+  assert.deepEqual(plan, { ok: true, free: false, supplies: jumpSupplies(campaign, rules), heat: balance.surveyHeat, hunt: { chance: 0, ship: null, why: null } });
   const { campaign: after, hunt } = survey(campaign, rules);
   assert.equal(after.supplies, campaign.supplies - plan.supplies);
   assert.equal(after.heat, campaign.heat + balance.surveyHeat);

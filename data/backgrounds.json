@@ -85,7 +85,7 @@
           "raid": "The Fleet Provost is at the dry dock's gate with a warrant and a squad of MPs."
         },
         "hunters": ["mp"],
-        "raiders": "provost",
+        "raiders": "provostraid",
         "run": {
           "levels": {
             "calm": "Out here the Provost is a name on a wanted list nobody reads. Keep it that way.",
@@ -106,7 +106,7 @@
             "taskForce": "A Fleet frigate has put in nearby. They know there's a colony out here, just not which world.",
             "cornered": "The Provost knows which world. Their lander is fueled; it's a matter of days."
           },
-          "raiders": "provost",
+          "raiders": "provostraid",
           "found": "The Provost has found the colony. A lander is on its way with a warrant and a squad of MPs.",
           "landing": "The Provost's lander is coming down on the colony.",
           "faced": "The Provost will have to file for another lander. That buys some quiet."
@@ -121,7 +121,7 @@
       "start": {
         "credits": 0,
         "parts": { "engine": 1, "quarters": 1, "corridor": 2 },
-        "crew": ["marine", "marine", "medic"],
+        "crew": ["marine", "pilot", "medic"],
         "ship": {
           "frame": "starter",
           "placements": [
@@ -179,7 +179,7 @@
             "taskForce": "The Halloran yacht has put in nearby. They know there's a colony out here, just not which world.",
             "cornered": "The Hallorans know which world. Their lander is fueled; it's a matter of days."
           },
-          "raiders": "halloranparty",
+          "raiders": "halloranraid",
           "found": "The Hallorans have found the colony. A lander is on its way with a ledger and a lot of friends.",
           "landing": "The Hallorans' lander is coming down on the colony.",
           "faced": "The Hallorans will have to send another lander. That buys some quiet."
@@ -194,7 +194,7 @@
       "start": {
         "credits": 75,
         "parts": { "lifesupport": 1, "corridor": 2 },
-        "crew": ["engineer", "engineer", "medic"],
+        "crew": ["engineer", "quartermaster", "medic"],
         "ship": {
           "frame": "starter",
           "placements": [
