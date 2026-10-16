@@ -2,6 +2,76 @@
 
 Newest entry first.
 
+## Dev tools: cheats and God mode (2026-10-16)
+
+Evan: "Before the next milestone, add dev tools like adding currency, God mode, etc." A **Cheats** section in the `?dev=1` menu, under Sandboxes. Its top line says where the campaign stands (act, credits, heat, crew, supplies or food and materials, in a fight). Each button plays its cheat on the campaign where it is, and the line under the buttons says what it did ("Credits 0 → 1000.") or why it didn't ("Not in a fight: win it first.").
+
+| Button | What it does |
+| --- | --- |
+| God mode | The crew takes no damage in fights: a hit does 0, and fire and vacuum leave them be. The ship takes none in approaches: her hits are taken whole. Kept on this device, never in a save; the DEV button reads GOD while it is on |
+| +100 / +1,000 credits | Credits |
+| Heat −25 / +25 | The pursuer's heat, within 0 and 100 |
+| Heal crew | Everyone to full hit points |
+| Rank up crew | Everyone on to their job's next rank, by the fights it asks for |
+| Parts for checks | The parts the ship's checks still ask for, on hand |
+| Fill supplies | The holds on the run; food and materials at the colony, to its stores |
+| Standing +5 / −5 | With every side |
+| Do quest step | Each quest's step open in this act, done with its effects and pay-off; at the colony, its place comes off the list |
+| Win the fight | Two taps: every enemy left dies, the fight opens again won, and Continue pays as for any win |
+
+How it's built:
+- **The cheats are sim functions** (`src/sim/dev.js`), played through one action, `dev/cheat` (`src/sim/root.js`). Each keeps the save readable.
+- **Heal, Rank up and Do quest step wait for a fight to end.** A fight's crew carries its own hit points until the end, and a quest job's end does a step of its own: done mid-fight, the job's win would do the next step too.
+- **God mode is not in the save.** It is a switch the loaded content carries to the simulation as `rules.dev` (`src/platform/content.js`, `src/sim/god.js`). `battle.js` and `approach.js` read it; every test and tool plays without it. With it off nothing changes: golden files, `tools/sim.js` and the 893 tests before it pass as they were.
+- **Every roll is still made** with God mode on, so turning it on mid-fight rerolls nothing.
+- **Win the fight opens the fight again** (`main.js` reopen): the fight screen reads its battle only as it opens.
+- **The menu's DOM pieces** moved to `src/ui/dev/dom.js`, for the menu and `src/ui/dev/cheats.js`.
+
+### Verified
+
+- **`node --test`:** 903 pass (893 on main), 10 of them new in `tests/dev.test.js`:
+  - a siege played with God mode and without: the same shots rolled the same, the crew hit for 0, no fire or vacuum damage, the enemy hurt as ever, the same RNG at the end;
+  - an approach: her hits taken whole, nothing on the ship damaged or wrecked, the opening volley likewise;
+  - each cheat, its bounds and refusals, the save readable after each;
+  - Win, and its end paying as for any win;
+  - the `dev/cheat` action.
+- **By touch** (`devtools/verify.mjs`, at 905 × 370, 821 × 283 and 960 × 825): 40 of 40 at each size. It covers:
+  - every cheat at the hangar, the hangar behind showing what changed;
+  - God mode on, the DEV button reading GOD, kept on reload and out of the save;
+  - a job's fight in God mode: 4 rounds, the enemy hitting the crew 3 times for 0, the crew's hit points as they began;
+  - Win the fight from the menu, then Continue, paid;
+  - Fill supplies on the run and at the colony;
+  - an approach in God mode: her hit taken whole;
+  - God mode off;
+  - offline, a cheat played with the server stopped;
+  - every dev menu button 48 px or more;
+  - no console errors.
+- **Every earlier milestone's browser check** passes, run one after another (`devtools/regress.sh`), at the three sizes unless named, no copy adapted:
+  - M33b's 43, the M33 fix's 38, M32b's fixes 27, M32 22 and its orders 48, M31 28, M30 27 (at 821 × 283 it stopped on a timeout with the machine busy, then passed 27 of 27 run alone), M29 34, M28 32, M27 32, M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 20 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 43 and M8's extras (the cache holds all 242 files; offline, the fight sandbox and the builder open).
+
+  M32b's first copy still looks for Suppress · 2 and Sedate · 2, as in M33's entry; its fix's copy passes in its place.
+
+### Known issues
+
+- **God mode stops at fights and approaches.** A hungry jump or day and an event's wound still take hit points (never below 1).
+- **Construction mode doesn't see parts added while it is open:** it reads the parts on hand as it opens. Leave it and come back.
+- **A quest step done by cheat leaves its event on the chart** where it was placed. Played there, the event gives its own effects and does nothing to the quest.
+
+### Test on the phone
+
+1. Open with `?dev=1`, start or continue a campaign, open the DEV menu: **Cheats** sits under Sandboxes. Tap +1,000 credits: the line says Credits n → n+1000, and the hangar shows it.
+2. Turn **God mode** on: the DEV button reads GOD. In a fight the enemy's hits land for 0. Turn it off again.
+3. In a fight, tap **Win the fight** twice: the menu shuts, the fight shows Job done (or its kind's win), and Continue pays.
+4. On the run, **Fill supplies**; at the colony, it fills food and materials.
+
+### Next session
+
+M33c Companions, its Done when settled with Evan (2026-10-16, ROADMAP.md): build it.
+
 ## M33b Quests (2026-10-16)
 
 **Status:** done, and the ROADMAP.md box is ticked. Each background has a thread with a step in each act, and the Fleet has a chain that starts at its tender. A thread finished at the colony eases its pursuer off: heat −30, its side raised to cold, and its raids find the colony at half the odds. A step not done in its act ends its quest.
