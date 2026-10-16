@@ -4315,6 +4315,14 @@ textarea {
   white-space: nowrap;
 }
 
+/* God mode on (cheats.js): the button reads GOD, in the dash's color, so
+   it is never forgotten on. */
+.dev-toggle[data-god] {
+  border-color: var(--c-dash);
+  color: var(--c-dash);
+  opacity: 1;
+}
+
 .fps {
   margin: 0;
   font: 12px/1.5 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;

@@ -53,9 +53,9 @@ CNAME                       # spacewrecked.rcjlabs.com
 .well-known/assetlinks.json # TWA verification, added with the TWA
 src/
   core/      rng, save, blueprint codes, store, events
-  sim/       grid, builder rules, styling, makers, constraints, mapFromShip, battle, ai, approach, heat, standing (the sides), quests, campaign, colony (with its building by hand, its days and its expeditions), raids (with the colony as a battle map), economy, gen/
+  sim/       grid, builder rules, styling, makers, constraints, mapFromShip, battle, ai, approach, heat, standing (the sides), quests, campaign, colony (with its building by hand, its days and its expeditions), raids (with the colony as a battle map), economy, dev (the dev menu's cheats; God mode is god), gen/
   render/    3D camera, scenes and painters, part and styling piece models, figures (figures/), portraits (portraits/), hull tracer and hull shapes, SVG icons, tweens, particles
-  ui/        screens, panels, gestures
+  ui/        screens, panels, gestures, the ?dev=1 menu (dev/)
   platform/  storage, service worker registration, haptics, orientation
 data/        JSON content, including balance.json
 assets/
