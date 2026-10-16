@@ -10,6 +10,7 @@ import { actTitle, crewText, heatText } from './hubText.js';
 import { runRecord } from './launchText.js';
 import { defenseRow, raidHint, raidStatus } from './raidText.js';
 import { worldSaid } from './sectorText.js';
+import { easedSaid, questsText } from './questText.js';
 import { sidesText } from './standingText.js';
 
 // What the colony screen shows:
@@ -105,6 +106,7 @@ export function colonyText(campaign, rules) {
     })),
     crew: crew.map((row, i) => ({ ...row, aboard: aboard.has(campaign.crew[i].id), away: away.has(campaign.crew[i].id), rough: rough.has(campaign.crew[i].id) })),
     sides: sidesText(campaign, rules),
+    quests: questsText(campaign, rules),
     builds: list.builds.map((row) => ({ what: row.what, id: row.id, name: row.name, cost: row.cost, makes: row.makes ? `${makesText(row.makes)} here` : givesText(row.gives), ok: row.ok, why: row.error })),
     hold: holdRows(list.hold, rules),
     parts: partRows(campaign, rules),
@@ -249,12 +251,12 @@ export function takenText(result) {
 // What a first tap on Next day says (days.js dayPlan's plan): what the day
 // will bring, the odds of the pursuer finding the colony at its end (M29),
 // and the second tap's ask.
-export function dayText(plan) {
+export function dayText(plan, eased = null) {
   if (!plan.ok) return { text: plan.error, tone: 'warn' };
   const made = madeText(plan.made, 'grow', 'dig');
   const eat = plan.fed ? `the crew eats ${plan.eats} and rests` : `the crew needs ${plan.eats} and goes hungry, losing ${plan.hunger} hit points each`;
   const lost = lostText(plan.lost, 'will be lost');
-  const found = plan.found ? ` ${plan.found}% the colony is found tonight.` : '';
+  const found = plan.found ? ` ${plan.found}% the colony is found tonight${eased ? `, ${eased}` : ''}.` : '';
   return { text: `Day ${plan.day} ends: ${made}; ${eat}. Food ${plan.food[0]} → ${plan.food[1]}, materials ${plan.materials[0]} → ${plan.materials[1]}.${lost}${found} Tap again for day ${plan.day + 1}.`, tone: plan.fed ? 'info' : 'warn' };
 }
 

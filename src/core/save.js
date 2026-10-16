@@ -72,7 +72,11 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      (M33)
 //  27  docking on trade: the run keeps whether the crew has traded at the
 //      station the ship is at since it arrived (M33's fix)
-export const SAVE_VERSION = 27;
+//  28  quests: the campaign's quests and where each stands; a sector's
+//      node may carry a quest's event, a place at the colony may be a
+//      quest's, and a job a fight is on, an event's result and a trip's
+//      may say what came of a quest (M33b)
+export const SAVE_VERSION = 28;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -380,6 +384,23 @@ export const MIGRATIONS = [
       const here = isObject(run.sector) && Array.isArray(run.sector.nodes) ? run.sector.nodes[run.at] : null;
       const docked = isObject(here) && here.type === 'station' && stations.includes(here.name);
       return { ...data, campaign: { ...data.campaign, run: { ...run, docked } } };
+    },
+  },
+  // Quests (M33b). A campaign gets its background's thread (the quests as
+  // M33b shipped them, by background) at the step of its act, none gone
+  // cold: act 1's job; on the run, its event, placed from the next sector
+  // the ship enters; past the charts and at the colony, the colony's place,
+  // as the run's step can't be met there. A background with no thread gets
+  // none.
+  {
+    from: 27,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign)) return data;
+      const { background, act, run } = data.campaign;
+      const thread = { miner: 'debt', deserter: 'pardon', smuggler: 'cargo' }[background];
+      const past = act !== 2 || (isObject(run) && isObject(run.sector) && run.sector.system === true);
+      const step = act === 1 ? 0 : past ? 2 : 1;
+      return { ...data, campaign: { ...data.campaign, quests: thread ? { [thread]: { step, state: 'open' } } : {} } };
     },
   },
 ];

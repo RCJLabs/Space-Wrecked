@@ -282,6 +282,33 @@ textarea {
   color: var(--c-good);
 }
 
+/* The quests (M33b, hubParts.js questRows): the quest's name with its next
+   step under it, in full, and where it stands: done in the good color, gone
+   cold dimmed. */
+.hgr-quests li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 6px;
+  margin: 0 0 6px;
+}
+
+.hgr-quests li:last-child {
+  margin-bottom: 0;
+}
+
+.hgr-quests .hgr-name small {
+  white-space: normal;
+}
+
+.hgr-quests li[data-state='done'] .hgr-num {
+  color: var(--c-good);
+}
+
+.hgr-quests li[data-state='cold'] {
+  opacity: 0.6;
+}
+
 .hgr-goal li {
   display: flex;
   flex-direction: column;
@@ -1291,6 +1318,23 @@ textarea {
   background: var(--c-line);
 }
 
+/* A quest's node (M33b): a diamond in the good color at its mark's upper
+   left until its event is settled (a station's side pip sits upper right;
+   the rings round a mark are what a jump reaches). */
+.sct-quest {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--c-space);
+  background: var(--c-good);
+  transform: translate(-17px, -16px) rotate(45deg);
+  pointer-events: none;
+}
+
+.sct-node[data-quest='false'] .sct-quest {
+  display: none;
+}
+
 /* What a jump reaches: a ring, dashed for a long jump. */
 .sct-node[data-reach='1'] .sct-dot {
   outline: 2px solid var(--c-accent);
@@ -2155,6 +2199,23 @@ textarea {
 .shop-pick .shop-twist {
   flex: none;
   color: var(--c-dash);
+  font-size: 11.5px;
+}
+
+/* A quest's job (M33b): its quest's name where a twist would be, in the
+   accent, and an edge in it down the row's side. */
+#ui .jobs-pick[data-quest] {
+  box-shadow: inset 3px 0 0 var(--c-accent);
+}
+
+#ui .jobs-pick[data-quest][aria-pressed='true'] {
+  box-shadow: inset 3px 0 0 var(--c-accent), inset 0 0 0 1px var(--c-accent);
+}
+
+.jobs-pick .jobs-quest {
+  flex: none;
+  max-width: 50%;
+  color: var(--c-accent);
   font-size: 11.5px;
 }
 

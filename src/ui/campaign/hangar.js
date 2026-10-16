@@ -9,14 +9,16 @@
 // Pay to buy some off (a tap shows the price, a second pays); once heat
 // brings a raid, Defend takes the place of Jobs. Once every flight check
 // passes, Launch shows at the top of the goal: a tap says what launching
-// means, a second lifts off (launch.js), raid or no raid. Everything the
+// means, and which quests it would end (M33b), a second lifts off
+// (launch.js), raid or no raid. Under the sides, the quests and where each
+// stands (M33b). Everything the
 // campaign holds is saved as it changes, so the hangar reopens as it was
 // left.
 import { loadContent } from '../../platform/content.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
-import { createShipStand, crewRows, heatChip, listRows, panel, sideRows } from './hubParts.js';
+import { createShipStand, crewRows, heatChip, listRows, panel, questRows, sideRows } from './hubParts.js';
 import { hangarText } from './hubText.js';
 
 const ARM_MS = 3000; // Pay and Launch wait this long for a second tap
@@ -35,9 +37,10 @@ export const hangarScreen = {
     const crewList = node('ul', 'hgr-crew');
     const holdings = node('dl', 'hgr-hold');
     const sideList = node('ul', 'hgr-sides');
+    const questList = node('ul', 'hgr-quests');
     const shipArea = node('div', 'hgr-ship');
     const side = node('div', 'hgr-side');
-    side.append(panel('Crew', crewList), panel('Hangar', holdings), panel('Sides', sideList));
+    side.append(panel('Crew', crewList), panel('Hangar', holdings), panel('Sides', sideList), panel('Quests', questList));
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const hint = node('p', 'hgr-hint', 'Loading…');
@@ -111,6 +114,7 @@ export const hangarScreen = {
       crewList.replaceChildren(...crewRows(text.crew));
       holdings.replaceChildren(...listRows(text.holdings));
       sideList.replaceChildren(...sideRows(text.sides));
+      questList.replaceChildren(...questRows(text.quests));
       // Heat, and the payment that buys some off.
       const { raid } = text;
       heat.show(text.heat);

@@ -39,7 +39,8 @@ import { icons } from '../icons.js';
 import { buildingInfo, builtText, colonyText, dayReport, dayText, givenText, placeText, takeDownText, takenText, whyNotText } from './colonyText.js';
 import { createStand } from './colonyStand.js';
 import { createTrips } from './colonyTrip.js';
-import { crewRows, heatChip, listRows, sideRows } from './hubParts.js';
+import { crewRows, heatChip, listRows, questRows, sideRows } from './hubParts.js';
+import { easedSaid } from './questText.js';
 import { defendText, landingReport, raidHint } from './raidText.js';
 
 const ARM_MS = 4000; // a first tap on Next day, Defend or Take down waits this long for its second
@@ -60,11 +61,12 @@ export const colonyScreen = {
     const buildingList = node('ul', 'cln-buildings');
     const crewList = node('ul', 'hgr-crew');
     const sideList = node('ul', 'hgr-sides');
+    const questList = node('ul', 'hgr-quests');
     const worldTitle = node('h2', 'cln-world');
     const worldLines = node('ul', 'cln-lines');
     const recordTitle = node('h2');
     const record = node('dl', 'hgr-hold');
-    info.append(node('h2', null, 'The colony'), needs, powerLine, storesLine, node('h2', null, 'Buildings'), buildingList, node('h2', null, 'Crew'), crewList, node('h2', null, 'Sides'), sideList, worldTitle, worldLines, recordTitle, record);
+    info.append(node('h2', null, 'The colony'), needs, powerLine, storesLine, node('h2', null, 'Buildings'), buildingList, node('h2', null, 'Crew'), crewList, node('h2', null, 'Sides'), sideList, node('h2', null, 'Quests'), questList, worldTitle, worldLines, recordTitle, record);
     const sceneArea = node('div', 'hgr-ship cln-scene');
     // What can be built, or the ghost's controls, or the building looked at.
     const side = node('section', 'hgr-panel cln-parts');
@@ -166,6 +168,7 @@ export const colonyScreen = {
       const where = (row) => (row.away ? 'away' : row.rough ? 'no bed or air' : row.aboard ? 'sleeps aboard' : null);
       crewList.replaceChildren(...crewRows(text.crew.map((row) => (where(row) ? { ...row, job: [row.job, where(row)].filter(Boolean).join(' · ') } : row))));
       sideList.replaceChildren(...sideRows(text.sides));
+      questList.replaceChildren(...questRows(text.quests));
       setText(worldTitle, text.world.title);
       worldLines.replaceChildren(...text.world.lines.map((line) => node('li', null, line)));
       setText(recordTitle, text.record.title);
@@ -188,7 +191,7 @@ export const colonyScreen = {
 
       const tripArmed = armed !== null && !['day', 'defend', 'down'].includes(armed);
       const defend = armed === 'defend' ? defendText(campaign, defs) : null;
-      const words = armed === 'day' ? dayText(dayPlan(campaign, defs))
+      const words = armed === 'day' ? dayText(dayPlan(campaign, defs), easedSaid(campaign, defs))
         : defend ? (defend.ok ? { text: defend.ask, tone: 'warn' } : { text: defend.why, tone: 'bad' })
         : armed === 'down' ? takeDownText(takeDownPlan(campaign, defs, mode.uid))
         : (tripArmed ? trips.hint(campaign) : null) ?? said ?? (down ? raidHint(campaign, defs) : null) ?? trips.hint(campaign) ?? (plan?.same ? { text: `Tap the grid where the ${lowerFirst(buildingName(mode.type, defs))} should go, or turn it.`, tone: 'info' }

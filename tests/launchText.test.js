@@ -13,7 +13,9 @@ test('a ship ready to launch: the hangar says so, and Launch asks before it ends
   const text = hangarText(readyToLaunch(), rules);
   assert.equal(text.goal.ready, true);
   assert.deepEqual(text.hint, { tone: 'good', text: 'Every flight check passes. Tap Launch to lift off and end act 1.' });
-  assert.deepEqual(text.launch, { ok: true, ask: 'Lift off and end act 1? The job board and the shop stay behind. Tap Launch again.' });
+  // The miner's act 1 step isn't done, so the ask says Launching ends it
+  // (M33b, tests/questText.test.js has the ask without it).
+  assert.deepEqual(text.launch, { ok: true, ask: "Lift off and end act 1? Launching ends the miner's debt: its step here isn't done. The job board and the shop stay behind. Tap Launch again." });
   assert.equal(hangarText(withBoard(newCampaign(rules, 5), rules), rules).launch.ok, false);
 });
 

@@ -7,7 +7,7 @@ import { beginFight, captainProblem, firstBackground, newCampaign, refitShip, sa
 import { donate } from './colony.js';
 import { build, moveBuilding, takeDown } from './colonyBuild.js';
 import { nextDay } from './days.js';
-import { endJob, takeJob, withBoard } from './contracts.js';
+import { endJob, takeJob, takeQuestJob, withBoard } from './contracts.js';
 import { buyPart, sellPart } from './economy.js';
 import { beginBoarding, closeApproach, endBoarding, giveOrder } from './encounter.js';
 import { chooseEvent } from './events.js';
@@ -84,6 +84,8 @@ export function initialState(seed) {
 //                                  index: its fight begins. Every fight
 //                                  takes forgiving odds and the difficulty
 //                                  from the settings as it starts
+//   campaign/job/quest { quest, rules }   the crew takes the job a quest's
+//                                  step offers at the hangar (M33b)
 //   campaign/raid/begin { rules }  the crew faces the raid that is due
 //   campaign/launch { rules }      the ship lifts off: act 1 ends, and the
 //                                  launch plays (launch.js)
@@ -199,6 +201,7 @@ export function reduce(state, action) {
       return done?.ok ? { ...state, campaign: done.campaign } : state;
     }
     case 'campaign/job/take':
+    case 'campaign/job/quest':
     case 'campaign/raid/begin':
     case 'campaign/boarding/begin':
     case 'campaign/trip/board':
@@ -206,6 +209,7 @@ export function reduce(state, action) {
       const setup = fightSettings(state.settings);
       const begin = {
         'campaign/job/take': (c) => takeJob(c, action.rules, action.index, setup),
+        'campaign/job/quest': (c) => takeQuestJob(c, action.rules, action.quest, setup),
         'campaign/raid/begin': (c) => beginRaid(c, action.rules, setup),
         'campaign/boarding/begin': (c) => beginBoarding(c, action.rules, { ...setup, squad: action.squad ?? null }),
         'campaign/trip/board': (c) => boardPlace(c, action.rules, setup),

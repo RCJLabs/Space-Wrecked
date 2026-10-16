@@ -2,6 +2,7 @@
 // like in a save, for the save's checks (campaign.js campaignProblems).
 // Shape only: whether a place's kind and event are the content's is the
 // rules' business. Pure.
+import { isQuestNote } from './questShape.js';
 import { MAX_PLACE_NAME } from './runShape.js';
 
 // More places than the list holds (data/expeditions.json places, held to
@@ -17,11 +18,13 @@ const MAX_AMOUNT = 9999;
 const MAX_SEED = 0xffffffff;
 const ID = /^[a-z][a-z0-9-]*$/;
 
-// A place within reach: { kind, name, days, event, held, seed }. A place
-// the scavengers hold has no event.
+// A place within reach: { kind, name, days, event, held, seed }, and a
+// quest's (M33b) its quest. A place the scavengers hold has no event, and a
+// quest's is always held.
 export function isPlace(place) {
   if (!isRecord(place) || !isId(place.kind) || !isName(place.name) || !isInt(place.days, 1, MAX_AWAY)) return false;
   if (typeof place.held !== 'boolean' || !isInt(place.seed, 0, MAX_SEED)) return false;
+  if (place.quest !== undefined && !(isId(place.quest) && place.held)) return false;
   return place.held ? place.event === null : place.event === null || isId(place.event);
 }
 
@@ -51,11 +54,12 @@ function isLeg(leg) {
 }
 
 // What came of the place: an event's (events.js: { event, choice, outcome,
-// roll, changes }), or a fight's ({ won, parts, materials }).
+// roll, changes }), or a fight's ({ won, parts, materials }, and won at a
+// quest's place, quest: what came of the quest, M33b).
 function isResult(result) {
   if (!isRecord(result)) return false;
   if (typeof result.won === 'boolean') {
-    return Array.isArray(result.parts) && result.parts.length <= MAX_SALVAGE && result.parts.every(isId) && isInt(result.materials, 0, MAX_AMOUNT);
+    return Array.isArray(result.parts) && result.parts.length <= MAX_SALVAGE && result.parts.every(isId) && isInt(result.materials, 0, MAX_AMOUNT) && (result.quest === undefined || (result.won && isQuestNote(result.quest)));
   }
   return isId(result.event) && isId(result.choice) && isInt(result.outcome, 0, 9) && (result.roll === null || isInt(result.roll, 0, 99)) && isRecord(result.changes);
 }

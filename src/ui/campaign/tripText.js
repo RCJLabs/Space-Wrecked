@@ -1,7 +1,8 @@
 // Text for trips from the colony (src/sim/expeditions.js, M28): the places
 // within reach, a trip's plan, where the squad is and what is there, and
 // what each leg's days came to; since M29 a leg a raid stopped, and Fly
-// on. rules are the content tables (src/sim/defs.js).
+// on; since M33b a quest's place, named for its quest, and what winning
+// her did to the quest. rules are the content tables (src/sim/defs.js).
 import { maxHp } from '../../sim/campaign.js';
 import { colonyBy } from '../../sim/edges.js';
 import { choiceProblem } from '../../sim/events.js';
@@ -10,23 +11,28 @@ import { pursuerOf } from '../../sim/heat.js';
 import { byJob } from './crewJobText.js';
 import { faceOf } from './crewText.js';
 import { changesText, effectsText } from './eventText.js';
+import { questNoteLines, questPlaceText } from './questText.js';
 
 // The places within reach, a row each: [{ index, name, kind (its kind's
-// name, or a world's: "Desert world"), days (each way), held, line ("Ore
-// rock · 2 days away", and "squatters aboard" where they hold her), about
-// (the kind's words) }].
+// name, or a world's: "Desert world"; a quest's place, its quest's name),
+// days (each way), held, quest (a quest's place's quest's name, or null),
+// line ("Ore rock · 2 days away", and "squatters aboard" where they hold
+// her, "held" at a quest's place), about (the kind's words, or the quest
+// place's) }].
 export function placesText(campaign, rules) {
   return campaign.colony.places.map((place, index) => {
     const kind = kindOf(place, rules);
     const name = kindName(place, campaign, rules);
+    const quest = questPlaceText(place, rules);
     return {
       index,
       name: place.name,
       kind: name,
       days: place.days,
       held: place.held,
-      line: [name, `${place.days} day${place.days === 1 ? '' : 's'} away`, ...(place.held ? ['squatters aboard'] : [])].join(' · '),
-      about: kind?.text ?? '',
+      quest: quest?.tag ?? null,
+      line: [name, `${place.days} day${place.days === 1 ? '' : 's'} away`, ...(place.held ? [quest ? 'held' : 'squatters aboard'] : [])].join(' · '),
+      about: quest?.line ?? kind?.text ?? '',
     };
   });
 }
@@ -57,7 +63,7 @@ export function planText(plan, campaign, rules) {
   const squad = plan.squad.map((id) => campaign.crew.find((member) => member.id === id)).filter(Boolean);
   const pilot = days.out < place.days ? colonyBy(squad, rules, 'tripDays') : null;
   const lines = [
-    `${kindName(place, campaign, rules)} · ${days.out} day${days.out === 1 ? '' : 's'} there, ${days.back} back${pilot ? `, ${byJob(pilot, rules)} flying` : ''}${place.held ? ' · squatters aboard' : ''}`,
+    `${kindName(place, campaign, rules)} · ${days.out} day${days.out === 1 ? '' : 's'} there, ${days.back} back${pilot ? `, ${byJob(pilot, rules)} flying` : ''}${place.held ? (place.quest ? ' · held' : ' · squatters aboard') : ''}`,
     `The days eat ${plan.eats} food: ${plan.food[0]} → ${plan.food[1]}${plan.hungry ? `, ${plan.hungry} day${plan.hungry === 1 ? '' : 's'} hungry` : ''}`,
   ];
   const failing = plan.checks.filter((line) => line.ok !== true);
@@ -129,7 +135,7 @@ export function legReport(result, leg, before, rules) {
   const left = result.stopped ? result.campaign.colony.trip?.leg?.left ?? 0 : 0;
   if (left) said.push(`${pursuerOf(before, rules)?.name ?? 'The pursuer'}'s lander is down at the colony: the ship waits, ${left} day${left === 1 ? '' : 's'} still to fly, while those at home face it.`);
   else if (leg === 'out') said.push(`The squad is at ${result.plan.place.name}.`);
-  else said.push(`The ship is home. ${broughtText(before.colony.trip?.result ?? null, before, rules)}`);
+  else said.push(`The ship is home. ${broughtText(before.colony.trip?.result ?? null, before, rules)}`, ...questNoteLines(before.colony.trip?.result?.quest ?? null, rules, before));
   return { text: said.join(' '), tone: hungry || left ? 'bad' : 'good' };
 }
 
@@ -171,6 +177,15 @@ function heldText(campaign, rules) {
   }
   const party = [...counts].map(([name, n]) => (n > 1 ? `${name} ×${n}` : name)).join(', ');
   const [least, most] = due.materials;
+  // A quest's place (M33b): the pursuer's men hold her, and winning does
+  // the quest's step; losing leaves her for another trip.
+  const quest = questPlaceText(due.place, rules);
+  if (quest) {
+    return {
+      lines: [`${quest.line} Aboard: ${party}.`, `Win: ${quest.tag} is done, and ${due.salvage ? `${due.salvage} of her parts and ` : ''}${least} to ${most} materials.`, 'Lose: the squad comes back hurt, and she is still there. Or fly home and leave her for now.'],
+      ask: `Board ${due.place.name}: the squad against her crew, aboard her. Tap again to board.`,
+    };
+  }
   return {
     lines: [`Squatters hold her: ${party}.`, `Win: strip ${due.salvage} of her parts, and ${least} to ${most} materials.`, 'Lose: the squad comes back hurt, with nothing. Or fly home and leave her be.'],
     ask: `Board ${due.place.name}: the squad against the squatters, aboard her. Tap again to board.`,
@@ -181,7 +196,7 @@ function heldText(campaign, rules) {
 function resultAt(result, campaign, rules) {
   if (result.won !== undefined) {
     return result.won
-      ? { title: 'Boarded and won', text: `${broughtText(result, campaign, rules).replace('It brought', 'The squad took')}` }
+      ? { title: 'Boarded and won', text: [broughtText(result, campaign, rules).replace('It brought', 'The squad took'), ...questNoteLines(result.quest ?? null, rules, campaign)].join(' ') }
       : { title: 'Beaten back', text: 'The squad came back aboard hurt, with nothing.' };
   }
   const event = rules.events.get(result.event);
@@ -191,8 +206,11 @@ function resultAt(result, campaign, rules) {
   return { title: event && choice ? `${event.title}: ${choice.label}` : 'Done', text: `${outcome?.text ?? ''}${roll} ${changesText(result.changes, campaign, rules)}`.trim() };
 }
 
-// A place's kind by name: the kind's, or for a world its own kind's.
+// A place's kind by name: the kind's, or for a world its own kind's; a
+// quest's place (M33b), its quest's name.
 function kindName(place, campaign, rules) {
+  const quest = questPlaceText(place, rules);
+  if (quest) return quest.tag;
   const kind = kindOf(place, rules);
   if (kind?.worlds) {
     const world = otherWorlds(campaign).find((entry) => entry.name === place.name)?.world;

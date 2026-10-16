@@ -16,7 +16,9 @@ import { PLACE_EFFECTS, PLACE_NEEDS } from '../src/sim/expeditions.js';
 import { isId, isIntIn, isObject, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 
 const FILE_KEYS = ['drops', 'events'];
-const EVENT_KEYS = ['id', 'kind', 'title', 'text', 'choices'];
+// A quest's event (M33b, validate-quests.js) names its quest and is never in
+// a sector's pool, so it covers no kind.
+const EVENT_KEYS = ['id', 'kind', 'quest', 'title', 'text', 'choices'];
 const CHOICE_KEYS = ['id', 'label', 'needs', 'outcomes'];
 const OUTCOME_KEYS = ['chance', 'text', 'effects'];
 const MAX_TITLE = 24;
@@ -63,7 +65,8 @@ export function checkEvents(file, kinds, moduleIds, fail, places = new Set(), si
     knownKeys(event, EVENT_KEYS, at, fail);
     const atPlace = places.has(event.kind);
     if (!kinds.has(event.kind) && !atPlace) fail(at, `kind must be a node kind that holds events or a kind of place (${[...kinds, ...places].join(', ')})`);
-    else covered.add(event.kind);
+    else if (event.quest === undefined) covered.add(event.kind);
+    if (event.quest !== undefined && !isText(event.quest)) fail(at, 'quest must be the id of the quest whose step it is');
     if (!isText(event.title) || event.title.length > MAX_TITLE) fail(at, `title must be a non-empty string of up to ${MAX_TITLE} letters`);
     if (!isText(event.text) || event.text.length > MAX_TEXT) fail(at, `text must be a non-empty string of up to ${MAX_TEXT} letters`);
     if (!Array.isArray(event.choices) || event.choices.length < 1 || event.choices.length > MAX_CHOICES) {

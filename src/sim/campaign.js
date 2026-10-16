@@ -32,6 +32,9 @@
 //   standing { [side]: standing }: how each side (data/factions.json) feels
 //            about the crew, from STANDING_MIN to STANDING_MAX (standing.js,
 //            M33). A new campaign starts its pursuer's side hostile.
+//   quests   { [id]: { step, state } }: the quests under way, done or gone
+//            cold (quests.js, M33b). A new campaign starts its
+//            background's thread at its first step.
 //   flags    { [name]: true, a number or a short text }: what has happened
 //   ship     the ship (builder.js)
 //   wrecks   { [uid]: 'fire' | 'vacuum' | 'rubble' }: the ship's modules
@@ -72,6 +75,7 @@ import { isWorld, runProblem } from './runShape.js';
 import { isPlace, MAX_PLACES, tripProblem } from './tripShape.js';
 import { enemyBonus } from './settings.js';
 import { rankOf } from './ranks.js';
+import { isQuests, startingQuests } from './questShape.js';
 import { isStanding, startStanding } from './standing.js';
 import { traitBonus } from './traits.js';
 
@@ -148,6 +152,7 @@ export function newCampaign(rules, seed, { background = firstBackground(rules), 
     captain: crew[at].id,
     heat: 0,
     standing: startStanding(rules, background),
+    quests: startingQuests(rules, background),
     flags: {},
     ship,
     wrecks: {},
@@ -442,6 +447,7 @@ export function campaignProblems(value) {
   else if (!value.crew.some((member) => member.id === value.captain)) wrong("captain isn't aboard");
   if (!isInt(value.heat, 0, HEAT_MAX)) wrong('heat is invalid');
   if (!isStanding(value.standing, MAX_SIDES)) wrong('standing with the sides is unreadable');
+  if (!isQuests(value.quests)) wrong('quests are unreadable');
   if (!isRecord(value.flags) || !Object.entries(value.flags).every(([name, flag]) => FLAG.test(name) && name.length <= 32 && isFlag(flag))) {
     wrong('flags are unreadable');
   }
@@ -536,11 +542,12 @@ function isBoarding(boarding) {
   );
 }
 
-// A job on the board (contracts.js): its ids, seed and pay.
+// A job on the board (contracts.js): its ids, seed and pay; a quest's
+// (M33b, quests.js questJobs) names its quest.
 function isJob(job) {
   return (
     isRecord(job) && isId(job.contract) && isId(job.client) && isId(job.site) && (job.twist === null || isId(job.twist)) &&
-    isState(job.seed) && isInt(job.credits, 0, Number.MAX_SAFE_INTEGER) && (job.part === null || isId(job.part))
+    isState(job.seed) && isInt(job.credits, 0, Number.MAX_SAFE_INTEGER) && (job.part === null || isId(job.part)) && (job.quest === undefined || isId(job.quest))
   );
 }
 

@@ -36,7 +36,9 @@
 // M33's: a station charges the crew its side's share of each price, and
 // the first trade at one of the pursuer's side since the ship arrived adds
 // its docking heat (M33's fix: it was the jump there), which the managing
-// player pays only where it must.
+// player pays only where it must. And M33b's: the careful player takes
+// the quests' steps, the thread's in each act and the Fleet's chain where
+// it befriends the Fleet, and the report says what came of them.
 // Each voyage launches from a test run of act 1 (tools/run.js) and is
 // played by the test player in tools/voyage.js. The voyages before M23h's
 // fly as fitted, with no refits, so each compares one part's difference.
@@ -70,12 +72,15 @@ const RUNS = 30;
 // large hold against the lockers), and they fly 100 seeds the same way,
 // against main's before M32. M33's sides and their events did it to two
 // more (a recruit signed on with a cargo hold; a surveyed world settled),
-// against main's before M33. The rest fly the first RUNS, as before.
+// against main's before M33. M33b's quests did it to two more (the careful
+// player fed without refits; runs with a refit), against main's before
+// M33b (the M33 fix's, carefulFed and refitRuns). The rest fly the first
+// RUNS, as before.
 const RATE_RUNS = 100;
 const MARGIN = 15;
 const MARGIN_RARE = 5;
 const MAIN = {
-  miner: { metSectors: 33, ignoringMet: 100, fed: 73, metAny: 42, lost: 29, systemHungry: 14, shortOfAir: 0, surveyed: 68, housed: 41, noScan: 0, medbayFed: 79, surgeryFed: 81, signed: 44, settledSurveyed: 81 },
+  miner: { metSectors: 33, ignoringMet: 100, fed: 73, metAny: 42, lost: 29, systemHungry: 14, shortOfAir: 0, surveyed: 68, housed: 41, noScan: 0, medbayFed: 79, surgeryFed: 81, signed: 44, settledSurveyed: 81, carefulFed: 82, refitRuns: 69 },
   deserter: { fed: 80, metAny: 45, lost: 20 },
   smuggler: { fed: 89, metAny: 19, lost: 18 },
 };
@@ -318,12 +323,14 @@ function checkHunt(step) {
   if (step.hunt.roll !== null) assert.equal(step.hunt.found, step.hunt.roll < step.hunt.chance, 'rolled as shown');
 }
 
-test("the run's fourteen events play from data (M20's ten and M33's four), hostile ships are met and boardings fought, and the run pays its way: 24 or more of 30 careful runs cross all five sectors fed", () => {
+test("the run's fourteen events play from data (M20's ten and M33's four), hostile ships are met and boardings fought, and the run pays its way: 24 or more of 30 careful runs cross all five sectors fed, since M33b as main's within 15 of 100", () => {
   assert.ok(careful.every((trip) => trip.launched && trip.ended), 'every run launches and settles a world past the charts');
-  const played = new Set(trips.flatMap((trip) => trip.steps.filter((step) => step.kind === 'event').map((step) => step.event)));
   // The run's events: those of a kind of node (the colony's places have the
-  // rest, M28).
-  const runEvents = [...rules.events.values()].filter((event) => rules.nodeTypes.get(event.kind)?.events);
+  // rest, M28), but the quests' own, which quests.js places where a quest's
+  // step is open and the test player plays since M33b (the quests' tests
+  // have them).
+  const played = new Set(trips.flatMap((trip) => trip.steps.filter((step) => step.kind === 'event' && !rules.events.get(step.event)?.quest).map((step) => step.event)));
+  const runEvents = [...rules.events.values()].filter((event) => rules.nodeTypes.get(event.kind)?.events && !event.quest);
   assert.equal(played.size, runEvents.length, `events played: ${[...played].join(', ')}`);
   assert.equal(runEvents.length, 14);
   const met = careful.flatMap((trip) => trip.steps.filter((step) => step.kind === 'approach'));
@@ -333,8 +340,10 @@ test("the run's fourteen events play from data (M20's ten and M33's four), hosti
   // and seldom disables a ship: boarding hers is tests/encounter.test.js's.)
   const fought = [...careful, ...ignoring].flatMap((trip) => trip.steps.filter((step) => step.kind === 'boarding'));
   assert.ok(fought.some((step) => step.dir === 'you' && step.won) && fought.some((step) => step.dir === 'you' && !step.won), `fights at home: ${fought.filter((s) => s.dir === 'you').length}`);
-  const fed = careful.filter((trip) => trip.tally.hungryJumps === 0).length;
-  assert.ok(fed >= 24, `fed all the way in ${fed} of ${RUNS}`);
+  // On seeds 1 to 30 the quests' steps (M33b) left 19 fed: a rate over
+  // RATE_RUNS seeds since, as main's within MARGIN.
+  const fed = carefulAll.filter((trip) => trip.tally.hungryJumps === 0).length;
+  assert.ok(fed >= MAIN.miner.carefulFed - MARGIN, `fed all the way in ${fed} of ${RATE_RUNS}`);
   // What the nodes paid, on balance, in credits and supplies.
   const paid = careful.map((trip) => trip.tally.eventCredits + balance.supplyPrice * trip.tally.eventSupplies).sort((a, b) => a - b);
   assert.ok(paid[Math.floor(RUNS / 2)] > 0, `the median run comes out ahead at the nodes: ${paid}`);
@@ -379,10 +388,12 @@ test('surgery, bunks and the large hold each change the voyage (Law 1)', () => {
   for (const voyages of [bunks, largehold]) assert.ok(fed(voyages) >= 24, `fed all the way in ${fed(voyages)} of ${RUNS}`);
   assert.ok(fed(surgeryAll) >= MAIN.miner.surgeryFed - MARGIN, `fed all the way in ${fed(surgeryAll)} of ${RATE_RUNS} with surgery`);
   // Surgery heals more a jump than a med bay (each with the medic aboard),
-  // so the crew needs patching less.
+  // so the crew needs patching less: over RATE_RUNS seeds since M33b (the
+  // quests' steps moved seeds 1 to 30, where surgery patched 43 and a med
+  // bay 36).
   const heal = (voyages) => Math.max(...voyages.flatMap((trip) => trip.steps.filter((step) => step.kind === 'jump').map((step) => step.heal)));
   assert.equal(heal(surgery) - heal(medbay), rules.modules.get('surgery').heal - rules.modules.get('medbay').heal);
-  assert.ok(sum(surgery, 'patchedHp') < sum(medbay, 'patchedHp'), `patched ${sum(surgery, 'patchedHp')} with surgery, ${sum(medbay, 'patchedHp')} with a med bay`);
+  assert.ok(sum(surgeryAll, 'patchedHp') < sum(medbayAll, 'patchedHp'), `patched ${sum(surgeryAll, 'patchedHp')} with surgery, ${sum(medbayAll, 'patchedHp')} with a med bay, over ${RATE_RUNS} runs`);
   // Bunks make room for crew: with a hold to feed them, more sign on than
   // with the hold alone, past the start ship's four.
   assert.ok(sum(bunks, 'hired') > sum(cargo, 'hired'), `signed on ${sum(bunks, 'hired')} with bunks, ${sum(cargo, 'hired')} without`);
@@ -408,13 +419,17 @@ test('the same seed always gives the same sectors, none named twice in a run', (
   }
 });
 
-test('the careful player refits at stations with what it has, every flight check passing, and still crosses fed in 24 or more of 30 (M23h)', () => {
+test('the careful player refits at stations with what it has, every flight check passing, and still crosses fed: 24 or more of 30 in M23h, since M33b as main\'s within 15 of 100', () => {
   assert.ok(refitting.every((trip) => trip.launched && trip.ended), 'every run settles a world past the charts');
-  const fed = refitting.filter((trip) => trip.tally.hungryJumps === 0).length;
-  assert.ok(fed >= 24, `fed all the way in ${fed} of ${RUNS}, refitting`);
+  // On seeds 1 to 30 the quests' steps (M33b) left 19 fed: a rate over
+  // RATE_RUNS seeds since, as main's within MARGIN.
+  const fed = refittingAll.filter((trip) => trip.tally.hungryJumps === 0).length;
+  assert.ok(fed >= MAIN.miner.fed - MARGIN, `fed all the way in ${fed} of ${RATE_RUNS}, refitting`);
   const refits = refitting.flatMap((trip) => trip.steps.filter((step) => step.kind === 'refit'));
-  const runs = refitting.filter((trip) => trip.tally.fitted > 0).length;
-  assert.ok(runs >= 15, `runs with a refit: ${runs} of ${RUNS}`);
+  // 15 or more of 30 in M23h; since M33b a rate over RATE_RUNS seeds, as
+  // main's within MARGIN (seeds 1 to 30 had 12).
+  const runs = refittingAll.filter((trip) => trip.tally.fitted > 0).length;
+  assert.ok(runs >= MAIN.miner.refitRuns - MARGIN, `runs with a refit: ${runs} of ${RATE_RUNS}`);
   for (const step of refits) {
     // The parts come off the parts on hand and onto the ship, for nothing,
     // and every flight check still passes.
@@ -428,8 +443,9 @@ test('the careful player refits at stations with what it has, every flight check
     for (const type of step.fitted) assert.ok([...FIT_ORDER, 'power'].includes(rules.modules.get(type).category), type);
   }
   // Without refits, the same seeds fly as before.
+  const fedHere = refitting.filter((trip) => trip.tally.hungryJumps === 0).length;
   const bare = careful.map((trip) => trip.tally.hungryJumps === 0).filter(Boolean).length;
-  assert.ok(fed >= bare - 2, `fed in ${fed} refitting, ${bare} without`);
+  assert.ok(fedHere >= bare - 2, `fed in ${fedHere} refitting, ${bare} without`);
 });
 
 // M24 measured 27 or more of 30 meeting the hunters ignoring heat, 6 or
@@ -700,8 +716,10 @@ test("the colony's raids: over its 60 days the careful player stays home while o
 // M30 measured each background within 5 runs of 30 of the miner's. Over
 // 100 seeds main's smuggler meets the hunters in 19 runs against the miner's
 // 42 (§9), so since M31 each background holds main's own rates over 100
-// seeds, within MARGIN.
-test("from each background's start, the careful player crosses fed, meets the hunters and loses a raid at the colony in as many runs as main's before M31, within 15 of 100 (M30)", () => {
+// seeds, within MARGIN. Since M33b no worse than them (Evan's call,
+// 2026-10-16): the deserter's thread takes 35 heat off a pursuer who takes
+// no payments, and it met the hunters in 21 of 100 against main's 45.
+test("from each background's start, the careful player crosses fed, meets the hunters and loses a raid at the colony in no more runs than main's before M31 by 15 of 100 (M30, M33b)", () => {
   const count = (fleet) => ({
     fed: fleet.filter((r) => r.tally.hungryJumps === 0).length,
     metAny: fleet.filter((r) => r.tally.hunts > 0).length,
@@ -710,7 +728,9 @@ test("from each background's start, the careful player crosses fed, meets the hu
   for (const [id, fleet, all] of [['miner', refitting, refittingAll], ['deserter', deserters, desertersAll], ['smuggler', smugglers, smugglersAll]]) {
     assert.ok(fleet.every((r) => r.launched && r.ended), `${id}: every run launches and settles a world`);
     const theirs = count(all);
-    for (const key of Object.keys(theirs)) assert.ok(Math.abs(theirs[key] - MAIN[id][key]) <= MARGIN, `${id} ${key}: ${theirs[key]} of ${RATE_RUNS}, main's ${MAIN[id][key]}`);
+    // Fed no less, met and lost no more.
+    const worse = { fed: MAIN[id].fed - theirs.fed, metAny: theirs.metAny - MAIN[id].metAny, lost: theirs.lost - MAIN[id].lost };
+    for (const key of Object.keys(theirs)) assert.ok(worse[key] <= MARGIN, `${id} ${key}: ${theirs[key]} of ${RATE_RUNS}, main's ${MAIN[id][key]}`);
   }
   const side = voyagesByBackground(rules, 1);
   assert.deepEqual(side.rows.map((row) => row.id), [...rules.backgrounds.keys()]);
@@ -738,4 +758,41 @@ test("at a station of the pursuer's side the first trade since the ship arrived 
   }
   assert.ok(paid > 0, 'some runs trade with their pursuer');
   assert.ok(passed > 0, 'and some pass one of its stations by');
+});
+
+// M33b's: the careful player takes the quests' steps. Act 1's test run does
+// the thread's job before every launch (tools/run.js); on the run the
+// voyage's player goes by a quest's node where its way allows and does the
+// step there, in most runs, the rest gone cold as the ship leaves the
+// charts; at the colony it flies to the quest's place, and a win there is
+// the pay-off: the colony's odds of being found fall by more than half. It
+// lends the Fleet's tender a hand where the chain would leave the crew
+// friendly with the Fleet: some of the miner's runs, none of the deserter's,
+// whose pursuer's side the Fleet is; a patrol waves the miner through in
+// some. The report says each quest's steps, the chain and the odds.
+test("the careful player takes the quests' steps: the thread's job before the launch, its event on the run, its place at the colony and its pay-off; the Fleet's chain where it befriends the Fleet, and a patrol's wave (M33b)", () => {
+  const mean = (days) => days.reduce((sum, day) => sum + day.found, 0) / days.length;
+  for (const [id, all] of [['miner', refittingAll], ['deserter', desertersAll], ['smuggler', smugglersAll]]) {
+    const thread = [...rules.quests.values()].find((quest) => quest.background === id);
+    assert.ok(all.every((r) => r.launched && r.ended), `${id}: every run settles a world`);
+    assert.ok(all.every((r) => JSON.stringify(r.tally.quests.launch[thread.id]) === JSON.stringify({ step: 1, state: 'open' })), `${id}: the thread's job done before every launch`);
+    const landing = all.map((r) => r.tally.quests.landing[thread.id]);
+    assert.ok(landing.every((at) => (at.step === 2 && at.state === 'open') || (at.step === 1 && at.state === 'cold')), `${id}: the run's step done, or gone cold leaving the charts`);
+    const done = landing.filter((at) => at.step === 2).length;
+    assert.ok(done >= 80, `${id}: the run's step done in ${done} of ${RATE_RUNS}`);
+    for (const r of all) for (const note of r.tally.questNotes) assert.ok(note.sector >= 1 && note.sector <= LAST, `${id}: a quest moved in sector ${note.sector}`);
+    const paid = all.filter((r) => r.tally.raids.payoff !== null);
+    assert.ok(paid.length > 0 && paid.every((r) => r.tally.quests.end[thread.id].state === 'done'), `${id}: the place won and the thread done in ${paid.length} runs`);
+    const days = paid.flatMap((r) => r.tally.raids.odds);
+    const [before, after] = [days.filter((day) => !day.eased), days.filter((day) => day.eased)];
+    assert.ok(after.length > 0 && mean(after) < mean(before) / 2, `${id}: found ${mean(before).toFixed(1)}% a day before the pay-off, ${mean(after).toFixed(1)}% after`);
+  }
+  const chains = (all) => all.map((r) => r.campaign.quests.tender).filter(Boolean);
+  assert.ok(chains(refittingAll).some((chain) => chain.state === 'done'), `the miner's chain started in ${chains(refittingAll).length} runs`);
+  assert.equal(chains(desertersAll).length, 0, "the deserter's never: the Fleet is its pursuer's side");
+  assert.ok(refittingAll.some((r) => r.tally.waved > 0), 'a patrol waves the miner through in some runs');
+  const side = voyagesByBackground(rules, 1);
+  const at = side.lines.indexOf('The quests (M33b):');
+  assert.ok(at > 0, side.lines.join('\n'));
+  assert.match(side.lines[at + 1], /^Debt-bound miner +The miner's debt: act 1's step done in 1 of 1, the run's in [01] of 1 \([01] gone cold\), its place won in [01] \(\d+ fights? lost there\)\. The Fleet's chain: started in [01], done in [01], gone cold in [01]; waved through in [01] runs? \(\d+ times?\)\. In the [01] runs? with a pay-off, found .+ a day before it \(\d+ days\) and .+ after \(\d+\), raids faced \d+ before and \d+ after\.$/);
 });

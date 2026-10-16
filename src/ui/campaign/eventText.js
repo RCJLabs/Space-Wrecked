@@ -1,10 +1,12 @@
 // Text for an event at a node (src/sim/events.js): the event as it opens,
 // each choice with its odds and what each of its outcomes does, and what
 // happened once a choice is made, standing with the sides included (M33,
-// standingText.js). rules are the content tables (src/sim/defs.js).
+// standingText.js), and what it did to a quest (M33b, questText.js). rules
+// are the content tables (src/sim/defs.js).
 import { sellPriceOf } from '../../sim/economy.js';
 import { choiceProblem } from '../../sim/events.js';
 import { openEvent } from '../../sim/travel.js';
+import { choiceQuestSaid, questNoteLines } from './questText.js';
 import { changeLines, sideCalled } from './standingText.js';
 
 // The event open where the ship is, or null:
@@ -13,7 +15,8 @@ import { changeLines, sideCalled } from './standingText.js';
 //   choices   [{ id, label, ok, why, odds, outcomes, ask }]: odds is the
 //             chances in short ("70% · 30%", or '' for a sure thing),
 //             outcomes [{ chance, says }] what each does, ask what the first
-//             tap says: the odds in full and "tap again"
+//             tap says: the odds in full, what it does to a quest (M33b)
+//             and "tap again"
 export function eventText(campaign, rules) {
   const open = openEvent(campaign, rules);
   if (!open) return null;
@@ -28,7 +31,8 @@ export function eventText(campaign, rules) {
       const sure = outcomes.length === 1;
       const odds = sure ? '' : outcomes.map((outcome) => `${outcome.chance}%`).join(' · ');
       const told = sure ? `${capital(outcomes[0].says)}.` : outcomes.map((outcome) => `${outcome.chance}%: ${outcome.says}.`).join(' ');
-      return { id: choice.id, label: choice.label, ok: !why, why, odds, outcomes, ask: `${choice.label}: ${told} Tap again to choose.` };
+      const quest = choiceQuestSaid(campaign, rules, node, event.id, choice.id);
+      return { id: choice.id, label: choice.label, ok: !why, why, odds, outcomes, ask: `${choice.label}: ${told}${quest ? ` ${quest}` : ''} Tap again to choose.` };
     }),
   };
 }
@@ -36,7 +40,8 @@ export function eventText(campaign, rules) {
 // What happened at the event settled last (the run's result), or null:
 //   where, title ("Dead hauler: Strip it"), text (the outcome's words),
 //   roll ("Rolled 24: the 70% came up", or '' for a sure thing), changes
-//   (what it came to, in words)
+//   (what it came to, in words), quest (what it did to a quest, M33b, or
+//   '')
 export function resultText(campaign, rules) {
   const result = campaign.run?.result;
   if (!result) return null;
@@ -49,6 +54,7 @@ export function resultText(campaign, rules) {
     text: outcome?.text ?? '',
     roll: result.roll === null || !outcome ? '' : `Rolled ${result.roll}: the ${outcome.chance}% came up.`,
     changes: changesText(result.changes, campaign, rules),
+    quest: questNoteLines(result.quest, rules, campaign).join(' '),
   };
 }
 

@@ -45,7 +45,7 @@ import { createCrewCard } from './crewCard.js';
 import { crewCardText, crewHeading, crewSaid } from './crewText.js';
 import { createEventCard } from './eventCard.js';
 import { eventText, resultText } from './eventText.js';
-import { crewRows, heatChip, listRows, panel, sideRows } from './hubParts.js';
+import { crewRows, heatChip, listRows, panel, questRows, sideRows } from './hubParts.js';
 import { jumpText, sectorText } from './sectorText.js';
 
 const ARM_MS = 3000; // Jump on, Buy, Repair, Patch up, Scan, Regroup, the swap, Survey, Settle here, Sign on and Let go wait this long for a second tap
@@ -119,10 +119,11 @@ export const sectorScreen = {
     shipOpener.hidden = true;
     const shipPanel = node('section', 'hgr-panel sct-ship-panel');
     shipPanel.append(shipTitle, hold, shipOpener);
-    // The crew's standing with each side (M33).
+    // The crew's standing with each side (M33), and the quests (M33b).
     const sideList = node('ul', 'hgr-sides');
+    const questList = node('ul', 'hgr-quests');
     const side = node('div', 'hgr-side');
-    side.append(crewPanel, shipPanel, panel('Sides', sideList));
+    side.append(crewPanel, shipPanel, panel('Sides', sideList), panel('Quests', questList));
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const hint = node('p', 'hgr-hint', 'Loading…');
@@ -211,6 +212,7 @@ export const sectorScreen = {
       crewList.replaceChildren(...crewRows(text.crew));
       hold.replaceChildren(...listRows(text.hold));
       sideList.replaceChildren(...sideRows(text.sides));
+      questList.replaceChildren(...questRows(text.quests));
       drawMap(run, text, plan);
       showInfo(text, plan);
       // A station selling three things or more crowds the foot: its buttons
@@ -381,6 +383,13 @@ export const sectorScreen = {
             Object.assign(pip.style, { left: dot.style.left, top: dot.style.top, background: n.side.color });
             button.append(pip);
           }
+          // A quest's node (M33b) wears a diamond by its mark until its
+          // event is settled (data-quest, below).
+          if (run.sector.nodes[n.id].quest) {
+            const ring = node('i', 'sct-quest');
+            Object.assign(ring.style, { left: dot.style.left, top: dot.style.top });
+            button.append(ring);
+          }
           // A world (M25) is named on the chart, with its kind.
           if (n.world) {
             const label = node('span', 'sct-label');
@@ -412,13 +421,15 @@ export const sectorScreen = {
         button.dataset.reach = String(n.links);
         button.dataset.hunt = String(n.hunt > 0);
         button.dataset.surveyed = String(n.surveyed);
+        button.dataset.quest = String(Boolean(n.quest));
         button.setAttribute('aria-pressed', String(id === picked));
         const where = n.here ? 'the ship is here' : n.links === 1 ? 'a jump away' : n.links === 2 ? 'a long jump away' : 'out of reach';
         const kind = n.world ?? (n.known ? (defs.nodeTypes.get(n.type)?.name ?? n.type) : 'unknown');
         const surveyed = n.world ? (n.surveyed ? 'surveyed' : 'not surveyed') : null;
         const hunters = n.hunt ? `hunters ${n.hunt}%` : null;
         const whose = n.side ? `${n.side.name}'s` : null;
-        button.setAttribute('aria-label', [n.name, kind === n.name ? null : kind, whose, surveyed, where, hunters].filter(Boolean).join(', '));
+        const quest = n.quest ? `a step of ${n.quest}` : null;
+        button.setAttribute('aria-label', [n.name, kind === n.name ? null : kind, whose, quest, surveyed, where, hunters].filter(Boolean).join(', '));
       }
       const here = sector.nodes[run.at];
       ship.style.left = `${here.x * 100}%`;

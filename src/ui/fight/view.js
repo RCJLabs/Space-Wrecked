@@ -62,7 +62,8 @@ const LOG_LINES = 16;
 //              text, ranks?, sides? }, for the end panel and the hint;
 //              boarders' words if not given. ranks: lines naming who
 //              reached a rank (M32b), under the text; sides: lines saying
-//              what a job's end moved with the sides (M33), under them
+//              what the fight did to a quest (M33b) and what a job's end
+//              moved with the sides (M33), under them
 //   lookOf(unit, index)   optional: the look (src/sim/looks.js) of the
 //              crew unit at `index` among the crew, for its portrait; one
 //              is rolled if not given

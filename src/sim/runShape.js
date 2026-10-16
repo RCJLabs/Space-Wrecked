@@ -5,6 +5,7 @@ import { BOARDINGS, isOrder, OUTCOMES } from './approach.js';
 import { isShipData } from './builder.js';
 import { LANES, MAX_RATING, RATINGS } from './gen/system.js';
 import { WRECKS } from './mapFromShip.js';
+import { isQuestNote } from './questShape.js';
 import { isStandingChanges } from './standing.js';
 
 // A sector's nodes, and the names of places in it: sector names and node
@@ -46,6 +47,7 @@ export function runProblem(run) {
       isId(node.type) &&
       isName(node.name) &&
       (node.event === undefined || isId(node.event)) &&
+      (node.quest === undefined || (isId(node.quest) && node.event !== undefined)) &&
       (node.hostile === undefined || (isRecord(node.hostile) && isId(node.hostile.ship) && isInt(node.hostile.seed, 0, MAX_SEED))) &&
       (node.world === undefined || (sector.system === true && isWorld(node.world))),
   );
@@ -151,7 +153,8 @@ function isResult(result, nodes, done) {
     changes.parts.every(isId) &&
     Array.isArray(changes.sold) &&
     changes.sold.every((sale) => isRecord(sale) && isId(sale.part) && isInt(sale.credits, 0, MAX_CHANGE)) &&
-    (changes.standing === undefined || isStandingChanges(changes.standing))
+    (changes.standing === undefined || isStandingChanges(changes.standing)) &&
+    (result.quest === undefined || isQuestNote(result.quest))
   );
 }
 

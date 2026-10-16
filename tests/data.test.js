@@ -391,7 +391,27 @@ const cases = [
   ['prices rising with standing', (d) => (d.balance.trustedPrice = 95), /a station's prices must fall as standing rises/],
   ['a trusted side paying less than a friendly one', (d) => (d.balance.trustedPay = 5), /trustedPay must be at least friendlyPay/],
   ['docking heat past the meter', (d) => (d.balance.dockHeat = 80), /dockHeat must be a whole number from 0 to 50/],
+  // The quests (M33b).
+  ['a quest that is nobody\'s', (d) => delete quest(d, 'debt').background, /quests\.json quest debt: is a background's thread \(background\) or a side's chain \(side\), one of the two/],
+  ['two threads for a background', (d) => (quest(d, 'pardon').background = 'miner'), /quests\.json quest pardon: miner has a thread already/],
+  ["a side's chain with no start", (d) => delete quest(d, 'tender').start, /quests\.json quest tender: a side's chain needs its start/],
+  ["a side's chain started at a choice its event lacks", (d) => (quest(d, 'tender').start.choice = 'salute'), /quests\.json quest tender start: "fleet-tender" has no choice "salute"/],
+  ['steps out of the order of their acts', (d) => quest(d, 'debt').steps.reverse(), /quests\.json quest debt step 2: steps go in the order of their acts/],
+  ["a quest's job off in another district", (d) => (quest(d, 'debt').steps[0].job = 'warrant'), /quests\.json quest debt step 1: job "warrant" must be marked quest: "debt"/],
+  ["a quest's job that comes once", (d) => (job(d, 'losepaper').once = true), /quests\.json quest debt step 1: job "losepaper" is a quest's: no once and no drops/],
+  ["a quest's job marked for no step", (d) => (job(d, 'payroll').quest = 'debt'), /contracts\.json job payroll: quest "debt" must be a quest one of whose steps names it/],
+  ["a quest's event that only does the step", (d) => (quest(d, 'debt').steps[1].done = ['board', 'fly']), /quests\.json quest debt step 2: "refiled" needs a choice that leaves it for the next sector and needs nothing/],
+  ["a quest's event with a choice both done and cold", (d) => (quest(d, 'tender').steps[0].cold = ['tag']), /quests\.json quest tender step 1: a choice is done or cold, not both/],
+  ["a quest's event marked for no step", (d) => (event(d, 'dead-hauler').quest = 'debt'), /events\.json event dead-hauler: quest "debt" must be a quest one of whose steps names it/],
+  ["a quest's place on a ship no preset makes", (d) => (quest(d, 'debt').steps[2].place.ship = 'barge'), /quests\.json quest debt step 3 place: ship: unknown ship preset "barge"/],
+  ["a quest's place too far away", (d) => (quest(d, 'debt').steps[2].place.days = 12), /quests\.json quest debt step 3 place: days must be a whole number from 1 to 9/],
+  ["a side's chain easing the pursuer off", (d) => (quest(d, 'tender').payoff = { eased: true, said: 'Off they go.' }), /quests\.json quest tender payoff: standing and eased are the pursuer's/],
+  ['a pay-off raising standing to hostile', (d) => (quest(d, 'debt').payoff.standing = 'hostile'), /quests\.json quest debt payoff: standing must be a level to raise the pursuer's side to/],
 ];
+
+function quest(d, id) {
+  return d.quests.quests.find((q) => q.id === id);
+}
 
 function pursuerRun(d) {
   return d.backgrounds.backgrounds[0].pursuer.run;
@@ -427,5 +447,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 6 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 15 enemies, 22 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 26 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 22 events, 4 sides\)/);
+  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 6 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 15 enemies, 22 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 29 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 26 events, 4 sides, 4 quests\)/);
 });

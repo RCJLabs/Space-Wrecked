@@ -77,7 +77,9 @@ const MAP_KEYS = ['id', 'name', 'rows'];
 const CONTRACTS_KEYS = ['boardSize', 'twistChance', 'missions', 'twists', 'jobs'];
 const MISSION_KEYS = ['id', 'name', 'brief', 'loud'];
 const TWIST_KEYS = ['id', 'name', 'text', 'enemies', 'hazard', 'patches', 'sight', 'deadline', 'pay', 'missions', 'loud'];
-const JOB_KEYS = ['id', 'title', 'mission', 'crates', 'turns', 'clients', 'sites', 'encounter', 'against', 'credits', 'drops', 'once', 'pitch'];
+// A quest's job (M33b, validate-quests.js) names its quest and is never on
+// the board's rotation.
+const JOB_KEYS = ['id', 'title', 'mission', 'crates', 'turns', 'clients', 'sites', 'encounter', 'against', 'credits', 'drops', 'once', 'quest', 'pitch'];
 const DROPS_KEYS = ['chance', 'parts'];
 // A drop table's weights (drops.js): whole numbers up to this.
 const MAX_WEIGHT = 100;
@@ -529,7 +531,8 @@ function checkContracts(file, { districts, sites, clientSides }, maps, { moduleI
     if (homes.size > 1) fail(at, 'its sites must all be in one district');
     if (!isListIn(job.clients, 1, Infinity)) fail(at, 'clients must be a list of clients');
     else if (home) for (const id of job.clients) if (!districts.get(home)?.clients.has(id)) fail(at, `client "${id}" isn't in its sites' district`);
-    if (homes.size === 1) perDistrict.set(home, (perDistrict.get(home) ?? 0) + 1);
+    if (homes.size === 1 && job.quest === undefined) perDistrict.set(home, (perDistrict.get(home) ?? 0) + 1);
+    if (job.quest !== undefined && !isText(job.quest)) fail(at, 'quest must be the id of the quest whose step it is');
     if (new Set(job.sites).size !== job.sites?.length || new Set(job.clients).size !== job.clients?.length) fail(at, 'sites and clients are listed once each');
     // The side its enemies are on (M33): never a side one of its clients
     // works for.
@@ -572,7 +575,7 @@ function checkContracts(file, { districts, sites, clientSides }, maps, { moduleI
     const count = perDistrict.get(id) ?? 0;
     // A new board offers none of the old board's jobs, and a job done once
     // never comes back.
-    const lasting = jobs.filter((job) => job.once !== true && Array.isArray(job.sites) && job.sites.every((site) => districts.get(id)?.sites.has(site))).length;
+    const lasting = jobs.filter((job) => job.once !== true && job.quest === undefined && Array.isArray(job.sites) && job.sites.every((site) => districts.get(id)?.sites.has(site))).length;
     if (isIntIn(file.boardSize, 1, MAX_BOARD) && lasting < 2 * file.boardSize) {
       fail(where, `district "${id}" has ${lasting} jobs that come back${lasting < count ? ` (of ${count})` : ''}: a board of ${file.boardSize} needs ${2 * file.boardSize}, as each board offers none of the last one's`);
     }

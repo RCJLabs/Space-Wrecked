@@ -88,7 +88,7 @@ export function createEventCard({ choose, close }) {
     setText(where, result.where);
     setText(title, result.title);
     setText(text, result.text);
-    setText(said, [result.roll, result.changes].filter(Boolean).join(' '));
+    setText(said, [result.roll, result.changes, result.quest].filter(Boolean).join(' '));
     said.dataset.tone = 'good';
     const button = toolButton('sct-choice sct-carry', icons.done, 'Carry on');
     buttons = [{ button, detach: onTap(button, close) }];

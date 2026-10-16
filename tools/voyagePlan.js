@@ -25,6 +25,16 @@
 //            moves (M33): a side's stations' prices, and the Fleet's patrols
 //   friendly 10 for a station of a side friendly or trusted with the crew
 //            on the way (M33): its prices, and calling there to keep it so
+//   quest    40 for a choice that does a quest's open step, and against one
+//            that ends it (M33b); and for the choice that starts a side's
+//            chain where the chain done would leave the crew friendly or
+//            better with the side (chainBefriends) and the holds keep
+//            HELP_JUMPS jumps' worth after it: the Fleet's tender lent a
+//            hand. On the way, a node's quest counts at a share of it, the
+//            sectors gone over the act's (questPull): a quest's node comes
+//            back in each sector while its step is open, so early on the way
+//            goes by it only where that costs little, and in the act's last
+//            sector wherever it goes hungry no more often
 // A station of the pursuer's side is worth its docking heat (M33), priced
 // as an event's heat is, from the heat after the jump there. A choice is
 // worth what its outcomes are, each at its chance. A node
@@ -37,6 +47,8 @@
 // lockers alone last the start crew (30 supplies, 3 aboard). On the lockers
 // alone a fourth mouth leaves 7 jumps, and a station is sometimes further
 // off than that, past a sector's jump point, where no plan can see.
+// Quests' own events (M33b) are never in a sector's mix, so they count for
+// nothing in what an unknown node is worth.
 // At a station it refits (refitAt, M23h): every part on hand that feeds,
 // heals, houses, guards, arms or drives the ship goes on, in that order,
 // where it touches most of the ship, each kept only while every flight
@@ -98,7 +110,8 @@
 // From M29, while a raid is coming it stays home and sets down from the
 // hold what will help when the lander comes (raidPrep): guns that fire at
 // it, then a shield and an armory for the defenders, each only where it
-// would stand powered.
+// would stand powered. From M33b it flies to the colony's quest place
+// before any other held derelict, on the same terms.
 import { canRefit, maxHp, refitShip, shipChecklist } from '../src/sim/campaign.js';
 import { buildingOf, colonyStats, givesOf, shipParts, storesOf, yieldOf } from '../src/sim/colony.js';
 import { build, buildPlan, takeDown } from '../src/sim/colonyBuild.js';
@@ -109,6 +122,7 @@ import { tripPlan } from '../src/sim/expeditions.js';
 import { LANES } from '../src/sim/gen/system.js';
 import { withHeat } from '../src/sim/heat.js';
 import { huntOdds } from '../src/sim/hunt.js';
+import { openStep } from '../src/sim/quests.js';
 import { recruitOffer } from '../src/sim/recruits.js';
 import { regroupPlan } from '../src/sim/regroup.js';
 import { dockHeat, levelOf, moveStanding, patrolWelcome, priceShare, standingWith, stationSide } from '../src/sim/standing.js';
@@ -116,7 +130,7 @@ import { swapPlan } from '../src/sim/transponder.js';
 import { failingCheck, jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity, tradeHeat, within } from '../src/sim/travel.js';
 import { fitPart } from './run.js';
 
-export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30, nebula: 15, hot: 1.5, hunted: -40, volley: -10, standing: 2, friendly: 10 };
+export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30, nebula: 15, hot: 1.5, hunted: -40, volley: -10, standing: 2, friendly: 10, quest: 40 };
 const BUFFER_JUMPS = 4;
 export const HIRE_JUMPS = 10;
 // How the test player treats heat (M24), and the managing player's lines.
@@ -129,6 +143,10 @@ const REST_HP = 3;
 // and a day hidden with HIDE_JUMPS'.
 const REST_JUMPS = 4;
 const HIDE_JUMPS = 8;
+// A side's chain is started (M33b: the Fleet's tender lent a hand) only
+// while the holds keep this many jumps' worth after the choice: the buffer,
+// so it never spends into it for standing.
+const HELP_JUMPS = BUFFER_JUMPS;
 
 // Whether to board a ship the player has disabled: with at least half the
 // crew's hit points between them; a crew worn down leaves her.
@@ -263,15 +281,54 @@ function dearest(campaign, rules, count) {
 }
 
 // The choice the player makes at an event: { choice, worth }, the one worth
-// most of those it can make.
-export function bestChoice(campaign, rules, event, heat = 'manage') {
+// most of those it can make, with what it does to a quest (questWorth) at
+// `pull` of its worth: all of it at the event, questPull's on the way.
+export function bestChoice(campaign, rules, event, heat = 'manage', pull = 1) {
   let best = null;
   for (const choice of event.choices) {
     if (choiceProblem(campaign, choice)) continue;
-    const worth = choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * effectsWorth(campaign, rules, outcome.effects, heat), 0);
+    const worth = choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * effectsWorth(campaign, rules, outcome.effects, heat), 0) + pull * questWorth(campaign, rules, event, choice);
     if (!best || worth > best.worth) best = { choice, worth };
   }
   return best;
+}
+
+// The share of a quest's worth a node on the way counts (M33b): the
+// sectors gone over the act's, all of it in the last.
+function questPull(campaign, rules) {
+  const last = rules.acts.get(2)?.sectors ?? 1;
+  return Math.min(1, campaign.run.sector.index / last);
+}
+
+// What a choice does to the quests, in credits (M33b): WORTH.quest for one
+// that does an open step, against one that ends it; for one that starts a
+// side's chain, WORTH.quest where the chain would befriend the side
+// (chainBefriends), else nothing.
+function questWorth(campaign, rules, event, choice) {
+  const open = event.quest ? openStep(campaign, rules, event.quest) : null;
+  if (open?.step.event === event.id) {
+    if (open.step.done.includes(choice.id)) return WORTH.quest;
+    return (open.step.cold ?? []).includes(choice.id) ? -WORTH.quest : 0;
+  }
+  const starts = [...(rules.quests?.values() ?? [])].find((quest) => quest.start?.event === event.id && quest.start.choice === choice.id && !campaign.quests?.[quest.id]);
+  if (!starts || !chainBefriends(campaign, rules, starts, choice)) return 0;
+  const after = campaign.supplies + choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * (outcome.effects.supplies ?? 0), 0);
+  return after >= HELP_JUMPS * jumpSupplies(campaign, rules) ? WORTH.quest : 0;
+}
+
+// Whether a side's chain (M33b), started with `choice` and each step done,
+// would leave the crew friendly or trusted with its side: the standing the
+// start and each step's done choice move, at their outcomes' chances,
+// added to the crew's now.
+function chainBefriends(campaign, rules, quest, choice) {
+  const moves = (made) => made.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * (outcome.effects.standing?.[quest.side] ?? 0), 0);
+  let by = moves(choice);
+  for (const step of quest.steps) {
+    const done = rules.events.get(step.event)?.choices.find((made) => step.done?.includes(made.id));
+    if (done) by += moves(done);
+  }
+  const level = levelOf(standingWith(campaign, quest.side) + by, rules);
+  return level === 'friendly' || level === 'trusted';
 }
 
 // What an unknown node is worth on average: the mix's kinds by weight, each
@@ -285,7 +342,7 @@ function unknownWorth(campaign, rules, heat) {
       worth += (weight / total) * WORTH.hostile;
       continue;
     }
-    const events = [...rules.events.values()].filter((event) => event.kind === kind);
+    const events = [...rules.events.values()].filter((event) => event.kind === kind && !event.quest);
     if (!events.length) continue;
     const each = events.reduce((sum, event) => sum + (bestChoice(campaign, rules, event, heat)?.worth ?? 0), 0) / events.length;
     worth += (weight / total) * each;
@@ -403,6 +460,7 @@ function nodeJudge(campaign, rules, heat = 'manage') {
   const known = knownNodes(run, rules);
   const guess = unknownWorth(campaign, rules, heat);
   const hiding = heat === 'manage' && campaign.heat >= HIDE_FROM;
+  const pull = questPull(campaign, rules);
   return (id) => {
     if (!known.has(id)) return guess;
     const node = run.sector.nodes[id];
@@ -414,7 +472,7 @@ function nodeJudge(campaign, rules, heat = 'manage') {
     }
     if (node.type === 'station') return stationWorth(campaign, rules, node);
     const event = node.event ? rules.events.get(node.event) : null;
-    return event ? (bestChoice(campaign, rules, event, heat)?.worth ?? 0) : 0;
+    return event ? (bestChoice(campaign, rules, event, heat, pull)?.worth ?? 0) : 0;
   };
 }
 
@@ -633,14 +691,15 @@ export function nextPlace(campaign, rules, squad, days = Infinity) {
     const member = campaign.crew.find((m) => m.id === id);
     return member.hp >= maxHp(member, rules);
   });
-  // A held derelict first, then the nearest, then the first listed.
+  // The quest's place first (M33b), then a held derelict, then the
+  // nearest, then the first listed.
   const before = (a, b) => a.findIndex((v, i) => v !== b[i]) !== -1 && a[a.findIndex((v, i) => v !== b[i])] < b[a.findIndex((v, i) => v !== b[i])];
   let best = null;
   campaign.colony.places.forEach((place, index) => {
     if (place.held && !full) return;
     const plan = tripPlan(campaign, rules, index, squad);
     if (!plan.ok || plan.hungry > 0 || plan.days.out + plan.days.back > days) return;
-    const rank = [place.held ? 0 : 1, plan.days.out, index];
+    const rank = [place.quest ? 0 : 1, place.held ? 0 : 1, plan.days.out, index];
     if (!best || before(rank, best.rank)) best = { index, rank };
   });
   return best?.index ?? null;
