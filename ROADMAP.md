@@ -985,7 +985,45 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
   - **The test players' fights** in act 1 play on as boardings do past 40 rounds, and a hopeless shot or overwatch then gives way to a step nearer (`tools/boarding.js`). A fight no one standing can ever see across is told apart and stops the test player's trips (§9).
   - **The backgrounds' act 1 check** flies the 50 seeds measured above, not 10.
   - **Four voyage checks** new content broke on seeds 1 to 30 fly 100 seeds, against main's rates (CLAUDE.md): every careful run scans, fed with a med bay, fed with surgery, and the large hold going hungry less than the lockers alone.
-- [ ] M32b Talents, traits and recruits' backgrounds. Draft: talents are job ranks (Evan's pick, 2026-10-15). Each job has two of its own, earned on their own at 3 and 8 fights, by everyone who stood in them: its order, or its ship or colony effect, gets better (a medic's Patch heals more, a pilot's evasion grows). That is 14 talents, with nothing to pick. Traits go from 6 toward §5's 20, and recruits get a background (§9).
+- [ ] **M32b Talents, traits and recruits' backgrounds.** Since M32 every job has an order, an effect aboard and an effect at the colony, but a crew member who has stood in twenty fights does them as well as on the first day: nothing counts their fights. There are 6 traits, the captain picks 2 and a recruit rolls 1. A recruit is a name, a job, a trait and a look, at a fee of 50, with no background (§4.5, §9).
+
+  Evan's picks (2026-10-16):
+  - **Ranks:** each job's two, earned at 3 and 8 fights.
+  - **What they improve:** rank 1 sharpens the job's order, rank 2 its effect aboard or at the colony.
+  - **The 14 new traits:** fight numbers, like the six, about half trading one number for another.
+  - **Recruits' backgrounds:** a past that sets the price: where they come from, the jobs and traits it rolls from, and fights already stood, so a veteran signs on ranked. The fee rises with their rank and traits.
+
+  Measured before settling this (a scratch copy of `endFight` counting each crew member's fights, 30 runs from each start, `tools/voyage.js`): the start crew has stood in 6 fights at the median by launch, 6 to 8 as the ship settles, 7 or 8 after the colony's first 30 days and 8 or 9 after 30 more of trips. At 3 and 8 fights, rank 1 comes to 97–100% of them by launch, at about their third job, and rank 2 to 30–37% by launch, 30–53% as the ship settles and 60–77% after the trips. The few recruits the test player signs on stand in 1 at the median.
+
+  **Done when:**
+  - **Fights counted:** every crew member who stands in a fight, won or lost, counts it when the fight ends (`endFight`): jobs, raids at the hangar and the colony, boardings and the trips' fights. The count is saved with them.
+  - **Ranks** (`ranks` in `data/jobs.json`, the fights for each in `data/balance.json`): at 3 fights a crew member reaches their job's rank 1, at 8 rank 2, each with a name and words of its own. Rank 1 sharpens the order, rank 2 the job's effect aboard or at the colony (M32's numbers in brackets):
+
+    | Job | Rank 1, 3 fights | Rank 2, 8 fights |
+    | --- | --- | --- |
+    | Marine | Suppress −40 aim (−30) | the ship's guns +15 to hit in the approach (+10) |
+    | Engineer | Weld for 5 rounds (3) | 2 wrecked parts fixed after each jump (1) |
+    | Medic | Patch 5 hit points, and up with 5 (3) | a med bay heals 2 more a jump, a powered infirmary 2 more a day (1) |
+    | Pilot | Hustle 2 uses a fight (1) | evasion +15 in the approach (+10) |
+    | Scout | Mark +20 to hit (+15) | a scan reaches 4 links (3) |
+    | Xenobiologist | Sedate at the shot's odds +10 (+0) | each farm grows 2 more food a day (1) |
+    | Quartermaster | Kit out 3 uses a fight (2) | lockers +20 supplies (+10), stores +40 food and materials (+20) |
+
+    A crew member's own rank sets their order. An effect takes the best rank of the job among those it counts (aboard, home or in the squad, as since M32): a second of the same job still adds nothing. The numbers are data, so a talent is changed without engine edits.
+  - **Shown as earned** (Law 4): the fight's end names who reached a rank and what it gives. The crew card, the squad card and the fight's crew buttons show each one's rank, and the crew card their fights. An order's button and preview, and every place that shows an effect (the approach's odds, a scan's reach, the jump plan's fix, the day's plan and the holds), count the ranks.
+  - **Traits:** 20 in `data/traits.json`, the six and 14 more. Each moves the fight numbers (hit points, aim, defense, mobility, armor), and about half trade one for another, as Hothead does. The captain picks 2 of the 20, every pick 48 px or more and in reach at the three sizes. Recruits roll theirs from their background.
+  - **Recruits' backgrounds** (`backgrounds` in `data/recruits.json`): each recruit has one, rolled with them: a name, a line about where they come from, the jobs and traits it rolls from, and the fights already stood, so a veteran signs on at rank 1 or 2. The fee rises with their rank and traits (the numbers in `data/balance.json`). The crew card shows a recruit's background, rank and fee before they sign on, and their background after.
+  - **Saves:** `SAVE_VERSION` 25, with a migration from 24. A v24 crew starts at 0 fights each, since none were counted, with no background (tested).
+  - **Every talent counts:** each rank's rule has a test showing it at work, and so does the best-rank rule for effects. Each order at rank 1 is measured against rank 0 (`tools/sim.js`).
+  - **Balance:**
+    - **Act 1** (`tools/run.js`, 50 runs from each start): every run launches, and each slow median is within 10 minutes of M32's (44, 39 and 46).
+    - **Raids** (`tools/raids.js`): each pursuer's, at the hangar and the colony, with the start crew at rank 1, measured against M32's and reported. M30's test still holds: each within 10 points of Con-Reg's.
+    - **The voyage** (`tools/voyage.js --background all`, 30 runs): fed, met the hunters and runs with a raid lost each no worse than M32's by more than 5 runs of 30. The voyage tests pass, a check new content breaks turned into a rate over 100 seeds (CLAUDE.md).
+  - **Touch,** at the three sizes:
+    - a rank reached at a fight's end, and the crew card showing it;
+    - an order at rank 1, previewed with its ranked numbers;
+    - the captain's 20 traits, two picked;
+    - a recruit with a background and a rank, signed on at their fee.
 - [ ] M33 Factions, quests and companions. Draft: factions whose standing moves with the jobs and events the crew takes; quests that chain jobs and events across the acts; named companions with loyalty quests (§9).
 - [ ] M34 Image pass: Base44 portraits and scenes. Draft: WebP portraits for named characters (companions, the districts' clients) and scenes (the hangar, the lift-off, the landing), each logged in `assets/LOG.md`. Recruits keep their layered portraits, drawn in code since M23c.
 - [ ] M35 Audio pass with ZzFX. Draft: sounds made in code with ZzFX (approved for M35): shots and hits, the builder's placing, and the menus; a mute and a volume in the settings; audio starts after the first tap.
