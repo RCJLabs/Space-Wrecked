@@ -96,7 +96,7 @@ const MAX_TRAITS = 4;
 const MAX_FIGHTS = 9999;
 export const MAX_FLAG_TEXT = 64;
 // More supplies than any ship holds: a guard on what a save can hold.
-const MAX_SUPPLIES = 9999;
+export const MAX_SUPPLIES = 9999;
 // More jobs than any board offers: a guard on what a save can hold.
 export const MAX_BOARD = 12;
 // More one-off jobs than act 1 has: the same kind of guard.
@@ -115,7 +115,7 @@ const MAX_BUILDINGS = 1200;
 // More days and materials than a colony will count (M27): the same kind of
 // guard.
 const MAX_DAYS = 99999;
-const MAX_MATERIALS = 9999;
+export const MAX_MATERIALS = 9999;
 // More days than a raid's lander takes to come (data/balance.json
 // raidWarning, held to 10 by tools/validate-data.js): M29's guard.
 const MAX_WARNING = 10;

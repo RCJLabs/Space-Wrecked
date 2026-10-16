@@ -54,7 +54,7 @@ if (params.has('dev')) storage.writeFlag('dev', params.get('dev') !== '0');
 const dev = storage.readFlag('dev');
 // Panels that sit where the DEV button goes make room for it.
 if (dev) ui.dataset.dev = '';
-const devMenu = dev ? createDevMenu(ui, { store, getStatus }) : null;
+const devMenu = dev ? createDevMenu(ui, { store, getStatus, reopen }) : null;
 const fps = devMenu ? createFpsReadout(devMenu) : null;
 
 const loop = createLoop({
@@ -100,6 +100,13 @@ function syncScreen(state) {
   ui.dataset.screen = activeId; // where the dev overlay sits depends on the screen
   active = screenFor(activeId).mount(screenRoot, { store });
   active.resize?.(view);
+}
+
+// Mounts the screen on show anew: for a dev cheat that changed what a screen
+// read only as it opened (a fight won from the dev menu).
+function reopen() {
+  activeId = null;
+  syncScreen(store.getState());
 }
 
 async function getStatus() {

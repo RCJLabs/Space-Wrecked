@@ -1,13 +1,16 @@
-// The ?dev=1 menu: the frame rate's readout (fps.js), sandboxes, frame cap,
-// save export and import, and status. Returns { toggle (the DEV button),
+// The ?dev=1 menu: the frame rate's readout (fps.js), cheats (cheats.js),
+// sandboxes, frame cap, save export and import, and status. reopen() mounts
+// the screen on show anew (main.js). Returns { toggle (the DEV button),
 // readout (the section the frame rate's readout goes in) }.
 import { exportSave, importSave, makeSave } from '../../core/save.js';
 import { saveData } from '../../sim/root.js';
 import { FPS_CAPS } from '../../sim/settings.js';
 import { copyText } from '../clipboard.js';
+import { cheatsSection } from './cheats.js';
+import { button, el, note, row, section, setNote, textArea } from './dom.js';
 import { sandboxes } from './sandboxes.js';
 
-export function createDevMenu(root, { store, getStatus }) {
+export function createDevMenu(root, { store, getStatus, reopen }) {
   const toggle = button('DEV', () => setOpen(true));
   toggle.classList.add('dev-toggle');
   const panel = el('div', { className: 'dev-panel' });
@@ -34,6 +37,9 @@ export function createDevMenu(root, { store, getStatus }) {
 
   // Sandboxes
   panel.append(section('Sandboxes', [row([button('Title', () => go('title')), ...sandboxes.map((s) => button(s.name, () => go(s.id)))])]));
+
+  // Cheats, for the campaign where it is.
+  panel.append(cheatsSection({ store, toggle, reopen, close: () => setOpen(false) }));
 
   // Frame cap
   const capButtons = FPS_CAPS.map((cap) => {
@@ -100,44 +106,4 @@ export function createDevMenu(root, { store, getStatus }) {
 
   panel.append(section('Status', [status]));
   return { toggle, readout };
-}
-
-function el(tag, props = {}, children = []) {
-  const { text, ...rest } = props;
-  const node = Object.assign(document.createElement(tag), rest);
-  if (text !== undefined) node.textContent = text;
-  node.append(...children.filter(Boolean));
-  return node;
-}
-
-function button(label, onClick) {
-  const b = el('button', { className: 'btn', type: 'button', text: label });
-  b.addEventListener('click', onClick);
-  return b;
-}
-
-function section(title, children) {
-  return el('section', { className: 'dev-section' }, [el('h3', { text: title }), ...children]);
-}
-
-function row(children) {
-  return el('div', { className: 'dev-row' }, children);
-}
-
-function note(text) {
-  return el('p', { className: 'dev-note', text });
-}
-
-function setNote(node, text, tone) {
-  node.textContent = text;
-  node.dataset.tone = tone;
-}
-
-function textArea(placeholder) {
-  const area = el('textarea', { className: 'dev-code', placeholder, rows: 3, spellcheck: false });
-  // Mobile keyboards must not capitalize or "correct" a code.
-  area.setAttribute('autocapitalize', 'off');
-  area.setAttribute('autocomplete', 'off');
-  area.setAttribute('autocorrect', 'off');
-  return area;
 }

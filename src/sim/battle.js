@@ -62,6 +62,7 @@
 // A side's turn also ends by itself once none of its units has an action
 // left.
 import { int, percent, seedFrom } from '../core/rng.js';
+import { godMode } from './god.js';
 import { SIDES } from './grid.js';
 import { edgeKey, wallAt } from './mapFromShip.js';
 import { reachable, sideToward } from './moves.js';
@@ -353,9 +354,15 @@ function fire(battle, shooter, target, overwatch, events, rules) {
   const crit = percent(battle.rng, odds.crit);
   const roll = int(crit.state, weapon.damage[0], weapon.damage[1]);
   battle.rng = roll.state;
-  const damage = Math.max(1, roll.value + (crit.value ? weapon.critDamage : 0) - target.armor);
+  // God mode (god.js) spares the crew: the hit lands and does nothing.
+  const damage = spared(target, rules) ? 0 : Math.max(1, roll.value + (crit.value ? weapon.critDamage : 0) - target.armor);
   events.push({ ...shot, critChance: odds.crit, critRoll: crit.roll, crit: crit.value, damage });
-  hurt(battle, target, damage, events, rules);
+  if (damage > 0) hurt(battle, target, damage, events, rules);
+}
+
+// True for a crew member while God mode is on (god.js).
+function spared(unit, rules) {
+  return unit.side === 'crew' && godMode(rules);
 }
 
 // Takes damage off a unit. At 0, crew go down and bleed out; enemies die.
@@ -407,14 +414,14 @@ function startTurn(battle, events, rules) {
       unit.ap = balance.actionPoints;
       wakeTurn(battle, unit, events);
       const hazard = hazardAt(battle, unit.x, unit.y);
-      if (hazard === 'fire' && balance.fireDamage > 0) {
+      if (hazard === 'fire' && balance.fireDamage > 0 && !spared(unit, rules)) {
         events.push({ type: 'hazard', unit: unit.id, hazard, damage: balance.fireDamage });
         hurt(battle, unit, balance.fireDamage, events, rules);
       } else if (hazard === 'vacuum') {
         if (unit.air > 0) {
           unit.air -= 1;
           events.push({ type: 'air', unit: unit.id, air: unit.air });
-        } else if (balance.airlessDamage > 0) {
+        } else if (balance.airlessDamage > 0 && !spared(unit, rules)) {
           events.push({ type: 'hazard', unit: unit.id, hazard, damage: balance.airlessDamage });
           hurt(battle, unit, balance.airlessDamage, events, rules);
         }

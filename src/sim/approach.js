@@ -36,6 +36,7 @@
 // 'vacuum' | 'rubble' }), the player's from earlier approaches included.
 import { percent, pick } from '../core/rng.js';
 import { shipStats } from './constraints.js';
+import { godMode } from './god.js';
 import { WRECKS } from './mapFromShip.js';
 import { hasTag } from './modules.js';
 
@@ -232,7 +233,7 @@ export function playRound(state, order, rng, rules) {
     fired = fired || shot.shots.length > 0;
   }
   if (intent.kind === 'fire') {
-    const shot = volley(themAt, youAt, you, intent.at, order.kind === 'evade', r, rules);
+    const shot = volley(themAt, youAt, you, intent.at, order.kind === 'evade', r, rules, godMode(rules));
     ({ side: you, rng: r } = shot);
     events.push({ kind: 'volley', side: 'them', at: intent.at, chance: shot.chance, shots: shot.shots });
     fired = fired || shot.shots.length > 0;
@@ -272,14 +273,15 @@ export function openingVolley(state, rng, rules) {
   const them = sideStats(state.them, rules);
   const at = them.guns ? [...state.tactics.aim, ...AIMS].find((aim) => targetsOf(state.you, aim, rules).length) : null;
   if (!at) return { you: state.you, rng, events: [], fired: false };
-  const shot = volley(them, sideStats(state.you, rules), state.you, at, false, rng, rules);
+  const shot = volley(them, sideStats(state.you, rules), state.you, at, false, rng, rules, godMode(rules));
   return { you: shot.side, rng: shot.rng, events: [{ kind: 'volley', side: 'them', at, chance: shot.chance, shots: shot.shots }], fired: shot.shots.length > 0 };
 }
 
 // One ship's volley at a kind of module on the other: every working gun
 // fires once, at the chance shown, for its own damage. Returns { side (the
-// target after it), rng, chance, shots }.
-function volley(shooter, target, side, aim, evading, rng, rules) {
+// target after it), rng, chance, shots }. A spared target (the player's
+// ship in God mode, god.js) takes every hit whole, as shields take one.
+function volley(shooter, target, side, aim, evading, rng, rules, spared = false) {
   const chance = hitChance(target, evading, rules, shooter.gunnery);
   let r = rng;
   let hit = side;
@@ -290,6 +292,10 @@ function volley(shooter, target, side, aim, evading, rng, rules) {
     r = p.state;
     if (!p.value) {
       shots.push({ roll: p.roll, hit: false, absorbed: 0, damage: 0, module: null, wreck: null });
+      continue;
+    }
+    if (spared) {
+      shots.push({ roll: p.roll, hit: true, absorbed: gunDamage, damage: 0, module: null, wreck: null });
       continue;
     }
     const absorbed = Math.min(shields, gunDamage);
