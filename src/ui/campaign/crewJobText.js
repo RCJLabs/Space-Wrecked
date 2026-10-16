@@ -45,13 +45,13 @@ export const COLONY_WORDS = {
 
 // Each order kind's number, short, for what a rank gives (rankGives).
 export const ORDER_SHORT = {
-  suppress: (o) => `${o.name} ${signed(o.aim)} aim`,
-  weld: (o) => `${o.name} ${o.rounds} ${plural(o.rounds, 'round', 'rounds')}`,
-  patch: (o) => `${o.name} ${o.hp} hit points`,
-  hustle: (o) => `${o.name} +${o.ap} ${plural(o.ap, 'action', 'actions')}`,
-  mark: (o) => `${o.name} ${signed(o.aim)} to hit`,
-  sedate: (o) => `${o.name} ${signed(o.aim)} to hit`,
-  kit: (o) => `${o.name} +${o.armor} armor`,
+  suppress: (o) => `${signed(o.aim)} aim`,
+  weld: (o) => `${o.rounds} ${plural(o.rounds, 'round', 'rounds')}`,
+  patch: (o) => `${o.hp} hit points`,
+  hustle: (o) => `+${o.ap} ${plural(o.ap, 'action', 'actions')}`,
+  mark: (o) => `${signed(o.aim)} to hit`,
+  sedate: (o) => `${signed(o.aim)} to hit`,
+  kit: (o) => `+${o.armor} armor`,
 };
 
 // The same, short, for a crew list's line (jobBrief).
@@ -108,8 +108,8 @@ export function jobBrief(job, rules, rank = 0) {
   return [def.order ? `${def.order.name} ×${def.order.uses}` : null, ...short(def.station, STATION_SHORT), ...short(def.colony, COLONY_SHORT)].filter(Boolean).join(' · ');
 }
 
-// What a job's rank gives over the rank below, short: "Suppress −40 aim",
-// "Hustle ×2 a fight", "med bay +2 · infirmary +2". '' for a rank the job
+// What a job's rank gives over the rank below, short: "Suppress ×3 a
+// fight, −40 aim", "med bay +2 · infirmary +2". '' for a rank the job
 // lacks.
 export function rankGives(job, rank, rules) {
   const def = rules.jobs.get(job);
@@ -118,8 +118,11 @@ export function rankGives(job, rank, rules) {
   const said = [];
   if (at.order && at.order !== below.order) {
     const changed = Object.keys(at.order).filter((key) => at.order[key] !== below.order?.[key]);
-    if (changed.includes('uses')) said.push(`${at.order.name} ×${at.order.uses} a fight`);
-    if (changed.some((key) => key !== 'uses') && ORDER_SHORT[at.order.type]) said.push(ORDER_SHORT[at.order.type](at.order));
+    const parts = [
+      changed.includes('uses') ? `×${at.order.uses} a fight` : null,
+      changed.some((key) => key !== 'uses') ? ORDER_SHORT[at.order.type]?.(at.order) : null,
+    ].filter(Boolean);
+    if (parts.length) said.push(`${at.order.name} ${parts.join(', ')}`);
   }
   for (const [layer, words] of [['station', STATION_SHORT], ['colony', COLONY_SHORT]]) {
     if (at[layer] === below[layer]) continue;
@@ -146,7 +149,7 @@ export function rankLine(member, rules, stood = false) {
 }
 
 // Who reaches a rank as a fight ends (campaign.js rankUps), a line each:
-// "Rosa Vint reaches rank 1, Pinning fire: Suppress −40 aim."
+// "Rosa Vint reaches rank 1, Pinning fire: Suppress ×3 a fight, −40 aim."
 export function rankUpLines(ups, rules) {
   return ups.map(({ member, rank }) => {
     const name = rules.jobs.get(member.job)?.ranks?.[rank - 1]?.name;

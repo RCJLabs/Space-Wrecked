@@ -59,6 +59,10 @@ test('every job has two ranks, at 3 and 8 fights: rank 1 sharpens its order, ran
     const [one, two] = job.ranks;
     assert.equal(job.ranks.length, 2, job.id);
     assert.ok(one.order && !one.station && !one.colony, `${job.id}'s rank 1 sharpens its order`);
+    // Since the M32b fix (Evan's calls, 2026-10-16): a use more, and a
+    // number sharper; Kit out a use only, as its 2 armor tipped the raids.
+    assert.equal(one.order.uses, job.order.uses + 1, `${job.id}'s rank 1 adds a use`);
+    if (job.id !== 'quartermaster') assert.ok(Object.keys(one.order).some((key) => key !== 'uses' && one.order[key] !== job.order[key]), `${job.id}'s rank 1 sharpens a number`);
     assert.ok(!two.order && (two.station || two.colony), `${job.id}'s rank 2 sharpens an effect`);
     assert.ok(one.name && one.text && two.name && two.text, `${job.id}'s ranks have names and words`);
   }
@@ -132,25 +136,28 @@ test("a crew member's rank goes into a fight: the unit keeps it, starts with its
   assert.notEqual(battleProblem({ ...battle, units: battle.units.map((u) => (u.id === 'c1' ? { ...u, rank: 0 } : u)) }), null, 'a rank is 1 or more');
 });
 
-test("Marine rank 1, Pinning fire: Suppress takes 40 off an enemy's aim", () => {
+test("Marine rank 1, Pinning fire: Suppress three times a fight, taking 40 off an enemy's aim", () => {
   const battle = fight(openMap(6, 1), [{ kind: 'marine', x: 0, y: 0, rank: 1 }, { kind: 'pirate', x: 5, y: 0 }]);
+  assert.equal(who(battle, 'c1').uses, 3);
   const before = shotOdds(battle, who(battle, 'e1'), who(battle, 'c1'), rules);
   const { battle: after, events } = play(battle, order('c1', { target: 'e1' }));
   assert.equal(events[0].aim, -40);
   assert.equal(shotOdds(after, who(after, 'e1'), who(after, 'c1'), rules).hit, Math.max(0, before.hit - 40));
 });
 
-test('Engineer rank 1, Hot welds: a weld holds 5 rounds', () => {
+test('Engineer rank 1, Hot welds: three welds a fight, each holding 5 rounds', () => {
   const map = wall(openMap(6, 1), 1, 0, 'e', 'door');
   const battle = fight(map, [{ kind: 'engineer', x: 1, y: 0, rank: 1 }, { kind: 'pirate', x: 5, y: 0 }]);
+  assert.equal(who(battle, 'c1').uses, 3);
   battle.doors = [edgeKey(1, 0, 'e')];
   const { battle: welded, events } = play(battle, order('c1', { side: 'e' }));
   assert.equal(events[0].until, 5);
   assert.deepEqual(welded.welds, [{ key: edgeKey(1, 0, 'e'), until: 5 }]);
 });
 
-test('Medic rank 1, Field surgery: Patch gives back 5 hit points, and one who is down gets up with 5', () => {
+test('Medic rank 1, Field surgery: Patch three times a fight, giving back 5 hit points, and one who is down gets up with 5', () => {
   const battle = fight(openMap(5, 2), [{ kind: 'medic', x: 1, y: 0, rank: 1 }, { kind: 'marine', x: 2, y: 1 }, { kind: 'engineer', x: 0, y: 0 }, { kind: 'pirate', x: 4, y: 0 }]);
+  assert.equal(who(battle, 'c1').uses, 3);
   tweak(battle, { c2: { hp: 2 }, c3: { hp: 0, status: 'down', bleed: 2, ap: 0 } });
   const { battle: after, events } = play(battle, order('c1', { target: 'c2' }));
   assert.deepEqual([events[0].healed, who(after, 'c2').hp], [5, 7]);
@@ -158,24 +165,26 @@ test('Medic rank 1, Field surgery: Patch gives back 5 hit points, and one who is
   assert.deepEqual([who(up, 'c3').status, who(up, 'c3').hp], ['active', 5]);
 });
 
-test('Pilot rank 1, Second wind: Hustle twice a fight', () => {
+test('Pilot rank 1, Second wind: Hustle twice a fight, two more actions each', () => {
   const battle = fight(openMap(12, 1), [{ kind: 'pilot', x: 0, y: 0, rank: 1 }, { kind: 'pirate', x: 11, y: 0 }]);
   const once = play(battle, order('c1')).battle;
-  assert.deepEqual([who(once, 'c1').uses, who(once, 'c1').ap], [1, 3]);
+  assert.deepEqual([who(once, 'c1').uses, who(once, 'c1').ap], [1, 4]);
   const twice = play(once, order('c1')).battle;
-  assert.deepEqual([who(twice, 'c1').uses, who(twice, 'c1').ap], [0, 4]);
+  assert.deepEqual([who(twice, 'c1').uses, who(twice, 'c1').ap], [0, 6]);
 });
 
-test("Scout rank 1, Spotter: a mark puts the crew's shots +20", () => {
+test("Scout rank 1, Spotter: three marks a fight, each putting the crew's shots +20", () => {
   const battle = fight(openMap(8, 2), [{ kind: 'scout', x: 0, y: 0, rank: 1 }, { kind: 'marine', x: 0, y: 1 }, { kind: 'pirate', x: 7, y: 0 }]);
+  assert.equal(who(battle, 'c1').uses, 3);
   const before = shotOdds(battle, who(battle, 'c2'), who(battle, 'e1'), rules);
   const { battle: after, events } = play(battle, order('c1', { target: 'e1' }));
   assert.deepEqual([events[0].aim, who(after, 'e1').mark.aim], [20, 20]);
   assert.equal(shotOdds(after, who(after, 'c2'), who(after, 'e1'), rules).hit, Math.min(100, before.hit + 20));
 });
 
-test("Xenobiologist rank 1, Steady dart: Sedate's dart is +10, shown as a part of its odds and rolled as shown", () => {
+test("Xenobiologist rank 1, Steady dart: three darts a fight, each +10, shown as a part of its odds and rolled as shown", () => {
   const battle = fight(openMap(6, 2), [{ kind: 'xenobiologist', x: 0, y: 0, rank: 1 }, { kind: 'xenobiologist', x: 0, y: 1 }, { kind: 'pirate', x: 5, y: 0 }]);
+  assert.deepEqual([who(battle, 'c1').uses, who(battle, 'c2').uses], [3, 2]);
   const shot = shotOdds(battle, who(battle, 'c1'), who(battle, 'e1'), rules);
   const dart = dartOdds(battle, who(battle, 'c1'), who(battle, 'e1'), rules);
   assert.deepEqual(dart.hitParts.at(-1), { why: 'steady', value: 10 });
@@ -189,10 +198,11 @@ test("Xenobiologist rank 1, Steady dart: Sedate's dart is +10, shown as a part o
   assert.equal(card.hit, dart.hit);
 });
 
-test('Quartermaster rank 1, Deep pockets: Kit out three times a fight', () => {
+test('Quartermaster rank 1, Deep pockets: Kit out three times a fight, 1 armor each as at rank 0', () => {
   const battle = fight(openMap(5, 2), [{ kind: 'quartermaster', x: 0, y: 0, rank: 1 }, { kind: 'marine', x: 1, y: 0 }, { kind: 'medic', x: 0, y: 1 }, { kind: 'pirate', x: 4, y: 0 }]);
   assert.equal(who(battle, 'c1').uses, 3);
   const done = play(battle, order('c1', { target: 'c1' }), order('c1', { target: 'c2' })).battle;
+  assert.deepEqual([who(done, 'c1').armor - who(battle, 'c1').armor, who(done, 'c2').armor - who(battle, 'c2').armor], [1, 1]);
   const next = play(play(done, { type: 'end' }).battle, { type: 'end' }).battle;
   const third = play(next, order('c1', { target: 'c3' })).battle;
   assert.deepEqual([who(third, 'c1').uses, who(third, 'c3').kitted], [0, true]);
