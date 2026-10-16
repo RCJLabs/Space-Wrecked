@@ -72,7 +72,7 @@
       "station": { "lockers": 10 },
       "colony": { "stores": 20 },
       "ranks": [
-        { "name": "Deep pockets", "text": "Always has one more clip somewhere, and the good plates.", "order": { "uses": 3, "armor": 2 } },
+        { "name": "Deep pockets", "text": "Always has one more clip somewhere.", "order": { "uses": 3 } },
         { "name": "Stores master", "text": "Finds room where there was none.", "station": { "lockers": 20 }, "colony": { "stores": 40 } }
       ],
       "look": { "suit": "skinsuit", "build": "heavy", "helmet": "crest", "back": "spine", "marks": "plates" }

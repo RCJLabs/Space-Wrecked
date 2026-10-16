@@ -64,7 +64,7 @@ test("each job says its order, what it does aboard and what it does at the colon
   assert.equal(byJob({ name: 'Mara Quist', job: 'xenobiologist' }, rules), 'Mara Quist the xenobiologist');
 });
 
-test('what each rank gives, short, from its numbers (M32b; rank 1 a use and a sharper number since its fix)', () => {
+test('what each rank gives, short, from its numbers (M32b; rank 1 a use and a sharper number since its fix, Kit out a use)', () => {
   const said = [...rules.jobs.keys()].map((job) => [job, rankGives(job, 1, rules), rankGives(job, 2, rules)]);
   assert.deepEqual(said, [
     ['marine', 'Suppress ×3 a fight, −40 aim', 'guns +15'],
@@ -73,7 +73,7 @@ test('what each rank gives, short, from its numbers (M32b; rank 1 a use and a sh
     ['pilot', 'Hustle ×2 a fight, +2 actions', 'evasion +15'],
     ['scout', 'Mark ×3 a fight, +20 to hit', 'scans +2 links'],
     ['xenobiologist', 'Sedate ×3 a fight, +10 to hit', 'farms +2'],
-    ['quartermaster', 'Kit out ×3 a fight, +2 armor', 'lockers +20 · stores +40'],
+    ['quartermaster', 'Kit out ×3 a fight', 'lockers +20 · stores +40'],
   ]);
   // Only a use, or only a number, reads as one.
   const lone = { ...rules, jobs: new Map([['marine', { ...rules.jobs.get('marine'), ranks: [{ name: 'Lone', text: '', order: { aim: -40 } }] }], ['pilot', { ...rules.jobs.get('pilot'), ranks: [{ name: 'Lone', text: '', order: { uses: 2 } }] }]]) };

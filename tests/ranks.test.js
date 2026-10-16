@@ -59,9 +59,10 @@ test('every job has two ranks, at 3 and 8 fights: rank 1 sharpens its order, ran
     const [one, two] = job.ranks;
     assert.equal(job.ranks.length, 2, job.id);
     assert.ok(one.order && !one.station && !one.colony, `${job.id}'s rank 1 sharpens its order`);
-    // Since the M32b fix (Evan's call, 2026-10-16): a use more, and a number sharper.
+    // Since the M32b fix (Evan's calls, 2026-10-16): a use more, and a
+    // number sharper; Kit out a use only, as its 2 armor tipped the raids.
     assert.equal(one.order.uses, job.order.uses + 1, `${job.id}'s rank 1 adds a use`);
-    assert.ok(Object.keys(one.order).some((key) => key !== 'uses' && one.order[key] !== job.order[key]), `${job.id}'s rank 1 sharpens a number`);
+    if (job.id !== 'quartermaster') assert.ok(Object.keys(one.order).some((key) => key !== 'uses' && one.order[key] !== job.order[key]), `${job.id}'s rank 1 sharpens a number`);
     assert.ok(!two.order && (two.station || two.colony), `${job.id}'s rank 2 sharpens an effect`);
     assert.ok(one.name && one.text && two.name && two.text, `${job.id}'s ranks have names and words`);
   }
@@ -197,11 +198,11 @@ test("Xenobiologist rank 1, Steady dart: three darts a fight, each +10, shown as
   assert.equal(card.hit, dart.hit);
 });
 
-test('Quartermaster rank 1, Deep pockets: Kit out three times a fight, 2 armor each', () => {
+test('Quartermaster rank 1, Deep pockets: Kit out three times a fight, 1 armor each as at rank 0', () => {
   const battle = fight(openMap(5, 2), [{ kind: 'quartermaster', x: 0, y: 0, rank: 1 }, { kind: 'marine', x: 1, y: 0 }, { kind: 'medic', x: 0, y: 1 }, { kind: 'pirate', x: 4, y: 0 }]);
   assert.equal(who(battle, 'c1').uses, 3);
   const done = play(battle, order('c1', { target: 'c1' }), order('c1', { target: 'c2' })).battle;
-  assert.deepEqual([who(done, 'c1').armor - who(battle, 'c1').armor, who(done, 'c2').armor - who(battle, 'c2').armor], [2, 2]);
+  assert.deepEqual([who(done, 'c1').armor - who(battle, 'c1').armor, who(done, 'c2').armor - who(battle, 'c2').armor], [1, 1]);
   const next = play(play(done, { type: 'end' }).battle, { type: 'end' }).battle;
   const third = play(next, order('c1', { target: 'c3' })).battle;
   assert.deepEqual([who(third, 'c1').uses, who(third, 'c3').kitted], [0, true]);
