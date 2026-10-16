@@ -7,7 +7,8 @@
 // (transponder.js); since M25, the system past the charts: its worlds, the
 // survey (survey.js) and settling (settle.js); since M33, the crew's
 // standing with each side, a station's side and what it charges, and the
-// heat of docking with the pursuer's side (standingText.js). The event
+// heat of trading at a station of the pursuer's side (standingText.js;
+// M33's fix, where it was docking there). The event
 // card's words are eventText.js's, and the approach screen's
 // approachText.js's. rules are the content tables (src/sim/defs.js).
 import { actOf, canRefit } from '../../sim/campaign.js';
@@ -24,11 +25,11 @@ import { repairPlan, wrecksToRepair } from '../../sim/repair.js';
 import { settlePlan } from '../../sim/settle.js';
 import { surveyPlan } from '../../sim/survey.js';
 import { swapPlan } from '../../sim/transponder.js';
-import { patrolWelcome, stationSide } from '../../sim/standing.js';
+import { dockHeat, patrolWelcome, pursuerSide, stationSide } from '../../sim/standing.js';
 import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesCost, suppliesOver, supplyCapacity, supplyOffer } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
 import { byJob } from './crewJobText.js';
-import { sideColor, sideIs, sideName, sidesText, stationText } from './standingText.js';
+import { dockSaid, sideColor, sideIs, sideName, sidesText, stationText } from './standingText.js';
 
 // What the sector map shows, for a campaign on the run:
 //   act, where   "Act 2 · The run", "Sector 1 of 5 · Breaker's Yard" ("The
@@ -51,7 +52,8 @@ import { sideColor, sideIs, sideName, sidesText, stationText } from './standingT
 //   sides        each side and the crew's standing with it (M33), as the
 //                hangar's
 //   station      the station the ship is at, if it is a side's (M33):
-//                standingText.js stationText, else null
+//                standingText.js stationText (with what trading there
+//                adds, at one of the pursuer's side), else null
 //   hold         [[label, value]]: supplies and credits, what the med bay
 //                heals, if there is one working, and the parts wrecked
 //                aboard, if any
@@ -273,7 +275,7 @@ function patchText(campaign, rules) {
     ok: true,
     label: `Patch up · ${plan.cost}`,
     ask: `Patch for ${plan.cost}?`,
-    text: `${all ? 'Patches up' : 'Your credits cover'} ${who} for ${plan.cost} credits${all ? '' : `, of ${plan.total} to heal everyone`}. Tap again to patch up.`,
+    text: `${all ? 'Patches up' : 'Your credits cover'} ${who} for ${plan.cost} credits${all ? '' : `, of ${plan.total} to heal everyone`}.${dockSaid(campaign, rules, plan.dock)} Tap again to patch up.`,
     why: null,
   };
 }
@@ -289,7 +291,7 @@ function repairText(campaign, rules) {
     ok: true,
     label: `Repair · ${plan.cost}`,
     ask: `Repair for ${plan.cost}?`,
-    text: `${all ? 'Repairs' : 'Your credits cover'} ${plan.repairs.map(name).join(', ')} for ${plan.cost} credits${all ? '' : `, of ${plan.total} for everything`}. Tap again to repair.`,
+    text: `${all ? 'Repairs' : 'Your credits cover'} ${plan.repairs.map(name).join(', ')} for ${plan.cost} credits${all ? '' : `, of ${plan.total} for everything`}.${dockSaid(campaign, rules, plan.dock)} Tap again to repair.`,
     why: null,
   };
 }
@@ -324,7 +326,7 @@ export function jumpText(campaign, rules, id) {
   const long = plan.kind === 'long';
   const label = long ? 'Long jump' : 'Jump';
   const known = knownNodes(campaign.run, rules).has(id) && !campaign.run.done.includes(id);
-  const lines = [...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...dockLine(campaign, rules, plan, target), ...patrolLine(campaign, rules, known ? target : null), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)];
+  const lines = [...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...dockLine(campaign, rules, target), ...patrolLine(campaign, rules, known ? target : null), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)];
   if (long) lines.push('A long jump passes the node between, and the pursuer loses the trail.');
   const between = long ? linked(sector, at).find((next) => linked(sector, next).includes(id)) : null;
   const way = long ? [at, between, id] : [at, id];
@@ -332,11 +334,10 @@ export function jumpText(campaign, rules, id) {
 }
 
 // A plan's tone: hunger, or the hunters certain, is bad; supplies left
-// behind, the hunters likely, or docking with the pursuer's side (M33), a
-// warning.
+// behind, or the hunters likely, a warning.
 function planTone(plan) {
   if (plan.hungry || plan.hunt?.chance >= 100) return 'bad';
-  return plan.left || plan.hunt?.chance || plan.dock ? 'warn' : 'info';
+  return plan.left || plan.hunt?.chance ? 'warn' : 'info';
 }
 
 // A side's patrol at a node, once known (M33): how it will greet the crew,
@@ -349,11 +350,11 @@ function patrolLine(campaign, rules, node) {
   return [welcome === 'waved' ? `${side} friendly with you: the ${ship.name.toLowerCase()} will wave you through.` : `${side} hostile to you: the ${ship.name.toLowerCase()} will open fire before you can act.`];
 }
 
-// Docking at a station of the pursuer's side (M33): a line, or none.
-function dockLine(campaign, rules, plan, node) {
-  if (!plan.dock) return [];
-  const after = withHeat(withHeat(campaign.heat, plan.heat), plan.dock);
-  return [`${capital(sideIs(stationSide(node, rules), rules))} after you, and this is their station: docking adds ${plan.dock} heat, to ${after}.`];
+// A station of the pursuer's side ahead (M33): what trading there adds, as
+// a line, or none. Since M33's fix the jump there adds nothing for it.
+function dockLine(campaign, rules, node) {
+  const heat = dockHeat(campaign, rules, node);
+  return heat ? [`${capital(sideIs(stationSide(node, rules), rules))} after you, and this is their station: trading there adds ${heat} heat. Passing through costs nothing.`] : [];
 }
 
 // The hunters where a jump comes out (hunt.js), once heat there is at
@@ -397,11 +398,14 @@ function swapText(campaign, rules) {
   const price = rules.balance.swapPrice;
   const label = `Transponder · ${price}`;
   if (!plan.ok) return { ok: false, label, ask: `Swap for ${price}?`, text: plan.error, why: `${plan.error} You have ${campaign.credits}.` };
+  // At a station of the pursuer's side, they log the ship first (M33's fix).
+  const docked = withHeat(campaign.heat, plan.dock);
+  const logged = dockSaid(campaign, rules, plan.dock).trim();
   return {
     ok: true,
     label,
     ask: `Swap for ${price}?`,
-    text: `A clean transponder, once a sector: heat −${-plan.heat} to ${campaign.heat + plan.heat}, for ${price} credits. Tap again to swap.`,
+    text: `${logged ? `${logged} Then a` : 'A'} clean transponder, once a sector: heat −${-plan.heat} to ${docked + plan.heat}, for ${price} credits. Tap again to swap.`,
     why: null,
   };
 }
@@ -455,7 +459,7 @@ function offerText(campaign, rules, offer) {
       count,
       label: count === room ? `Fill up · ${count}` : `Buy ${count}`,
       ask: `${count} for ${cost(count)}?`,
-      text: `${count} supplies for ${cost(count)}. Tap again to buy.`,
+      text: `${count} supplies for ${cost(count)}.${dockSaid(campaign, rules, offer.dock)} Tap again to buy.`,
     })),
   };
 }
@@ -486,9 +490,11 @@ function sectorHint(campaign, rules, { each, offer, leave, known }) {
   // The hunters out: what sheds heat here, or anywhere.
   const hunted = campaign.heat >= rules.balance.huntHeat;
   const swap = offer.ok ? swapPlan(campaign, rules) : null;
-  if (hunted && swap?.ok) return { tone: 'warn', text: `Heat ${campaign.heat}: the hunters are out. A clean transponder here sheds ${-swap.heat}, for ${swap.price}.` };
+  if (hunted && swap?.ok) return { tone: 'warn', text: `Heat ${campaign.heat}: the hunters are out. A clean transponder here sheds ${-swap.heat}${swap.dock ? `, after the ${swap.dock} trading here adds` : ''}, for ${swap.price}.` };
   const rest = regroupPlan(campaign, rules);
   if (hunted && rest.ok && rest.kind === 'hide') return { tone: 'warn', text: `Heat ${campaign.heat}: the hunters are out. Hide here a day to shed ${-rest.heat}.` };
+  // A station of the pursuer's side, nothing traded yet (M33's fix).
+  if (offer.ok && offer.dock) return { tone: 'warn', text: `${capital(sideIs(pursuerSide(campaign, rules), rules))} after you, and this is their station: your first trade here adds ${offer.dock} heat. Passing through costs nothing.` };
   const wrecked = Object.keys(campaign.wrecks).length;
   const hurt = campaign.crew.some((member) => member.hp < maxHp(member, rules));
   const parts = wrecked === 1 ? 'A part is' : `${wrecked} parts are`;

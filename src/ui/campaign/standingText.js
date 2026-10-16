@@ -2,11 +2,13 @@
 // and its level on the homes' panels, with how far it is to the next; a
 // change where it happens (a job's end, an event's result, an approach's
 // end), with the level it leaves; whom a job is for and against, and what
-// its client's side adds to the pay; a station's side and what it charges;
-// and a side's patrol's words. Pure: rules are the content tables
+// its client's side adds to the pay; a station's side and what it charges,
+// and at one of the pursuer's side what trading there adds (M33's fix); and
+// a side's patrol's words. Pure: rules are the content tables
 // (src/sim/defs.js).
 import { palette, sideColors } from '../../render/palette.js';
-import { jobMoves, jobSides, levelOf, moveStanding, nextLevel, payBonus, priceShare, stationSide, standingWith } from '../../sim/standing.js';
+import { withHeat } from '../../sim/heat.js';
+import { dockHeat, jobMoves, jobSides, levelOf, moveStanding, nextLevel, payBonus, priceShare, pursuerSide, stationSide, standingWith } from '../../sim/standing.js';
 
 export const LEVEL_NAMES = { hostile: 'Hostile', cold: 'Cold', neutral: 'Neutral', friendly: 'Friendly', trusted: 'Trusted' };
 
@@ -28,8 +30,14 @@ export function sideColor(side, rules) {
 
 // A side's name with its verb: "the union is", "the Hallorans are".
 export function sideIs(side, rules) {
+  return sideDoes(side, rules, 'is', 'are');
+}
+
+// A side's name with a verb, by whether the name is a plural: "Con-Reg
+// logs", "the Hallorans log".
+function sideDoes(side, rules, one, many) {
   const name = sideCalled(side, rules);
-  return `${name} ${name.endsWith('s') ? 'are' : 'is'}`;
+  return `${name} ${name.endsWith('s') ? many : one}`;
 }
 
 // "hostile, −10": a standing's level and number.
@@ -101,7 +109,10 @@ export function jobEndLines(campaign, rules, job, won) {
 
 // A station's side and what it charges the crew: { side, name, color,
 // line ("The union's station: friendly, prices 90%."), tone (good under
-// full prices, warn over them) }, or null for nobody's.
+// full prices, warn over them), dock }, or null for nobody's. dock, at a
+// station of the pursuer's side where the ship is (M33's fix), what trading
+// there adds until the crew has, then that it is paid: { line, tone }; null
+// anywhere else.
 export function stationText(node, campaign, rules) {
   const side = stationSide(node, rules);
   if (!side) return null;
@@ -109,7 +120,21 @@ export function stationText(node, campaign, rules) {
   const level = LEVEL_NAMES[levelOf(standingWith(campaign, side), rules)].toLowerCase();
   const prices = share === 100 ? 'full prices' : `prices ${share}%`;
   const tone = share < 100 ? 'good' : share > 100 ? 'warn' : 'info';
-  return { side, name: sideName(side, rules), color: sideColor(side, rules), line: `${capital(possessive(sideCalled(side, rules)))} station: ${level}, ${prices}.`, tone };
+  const heat = campaign.run?.at === node.id ? dockHeat(campaign, rules, node) : 0;
+  const dock = !heat
+    ? null
+    : campaign.run.docked
+      ? { line: `${capital(sideDoes(side, rules, 'has', 'have'))} logged the ship: trading on here adds no more heat.`, tone: 'info' }
+      : { line: `${capital(sideIs(side, rules))} after you: trade here and they log the ship, heat +${heat}. Passing through costs nothing.`, tone: 'warn' };
+  return { side, name: sideName(side, rules), color: sideColor(side, rules), line: `${capital(possessive(sideCalled(side, rules)))} station: ${level}, ${prices}.`, tone, dock };
+}
+
+// What a trade at the station the ship is at adds (travel.js tradeHeat,
+// M33's fix), for its two taps: " Con-Reg logs the ship: heat +10 to 32.",
+// or '' when it adds nothing.
+export function dockSaid(campaign, rules, dock) {
+  if (!dock) return '';
+  return ` ${capital(sideDoes(pursuerSide(campaign, rules), rules, 'logs', 'log'))} the ship: heat +${dock} to ${withHeat(campaign.heat, dock)}.`;
 }
 
 // A side's patrol's words, by how it greeted the crew ('waved' or 'fired'),

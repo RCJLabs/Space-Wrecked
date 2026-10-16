@@ -1,11 +1,12 @@
 // Repairs (ROADMAP §4.6): a module wrecked in an approach (encounter.js)
 // stays wrecked until a station repairs it, for repairPercent of its cost,
 // in steps of PAY_STEP and never less than one step; a station of a side
-// charges its level's share of that (M33, standing.js). A station repairs
-// what the credits cover, the cheapest first. Pure.
+// charges its level's share of that (M33, standing.js), and a repair docks
+// the ship there (travel.js dockShip). A station repairs what the credits
+// cover, the cheapest first. Pure.
 import { PAY_STEP } from './economy.js';
 import { tally } from './flags.js';
-import { hereOf, onTheRun } from './travel.js';
+import { dockShip, hereOf, onTheRun, tradeHeat } from './travel.js';
 import { wrecksOn } from './encounter.js';
 import { shareHere } from './standing.js';
 
@@ -30,8 +31,8 @@ export function wrecksToRepair(campaign, rules, share = 100) {
 
 // What the station the ship is at would repair: { ok: true, wrecks (all of
 // them), repairs (those the credits cover, cheapest first), cost (of those),
-// total (of all), share (of the price the station charges) }, or { ok:
-// false, error }.
+// total (of all), share (of the price the station charges), dock (the heat
+// it adds: travel.js tradeHeat) }, or { ok: false, error }.
 export function repairPlan(campaign, rules) {
   if (!onTheRun(campaign, rules) || hereOf(campaign)?.type !== 'station') return { ok: false, error: 'Repairs are made at stations.' };
   const share = shareHere(campaign, rules);
@@ -46,7 +47,7 @@ export function repairPlan(campaign, rules) {
   }
   const total = wrecks.reduce((sum, wreck) => sum + wreck.price, 0);
   if (!repairs.length) return { ok: false, error: `A repair costs ${wrecks[0].price} credits.`, wrecks, total, share };
-  return { ok: true, wrecks, repairs, cost, total, share };
+  return { ok: true, wrecks, repairs, cost, total, share, dock: tradeHeat(campaign, rules) };
 }
 
 // Repairs what the credits cover at the station. Returns { ok: true,
@@ -56,5 +57,6 @@ export function repairShip(campaign, rules) {
   if (!plan.ok) return plan;
   const wrecks = { ...campaign.wrecks };
   for (const repair of plan.repairs) delete wrecks[repair.uid];
-  return { ok: true, plan, campaign: { ...campaign, wrecks, credits: campaign.credits - plan.cost, flags: tally(campaign.flags, { repairs: plan.repairs.length }) } };
+  const docked = dockShip(campaign, rules);
+  return { ok: true, plan, campaign: { ...docked, wrecks, credits: campaign.credits - plan.cost, flags: tally(campaign.flags, { repairs: plan.repairs.length }) } };
 }

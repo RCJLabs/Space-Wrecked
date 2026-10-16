@@ -27,9 +27,10 @@
 // day (Hide, in a nebula, sheds heat), and at a station the transponder is
 // swapped once a sector, from the left panel, each two taps. Since M33 the
 // crew's standing with each side shows under the ship's panel, a station of
-// a side wears its color on the chart and says its prices, and a jump's plan
-// says the heat of docking with the pursuer's side. The run begins, its
-// first sector rolled, the first time the map opens.
+// a side wears its color on the chart and says its prices, and at a station
+// of the pursuer's side the panel and each service's first tap say the heat
+// the first trade there adds (M33's fix; a jump's plan says so ahead). The
+// run begins, its first sector rolled, the first time the map opens.
 //
 // Each node's button is its share of its column, so no two overlap and
 // each stays 48 px or more on the screens the game is for; its mark sits
@@ -447,7 +448,9 @@ export const sectorScreen = {
       setText(infoName, here.name);
       setText(infoKind, here.kind);
       const said = leave ? [leave.title, ...leave.lines].map((line, i) => lineItem(line, i ? leave.tone : 'head')) : offer ? [offer.line, offer.why].filter(Boolean).map((line) => lineItem(line, 'info')) : [];
-      // A side's station (M33): whose it is, and what it charges the crew.
+      // A side's station (M33): whose it is, and what it charges the crew;
+      // at one of the pursuer's side, what trading there adds (M33's fix).
+      if (text.station?.dock) said.unshift(lineItem(text.station.dock.line, text.station.dock.tone));
       if (text.station) said.unshift(lineItem(text.station.line, text.station.tone));
       // A world's numbers once surveyed, or that a survey shows them; and
       // why a survey can't be made.

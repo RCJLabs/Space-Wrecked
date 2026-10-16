@@ -2,6 +2,88 @@
 
 Newest entry first.
 
+## M33 fixes: docking heat on the trade, the record put right (2026-10-16)
+
+After M33 Evan took all three of my recommendations ("Go with all recommendations", 2026-10-16):
+- **Docking heat on the trade, not the jump.** In M33 the jump to a station of the pursuer's side paid its 10 heat, whatever the ship did there, and 21 of the miner's 26 docks with Con-Reg were on a route with no way round. Now the crew's first trade there since the ship arrived pays it. Passing through costs nothing.
+- **The record put right.** M33's known issues and ROADMAP.md §9 said the station names and the 10 heat were both Evan's picks. The 10 heat came with his pick (§4.4's number); which stations are whose was my call. M33's known issues also said the smuggler's standing moved only on the run; in act 1 it can fall, from its customs jobs against the Fleet. Both lines are corrected where they stand, each saying what it first said.
+- **The Fleet's wave into M33b's Done when**, out of §9.
+
+Calls I made, each easy to change:
+- **What counts as a trade:** the five services a station charges for: supplies, a repair, patching, a recruit signed on and the transponder swap. A refit is free and letting crew go pays no one, so neither logs the ship.
+- **Once a visit:** the run keeps whether the crew has traded where the ship is (`run.docked`); a jump clears it, so leaving and coming back is a new visit.
+- **The swap docks first:** the 10 heat, then the swap's 30 off.
+- **The test player** (`tools/voyagePlan.js` tradeHere and stationChoice): managing heat, at a station of the pursuer's side it trades only to swap the transponder (the swap sheds more than the trade adds), or where filling the holds makes the way on better, the trade counted as a hungry jump and its heat as an event's, as M33 counted a dock. Otherwise it passes by and trades nothing there: no supplies, no patching, no repairs, no recruits. Its choice of way counts the same, so a route through a pursuer's station costs nothing unless it would trade there.
+
+### Shipped
+
+- **The rule** (`src/sim/travel.js`): `tradeHeat` (what a trade where the ship is adds) and `dockShip` (the ship docked, with that heat). `buySupplies`, `repairShip` (`repair.js`), `patchCrew` (`patch.js`), `hireRecruit` (`recruits.js`) and `swapTransponder` (`transponder.js`) dock the ship first, and each plan says its `dock`. The jump plan has no `dock` now, and the hunters' odds there are the jump's own heat's.
+- **Saves:** `SAVE_VERSION` 27, `run.docked`. The migration from 26 marks a ship sitting at a station of its pursuer's side as docked, since the jump there paid; anywhere else not. The stations' sides and the pursuers are M33's, by name, in the migration.
+- **The words:**
+  - at a station of the pursuer's side, the panel's line under the side's ("Con-Reg is after you: trade here and they log the ship, heat +10. Passing through costs nothing.", then "Con-Reg has logged the ship: trading on here adds no more heat."), and the hint;
+  - each service's first tap ("3 supplies for 5 credits. Con-Reg logs the ship: heat +10 to 40. Tap again to buy."; the swap's "… Then a clean transponder …");
+  - the jump plan ahead ("Con-Reg is after you, and this is their station: trading there adds 10 heat. Passing through costs nothing."), in the plan's own tone now, since the jump costs nothing more.
+- **Tools:** `voyagePlan.js` (above); `voyage.js` trades by it, records the docking heat on the trade that paid it, and reports the trades with the pursuer and the stations passed by.
+- **Tests:**
+  - `standing.test.js`: the first trade of each kind pays it once, a second adds none, letting crew go and the jump there add none, a new visit pays again, other sides' and nobody's stations never; the v26 migration at each pursuer's stations and elsewhere, and a broken `docked` caught;
+  - `standingText.test.js`: the station's line before and after, every service's first tap, the hint, the jump plan;
+  - `voyagePlan.test.js`: rewritten for the rule (when it trades, when it passes by, the ways it picks);
+  - `voyage.test.js`: each trade step's docking heat, none on a jump; a new check over 300 careful runs that only a visit's first trade pays it, and that some runs pass a pursuer's station by;
+  - `travel.test.js`, `regroup.test.js`: the plans' shapes; six tests' `SAVE_VERSION` 27.
+- **Docs:** ROADMAP.md §4.4 (the rule), §4.9 (what shows, the balance), M33's entry (fixed after it), M33b's draft (the Fleet's wave), §9 (the miner's item rewritten, the Fleet's moved out); PROGRESS.md's M33 entry, two lines put right.
+
+### Verified
+
+- **`node --test`:** 877 pass (874 on main), the voyage tests' 16 and the planner's 5 among them. `node tools/validate-data.js`: OK. The golden files are unchanged.
+- **`tools/sim.js`** not run: no balance number changed. **Act 1** (`node tools/run.js --runs 50 --background …`): M33's to the run, slow medians 42, 40 and 45 minutes; nothing in act 1 trades at a station of a side.
+- **The voyage** (`node tools/voyage.js --runs 30 --background all`), fed / met the hunters / runs with a raid lost, M33's in brackets, against its Done when's limits (the M32b fixes' within 5 of 30):
+
+  | Background | Fed | Met | Runs lost |
+  | --- | --- | --- | --- |
+  | Debt-bound miner | 26 (24) | 15 (14) | 6 (8) |
+  | Navy deserter | 27 (25) | 10 (9) | 1 (3) |
+  | Burned smuggler | 27 (27) | 5 (9) | 5 (7) |
+
+  The miner meets the hunters in 15, one over the limit of 14 (known issues).
+- **Over 100 seeds**, M33's and then main's before M33 in brackets:
+
+  | Background | Fed | Met | Runs lost |
+  | --- | --- | --- | --- |
+  | Debt-bound miner | 84 (83, 79) | 45 (48, 35) | 25 (23, 18) |
+  | Navy deserter | 88 (80, 83) | 36 (37, 39) | 11 (13, 20) |
+  | Burned smuggler | 92 (91, 96) | 18 (20, 22) | 14 (17, 13) |
+
+- **Trading with the pursuer** over those 100: the miner in 14 runs (M33 docked in 22), the deserter 26 (27), the smuggler 19 (8); each passes one of its pursuer's stations by in 39, 32 and 31 runs. The smuggler trades more: passing through is free now, so its ways run through the Hallorans' stations more often, and it swaps the transponder there.
+- **Where the miner's gap is** (per seed, 100 seeds, against M33 and main before M33 on the same seeds): on the 22 where M33 docked with Con-Reg it meets the hunters in 11 (14, 9), so the rule took 3 of the 5 docking added; on the other 78 in 34 (34, 26), and there the runs meeting them past the charts went 14 to 23 in M33 and 27 now, in the sectors 23 to 25. Past the charts it surveys no more than before (2 a run) and enters a little hotter (heat 44 at the median; 46 in M33, 43 before).
+- **The voyage tests** pass. Changed on purpose: each trade step's docking heat, none on a jump; the new once-a-visit check.
+- **By touch** (`fix33/verify.mjs`, M33's check adapted, at 905 × 370, 821 × 283 and 960 × 825): 38 of 38 at each size: M33's 29, the Depot's offer line one down and the jump plan's new words, and 9 more: the panel's line and the hint before trading, Buy's first tap, the heat after the second, the panel's line after it, a patch after it adding no heat, a quit and reopen keeping it, and the jump there adding only a jump's heat. M33's first copy (`m33/verify.mjs`) fails the two checks the fix changes on purpose: the offer line's place, and the jump plan's words.
+- **Every earlier milestone's browser check** passes, run one after another (`fix33/regress.sh`), at the three sizes unless named:
+  - the M32b fix's 27, M32 22 and its orders 48, M31 28, M30 27, M29 34, M28 32, M27 32, M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 20 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 41 (its count goes with the jobs it rolls) and M8's extras (the cache holds all 234 files; offline, the fight sandbox and the builder open).
+
+  Five copies were adapted, not the game (`verify33fix.mjs` in each): M31's, M30's, M29's, M28's and M27's, from their copies for M33, each now expecting a save made by main to be saved again as v27, not v26. M33's first copy fails the two checks above, and M32b's first copy still looks for Suppress · 2 and Sedate · 2, as in M33's entry.
+
+### Known issues
+
+- **The miner on seeds 1 to 30 meets the hunters in 15 runs,** one over M33's limit (14); over 100 seeds it is 45, three better than M33's 48 but still 10 over main's 35 before M33. The fix changed which way each run goes from the first pursuer's station on, so seeds 1 to 30 roll differently: 30 seeds is a coarse measure for a change this size. What docking added is mostly gone (11 against 9 on the seeds it touched). Most of what remains is past the charts, where no station is, and I couldn't pin it down: the test player surveys no more than before and enters about as hot. Your call whether that wants a look before M33b (§9).
+- **The smuggler trades with the Hallorans in 19 runs of 100 where it docked in 8:** passing through is free now, so its ways go by their stations more often, and it swaps the transponder there (net −20 heat). Its numbers are better than M33's all the same.
+- **No patrol waves a test voyage through** (none in 300), as in M33: now in M33b's Done when.
+
+### Test on the phone
+
+1. **As the miner, jump to a Con-Reg station** (The Depot or Last Chance Supply): the jump plan says trading there adds 10 heat, and the jump itself adds only its 2.
+2. **At the station:** the panel says "Con-Reg is after you: trade here and they log the ship, heat +10." Tap Buy once: it says "Con-Reg logs the ship: heat +10 to …". Tap again: heat rises 10, and the panel says they have logged the ship.
+3. **Patch up or buy again** there: no more heat. Jump away and back: the next trade adds it again.
+4. **Pass through** a Con-Reg station without trading: no heat for it.
+5. **An old save sitting at a Con-Reg station** opens as already logged: no second charge.
+
+### Next session
+
+M33b Quests (Phase 6). First task: settle its Done when with Evan (ROADMAP.md has a draft, the Fleet's wave in it), and put the miner's 30-seed result to him (known issues): whether the gap past the charts wants a look first.
+
 ## M33 Factions (2026-10-16)
 
 **Status:** done, and the ROADMAP.md box is ticked. The crew has standing with four sides: Con-Reg, the Fleet, the Hallorans and the union. It runs from −10 to 10 in five levels. Act 1's jobs, the run's events and the sides' ships the crew strikes move it. In turn it sets the prices at each side's stations, the pay for a friendly side's jobs in act 1, and how the Fleet's patrols greet the ship. Docking at a station of the pursuer's side adds 10 heat.
@@ -171,9 +253,9 @@ Some of this changes what was there before:
   - **Docking with Con-Reg** (measured): 22 of the 100 runs dock with Con-Reg, 26 times in all: 21 where every way on called there and 3 where every other way went hungrier. Two of the twelve station names are Con-Reg's, and a sector often has no other station on the way. Those 22 runs meet the hunters in 14, against 9 for main on the same seeds.
   - **Past the charts** (measured): the 78 runs that never dock meet the hunters in 34, against 26 for main on the same seeds, most of the difference in the system past the charts (23 runs against 14). Their heat entering it is main's (43 at the median), but they make 217 jumps there against main's 196, arriving with a little more in the holds (20 supplies at the median against 18). More jumps account for part of it; I couldn't tell the rest from chance in 78 runs.
   
-  Ways to ease it, if you want to: fewer of Con-Reg's names among the stations, docking heat only when the ship buys there, or a lighter docking heat. Each is data, but the 10 heat and the names are your picks. Your call (§9).
+  Ways to ease it, if you want to: fewer of Con-Reg's names among the stations, docking heat only when the ship buys there, or a lighter docking heat. The 10 heat came with your pick (§4.4's number); which stations are whose was my call, though this line first said both were yours. Your call (§9): you took docking heat on trade, in the fixes after M33 (the entry above).
 - **No patrol waves the test player through** (none in 300 voyages): no act 1 client is the Fleet's, and the only way up with the Fleet on the run is helping the Fleet tender (+2), which the test player passes for its stores. A player can earn it there. A Fleet client in act 1, or a quest in M33b, would make the wave something to work for (§9).
-- **The Narrows has no client of a side,** so the smuggler's standing only moves on the run (§9).
+- **The Narrows has no client of a side,** so in act 1 the smuggler's standing can only fall, from its customs jobs against the Fleet, and rises only on the run (§9). This line first said it moved only on the run.
 - **Raids and act 3 don't move standing,** as the Done when says (§9).
 - **The hangar's side column scrolls** on the folded screen (821 × 283): the crew and the sides under the goal take a swipe.
 

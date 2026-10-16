@@ -22,8 +22,11 @@
 //   - from each node, plan every way on to the jump point, a link at a
 //     time, and jump to the next node on the way that goes hungry least,
 //     then is worth most: the supplies and credits carried out, and the
-//     nodes passed. Managing heat, a dock with the pursuer's side counts as
-//     a hungry jump (M33);
+//     nodes passed. Managing heat, at a station of the pursuer's side,
+//     where the first trade logs the ship (M33's fix), it trades only to
+//     swap the transponder or where filling the holds makes the way on
+//     better, the trade counted as a hungry jump (voyagePlan.js tradeHere),
+//     and otherwise passes by;
 //   - with --long heat (the default), when heat is at LONG_FROM or over
 //     (voyagePlan.js), make a long jump on instead, if the supplies cover
 //     it and the way on from there goes hungry no more often; with --long
@@ -90,7 +93,7 @@ import { settle } from '../src/sim/settle.js';
 import { levelOf, shareHere, standingWith, stationSide } from '../src/sim/standing.js';
 import { survey } from '../src/sim/survey.js';
 import { swapTransponder } from '../src/sim/transponder.js';
-import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer } from '../src/sim/travel.js';
+import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer, tradeHeat } from '../src/sim/travel.js';
 import { runRecord } from '../src/ui/campaign/launchText.js';
 import { captainOrder } from './approachPlan.js';
 import { fightBoarding, fightPlace, fightRaid, SealedIn } from './boarding.js';
@@ -98,7 +101,7 @@ import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
 import { withPart } from './startShip.js';
-import { bestChoice, boardIt, HEAT_POLICIES, hireWho, homeBuild, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, swapNow, systemMove, tripSquad, worldScore } from './voyagePlan.js';
+import { bestChoice, boardIt, HEAT_POLICIES, hireWho, homeBuild, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, swapNow, systemMove, tradeHere, tripSquad, worldScore } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
@@ -196,11 +199,14 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     hp: [hpOf(campaign), null],
     // Standing with each side (M33) at the launch and as the world is
     // settled (null short of one); and the side's patrols that waved the
-    // ship through or fired first.
+    // ship through or fired first. The trades at stations of the pursuer's
+    // side that logged the ship, and those it passed by without trading
+    // (M33's fix).
     standing: { launch: launched.standing, landing: null },
     waved: 0,
     fired: 0,
     docked: 0,
+    passedBy: 0,
     friendly: 0,
   };
   const hold = () => `${campaign.supplies} supplies, ${campaign.credits} credits, heat ${campaign.heat}`;
@@ -243,12 +249,11 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     campaign = moved.campaign;
     const { plan } = moved;
     const out = plan.kind === 'sector' || plan.kind === 'system';
-    record(plan.kind, before, { hungry: plan.hungry, heal: plan.heal, max: before.crew.map((member) => maxHp(member, defs)), to: out ? null : campaign.run.at, hunt: moved.hunt, dock: plan.dock ?? 0 });
+    record(plan.kind, before, { hungry: plan.hungry, heal: plan.heal, max: before.crew.map((member) => maxHp(member, defs)), to: out ? null : campaign.run.at, hunt: moved.hunt });
     tally.jumps += 1;
     if (moved.hunt.chance > 0) tally.hotJumps += 1;
     tally.peak = Math.max(tally.peak, campaign.heat);
     if (plan.kind === 'long') tally.longJumps += 1;
-    if (plan.dock) tally.docked += 1;
     if (calledFriendly(campaign, defs)) tally.friendly += 1;
     if (plan.hungry) tally.hungryJumps += 1;
     if (plan.hungry && before.run.sector.system) tally.systemHungry += 1;
@@ -263,7 +268,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     } else {
       const node = hereOf(campaign);
       const whose = stationSide(node, defs);
-      const station = node.type === 'station' ? ` (a station${whose ? `, ${defs.factions.sides.get(whose)?.name ?? whose}'s${plan.dock ? `, docking +${plan.dock} heat` : ''}` : ''})` : '';
+      const station = node.type === 'station' ? ` (a station${whose ? `, ${defs.factions.sides.get(whose)?.name ?? whose}'s` : ''})` : '';
       lines.push(`   ${plan.kind === 'long' ? 'Long jump' : 'Jump'} to ${node.name}${station}${hungry}: ${hold()}.`);
     }
   };
@@ -425,59 +430,72 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
         lines.push(`   Refitted at ${hereOf(campaign).name}: ${done.parts.map((type) => defs.modules.get(type)?.name ?? type).join(', ')} on. ${hold()}.`);
       }
     }
+    // Trading at a station: managing heat, at one of the pursuer's side
+    // only where it must (M33's fix: voyagePlan.js tradeHere); else it
+    // passes by. A trade that logs the ship says so, and counts.
     const offer = supplyOffer(campaign, defs);
-    const count = offer.ok ? Math.min(offer.room, offer.most) : 0;
+    const trading = offer.ok && tradeHere(campaign, defs, heat);
+    if (offer.ok && !trading) {
+      tally.passedBy += 1;
+      lines.push(`   Passed by ${hereOf(campaign).name} without trading: ${defs.factions.sides.get(stationSide(hereOf(campaign), defs))?.name ?? 'its side'} would log the ship, +${tradeHeat(campaign, defs)} heat.`);
+    }
+    const logged = (step) => {
+      if (step.dock) tally.docked += 1;
+      return step.dock ? `, docking +${step.dock} heat` : '';
+    };
+    const count = trading ? Math.min(offer.room, offer.most) : 0;
     if (count > 0) {
       const before = campaign;
       campaign = buySupplies(campaign, defs, count).campaign;
-      record('buy', before, { count, share: offer.share });
+      const step = record('buy', before, { count, share: offer.share, dock: offer.dock });
       tally.stations += 1;
       tally.bought += count;
       tally.spent += before.credits - campaign.credits;
-      lines.push(`   Bought ${count} supplies at ${hereOf(campaign).name} for ${before.credits - campaign.credits} credits: ${hold()}.`);
+      lines.push(`   Bought ${count} supplies at ${hereOf(campaign).name} for ${before.credits - campaign.credits} credits${logged(step)}: ${hold()}.`);
     }
     // A recruit signed on, where there is room and the fee to spare.
-    const slot = offer.ok ? hireWho(campaign, defs) : null;
+    const slot = trading ? hireWho(campaign, defs) : null;
     if (slot !== null) {
       const before = campaign;
       const signed = hireRecruit(campaign, defs, slot);
       if (!signed.ok) throw new Error(signed.error);
       campaign = signed.campaign;
       const member = campaign.crew.at(-1);
-      record('hire', before, { name: member.name, job: member.job, traits: member.traits, fights: member.fights, background: member.background, share: shareHere(before, defs) });
+      const step = record('hire', before, { name: member.name, job: member.job, traits: member.traits, fights: member.fights, background: member.background, share: shareHere(before, defs), dock: signed.plan.dock });
       tally.hired += 1;
       tally.hireCredits += signed.plan.fee;
-      lines.push(`   Signed on ${member.name} (${defs.jobs.get(member.job)?.name ?? member.job}) for ${signed.plan.fee} credits: a crew of ${campaign.crew.length}, ${hold()}.`);
+      lines.push(`   Signed on ${member.name} (${defs.jobs.get(member.job)?.name ?? member.job}) for ${signed.plan.fee} credits${logged(step)}: a crew of ${campaign.crew.length}, ${hold()}.`);
     }
     // Managing heat: the transponder swapped, once a recruit has signed
     // on, and before patching and repairs.
-    if (swapNow(campaign, defs, heat)) {
+    if (trading && swapNow(campaign, defs, heat)) {
       const before = campaign;
-      campaign = swapTransponder(campaign, defs).campaign;
-      record('swap', before);
+      const swapped = swapTransponder(campaign, defs);
+      campaign = swapped.campaign;
+      const step = record('swap', before, { dock: swapped.plan.dock });
       tally.swaps += 1;
       tally.swapCredits += before.credits - campaign.credits;
-      lines.push(`   Swapped the transponder for ${before.credits - campaign.credits} credits: ${hold()}.`);
+      lines.push(`   Swapped the transponder for ${before.credits - campaign.credits} credits${logged(step)}: ${hold()}.`);
     }
     // Patching up, then repairs, with what is left beyond a holdful's price.
     const reserve = supplyCapacity(campaign.ship, defs, campaign.crew) * defs.balance.supplyPrice;
-    const patched = offer.ok && campaign.credits > reserve ? patchCrew({ ...campaign, credits: campaign.credits - reserve }, defs) : { ok: false };
+    const patched = trading && campaign.credits > reserve ? patchCrew({ ...campaign, credits: campaign.credits - reserve }, defs) : { ok: false };
     if (patched.ok) {
       const before = campaign;
       campaign = { ...patched.campaign, credits: patched.campaign.credits + reserve };
-      record('patch', before, { patched: patched.plan.hp, share: patched.plan.share });
+      const step = record('patch', before, { patched: patched.plan.hp, share: patched.plan.share, dock: patched.plan.dock });
       tally.patchedHp += patched.plan.hp;
       tally.patchCredits += patched.plan.cost;
-      lines.push(`   Patched up ${patched.plan.hp} hit points for ${patched.plan.cost} credits: crew ${hpOf(campaign)}, ${hold()}.`);
+      lines.push(`   Patched up ${patched.plan.hp} hit points for ${patched.plan.cost} credits${logged(step)}: crew ${hpOf(campaign)}, ${hold()}.`);
     }
-    const fixed = offer.ok && campaign.credits > reserve ? repairShip({ ...campaign, credits: campaign.credits - reserve }, defs) : { ok: false };
+    const fixed = trading && campaign.credits > reserve ? repairShip({ ...campaign, credits: campaign.credits - reserve }, defs) : { ok: false };
     if (fixed.ok) {
       const before = campaign;
       campaign = { ...fixed.campaign, credits: fixed.campaign.credits + reserve };
-      record('repair', before, { repaired: fixed.plan.repairs.length });
+      const step = record('repair', before, { repaired: fixed.plan.repairs.length, dock: fixed.plan.dock });
       tally.repairs += fixed.plan.repairs.length;
       tally.repairCredits += fixed.plan.cost;
-      lines.push(`   Repaired ${fixed.plan.repairs.map((repair) => repair.type).join(', ')} for ${fixed.plan.cost} credits: ${hold()}.`);
+      lines.push(`   Repaired ${fixed.plan.repairs.map((repair) => repair.type).join(', ')} for ${fixed.plan.cost} credits${logged(step)}: ${hold()}.`);
     }
     // A day hidden in a nebula, or regrouping: the hunters may find a ship
     // that regroups, and then their approach comes first.
@@ -980,7 +998,7 @@ export function manyVoyages(defs, runs, options = {}) {
     `Supplies bought: ${spread(of('bought'))}, for ${spread(of('spent'))} credits. Launch credits: ${spread(done.map((r) => r.steps[0]?.credits[0] ?? 0))}.`,
     `Heat at launch: ${spread(done.map((r) => r.tally.heat[0]))}; at the end: ${spread(done.map((r) => r.tally.heat[1]))}; at most: ${spread(of('peak'))}. Jumps where the hunters might wait: ${spread(of('hotJumps'))}.`,
     `The hunters: met in ${met} of ${done.length} runs, ${spread(of('hunts'))} a run (the task force ${spread(of('taskForces'))}), faced ${spread(of('huntsFaced'))}. Regroups ${spread(of('regroups'))}, days hidden ${spread(of('hides'))}, healing ${spread(of('rested'))}; transponder swaps ${spread(of('swaps'))} for ${spread(of('swapCredits'))} credits.`,
-    `The sides (M33): patrols waved the ship through ${spread(of('waved'))} times a run, fired first ${spread(of('fired'))}; docked with the pursuer's side ${spread(of('docked'))} times, in ${done.filter((r) => r.tally.docked > 0).length} of ${done.length} runs; called at a friendly or trusted side's station ${spread(of('friendly'))} times. Standing, the median at the launch, then at the landing: ${standingLine(defs, standingMedians(defs, done))}.`,
+    `The sides (M33): patrols waved the ship through ${spread(of('waved'))} times a run, fired first ${spread(of('fired'))}; traded at the pursuer's side's stations (each logging the ship) ${spread(of('docked'))} times, in ${done.filter((r) => r.tally.docked > 0).length} of ${done.length} runs, and passed one by without trading ${spread(of('passedBy'))} times, in ${done.filter((r) => r.tally.passedBy > 0).length}; called at a friendly or trusted side's station ${spread(of('friendly'))} times. Standing, the median at the launch, then at the landing: ${standingLine(defs, standingMedians(defs, done))}.`,
     ...results.filter((r) => !r.launched).map((r) => r.lines.at(-1)),
   ];
   return { lines, results };

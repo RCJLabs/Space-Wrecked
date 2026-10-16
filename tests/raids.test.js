@@ -334,8 +334,8 @@ test('while the ship is away: a leg stops on the raid\'s day, those at home face
 });
 
 test('saves: v23 for the raid coming and a leg it stopped; a v22 colony opens with none coming; broken ones are caught', () => {
-  // 24 since M32's orders in a fight.
-  assert.equal(SAVE_VERSION, 26);
+  // 24 since M32's orders in a fight, 27 since M33's fix.
+  assert.equal(SAVE_VERSION, 27);
   const base = { ...at(settled(), { places: [far] }), heat: 30 };
   const old = (campaign) => ({ ...saveData(initialState(3)), campaign });
   const step = MIGRATIONS.find((s) => s.from === 22);

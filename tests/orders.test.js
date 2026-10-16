@@ -225,7 +225,8 @@ test('a battle with what orders leave reads back, and broken fields are caught',
 });
 
 test('saves: v24 for orders in a fight; a v23 fight under way carries on with every crew member\'s 2 uses, nothing on anyone and no door welded', () => {
-  assert.equal(SAVE_VERSION, 26);
+  // 27 since M33's fix: docking on trade.
+  assert.equal(SAVE_VERSION, 27);
   const fighting = beginFight(newCampaign(rules, 5), rules).campaign;
   const strip = (unit) => {
     const { uses, mark, suppressed, asleep, kitted, ...rest } = unit;

@@ -70,7 +70,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  26  factions: the campaign's standing with each side, and whether an
 //      approach is a side's patrol waving the ship through or opening fire
 //      (M33)
-export const SAVE_VERSION = 26;
+//  27  docking on trade: the run keeps whether the crew has traded at the
+//      station the ship is at since it arrived (M33's fix)
+export const SAVE_VERSION = 27;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -363,6 +365,21 @@ export const MIGRATIONS = [
       const { run } = campaign;
       if (isObject(run) && isObject(run.approach)) campaign = { ...campaign, run: { ...run, approach: { ...run.approach, patrol: null } } };
       return { ...data, campaign };
+    },
+  },
+  // Docking on trade (M33's fix). Before it, a jump to a station of the
+  // pursuer's side paid its docking heat on arrival, so a ship at one has
+  // docked there already; anywhere else it hasn't. The stations' sides are
+  // M33's, by name (data/factions.json then), as are the pursuers'.
+  {
+    from: 26,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign) || !isObject(data.campaign.run)) return data;
+      const { background, run } = data.campaign;
+      const stations = { miner: ['The Depot', 'Last Chance Supply'], deserter: ['Rest Stop Nine', 'Station Okay'], smuggler: ["Big Rita's", 'Halfway House'] }[background] ?? [];
+      const here = isObject(run.sector) && Array.isArray(run.sector.nodes) ? run.sector.nodes[run.at] : null;
+      const docked = isObject(here) && here.type === 'station' && stations.includes(here.name);
+      return { ...data, campaign: { ...data.campaign, run: { ...run, docked } } };
     },
   },
 ];

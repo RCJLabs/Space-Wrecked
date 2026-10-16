@@ -86,7 +86,7 @@ test('no regroup at a station, with no one hurt, short of supplies, or held by a
 
 test('the transponder swap: at a station, once a sector, heat down swapHeat for swapPrice credits', () => {
   const campaign = atKind(onRun({ heat: 50, credits: 100 }), 'station');
-  assert.deepEqual(swapPlan(campaign, rules), { ok: true, price: balance.swapPrice, heat: balance.swapHeat });
+  assert.deepEqual(swapPlan(campaign, rules), { ok: true, price: balance.swapPrice, dock: 0, heat: balance.swapHeat });
   const { campaign: after } = swapTransponder(campaign, rules);
   assert.equal(after.credits, 100 - balance.swapPrice);
   assert.equal(after.heat, 50 + balance.swapHeat);

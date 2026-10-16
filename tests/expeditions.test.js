@@ -269,8 +269,8 @@ test('saves: v22 for the places and the trip; a v21 colony opens with no trip, i
   assert.equal(step.up(old(null)).campaign, null);
   const opened = parseSave(JSON.stringify({ version: 21, data: old({ ...listed, colony: v21colony }) }));
   assert.equal(opened.ok, true, opened.error);
-  // 24 since M32's orders in a fight.
-  assert.equal(SAVE_VERSION, 26);
+  // 24 since M32's orders in a fight, 27 since M33's fix.
+  assert.equal(SAVE_VERSION, 27);
   const reopened = opened.save.data.campaign;
   assert.deepEqual([reopened.colony.places, reopened.colony.trip], [[], null]);
   // The colony screen asks for its places, and they are the seed's.

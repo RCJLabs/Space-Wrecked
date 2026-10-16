@@ -49,13 +49,14 @@ test('a jump to a linked node eats a supply for each crew member and adds heat',
   const campaign = onRun({ heat: 30 });
   const to = linked(campaign.run.sector, campaign.run.at)[0];
   const plan = jumpPlan(campaign, rules, to);
-  assert.deepEqual(plan, { ok: true, kind: 'jump', supplies: balance.jumpSupplies * 3, left: 0, heat: balance.jumpHeat, dock: 0, hungry: false, heal: 0, fixes: [], hunt: { chance: 0, ship: null, why: null } });
+  assert.deepEqual(plan, { ok: true, kind: 'jump', supplies: balance.jumpSupplies * 3, left: 0, heat: balance.jumpHeat, hungry: false, heal: 0, fixes: [], hunt: { chance: 0, ship: null, why: null } });
   const after = jump(campaign, rules, to).campaign;
   assert.equal(after.run.at, to);
   assert.deepEqual(after.run.seen, [campaign.run.sector.start, to]);
   assert.equal(after.supplies, campaign.supplies - 3);
   assert.equal(after.heat, 30 + balance.jumpHeat);
   assert.equal(after.flags.jumps, 1);
+  assert.equal(after.run.docked, false, 'nothing traded there yet');
   assert.deepEqual(after.crew, campaign.crew, 'fed, no one is hurt');
   assert.deepEqual(campaignProblems(after), []);
 });
@@ -66,7 +67,7 @@ test('a long jump goes two links away for three jumps of supplies, and sheds hea
   const far = [...reach(sector, here)].find(([, links]) => links === 2)[0];
   assert.ok(!linked(sector, here).includes(far));
   const plan = jumpPlan(campaign, rules, far);
-  assert.deepEqual(plan, { ok: true, kind: 'long', supplies: 3 * balance.longJumpFactor, left: 0, heat: balance.longJumpHeat, dock: 0, hungry: false, heal: 0, fixes: [], hunt: { chance: 0, ship: null, why: null } });
+  assert.deepEqual(plan, { ok: true, kind: 'long', supplies: 3 * balance.longJumpFactor, left: 0, heat: balance.longJumpHeat, hungry: false, heal: 0, fixes: [], hunt: { chance: 0, ship: null, why: null } });
   const after = jump(campaign, rules, far).campaign;
   assert.equal(after.supplies, campaign.supplies - 9);
   assert.equal(after.heat, 20);
@@ -104,13 +105,15 @@ test('stations sell supplies up to the room in the holds and the credits', () =>
   const docked = { ...at(run, station.id), supplies: 2 };
   const room = balance.baseSupplies - 2;
   // A station of nobody's, or of a side the miner is neutral with (M33).
-  assert.deepEqual(supplyOffer(docked, rules), { ok: true, price, share: 100, room, most: Math.min(room, Math.floor(40 / price)) });
+  assert.deepEqual(supplyOffer(docked, rules), { ok: true, price, share: 100, room, most: Math.min(room, Math.floor(40 / price)), dock: 0 });
   assert.equal(supplyOffer({ ...docked, credits: 4 * price - 1 }, rules).most, 3, 'as far as the credits go');
   const bought = buySupplies(docked, rules, 5);
   assert.ok(bought.ok);
   assert.equal(bought.campaign.supplies, 7);
   assert.equal(bought.campaign.credits, 40 - 5 * price);
   assert.equal(bought.campaign.flags.suppliesBought, 5);
+  assert.equal(bought.campaign.run.docked, true, 'traded there (M33\'s fix)');
+  assert.equal(bought.campaign.heat, docked.heat, 'a station of nobody\'s logs nothing');
   assert.equal(buySupplies(bought.campaign, rules, 1).campaign.flags.suppliesBought, 6, 'counted up');
   assert.match(buySupplies({ ...docked, credits: 1000 }, rules, room + 1).error, new RegExp(`The holds take ${room} more`));
   assert.match(buySupplies({ ...docked, supplies: balance.baseSupplies }, rules, 1).error, /The holds are full/);

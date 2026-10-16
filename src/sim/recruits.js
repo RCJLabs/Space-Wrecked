@@ -11,8 +11,10 @@
 // Signing one on costs their fee (feeOf: more for each trait and rank, and
 // at a station of a side its level's share, M33) and needs room aboard
 // (crew.js crewRoom), and run.hired keeps who has signed on in this sector
-// (travel.js). They keep their background aboard.
-// At a station the crew can also let anyone go but the captain. Pure.
+// (travel.js). They keep their background aboard. Signing one on docks the
+// ship at the station (travel.js dockShip).
+// At a station the crew can also let anyone go but the captain, which docks
+// nothing: no one is paid. Pure.
 import { int, pick, seedFrom, shuffle } from '../core/rng.js';
 import { maxHp } from './campaign.js';
 import { crewRoom } from './crew.js';
@@ -20,7 +22,7 @@ import { tally } from './flags.js';
 import { rollLook } from './looks.js';
 import { rankOf } from './ranks.js';
 import { costAt, priceShare } from './standing.js';
-import { hereOf, holdOf, onTheRun } from './travel.js';
+import { dockShip, hereOf, holdOf, onTheRun, tradeHeat } from './travel.js';
 
 // Tries at a name not aboard before taking one that is.
 const NAME_TRIES = 20;
@@ -78,7 +80,8 @@ export function recruitOffer(campaign, rules) {
 }
 
 // What signing on the recruit in `slot` takes: { ok: true, recruit, fee,
-// room } or { ok: false, error }.
+// room, dock (the heat it adds: travel.js tradeHeat) } or { ok: false,
+// error }.
 export function hirePlan(campaign, rules, slot) {
   if (!onTheRun(campaign, rules) || hereOf(campaign)?.type !== 'station') return { ok: false, error: 'Recruits sign on at stations.' };
   const held = holdOf(campaign, rules);
@@ -89,7 +92,7 @@ export function hirePlan(campaign, rules, slot) {
   if (campaign.crew.length >= room) return { ok: false, error: `No room aboard: the berths and life support carry ${room}.` };
   const { fee } = recruit;
   if (campaign.credits < fee) return { ok: false, error: `Signing on costs ${fee} credits.` };
-  return { ok: true, recruit, fee, room };
+  return { ok: true, recruit, fee, room, dock: tradeHeat(campaign, rules) };
 }
 
 // Signs the recruit in `slot` on. Returns { ok: true, campaign, plan } or
@@ -100,12 +103,13 @@ export function hireRecruit(campaign, rules, slot) {
   const { recruit, fee } = plan;
   const id = Math.max(0, ...campaign.crew.map((member) => member.id)) + 1;
   const member = { id, name: recruit.name, job: recruit.job, hp: recruit.hp, traits: [...recruit.traits], look: { ...recruit.look }, fights: recruit.fights, background: recruit.background };
-  const { run } = campaign;
+  const docked = dockShip(campaign, rules);
+  const { run } = docked;
   return {
     ok: true,
     plan,
     campaign: {
-      ...campaign,
+      ...docked,
       crew: [...campaign.crew, member],
       credits: campaign.credits - fee,
       flags: tally(campaign.flags, { recruitsHired: 1 }),
