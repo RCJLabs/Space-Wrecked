@@ -151,7 +151,19 @@ Some of this changes what was there before:
   - a patrol, the crew friendly with the Fleet: "The corvette waves you through." with the Fleet's words; Carry on, back on the chart with the node done;
   - a patrol, the crew hostile with the Fleet: the hint gives the Fleet's words; the log's "They opened fire" and the volley, before any order;
   - every button 48 px or more on each screen; offline, the hangar shows its sides; no console errors.
-- **Every earlier milestone's browser check:** running as this is written; the result goes here when it finishes.
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named:
+  - the M32b fix's 27, M32 22 and its orders 48, M31 28, M30 27, M29 34, M28 32, M27 32, M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 20 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 40 and M8's extras (the cache holds all 234 files; offline, the fight sandbox and the builder open).
+
+  Seven copies were adapted, not the game, for what M33 changes on purpose (`verify33.mjs` in each):
+  - M31's, M30's (from its copy for the M32b fix), M29's, M28's and M27's: a save made by main is saved again as v26.
+  - M23c's: the map's crew panel is read from its crew list. The side column holds the Sides panel too, its rows styled as the crew's, so the old copy read the four sides' names after the crew's.
+  - M19's: a station's kind line says its side where it has one ("Station · The union" at Dock Seven).
+
+  M32b's own first copy (`m32b/verify.mjs`) still looks for Suppress · 2 and Sedate · 2, from before the M32b fix gave rank 1 its third use; the fix's copy passes in its place, as in the fix's entry.
 
 ### Known issues
 
