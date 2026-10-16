@@ -1168,7 +1168,64 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
   - **The Resolute's spares** cost 20 credits. At 40 the run's step went cold in 26 of 100 deserter voyages, the ship short of the credits; at 20, in 8.
   - **The test players:** act 1's prices the step's heat at the pursuer's payment (the deserter's, whose pursuer takes none, at the cheapest any pursuer takes). The voyage's counts a choice that does a step at 40 credits and one that ends it at −40; on the way a quest's node counts at the share of the act's sectors gone, all of it in the last; it lends the tender a hand only while the holds keep 4 jumps' worth after it, its buffer; and it flies to the colony's quest place first of the held.
   - **Measured over 100 seeds,** by Evan's two calls above.
-- [ ] M33c Companions. Draft: named crew with a face, a past and a loyalty quest built on M33b's chains, joining through one; loyalty earns them something a recruit doesn't have (§9).
+- [ ] **M33c Companions.** Everyone aboard is the captain or a hand off a station's board: a recruit is a name, a background's line and numbers, and nobody has a story of their own. The sides have chains waiting in §9, and the Fleet's tender chain ends in a fee.
+
+  Evan's picks (2026-10-16), each the recommended option:
+  - **Four companions, one for each side,** met on the run at that side's event: the Fleet tender, the co-op barge, the survey skiff and the Halloran drop. The Fleet's tender chain is the Fleet companion's, and the union's, Con-Reg's and the Hallorans' chains, in §9 since M33b, come now.
+  - **They come aboard at the chain's end,** given a free berth, as a recruit needs one. Their loyalty quest follows.
+  - **Loyalty earns their talent past rank 2:** a third rank of their job's order, with numbers of their own.
+  - **The loyalty quest is a place at the colony:** a ship held by someone from their past, as a thread's act 3 step.
+
+  Measured before settling this (`tools/voyage.js`'s test player, 50 voyages from each start):
+  - every test ship launches with exactly one spare berth (30 of 30 from each start);
+  - no crew member dies: campaign fights have no permadeath;
+  - the voyage meets at least one of the four side events in 45, 46 and 50 voyages of 50, two or three in most;
+  - it meets one before the act's last sector in 27, 27 and 30 of 30;
+  - the test player signs on a recruit in 3, 4 and 26 voyages of 50;
+  - by the colony's last day the crew are mostly at rank 1, a third to two fifths at rank 2.
+
+  **Done when:**
+  - **Companions as data** (`data/companions.json`, validated): four, each with a name, a side, a job, two traits, three fights stood (rank 1), a look (their face, drawn as the portraits have been since M23c until M34's pictures), a past of a few lines, and a talent: their job's order at a third rank, with numbers of their own past rank 2's.
+  - **Each joins through their side's chain** (`data/quests.json`):
+    - **The chain starts** at a choice of the side's event;
+    - **its step** is an event of the chain's own in the sectors after, as the Fleet's stores pod is;
+    - **a choice there does the step and brings the companion aboard,** as a recruit at no fee. It needs a free berth (`crew.js` crewRoom);
+    - **another choice does the step without them.** Left, the step is in the next sector again; not done by the last sector, the chain goes cold, as any run step.
+  - **The four** (names, jobs and words my call, all data):
+    - **The Fleet's,** on the existing chain: the tender's bosun, an engineer, asks to come once the stolen stores pod is tagged.
+    - **The union's,** started by paying into the strike fund: a docker and shop steward, a quartermaster, riding a striking hall's food run.
+    - **Con-Reg's,** started by towing the survey skiff: the junior surveyor let go for logging the tow, a scout, adrift in a company lifepod.
+    - **The Hallorans',** started by calling the drop in: Old Halloran's nephew, the family's medic, on a runner limping home.
+  - **Loyalty:** a companion aboard has a loyalty quest from the day they join, with one step:
+    - **the step is a place** of its own within reach of the colony, a ship held by someone from their past: a fight aboard her, as at a thread's place;
+    - **won, they are loyal:** their order is at a third rank, past rank 2, in every fight after;
+    - **let go before then,** the quest ends.
+  - **Shown** (Law 4):
+    - a companion's face, name, side, job and past where they offer to come aboard and on their crew card;
+    - the chain's choices saying who comes aboard and that it takes a berth;
+    - the Quests panel with each chain and loyalty quest;
+    - the loyalty place marked at the colony, with who holds her;
+    - loyal: the third rank on the crew card and in fights, in the order's numbers, and the fight's end saying so.
+  - **Saves:** `SAVE_VERSION` 29, with a migration from 28.
+  - **Every rule tested:**
+    - each chain's start and its step done with the companion (with a berth and without) and without them;
+    - the step left, and gone cold;
+    - the loyalty quest's start, its place and the win;
+    - the third rank in a fight;
+    - a companion let go;
+    - the migration and the validator's checks.
+  - **The test players:** the voyage's starts a chain where the start's price leaves its buffer, brings a companion aboard where a berth is free, and flies to the loyalty place at the colony as to a quest's.
+  - **Balance:**
+    - **The voyage** (`tools/voyage.js`, 100 runs from each start): fed, met the hunters and runs with a raid lost each no worse than M33b's over the same seeds (fed 73, 90 and 98; met 37, 21 and 14; lost 21, 13 and 11) by more than 15. Each companion met, aboard and loyal is reported (`--background all`).
+    - **A talent's third rank** is measured in the fight harness (`tools/sim.js`) against rank 2, for each of the four.
+    - **Act 1** is untouched: no companion comes before the launch.
+  - **Touch,** at the three sizes:
+    - a side's event starting its chain;
+    - the chain's step, the companion offering to come aboard, and aboard;
+    - their crew card;
+    - the loyalty place at the colony, flown to and won;
+    - the third rank in a fight;
+    - a quit and reopen.
 - [ ] M34 Image pass: Base44 portraits and scenes. Draft: WebP portraits for named characters (companions, the districts' clients) and scenes (the hangar, the lift-off, the landing), each logged in `assets/LOG.md`. Recruits keep their layered portraits, drawn in code since M23c.
 - [ ] M35 Audio pass with ZzFX. Draft: sounds made in code with ZzFX (approved for M35): shots and hits, the builder's placing, and the menus; a mute and a volume in the settings; audio starts after the first tap.
 
