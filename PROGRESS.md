@@ -31,7 +31,7 @@ Each has its own helmet, so the portrait badges tell all seven apart. The best o
 - **Where the new jobs come from:** "Two start crews take one", and all seven sign on as recruits.
 
 Then calls I made while measuring, not asked, each easy to change:
-- **The raids have parties of their own.** With the orders in use, the deserter's crew beat the Provost's three MPs at the hangar 9% of the time, against the miner's 53%. Cutting the MP's numbers (11 hit points to 9, aim 75 to 70) fixed the raids, but it moved every Provost fight: the start crew won boardings of the frigate 62% of the time at home, against main's 19%. So the MP keeps main's numbers, and the deserter's raids are now an MP, a fleet rating and an MP (`provostraid`); the frigate keeps its three MPs. Old Halloran's colony raid has a second enforcer (`halloranraid`), and the yacht keeps its crew. The Hallorans' hangar raid has its enforcer second, not third.
+- **The raids have parties of their own.** With the orders in use, the deserter's crew beat the Provost's three MPs at the hangar 9% of the time, against the miner's 53%. Cutting the MP's numbers (11 hit points to 9, aim 75 to 70) fixed the raids, but it moved every Provost fight: the start crew won boardings of the frigate 62% of the time at home, against main's 19%. So the MP keeps main's numbers, and the deserter's raids are now an MP, a Provost cadet and an MP (`provostraid`); the frigate keeps its three MPs. The cadet is a new enemy, a junior MP: 6 hit points, aim 65 and armor 1, with a carbine, in a light skinsuit with plates and a mirrored visor (the one look of 180 that the figure test tells apart from every enemy's). M30 asks the Provost's raiders to be fewer than Con-Reg's four and tougher, and its test reads that as every one armored: a fleet rating in the middle has no armor and failed it, two MPs alone were beaten 80% of the time, and an armored rating (8 hit points) 34%. Old Halloran's colony raid has a second enforcer (`halloranraid`), and the yacht keeps its crew. The Hallorans' hangar raid has its enforcer second, not third.
 - **The test players' fights end.** Past 40 rounds, act 1's fights now press on as boardings do (`playOn`), and a hopeless shot (under 10%) or overwatch then gives way to a step nearer. Where no step is nearer, the unit moves to a tile with an enemy in sight. While tuning, a deserter's act 1 run stood on overwatch for 60 rounds without it, and never launched.
 - **A fight that can't end stops the test player's trips.** It is not a rules change, so it is your call (below and §9).
 
@@ -87,6 +87,7 @@ Some of this changes what was there before:
   - `travel.test.js`, `system.test.js` and `events.test.js`: the scout's reach, the xenobiologist's surveys and the quartermaster's lockers;
   - `backgrounds.test.js` and `campaign.test.js`: the start crews;
   - `contracts.test.js`: an unknown job is now "cook", since "pilot" is a job;
+  - `data.test.js`: the validator's counts, 15 enemies and 21 encounters;
   - `makers.test.js`: `SAVE_VERSION` 24;
   - `harness.test.js`: the new options.
 
@@ -96,6 +97,7 @@ Some of this changes what was there before:
   - `jobs.json`: the four jobs, and every job's `order`, `station` and `colony`;
   - `weapons.json`: the long rifle and the dart gun;
   - `backgrounds.json`: the two start crews, and the deserter's and smuggler's raiders;
+  - `enemies.json`: the Provost cadet;
   - `encounters.json`: `provostraid` and `halloranraid`, and the Hallorans' order.
 - **The sim:**
   - `orders.js`: the seven orders, their reach, odds and effects;
@@ -137,7 +139,7 @@ Decisions made along the way, not asked (each easy to change):
 - **A fight can seal itself in, and then a player is stuck.** No one passes the other side's fallen, so the crew's fallen in the only doorway can leave the last of the crew and the enemies with no tile in sight of each other, for good. A fight can't be left, so a save would be held in it. One of the smuggler's 100 test voyages met it on a trip, and the test player's trips stop there. It's your call (§8, §9). The fix I measured lets anyone pass those who have bled out: hangar raid wins then fell from 53% to 41% (Con-Reg) and from 46% to 27% (the Hallorans), and one smuggler's act 1 run stopped launching. A Withdraw order away from home is the other candidate.
 - **Raids are easier than M31's.** The orders help the crew most in raids (hangar / colony, M31's in brackets):
   - Con-Reg: 53% / 41% (28% / 17%);
-  - the Provost: 47% / 49% (33% / 15%);
+  - the Provost: 48% / 49% (33% / 15%);
   - the Hallorans: 46% / 41% (35% / 19%).
 
   The Done when asked only that they be measured; the pursuers stay within 10 points of each other. If raids should stay as hard as M31's, the raid parties are the lever, as data.
@@ -147,7 +149,7 @@ Decisions made along the way, not asked (each easy to change):
 - **Long job names** are cut on the cover screen's run crew panel ("Quarter…"), and the captain screen's three lines need a swipe of its panel there (§9).
 - **The holds' hint after a quartermaster leaves** says to "Refit a hold back on", when signing a quartermaster on would also do it.
 - **The voyage test player's hiring** counts the holds as they are, not with a quartermaster recruit's lockers, so it signs one on less readily than it could.
-- **The act 1 tails:** the deserter's slowest run takes 138 minutes at the slow pace and the smuggler's 178 (M31: 146 and 170).
+- **The act 1 tails:** the deserter's slowest run takes 143 minutes at the slow pace and the smuggler's 178 (M31: 146 and 170).
 
 ### What to test on the phone (Galaxy Z Fold 6)
 
@@ -174,7 +176,7 @@ M32b Talents, traits and recruits' backgrounds (Phase 6). First task: settle its
 
 ### Verified here
 
-- `node --test`: {{N}} pass, in about {{T}}. `node tools/validate-data.js`: OK (7 crew jobs, 6 weapons, 21 encounters).
+- `node --test`: {{N}} pass, in about {{T}}. `node tools/validate-data.js`: OK (7 crew jobs, 6 weapons, 15 enemies, 21 encounters).
 - **The golden files are unchanged**, and the fixed-seed battle replays as before: the scripted player gives no orders.
 - **The fights** (`node tools/sim.js --orders none --compare`; the balance rule: no number in `data/balance.json` changed). The squad of M11 (a marine, an engineer and a medic) against the boarding party on the ten ships, with every order → with none:
 
@@ -211,21 +213,21 @@ M32b Talents, traits and recruits' backgrounds (Phase 6). First task: settle its
   | Background | Jobs | Done | Quick | Slow |
   | --- | --- | --- | --- | --- |
   | Debt-bound miner | 6 (3 to 12) | 75% of 321 | 27 (11 to 50) | 44 (19 to 81) |
-  | Navy deserter | 5 (3 to 18) | 61% of 352 | 24 (11 to 87) | 39 (19 to 138) |
+  | Navy deserter | 5 (3 to 18) | 61% of 347 | 24 (11 to 91) | 39 (19 to 143) |
   | Burned smuggler | 6 (2 to 26) | 73% of 378 | 28 (11 to 112) | 46 (18 to 178) |
 - **Raids** (`node tools/raids.js`, 150 fights a row), the crew's wins, M31's in brackets:
 
   | Background | At the hangar | At the colony |
   | --- | --- | --- |
   | Debt-bound miner | 53% of 4 (28%) | 41% of 4 (17%) |
-  | Navy deserter | 47% of 3 (33%) | 49% of 3 (15%) |
+  | Navy deserter | 48% of 3 (33%) | 49% of 3 (15%) |
   | Burned smuggler | 46% of 6 (35%) | 41% of 5 (19%) |
 - **The run and the colony** (`node tools/voyage.js --runs 30 --background all`), M31's in brackets:
 
   | Background | Fed | Met | Raids | Won | Lost | Runs lost |
   | --- | --- | --- | --- | --- | --- | --- |
   | Debt-bound miner | 25 (26) | 12 (12) | 35 | 28 | 7 | 5 (8) |
-  | Navy deserter | 23 (25) | 13 (10) | 23 | 19 | 4 | 4 (4) |
+  | Navy deserter | 23 (25) | 13 (10) | 23 | 20 | 3 | 3 (4) |
   | Burned smuggler | 27 (29) | 7 (3) | 19 | 15 | 4 | 4 (6) |
 
   Every run launches. Fed, met and runs lost are each within 5 of M31's: the most is the smuggler meeting the hunters in 4 more.
