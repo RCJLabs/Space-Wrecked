@@ -8,9 +8,10 @@
 // roll moves; one whose name is already aboard is rolled again, and a look
 // too close to one aboard or offered before is rolled again. The look is
 // rolled last, so it moves none of the rest.
-// Signing one on costs their fee (feeOf: more for each trait and rank) and
-// needs room aboard (crew.js crewRoom), and run.hired keeps who has signed
-// on in this sector (travel.js). They keep their background aboard.
+// Signing one on costs their fee (feeOf: more for each trait and rank, and
+// at a station of a side its level's share, M33) and needs room aboard
+// (crew.js crewRoom), and run.hired keeps who has signed on in this sector
+// (travel.js). They keep their background aboard.
 // At a station the crew can also let anyone go but the captain. Pure.
 import { int, pick, seedFrom, shuffle } from '../core/rng.js';
 import { maxHp } from './campaign.js';
@@ -18,6 +19,7 @@ import { crewRoom } from './crew.js';
 import { tally } from './flags.js';
 import { rollLook } from './looks.js';
 import { rankOf } from './ranks.js';
+import { costAt, priceShare } from './standing.js';
 import { hereOf, holdOf, onTheRun } from './travel.js';
 
 // Tries at a name not aboard before taking one that is.
@@ -33,6 +35,7 @@ export function recruitsAt(campaign, rules, nodeId) {
   if (!first.length || !last.length || !pasts.length) return [];
   const taken = new Set(campaign.crew.map((member) => member.name));
   const looks = campaign.crew.map((member) => member.look);
+  const share = priceShare(campaign, rules, sector.nodes[nodeId]);
   const recruits = [];
   for (let slot = 0; slot < (rules.balance.recruitOffer ?? 0); slot++) {
     // Each slot rolls on its own, so signing one on moves none of the rest.
@@ -52,17 +55,18 @@ export function recruitsAt(campaign, rules, nodeId) {
     const look = rollLook(fights.state, looks).value;
     looks.push(look);
     const member = { name, job: job.value, traits: traits.value.slice(0, past.value.traitCount), fights: fights.value };
-    recruits.push({ slot, ...member, hp: maxHp(member, rules), look, background: past.value.id, fee: feeOf(member, rules) });
+    recruits.push({ slot, ...member, hp: maxHp(member, rules), look, background: past.value.id, fee: feeOf(member, rules, share) });
   }
   return recruits;
 }
 
 // What a recruit asks to sign on (M32b): recruitFee, with recruitTraitFee
 // more for each trait and recruitRankFee more for each rank their fights
-// have reached (data/balance.json).
-export function feeOf(recruit, rules) {
+// have reached (data/balance.json); at a station charging `share` percent
+// of the price (M33, standing.js), that share of it, in whole credits.
+export function feeOf(recruit, rules, share = 100) {
   const { recruitFee, recruitTraitFee = 0, recruitRankFee = 0 } = rules.balance;
-  return recruitFee + recruitTraitFee * recruit.traits.length + recruitRankFee * rankOf(recruit, rules);
+  return costAt(1, recruitFee + recruitTraitFee * recruit.traits.length + recruitRankFee * rankOf(recruit, rules), share);
 }
 
 // The recruits for hire where the ship is: those of a station's not signed

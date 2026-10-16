@@ -174,7 +174,7 @@ const cases = [
   ['start ship with no airlock', (d) => (start(d).ship.placements = start(d).ship.placements.filter((p) => p.type !== 'airlock')), /start\.ship: No airlock on the hull edge/],
   ['no backgrounds', (d) => (d.backgrounds.backgrounds = []), /needs at least one background/],
   ['background in an unknown district', (d) => (d.backgrounds.backgrounds[0].district = 'docks'), /unknown district "docks"/],
-  ['background with no pursuer', (d) => delete d.backgrounds.backgrounds[0].pursuer, /pursuer: must be \{ name, blurb, levels, hunters, raiders, payment\?, run, colony \}/],
+  ['background with no pursuer', (d) => delete d.backgrounds.backgrounds[0].pursuer, /pursuer: must be \{ name, side, blurb, levels, hunters, raiders, payment\?, run, colony \}/],
   ['client in two districts', (d) => d.districts.districts.push({ ...structuredClone(district(d)), id: 'docks', sites: [{ id: 'pier', name: 'Pier', map: 'yard', blurb: 'Wet.' }] }), /duplicate client id "marta"/],
   ['site on an unknown map', (d) => (district(d).sites[0].map = 'moon'), /unknown or broken map "moon"/],
   ['site map with a stray character', (d) => (d.sites.maps[0].rows[1] = d.sites.maps[0].rows[1].replace('k', 'Z')), /"Z" is no site tile/],
@@ -367,6 +367,30 @@ const cases = [
   ['a background giving more traits than it lists', (d) => (d.recruits.backgrounds[0].traitCount = 1), /background green-hand: traitCount must be a whole number from 0 to 2, and no more than its traits/],
   ['a background with its fights backwards', (d) => (d.recruits.backgrounds[7].fights = [12, 8]), /background fleet-veteran: fights must be \[least, most\]/],
   ['a background with its own fee', (d) => (d.recruits.backgrounds[2].fee = 10), /background laid-off-miner: unknown field "fee"/],
+  // M33: the sides, and every side the rest of the data names.
+  ['no sides', (d) => (d.factions.sides = []), /factions\.json: needs at least one side/],
+  ['a side id twice', (d) => (d.factions.sides[1].id = 'conreg'), /factions\.json: duplicate id "conreg"/],
+  ['a side with no line', (d) => delete d.factions.sides[0].blurb, /factions\.json side conreg: blurb must be a non-empty string/],
+  ['a side in a color the palette lacks', (d) => (d.factions.sides[0].color = 'plaid'), /factions\.json side conreg: color must be one of src\/render\/palette\.js sideColors/],
+  ['a side met at the nodes with no patrol words', (d) => delete d.factions.sides[1].patrol, /factions\.json side fleet: its ships are met at the sectors' nodes/],
+  ['patrol words missing a line', (d) => delete d.factions.sides[1].patrol.fired, /factions\.json side fleet patrol: fired must be a non-empty string/],
+  ['a station no sector names', (d) => (d.factions.stations['Fort Nowhere'] = 'union'), /factions\.json stations: "Fort Nowhere" isn't a station's name in sectors\.json/],
+  ['a station of an unknown side', (d) => (d.factions.stations['Dock Seven'] = 'guild'), /factions\.json stations: Dock Seven: unknown side "guild"/],
+  ['a client of an unknown side', (d) => (district(d).clients[0].side = 'guild'), /districts\.json tailings client marta: side: unknown side "guild"/],
+  ['a job against an unknown side', (d) => (job(d, 'payroll').against = 'guild'), /contracts\.json job payroll: against: unknown side "guild"/],
+  ["a job against its own client's side", (d) => (job(d, 'payroll').against = 'union'), /contracts\.json job payroll: is against union, the side one of its clients works for/],
+  ['a pursuer on no side', (d) => delete d.backgrounds.backgrounds[0].pursuer.side, /backgrounds\.json miner pursuer: side must be one of the sides in factions\.json/],
+  ["a pursuer's hunters on another side", (d) => (d.backgrounds.backgrounds[0].pursuer.side = 'union'), /backgrounds\.json miner pursuer run: hunters: the Con-Reg repo tug must be on the pursuer's side, "union"/],
+  ['a ship of an unknown side', (d) => (d.ships.ships.find((s) => s.id === 'cutter').side = 'guild'), /ships\.json cutter: side: unknown side "guild"/],
+  ['an event moving an unknown side', (d) => (event(d, 'company-wreck').choices[0].outcomes[0].effects.standing = { guild: -1 }), /event company-wreck choice fast outcome 1 effects standing: unknown side "guild"/],
+  ['an event moving a side by nothing', (d) => (event(d, 'company-wreck').choices[0].outcomes[0].effects.standing = { conreg: 0 }), /event company-wreck choice fast outcome 1 effects standing: conreg must be a whole number other than 0/],
+  ['an event at a place moving a side', (d) => (event(d, 'cold-hauler').choices[0].outcomes[0].effects.standing = { union: 1 }), /event cold-hauler choice \S+ outcome 1 effects: unknown field "standing"/],
+  ['levels of standing out of order', (d) => (d.balance.friendlyStanding = 7), /the levels of standing must rise/],
+  ['a campaign starting the other sides cold', (d) => (d.balance.neutralStanding = 1), /a side a campaign starts at 0 with must be neutral/],
+  ["the pursuer's side starting cold", (d) => (d.balance.pursuerStanding = -4), /pursuerStanding must be under coldStanding/],
+  ['prices rising with standing', (d) => (d.balance.trustedPrice = 95), /a station's prices must fall as standing rises/],
+  ['a trusted side paying less than a friendly one', (d) => (d.balance.trustedPay = 5), /trustedPay must be at least friendlyPay/],
+  ['docking heat past the meter', (d) => (d.balance.dockHeat = 80), /dockHeat must be a whole number from 0 to 50/],
 ];
 
 function pursuerRun(d) {
@@ -403,5 +427,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 6 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 15 enemies, 22 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 26 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 18 events\)/);
+  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 6 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 15 enemies, 22 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 26 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 22 events, 4 sides\)/);
 });

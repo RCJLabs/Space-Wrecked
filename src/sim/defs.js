@@ -4,10 +4,10 @@
 // empty tables.
 
 // The content files, by name: data/<name>.json.
-export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'hulls', 'styling', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'worlds', 'colony', 'expeditions', 'events', 'recruits', 'tips'];
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'hulls', 'styling', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'worlds', 'colony', 'expeditions', 'events', 'recruits', 'tips', 'factions'];
 
 export function indexDefs(files) {
-  const { modules, frames, manufacturers, hulls, styling, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, worlds, colony, expeditions, events, recruits, tips } = files;
+  const { modules, frames, manufacturers, hulls, styling, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, worlds, colony, expeditions, events, recruits, tips, factions } = files;
   return {
     balance,
     tilesPerCell: modules.tilesPerCell,
@@ -103,6 +103,10 @@ export function indexDefs(files) {
     recruits: { first: recruits?.first ?? [], last: recruits?.last ?? [], backgrounds: byId(recruits?.backgrounds) },
     // The first-run tips' words (src/ui/tips.js), by id.
     tips: byId(tips?.tips),
+    // The sides (M33, standing.js): each by id in data order, with its
+    // name, words and color, and the stations that belong to one, by the
+    // station's name: { sides, stations }.
+    factions: { sides: byId(factions?.sides), stations: factions?.stations ?? {} },
   };
 }
 

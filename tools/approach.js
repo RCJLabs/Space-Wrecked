@@ -18,7 +18,7 @@
 // each ship meets the same enemies on the same rolls.
 import { pathToFileURL } from 'node:url';
 import { seedFrom } from '../src/core/rng.js';
-import { OUTCOMES, playRound, sideStats } from '../src/sim/approach.js';
+import { ROUND_OUTCOMES as OUTCOMES, playRound, sideStats } from '../src/sim/approach.js';
 import { shipStats } from '../src/sim/constraints.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { versionBy } from '../src/sim/makers.js';

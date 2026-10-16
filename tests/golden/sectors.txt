@@ -1,61 +1,61 @@
-Sector 1: Graveyard Shift (seed 1), 15 nodes, 17 links
+Sector 1: Pay Dirt (seed 1), 15 nodes, 17 links
    .  1d  4$  7h  9x 12n   .
   0S  2o  5h   . 10!   . 14E
    .  3t  6d  8$ 11d 13x   .
 links: 0-1 0-2 0-3 1-4 2-5 3-6 4-7 5-8 6-8 7-9 8-11 8-10 9-12 10-13 11-13 12-14 13-14
   0 Way in (start) at 0.08, 0.5
-  1 Nobody's Rock (derelict: dead-hauler) at 0.192, 0.223
-  2 The Long Dark (empty) at 0.247, 0.547
-  3 Slag Field (trader: ration-barge) at 0.208, 0.792
-  4 The Depot (station) at 0.356, 0.27
-  5 Quiet Water (hostile: cutter 169427896) at 0.357, 0.499
-  6 Cinder Belt (derelict: gutted-tug) at 0.34, 0.77
-  7 Low Orbit (hostile: cutter 1264764461) at 0.481, 0.288
-  8 Fuel and Grub (station) at 0.476, 0.694
-  9 Drift Four (hazard: ion-storm) at 0.628, 0.189
-  10 Marker Twelve (distress: stalled-miner) at 0.614, 0.492
-  11 Scrap Heap (derelict: company-wreck) at 0.645, 0.81
-  12 Ghost Water (nebula) at 0.763, 0.314
-  13 The Flats (hazard: loose-rock) at 0.783, 0.749
+  1 Old Beacon (derelict: dead-hauler) at 0.192, 0.223
+  2 The Flats (empty) at 0.247, 0.547
+  3 Mile Forty (trader: ration-barge) at 0.208, 0.792
+  4 Fuel and Grub (station) at 0.356, 0.27
+  5 The Long Dark (hostile: cutter 2190685139) at 0.357, 0.499
+  6 Drift Four (derelict: gutted-tug) at 0.34, 0.77
+  7 Nobody's Rock (hostile: cutter 3025355066) at 0.481, 0.288
+  8 Big Rita's (station) at 0.476, 0.694
+  9 Marker Twelve (hazard: ion-storm) at 0.628, 0.189
+  10 Quiet Water (distress: bad-beacon) at 0.614, 0.492
+  11 Cinder Belt (derelict: company-wreck) at 0.645, 0.81
+  12 The Smudge (nebula) at 0.763, 0.314
+  13 Tin Can Alley (hazard: loose-rock) at 0.783, 0.749
   14 Jump point (exit) at 0.92, 0.5
 
-Sector 1: Overtime Reach (seed 2), 13 nodes, 16 links
+Sector 1: Breaker's Yard (seed 2), 13 nodes, 16 links
    .  1x  4$  6n  8! 10o   .
   0S  2o   .   .   .   . 12E
    .  3x  5h  7h  9h 11$   .
 links: 0-1 0-2 0-3 1-4 2-5 3-5 4-6 5-7 4-7 6-8 7-9 6-9 8-10 9-11 10-12 11-12
   0 Way in (start) at 0.08, 0.5
-  1 Cinder Belt (hazard: ion-storm) at 0.21, 0.198
-  2 Old Beacon (empty) at 0.222, 0.538
-  3 The Flats (hazard: loose-rock) at 0.227, 0.78
-  4 Union Hall Twelve (station) at 0.376, 0.231
-  5 Scrap Heap (hostile: cutter 2252366493) at 0.376, 0.665
-  6 Fogbank (nebula) at 0.519, 0.302
-  7 Dust Bank (hostile: cutter 3645459587) at 0.48, 0.736
-  8 The Gap (distress: stalled-miner) at 0.667, 0.22
-  9 Mile Forty (hostile: cutter 2353577810) at 0.663, 0.643
-  10 Tin Can Alley (empty) at 0.763, 0.215
+  1 Nobody's Rock (hazard: ion-storm) at 0.21, 0.198
+  2 Washout (empty) at 0.222, 0.538
+  3 Cinder Belt (hazard: loose-rock) at 0.227, 0.78
+  4 Station Okay (station) at 0.376, 0.231
+  5 The Gap (hostile: cutter 3645459587) at 0.376, 0.665
+  6 Blind Spot (nebula) at 0.519, 0.302
+  7 Static (hostile: cutter 2353577810) at 0.48, 0.736
+  8 Scrap Heap (distress: stalled-miner) at 0.667, 0.22
+  9 Dust Bank (hostile: cutter 3876541463) at 0.663, 0.643
+  10 Marker Twelve (empty) at 0.763, 0.215
   11 The Truck Stop (station) at 0.805, 0.702
   12 Jump point (exit) at 0.92, 0.5
 
-Sector 1: Breaker's Yard (seed 3), 16 nodes, 19 links
+Sector 1: The Long Haul (seed 3), 16 nodes, 19 links
    .  1t  4h  6x  9x 12h   .
   0S  2n   .  7! 10$ 13h 15E
    .  3x  5$  8x 11! 14x   .
 links: 0-1 0-2 0-3 1-4 2-5 3-5 1-5 4-6 5-8 5-7 6-9 7-10 8-11 9-12 10-13 11-14 12-15 13-15 14-15
   0 Way in (start) at 0.08, 0.5
-  1 Static (trader: ration-barge) at 0.194, 0.215
-  2 The Murk (nebula) at 0.196, 0.527
-  3 The Long Dark (hazard: ion-storm) at 0.219, 0.778
-  4 Washout (hostile: cutter 1481016324) at 0.347, 0.298
-  5 Halfway House (station) at 0.343, 0.646
-  6 Quiet Water (hazard: loose-rock) at 0.499, 0.25
-  7 Scrap Heap (distress: bad-beacon) at 0.521, 0.482
-  8 Tin Can Alley (hazard: loose-rock) at 0.511, 0.758
-  9 Slag Field (hazard: ion-storm) at 0.641, 0.254
-  10 The Depot (station) at 0.642, 0.451
-  11 Dust Bank (distress: stalled-miner) at 0.661, 0.761
-  12 Marker Twelve (hostile: cutter 1245239539) at 0.795, 0.212
-  13 Drift Four (hostile: cutter 2370721335) at 0.792, 0.465
-  14 The Hollow (hazard: ion-storm) at 0.772, 0.803
+  1 Cinder Belt (trader: ration-barge) at 0.194, 0.215
+  2 The Shroud (nebula) at 0.196, 0.527
+  3 Low Orbit (hazard: ion-storm) at 0.219, 0.778
+  4 Scrap Heap (hostile: cutter 1989828674) at 0.347, 0.298
+  5 Union Hall Twelve (station) at 0.343, 0.646
+  6 The Gap (hazard: loose-rock) at 0.499, 0.25
+  7 The Long Dark (distress: fleet-tender) at 0.521, 0.482
+  8 Quiet Water (hazard: loose-rock) at 0.511, 0.758
+  9 Mile Forty (hazard: ion-storm) at 0.641, 0.254
+  10 The Truck Stop (station) at 0.642, 0.451
+  11 Washout (distress: lost-courier) at 0.661, 0.761
+  12 The Flats (hostile: cutter 2481759967) at 0.795, 0.212
+  13 Nobody's Rock (hostile: cutter 3247890595) at 0.792, 0.465
+  14 Dust Bank (hazard: ion-storm) at 0.772, 0.803
   15 Jump point (exit) at 0.92, 0.5
