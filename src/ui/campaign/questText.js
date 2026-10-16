@@ -4,8 +4,9 @@
 // colony's quest place and the pay-off at its fight's end; the odds a
 // pursuer eased off finds the colony at; and the warnings before quests go
 // cold. rules are the content tables (src/sim/defs.js).
-import { pursuerOf } from '../../sim/heat.js';
+import { jobHeat, pursuerOf, withHeat } from '../../sim/heat.js';
 import { eased, openStep, questOf, stepDone } from '../../sim/quests.js';
+import { jobMoves, moveStanding } from '../../sim/standing.js';
 import { changeLines, signed } from './standingText.js';
 
 const LABELS = { done: 'Done', cold: 'Gone cold' };
@@ -46,12 +47,14 @@ export function questJobText(job, rules) {
 
 // A quest's job done, for its fight's end panel, before the crew goes home:
 // ["The miner's debt: Your file is gone… Heat −20."]; none for a job lost
-// or any other job.
+// or any other job. The step comes after the job's own heat and sides, as
+// contracts.js endJob has it, so its heat is what it takes off then.
 export function questJobEnd(job, won, campaign, rules) {
   const quest = won && job?.quest ? questOf(rules, job.quest) : null;
   const step = quest?.steps.find((entry) => entry.job === job.contract);
   if (!step) return [];
-  const { note } = stepDone(campaign, rules, quest.id);
+  const moved = moveStanding(campaign, rules, jobMoves(job, rules, won)).campaign;
+  const { note } = stepDone({ ...moved, heat: withHeat(campaign.heat, jobHeat(job, rules).heat) }, rules, quest.id);
   return note ? [`${quest.name}: ${step.said}`, ...noteChanges(note, rules)] : [];
 }
 

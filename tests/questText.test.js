@@ -63,6 +63,9 @@ test("the board: a quest's job says its quest, its step and what it adds; its fi
   assert.deepEqual(questJobText(offer, rules), { tag: "The miner's debt", fact: "Step 1 of 3 of the miner's debt. Done, heat −20 on top." });
   assert.equal(questJobText(start.board[0], rules), null);
   assert.deepEqual(questJobEnd(offer, true, start, rules), ["The miner's debt: Your file is gone from Depot 4. Con-Reg will find the paper again, but not this month.", 'Heat −20.']);
+  // At heat 0 the job's own +8 comes first, and the step takes that off.
+  const cold = withBoard(newCampaign(rules, 5), rules);
+  assert.deepEqual(questJobEnd(questJobs(cold, rules)[0], true, cold, rules).slice(1), ['Heat −8.']);
   assert.deepEqual(questJobEnd(offer, false, start, rules), []);
   assert.deepEqual(questJobEnd(start.board[0], true, start, rules), []);
 });
@@ -125,7 +128,7 @@ test("the colony: the quest's place is named for its quest, held, and Next day's
   const there = flyOut(home, rules, rows.length - 1, [1, 2]).campaign;
   const away = awayText(there, rules);
   assert.equal(away.where, "The miner's debt · 2 days from home");
-  assert.equal(away.held.lines[0], `${rules.quests.get('debt').steps[2].place.text} Aboard: Recovery agent ×2, Hired heavy, Company guard.`);
+  assert.equal(away.held.lines[0], `${rules.quests.get('debt').steps[2].place.text} Aboard: Recovery agent ×2, Hired heavy.`);
   assert.match(away.held.lines[1], /^Win: The miner's debt is done, and 1 of her parts and 4 to 8 materials\.$/);
   // Done: the odds halved, and said so.
   const done = { ...settled(), heat: 50, quests: { debt: { step: 2, state: 'done' } } };

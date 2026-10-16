@@ -27,7 +27,7 @@
             "name": "Con-Reg claims tender",
             "days": 2,
             "ship": "repotug",
-            "party": "raid",
+            "party": "recovery",
             "salvage": 1,
             "materials": [4, 8],
             "text": "A Con-Reg claims tender at the system's edge, logging the colony for the Company's lawyers. Recovery crews her."
@@ -68,7 +68,7 @@
             "name": "Provost courier",
             "days": 2,
             "ship": "provostcutter",
-            "party": "provostraid",
+            "party": "provostpatrol",
             "salvage": 1,
             "materials": [4, 8],
             "text": "A Provost courier cutter at the system's edge, your file in her safe and the colony's bearing in her log."
@@ -109,7 +109,7 @@
             "name": "Halloran runner",
             "days": 2,
             "ship": "runner",
-            "party": "halloranraid",
+            "party": "collectors",
             "salvage": 1,
             "materials": [4, 8],
             "text": "A Halloran runner at the family's drop, her collectors come for the interest on forty crates."

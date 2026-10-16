@@ -509,8 +509,8 @@
         {
           "id": "pay",
           "label": "Pay for her spares",
-          "needs": { "credits": 40 },
-          "outcomes": [{ "chance": 100, "text": "The chief knows your voice and doesn't say so. He logs the money as a gift from a friend of the Fleet, which the Provost will have to read.", "effects": { "credits": -40, "heat": -15, "standing": { "fleet": 4 } } }]
+          "needs": { "credits": 20 },
+          "outcomes": [{ "chance": 100, "text": "The chief knows your voice and doesn't say so. He logs the money as a gift from a friend of the Fleet, which the Provost will have to read.", "effects": { "credits": -20, "heat": -15, "standing": { "fleet": 4 } } }]
         },
         { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "Someone else will see her right. Probably.", "effects": {} }] }
       ]

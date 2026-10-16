@@ -178,11 +178,11 @@ test("the colony: the step's place is on the list until done, her ship held by t
   const there = flyOut(listed, rules, index, [1, 2]).campaign;
   const due = placeFightDue(there, rules);
   assert.equal(due.preset.id, 'repotug');
-  assert.deepEqual(due.party, rules.encounters.get('raid').enemies);
-  assert.equal(due.encounter, 'raid');
+  assert.deepEqual(due.party, rules.encounters.get('recovery').enemies);
+  assert.equal(due.encounter, 'recovery');
   const begun = boardPlace(there, rules);
   assert.equal(begun.ok, true, begun.error);
-  assert.equal(begun.campaign.fight.encounter, 'raid');
+  assert.equal(begun.campaign.fight.encounter, 'recovery');
   // Lost: home hurt, and she is still there.
   const lost = endPlaceFight(winner(begun.campaign, 'enemy'), rules);
   assert.deepEqual(lost.quests, { debt: { step: 2, state: 'open' } });

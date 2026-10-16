@@ -12,7 +12,11 @@
 //     --heat, only before a raid, or never);
 //   - take the job worth most: its pay (with what its client's side adds,
 //     M33) and its part, at the odds the test crew has had on that job and
-//     twist.
+//     twist. The background's thread's job (M33b) is offered above the
+//     board's, and the heat its step takes off counts at a payment's price
+//     (for the deserter, whose pursuer takes no payment, at the cheapest
+//     any pursuer takes); once the ship could launch, it is taken before
+//     launching in any case, again until it is done.
 // In a fight the crew is played by the job player (src/sim/jobAi.js), or
 // in a raid by the AI; the enemy by the AI, pressing on in a raid.
 //
@@ -36,15 +40,16 @@ import { aiAction } from '../src/sim/ai.js';
 import { applyCommand, layoutProblems, occupancy } from '../src/sim/builder.js';
 import { firstBackground, newCampaign, partsNeeded, refitShip, shipChecklist } from '../src/sim/campaign.js';
 import { canLaunch } from '../src/sim/constraints.js';
-import { endJob, takeJob, withBoard } from '../src/sim/contracts.js';
+import { endJob, takeJob, takeQuestJob, withBoard } from '../src/sim/contracts.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { buyPart, priceOf, sellPart, sellPriceOf } from '../src/sim/economy.js';
 import { cellAt, SIDES, step } from '../src/sim/grid.js';
-import { jobHeat, makePayment, paymentFor, raidDue } from '../src/sim/heat.js';
+import { jobHeat, makePayment, paymentFor, pursuerOf, raidDue } from '../src/sim/heat.js';
 import { jobAction } from '../src/sim/jobAi.js';
 import { baseOf, countOfAny, versionAtHand } from '../src/sim/makers.js';
 import { placedCells } from '../src/sim/modules.js';
 import { pressAction } from '../src/sim/press.js';
+import { questJobs, threadOf } from '../src/sim/quests.js';
 import { beginRaid, endRaid } from '../src/sim/raid.js';
 import { DIFFICULTIES } from '../src/sim/settings.js';
 import { jobPay } from '../src/sim/standing.js';
@@ -107,14 +112,26 @@ export function fitPart(ship, defs, type) {
 }
 
 // What a job on the board is worth to the run: its pay, with what its
-// client's side adds (M33), and its part (the price of one the checklist
-// needs, else what the shop would pay for it), at the test crew's odds on
-// it.
+// client's side adds (M33), its part (the price of one the checklist
+// needs, else what the shop would pay for it) and for a quest's job the
+// heat its step takes off (questWorth), at the test crew's odds on it.
 function jobWorth(job, campaign, defs, needed) {
   const contract = defs.contracts.jobs.get(job.contract);
   const part = job.part ? (needOf(needed, job.part, defs) ? priceOf(job.part, defs) : sellPriceOf(job.part, defs)) ?? 0 : 0;
   const odds = (JOB_ODDS[job.contract] ?? MISSION_ODDS[contract.mission] ?? 0.5) * (TWIST_ODDS[job.twist] ?? 1);
-  return Math.min(0.95, odds) * (jobPay(campaign, defs, job) + part);
+  return Math.min(0.95, odds) * (jobPay(campaign, defs, job) + part + questWorth(job, campaign, defs));
+}
+
+// The heat a quest's job's step takes off (M33b), in credits at a
+// payment's price: the pursuer's payment, or for one that takes none (the
+// Provost) the cheapest any pursuer takes. 0 for any other job.
+function questWorth(job, campaign, defs) {
+  const step = job.quest ? defs.quests.get(job.quest)?.steps.find((entry) => entry.job === job.contract) : null;
+  const heat = -(step?.effects?.heat ?? 0);
+  if (heat <= 0) return 0;
+  const own = pursuerOf(campaign, defs)?.payment;
+  const prices = own ? [own] : [...defs.backgrounds.values()].map((background) => background.pursuer?.payment).filter(Boolean);
+  return heat * Math.min(...prices.map((payment) => payment.credits / payment.heat));
 }
 
 // How many of a part the checklist still asks for, any maker's version
@@ -137,7 +154,9 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
   const name = (type) => defs.modules.get(type)?.name ?? type;
   // waited: visits where a part the checklist needed was affordable, but
   // not in the shop's stock.
-  const tally = { jobs: 0, done: 0, lost: 0, raids: 0, raidsLost: 0, orders: 0, rounds: 0, fits: 0, shopVisits: 0, payments: 0, bought: 0, sold: 0, waited: 0, stuck: null };
+  // questJobs: the thread's jobs taken (M33b); questAt: the job that did
+  // its step, or null.
+  const tally = { jobs: 0, done: 0, lost: 0, raids: 0, raidsLost: 0, orders: 0, rounds: 0, fits: 0, shopVisits: 0, payments: 0, bought: 0, sold: 0, waited: 0, questJobs: 0, questAt: null, stuck: null };
 
   const fightOut = (started, players) => {
     const { fight } = started;
@@ -206,9 +225,12 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
     if (Object.keys(needed).some((type) => have(type))) atHub();
   };
 
-  while (!canLaunch(shipChecklist(campaign, defs))) {
+  // Ready to launch, the run goes on until the thread's job is done (M33b).
+  const threadOpen = () => questJobs(campaign, defs).length > 0;
+  while (!canLaunch(shipChecklist(campaign, defs)) || threadOpen()) {
     atHub();
-    if (tally.stuck || canLaunch(shipChecklist(campaign, defs))) break;
+    const ready = canLaunch(shipChecklist(campaign, defs));
+    if (tally.stuck || (ready && !threadOpen())) break;
     if (tally.jobs >= MAX_JOBS) {
       tally.stuck = `not at launch after ${MAX_JOBS} jobs`;
       break;
@@ -235,15 +257,19 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
       continue;
     }
     const needed = partsNeeded(campaign, defs);
-    const worth = campaign.board.map((job) => jobWorth(job, campaign, defs, needed));
+    const quests = questJobs(campaign, defs);
+    const offers = ready ? quests : [...quests, ...campaign.board];
+    const worth = offers.map((job) => jobWorth(job, campaign, defs, needed));
     const index = worth.indexOf(Math.max(...worth));
-    const job = campaign.board[index];
+    const job = offers[index];
     const limit = heat === 'hunters' ? defs.balance.huntHeat : defs.balance.raidHeat;
     while (heat !== 'never' && campaign.heat + jobHeat(job, defs).heat >= limit && paymentFor(campaign, defs).ok) pay(heat === 'hunters' ? 'to keep the hunters off' : 'before the job brings a raid');
     const words = jobText(job, defs);
     tally.jobs += 1;
-    say(`${tally.jobs}. ${words.title} (${words.mission}${words.twist ? `, ${words.twist.name}` : ''}): ${words.pay}, ${words.heat}.`);
-    const taken = takeJob(campaign, defs, index, { difficulty });
+    if (job.quest) tally.questJobs += 1;
+    const quest = job.quest ? `, ${defs.quests.get(job.quest).name.toLowerCase()}${ready ? ' before launching' : ''}` : '';
+    say(`${tally.jobs}. ${words.title} (${words.mission}${words.twist ? `, ${words.twist.name}` : ''}${quest}): ${words.pay}, ${words.heat}.`);
+    const taken = job.quest ? takeQuestJob(campaign, defs, job.quest, { difficulty }) : takeJob(campaign, defs, index - quests.length, { difficulty });
     if (!taken.ok) {
       tally.stuck = `the job can't start: ${taken.error}`;
       break;
@@ -255,16 +281,20 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
     }
     campaign = endJob(fought, defs);
     tally[battle.winner === 'crew' ? 'done' : 'lost'] += 1;
+    if (job.quest && battle.winner === 'crew') tally.questAt = tally.jobs;
     say(`   ${battle.winner === 'crew' ? 'Done' : 'Lost'} in round ${battle.round}: ${campaign.credits} credits, heat ${campaign.heat}.`);
   }
   const launched = canLaunch(shipChecklist(campaign, defs));
+  // The thread's act 1 step done, or none to do (M33b).
+  const thread = threadOf(campaign, defs);
+  const threadDone = !thread || (campaign.quests?.[thread.id]?.step ?? 0) > 0 || campaign.quests?.[thread.id]?.state === 'done';
   const minutes = [0, 1].map((i) => Math.round(
     (tally.orders * PACE.order[i] + tally.rounds * PACE.enemyTurn[i] + tally.jobs * PACE.board[i] + tally.fits * PACE.fit[i] + tally.shopVisits * PACE.shop[i] + tally.payments * PACE.pay[i]) / 60,
   ));
   say(launched
-    ? `Ready to launch after ${tally.jobs} jobs (${tally.done} done, ${tally.lost} lost) and ${tally.raids} raid${tally.raids === 1 ? '' : 's'}: ${tally.orders} orders over ${tally.rounds} rounds, ${tally.fits} parts fitted, ${tally.bought} bought, ${tally.sold} sold, ${tally.payments} payments. About ${minutes[0]} to ${minutes[1]} minutes.`
+    ? `Ready to launch after ${tally.jobs} jobs (${tally.done} done, ${tally.lost} lost) and ${tally.raids} raid${tally.raids === 1 ? '' : 's'}: ${tally.orders} orders over ${tally.rounds} rounds, ${tally.fits} parts fitted, ${tally.bought} bought, ${tally.sold} sold, ${tally.payments} payments. ${thread ? `${thread.name}'s job ${threadDone ? `done at job ${tally.questAt}` : 'not done'}, in ${tally.questJobs} tr${tally.questJobs === 1 ? 'y' : 'ies'}. ` : ''}About ${minutes[0]} to ${minutes[1]} minutes.`
     : `Stopped short of launch: ${tally.stuck}.`);
-  return { launched, jobs: tally.jobs, raids: tally.raids, minutes, tally, lines, campaign };
+  return { launched, jobs: tally.jobs, raids: tally.raids, minutes, threadDone, tally, lines, campaign };
 }
 
 // Runs from seeds 1 to `runs`, summed up: { lines, results }.
@@ -281,6 +311,7 @@ export function manyRuns(defs, runs, options = {}) {
     `${runs} runs, seeds 1 to ${runs}${options.background ? `, the ${defs.backgrounds.get(options.background)?.name.toLowerCase()}` : ''}: ${launched.length} ready to launch.`,
     `Jobs: ${spread(launched.map((r) => r.jobs))}. Raids: ${spread(launched.map((r) => r.raids))}. Jobs done: ${Math.round((100 * sum(results, 'done')) / Math.max(1, sum(results, 'jobs')))}% of ${sum(results, 'jobs')}.`,
     `Minutes, quick: ${spread(launched.map((r) => r.minutes[0]))}; slow: ${spread(launched.map((r) => r.minutes[1]))}. The median, then the least and most.`,
+    `The thread's job (M33b): done in ${launched.filter((r) => r.threadDone).length} of ${launched.length} launched, at job ${spread(launched.filter((r) => r.tally.questAt).map((r) => r.tally.questAt))}, in ${spread(launched.map((r) => r.tally.questJobs))} tries; taken before launching in ${launched.filter((r) => r.lines.some((line) => / before launching\)/.test(line))).length}.`,
     ...results.filter((r) => !r.launched).map((r) => `Seed ${r.seed}: ${r.lines.at(-1)}`),
   ];
   return { lines, results };

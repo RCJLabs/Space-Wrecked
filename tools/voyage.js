@@ -51,6 +51,13 @@
 //     event's choice worth most, boarding a held derelict with the AI
 //     (voyagePlan.js tripSquad, refitForSquad, homeBuild, nextPlace,
 //     placeChoice); resting on the days it doesn't fly.
+// From M33b it takes the quests' steps (voyagePlan.js questWorth): on the
+// run it goes by a quest's node where the way allows and makes the step's
+// choice there, lends the Fleet's tender a hand where the chain would leave
+// the crew friendly with the Fleet, and at the colony flies to the quest's
+// place first of the held ones (nextPlace). The report says what came of
+// each quest, and the colony's odds of being found before and after the
+// thread's pay-off.
 //
 //   node tools/voyage.js               a voyage from campaign seed 1, step by step
 //   node tools/voyage.js --seed 7      another seed
@@ -74,7 +81,7 @@ import { maxHp, shipChecklist } from '../src/sim/campaign.js';
 import { buildingOf, colonyStats, donate, storesOf } from '../src/sim/colony.js';
 import { build } from '../src/sim/colonyBuild.js';
 import { crewRoom } from '../src/sim/crew.js';
-import { nextDay } from '../src/sim/days.js';
+import { dayPlan, nextDay } from '../src/sim/days.js';
 import { chooseAtPlace, flyHome, flyOn, flyOut, tripHere, withPlaces } from '../src/sim/expeditions.js';
 import { flightChecklist } from '../src/sim/constraints.js';
 import { indexDefs } from '../src/sim/defs.js';
@@ -83,6 +90,7 @@ import { approachState, closeApproach, giveOrder } from '../src/sim/encounter.js
 import { chooseEvent, partsOnHand } from '../src/sim/events.js';
 import { launch } from '../src/sim/launch.js';
 import { patchCrew } from '../src/sim/patch.js';
+import { eased, questOf, threadOf } from '../src/sim/quests.js';
 import { raidLoss } from '../src/sim/raid.js';
 import { landingPlan, raidDown } from '../src/sim/raids.js';
 import { huntersOf } from '../src/sim/hunt.js';
@@ -113,6 +121,8 @@ export const COLONY_DAYS = 30;
 export const FED_WITHIN = 15;
 // The days of trips it plays after those (M28's Done when).
 export const TRIP_DAYS = 30;
+// What came of a quest, as the log says it (questShape.js QUEST_MOVES).
+const QUEST_DID = { started: 'started', done: 'a step done', finished: 'done', cold: 'gone cold' };
 
 // A voyage from a launched campaign (act 2, the run not yet begun) to a
 // world settled, its colony founded and its first days played: { ended,
@@ -208,6 +218,11 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     docked: 0,
     passedBy: 0,
     friendly: 0,
+    // The quests (M33b) at the launch, the landing and the end (null short
+    // of them), and what came of them on the way: [{ quest, did, step,
+    // sector }].
+    quests: { launch: launched.quests ?? {}, landing: null, end: null },
+    questNotes: [],
   };
   const hold = () => `${campaign.supplies} supplies, ${campaign.credits} credits, heat ${campaign.heat}`;
   // The parts a refit couldn't fit, and the ship then (voyagePlan.js refitAt).
@@ -244,10 +259,16 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
   let landed = null;
   let home = null;
   let travelled = null;
+  const questNote = (note, sector) => {
+    tally.questNotes.push({ quest: note.quest, did: note.did, step: note.step, sector });
+    lines.push(`   ${questOf(defs, note.quest)?.name ?? note.quest}: ${QUEST_DID[note.did]}.`);
+  };
   const jumped = (before, moved) => {
     if (!moved.ok) throw new Error(moved.error);
     campaign = moved.campaign;
     const { plan } = moved;
+    // Leaving the last sector, a run's step not done goes cold (M33b).
+    for (const id of moved.cold ?? []) questNote({ quest: id, did: 'cold', step: campaign.quests[id]?.step ?? 0 }, before.run.sector.index);
     const out = plan.kind === 'sector' || plan.kind === 'system';
     record(plan.kind, before, { hungry: plan.hungry, heal: plan.heal, max: before.crew.map((member) => maxHp(member, defs)), to: out ? null : campaign.run.at, hunt: moved.hunt });
     tally.jumps += 1;
@@ -361,6 +382,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       tally.wounds += changes.wounds.reduce((sum, wound) => sum + wound.hp, 0);
       const said = pick.choice.outcomes[result.outcome].text;
       lines.push(`   ${open.event.title}: ${pick.choice.label}${result.roll === null ? '' : ` (rolled ${result.roll})`}. ${said} ${hold()}.`);
+      if (result.quest) questNote(result.quest, before.run.sector.index);
     }
     // The system past the charts (M25): a survey, a jump between its
     // worlds, or settling, which ends the voyage. There is nothing else to
@@ -387,6 +409,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
         const best = Math.max(...before.run.sector.nodes.filter((node) => node.world).map((node) => worldScore(defs, node.world, true)));
         record('settle', before, { world: world.name });
         tally.standing.landing = campaign.standing;
+        tally.quests.landing = campaign.quests;
         tally.settled = { name: world.name, kind: world.kind, surveyed: world.surveyed, score: worldScore(defs, world, world.surveyed), best, record: runRecord(campaign, defs) };
         lines.push(`   Settled ${world.name} (${kindName(defs, world)}, ${world.surveyed ? `surveyed, scoring ${worldScore(defs, world, true)}` : `not surveyed, its kind scoring ${worldScore(defs, world, false)}`}; the system's best scores ${best}): act 2 ends.`);
         landed = campaign;
@@ -409,8 +432,13 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
           heat: [campaign.heat, travelled.heat],
           lanes: travelled.colony.world.lanes,
           coming: Boolean(travelled.colony.raid),
+          // The odds of being found each day at home, and the day the
+          // thread's place was won, or null (M33b).
+          odds: [...played.raids.odds, ...flown.raids.odds],
+          payoff: flown.trips.payoff,
         };
         lines.push(`   ${raidsLine(defs, tally.raids)}`);
+        tally.quests.end = travelled.quests;
         break;
       }
       jumped(before, jump(campaign, defs, move.to));
@@ -593,6 +621,7 @@ export function playColony(campaign, defs, days = COLONY_DAYS) {
     }
     campaign = readyForRaid(campaign, defs, raids);
     if (fedOn === null && colonyStats(campaign, defs).made.food >= campaign.crew.length * defs.balance.jumpSupplies) fedOn = campaign.colony.day;
+    logOdds(campaign, defs, raids);
     const day = nextDay(campaign, defs);
     if (!day.ok) throw new Error(day.error);
     campaign = day.campaign;
@@ -622,10 +651,19 @@ export function playColony(campaign, defs, days = COLONY_DAYS) {
 // day, landed (the raiders that landed), stopped (those the guns
 // stopped), home (who was home to fight), away (true with the ship away),
 // fought, won, taken (what a lost raid took, raids.js raidTake, or null)
-// }]) and set ([{ day, type, name }]: the defenses it set down from the
-// hold for them).
+// }]), set ([{ day, type, name }]: the defenses it set down from the
+// hold for them) and odds ([{ day, found, eased }]: the odds, percent, of
+// being found at the end of each day passed at home, and whether the
+// pursuer had eased off, M33b).
 function raidsLog() {
-  return { faced: [], set: [] };
+  return { faced: [], set: [], odds: [] };
+}
+
+// The day's odds of the colony being found, put on the log before a day
+// passes at home (M33b).
+function logOdds(campaign, defs, raids) {
+  const plan = dayPlan(campaign, defs);
+  if (plan.ok) raids.odds.push({ day: campaign.colony.day, found: plan.found, eased: eased(campaign, defs) });
 }
 
 // Ready for a raid (M29): while one is coming, what raidPrep says set down
@@ -700,6 +738,7 @@ export function playTrips(campaign, defs, days = TRIP_DAYS) {
     if (campaign.colony.raid) {
       campaign = readyForRaid(campaign, defs, raids);
       if (campaign.colony.raid) {
+        logOdds(campaign, defs, raids);
         const day = nextDay(campaign, defs);
         if (!day.ok) throw new Error(day.error);
         campaign = day.campaign;
@@ -734,6 +773,7 @@ export function playTrips(campaign, defs, days = TRIP_DAYS) {
         }
       }
     }
+    logOdds(campaign, defs, raids);
     const day = nextDay(campaign, defs);
     if (!day.ok) throw new Error(day.error);
     campaign = day.campaign;
@@ -756,6 +796,8 @@ export function playTrips(campaign, defs, days = TRIP_DAYS) {
       healed: since('colonyHealed'),
       hurt: since('hungerHurt'),
       sealed,
+      // The day the thread's place was won (M33b), or null.
+      payoff: flown.find((trip) => trip.wonOn !== null)?.wonOn ?? null,
     },
     raids,
   };
@@ -771,6 +813,7 @@ function flyTrip(campaign, defs, index, squad, raids) {
   let now = onWay(out.campaign, defs, raids);
   const here = tripHere(now, defs);
   let what = 'left her';
+  let wonOn = null;
   if (here.event) {
     const pick = placeChoice(now, defs, here.event);
     const chose = chooseAtPlace(now, defs, pick.choice.id);
@@ -779,13 +822,14 @@ function flyTrip(campaign, defs, index, squad, raids) {
     what = `${here.event.title}: ${pick.choice.label}`;
   } else if (here.held) {
     const fought = fightPlace(now, defs);
+    if (fought.won && place.quest) wonOn = now.colony.day;
     now = fought.campaign;
     what = fought.won ? 'boarded her and won' : 'boarded her and lost';
   }
   if (raidDown(now)) now = faceRaid(now, defs, raids);
   const home = flyHome(now, defs);
   if (!home.ok) throw new Error(home.error);
-  return { campaign: onWay(home.campaign, defs, raids), record: { day, name: place.name, kind: place.kind, days: out.plan.days.out + home.plan.days, squad: squad.length, what } };
+  return { campaign: onWay(home.campaign, defs, raids), record: { day, name: place.name, kind: place.kind, days: out.plan.days.out + home.plan.days, squad: squad.length, what, quest: place.quest ?? null, wonOn } };
 }
 
 // A leg a raid stopped (M29): those at home face it, and the ship flies
@@ -807,7 +851,7 @@ function onWay(campaign, defs, raids) {
 // lost 0; built Shelter (day 40); refitted Life support aboard; 0 hungry
 // days."
 function tripsLine(defs, trips) {
-  const each = trips.flown.map((trip) => `${trip.name} (day ${trip.day}, ${trip.days} days, ${trip.squad} aboard: ${trip.what})`).join('; ');
+  const each = trips.flown.map((trip) => `${trip.name}${trip.quest ? `, ${(questOf(defs, trip.quest)?.name ?? trip.quest).toLowerCase()}` : ''} (day ${trip.day}, ${trip.days} days, ${trip.squad} aboard: ${trip.what})`).join('; ');
   const builds = trips.built.map((b) => `${b.name} (day ${b.day})`).join(', ');
   return (
     `${TRIP_DAYS} days of trips: ${trips.flown.length} trip${trips.flown.length === 1 ? '' : 's'}, ${trips.away} days away${each ? `: ${each}` : ''}. ` +
@@ -910,9 +954,10 @@ export function voyage(defs, seed, options = {}, lifted = launchedAt(defs, seed,
 // Voyages from seeds 1 to `runs` from each background's start, side by
 // side (M30): how many launched, crossed fed all the way and met the
 // hunters, and the colony's raids faced, won and lost, with the runs that
-// lost one; and (M33) the median standing with each side at the launch and
-// at the landing. { lines, rows }, a row a background: { id, name,
-// launched, fed, met, faced, won, lost, runsLost, standing }.
+// lost one; (M33) the median standing with each side at the launch and at
+// the landing; and (M33b) what came of the quests (questCounts). { lines,
+// rows }, a row a background: { id, name, launched, fed, met, faced, won,
+// lost, runsLost, standing, quests }.
 export function voyagesByBackground(defs, runs, options = {}) {
   const rows = [...defs.backgrounds.values()].map(({ id, name }) => {
     const done = manyVoyages(defs, runs, { ...options, background: id }).results.filter((r) => r.launched);
@@ -929,6 +974,7 @@ export function voyagesByBackground(defs, runs, options = {}) {
       lost: faced.length - won,
       runsLost: done.filter((r) => (r.tally.raids?.faced ?? []).some((raid) => !raid.won)).length,
       standing: standingMedians(defs, done),
+      quests: questCounts(defs, done),
     };
   });
   const width = Math.max(...rows.map((row) => row.name.length), 10);
@@ -939,8 +985,62 @@ export function voyagesByBackground(defs, runs, options = {}) {
     ...rows.map((row) => cells([row.name, row.launched, row.fed, row.met, row.faced, row.won, row.lost, row.runsLost])),
     'Standing with each side, the median at the launch, then at the landing (M33):',
     ...rows.map((row) => `${row.name.padEnd(width)}  ${standingLine(defs, row.standing)}`),
+    'The quests (M33b):',
+    ...rows.map((row) => `${row.name.padEnd(width)}  ${questsLine(row.quests)}`),
   ];
   return { lines, rows };
+}
+
+// What came of the quests in voyages that launched (M33b): { thread (its
+// name, or null), job (act 1's step done by the launch), run and runCold
+// (the run's step done by the landing, or gone cold), place (its place won
+// by the end), placeLost (fights lost there), landed (runs that settled),
+// chain ({ started, done, cold }: the Fleet's), waved (runs a patrol waved
+// through, and times), odds ({ before, after }: the colony's odds of being
+// found a day at home, the mean percent, with the days counted, in the runs
+// with a pay-off) and raids ({ before, after }: raids faced before and
+// after the pay-off, in those runs) }.
+export function questCounts(defs, done) {
+  const thread = done.length ? threadOf(done[0].campaign, defs) : null;
+  const id = thread?.id;
+  const stepAt = (quests) => quests?.[id] ?? null;
+  const landed = done.filter((r) => r.tally.quests.landing);
+  const chain = [...defs.quests.values()].find((quest) => quest.side);
+  const chainOf = (r) => (r.tally.quests.end ?? r.tally.quests.landing ?? r.campaign.quests)?.[chain?.id] ?? null;
+  const paid = done.filter((r) => r.tally.raids?.payoff != null);
+  const days = paid.flatMap((r) => r.tally.raids.odds);
+  const mean = (list) => (list.length ? Math.round((10 * list.reduce((sum, day) => sum + day.found, 0)) / list.length) / 10 : null);
+  const facedBy = (after) => paid.reduce((sum, r) => sum + r.tally.raids.faced.filter((raid) => (raid.day > r.tally.raids.payoff) === after).length, 0);
+  return {
+    thread: thread?.name ?? null,
+    job: done.filter((r) => (stepAt(r.tally.quests.launch)?.step ?? 0) >= 1).length,
+    run: landed.filter((r) => (stepAt(r.tally.quests.landing)?.step ?? 0) >= 2).length,
+    runCold: landed.filter((r) => stepAt(r.tally.quests.landing)?.state === 'cold').length,
+    place: done.filter((r) => stepAt(r.tally.quests.end)?.state === 'done').length,
+    placeLost: done.reduce((sum, r) => sum + (r.tally.trips?.flown ?? []).filter((trip) => trip.quest && trip.what === 'boarded her and lost').length, 0),
+    launched: done.length,
+    landed: landed.length,
+    chain: { started: done.filter((r) => chainOf(r)).length, done: done.filter((r) => chainOf(r)?.state === 'done').length, cold: done.filter((r) => chainOf(r)?.state === 'cold').length },
+    waved: { runs: done.filter((r) => r.tally.waved > 0).length, times: done.reduce((sum, r) => sum + r.tally.waved, 0) },
+    paid: paid.length,
+    odds: { before: mean(days.filter((day) => !day.eased)), after: mean(days.filter((day) => day.eased)), days: [days.filter((day) => !day.eased).length, days.filter((day) => day.eased).length] },
+    raids: { before: facedBy(false), after: facedBy(true) },
+  };
+}
+
+// questCounts in words: "The miner's debt: act 1's step done in 30 of 30,
+// the run's in 24 of 29 (5 gone cold), its place won in 12 (2 fights lost
+// there). The Fleet's chain: started in 9, done in 7, gone cold in 2; waved
+// through in 6 runs (8 times). In the 12 runs with a pay-off, found 6.2% a
+// day before it (402 days) and 1.5% after (310), raids faced 3 before and
+// 0 after."
+function questsLine(counts) {
+  const odds = (value) => (value === null ? '-' : `${value}%`);
+  return (
+    `${counts.thread ?? 'No thread'}: act 1's step done in ${counts.job} of ${counts.launched}, the run's in ${counts.run} of ${counts.landed} (${counts.runCold} gone cold), its place won in ${counts.place} (${counts.placeLost} fight${counts.placeLost === 1 ? '' : 's'} lost there). ` +
+    `The Fleet's chain: started in ${counts.chain.started}, done in ${counts.chain.done}, gone cold in ${counts.chain.cold}; waved through in ${counts.waved.runs} run${counts.waved.runs === 1 ? '' : 's'} (${counts.waved.times} time${counts.waved.times === 1 ? '' : 's'}). ` +
+    `In the ${counts.paid} run${counts.paid === 1 ? '' : 's'} with a pay-off, found ${odds(counts.odds.before)} a day before it (${counts.odds.days[0]} days) and ${odds(counts.odds.after)} after (${counts.odds.days[1]}), raids faced ${counts.raids.before} before and ${counts.raids.after} after.`
+  );
 }
 
 // The median standing with each side at the launch and at the landing (M33),
@@ -988,6 +1088,7 @@ export function manyVoyages(defs, runs, options = {}) {
     daysSummary(done),
     tripsSummary(done),
     raidsSummary(defs, done),
+    `The quests (M33b): ${questsLine(questCounts(defs, done))}`,
     `Jumps: ${spread(of('jumps'))}, long ${spread(of('longJumps'))}, hungry ${spread(of('hungryJumps'))}.`,
     `At the nodes: ${spread(of('events'))} events, ${spread(of('eventCredits'))} credits and ${spread(of('eventSupplies'))} supplies from them, ${spread(of('found'))} parts found, ${spread(of('sold'))} sold, ${spread(of('wounds'))} hit points lost; ${spread(of('scans'))} scans.`,
     `Hostile ships: ${spread(of('approaches'))} met, ${spread(of('approachesWon'))} disabled or blown up, ${spread(of('approachesLost'))} boarding us. Boarded her ${spread(of('boardings'))} times (won ${spread(of('boardingsWon'))}), left her ${spread(of('left'))}; fought off ${spread(of('defencesWon'))} of ${spread(of('defences'))} boardings. Salvage: ${spread(of('salvaged'))} parts and ${spread(of('salvageCredits'))} credits. Lost: ${spread(of('partsLost'))} parts and ${spread(of('creditsLost'))} credits; ${spread(of('fightHp'))} hit points in the fights. Lost a boarding at home: ${done.filter((r) => r.steps.some((step) => step.kind === 'boarding' && step.dir === 'you' && !step.won)).length} of ${done.length}; dragged past 40 rounds: ${done.reduce((sum, r) => sum + r.tally.dragged, 0)}.`,
