@@ -2,6 +2,190 @@
 
 Newest entry first.
 
+## M32b Talents, traits and recruits' backgrounds (2026-10-16)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every crew member now counts the fights they stand in, and at 3 and 8 reaches their job's rank 1 and rank 2: rank 1 sharpens the job's order, rank 2 its effect aboard or at the colony. There are 20 traits, and every recruit comes from one of 8 backgrounds that sets their job, traits and fights already stood, and with them their fee.
+
+| Job | Rank 1, 3 fights | Rank 2, 8 fights |
+| --- | --- | --- |
+| Marine | Pinning fire: Suppress −40 aim (−30) | Gun captain: the guns +15 in the approach (+10) |
+| Engineer | Hot welds: Weld for 5 rounds (3) | Running repairs: 2 wrecked parts fixed a jump (1) |
+| Medic | Field surgery: Patch 5 hit points, and up with 5 (3) | Ward chief: a med bay 2 more a jump, an infirmary 2 more a day (1) |
+| Pilot | Second wind: Hustle twice a fight (once) | Ace: evasion +15 (+10) |
+| Scout | Spotter: Mark +20 to hit (+15) | Long eyes: a scan reaches 4 links (3) |
+| Xenobiologist | Steady dart: Sedate at the shot's odds +10 (+0) | Green thumb: each farm 2 more food a day (1) |
+| Quartermaster | Deep pockets: Kit out 3 times a fight (twice) | Stores master: lockers +20 (+10), stores +40 (+20) |
+
+**How it was picked:** Evan answered four questions (2026-10-16), each the recommended answer:
+- **Ranks** at 3 and 8 fights.
+- **Rank 1 sharpens the order, rank 2 the effect** aboard or at the colony.
+- **The 14 new traits** move the fight numbers, about half trading one for another.
+- **Recruits' backgrounds:** "A past that sets the price": a line about it, the jobs and traits it rolls from, fights already stood (so a veteran signs on ranked), and a fee that rises with rank and traits.
+
+Then calls I made, not asked, each easy to change (all data but the marks):
+- **The 14 traits**, five that only add and nine that trade, so 10 of the 20 trade:
+  - adding: Old hand (aim +3, defense +2), Cool head (aim +2, defense +3), Bar fighter (hit points +1, aim +3), Light sleeper (hit points +1, defense +3), Shift fit (hit points +1, aim +2, defense +1);
+  - trading: Bruiser (hit points +4, moves −1), Brawler (hit points +4, aim −5), Crack shot (aim +10, hit points −2), Patient (aim +10, moves −1), Jumpy (defense +10, aim −5), Careful (defense +10, moves −1), Wiry (defense +10, hit points −2), Reckless (moves +2, defense −5), Long legs (moves +2, hit points −2).
+- **The 8 backgrounds:** a green hand (any job, no traits, no fights), a station kid, a laid-off miner and a survey hand (one trait, up to 1 or 2 fights), a long-hauler (one trait, 2 to 4) and a Company guard (one trait, 3 to 6), a hired gun (two traits, 4 to 9) and a Fleet veteran (two traits, 8 to 12). Each is as likely as the next, so about half of all recruits come unranked, three in ten at rank 1 and one in six at rank 2.
+- **The fee:** 30 credits (`recruitFee`, which was 50), 20 more a trait (`recruitTraitFee`) and 40 more a rank (`recruitRankFee`). A recruit with one trait and no rank still asks M23's 50; a green hand 30, a Company guard 90, a Fleet veteran 150.
+- **Ranks as chevrons:** a chevron for each rank over the corner of a portrait (the fight's crew buttons, the squad card, the crew card) and after a name in the crew panels' rows. On the cover screen the squad card cuts "Marine · rank 1" to "Mari…", so words alone would have hidden it.
+- **What a rank gives, in numbers,** on the fight's end panel ("Rosa Vint reaches rank 1, Pinning fire: Suppress −40 aim."): the ranks' own words are flavor.
+- **The captain's 20 traits** scroll inside their panel, with the last one tapped in words under them.
+- **The test player** signs on only a recruit whose fee leaves a holdful's price, as it did with the one fee.
+
+Done when (ROADMAP.md, M32b, in full there):
+- **Fights counted**, and saved.
+- **Ranks** at 3 and 8, each with a name and words, rank 1 the order, rank 2 the effect.
+- **Shown as earned** (Law 4).
+- **Traits:** 20, the captain picks 2 in reach at the three sizes, recruits roll theirs from their background.
+- **Recruits' backgrounds**, the fee rising with rank and traits.
+- **Saves:** `SAVE_VERSION` 25, with a migration from 24.
+- **Every talent counts:** a test for each rank's rule and the best-rank rule; each order at rank 1 measured against rank 0.
+- **Balance:** act 1, raids at rank 1, the voyage, the voyage tests.
+- **Touch** at the three sizes.
+
+How each is met:
+- **Fights counted:** `tests/ranks.test.js`: everyone standing in a fight counts it as it ends, won or lost, the one down too; the dead leave; whoever sat it out doesn't. The count is saved and read back.
+- **Ranks:** `tests/ranks.test.js`, a test for each rank's rule at work (each order at rank 1 in a fight, each effect at rank 2 through the screens' own sums: the approach's odds, the jump plan's fixes, the med bay and the infirmary, a scan's reach, the lockers and the stores, the farms), and the best-rank rule (the veteran brings it, a second adds nothing, `stationBy` names the higher). The validator checks every rank: its name and words, numbers only for what the job has, within the job's ranges (`tests/data.test.js`, 18 new cases).
+- **Shown as earned:** the end panel (`rankUps` in `campaign.js`, by `endFight`'s count), the crew card's rank and fights, the chevrons, and the unit card's rank. An order's button and preview, and every effect shown, count the ranks (`tests/crewJobText.test.js`, `tests/crewText.test.js`). The Steady dart's +10 is a row of its own on the dart's odds card, so the number shown is the number rolled.
+- **Traits:** `tests/recruits.test.js` (20, ten trading) and `tests/captainText.test.js`. By touch, below.
+- **Backgrounds:** `tests/recruits.test.js`: every recruit from a background in the data, one of its jobs, its count of traits none twice, fights in its range, every background turning up; the fee by traits and rank; a veteran signing on at rank 2 with a sharper order from the first fight; the background kept aboard and in the save.
+- **Saves:** `tests/ranks.test.js`: a v24 crew opens at 0 fights each with no background, a fight under way keeps its units at rank 0, and broken counts are caught.
+- **Every talent counts:** the tests above; `tools/sim.js --rank 1 --compare` (`tests/harness.test.js` checks each order at rank 1 changes its fights). The measurement is under Verified.
+- **Balance:** under Verified.
+- **Touch:** under Verified.
+
+Some of this changes what was there before:
+- **`recruitFee` is the base**, 30 where it was the whole 50; a one-trait recruit at rank 0 still pays 50.
+- **Recruits roll from their background,** so the jobs on offer lean to the backgrounds' lists (each job is in at least two), a green hand comes with no trait, and the recruit rolls behind the name moved: the same station offers others than before.
+- **The crew panels' rows** carry the rank for their chevrons; a row's words are as they were.
+- **The fight's end panel** lists who reached a rank under its words, and keeps within the screen (it scrolls if it must).
+- **`SAVE_VERSION` 25.**
+- **Tests changed on purpose:**
+  - `crew.test.js`, `crewText.test.js` and `voyage.test.js`: each recruit's fee, by their traits and rank, and their background;
+  - `captainText.test.js`: 20 traits;
+  - `hubText.test.js`: the crew rows' rank;
+  - `data.test.js`: the validator's counts and the new cases;
+  - `harness.test.js`: `--rank`;
+  - `expeditions.test.js`, `makers.test.js`, `orders.test.js` and `raids.test.js`: `SAVE_VERSION` 25.
+
+### Shipped
+
+- **Data:**
+  - `jobs.json`: each job's `ranks`, two each;
+  - `traits.json`: 14 traits;
+  - `recruits.json`: 8 `backgrounds`;
+  - `balance.json`: `rankOneFights` 3, `rankTwoFights` 8, `recruitFee` 30, `recruitTraitFee` 20, `recruitRankFee` 40.
+- **The sim:**
+  - `ranks.js` (new): a member's rank, the next, a job at a rank, the rank that sharpened a layer;
+  - `campaign.js`: `endFight` counts the fights, `rankUps` says who reaches a rank, the crew's fights and background saved;
+  - `orders.js`, `battle.js` and `battleShape.js`: a unit's rank and its order at that rank, the dart's steady part;
+  - `edges.js`: the best rank of a job counts;
+  - `recruits.js`: backgrounds and fees;
+  - `save.js`: v25 and the migration.
+- **The UI:**
+  - the fight's end panel's ranks, the chevrons (`portrait.js` `rankMark`), the unit card's rank and the odds card's rank row;
+  - `crewJobText.js`: words at a rank, what each rank gives, a rank's line;
+  - the crew card's rank, fights and background; a recruit's background, rank and fee;
+  - the captain screen's 20 traits.
+- **Tools:**
+  - `sim.js` `--rank N`, with `--compare` against rank 0;
+  - `raids.js` `--rank N`;
+  - `voyagePlan.js`: each recruit's own fee.
+- **Tests:** two new files (`ranks.test.js`, `recruits.test.js`), and the changes above. 852 tests in all, 823 on M32.
+- **Docs:** ROADMAP.md: §4.5 (ranks, recruits' backgrounds, traits), §5 (traits as built), M32b as built, ticked, and five new in §9.
+
+### Verified
+
+- **`node --test`:** 852 pass, the voyage tests' 15 among them. `node tools/validate-data.js`: OK. The golden files are unchanged.
+- **Each order at rank 1 against rank 0** (`node tools/sim.js --fights 300 --squad <the job's> --orders <the order> --rank 1 --compare`), the crew's wins and the order given a fight:
+
+  | Order | Rank 0 | Rank 1 | Given, rank 0 → 1 |
+  | --- | --- | --- | --- |
+  | Suppress | 46% | 45% | 0.3 → 0.3 |
+  | Weld | 48% | 49% | 0.4 → 0.4 |
+  | Patch | 48% | 48% | 0.8 → 0.6 |
+  | Hustle | 27% | 27% | 0.3 → 0.5 |
+  | Mark | 35% | 35% | 1.1 → 1.0 |
+  | Sedate | 17% | 17% | 1.2 → 1.3 |
+  | Kit out | 45% | 46% | 2.0 → 2.6 |
+
+  Every order at once, the default squad: 50% → 51%. Each changes its fights (`harness.test.js`), but none moves the wins past chance.
+- **`node tools/sim.js`** (run because `data/balance.json` changed; the fees aren't used in the harness's fights, and its crew stand at rank 0, short of `rankOneFights`, so the summary is M32's with every order, ship by ship):
+  ```
+  All                1,000  50% (47–53)           37%        13%  7 (5–12)           30
+  Shots: 23,338, 23.3 a fight. Hit: crew 57%, boarders 41%.
+  A fight: 1.8 crew go down, 0.8 bleed out, 2.7 boarders die.
+  Job orders a fight: patch 0.8, suppress 0.4, weld 0.1.
+  ```
+- **Act 1** (`node tools/run.js --runs 50 --background …`), every run reaching launch, slow medians 43, 37 and 45 minutes (M32: 44, 39 and 46):
+
+  | Background | Jobs | Done | Quick | Slow |
+  | --- | --- | --- | --- | --- |
+  | Debt-bound miner | 6 (3 to 11) | 77% of 312 | 26 (11 to 51) | 43 (19 to 81) |
+  | Navy deserter | 5 (3 to 18) | 61% of 344 | 22 (11 to 98) | 37 (19 to 155) |
+  | Burned smuggler | 6 (2 to 26) | 75% of 363 | 28 (11 to 116) | 45 (18 to 184) |
+- **Raids** (`node tools/raids.js --fights 500`, with `--rank 1`), the crew's wins, M32's (rank 0, 150 fights) in brackets:
+
+  | Background | At the hangar, rank 0 | Rank 1 | At the colony, rank 0 | Rank 1 |
+  | --- | --- | --- | --- | --- |
+  | Debt-bound miner | 57% of 4 (53%) | 63% | 42% of 4 (41%) | 52% |
+  | Navy deserter | 42% of 3 (48%) | 46% | 46% of 3 (49%) | 56% |
+  | Burned smuggler | 51% of 6 (46%) | 62% | 43% of 5 (41%) | 57% |
+
+  Rank 1 wins 4 to 11 points more at the hangar and 10 to 14 at the colony. Over 150 fights, as M30's test measures, rank 0 is M32's to the fight and the test passes; at rank 1 the Provost's raid at the hangar falls 12 points behind Con-Reg's (49% to 61%). Over 500 fights it is 15 behind at rank 0 and 17 at rank 1 (known issues).
+- **The run and the colony** (`node tools/voyage.js --runs 30 --background all`), M32's in brackets:
+
+  | Background | Fed | Met | Raids | Won | Lost | Runs lost |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | Debt-bound miner | 25 (25) | 10 (12) | 29 | 24 | 5 | 3 (5) |
+  | Navy deserter | 23 (23) | 10 (13) | 29 | 25 | 4 | 4 (3) |
+  | Burned smuggler | 29 (27) | 9 (7) | 19 | 14 | 5 | 5 (4) |
+
+  Every run launches. Fed, met and runs lost are each within 5 of M32's: the most is the smuggler meeting the hunters in 2 more.
+- **The voyage tests** pass as they are, every rate check included.
+- **By touch** (`m32b/verify.mjs`, 27 checks at each of 905 × 370, 821 × 283 and 960 × 825, all passing):
+  - the captain screen: 20 traits, every button 48 px or more and in reach, the first and the last picked, the last one's words in sight under them; Start makes that captain; offline, the same screen;
+  - a fight with crew at 3, 3 and 8 fights: a chevron, a chevron and two on their buttons, and in their names; the marine's Suppress · 2 previewed at −40 (65% → 25%); the xenobiologist's Sedate · 2 with its odds card's Steady dart +10 row, the rows adding up to the 75% shown;
+  - a boarding due with four aboard: the squad card's chevrons, in sight;
+  - the boarding won: the end panel names the three who reach a rank and what each gives, within the screen; Continue, and the fights are counted; the crew card shows each one's rank and fights, and the crew panel's rows their chevrons, in sight;
+  - a Fleet veteran for hire: "Medic · Fleet veteran", the background's line, "Rank 2, Ward chief · 9 fights stood", "Sign on · 150"; two taps sign them on for 150; aboard, the background and rank stay;
+  - every button 48 px or more on each screen, and no console errors.
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named:
+  - M32 22 and its orders 48, M31 28, M30 27, M29 34, M28 32, M27 32, M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 20 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 40 (its count goes with the jobs it rolls), and M8's extras.
+
+  Seven copies were adapted, not the game, for what M32b changes on purpose (`verify32b.mjs` in each):
+  - M31's, M30's, M29's, M28's and M27's: a save made by main is saved again as v25.
+  - M32's: what a recruit's job brings, and the signed-on scout's, is said at their rank, and the scan's first tap reaches as far as the scout's rank gives.
+  - M23's: each recruit asks their own fee, and the first one offered is the one signed on.
+
+  Ten checks make a save with the game as it was (M31's to M24's, M23h's and M23g's), each beside a checkout of that build. The first chain (`m32b/regress.sh`) found those checkouts cleared at M32's close, so those ten ran again with them checked out anew (`m32b/regress2.sh` and `regress3.sh`). M30's ran as its plain copy: the first chain named its copy for M32's trial build of the cadet, which is gone as well.
+
+### Known issues
+
+- **The talents are small.** Rank 1 moves no order's wins past chance (above): the third fight changes numbers a player can read on the button and preview, not outcomes. They are data: bigger numbers, or a use and a number together, would make a rank felt (§9). Your call.
+- **The Provost's raid at the hangar is harder than M30's test shows.** Over the test's 150 fights the deserter's crew beats it 48% of the time and the miner's crew beats Con-Reg's 53%, within its 10 points. Over 500 fights it is 42% to 57% at rank 0 and 46% to 63% at rank 1, and over 150 at rank 1, 49% to 61%. It was so before M32b: rank 0 is M32's to the fight. Evening it out is a change to the raid's party (`provostraid`), not to the ranks, so I left it (§9). Your call.
+- **A recruit's row is tall on the cover screen.** With a background it takes about eight lines in the crew card's half-width list, so the list for hire shows about one at a time (§9).
+- **The fee counts traits, not their worth:** Hothead costs what Patched suit does (§9).
+- **The test players' captains take no traits,** so the 14 new ones reach the voyages only through recruits (§9).
+
+### Test on the phone
+
+1. **New game:** the captain screen's 20 traits. Scroll them, pick two, and read the last one's words under the list, on the cover screen and unfolded.
+2. **Act 1:** play three jobs. At the third one's end the panel names everyone who stood in all three reaching rank 1, and what it gives; back at the hangar the crew panel shows a chevron after each name.
+3. **A fight with a ranked crew:** the chevrons on the crew buttons; a long press on one says its rank; an order's preview at its rank's number (Suppress −40, a door welded for 5 rounds, Patch 5).
+4. **Act 2, at a station:** the crew card says each one's rank and fights. A recruit says their background, rank and fee; sign a ranked one on and see the credits drop by that fee.
+5. **A boarding with four aboard:** the squad card's chevrons.
+6. **An old save** (v24): it opens, everyone at 0 fights.
+
+### Next session
+
+M33 Factions, quests and companions (Phase 6). First task: settle its Done when with Evan (ROADMAP.md has a draft), and ask about the two calls in the known issues: whether the talents should be bigger, and whether to even out the Provost's raid at the hangar, measuring M30's test over 500 fights.
+
 ## M32 All jobs (2026-10-15)
 
 **Status:** done, and the ROADMAP.md box is ticked. Four jobs join the marine, the engineer and the medic, seven in all. Every job now does three things: an order in a fight, with a few uses; an effect aboard on the run; and an effect at the colony.
