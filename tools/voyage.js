@@ -86,7 +86,7 @@ import { hireRecruit } from '../src/sim/recruits.js';
 import { regroup } from '../src/sim/regroup.js';
 import { repairShip } from '../src/sim/repair.js';
 import { settle } from '../src/sim/settle.js';
-import { stationSide } from '../src/sim/standing.js';
+import { levelOf, shareHere, standingWith, stationSide } from '../src/sim/standing.js';
 import { survey } from '../src/sim/survey.js';
 import { swapTransponder } from '../src/sim/transponder.js';
 import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer } from '../src/sim/travel.js';
@@ -200,6 +200,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     waved: 0,
     fired: 0,
     docked: 0,
+    friendly: 0,
   };
   const hold = () => `${campaign.supplies} supplies, ${campaign.credits} credits, heat ${campaign.heat}`;
   // The parts a refit couldn't fit, and the ship then (voyagePlan.js refitAt).
@@ -241,12 +242,13 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     campaign = moved.campaign;
     const { plan } = moved;
     const out = plan.kind === 'sector' || plan.kind === 'system';
-    record(plan.kind, before, { hungry: plan.hungry, heal: plan.heal, max: before.crew.map((member) => maxHp(member, defs)), to: out ? null : campaign.run.at, hunt: moved.hunt });
+    record(plan.kind, before, { hungry: plan.hungry, heal: plan.heal, max: before.crew.map((member) => maxHp(member, defs)), to: out ? null : campaign.run.at, hunt: moved.hunt, dock: plan.dock ?? 0 });
     tally.jumps += 1;
     if (moved.hunt.chance > 0) tally.hotJumps += 1;
     tally.peak = Math.max(tally.peak, campaign.heat);
     if (plan.kind === 'long') tally.longJumps += 1;
     if (plan.dock) tally.docked += 1;
+    if (calledFriendly(campaign, defs)) tally.friendly += 1;
     if (plan.hungry) tally.hungryJumps += 1;
     if (plan.hungry && before.run.sector.system) tally.systemHungry += 1;
     // A sector is crossed when the ship reaches its jump point.
@@ -427,7 +429,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     if (count > 0) {
       const before = campaign;
       campaign = buySupplies(campaign, defs, count).campaign;
-      record('buy', before, { count });
+      record('buy', before, { count, share: offer.share });
       tally.stations += 1;
       tally.bought += count;
       tally.spent += before.credits - campaign.credits;
@@ -441,7 +443,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       if (!signed.ok) throw new Error(signed.error);
       campaign = signed.campaign;
       const member = campaign.crew.at(-1);
-      record('hire', before, { name: member.name, job: member.job, traits: member.traits, fights: member.fights, background: member.background });
+      record('hire', before, { name: member.name, job: member.job, traits: member.traits, fights: member.fights, background: member.background, share: shareHere(before, defs) });
       tally.hired += 1;
       tally.hireCredits += signed.plan.fee;
       lines.push(`   Signed on ${member.name} (${defs.jobs.get(member.job)?.name ?? member.job}) for ${signed.plan.fee} credits: a crew of ${campaign.crew.length}, ${hold()}.`);
@@ -462,7 +464,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     if (patched.ok) {
       const before = campaign;
       campaign = { ...patched.campaign, credits: patched.campaign.credits + reserve };
-      record('patch', before, { patched: patched.plan.hp });
+      record('patch', before, { patched: patched.plan.hp, share: patched.plan.share });
       tally.patchedHp += patched.plan.hp;
       tally.patchCredits += patched.plan.cost;
       lines.push(`   Patched up ${patched.plan.hp} hit points for ${patched.plan.cost} credits: crew ${hpOf(campaign)}, ${hold()}.`);
@@ -930,6 +932,13 @@ function standingMedians(defs, done) {
   return Object.fromEntries([...defs.factions.sides.keys()].map((side) => [side, [median(landed.map((r) => r.tally.standing.launch[side] ?? 0)), median(landed.map((r) => r.tally.standing.landing[side] ?? 0))]]));
 }
 
+// Whether the ship is at a station of a side friendly or trusted with the
+// crew (M33).
+function calledFriendly(campaign, defs) {
+  const side = stationSide(hereOf(campaign), defs);
+  return side !== null && ['friendly', 'trusted'].includes(levelOf(standingWith(campaign, side), defs));
+}
+
 // "Con-Reg −10 → −10, the Fleet 0 → −2, …".
 function standingLine(defs, standing) {
   const signedOf = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');
@@ -970,7 +979,7 @@ export function manyVoyages(defs, runs, options = {}) {
     `Supplies bought: ${spread(of('bought'))}, for ${spread(of('spent'))} credits. Launch credits: ${spread(done.map((r) => r.steps[0]?.credits[0] ?? 0))}.`,
     `Heat at launch: ${spread(done.map((r) => r.tally.heat[0]))}; at the end: ${spread(done.map((r) => r.tally.heat[1]))}; at most: ${spread(of('peak'))}. Jumps where the hunters might wait: ${spread(of('hotJumps'))}.`,
     `The hunters: met in ${met} of ${done.length} runs, ${spread(of('hunts'))} a run (the task force ${spread(of('taskForces'))}), faced ${spread(of('huntsFaced'))}. Regroups ${spread(of('regroups'))}, days hidden ${spread(of('hides'))}, healing ${spread(of('rested'))}; transponder swaps ${spread(of('swaps'))} for ${spread(of('swapCredits'))} credits.`,
-    `The sides (M33): patrols waved the ship through ${spread(of('waved'))} times a run, fired first ${spread(of('fired'))}; docked with the pursuer's side ${spread(of('docked'))} times. Standing, the median at the launch, then at the landing: ${standingLine(defs, standingMedians(defs, done))}.`,
+    `The sides (M33): patrols waved the ship through ${spread(of('waved'))} times a run, fired first ${spread(of('fired'))}; docked with the pursuer's side ${spread(of('docked'))} times, in ${done.filter((r) => r.tally.docked > 0).length} of ${done.length} runs; called at a friendly or trusted side's station ${spread(of('friendly'))} times. Standing, the median at the launch, then at the landing: ${standingLine(defs, standingMedians(defs, done))}.`,
     ...results.filter((r) => !r.launched).map((r) => r.lines.at(-1)),
   ];
   return { lines, results };

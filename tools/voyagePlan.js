@@ -25,9 +25,9 @@
 //            moves (M33): a side's stations' prices, and the Fleet's patrols
 //   friendly 10 for a station of a side friendly or trusted with the crew
 //            on the way (M33): its prices, and calling there to keep it so
-//   dock     −20 for a station of the pursuer's side on the way (M33): the
-//            heat of docking there, and its prices
-// A choice is worth what its outcomes are, each at its chance. A node
+// A station of the pursuer's side is worth its docking heat (M33), priced
+// as an event's heat is, from the heat after the jump there. A choice is
+// worth what its outcomes are, each at its chance. A node
 // whose kind is known is worth its event's best choice until settled, or a
 // hostile ship's worth until met; one still unknown, what the mix's kinds
 // are worth on average. It boards a ship it has disabled only with the crew
@@ -52,8 +52,8 @@
 // and never regroups, since a day's rest costs more heat than it heals.
 // From M33 it prices a station's supplies at the share it charges the crew,
 // and so prefers a friendly side's station and keeps off the pursuer's
-// when another way calls at one without going hungry (WORTH.friendly,
-// WORTH.dock).
+// when another way calls at one without going hungry (WORTH.friendly, and
+// the docking heat).
 // Ignoring heat, none of these: it regroups away from stations when the
 // crew is down REST_HP hit points each on average and the holds keep
 // REST_JUMPS jumps' worth, and weighs heat at nothing. A managed long jump
@@ -108,12 +108,12 @@ import { withHeat } from '../src/sim/heat.js';
 import { huntOdds } from '../src/sim/hunt.js';
 import { recruitOffer } from '../src/sim/recruits.js';
 import { regroupPlan } from '../src/sim/regroup.js';
-import { levelOf, moveStanding, patrolWelcome, priceShare, pursuerSide, standingWith, stationSide } from '../src/sim/standing.js';
+import { dockHeat, levelOf, moveStanding, patrolWelcome, priceShare, standingWith, stationSide } from '../src/sim/standing.js';
 import { swapPlan } from '../src/sim/transponder.js';
 import { failingCheck, jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity, within } from '../src/sim/travel.js';
 import { fitPart } from './run.js';
 
-export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30, nebula: 15, hot: 1.5, hunted: -40, volley: -10, standing: 2, friendly: 10, dock: -20 };
+export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30, nebula: 15, hot: 1.5, hunted: -40, volley: -10, standing: 2, friendly: 10 };
 const BUFFER_JUMPS = 4;
 export const HIRE_JUMPS = 10;
 // How the test player treats heat (M24), and the managing player's lines.
@@ -305,15 +305,17 @@ export function fill(supplies, credits, room, price) {
   return Math.max(0, Math.min(room - supplies, Math.floor(credits / price)));
 }
 
-// How a way on goes from what the ship carries: { hungry (jumps), value }:
-// what is left out of the sector (supplies at their worth, and credits),
-// and what the nodes passed are worth. The jump out of the sector counts
-// too, unless it is the act's last.
-function wayCost(campaign, rules, way, { supplies, credits }, judge) {
+// How a way on goes from what the ship carries: { hungry (jumps), docks,
+// value }: what is left out of the sector (supplies at their worth, and
+// credits), and what the nodes passed are worth. The jump out of the sector
+// counts too, unless it is the act's last. Docks (M33) counts, for the
+// managing player, the stations of the pursuer's side on the way.
+function wayCost(campaign, rules, way, { supplies, credits }, judge, heat = 'manage') {
   const { sector } = campaign.run;
   const room = supplyCapacity(campaign.ship, rules, campaign.crew);
   const each = jumpSupplies(campaign, rules);
   let hungry = 0;
+  let docks = 0;
   let worth = 0;
   const eat = () => {
     if (supplies < each) hungry += 1;
@@ -322,8 +324,10 @@ function wayCost(campaign, rules, way, { supplies, credits }, judge) {
   for (const id of way.slice(1)) {
     eat();
     worth += judge(id);
-    if (sector.nodes[id].type === 'station') {
-      const price = stationPrice(campaign, rules, sector.nodes[id]);
+    const node = sector.nodes[id];
+    if (node.type === 'station') {
+      if (heat === 'manage' && dockHeat(campaign, rules, node)) docks += 1;
+      const price = stationPrice(campaign, rules, node);
       const bought = fill(supplies, credits, room, price);
       supplies += bought;
       credits -= bought * price;
@@ -335,13 +339,16 @@ function wayCost(campaign, rules, way, { supplies, credits }, judge) {
     // a station yet, is as good as hungry.
     if (supplies < BUFFER_JUMPS * each) hungry += 1;
   }
-  return { hungry, value: WORTH.supply * supplies + credits + worth };
+  return { hungry, docks, value: WORTH.supply * supplies + credits + worth };
 }
 
-// Whether way a beats way b (or there is no b): hungry least, then worth
-// most.
+// Whether way a beats way b (or there is no b): hungry least, a dock with
+// the pursuer's side counting as once (M33: its heat is as bad as going on
+// into the next sector short), then worth most.
 function better(a, b) {
-  return !b || (a.hungry !== b.hungry ? a.hungry < b.hungry : a.value > b.value);
+  if (!b) return true;
+  const [short, shortB] = [a.hungry + a.docks, b.hungry + b.docks];
+  return short !== shortB ? short < shortB : a.value > b.value;
 }
 
 // What each node is worth passing through, for the campaign as it stands:
@@ -360,19 +367,21 @@ function nodeJudge(campaign, rules, heat = 'manage') {
       const welcome = patrolWelcome(campaign, rules, rules.ships.get(node.hostile.ship));
       return welcome === 'waved' ? 0 : welcome === 'fired' ? WORTH.hostile + WORTH.volley : WORTH.hostile;
     }
-    if (node.type === 'station') return stationWorth(campaign, rules, node);
+    if (node.type === 'station') return stationWorth(campaign, rules, node, heat);
     const event = node.event ? rules.events.get(node.event) : null;
     return event ? (bestChoice(campaign, rules, event, heat)?.worth ?? 0) : 0;
   };
 }
 
 // What calling at a station is worth for its side (M33): a friendly or
-// trusted side's, WORTH.friendly; the pursuer's, WORTH.dock; any other's,
-// nothing more than its prices (stationPrice).
-function stationWorth(campaign, rules, node) {
+// trusted side's, WORTH.friendly; the pursuer's, its docking heat, priced
+// as an event's is (effectsWorth) from the heat after the jump there; any
+// other's, nothing more than its prices (stationPrice).
+function stationWorth(campaign, rules, node, heat) {
   const side = stationSide(node, rules);
   if (!side) return 0;
-  if (side === pursuerSide(campaign, rules)) return WORTH.dock;
+  const dock = dockHeat(campaign, rules, node);
+  if (dock) return effectsWorth({ ...campaign, heat: withHeat(campaign.heat, rules.balance.jumpHeat) }, rules, { heat: dock }, heat);
   const level = levelOf(standingWith(campaign, side), rules);
   return level === 'friendly' || level === 'trusted' ? WORTH.friendly : 0;
 }
@@ -383,10 +392,10 @@ function stationPrice(campaign, rules, node) {
 }
 
 // The best way on from node `from` with what the ship carries there.
-function bestWay(campaign, rules, from, carried, judge) {
+function bestWay(campaign, rules, from, carried, judge, heat = 'manage') {
   let best = null;
   for (const way of waysOn(campaign.run.sector, from)) {
-    const cost = { ...wayCost(campaign, rules, way, carried, judge), way };
+    const cost = { ...wayCost(campaign, rules, way, carried, judge, heat), way };
     if (better(cost, best)) best = cost;
   }
   return best;
@@ -408,7 +417,7 @@ function bestWay(campaign, rules, from, carried, judge) {
 export function nextJump(campaign, rules, policy, { heat = 'manage', from = LONG_FROM } = {}) {
   const { sector, at } = campaign.run;
   const judge = nodeJudge(campaign, rules, heat);
-  const way = bestWay(campaign, rules, at, { supplies: campaign.supplies, credits: campaign.credits }, judge);
+  const way = bestWay(campaign, rules, at, { supplies: campaign.supplies, credits: campaign.credits }, judge, heat);
   if (policy !== 'heat' || campaign.heat < from) return way.way[1];
   if (sector.nodes[way.way[1]].type === 'station' && campaign.supplies < supplyCapacity(campaign.ship, rules, campaign.crew)) return way.way[1];
   const cost = jumpSupplies(campaign, rules, true);
@@ -434,8 +443,9 @@ export function nextJump(campaign, rules, policy, { heat = 'manage', from = LONG
       supplies += bought;
       credits -= bought * price;
     }
-    const on = bestWay(campaign, rules, to, { supplies, credits }, judge);
-    const there = { hungry: on.hungry, value: on.value + judge(to) + shed, to };
+    const on = bestWay(campaign, rules, to, { supplies, credits }, judge, heat);
+    const docks = on.docks + (heat === 'manage' && dockHeat(campaign, rules, sector.nodes[to]) ? 1 : 0);
+    const there = { hungry: on.hungry, docks, value: on.value + judge(to) + shed, to };
     if (there.hungry === 0 && (hot || there.value >= way.value) && better(there, long)) long = there;
   }
   return long ? long.to : way.way[1];
