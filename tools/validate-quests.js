@@ -10,14 +10,17 @@
 // win strips and brings); and the pay-off once the last step is done: heat,
 // the pursuer's side's standing raised to a level, and whether the pursuer
 // eases off. Every job and event marked for a quest is a step of it, so
-// none sits in a board's rotation or a sector's pool unasked.
+// none sits in a board's rotation or a sector's pool unasked. From M33c a
+// quest can be a companion's loyalty quest (data/companions.json,
+// validate-companions.js): it starts as they sign on, its steps are at the
+// colony, and its pay-off is words alone, as their loyalty is the rest.
 import { LEVELS } from '../src/sim/standing.js';
 import { MAX_AWAY } from '../src/sim/tripShape.js';
 import { MAX_PLACE_NAME } from '../src/sim/runShape.js';
 import { isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 
 const FILE_KEYS = ['text', 'quests'];
-const QUEST_KEYS = ['id', 'name', 'blurb', 'background', 'side', 'start', 'steps', 'payoff'];
+const QUEST_KEYS = ['id', 'name', 'blurb', 'background', 'side', 'companion', 'start', 'steps', 'payoff'];
 const START_KEYS = ['event', 'choice'];
 const STEP_KEYS = {
   1: ['act', 'job', 'next', 'said', 'effects'],
@@ -58,6 +61,7 @@ export function checkQuests(data, { sides, presets, encounters }, fail) {
   const events = new Map((data.events?.events ?? []).map((event) => [event?.id, event]));
   const holding = new Set((data.sectors?.nodes ?? []).filter((kind) => kind?.events === true).map((kind) => kind.id));
   const placeKinds = new Set((data.expeditions?.kinds ?? []).map((kind) => kind?.id));
+  const companions = new Map((data.companions?.companions ?? []).map((companion) => [companion?.id, companion]));
   // The jobs and events each quest's steps name, to check against what the
   // content marks for a quest.
   const named = { jobs: new Map(), events: new Map() };
@@ -68,15 +72,23 @@ export function checkQuests(data, { sides, presets, encounters }, fail) {
     knownKeys(quest, QUEST_KEYS, at, fail);
     if (!isText(quest.name) || quest.name.length > MAX_NAME) fail(at, `name must be a non-empty string of up to ${MAX_NAME} letters`);
     if (!isText(quest.blurb) || quest.blurb.length > MAX_TEXT) fail(at, `blurb must be a non-empty string of up to ${MAX_TEXT} letters`);
-    // Whose: a background's or a side's, never both.
+    // Whose: a background's, a side's or a companion's, one of the three.
     const thread = quest.background !== undefined;
-    if (thread === (quest.side !== undefined)) fail(at, 'is a background\'s thread (background) or a side\'s chain (side), one of the two');
+    const loyalty = quest.companion !== undefined;
+    if ([thread, quest.side !== undefined, loyalty].filter(Boolean).length !== 1) {
+      fail(at, "is a background's thread (background), a side's chain (side) or a companion's loyalty quest (companion), one of the three");
+    }
     const background = thread ? backgrounds.get(quest.background) : null;
     if (thread) {
       if (!background) fail(at, `background: unknown background "${quest.background}"`);
       else if (threads.has(quest.background)) fail(at, `${quest.background} has a thread already: one a background`);
       threads.add(quest.background);
       if (quest.start !== undefined) fail(at, 'a thread starts with its campaign: no start');
+    } else if (loyalty) {
+      const companion = companions.get(quest.companion);
+      if (!companion) fail(at, `companion: unknown companion "${quest.companion}" (companions.json)`);
+      else if (companion.loyalty !== quest.id) fail(at, `${quest.companion}'s loyalty quest is "${companion.loyalty}", not this one`);
+      if (quest.start !== undefined) fail(at, 'a loyalty quest starts as its companion signs on: no start');
     } else if (quest.side !== undefined) {
       if (!sides.has(quest.side)) fail(at, `side: unknown side "${quest.side}" (factions.json)`);
       if (!isObject(quest.start)) fail(at, "a side's chain needs its start: { event, choice }");
@@ -94,7 +106,9 @@ export function checkQuests(data, { sides, presets, encounters }, fail) {
       fail(at, `steps must be a list of 1 to ${MAX_STEPS}`);
       return;
     }
-    let last = thread ? 1 : 2;
+    // A loyalty quest's steps are at the colony, where the companion is
+    // loyal by the end.
+    let last = thread ? 1 : loyalty ? 3 : 2;
     quest.steps.forEach((step, s) => {
       const here = `${at} step ${s + 1}`;
       if (!isObject(step)) {
@@ -105,7 +119,7 @@ export function checkQuests(data, { sides, presets, encounters }, fail) {
         fail(here, 'act must be 1, 2 or 3');
         return;
       }
-      if (step.act < last) fail(here, thread ? 'steps go in the order of their acts' : "a side's chain starts on the run: its steps are on the run or at the colony, in that order");
+      if (step.act < last) fail(here, thread ? 'steps go in the order of their acts' : loyalty ? "a loyalty quest's steps are at the colony" : "a side's chain starts on the run: its steps are on the run or at the colony, in that order");
       last = Math.max(last, step.act);
       knownKeys(step, STEP_KEYS[step.act], here, fail);
       if (!isText(step.next) || step.next.length > MAX_NEXT) fail(here, `next must be a non-empty string of up to ${MAX_NEXT} letters`);
@@ -116,6 +130,7 @@ export function checkQuests(data, { sides, presets, encounters }, fail) {
       if (step.act === 2 && typeof step.event === 'string') named.events.set(step.event, quest.id);
     });
     if (quest.payoff !== undefined) checkPayoff(quest.payoff, `${at} payoff`, thread, fail);
+    if (loyalty && quest.payoff !== undefined && Object.keys(quest.payoff).some((key) => key !== 'said')) fail(`${at} payoff`, "a loyalty quest's pay-off is the companion's loyalty, and its words: said alone");
   });
 
   // Everything marked for a quest is one of its steps.

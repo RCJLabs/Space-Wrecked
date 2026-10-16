@@ -154,6 +154,7 @@ function isResult(result, nodes, done) {
     Array.isArray(changes.sold) &&
     changes.sold.every((sale) => isRecord(sale) && isId(sale.part) && isInt(sale.credits, 0, MAX_CHANGE)) &&
     (changes.standing === undefined || isStandingChanges(changes.standing)) &&
+    (changes.joined === undefined || isId(changes.joined)) &&
     (result.quest === undefined || isQuestNote(result.quest))
   );
 }

@@ -4,13 +4,14 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "d3f9afa13a31";
+const VERSION = "d2011dd74882";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
   "data/balance.json",
   "data/campaign.json",
   "data/colony.json",
+  "data/companions.json",
   "data/contracts.json",
   "data/districts.json",
   "data/encounters.json",
@@ -109,6 +110,7 @@ const FILES = [
   "src/sim/colony.js",
   "src/sim/colonyBuild.js",
   "src/sim/colonyMap.js",
+  "src/sim/companions.js",
   "src/sim/constraints.js",
   "src/sim/contracts.js",
   "src/sim/cover.js",
@@ -171,6 +173,7 @@ const FILES = [
   "src/sim/standing.js",
   "src/sim/styling.js",
   "src/sim/survey.js",
+  "src/sim/talents.js",
   "src/sim/terrain.js",
   "src/sim/traits.js",
   "src/sim/transponder.js",

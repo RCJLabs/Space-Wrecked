@@ -33,6 +33,7 @@ import { SIDES } from './grid.js';
 import { edgeKey, wallAt } from './mapFromShip.js';
 import { shotOdds } from './odds.js';
 import { jobAtRank } from './ranks.js';
+import { talentOrder } from './talents.js';
 import { canSee } from './sight.js';
 import { weldedAt } from './terrain.js';
 
@@ -55,7 +56,10 @@ const MARK_TURNS = 2;
 // A unit's order (its job's, data/jobs.json, at the unit's rank, M32b), or
 // null: enemies have none.
 export function orderOf(unit, rules) {
-  return unit.side === 'crew' ? jobAtRank(rules.jobs.get(unit.kind), unit.rank ?? 0)?.order ?? null : null;
+  if (unit.side !== 'crew') return null;
+  // A loyal companion's is their talent, past rank 2 (M33c, talents.js).
+  if (unit.talent) return talentOrder(rules, unit.talent);
+  return jobAtRank(rules.jobs.get(unit.kind), unit.rank ?? 0)?.order ?? null;
 }
 
 // What a new unit starts a fight with: its order's uses, and nothing on it.

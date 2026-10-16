@@ -25,6 +25,7 @@ import { isId, isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, 
 import { readData } from './data.js';
 import { checkCampaignFiles, checkStartShips } from './validate-campaign.js';
 import { checkFactions } from './validate-factions.js';
+import { checkCompanions } from './validate-companions.js';
 import { checkQuests } from './validate-quests.js';
 
 const SIDES = ['n', 'e', 's', 'w'];
@@ -482,8 +483,10 @@ export function validateData(data) {
     if (ship.tactics !== undefined && ship.party === undefined) fail(where, 'a preset with tactics needs a party for the boarding fights');
   }
   const sides = checkFactions(data, presets, fail);
-  const scripts = checkCampaignFiles(data, { jobIds, enemyIds, traitIds, moduleIds, frameById, encounters: encounterById, presets, sides }, fail);
+  const companionIds = new Set((data.companions?.companions ?? []).map((companion) => companion?.id));
+  const scripts = checkCampaignFiles(data, { jobIds, enemyIds, traitIds, moduleIds, frameById, encounters: encounterById, presets, sides, companions: companionIds }, fail);
   checkQuests(data, { sides, presets, encounters: encounterById }, fail);
+  checkCompanions(data, { sides, jobIds, traitIds }, fail);
   // The starting ships are built only from content that checks out.
   if (!problems.length) checkStartShips(data, scripts, fail);
   return problems;
@@ -942,6 +945,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       `${count(data.encounters.encounters.length, 'encounter')}, ${count(data.ships.ships.length, 'ship preset')}, ` +
       `${count(data.campaign.acts.length, 'act')}, ${count(data.backgrounds.backgrounds.length, 'background')}, ` +
       `${count(data.districts.districts.length, 'district')}, ${count(data.sites.maps.length, 'site map')}, ` +
-      `${count(data.contracts.jobs.length, 'job template')}, ${count(data.sectors.nodes.length, 'kind')} of sector node, ${count(data.worlds.kinds.length, 'kind')} of world, ${count(data.colony.buildings.length, 'colony building')}, ${count(data.colony.builds.length, 'colony build')}, ${count(data.expeditions.kinds.length, 'kind')} of place, ${count(data.events.events.length, 'event')}, ${count(data.factions.sides.length, 'side')}, ${count(data.quests.quests.length, 'quest')})`,
+      `${count(data.contracts.jobs.length, 'job template')}, ${count(data.sectors.nodes.length, 'kind')} of sector node, ${count(data.worlds.kinds.length, 'kind')} of world, ${count(data.colony.buildings.length, 'colony building')}, ${count(data.colony.builds.length, 'colony build')}, ${count(data.expeditions.kinds.length, 'kind')} of place, ${count(data.events.events.length, 'event')}, ${count(data.factions.sides.length, 'side')}, ${count(data.quests.quests.length, 'quest')}, ${count(data.companions.companions.length, 'companion')})`,
   );
 }

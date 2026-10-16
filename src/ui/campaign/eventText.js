@@ -26,7 +26,7 @@ export function eventText(campaign, rules) {
     title: event.title,
     text: event.text,
     choices: event.choices.map((choice) => {
-      const why = choiceProblem(campaign, choice);
+      const why = choiceProblem(campaign, choice, rules);
       const outcomes = choice.outcomes.map((outcome) => ({ chance: outcome.chance, says: effectsText(outcome.effects, campaign, rules) }));
       const sure = outcomes.length === 1;
       const odds = sure ? '' : outcomes.map((outcome) => `${outcome.chance}%`).join(' · ');

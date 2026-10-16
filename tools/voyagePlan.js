@@ -286,7 +286,7 @@ function dearest(campaign, rules, count) {
 export function bestChoice(campaign, rules, event, heat = 'manage', pull = 1) {
   let best = null;
   for (const choice of event.choices) {
-    if (choiceProblem(campaign, choice)) continue;
+    if (choiceProblem(campaign, choice, rules)) continue;
     const worth = choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * effectsWorth(campaign, rules, outcome.effects, heat), 0) + pull * questWorth(campaign, rules, event, choice);
     if (!best || worth > best.worth) best = { choice, worth };
   }
@@ -717,7 +717,7 @@ export function placeChoice(campaign, rules, event) {
     (effects.wound ? PLACE_HP * effects.wound.hp * (effects.wound.all ? squad : 1) : 0);
   let best = null;
   for (const choice of event.choices) {
-    if (choiceProblem(campaign, choice)) continue;
+    if (choiceProblem(campaign, choice, rules)) continue;
     const value = choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * worth(outcome.effects), 0);
     if (!best || value > best.worth) best = { choice, worth: value };
   }

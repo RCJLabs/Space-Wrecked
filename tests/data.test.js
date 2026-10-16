@@ -392,7 +392,7 @@ const cases = [
   ['a trusted side paying less than a friendly one', (d) => (d.balance.trustedPay = 5), /trustedPay must be at least friendlyPay/],
   ['docking heat past the meter', (d) => (d.balance.dockHeat = 80), /dockHeat must be a whole number from 0 to 50/],
   // The quests (M33b).
-  ['a quest that is nobody\'s', (d) => delete quest(d, 'debt').background, /quests\.json quest debt: is a background's thread \(background\) or a side's chain \(side\), one of the two/],
+  ['a quest that is nobody\'s', (d) => delete quest(d, 'debt').background, /quests\.json quest debt: is a background's thread \(background\), a side's chain \(side\) or a companion's loyalty quest \(companion\), one of the three/],
   ['two threads for a background', (d) => (quest(d, 'pardon').background = 'miner'), /quests\.json quest pardon: miner has a thread already/],
   ["a side's chain with no start", (d) => delete quest(d, 'tender').start, /quests\.json quest tender: a side's chain needs its start/],
   ["a side's chain started at a choice its event lacks", (d) => (quest(d, 'tender').start.choice = 'salute'), /quests\.json quest tender start: "fleet-tender" has no choice "salute"/],
@@ -407,7 +407,32 @@ const cases = [
   ["a quest's place too far away", (d) => (quest(d, 'debt').steps[2].place.days = 12), /quests\.json quest debt step 3 place: days must be a whole number from 1 to 9/],
   ["a side's chain easing the pursuer off", (d) => (quest(d, 'tender').payoff = { eased: true, said: 'Off they go.' }), /quests\.json quest tender payoff: standing and eased are the pursuer's/],
   ['a pay-off raising standing to hostile', (d) => (quest(d, 'debt').payoff.standing = 'hostile'), /quests\.json quest debt payoff: standing must be a level to raise the pursuer's side to/],
+  // The companions (M33c).
+  ['a companion of an unknown side', (d) => (companion(d, 'varga').side = 'guild'), /companions\.json companion varga: side: unknown side "guild"/],
+  ['two companions for a side', (d) => (companion(d, 'brandt').side = 'fleet'), /companions\.json companion brandt: fleet has a companion already \(varga\)/],
+  ['a companion of an unknown job', (d) => (companion(d, 'osei').job = 'cook'), /companions\.json companion osei: job: unknown job "cook"/],
+  ['a companion with one trait', (d) => (companion(d, 'osei').traits = ['quick']), /companions\.json companion osei: traits must be 2 different traits/],
+  ['a companion with a face no portrait draws', (d) => (companion(d, 'osei').look.hair = 'wig'), /companions\.json companion osei: look must be a face's every layer/],
+  ['a companion with no past', (d) => delete companion(d, 'halloran').past, /companions\.json companion halloran: past must be a non-empty string/],
+  ["a companion on another side's chain", (d) => (companion(d, 'varga').chain = 'foodrun'), /companions\.json companion varga: chain: "foodrun" must be a side's chain of fleet/],
+  ["a companion signed on by a choice that doesn't do the step", (d) => (quest(d, 'tender').steps[0].done = ['tag']), /companions\.json companion varga: chain: "storespod"'s choice "tagjoin" signs them on, so it must do the step/],
+  ['a choice signing a companion on with no berth', (d) => delete event(d, 'storespod').choices[1].needs, /event storespod choice tagjoin outcome 1 effects: signs a companion on, so the choice must need a berth/],
+  ['a berth needed by a choice that signs no one on', (d) => (event(d, 'storespod').choices[0].needs = { berth: 1 }), /event storespod choice tag: needs a berth, so every outcome must sign someone on/],
+  ['a companion signed on at the wrong event', (d) => (event(d, 'foodrun').choices[0].outcomes[0].effects.joins = 'varga'), /events\.json event foodrun choice carryjoin: signs on varga, who signs on only at their chain's step/],
+  ['an unknown companion signed on', (d) => (event(d, 'runner').choices[0].outcomes[0].effects.joins = 'nobody'), /event runner choice towjoin outcome 1 effects: joins: unknown companion "nobody"/],
+  ["a companion's loyalty quest that is someone else's", (d) => (companion(d, 'varga').loyalty = 'brandt-loyal'), /companions\.json companion varga: loyalty: quest "brandt-loyal" must be marked companion: "varga"/],
+  ['a loyalty quest started at an event', (d) => (quest(d, 'varga-loyal').start = { event: 'fleet-tender', choice: 'help' }), /quests\.json quest varga-loyal: a loyalty quest starts as its companion signs on: no start/],
+  ['a loyalty quest with a step on the run', (d) => quest(d, 'varga-loyal').steps.unshift({ act: 2, event: 'storespod', done: ['tag'], next: 'The pod.' }), /quests\.json quest varga-loyal step 1: a loyalty quest's steps are at the colony/],
+  ["a loyalty quest's pay-off with heat", (d) => (quest(d, 'varga-loyal').payoff.heat = -10), /quests\.json quest varga-loyal payoff: a loyalty quest's pay-off is the companion's loyalty, and its words: said alone/],
+  ['a talent duller than rank 2', (d) => (companion(d, 'osei').talent.order.aim = 10), /companions\.json companion osei talent order: aim must be as sharp as rank 2's \(20\) or sharper/],
+  ['a talent that sharpens nothing', (d) => (companion(d, 'osei').talent.order = { uses: 3 }), /companions\.json companion osei talent order: must sharpen one of rank 2's numbers/],
+  ['a talent setting a number its order lacks', (d) => (companion(d, 'osei').talent.order.hp = 5), /companions\.json companion osei talent order: unknown field "hp"/],
+  ['a talent past its order\'s range', (d) => (companion(d, 'brandt').talent.order.armor = 9), /companions\.json companion brandt talent order: armor must be a whole number from 1 to 5/],
 ];
+
+function companion(d, id) {
+  return d.companions.companions.find((c) => c.id === id);
+}
 
 function quest(d, id) {
   return d.quests.quests.find((q) => q.id === id);
@@ -447,5 +472,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 6 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 15 enemies, 22 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 29 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 26 events, 4 sides, 4 quests\)/);
+  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 6 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 15 enemies, 24 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 29 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 29 events, 4 sides, 11 quests, 4 companions\)/);
 });

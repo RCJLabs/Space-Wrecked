@@ -543,11 +543,98 @@
           "outcomes": [{ "chance": 100, "text": "You tow it to the beacon and log it on the Fleet's band. A lieutenant thanks you by name, and a finder's fee follows.", "effects": { "credits": 25, "standing": { "fleet": 4 } } }]
         },
         {
+          "id": "tagjoin",
+          "label": "Tag it, sign on Varga",
+          "needs": { "berth": 1 },
+          "outcomes": [{ "chance": 100, "text": "You log the pod on the Fleet's band. The tender's bosun, Ines Varga, asks to come aboard, and the lieutenant signs her over in place of a fee.", "effects": { "standing": { "fleet": 4 }, "joins": "varga" } }]
+        },
+        {
           "id": "strip",
           "label": "Strip what's left",
           "outcomes": [{ "chance": 100, "text": "Tinned rations and a crate of filters, the tender's number on every tin. The Fleet will know.", "effects": { "supplies": 8, "credits": 10, "standing": { "fleet": -2 } } }]
         },
         { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "It isn't going anywhere.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "foodrun",
+      "kind": "trader",
+      "quest": "foodrun",
+      "title": "Hall food run",
+      "text": "A union barge riding low with rations for a striking hall, her pilot down with fever. The steward at her helm, Teo Brandt, has flown her this far on a docker's licence and a prayer.",
+      "choices": [
+        {
+          "id": "carryjoin",
+          "label": "Fly it, sign on Teo",
+          "needs": { "supplies": 4, "berth": 1 },
+          "outcomes": [{ "chance": 100, "text": "You fly her in on your pilot's hours. Teo stays aboard: the local can find another steward, he says, and you can't find another quartermaster.", "effects": { "supplies": -4, "standing": { "union": 4 }, "joins": "brandt" } }]
+        },
+        {
+          "id": "carry",
+          "label": "Fly the food run",
+          "needs": { "supplies": 4 },
+          "outcomes": [{ "chance": 100, "text": "The hall eats tonight. Teo shakes every hand aboard, and the local pays what it can for the fuel.", "effects": { "supplies": -4, "credits": 10, "standing": { "union": 4 } } }]
+        },
+        {
+          "id": "take",
+          "label": "Take the rations",
+          "outcomes": [{ "chance": 100, "text": "A hold of union rations, and nobody to stop you but a docker at a helm. The halls will hear of it before you're out of the sector.", "effects": { "supplies": 8, "standing": { "union": -4 } } }]
+        },
+        { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "Teo waves you on, and goes back to reading the barge's manual.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "lifepod",
+      "kind": "distress",
+      "quest": "lifepod",
+      "title": "Company lifepod",
+      "text": "A Con-Reg lifepod on the company band, one aboard: the junior surveyor from the skiff you towed, let go for the fuel the tow cost and put out at the lanes with a lifepod and a reference.",
+      "choices": [
+        {
+          "id": "signon",
+          "label": "Sign Ama on",
+          "needs": { "berth": 1 },
+          "outcomes": [{ "chance": 100, "text": "Ama Osei comes aboard with her survey kit and the Company's reference, which says she is honest to a fault. You'll see.", "effects": { "joins": "osei" } }]
+        },
+        {
+          "id": "drop",
+          "label": "Drop her at the lanes",
+          "needs": { "supplies": 2 },
+          "outcomes": [{ "chance": 100, "text": "You see her to a lanes station with a week's rations. She pays you in Company survey lines, which she shouldn't have and you can sell.", "effects": { "supplies": -2, "credits": 20 } }]
+        },
+        {
+          "id": "report",
+          "label": "Hand her to Recovery",
+          "outcomes": [{ "chance": 100, "text": "Recovery pays a finder's fee on Company property, lifepods included. She doesn't say anything as they take her off.", "effects": { "credits": 15, "standing": { "conreg": 2 } } }]
+        },
+        { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "The pod's beacon blinks on the company band behind you.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "runner",
+      "kind": "distress",
+      "quest": "runner",
+      "title": "Halloran runner",
+      "text": "A Halloran runner on one engine, her crew patched up in the hold by the family's medic. Dez Halloran heard you call the drop in. The family wants him home, and he would rather not go.",
+      "choices": [
+        {
+          "id": "towjoin",
+          "label": "Tow her, sign on Dez",
+          "needs": { "supplies": 3, "berth": 1 },
+          "outcomes": [{ "chance": 100, "text": "You tow her to the family's drop, and Dez stays aboard. Old Halloran sends word that the family will want him back.", "effects": { "supplies": -3, "standing": { "hallorans": 1 }, "joins": "halloran" } }]
+        },
+        {
+          "id": "tow",
+          "label": "Tow her in",
+          "needs": { "supplies": 3 },
+          "outcomes": [{ "chance": 100, "text": "You tow her to the family's drop. Old Halloran sends his thanks, which he never does.", "effects": { "supplies": -3, "standing": { "hallorans": 4 } } }]
+        },
+        {
+          "id": "rob",
+          "label": "Take her cargo",
+          "outcomes": [{ "chance": 100, "text": "Her hold is family business, and now it's yours. Dez watches you do it and says nothing, which the family will hear about.", "effects": { "credits": 30, "standing": { "hallorans": -4 } } }]
+        },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "Dez watches you go from her viewport.", "effects": {} }] }
       ]
     }
   ]

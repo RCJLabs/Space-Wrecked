@@ -14,12 +14,15 @@
 // (travel.js). They keep their background aboard. Signing one on docks the
 // ship at the station (travel.js dockShip).
 // At a station the crew can also let anyone go but the captain, which docks
-// nothing: no one is paid. Pure.
+// nothing: no one is paid. A companion let go ends their loyalty quest
+// (M33c, companions.js). Pure.
 import { int, pick, seedFrom, shuffle } from '../core/rng.js';
 import { maxHp } from './campaign.js';
+import { companionOf } from './companions.js';
 import { crewRoom } from './crew.js';
 import { tally } from './flags.js';
 import { rollLook } from './looks.js';
+import { endCold } from './quests.js';
 import { rankOf } from './ranks.js';
 import { costAt, priceShare } from './standing.js';
 import { dockShip, hereOf, holdOf, onTheRun, tradeHeat } from './travel.js';
@@ -135,10 +138,9 @@ export function dismissPlan(campaign, rules, id) {
 export function dismissCrew(campaign, rules, id) {
   const plan = dismissPlan(campaign, rules, id);
   if (!plan.ok) return plan;
-  return {
-    ok: true,
-    plan,
-    campaign: { ...campaign, crew: campaign.crew.filter((member) => member.id !== id), flags: tally(campaign.flags, { crewDismissed: 1 }) },
-  };
+  const left = { ...campaign, crew: campaign.crew.filter((member) => member.id !== id), flags: tally(campaign.flags, { crewDismissed: 1 }) };
+  // A companion let go ends their loyalty quest, if it is open (M33c).
+  const loyalty = plan.member.companion ? companionOf(rules, plan.member.companion)?.loyalty : null;
+  return { ok: true, plan, campaign: loyalty ? endCold(left, loyalty).campaign : left };
 }
 

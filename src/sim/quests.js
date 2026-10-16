@@ -1,8 +1,9 @@
 // Quests (M33b, ROADMAP §7): work that runs past one job, from
 // data/quests.json. A background's thread starts with its campaign
 // (questShape.js startingQuests); a side's chain starts at a choice of an
-// event on the run (the Fleet's, lending its tender a hand). Each step is
-// done in its own act:
+// event on the run (the Fleet's, lending its tender a hand); from M33c a
+// companion's loyalty quest starts as they sign on (companions.js), and
+// done, they are loyal. Each step is done in its own act:
 //   act 1, a job: a contract of the quest's own, offered at the hangar
 //     above the board's three while the step is open (questJobs). Its
 //     client, site, pay and fight's seed are rolled from the campaign's seed,
@@ -27,6 +28,7 @@
 // 'done' or 'cold'. A quest the campaign lacks hasn't started. Pure.
 import { int, seedFrom } from '../core/rng.js';
 import { atColony, atHangar } from './acts.js';
+import { makeLoyal } from './companions.js';
 import { PAY_STEP } from './economy.js';
 import { withHeat } from './heat.js';
 import { floorOf, moveStanding, pursuerSide, standingWith } from './standing.js';
@@ -121,6 +123,8 @@ export function stepDone(campaign, rules, id) {
     }
   };
   apply(step.effects);
+  // A companion's loyalty quest done, they are loyal (M33c).
+  if (last && quest.companion) next = makeLoyal(next, quest.companion);
   if (last && quest.payoff) {
     const { payoff } = quest;
     apply({ heat: payoff.heat });
