@@ -8,6 +8,8 @@ import { launchProblem } from '../../sim/launch.js';
 import { baseOf, countOfAny } from '../../sim/makers.js';
 import { beginRaid } from '../../sim/raid.js';
 import { rankOf } from '../../sim/ranks.js';
+import { coldAt } from '../../sim/quests.js';
+import { coldWarning, questsText } from './questText.js';
 import { offerText } from './shopText.js';
 import { sidesText } from './standingText.js';
 
@@ -24,6 +26,8 @@ export const RUN_LEVEL_NAMES = { calm: 'Calm', rumors: 'Rumors', hunters: 'Hunte
 //   crew        [{ name, job, hp, max }]: job is blank when it is the name
 //   sides       each side and the crew's standing with it (M33:
 //               standingText.js sidesText)
+//   quests      the quests and where each stands (M33b: questText.js
+//               questsText)
 //   holdings    [[label, value]]: credits, parts on hand and jobs
 //   hint        { tone, text }: what to do next
 //   build       true when a part on hand fixes a failing line
@@ -35,7 +39,8 @@ export const RUN_LEVEL_NAMES = { calm: 'Calm', rumors: 'Rumors', hunters: 'Hunte
 //               saying what stops it starting
 //   shop        true when the district has a shop (economy.js)
 //   launch      { ok, ask }: whether the ship can launch now (launch.js),
-//               and what its first tap asks
+//               and what its first tap asks, with the quests launching
+//               would end (M33b)
 export function hangarText(campaign, rules) {
   const act = actOf(campaign, rules);
   const crew = crewText(campaign, rules);
@@ -61,6 +66,7 @@ export function hangarText(campaign, rules) {
     goal: { ready, lines },
     crew,
     sides: sidesText(campaign, rules),
+    quests: questsText(campaign, rules),
     holdings: [
       ['Credits', campaign.credits.toLocaleString('en')],
       ['Parts on hand', partsText(campaign.parts, rules)],
@@ -70,7 +76,7 @@ export function hangarText(campaign, rules) {
     heat,
     raid,
     shop: Boolean(shop),
-    launch: { ok: !launchProblem(campaign, rules), ask: `Lift off and end act ${campaign.act}? The job board${shop ? ' and the shop stay' : ' stays'} behind. Tap Launch again.` },
+    launch: { ok: !launchProblem(campaign, rules), ask: [`Lift off and end act ${campaign.act}?`, coldWarning(coldAt(campaign, rules, campaign.act), 'Launching'), `The job board${shop ? ' and the shop stay' : ' stays'} behind. Tap Launch again.`].filter(Boolean).join(' ') },
     hint: hangarHint({ act: campaign.act, raid, ready, build, buy, heat, held, shop, pursuer: pursuerOf(campaign, rules)?.name ?? 'The pursuer' }, rules),
   };
 }

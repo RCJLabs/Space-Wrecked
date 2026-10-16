@@ -65,6 +65,23 @@ export function sideRows(sides) {
   });
 }
 
+// The quests' rows, from questText.js questsText (M33b): the quest's name
+// with its next step (or what came of it) under it, and where it stands.
+export function questRows(quests) {
+  if (!quests.length) return [node('li', 'hgr-none', 'No quests.')];
+  return quests.map(({ id, name, state, label, next, line }) => {
+    const row = node('li');
+    row.dataset.quest = id;
+    row.dataset.state = state;
+    row.title = line;
+    row.setAttribute('aria-label', line);
+    const what = node('span', 'hgr-name');
+    what.append(node('span', null, name), node('small', null, next));
+    row.append(what, node('span', 'hgr-num', label));
+    return row;
+  });
+}
+
 // [[label, value]] as the rows of a <dl>; a long value, the parts on hand
 // say, takes its own line.
 export function listRows(lines) {

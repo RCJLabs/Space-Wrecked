@@ -17,6 +17,7 @@ import { icons } from '../icons.js';
 import { boardingObjective, boardingOutcome } from './boardingText.js';
 import { rankUpLines } from './crewJobText.js';
 import { jobOutcome, objectiveText, raidObjective, raidOutcome } from './jobText.js';
+import { questJobEnd, questPlaceEnd } from './questText.js';
 import { jobEndLines } from './standingText.js';
 import { colonyRaidObjective, colonyRaidOutcome, landingNotice } from './raidText.js';
 
@@ -66,7 +67,11 @@ export const campaignFightScreen = {
         if (!defs) return null;
         const { campaign } = game.getState();
         const ranks = rankUpLines(rankUps(campaign, battle, defs), defs);
-        const sides = job() ? jobEndLines(campaign, defs, job(), battle.winner === 'crew') : [];
+        const won = battle.winner === 'crew';
+        // What the fight did to a quest (M33b): a quest's job done, or its
+        // place at the colony won; then the sides.
+        const quests = job() ? questJobEnd(job(), won, campaign, defs) : fightOn()?.boarding && campaign.colony?.trip ? questPlaceEnd(campaign.colony.trip.place, won, campaign, defs) : [];
+        const sides = [...quests, ...(job() ? jobEndLines(campaign, defs, job(), won) : [])];
         return { ...endedAs(battle, log, campaign), ranks, sides };
       },
       onChange(fight, prev) {

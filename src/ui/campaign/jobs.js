@@ -4,14 +4,18 @@
 // twist, who will be there, whom it is for and against (M33) and the pay,
 // with what its client's side adds. A tap picks a job, and Take the
 // job sends the crew: a tap shows it, a second one commits. The board
-// changes only once a job is done or lost.
+// changes only once a job is done or lost. A quest's job (M33b,
+// quests.js questJobs) heads the list, tagged with its quest, and says
+// which step of it it is and what doing it adds.
 import { loadContent } from '../../platform/content.js';
 import { palette } from '../../render/palette.js';
 import { huntersFor, pursuerOf, raidDue } from '../../sim/heat.js';
+import { questJobs } from '../../sim/quests.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { jobText } from './jobText.js';
+import { questJobText } from './questText.js';
 
 // A job the content no longer has.
 const GONE = { title: 'Gone', mission: 'No longer on offer', where: '', pay: '', heat: '', twist: null };
@@ -37,7 +41,9 @@ export const jobsScreen = {
     let defs = null;
     let alive = true;
     let picked = 0;
-    let shown = null; // the board the list shows
+    let shown = null; // the jobs the list shows: the quests' (M33b), then the board's
+    let shownKey = ''; // which they are
+    let quests = 0; // how many of them are the quests'
     let detailed = null; // the job the right side shows
     let rows = [];
     const cleanups = [
@@ -62,8 +68,13 @@ export const jobsScreen = {
     function render(campaign) {
       if (!defs || !campaign) return;
       setText(where, defs.districts.get(defs.backgrounds.get(campaign.background)?.district)?.name ?? '');
-      if (campaign.board !== shown) {
-        shown = campaign.board;
+      const offers = questJobs(campaign, defs);
+      const listed = [...offers, ...campaign.board];
+      const key = listed.map((job) => `${job.contract}:${job.seed}`).join(',');
+      if (key !== shownKey) {
+        shownKey = key;
+        shown = listed;
+        quests = offers.length;
         picked = Math.min(picked, Math.max(0, shown.length - 1));
         build(shown);
       }
@@ -98,7 +109,11 @@ export const jobsScreen = {
         button.type = 'button';
         const top = node('span', 'jobs-top');
         top.append(node('b', null, words.title));
-        if (words.twist) top.append(node('span', 'jobs-twist', words.twist.name));
+        const quest = questJobText(job, defs);
+        if (quest) {
+          button.dataset.quest = job.quest;
+          top.append(node('span', 'jobs-quest', quest.tag));
+        } else if (words.twist) top.append(node('span', 'jobs-twist', words.twist.name));
         button.append(top, node('span', null, [words.mission, words.where].filter(Boolean).join(' · ')), node('span', 'jobs-pay', [words.pay, words.heat].filter(Boolean).join(' · ')));
         return { button, detach: onTap(button, () => pick(i)) };
       });
@@ -125,6 +140,8 @@ export const jobsScreen = {
         facts.append(row);
       };
       fact('The job', words.brief);
+      const quest = questJobText(job, defs);
+      if (quest) fact('Quest', quest.fact);
       if (words.twist) fact('The twist', `${words.twist.name}. ${words.twist.text}`);
       fact('Against', words.against);
       if (words.sides) fact('Sides', words.sides);
@@ -135,8 +152,10 @@ export const jobsScreen = {
     }
 
     function take() {
-      if (!defs || !shown?.[picked]) return;
-      game.dispatch({ type: 'campaign/job/take', index: picked, rules: defs });
+      const job = shown?.[picked];
+      if (!defs || !job) return;
+      if (job.quest) game.dispatch({ type: 'campaign/job/quest', quest: job.quest, rules: defs });
+      else game.dispatch({ type: 'campaign/job/take', index: picked - quests, rules: defs });
     }
 
     let painted = false;

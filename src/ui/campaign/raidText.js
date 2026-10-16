@@ -7,6 +7,7 @@ import { colonyBy } from '../../sim/edges.js';
 import { pursuerOf, runLevel } from '../../sim/heat.js';
 import { colonyPursuer, defendersOf, defensesOf, foundOdds, landingPlan, raidDown, raidIn, raidTake } from '../../sim/raids.js';
 import { byJob } from './crewJobText.js';
+import { easedSaid } from './questText.js';
 
 const LANES = ['near the lanes', 'off the lanes', 'far from the lanes'];
 
@@ -23,7 +24,10 @@ export function raidStatus(campaign, rules) {
   const where = LANES[(campaign.colony.world.lanes ?? 2) - 1] ?? '';
   const line = words?.levels[runLevel(campaign.heat, rules)] ?? '';
   if (!odds) return { label: 'Found', value: `No odds under heat ${rules.balance.rumorHeat}`, ok: true, state: 'quiet', line };
-  return { label: 'Found', value: `${odds}% a day · ${where}`, ok: true, state: 'odds', line };
+  // Once the background's thread is done (M33b), the odds are halved, and
+  // the line says why.
+  const eased = easedSaid(campaign, rules);
+  return { label: 'Found', value: `${odds}% a day · ${where}${eased ? ' · halved' : ''}`, ok: true, state: 'odds', line: eased ? `${line} ${eased.charAt(0).toUpperCase()}${eased.slice(1)}.` : line };
 }
 
 // The colony's defenses for its needs: { label, value, ok }: what fires

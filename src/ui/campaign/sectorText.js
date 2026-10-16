@@ -29,6 +29,8 @@ import { dockHeat, patrolWelcome, pursuerSide, stationSide } from '../../sim/sta
 import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesCost, suppliesOver, supplyCapacity, supplyOffer } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
 import { byJob } from './crewJobText.js';
+import { questOf } from '../../sim/quests.js';
+import { coldWarning, questNodeText, questsText } from './questText.js';
 import { dockSaid, sideColor, sideIs, sideName, sidesText, stationText } from './standingText.js';
 
 // What the sector map shows, for a campaign on the run:
@@ -117,12 +119,15 @@ export function sectorText(campaign, rules) {
       world: node.world ? kindOf(node.world, rules) : null,
       surveyed: surveyed.includes(node.id),
       side: sideOf(node, rules),
+      // A quest's node (M33b), its event still to settle: the quest's name.
+      quest: node.quest && !done.includes(node.id) ? questNodeText(node, rules)?.name ?? null : null,
     })),
     links: sector.links.map(([a, b]) => ({ a, b, near: a === at || b === at })),
     here: placeText(sector, at, rules, { done: done.includes(at) }),
     world: sector.nodes[at].world ? worldSaid(sector.nodes[at].world, rules, surveyed.includes(at)) : null,
     crew: crewText(campaign, rules),
     sides: sidesText(campaign, rules),
+    quests: questsText(campaign, rules),
     station: offer.ok ? stationText(hereOf(campaign), campaign, rules) : null,
     hold: [
       ['Supplies', suppliesRow(campaign, rules)],
@@ -156,8 +161,9 @@ function sideOf(node, rules) {
 // name, with its event's title until the event is settled ("Derelict: Dead
 // hauler"), or its hostile ship's until it is met ("Hostile ship: Pirate
 // cutter"), or a station's side (M33: "Station · The union"); text is its
-// kind's words. Unknown, it says so. A world (M25) says its own kind ("Ice
-// world") and its words.
+// kind's words, or at a quest's node (M33b) the quest's line until its
+// event is settled. Unknown, it says so. A world (M25) says its own kind
+// ("Ice world") and its words.
 export function nodeText(node, rules, { known = true, done = false } = {}) {
   if (!known) return { name: node.name, kind: 'Unknown', text: 'Too far to make out. Come closer, or scan.' };
   if (node.world) return { name: node.name, kind: kindOf(node.world, rules), text: rules.worlds?.kinds.get(node.world.kind)?.text ?? '' };
@@ -170,7 +176,8 @@ export function nodeText(node, rules, { known = true, done = false } = {}) {
   if (done && node.hostile) return { name: node.name, kind: `${what}, gone`, text: 'Nobody here now but the debris.' };
   const side = stationSide(node, rules);
   if (side) return { name: node.name, kind: `${what || name} · ${sideName(side, rules)}`, text: kind?.text ?? '' };
-  return { name: node.name, kind: event ? `${what}: ${event.title}` : done && node.event ? `${what}, been and done` : what, text: kind?.text ?? '' };
+  const quest = event ? questNodeText(node, rules) : null;
+  return { name: node.name, kind: event ? `${what}: ${event.title}` : done && node.event ? `${what}, been and done` : what, text: quest?.line ?? kind?.text ?? '' };
 }
 
 // A node of the sector as nodeText says it; the way into the system past
@@ -468,8 +475,11 @@ function offerText(campaign, rules, offer) {
 // system past the charts.
 function leaveText(campaign, rules) {
   const plan = leavePlan(campaign, rules);
-  const lines = plan.ok ? [...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)] : [plan.error];
-  return { ok: plan.ok, label: 'Jump on', ask: 'Jump on?', title: `On to ${onTo(campaign, rules)}`, lines, tone: plan.check ? 'bad' : plan.ok ? planTone(plan) : 'info' };
+  // Leaving the last sector, the quests still open on the run go cold
+  // (M33b): the plan says so first.
+  const cold = plan.ok ? coldWarning((plan.cold ?? []).map((id) => questOf(rules, id)).filter(Boolean), 'Leaving the charts') : null;
+  const lines = plan.ok ? [...(cold ? [cold] : []), ...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)] : [plan.error];
+  return { ok: plan.ok, label: 'Jump on', ask: 'Jump on?', title: `On to ${onTo(campaign, rules)}`, lines, tone: plan.check ? 'bad' : cold ? 'warn' : plan.ok ? planTone(plan) : 'info' };
 }
 
 // Where the jump point leads: "sector 3", or past the act's last, "the
