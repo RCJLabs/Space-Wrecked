@@ -48,7 +48,7 @@ const MAX_CAPTAINS = 20;
 // The words as the ship lifts off (launch.js), and the pursuer's when it
 // lifts off with a raid at the door.
 const LAUNCH_KEYS = ['text', 'escaped'];
-const PURSUER_KEYS = ['name', 'blurb', 'levels', 'hunters', 'raiders', 'payment', 'run', 'colony'];
+const PURSUER_KEYS = ['name', 'side', 'blurb', 'levels', 'hunters', 'raiders', 'payment', 'run', 'colony'];
 // Heat's levels (src/sim/heat.js), each with the pursuer's words for it:
 // act 1's, and on the run (act 2) its own.
 const HEAT_LEVELS = ['calm', 'rumors', 'hunters', 'raid'];
@@ -71,13 +71,13 @@ const SCRIPT_KEYS = ['frame', 'placements'];
 const PLACEMENT_KEYS = ['type', 'x', 'y', 'rot'];
 const DISTRICT_KEYS = ['id', 'name', 'blurb', 'clients', 'sites', 'shop'];
 const SHOP_KEYS = ['name', 'dealer', 'pitch', 'size', 'parts'];
-const CLIENT_KEYS = ['id', 'name', 'title', 'blurb'];
+const CLIENT_KEYS = ['id', 'name', 'title', 'blurb', 'side'];
 const SITE_KEYS = ['id', 'name', 'map', 'blurb'];
 const MAP_KEYS = ['id', 'name', 'rows'];
 const CONTRACTS_KEYS = ['boardSize', 'twistChance', 'missions', 'twists', 'jobs'];
 const MISSION_KEYS = ['id', 'name', 'brief', 'loud'];
 const TWIST_KEYS = ['id', 'name', 'text', 'enemies', 'hazard', 'patches', 'sight', 'deadline', 'pay', 'missions', 'loud'];
-const JOB_KEYS = ['id', 'title', 'mission', 'crates', 'turns', 'clients', 'sites', 'encounter', 'credits', 'drops', 'once', 'pitch'];
+const JOB_KEYS = ['id', 'title', 'mission', 'crates', 'turns', 'clients', 'sites', 'encounter', 'against', 'credits', 'drops', 'once', 'pitch'];
 const DROPS_KEYS = ['chance', 'parts'];
 // A drop table's weights (drops.js): whole numbers up to this.
 const MAX_WEIGHT = 100;
@@ -96,7 +96,8 @@ const MAX_BOARD = 5;
 const MAX_CREDITS = 9995;
 
 // Checks every campaign file. ids: the content the campaign refers to, as
-// { jobIds, moduleIds, frameById, encounters (id -> enemy list) }. Returns
+// { jobIds, moduleIds, frameById, encounters (id -> enemy list), presets,
+// sides (the sides' ids, validate-factions.js) }. Returns
 // the starting ships that are well formed, as [where, script], for
 // checkStartShips.
 export function checkCampaignFiles(data, ids, fail) {
@@ -106,18 +107,19 @@ export function checkCampaignFiles(data, ids, fail) {
   checkColony(data.colony, data.modules?.modules, fail);
   const nodeKinds = new Set((data.sectors?.nodes ?? []).map((node) => node?.id));
   const places = checkExpeditions(data.expeditions, nodeKinds, ids, fail);
-  const covered = checkEvents(data.events, holding, ids.moduleIds, fail, places);
+  const sides = ids.sides ?? new Set();
+  const covered = checkEvents(data.events, holding, ids.moduleIds, fail, places, sides);
   for (const kind of holding) if (!covered.has(kind)) fail(`sectors.json node ${kind}`, 'holds events, but events.json has none of its kind');
   for (const kind of data.expeditions?.kinds ?? []) {
     if (kind?.held?.chance !== 100 && !covered.has(kind?.id)) fail(`expeditions.json kind ${kind?.id}`, 'has places with events, but events.json has none of its kind');
   }
   checkRecruits(data.recruits, ids, fail);
   const maps = checkSiteMaps(data.sites, fail);
-  const districts = checkDistricts(data.districts, maps, ids, fail);
-  const scripts = checkBackgrounds(data.backgrounds, districts, ids, fail);
+  const districts = checkDistricts(data.districts, maps, { ...ids, sides }, fail);
+  const scripts = checkBackgrounds(data.backgrounds, districts, { ...ids, sides }, fail);
   // Hunters join every job's fight once heat is high enough.
   const hunters = Math.max(0, ...(data.backgrounds?.backgrounds ?? []).map((b) => (Array.isArray(b?.pursuer?.hunters) ? b.pursuer.hunters.length : 0)));
-  checkContracts(data.contracts, districts, maps, { ...ids, hunters }, fail);
+  checkContracts(data.contracts, districts, maps, { ...ids, hunters, sides }, fail);
   return scripts;
 }
 
@@ -236,12 +238,15 @@ function checkSiteMaps(file, fail) {
 // template, and the shop if there is one. Client and site ids are unique
 // across districts, so a job can name them alone. Returns { districts:
 // id -> { clients, sites }, sites: id -> { district, map } }.
-function checkDistricts(file, maps, { moduleIds }, fail) {
+function checkDistricts(file, maps, { moduleIds, sides }, fail) {
   const districts = listOf(file, 'districts', 'districts.json', fail);
   uniqueIds(districts, 'districts.json', fail);
   const byId = new Map();
   const sites = new Map();
   const clients = new Set();
+  // The side each client works for, if any (M33): the jobs they offer are
+  // for it.
+  const clientSides = new Map();
   districts.forEach((district, i) => {
     const where = `districts.json ${district.id ?? `#${i}`}`;
     knownKeys(district, DISTRICT_KEYS, where, fail);
@@ -259,6 +264,10 @@ function checkDistricts(file, maps, { moduleIds }, fail) {
         own.clients.add(client.id);
       }
       if (!isText(client.name) || !isText(client.title) || !isText(client.blurb)) fail(at, 'name, title and blurb must be non-empty strings');
+      if (client.side !== undefined) {
+        if (!sides.has(client.side)) fail(at, `side: unknown side "${client.side}" (factions.json)`);
+        else if (isId(client.id)) clientSides.set(client.id, client.side);
+      }
     }
     for (const site of listOf(district, 'sites', where, fail)) {
       const at = `${where} site ${site.id ?? '?'}`;
@@ -278,7 +287,7 @@ function checkDistricts(file, maps, { moduleIds }, fail) {
     if (district.shop !== undefined) checkShop(district.shop, `${where} shop`, own.clients, moduleIds, fail);
     if (isId(district.id)) byId.set(district.id, own);
   });
-  return { districts: byId, sites };
+  return { districts: byId, sites, clientSides };
 }
 
 // A district's shop (src/sim/economy.js): its name, the client who runs
@@ -302,7 +311,7 @@ function checkShop(shop, where, clients, moduleIds, fail) {
 // as they lift off, their district, and what a campaign from it starts
 // with: credits, parts held, the crew by job, and the ship as a script of
 // placements (tools/build-ship.js).
-function checkBackgrounds(file, { districts }, { jobIds, enemyIds, moduleIds, frameById, encounters, presets = new Map() }, fail) {
+function checkBackgrounds(file, { districts }, { jobIds, enemyIds, moduleIds, frameById, encounters, presets = new Map(), sides }, fail) {
   const backgrounds = listOf(file, 'backgrounds', 'backgrounds.json', fail);
   uniqueIds(backgrounds, 'backgrounds.json', fail);
   if (!backgrounds.length) fail('backgrounds.json', 'needs at least one background');
@@ -311,7 +320,7 @@ function checkBackgrounds(file, { districts }, { jobIds, enemyIds, moduleIds, fr
     const where = `backgrounds.json ${background.id ?? `#${i}`}`;
     knownKeys(background, BACKGROUND_KEYS, where, fail);
     if (!isText(background.name) || !isText(background.blurb)) fail(where, 'name and blurb must be non-empty strings');
-    checkPursuer(background.pursuer, `${where} pursuer`, { enemyIds, encounters, presets }, fail);
+    checkPursuer(background.pursuer, `${where} pursuer`, { enemyIds, encounters, presets, sides }, fail);
     if (!isListIn(background.captains, 1, MAX_CAPTAINS) || !background.captains.every((name) => isText(name) && name.trim().length <= MAX_NAME)) {
       fail(where, `captains must be a list of 1 to ${MAX_CAPTAINS} names of up to ${MAX_NAME} letters`);
     }
@@ -328,17 +337,18 @@ function checkBackgrounds(file, { districts }, { jobIds, enemyIds, moduleIds, fr
   return scripts;
 }
 
-// The pursuer: who they are, their words for each level of heat, the
-// hunters they send along on jobs once heat is high, the encounter they
-// raid the hangar with, the payment that buys some heat off (none for a
-// pursuer that takes no payments, M30), and how they hunt the ship on the
-// run.
-function checkPursuer(pursuer, where, { enemyIds, encounters, presets }, fail) {
+// The pursuer: who they are and the side they are on (M33: a campaign
+// starts hostile with it), their words for each level of heat, the hunters
+// they send along on jobs once heat is high, the encounter they raid the
+// hangar with, the payment that buys some heat off (none for a pursuer that
+// takes no payments, M30), and how they hunt the ship on the run.
+function checkPursuer(pursuer, where, { enemyIds, encounters, presets, sides }, fail) {
   if (!isObject(pursuer)) {
-    fail(where, 'must be { name, blurb, levels, hunters, raiders, payment?, run, colony }');
+    fail(where, 'must be { name, side, blurb, levels, hunters, raiders, payment?, run, colony }');
     return;
   }
-  checkRun(pursuer.run, `${where} run`, presets, fail);
+  if (!sides.has(pursuer.side)) fail(where, 'side must be one of the sides in factions.json: the one a campaign starts hostile with');
+  checkRun(pursuer.run, `${where} run`, presets, pursuer.side, fail);
   checkPursuerColony(pursuer.colony, `${where} colony`, encounters, fail);
   knownKeys(pursuer, PURSUER_KEYS, where, fail);
   if (!isText(pursuer.name) || !isText(pursuer.blurb)) fail(where, 'name and blurb must be non-empty strings');
@@ -364,9 +374,9 @@ function checkPursuer(pursuer, where, { enemyIds, encounters, presets }, fail) {
 
 // The pursuer on the run (act 2, src/sim/hunt.js): its words for each of
 // the run's levels of heat, the ship presets its hunters and its task force
-// fly (each with tactics for the approach and a party to board with), and
-// its words once they have been faced.
-function checkRun(run, where, presets, fail) {
+// fly (each with tactics for the approach and a party to board with, and on
+// the pursuer's side), and its words once they have been faced.
+function checkRun(run, where, presets, side, fail) {
   if (!isObject(run)) {
     fail(where, 'must be { levels, hunters, taskForce, faced }');
     return;
@@ -380,6 +390,7 @@ function checkRun(run, where, presets, fail) {
     const preset = presets.get(run[key]);
     if (!preset) fail(where, `${key}: unknown ship preset "${run[key]}"`);
     else if (!preset.tactics || !preset.party) fail(where, `${key}: the ${preset.name} needs tactics for the approach and a party for the boardings`);
+    else if (preset.side !== side) fail(where, `${key}: the ${preset.name} must be on the pursuer's side, "${side}" (ships.json side)`);
   }
   if (!isText(run.faced)) fail(where, 'faced must be a non-empty string');
 }
@@ -451,7 +462,7 @@ function checkStart(start, where, { jobIds, moduleIds, frameById }, fail) {
 // one district, against an encounter that fits every site's spawn tiles
 // (with any twist's extra enemy), for credits in steps of PAY_STEP and
 // maybe a part from its drop table.
-function checkContracts(file, { districts, sites }, maps, { moduleIds, encounters, hunters }, fail) {
+function checkContracts(file, { districts, sites, clientSides }, maps, { moduleIds, encounters, hunters, sides }, fail) {
   const where = 'contracts.json';
   if (!isObject(file)) {
     fail(where, 'must be an object with the board, missions, twists and jobs');
@@ -520,6 +531,12 @@ function checkContracts(file, { districts, sites }, maps, { moduleIds, encounter
     else if (home) for (const id of job.clients) if (!districts.get(home)?.clients.has(id)) fail(at, `client "${id}" isn't in its sites' district`);
     if (homes.size === 1) perDistrict.set(home, (perDistrict.get(home) ?? 0) + 1);
     if (new Set(job.sites).size !== job.sites?.length || new Set(job.clients).size !== job.clients?.length) fail(at, 'sites and clients are listed once each');
+    // The side its enemies are on (M33): never a side one of its clients
+    // works for.
+    if (job.against !== undefined) {
+      if (!sides.has(job.against)) fail(at, `against: unknown side "${job.against}" (factions.json)`);
+      else if (Array.isArray(job.clients) && job.clients.some((id) => clientSides.get(id) === job.against)) fail(at, `is against ${job.against}, the side one of its clients works for`);
+    }
     // Who: the encounter, at its biggest with a twist, fits every site.
     const enemies = encounters.get(job.encounter);
     if (!enemies) fail(at, `unknown encounter "${job.encounter}"`);

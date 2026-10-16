@@ -5,9 +5,11 @@
 // M24, the chance the pursuer's hunters wait where a jump comes out
 // (hunt.js), a day's rest or hiding (regroup.js) and the transponder swap
 // (transponder.js); since M25, the system past the charts: its worlds, the
-// survey (survey.js) and settling (settle.js). The event card's words are
-// eventText.js's, and the approach screen's approachText.js's. rules are
-// the content tables (src/sim/defs.js).
+// survey (survey.js) and settling (settle.js); since M33, the crew's
+// standing with each side, a station's side and what it charges, and the
+// heat of docking with the pursuer's side (standingText.js). The event
+// card's words are eventText.js's, and the approach screen's
+// approachText.js's. rules are the content tables (src/sim/defs.js).
 import { actOf, canRefit } from '../../sim/campaign.js';
 import { MAX_RATING, RATINGS } from '../../sim/gen/system.js';
 import { withHeat } from '../../sim/heat.js';
@@ -22,9 +24,11 @@ import { repairPlan, wrecksToRepair } from '../../sim/repair.js';
 import { settlePlan } from '../../sim/settle.js';
 import { surveyPlan } from '../../sim/survey.js';
 import { swapPlan } from '../../sim/transponder.js';
-import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesOver, supplyCapacity, supplyOffer } from '../../sim/travel.js';
+import { patrolWelcome, stationSide } from '../../sim/standing.js';
+import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesCost, suppliesOver, supplyCapacity, supplyOffer } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
 import { byJob } from './crewJobText.js';
+import { sideColor, sideIs, sideName, sidesText, stationText } from './standingText.js';
 
 // What the sector map shows, for a campaign on the run:
 //   act, where   "Act 2 · The run", "Sector 1 of 5 · Breaker's Yard" ("The
@@ -38,11 +42,16 @@ import { byJob } from './crewJobText.js';
 //                event is settled, hunt the chance the hunters wait there
 //                for a jump that reaches it (0 out of reach); world a world's
 //                kind by name ("Ice world"), or null, and surveyed whether it
-//                has been
+//                has been; side, a station's side (M33): { name, color }, or
+//                null for nobody's
 //   links        [{ a, b, near }]: near when it joins the node the ship is at
 //   here         the node the ship is at, as nodeText says it
 //   world        the world the ship is at, as worldSaid says it, or null
 //   crew         as the hangar's
+//   sides        each side and the crew's standing with it (M33), as the
+//                hangar's
+//   station      the station the ship is at, if it is a side's (M33):
+//                standingText.js stationText, else null
 //   hold         [[label, value]]: supplies and credits, what the med bay
 //                heals, if there is one working, and the parts wrecked
 //                aboard, if any
@@ -105,11 +114,14 @@ export function sectorText(campaign, rules) {
       hunt: hunt(node.id),
       world: node.world ? kindOf(node.world, rules) : null,
       surveyed: surveyed.includes(node.id),
+      side: sideOf(node, rules),
     })),
     links: sector.links.map(([a, b]) => ({ a, b, near: a === at || b === at })),
     here: placeText(sector, at, rules, { done: done.includes(at) }),
     world: sector.nodes[at].world ? worldSaid(sector.nodes[at].world, rules, surveyed.includes(at)) : null,
     crew: crewText(campaign, rules),
+    sides: sidesText(campaign, rules),
+    station: offer.ok ? stationText(hereOf(campaign), campaign, rules) : null,
     hold: [
       ['Supplies', suppliesRow(campaign, rules)],
       ['Credits', campaign.credits.toLocaleString('en')],
@@ -131,11 +143,19 @@ export function sectorText(campaign, rules) {
   };
 }
 
+// A station's side, for the chart (M33): { name, color }, or null for
+// nobody's and for a node that isn't a station.
+function sideOf(node, rules) {
+  const side = stationSide(node, rules);
+  return side ? { name: sideName(side, rules), color: sideColor(side, rules) } : null;
+}
+
 // A node: { name, kind, text }. kind is its kind's name, unless that is its
 // name, with its event's title until the event is settled ("Derelict: Dead
 // hauler"), or its hostile ship's until it is met ("Hostile ship: Pirate
-// cutter"); text is its kind's words. Unknown, it says so. A world (M25)
-// says its own kind ("Ice world") and its words.
+// cutter"), or a station's side (M33: "Station · The union"); text is its
+// kind's words. Unknown, it says so. A world (M25) says its own kind ("Ice
+// world") and its words.
 export function nodeText(node, rules, { known = true, done = false } = {}) {
   if (!known) return { name: node.name, kind: 'Unknown', text: 'Too far to make out. Come closer, or scan.' };
   if (node.world) return { name: node.name, kind: kindOf(node.world, rules), text: rules.worlds?.kinds.get(node.world.kind)?.text ?? '' };
@@ -146,6 +166,8 @@ export function nodeText(node, rules, { known = true, done = false } = {}) {
   const what = name === node.name ? '' : name;
   if (ship) return { name: node.name, kind: `${what}: ${ship.name}`, text: kind?.text ?? '' };
   if (done && node.hostile) return { name: node.name, kind: `${what}, gone`, text: 'Nobody here now but the debris.' };
+  const side = stationSide(node, rules);
+  if (side) return { name: node.name, kind: `${what || name} · ${sideName(side, rules)}`, text: kind?.text ?? '' };
   return { name: node.name, kind: event ? `${what}: ${event.title}` : done && node.event ? `${what}, been and done` : what, text: kind?.text ?? '' };
 }
 
@@ -301,7 +323,8 @@ export function jumpText(campaign, rules, id) {
   if (!plan.ok) return { ok: false, long: false, label: 'Jump', head: plan.check ? "Can't leave" : 'Out of reach', title: target.name, node, lines: [plan.error], tone: plan.check ? 'bad' : 'info', way: [], left: 0, hungry: false, hunt: 0, world };
   const long = plan.kind === 'long';
   const label = long ? 'Long jump' : 'Jump';
-  const lines = [...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)];
+  const known = knownNodes(campaign.run, rules).has(id) && !campaign.run.done.includes(id);
+  const lines = [...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...dockLine(campaign, rules, plan, target), ...patrolLine(campaign, rules, known ? target : null), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)];
   if (long) lines.push('A long jump passes the node between, and the pursuer loses the trail.');
   const between = long ? linked(sector, at).find((next) => linked(sector, next).includes(id)) : null;
   const way = long ? [at, between, id] : [at, id];
@@ -309,10 +332,28 @@ export function jumpText(campaign, rules, id) {
 }
 
 // A plan's tone: hunger, or the hunters certain, is bad; supplies left
-// behind, or the hunters likely, a warning.
+// behind, the hunters likely, or docking with the pursuer's side (M33), a
+// warning.
 function planTone(plan) {
   if (plan.hungry || plan.hunt?.chance >= 100) return 'bad';
-  return plan.left || plan.hunt?.chance ? 'warn' : 'info';
+  return plan.left || plan.hunt?.chance || plan.dock ? 'warn' : 'info';
+}
+
+// A side's patrol at a node, once known (M33): how it will greet the crew,
+// by the crew's standing with its side, as a line, or none.
+function patrolLine(campaign, rules, node) {
+  const ship = node?.hostile ? rules.ships.get(node.hostile.ship) : null;
+  const welcome = patrolWelcome(campaign, rules, ship);
+  if (!welcome) return [];
+  const side = capital(sideIs(ship.side, rules));
+  return [welcome === 'waved' ? `${side} friendly with you: the ${ship.name.toLowerCase()} will wave you through.` : `${side} hostile to you: the ${ship.name.toLowerCase()} will open fire before you can act.`];
+}
+
+// Docking at a station of the pursuer's side (M33): a line, or none.
+function dockLine(campaign, rules, plan, node) {
+  if (!plan.dock) return [];
+  const after = withHeat(withHeat(campaign.heat, plan.heat), plan.dock);
+  return [`${capital(sideIs(stationSide(node, rules), rules))} after you, and this is their station: docking adds ${plan.dock} heat, to ${after}.`];
 }
 
 // The hunters where a jump comes out (hunt.js), once heat there is at
@@ -399,13 +440,16 @@ function heatLine(campaign, plan) {
 }
 
 // The station's supplies: a jump's worth, and as many as the holds and
-// the credits take, each two taps.
-function offerText(campaign, rules, { price, room, most }) {
+// the credits take, each two taps, at the station's share of the price
+// (M33).
+function offerText(campaign, rules, offer) {
+  const { price, share, room, most } = offer;
   const each = jumpSupplies(campaign, rules);
   const counts = [...new Set([Math.min(each, most), most])].filter((count) => count > 0);
-  const cost = (count) => `${count * price} credit${count * price === 1 ? '' : 's'}`;
+  const credits = (n) => `${n} credit${n === 1 ? '' : 's'}`;
+  const cost = (count) => credits(suppliesCost(offer, count));
   return {
-    line: `Supplies, ${price} credit${price === 1 ? '' : 's'} each. The holds take ${room} more.`,
+    line: `Supplies, ${credits(price)} each${share === 100 ? '' : `, ${share}% here`}. The holds take ${room} more.`,
     why: !room ? 'The holds are full.' : !most ? `You have ${campaign.credits} credits.` : null,
     buys: counts.map((count) => ({
       count,
@@ -481,4 +525,8 @@ function systemHint(campaign, rules) {
   const survey = surveyPlan(campaign, rules);
   if (survey.ok) return { tone: 'good', text: `Survey shows what ${here.name} is worth, for ${survey.free ? 'nothing' : "a day's supplies"}. Or Settle here as it is.` };
   return { tone: 'warn', text: `Too few supplies for a survey: settle here, or jump to another world.` };
+}
+
+function capital(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

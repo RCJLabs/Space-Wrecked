@@ -23,6 +23,8 @@
 //                             (data/events.json drops)
 //   sell                      that many parts on hand sold, the dearest
 //                             first, at what the shop pays (economy.js)
+//   standing { [side]: by }   the crew's standing with each side moved
+//                             (standing.js, M33); only on the run
 // The run keeps the nodes whose events are settled and the last one
 // settled, until the next jump (travel.js). The flags count the events
 // settled. Pure: every roll is the campaign's.
@@ -32,9 +34,10 @@ import { pickWeighted } from './drops.js';
 import { sellPriceOf } from './economy.js';
 import { withHeat } from './heat.js';
 import { tally } from './flags.js';
+import { moveStanding } from './standing.js';
 import { openEvent, supplyCapacity } from './travel.js';
 
-export const EFFECTS = ['credits', 'supplies', 'heat', 'materials', 'wound', 'part', 'drop', 'sell'];
+export const EFFECTS = ['credits', 'supplies', 'heat', 'materials', 'wound', 'part', 'drop', 'sell', 'standing'];
 export const NEEDS = ['credits', 'supplies', 'parts'];
 
 // The parts on hand, counted.
@@ -93,11 +96,12 @@ export function chooseEvent(campaign, rules, id) {
 // An outcome's effects on the campaign: { campaign, changes }. changes say
 // what they came to: { credits, supplies, heat, materials } as added,
 // wounds [{ id, hp }] as lost, parts [type] as gained, sold [{ part,
-// credits }]. among: the ids a wound can fall on (a trip's squad), or null
-// for the whole crew.
+// credits }], standing as moved (standing.js moveStanding's changes).
+// among: the ids a wound can fall on (a trip's squad), or null for the
+// whole crew.
 export function applyEffects(campaign, rules, effects, { among = null } = {}) {
   let next = { ...campaign };
-  const changes = { credits: 0, supplies: 0, heat: 0, materials: 0, wounds: [], parts: [], sold: [] };
+  const changes = { credits: 0, supplies: 0, heat: 0, materials: 0, wounds: [], parts: [], sold: [], standing: [] };
   // What the holds take: in act 3, the colony's stores (colony.js).
   const room = () => (next.colony ? storesOf(next, rules).total : supplyCapacity(next.ship, rules, next.crew));
   if (effects.credits) {
@@ -164,6 +168,11 @@ export function applyEffects(campaign, rules, effects, { among = null } = {}) {
     next.credits += credits;
     changes.credits += credits;
     changes.sold.push({ part: dearest, credits });
+  }
+  if (effects.standing) {
+    const moved = moveStanding(next, rules, effects.standing);
+    next = moved.campaign;
+    changes.standing = moved.changes;
   }
   return { campaign: next, changes };
 }

@@ -271,6 +271,16 @@ export const trims = {
   white: '#eef3fb',
 };
 
+// The sides' colors (M33): data/factions.json gives each side one by name,
+// for its mark beside the side's name on the panels, the job board and the
+// chart.
+export const sideColors = {
+  yellow: '#e3b341',
+  blue: '#7ea6ff',
+  magenta: '#d77ad1',
+  brick: '#e2735a',
+};
+
 // A skin with a ship's paint and trim over it; ones it doesn't know leave
 // the skin's own.
 export function paintSkin(skin, paint, trim) {

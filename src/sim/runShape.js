@@ -5,6 +5,7 @@ import { BOARDINGS, isOrder, OUTCOMES } from './approach.js';
 import { isShipData } from './builder.js';
 import { LANES, MAX_RATING, RATINGS } from './gen/system.js';
 import { WRECKS } from './mapFromShip.js';
+import { isStandingChanges } from './standing.js';
 
 // A sector's nodes, and the names of places in it: sector names and node
 // names both fit this (validate-sectors.js holds the data to it).
@@ -90,14 +91,19 @@ export function isWorld(world) {
 // hostile ship there, with both sides' damage and wrecks, and its outcome
 // once it is over (when the node is settled, and not before); or against
 // the pursuer's hunters (hunt.js), wherever they found the ship, which
-// settle nothing.
+// settle nothing. A side's patrol (M33) waved the ship through, ending it
+// before round 1, or fired first, its volley the last before round 1 with
+// no order of the player's; the hunters are never a patrol.
 function isApproach(approach, nodes, at, done) {
   if (!isRecord(approach) || approach.node !== at || typeof approach.hunt !== 'boolean' || !(approach.hunt || nodes[at].hostile)) return false;
-  const { enemy, them, you, round, fired, last, outcome } = approach;
+  const { enemy, them, you, round, fired, last, outcome, patrol } = approach;
+  if (!(patrol === null || (!approach.hunt && (patrol === 'waved' || patrol === 'fired')))) return false;
+  if ((patrol === 'waved') !== (outcome?.kind === 'waved')) return false;
   if (!isRecord(enemy) || !isId(enemy.ship) || !isText(enemy.name) || !isInt(enemy.crew, 1, MAX_CREW)) return false;
   if (!isRecord(them) || !isShipData(them.ship) || !isSide(them) || !isRecord(you) || !isSide(you)) return false;
   if (!isInt(round, 1, MAX_ROUNDS) || typeof fired !== 'boolean') return false;
-  if (last !== null && !(isRecord(last) && isOrder(last.order) && isOrder(last.intent) && Array.isArray(last.events) && last.events.every(isRecord))) return false;
+  const opening = patrol === 'fired' && round === 1;
+  if (last !== null && !(isRecord(last) && (isOrder(last.order) || (opening && last.order === null)) && isOrder(last.intent) && Array.isArray(last.events) && last.events.every(isRecord))) return false;
   if (approach.hunt) return outcome === null || isOutcome(outcome);
   if (outcome === null) return !done.includes(at);
   return done.includes(at) && isOutcome(outcome);
@@ -122,7 +128,8 @@ function isOutcome(outcome) {
   return (
     isRecord(changes) && isInt(changes.credits, -MAX_CHANGE, MAX_CHANGE) && isInt(changes.heat, -MAX_CHANGE, MAX_CHANGE) &&
     Array.isArray(changes.parts) && changes.parts.every(isId) && isLoss(changes.lost) &&
-    Array.isArray(changes.patched) && changes.patched.every((uid) => isInt(uid, 0, MAX_CHANGE))
+    Array.isArray(changes.patched) && changes.patched.every((uid) => isInt(uid, 0, MAX_CHANGE)) &&
+    (changes.standing === undefined || isStandingChanges(changes.standing))
   );
 }
 
@@ -140,7 +147,8 @@ function isResult(result, nodes, done) {
     Array.isArray(changes.parts) &&
     changes.parts.every(isId) &&
     Array.isArray(changes.sold) &&
-    changes.sold.every((sale) => isRecord(sale) && isId(sale.part) && isInt(sale.credits, 0, MAX_CHANGE))
+    changes.sold.every((sale) => isRecord(sale) && isId(sale.part) && isInt(sale.credits, 0, MAX_CHANGE)) &&
+    (changes.standing === undefined || isStandingChanges(changes.standing))
   );
 }
 

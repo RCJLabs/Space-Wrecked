@@ -2,14 +2,17 @@
 // ship's order for the round, every order the player can give with its
 // odds, what the last round came to, and how it ended, with the boarding
 // fight it ended in, if any (boardingText.js). The pursuer's hunters (M24,
-// src/sim/hunt.js) say whose they are, and what facing them did to heat.
-// The rules are src/sim/approach.js's, played by src/sim/encounter.js.
-// rules are the content tables (src/sim/defs.js).
+// src/sim/hunt.js) say whose they are, and what facing them did to heat. A
+// side's patrol (M33) says its words as it waves the ship through or opens
+// fire, and the end says what striking a side's ship cost with it
+// (standingText.js). The rules are src/sim/approach.js's, played by
+// src/sim/encounter.js. rules are the content tables (src/sim/defs.js).
 import { AIMS, choicesFor, closeChance, FACED, fleeChance, sideStats } from '../../sim/approach.js';
 import { approachIntent, approachState } from '../../sim/encounter.js';
 import { pursuerOf } from '../../sim/heat.js';
 import { boardingStakes } from './boardingText.js';
 import { actTitle, heatText } from './hubText.js';
+import { changeLines, patrolWords } from './standingText.js';
 
 // What each kind of module is called, aimed at.
 const AIM_NAMES = { weapons: 'guns', engines: 'engines', shields: 'shields', reactor: 'reactor' };
@@ -25,7 +28,9 @@ const WRECK_WORDS = { fire: 'on fire', vacuum: 'open to vacuum', rubble: 'full o
 //                       it is over)
 //   orders              [{ key, order, label, small, ok, why, ask, text }]:
 //                       the four kinds to fire at, evade, flee and close
-//   last                the last round, as lines, or []
+//   last                the last round, as lines, or []; before round 1,
+//                       a patrol's opening volley (M33)
+//   lastHead            what last is: "Last round", or "They opened fire"
 //   outcome             null while it goes on, else { title, lines, board
 //                       ('you' or 'them': the ship that is boarded, or
 //                       null), boarding (the fight that is due:
@@ -48,8 +53,9 @@ export function approachText(campaign, rules) {
     intent: intent ? intentText(intent, state, theirName, rules) : null,
     orders: intent ? ordersText(state, intent, theirName, rules) : [],
     last: approach.last ? roundLines(approach.last, state, theirName, rules) : [],
+    lastHead: approach.last?.order === null ? 'They opened fire' : 'Last round',
     outcome,
-    hint: outcome ? outcomeHint(outcome) : approach.last ? { tone: 'info', text: '' } : openingHint(approach, campaign, rules),
+    hint: outcome ? outcomeHint(outcome) : approach.last?.order === null ? patrolHint(approach, rules) : approach.last ? { tone: 'info', text: '' } : openingHint(approach, campaign, rules),
   };
 }
 
@@ -186,7 +192,8 @@ function outcomeText(approach, campaign, rules) {
   let title;
   let board = null;
   const stakes = boardingStakes(campaign, rules);
-  if (kind === 'escaped') title = 'You got away.';
+  if (kind === 'waved') title = `The ${name} waves you through.`;
+  else if (kind === 'escaped') title = 'You got away.';
   else if (kind === 'fled') title = `The ${name} ran.`;
   else if (kind === 'parted') title = `The ${name} breaks off, and the ships part.`;
   else if (kind === 'adrift') title = 'Both ships drift, dead. The crews patch up and part.';
@@ -198,6 +205,7 @@ function outcomeText(approach, campaign, rules) {
     title = how === 'closed' ? `The ${name} grapples on and boards you.` : `Dead in space: the ${name} boards you.`;
     board = 'you';
   }
+  if (kind === 'waved') lines.push(patrolWords(approach, rules) ?? 'Nobody wants a fight today.');
   if (stakes) lines.push(...stakes.lines);
   const found = changes.parts.map((type) => `${article(partName(type))} ${partName(type)}`);
   if (found.length) lines.push(`Stripped: ${found.join(', ')}.`);
@@ -210,7 +218,14 @@ function outcomeText(approach, campaign, rules) {
   const wrecked = Object.keys(campaign.wrecks).map((uid) => partName(campaign.ship.modules.find((module) => module.uid === Number(uid))?.type));
   if (changes.patched.length) lines.push(`The crew gets ${changes.patched.map((uid) => `the ${partName(campaign.ship.modules.find((module) => module.uid === uid)?.type).toLowerCase()}`).join(' and ')} going again.`);
   if (wrecked.length) lines.push(`Wrecked aboard until a station repairs it: ${wrecked.join(', ')}.`);
+  lines.push(...changeLines(changes.standing, rules));
   return { title, lines, board, boarding: stakes };
+}
+
+// A side's patrol that opened fire before the first round (M33): its words,
+// and how orders are given.
+function patrolHint(approach, rules) {
+  return { tone: 'bad', text: `${patrolWords(approach, rules) ?? 'They opened fire.'} Tap an order to see its odds; tap it again to give it.` };
 }
 
 // What to do as it opens: the hunters, whose they are and what facing

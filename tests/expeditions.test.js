@@ -143,7 +143,7 @@ test("at the place: the event decided, a wound only ever on the squad; then home
   // Skim the face: a sure 5 materials.
   const chose = chooseAtPlace(out, rules, 'skim');
   assert.equal(chose.ok, true, chose.error);
-  assert.deepEqual(chose.result, { event: 'rich-seam', choice: 'skim', outcome: 0, roll: null, changes: { credits: 0, supplies: 0, heat: 0, materials: 5, wounds: [], parts: [], sold: [] } });
+  assert.deepEqual(chose.result, { event: 'rich-seam', choice: 'skim', outcome: 0, roll: null, changes: { credits: 0, supplies: 0, heat: 0, materials: 5, wounds: [], parts: [], sold: [], standing: [] } });
   const done = chose.campaign;
   assert.deepEqual([done.colony.materials, done.colony.trip.done, done.colony.trip.result, done.flags.placeEvents, done.flags.tripMaterials], [25, true, chose.result, 1, 5]);
   assert.equal(done.rng, out.rng, 'a sure thing rolls nothing');
@@ -270,7 +270,7 @@ test('saves: v22 for the places and the trip; a v21 colony opens with no trip, i
   const opened = parseSave(JSON.stringify({ version: 21, data: old({ ...listed, colony: v21colony }) }));
   assert.equal(opened.ok, true, opened.error);
   // 24 since M32's orders in a fight.
-  assert.equal(SAVE_VERSION, 25);
+  assert.equal(SAVE_VERSION, 26);
   const reopened = opened.save.data.campaign;
   assert.deepEqual([reopened.colony.places, reopened.colony.trip], [[], null]);
   // The colony screen asks for its places, and they are the seed's.

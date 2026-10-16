@@ -46,8 +46,12 @@ export const AIMS = Object.keys(AIM_TAGS);
 export const ORDERS = ['fire', 'evade', 'flee', 'close'];
 // How an approach can end: the player gets away, the other ship gets away,
 // the player boards it, it boards the player, it blows up, both are
-// disabled and drift apart, or the last round passes.
-export const OUTCOMES = ['escaped', 'fled', 'boarded', 'boardedBy', 'destroyed', 'adrift', 'parted'];
+// disabled and drift apart, or the last round passes. From M33 a side's
+// patrol can also wave a crew it is friendly with through before the first
+// round (encounter.js, standing.js).
+export const OUTCOMES = ['escaped', 'fled', 'boarded', 'boardedBy', 'destroyed', 'adrift', 'parted', 'waved'];
+// The outcomes a round can end in: all but a patrol's waving through.
+export const ROUND_OUTCOMES = OUTCOMES.filter((kind) => kind !== 'waved');
 // The outcomes that are boardings, and whose ship the fight is on: 'them'
 // when the player boards her, 'you' when she boards the player.
 export const BOARDINGS = { boarded: 'them', boardedBy: 'you' };
@@ -256,6 +260,20 @@ export function playRound(state, order, rng, rules) {
   }
   if (state.round >= rules.balance.approachRounds) return end('parted', null, fired);
   return { ok: true, you, them, round: state.round + 1, rng: r, intent, events, fired, outcome: null };
+}
+
+// The other ship's volley before the first round (M33: a side's patrol
+// opening fire on a crew it is hostile to, encounter.js): every working gun
+// at the first kind its tactics aim at that the player has working, the
+// player not evading. Returns { you (the player's side after it), rng,
+// events: [the volley], fired }; with no guns, or nothing to aim at, no
+// volley (events []).
+export function openingVolley(state, rng, rules) {
+  const them = sideStats(state.them, rules);
+  const at = them.guns ? [...state.tactics.aim, ...AIMS].find((aim) => targetsOf(state.you, aim, rules).length) : null;
+  if (!at) return { you: state.you, rng, events: [], fired: false };
+  const shot = volley(them, sideStats(state.you, rules), state.you, at, false, rng, rules);
+  return { you: shot.side, rng: shot.rng, events: [{ kind: 'volley', side: 'them', at, chance: shot.chance, shots: shot.shots }], fired: shot.shots.length > 0 };
 }
 
 // One ship's volley at a kind of module on the other: every working gun

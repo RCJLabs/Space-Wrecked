@@ -29,6 +29,9 @@
 //            with a job and CAPTAIN_TRAITS traits, when the campaign
 //            starts
 //   heat     the pursuer's meter, 0 to HEAT_MAX (§4.4)
+//   standing { [side]: standing }: how each side (data/factions.json) feels
+//            about the crew, from STANDING_MIN to STANDING_MAX (standing.js,
+//            M33). A new campaign starts its pursuer's side hostile.
 //   flags    { [name]: true, a number or a short text }: what has happened
 //   ship     the ship (builder.js)
 //   wrecks   { [uid]: 'fire' | 'vacuum' | 'rubble' }: the ship's modules
@@ -69,6 +72,7 @@ import { isWorld, runProblem } from './runShape.js';
 import { isPlace, MAX_PLACES, tripProblem } from './tripShape.js';
 import { enemyBonus } from './settings.js';
 import { rankOf } from './ranks.js';
+import { isStanding, startStanding } from './standing.js';
 import { traitBonus } from './traits.js';
 
 export { actOf } from './acts.js';
@@ -93,6 +97,9 @@ const MAX_SUPPLIES = 9999;
 export const MAX_BOARD = 12;
 // More one-off jobs than act 1 has: the same kind of guard.
 export const MAX_SPENT = 100;
+// More sides than the content has (data/factions.json): the same kind of
+// guard.
+const MAX_SIDES = 20;
 // More parts than any ship could need at once (partsNeeded).
 const MAX_NEEDED = 40;
 // More parts than a boarding crew strips off a ship: a guard on what a save
@@ -140,6 +147,7 @@ export function newCampaign(rules, seed, { background = firstBackground(rules), 
     crew,
     captain: crew[at].id,
     heat: 0,
+    standing: startStanding(rules, background),
     flags: {},
     ship,
     wrecks: {},
@@ -433,6 +441,7 @@ export function campaignProblems(value) {
   if (!isCrew(value.crew)) wrong('crew is unreadable');
   else if (!value.crew.some((member) => member.id === value.captain)) wrong("captain isn't aboard");
   if (!isInt(value.heat, 0, HEAT_MAX)) wrong('heat is invalid');
+  if (!isStanding(value.standing, MAX_SIDES)) wrong('standing with the sides is unreadable');
   if (!isRecord(value.flags) || !Object.entries(value.flags).every(([name, flag]) => FLAG.test(name) && name.length <= 32 && isFlag(flag))) {
     wrong('flags are unreadable');
   }

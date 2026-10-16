@@ -314,7 +314,7 @@ test('a station repairs what the credits cover, the cheapest first, at repairPer
   const poor = repairShip(atStation(cheap), rules);
   assert.equal(Object.keys(poor.campaign.wrecks).length, 1);
   assert.equal(poor.campaign.credits, 0);
-  assert.deepEqual(repairShip(atStation(cheap - 1), rules), { ok: false, error: `A repair costs ${cheap} credits.`, wrecks: repairPlan(atStation(cheap - 1), rules).wrecks, total });
+  assert.deepEqual(repairShip(atStation(cheap - 1), rules), { ok: false, error: `A repair costs ${cheap} credits.`, wrecks: repairPlan(atStation(cheap - 1), rules).wrecks, total, share: 100 });
 });
 
 test('saves v12 and v13: no wrecks or approach before v12; no boarding due or fought before v13; a broken one is caught', () => {

@@ -7,7 +7,7 @@
 // raiders the guns stopped. A boarding (M22) shows hers left and, at the
 // end, what it came to (boardingText.js); a fight at home is the
 // boarders'. Whatever the fight, the end panel names who reaches a rank as
-// it ends (M32b). Title leaves it as it is, for Continue; once it is won or
+// it ends (M32b), and a job's what it moves with the sides (M33). Title leaves it as it is, for Continue; once it is won or
 // lost, Continue takes the crew home, or back to the run. The board is
 // ../fight/view.js's.
 import { rankUps } from '../../sim/campaign.js';
@@ -17,6 +17,7 @@ import { icons } from '../icons.js';
 import { boardingObjective, boardingOutcome } from './boardingText.js';
 import { rankUpLines } from './crewJobText.js';
 import { jobOutcome, objectiveText, raidObjective, raidOutcome } from './jobText.js';
+import { jobEndLines } from './standingText.js';
 import { colonyRaidObjective, colonyRaidOutcome, landingNotice } from './raidText.js';
 
 export const campaignFightScreen = {
@@ -28,7 +29,7 @@ export const campaignFightScreen = {
     const endedAs = (battle, log, campaign) => {
       if (fightOn()?.raid) return campaign.colony ? colonyRaidOutcome(battle, campaign, defs) : raidOutcome(battle, campaign, defs);
       if (fightOn()?.boarding) return boardingOutcome(battle, campaign, defs);
-      return (job() ? jobOutcome(battle, job(), defs, log) : null) ?? endingFor(battle);
+      return (job() ? jobOutcome(battle, job(), defs, log, campaign) : null) ?? endingFor(battle);
     };
     return mountFight(root, {
       over: { icon: icons.home, label: 'Continue' },
@@ -65,7 +66,8 @@ export const campaignFightScreen = {
         if (!defs) return null;
         const { campaign } = game.getState();
         const ranks = rankUpLines(rankUps(campaign, battle, defs), defs);
-        return { ...endedAs(battle, log, campaign), ranks };
+        const sides = job() ? jobEndLines(campaign, defs, job(), battle.winner === 'crew') : [];
+        return { ...endedAs(battle, log, campaign), ranks, sides };
       },
       onChange(fight, prev) {
         if (fight.battle !== prev.battle) game.dispatch({ type: 'campaign/fight/save', battle: fight.battle, log: fight.log });

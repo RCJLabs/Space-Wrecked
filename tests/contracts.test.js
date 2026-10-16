@@ -213,7 +213,10 @@ test('a job in words: the board card, the objective and the pay', () => {
     brief: "Grab 1 tagged crate. You have to stand right beside a crate to grab it, and the job's done when the last one's in hand.",
     twist: { name: 'Rush job', text: 'Done by the end of round 6, or nobody gets paid.' },
     against: 'Recovery agent ×2, Hired heavy',
+    // M33: whom it is against, and no client's side to add to the pay.
+    sides: 'Against Con-Reg: −2 done or lost.',
     pay: '35 credits + Engine',
+    bonus: null,
     heat: '+8 heat',
   });
   assert.equal(jobText({ ...job, contract: 'jumpers', site: 'pit9', client: 'marta', twist: null }, rules).heat, '+15 heat, loud');

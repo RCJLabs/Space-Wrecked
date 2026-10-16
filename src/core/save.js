@@ -67,7 +67,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      scans how far it reached (M32)
 //  25  ranks: every crew member counts the fights they have stood in, and
 //      a recruit keeps their background (M32b)
-export const SAVE_VERSION = 25;
+//  26  factions: the campaign's standing with each side, and whether an
+//      approach is a side's patrol waving the ship through or opening fire
+//      (M33)
+export const SAVE_VERSION = 26;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -343,6 +346,23 @@ export const MIGRATIONS = [
       if (!isObject(data) || !isObject(data.campaign) || !Array.isArray(data.campaign.crew)) return data;
       const crew = data.campaign.crew.map((member) => (isObject(member) ? { ...member, fights: 0 } : member));
       return { ...data, campaign: { ...data.campaign, crew } };
+    },
+  },
+  // Factions (M33). The campaign stands with each of M33's sides where a
+  // new one from its background starts: its pursuer's side (Con-Reg for the
+  // miner, the Fleet for the deserter, the Hallorans for the smuggler) at
+  // -10, hostile, and the rest at 0. An approach under way opened as before
+  // M33: no patrol waved the ship through or opened fire first.
+  {
+    from: 25,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign)) return data;
+      const pursuer = { miner: 'conreg', deserter: 'fleet', smuggler: 'hallorans' }[data.campaign.background];
+      const standing = Object.fromEntries(['conreg', 'fleet', 'hallorans', 'union'].map((side) => [side, side === pursuer ? -10 : 0]));
+      let campaign = { ...data.campaign, standing };
+      const { run } = campaign;
+      if (isObject(run) && isObject(run.approach)) campaign = { ...campaign, run: { ...run, approach: { ...run.approach, patrol: null } } };
+      return { ...data, campaign };
     },
   },
 ];

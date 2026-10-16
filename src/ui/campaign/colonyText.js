@@ -10,6 +10,7 @@ import { actTitle, crewText, heatText } from './hubText.js';
 import { runRecord } from './launchText.js';
 import { defenseRow, raidHint, raidStatus } from './raidText.js';
 import { worldSaid } from './sectorText.js';
+import { sidesText } from './standingText.js';
 
 // What the colony screen shows:
 //   act, home   "Act 3 · The colony", "Greenhaven · Ice world · Day 4",
@@ -37,6 +38,8 @@ import { worldSaid } from './sectorText.js';
 //               whoever sleeps aboard the landed ship, and (M28) away: true
 //               for the squad on a trip, rough: true for whoever is home
 //               without a bed and air while the ship is away
+//   sides       each side and the crew's standing with it (M33), as the
+//               hangar's: act 3 moves none of it
 //   builds      [{ what, id, name, cost, makes, ok, why }]: the farms,
 //               mines, solar arrays and shelters, what each costs and would
 //               make a day here or give (makes: the words for either), and
@@ -101,6 +104,7 @@ export function colonyText(campaign, rules) {
       powered: b.powered,
     })),
     crew: crew.map((row, i) => ({ ...row, aboard: aboard.has(campaign.crew[i].id), away: away.has(campaign.crew[i].id), rough: rough.has(campaign.crew[i].id) })),
+    sides: sidesText(campaign, rules),
     builds: list.builds.map((row) => ({ what: row.what, id: row.id, name: row.name, cost: row.cost, makes: row.makes ? `${makesText(row.makes)} here` : givesText(row.gives), ok: row.ok, why: row.error })),
     hold: holdRows(list.hold, rules),
     parts: partRows(campaign, rules),

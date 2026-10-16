@@ -12,11 +12,21 @@
 //     them (repair.js), but the crew always gets one reactor and one engine
 //     going again, so the ship can fly on;
 //   - the node is settled (run.done), and the flags count it;
+//   - a ship of a side (data/ships.json side) the crew boarded (or disabled
+//     and left), blew up or left adrift costs shipStanding with her side
+//     (standing.js, M33);
 //   - a boarding, either way, is a fight that is due (beginBoarding). The
 //     player can leave a ship they disabled instead; a ship that boards
 //     theirs has to be fought off.
 // The approach stays, with its outcome, until the player carries on, or
 // until its boarding fight is over.
+//
+// A side's ship met at a node greets the crew by its standing with her side
+// (M33, standing.js patrolWelcome): a crew friendly or trusted with it is
+// waved through, an approach over before it starts (outcome 'waved'), its
+// node settled; one it is hostile to is fired on, her guns' volley played
+// before the first round (approach.js openingVolley). Anyone else's
+// approach opens as before. The flags count both.
 //
 // The pursuer's hunters (hunt.js, M24) are an approach too, opened where
 // they wait (openHunt) rather than from the node: a hostile ship there
@@ -43,16 +53,20 @@
 // run.approach, while one is open:
 //   node     the node it is at
 //   hunt     whether it is the pursuer's hunters (M24)
+//   patrol   null, or how a side's ship greeted the crew (M33): 'waved'
+//            through or 'fired' on
 //   enemy    { ship (the preset), name, crew }
 //   them     the other ship's side: { ship, damage, wrecked }
 //   you      the player's side: { damage, wrecked }; its ship is the
 //            campaign's
 //   round    the round to play next, 1 up
 //   fired    whether a gun has fired yet
-//   last     the round played last: { order, intent, events }, or null
+//   last     the round played last: { order, intent, events }, or null;
+//            before round 1, a patrol's opening volley, with order null
 //   outcome  null until it ends, then { kind, how?, changes, boarding }.
 //            changes: { credits, parts (found), lost (a part or credits,
-//            or null), heat, patched (uids got going again) }. boarding:
+//            or null), heat, patched (uids got going again), standing
+//            (standing.js moveStanding's changes; none before M33) }. boarding:
 //            'due' while a boarding fight waits, else null. (A save from
 //            before M22 settled its boardings with a stand-in, whose finds
 //            and losses are in changes.)
@@ -60,7 +74,7 @@
 // crew boarded her) | 'you' (she boarded the player's ship), salvage:
 // { parts, credits } (what a win pays) }.
 import { int, pick } from '../core/rng.js';
-import { BOARDINGS, enemyOrder, FACED, playRound } from './approach.js';
+import { BOARDINGS, enemyOrder, FACED, openingVolley, playRound } from './approach.js';
 import { createBattle } from './battle.js';
 import { crewUnit, endFight } from './campaign.js';
 import { defaultSquad, squadMembers, squadProblem } from './crew.js';
@@ -73,6 +87,7 @@ import { mapFromShip } from './mapFromShip.js';
 import { hasTag } from './modules.js';
 import { raidLoss } from './raid.js';
 import { enemyBonus } from './settings.js';
+import { moveStanding, patrolWelcome, shipMoves } from './standing.js';
 
 const MAX_SEED = 0xffffffff;
 
@@ -101,12 +116,27 @@ export function approachIntent(campaign, rules) {
 // Opens the approach at the node the ship has come to, if a hostile ship is
 // there and the node isn't settled. The campaign as it was otherwise. A
 // preset the data no longer has, or one that won't generate, is passed by.
+// A side's ship waves a crew it is friendly with through, and fires first
+// on one it is hostile to (see the top of the file).
 export function openApproach(campaign, rules) {
   const { run } = campaign;
   const node = run?.sector.nodes[run.at];
   if (!node?.hostile || run.approach || run.done.includes(run.at)) return campaign;
   const approach = approachAgainst(campaign, rules, node.hostile.ship, node.hostile.seed, false);
-  return approach ? { ...campaign, run: { ...run, approach } } : campaign;
+  if (!approach) return campaign;
+  const patrol = patrolWelcome(campaign, rules, rules.ships.get(node.hostile.ship));
+  if (patrol === 'waved') {
+    const outcome = { kind: 'waved', changes: { credits: 0, parts: [], lost: null, heat: 0, patched: [], standing: [] }, boarding: null };
+    return { ...campaign, flags: tally(campaign.flags, { patrolsWaved: 1 }), run: { ...run, done: [...run.done, run.at], approach: { ...approach, patrol, outcome } } };
+  }
+  if (patrol === 'fired') {
+    const opened = { ...campaign, run: { ...run, approach } };
+    const shot = openingVolley(approachState(opened, rules), campaign.rng, rules);
+    const last = shot.events.length ? { order: null, intent: { kind: 'fire', at: shot.events[0].at }, events: shot.events } : null;
+    const fired = { ...approach, patrol, you: { damage: shot.you.damage, wrecked: shot.you.wrecked }, fired: shot.fired, last };
+    return { ...campaign, rng: shot.rng, flags: tally(campaign.flags, { patrolsFired: 1 }), run: { ...run, approach: fired } };
+  }
+  return { ...campaign, run: { ...run, approach } };
 }
 
 // Opens the pursuer's hunters' approach where the ship is (hunt.js): their
@@ -133,6 +163,7 @@ function approachAgainst(campaign, rules, id, seed, hunt) {
   return {
     node: campaign.run.at,
     hunt,
+    patrol: null,
     enemy: { ship: preset.id, name: preset.name, crew: made.crew },
     them: { ship: made.ship, damage: {}, wrecked: made.wrecked },
     you: { damage: {}, wrecked: wrecksOn(campaign.ship, campaign.wrecks) },
@@ -197,8 +228,10 @@ function settle(campaign, rules, outcome) {
   changes.patched = kept.patched;
   const won = outcome.kind === 'boarded' || outcome.kind === 'destroyed' ? 1 : 0;
   const boarding = outcome.kind in BOARDINGS ? 'due' : null;
+  const struck = moveStanding(campaign, rules, shipMoves(preset, outcome.kind, rules));
+  changes.standing = struck.changes;
   return {
-    ...campaign,
+    ...struck.campaign,
     rng,
     credits: campaign.credits + changes.credits,
     heat,

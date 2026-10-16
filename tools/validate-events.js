@@ -8,7 +8,9 @@
 // holds every jump. From M28 an event can be of a kind of place within
 // reach of the colony (data/expeditions.json): it does and needs only what
 // a place can (expeditions.js PLACE_EFFECTS, PLACE_NEEDS), and only such
-// an event brings materials.
+// an event brings materials. From M33 an event on the run can move the
+// crew's standing with the sides (data/factions.json); one at the colony
+// can't, as act 3 doesn't move it.
 import { EFFECTS, NEEDS } from '../src/sim/events.js';
 import { PLACE_EFFECTS, PLACE_NEEDS } from '../src/sim/expeditions.js';
 import { isId, isIntIn, isObject, isText, knownKeys, listOf, uniqueIds } from './checks.js';
@@ -26,11 +28,14 @@ const MAX_OUTCOMES = 4;
 const MAX_AMOUNT = 999;
 const MAX_WOUND = 20;
 const MAX_SELL = 5;
+// What an outcome moves a side's standing by, at most, either way.
+const MAX_STANDING = 10;
 
 // kinds: the node kinds that hold events (data/sectors.json, events: true).
 // moduleIds: the parts. places: the kinds of place (validate-expeditions.js).
-// Returns the kinds the events cover, as a Set.
-export function checkEvents(file, kinds, moduleIds, fail, places = new Set()) {
+// sides: the sides' ids (validate-factions.js). Returns the kinds the
+// events cover, as a Set.
+export function checkEvents(file, kinds, moduleIds, fail, places = new Set(), sides = new Set()) {
   const where = 'events.json';
   const covered = new Set();
   if (!isObject(file)) {
@@ -66,7 +71,7 @@ export function checkEvents(file, kinds, moduleIds, fail, places = new Set()) {
       return;
     }
     uniqueIds(event.choices, at, fail);
-    event.choices.forEach((choice, c) => checkChoice(choice, `${at} choice ${choice?.id ?? `#${c}`}`, drops, moduleIds, fail, atPlace));
+    event.choices.forEach((choice, c) => checkChoice(choice, `${at} choice ${choice?.id ?? `#${c}`}`, { drops, moduleIds, sides }, fail, atPlace));
     // An open event holds every jump: one choice must always be there to make.
     if (!event.choices.some((choice) => isObject(choice) && (choice.needs === undefined || (isObject(choice.needs) && !Object.keys(choice.needs).length)))) {
       fail(at, 'needs a choice that needs nothing, so the ship is never stuck at it');
@@ -75,7 +80,7 @@ export function checkEvents(file, kinds, moduleIds, fail, places = new Set()) {
   return covered;
 }
 
-function checkChoice(choice, at, drops, moduleIds, fail, atPlace) {
+function checkChoice(choice, at, known, fail, atPlace) {
   if (!isObject(choice)) return;
   knownKeys(choice, CHOICE_KEYS, at, fail);
   if (!isText(choice.label) || choice.label.length > MAX_LABEL) fail(at, `label must be a non-empty string of up to ${MAX_LABEL} letters`);
@@ -101,12 +106,12 @@ function checkChoice(choice, at, drops, moduleIds, fail, atPlace) {
     else total += outcome.chance;
     if (!isText(outcome.text) || outcome.text.length > MAX_OUTCOME_TEXT) fail(where, `text must be a non-empty string of up to ${MAX_OUTCOME_TEXT} letters`);
     if (!isObject(outcome.effects)) fail(where, 'effects must be an object (empty for none)');
-    else checkEffects(outcome.effects, needs, `${where} effects`, drops, moduleIds, fail, atPlace);
+    else checkEffects(outcome.effects, needs, `${where} effects`, known, fail, atPlace);
   });
   if (total !== 100) fail(at, `outcome chances must add up to 100, not ${total}`);
 }
 
-function checkEffects(effects, needs, at, drops, moduleIds, fail, atPlace) {
+function checkEffects(effects, needs, at, { drops, moduleIds, sides }, fail, atPlace) {
   knownKeys(effects, atPlace ? PLACE_EFFECTS : EFFECTS.filter((key) => key !== 'materials'), at, fail);
   for (const key of ['credits', 'supplies', 'heat', 'materials']) {
     if (effects[key] !== undefined && (!isIntIn(effects[key], -MAX_AMOUNT, MAX_AMOUNT) || effects[key] === 0)) fail(at, `${key} must be a whole number other than 0, from ${-MAX_AMOUNT} to ${MAX_AMOUNT}`);
@@ -126,5 +131,14 @@ function checkEffects(effects, needs, at, drops, moduleIds, fail, atPlace) {
   if (effects.sell !== undefined) {
     if (!isIntIn(effects.sell, 1, MAX_SELL)) fail(at, `sell must be a whole number from 1 to ${MAX_SELL}`);
     else if ((needs.parts ?? 0) < effects.sell) fail(at, `sells ${effects.sell}, so the choice must need at least that many parts`);
+  }
+  if (effects.standing !== undefined) {
+    if (!isObject(effects.standing) || !Object.keys(effects.standing).length) fail(at, 'standing must be an object of sides, each with what it moves by');
+    else {
+      for (const [side, by] of Object.entries(effects.standing)) {
+        if (!sides.has(side)) fail(`${at} standing`, `unknown side "${side}" (factions.json)`);
+        if (!isIntIn(by, -MAX_STANDING, MAX_STANDING) || by === 0) fail(`${at} standing`, `${side} must be a whole number other than 0, from ${-MAX_STANDING} to ${MAX_STANDING}`);
+      }
+    }
   }
 }

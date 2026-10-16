@@ -24,6 +24,7 @@ import { TIP_IDS } from '../src/ui/tipSteps.js';
 import { isId, isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 import { readData } from './data.js';
 import { checkCampaignFiles, checkStartShips } from './validate-campaign.js';
+import { checkFactions } from './validate-factions.js';
 
 const SIDES = ['n', 'e', 's', 'w'];
 const STATS = ['power', 'mass', 'thrust', 'berths', 'lifeSupport', 'cargo', 'hp'];
@@ -173,6 +174,31 @@ const BALANCE = {
   landingHit: [0, 100],
   raidShieldArmor: [0, 5],
   raidArmoryAim: [0, 50],
+  // Standing with the sides (src/sim/standing.js, M33), from -10 to 10:
+  // where the pursuer's side starts a campaign; where each level above
+  // hostile begins (cold, neutral, friendly, then trusted); what a job done
+  // moves it for its client's side and against its enemies' side, what a
+  // job lost moves it against them, and what a side's ship boarded, blown
+  // up or left adrift costs with its side; what a station of a side
+  // charges at each level, in percent of the price; how much more a job
+  // for a friendly and a trusted side pays, in percent; and the heat of
+  // docking at a station of the pursuer's side.
+  pursuerStanding: [-10, 10],
+  coldStanding: [-10, 10],
+  neutralStanding: [-10, 10],
+  friendlyStanding: [-10, 10],
+  trustedStanding: [-10, 10],
+  jobStanding: [0, 10],
+  lostStanding: [0, 10],
+  shipStanding: [0, 10],
+  hostilePrice: [1, 1000],
+  coldPrice: [1, 1000],
+  neutralPrice: [1, 1000],
+  friendlyPrice: [1, 1000],
+  trustedPrice: [1, 1000],
+  friendlyPay: [0, 100],
+  trustedPay: [0, 100],
+  dockHeat: [0, 50],
 };
 // A weapon's held shape and a fighter's look are how the fight draws them
 // (src/render/figures/looks.js).
@@ -200,7 +226,7 @@ const TIP_KEYS = ['id', 'text'];
 const MAX_TIP = 200;
 const ENCOUNTER_KEYS = ['id', 'name', 'enemies'];
 // Ship presets (src/sim/gen/ship.js).
-const SHIP_KEYS = ['id', 'name', 'frame', 'crew', 'beam', 'symmetric', 'parts', 'makers', 'wrecks', 'tactics', 'scrap', 'party', 'salvage', 'look'];
+const SHIP_KEYS = ['id', 'name', 'side', 'frame', 'crew', 'beam', 'symmetric', 'parts', 'makers', 'wrecks', 'tactics', 'scrap', 'party', 'salvage', 'look'];
 const LOOK_KEYS = ['paint', 'trim', 'pieces'];
 // A hostile preset's tactics in the approach phase (src/sim/approach.js).
 const TACTIC_KEYS = ['aim', 'board', 'flee'];
@@ -296,6 +322,15 @@ export function validateData(data) {
     if (Math.round((balance.raidOddsCornered * balance.lanesNear) / 100) > 100) fail('balance.json', 'raidOddsCornered near the lanes (lanesNear) must be at most 100');
     if (balance.loudJobHeat < balance.jobHeat) fail('balance.json', 'loudJobHeat must be at least jobHeat');
     if (balance.sellPercent > balance.buyPercent) fail('balance.json', 'sellPercent must be at most buyPercent, or buying and selling makes money');
+    if (!(-10 < balance.coldStanding && balance.coldStanding < balance.neutralStanding && balance.neutralStanding < balance.friendlyStanding && balance.friendlyStanding < balance.trustedStanding)) {
+      fail('balance.json', 'the levels of standing must rise from above -10: coldStanding, neutralStanding, friendlyStanding, then trustedStanding');
+    }
+    if (!(balance.neutralStanding <= 0 && 0 < balance.friendlyStanding)) fail('balance.json', 'a side a campaign starts at 0 with must be neutral: neutralStanding at most 0, friendlyStanding over it');
+    if (!(balance.pursuerStanding < balance.coldStanding)) fail('balance.json', "pursuerStanding must be under coldStanding: the pursuer's side starts hostile");
+    if (!(balance.trustedPrice <= balance.friendlyPrice && balance.friendlyPrice <= balance.neutralPrice && balance.neutralPrice <= balance.coldPrice && balance.coldPrice <= balance.hostilePrice)) {
+      fail('balance.json', "a station's prices must fall as standing rises: hostilePrice, coldPrice, neutralPrice, friendlyPrice, then trustedPrice");
+    }
+    if (balance.friendlyPay > balance.trustedPay) fail('balance.json', 'trustedPay must be at least friendlyPay');
   }
 
   const weapons = listOf(weaponFile, 'weapons', 'weapons.json', fail);
@@ -442,7 +477,8 @@ export function validateData(data) {
     if (ship.party !== undefined && !encounterById.has(ship.party)) fail(where, `party: unknown encounter "${ship.party}"`);
     if (ship.tactics !== undefined && ship.party === undefined) fail(where, 'a preset with tactics needs a party for the boarding fights');
   }
-  const scripts = checkCampaignFiles(data, { jobIds, enemyIds, traitIds, moduleIds, frameById, encounters: encounterById, presets }, fail);
+  const sides = checkFactions(data, presets, fail);
+  const scripts = checkCampaignFiles(data, { jobIds, enemyIds, traitIds, moduleIds, frameById, encounters: encounterById, presets, sides }, fail);
   // The starting ships are built only from content that checks out.
   if (!problems.length) checkStartShips(data, scripts, fail);
   return problems;
@@ -901,6 +937,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       `${count(data.encounters.encounters.length, 'encounter')}, ${count(data.ships.ships.length, 'ship preset')}, ` +
       `${count(data.campaign.acts.length, 'act')}, ${count(data.backgrounds.backgrounds.length, 'background')}, ` +
       `${count(data.districts.districts.length, 'district')}, ${count(data.sites.maps.length, 'site map')}, ` +
-      `${count(data.contracts.jobs.length, 'job template')}, ${count(data.sectors.nodes.length, 'kind')} of sector node, ${count(data.worlds.kinds.length, 'kind')} of world, ${count(data.colony.buildings.length, 'colony building')}, ${count(data.colony.builds.length, 'colony build')}, ${count(data.expeditions.kinds.length, 'kind')} of place, ${count(data.events.events.length, 'event')})`,
+      `${count(data.contracts.jobs.length, 'job template')}, ${count(data.sectors.nodes.length, 'kind')} of sector node, ${count(data.worlds.kinds.length, 'kind')} of world, ${count(data.colony.buildings.length, 'colony building')}, ${count(data.colony.builds.length, 'colony build')}, ${count(data.expeditions.kinds.length, 'kind')} of place, ${count(data.events.events.length, 'event')}, ${count(data.factions.sides.length, 'side')})`,
   );
 }

@@ -77,5 +77,21 @@
   "raidWarning": 3,
   "landingHit": 50,
   "raidShieldArmor": 1,
-  "raidArmoryAim": 10
+  "raidArmoryAim": 10,
+  "pursuerStanding": -10,
+  "coldStanding": -5,
+  "neutralStanding": -1,
+  "friendlyStanding": 2,
+  "trustedStanding": 6,
+  "jobStanding": 2,
+  "lostStanding": 2,
+  "shipStanding": 3,
+  "hostilePrice": 150,
+  "coldPrice": 125,
+  "neutralPrice": 100,
+  "friendlyPrice": 90,
+  "trustedPrice": 75,
+  "friendlyPay": 10,
+  "trustedPay": 20,
+  "dockHeat": 10
 }

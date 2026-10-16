@@ -29,6 +29,7 @@ import { PAY_STEP, rollStock } from './economy.js';
 import { generateSite } from './gen/site.js';
 import { huntersFor, jobHeat, raidDue, withHeat } from './heat.js';
 import { enemyBonus } from './settings.js';
+import { jobMoves, jobPay, moveStanding } from './standing.js';
 
 // The missions the rules know. A new one means new rules (battle.js), so
 // it is added here on purpose.
@@ -181,10 +182,12 @@ export function takeJob(campaign, rules, index, setup = {}) {
 
 // After a fight with a winner, home again (campaign.js endFight: wounds,
 // the dead, healing where the act heals, the fights counted). After a job,
-// also its pay if it was done, its heat, done or lost (heat.js jobHeat),
-// the job counted in the flags (jobsDone or jobsFailed), a new board with
-// none of the old one's jobs, and a new stock at the shop. A fight still
-// going is left as it is.
+// also its pay if it was done (with what its client's side adds,
+// standing.js jobPay), its heat, done or lost (heat.js jobHeat), the
+// standing it moves with the sides it was for and against (standing.js
+// jobMoves, M33), the job counted in the flags (jobsDone or jobsFailed), a
+// new board with none of the old one's jobs, and a new stock at the shop.
+// A fight still going is left as it is.
 export function endJob(campaign, rules) {
   const { fight } = campaign;
   const after = endFight(campaign, rules);
@@ -198,9 +201,10 @@ export function endJob(campaign, rules) {
   const skip = [job.contract, ...campaign.board.map((offer) => offer.contract), ...spent];
   const rolled = district ? rollBoard(rules, after.rng, district, skip) : { board: [], rng: after.rng };
   const restocked = district ? rollStock(rules, rolled.rng, district) : { stock: after.shop, rng: rolled.rng };
+  const { campaign: moved } = moveStanding(after, rules, jobMoves(job, rules, won));
   return {
-    ...after,
-    credits: after.credits + (won ? job.credits : 0),
+    ...moved,
+    credits: after.credits + (won ? jobPay(campaign, rules, job) : 0),
     heat: withHeat(after.heat, jobHeat(job, rules).heat),
     parts,
     flags: { ...after.flags, [flag]: (after.flags[flag] ?? 0) + 1 },

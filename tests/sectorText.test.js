@@ -96,7 +96,7 @@ test('a station sells a jump\'s worth and a fill-up, each with its price', () =>
   assert.equal(text.offer.line, `Supplies, ${balance.supplyPrice} credit${balance.supplyPrice === 1 ? '' : 's'} each. The holds take ${room} more.`);
   assert.deepEqual(text.offer.buys.map((buy) => [buy.count, buy.label]), [[3, 'Buy 3'], [room, `Fill up · ${room}`]]);
   assert.deepEqual(text.here, nodeText(station, rules));
-  assert.equal(text.here.kind, 'Station');
+  assert.equal(text.here.kind, 'Station · The union', "a station of a side's says whose (M33)");
   assert.equal(text.hint.tone, 'good');
   const broke = sectorText({ ...docked, credits: 0 }, rules);
   assert.deepEqual([broke.offer.buys, broke.offer.why], [[], 'You have 0 credits.']);

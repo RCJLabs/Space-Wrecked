@@ -59,9 +59,10 @@ const LOG_LINES = 16;
 //   objective(battle)   optional: the objective's line under the round,
 //              { title, progress, deadline, done }, or null for none
 //   ending(battle, log)   optional: how the fight ended, { tone, title,
-//              text, ranks? }, for the end panel and the hint; boarders'
-//              words if not given. ranks: lines naming who reached a rank
-//              (M32b), under the text
+//              text, ranks?, sides? }, for the end panel and the hint;
+//              boarders' words if not given. ranks: lines naming who
+//              reached a rank (M32b), under the text; sides: lines saying
+//              what a job's end moved with the sides (M33), under them
 //   lookOf(unit, index)   optional: the look (src/sim/looks.js) of the
 //              crew unit at `index` among the crew, for its portrait; one
 //              is rolled if not given
@@ -79,8 +80,9 @@ export function mountFight(root, source) {
   const overText = node('p');
   const overNote = node('p', 'fgt-over-note');
   const overRanks = node('ul', 'fgt-over-ranks');
+  const overSides = node('ul', 'fgt-over-sides');
   const overButton = toolButton('fgt-again', source.over.icon, source.over.label);
-  over.append(overText, overNote, overRanks, overButton);
+  over.append(overText, overNote, overRanks, overSides, overButton);
   const logButton = toolButton('fgt-tool', icons.log, 'Log');
   const fitButton = toolButton('fgt-tool', icons.fit, 'Fit');
   const extraTools = (source.tools ?? []).map((tool) => ({ ...tool, button: toolButton('fgt-tool', tool.icon, tool.label) }));
@@ -368,6 +370,9 @@ export function mountFight(root, source) {
       const ranks = ending.ranks ?? [];
       if (overRanks.textContent !== ranks.join('')) overRanks.replaceChildren(...ranks.map((line) => node('li', null, line)));
       overRanks.hidden = !ranks.length;
+      const sides = ending.sides ?? [];
+      if (overSides.textContent !== sides.join('')) overSides.replaceChildren(...sides.map((line) => node('li', null, line)));
+      overSides.hidden = !sides.length;
       over.dataset.tone = ending.tone;
     }
     if (!busy()) showBoard(fight, orders, playing?.frame ?? null);

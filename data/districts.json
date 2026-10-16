@@ -5,9 +5,9 @@
       "name": "The Tailings",
       "blurb": "A company town built on the ponds where the mine dumps what it can't sell. Everyone here works for Con-Reg, used to, or owes them.",
       "clients": [
-        { "id": "marta", "name": "Marta Okafor", "title": "the union steward", "blurb": "Runs the night-shift local out of the back of the Last Whistle. Pays in cash and grudges." },
+        { "id": "marta", "name": "Marta Okafor", "title": "the union steward", "blurb": "Runs the night-shift local out of the back of the Last Whistle. Pays in cash and grudges.", "side": "union" },
         { "id": "dutch", "name": "Dutch Abernathy", "title": "the scrap dealer", "blurb": "Owns the Cable Street yard and most of what's in it. Pays in parts, some of them his." },
-        { "id": "sully", "name": "Foreman Sully", "title": "a company foreman", "blurb": "Works for Con-Reg by day and for himself the rest of the time." },
+        { "id": "sully", "name": "Foreman Sully", "title": "a company foreman", "blurb": "Works for Con-Reg by day and for himself the rest of the time.", "side": "conreg" },
         { "id": "prewitt", "name": "Ma Prewitt", "title": "your landlady", "blurb": "Owns the hangar your ship sits in. Rent's due, but she'll take a favour." },
         { "id": "rook", "name": "Rook", "title": "a bookie at the Last Whistle", "blurb": "Takes bets on shift quotas, cave-ins and you." },
         { "id": "agnes", "name": "Sister Agnes", "title": "the mission kitchen", "blurb": "Feeds half the Tailings on donations and the other half on what she can lift." }
@@ -35,7 +35,7 @@
         { "id": "voss", "name": "Hal Voss", "title": "the ship's chandler", "blurb": "Sells rope, rivets and rations to every ship that lands, and buys whatever falls off them." },
         { "id": "dunne", "name": "Storekeeper Dunne", "title": "a Fleet storekeeper", "blurb": "Signs for the Fleet's stores at the port, and signs some of them out again for cash." },
         { "id": "ilse", "name": "Mother Ilse", "title": "the seamen's mission", "blurb": "Runs the mission's soup and bunks, and hides deserters in the coal cellar for the love of God and a little rent." },
-        { "id": "gage", "name": "Big Gage", "title": "the dockers' boss", "blurb": "Runs the stevedores on the landing field. Nothing gets loaded without him, and nothing goes missing without him either." },
+        { "id": "gage", "name": "Big Gage", "title": "the dockers' boss", "blurb": "Runs the stevedores on the landing field. Nothing gets loaded without him, and nothing goes missing without him either.", "side": "union" },
         { "id": "linnet", "name": "Linnet", "title": "a pawnbroker", "blurb": "Buys medals, sidearms and sad stories. Pays in cash, and in parts when the cash runs short." }
       ],
       "sites": [

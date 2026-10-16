@@ -6,6 +6,7 @@
       "blurb": "Eleven years hauling ore for Consolidated Regolith, and you still owe them for the boots. The half-built ship in Ma Prewitt's hangar is the first thing you've owned outright. The Company's lawyers disagree.",
       "pursuer": {
         "name": "Con-Reg Recovery",
+        "side": "conreg",
         "blurb": "The Company's repo crews. They find a ship by its registration, and they bill you for the trip.",
         "levels": {
           "calm": "Con-Reg has other debtors to worry about. For now.",
@@ -77,6 +78,7 @@
       "blurb": "Six years a gunner's mate on the Fleet tender Resolute, keeping other people's guns working for pay that came when it felt like it. When she put in at the Strand you walked off with a crate of her spares. The half-built hull in Nell Achebe's dry dock is yours now. The Fleet Provost has a warrant that says otherwise.",
       "pursuer": {
         "name": "The Fleet Provost",
+        "side": "fleet",
         "blurb": "The Navy's police. They never forget a deserter, and they never take cash.",
         "levels": {
           "calm": "The Provost has a desk full of deserters, and yours is near the bottom. For now.",
@@ -144,6 +146,7 @@
       "blurb": "Five years running the Hallorans' cargo past customs without a scratch. Then a customs cutter got lucky, and forty crates of their merchandise went out the airlock so you could outrun it. The half-built ship in Kit Marlowe's lock-up is what's left of your share. The Hallorans would like the rest, with interest.",
       "pursuer": {
         "name": "The Halloran family",
+        "side": "hallorans",
         "blurb": "They run the Narrows' back rooms and half its front ones. They'll take a payment, and then another.",
         "levels": {
           "calm": "The Hallorans have bigger debts to collect. Yours is gathering interest quietly.",

@@ -32,7 +32,9 @@
 // every raid that lands, and its report says each run's raids. And M30's:
 // from the deserter's and the smuggler's starts, the careful player crosses
 // fed, meets the hunters and loses a raid at the colony in about as many
-// runs as from the miner's, and its report puts them side by side.
+// runs as from the miner's, and its report puts them side by side. And
+// M33's: a station charges the crew its side's share of each price, and
+// docking at one of the pursuer's side adds its heat after the jump's.
 // Each voyage launches from a test run of act 1 (tools/run.js) and is
 // played by the test player in tools/voyage.js. The voyages before M23h's
 // fly as fitted, with no refits, so each compares one part's difference.
@@ -46,7 +48,9 @@ import { colonyStats, donate, shipParts } from '../src/sim/colony.js';
 import { outcomeFor } from '../src/sim/events.js';
 import { shipStats } from '../src/sim/constraints.js';
 import { crewRoom } from '../src/sim/crew.js';
+import { tripHeatOf } from '../src/sim/raids.js';
 import { feeOf } from '../src/sim/recruits.js';
+import { costAt } from '../src/sim/standing.js';
 import { COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, playColony, playTrips, TRIP_DAYS, voyage, voyagesByBackground } from '../tools/voyage.js';
 import { bestWorld, FIT_ORDER, nextGift, systemMove } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
@@ -62,12 +66,14 @@ const RUNS = 30;
 // MARGIN is about two of those. M32's jobs and orders did the same to four
 // more (every careful run scans; fed with a med bay; fed with surgery; the
 // large hold against the lockers), and they fly 100 seeds the same way,
-// against main's before M32. The rest fly the first RUNS, as before.
+// against main's before M32. M33's sides and their events did it to two
+// more (a recruit signed on with a cargo hold; a surveyed world settled),
+// against main's before M33. The rest fly the first RUNS, as before.
 const RATE_RUNS = 100;
 const MARGIN = 15;
 const MARGIN_RARE = 5;
 const MAIN = {
-  miner: { metSectors: 33, ignoringMet: 100, fed: 73, metAny: 42, lost: 29, systemHungry: 14, shortOfAir: 0, surveyed: 68, housed: 41, noScan: 0, medbayFed: 79, surgeryFed: 81 },
+  miner: { metSectors: 33, ignoringMet: 100, fed: 73, metAny: 42, lost: 29, systemHungry: 14, shortOfAir: 0, surveyed: 68, housed: 41, noScan: 0, medbayFed: 79, surgeryFed: 81, signed: 44, settledSurveyed: 81 },
   deserter: { fed: 80, metAny: 45, lost: 20 },
   smuggler: { fed: 89, metAny: 19, lost: 18 },
 };
@@ -83,7 +89,8 @@ const trips = carefulAll.slice(0, RUNS);
 const careful = trips;
 // The careful player with a cargo hold fitted, room to feed a recruit; and
 // with a med bay.
-const cargo = fly({ fit: ['cargo'] });
+const cargoAll = fly({ fit: ['cargo'] }, RATE_RUNS);
+const cargo = cargoAll.slice(0, RUNS);
 const medbayAll = fly({ fit: ['medbay'] }, RATE_RUNS);
 const medbay = medbayAll.slice(0, RUNS);
 // M23e's parts for the voyage: surgery; bunks, with a cargo hold to feed
@@ -109,6 +116,9 @@ const [deserters, smugglers] = [desertersAll, smugglersAll].map((all) => all.sli
 const SEEDS = [1, 2, 3];
 const LAST = rules.acts.get(2).sectors;
 const clamp = (value, max) => Math.max(0, Math.min(max, value));
+// The shares of a price a station charges the crew, by their level with its
+// side (M33); a station of nobody's charges the neutral share, all of it.
+const SHARES = [balance.hostilePrice, balance.coldPrice, balance.neutralPrice, balance.friendlyPrice, balance.trustedPrice];
 
 test('from launch, a run crosses three sectors by jumping and restocking at stations', () => {
   trips.slice(0, SEEDS.length).forEach((trip, i) => {
@@ -146,8 +156,10 @@ function checkStep(step, capacity, kinds) {
   const [supplies, after] = step.supplies;
   assert.ok(after <= capacity);
   if (step.kind === 'buy') {
+    // At the share the station charges the crew for its side (M33).
     assert.equal(after, supplies + step.count);
-    assert.equal(step.credits[1], step.credits[0] - step.count * balance.supplyPrice);
+    assert.ok(SHARES.includes(step.share), `share ${step.share}`);
+    assert.equal(step.credits[0] - step.credits[1], costAt(step.count, balance.supplyPrice, step.share));
     assert.deepEqual(step.heat[1], step.heat[0]);
     return;
   }
@@ -229,7 +241,8 @@ function checkStep(step, capacity, kinds) {
   }
   if (step.kind === 'patch') {
     const healed = step.hp[1].reduce((a, b) => a + b, 0) - step.hp[0].reduce((a, b) => a + b, 0);
-    assert.deepEqual([healed, step.credits[0] - step.credits[1]], [step.patched, step.patched * balance.patchPrice]);
+    assert.ok(SHARES.includes(step.share), `share ${step.share}`);
+    assert.deepEqual([healed, step.credits[0] - step.credits[1]], [step.patched, costAt(step.patched, balance.patchPrice, step.share)]);
     assert.ok(step.patched > 0);
     assert.deepEqual([after, step.heat[1]], [supplies, step.heat[0]]);
     return;
@@ -240,9 +253,10 @@ function checkStep(step, capacity, kinds) {
     return;
   }
   if (step.kind === 'hire') {
-    // Their fee, by their traits and rank, and one more aboard at full
-    // health; nothing else moved.
-    assert.equal(step.credits[0] - step.credits[1], feeOf({ job: step.job, traits: step.traits, fights: step.fights }, rules));
+    // Their fee, by their traits and rank, at the station's share (M33),
+    // and one more aboard at full health; nothing else moved.
+    assert.ok(SHARES.includes(step.share), `share ${step.share}`);
+    assert.equal(step.credits[0] - step.credits[1], feeOf({ job: step.job, traits: step.traits, fights: step.fights }, rules, step.share));
     assert.deepEqual(step.hp[1], [...step.hp[0], maxHp({ job: step.job, traits: step.traits }, rules)]);
     assert.deepEqual([after, step.heat[1]], [supplies, step.heat[0]]);
     return;
@@ -268,7 +282,10 @@ function checkStep(step, capacity, kinds) {
   const cost = balance.jumpSupplies * step.crew * (long ? balance.longJumpFactor : 1);
   assert.equal(step.hungry, supplies < cost);
   assert.equal(after, Math.max(0, supplies - cost));
-  assert.equal(step.heat[1], Math.max(0, Math.min(HEAT_MAX, step.heat[0] + (long ? balance.longJumpHeat : balance.jumpHeat))));
+  // Docking at a station of the pursuer's side adds its heat after the
+  // jump's (M33).
+  assert.ok([0, balance.dockHeat].includes(step.dock), `dock ${step.dock}`);
+  assert.equal(step.heat[1], clamp(clamp(step.heat[0] + (long ? balance.longJumpHeat : balance.jumpHeat), HEAT_MAX) + step.dock, HEAT_MAX));
   // Hunger first, then the med bay's healing, up to each one's most.
   assert.deepEqual(step.hp[1], step.hp[0].map((hp, i) => Math.min(step.max[i], (step.hungry ? Math.max(1, hp - balance.hungerHp) : hp) + step.heal)));
   assert.equal(step.credits[1], step.credits[0]);
@@ -287,14 +304,14 @@ function checkHunt(step) {
   if (step.hunt.roll !== null) assert.equal(step.hunt.found, step.hunt.roll < step.hunt.chance, 'rolled as shown');
 }
 
-test('ten events play from data, hostile ships are met and boardings fought, and the run pays its way: 24 or more of 30 careful runs cross all five sectors fed', () => {
+test("the run's fourteen events play from data (M20's ten and M33's four), hostile ships are met and boardings fought, and the run pays its way: 24 or more of 30 careful runs cross all five sectors fed", () => {
   assert.ok(careful.every((trip) => trip.launched && trip.ended), 'every run launches and settles a world past the charts');
   const played = new Set(trips.flatMap((trip) => trip.steps.filter((step) => step.kind === 'event').map((step) => step.event)));
   // The run's events: those of a kind of node (the colony's places have the
   // rest, M28).
   const runEvents = [...rules.events.values()].filter((event) => rules.nodeTypes.get(event.kind)?.events);
   assert.equal(played.size, runEvents.length, `events played: ${[...played].join(', ')}`);
-  assert.equal(runEvents.length, 10);
+  assert.equal(runEvents.length, 14);
   const met = careful.flatMap((trip) => trip.steps.filter((step) => step.kind === 'approach'));
   assert.ok(met.length >= RUNS, `hostile ships met: ${met.length}`);
   assert.ok(['escaped', 'boardedBy'].every((kind) => met.some((step) => step.outcome === kind)), `outcomes: ${[...new Set(met.map((step) => step.outcome))]}`);
@@ -316,10 +333,12 @@ test('recruits sign on where the holds can feed them, and the run still pays its
   // On the lockers alone a fourth mouth can't be fed far enough between
   // stations (voyagePlan.js HIRE_JUMPS), so the careful player signs no one on.
   assert.ok(careful.every((trip) => trip.tally.hired === 0), 'no recruit on the lockers alone');
-  // With a cargo hold, it signs recruits on where there is room and credits.
+  // With a cargo hold, it signs recruits on where there is room and credits:
+  // in 10 or more of 30 when this was measured (M23), and since M33 a rate
+  // over 100 seeds, as main's within MARGIN.
   assert.ok(cargo.every((trip) => trip.launched && trip.ended), 'every run settles a world past the charts');
-  const signed = cargo.filter((trip) => trip.tally.hired > 0).length;
-  assert.ok(signed >= 10, `runs with a recruit: ${signed} of ${RUNS}`);
+  const signed = cargoAll.filter((trip) => trip.tally.hired > 0).length;
+  assert.ok(signed >= MAIN.miner.signed - MARGIN, `runs with a recruit: ${signed} of ${RATE_RUNS}`);
   assert.ok(cargo.every((trip) => trip.campaign.crew.length <= 4), 'up to the berths and life support: 4');
   const fed = cargo.filter((trip) => trip.tally.hungryJumps === 0).length;
   assert.ok(fed >= 24, `fed all the way in ${fed} of ${RUNS} with a cargo hold`);
@@ -464,8 +483,10 @@ test('past the charts: the careful player crosses all five sectors, enters the s
   assert.ok(surveyed >= MAIN.miner.surveyed - MARGIN, `two worlds or more surveyed in ${surveyed} of ${RATE_RUNS}`);
   const hungry = refittingAll.filter((trip) => trip.tally.systemHungry > 0).length;
   assert.ok(hungry <= MAIN.miner.systemHungry + MARGIN, `hungry in the system in ${hungry} of ${RATE_RUNS}`);
-  const known = refitting.filter((trip) => trip.tally.settled.surveyed).length;
-  assert.ok(known >= 25, `settled a surveyed world in ${known} of ${RUNS}`);
+  // A surveyed world settled in 25 or more of 30 when this was measured;
+  // since M33 a rate over 100 seeds, as main's within MARGIN.
+  const known = refittingAll.filter((trip) => trip.tally.settled.surveyed).length;
+  assert.ok(known >= MAIN.miner.settledSurveyed - MARGIN, `settled a surveyed world in ${known} of ${RATE_RUNS}`);
   // The summary says so too.
   const summary = manyVoyages(rules, 2, { refit: 'no' }).lines.join('\n');
   assert.match(summary, /2 of 2 entered the system past the charts, 2 settled a world/);
@@ -614,7 +635,7 @@ test("the colony's raids: over its 60 days the careful player stays home while o
   for (const [i, trip] of refitting.entries()) {
     const seed = i + 1;
     const { raids } = trip.tally;
-    const { travelled, campaign: founded } = trip;
+    const { travelled, home, campaign: founded } = trip;
     assert.ok(raids, `seed ${seed} keeps its raids`);
     // Every raid found is faced once it lands; one may still be coming at
     // the end of the days played.
@@ -633,9 +654,17 @@ test("the colony's raids: over its 60 days the careful player stays home while o
     // Nobody dies in a raid: the crew is the one that landed.
     assert.deepEqual(travelled.crew.map((m) => m.id), founded.crew.map((m) => m.id));
     // Heat over the colony's days: falls a little each day, a trip adds
-    // some, and a raid brings it down to heatAfterRaid.
+    // some, and a raid brings it down to heatAfterRaid. So after a raid it
+    // ends no higher than that and the heat of the trips flown from the last
+    // raid's day on. (Until M33 this said no higher than heatAfterRaid or
+    // the heat at the landing, which held on seeds 1 to 30 by chance: main
+    // missed it on seed 77, and M33's rolls on seed 27.)
     assert.ok(travelled.heat >= 0 && travelled.heat <= 100);
-    if (raids.faced.length) assert.ok(travelled.heat <= Math.max(balance.heatAfterRaid, raids.heat[0]));
+    if (raids.faced.length) {
+      const last = Math.max(...raids.faced.map((raid) => raid.day));
+      const after = trip.tally.trips.flown.filter((flown) => flown.day >= last).length;
+      assert.ok(travelled.heat <= balance.heatAfterRaid + after * tripHeatOf(home, rules), `seed ${seed}: heat ${travelled.heat} at the end, ${after} trips after the last raid`);
+    }
     rate[raids.lanes][0] += raids.found;
     rate[raids.lanes][1] += 1;
     faced += raids.faced.length;

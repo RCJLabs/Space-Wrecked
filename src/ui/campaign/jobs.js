@@ -1,7 +1,8 @@
 // The job board: the work on offer in the district (src/sim/contracts.js),
 // opened from the hangar. The jobs are listed down the left; the one picked
 // shows on the right in full: who wants it, where, what it takes, the
-// twist, who will be there and the pay. A tap picks a job, and Take the
+// twist, who will be there, whom it is for and against (M33) and the pay,
+// with what its client's side adds. A tap picks a job, and Take the
 // job sends the crew: a tap shows it, a second one commits. The board
 // changes only once a job is done or lost.
 import { loadContent } from '../../platform/content.js';
@@ -92,7 +93,7 @@ export const jobsScreen = {
     function build(board) {
       rows.forEach((row) => row.detach());
       rows = board.map((job, i) => {
-        const words = jobText(job, defs, hunters()) ?? GONE;
+        const words = jobText(job, defs, hunters(), game.getState().campaign) ?? GONE;
         const button = node('button', 'btn jobs-pick');
         button.type = 'button';
         const top = node('span', 'jobs-top');
@@ -112,7 +113,7 @@ export const jobsScreen = {
 
     function showJob(job) {
       detailed = job;
-      const words = jobText(job, defs, hunters());
+      const words = jobText(job, defs, hunters(), game.getState().campaign);
       if (!words) {
         detail.replaceChildren(node('h2', null, GONE.title), node('p', 'jobs-who', 'The game has changed since this board went up. The next board has new work.'));
         return;
@@ -126,7 +127,8 @@ export const jobsScreen = {
       fact('The job', words.brief);
       if (words.twist) fact('The twist', `${words.twist.name}. ${words.twist.text}`);
       fact('Against', words.against);
-      fact('Pays', words.pay);
+      if (words.sides) fact('Sides', words.sides);
+      fact('Pays', words.bonus ? `${words.pay} (${words.bonus})` : words.pay);
       fact('Heat', words.heat);
       detail.replaceChildren(node('h2', null, words.title), node('p', 'jobs-who', `${words.who} · ${words.where}`), node('p', 'jobs-pitch', words.pitch), facts);
       detail.scrollTop = 0;

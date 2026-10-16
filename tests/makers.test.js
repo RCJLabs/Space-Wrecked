@@ -135,7 +135,7 @@ test("saves and codes keep their versions: old ones load with the Yard's parts, 
   // Neither number was bumped for M23g (saves were 17 then) or M31 (23
   // then, since M29's raids); saves are 24 since M32's orders in a fight,
   // and 25 since M32b's ranks.
-  assert.equal(SAVE_VERSION, 25);
+  assert.equal(SAVE_VERSION, 26);
   assert.equal(BLUEPRINT_VERSION, 4);
   // The example ship's code as main made it before M23g.
   const old = decodeBlueprint('wtb.4.B3N0YXJ0ZXIHcm91bmRlZAVzbGF0ZQNza3kIBmJyaWRnZQdyZWFjdG9yCHF1YXJ0ZXJzCGNvcnJpZG9yBmVuZ2luZQtsaWZlc3VwcG9ydAdhaXJsb2NrBndlYXBvbgsADxkBDBQCCRQDCRwDChwDCxwEBxgFCSAEByAGCyAHDSIAAA.b6db7753', rules);

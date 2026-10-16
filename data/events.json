@@ -57,7 +57,7 @@
         {
           "id": "fast",
           "label": "Strip it fast",
-          "outcomes": [{ "chance": 100, "text": "Good parts, company issue. The transponder logs your visit, naturally.", "effects": { "drop": "salvage", "credits": 15, "heat": 8 } }]
+          "outcomes": [{ "chance": 100, "text": "Good parts, company issue. The transponder logs your visit, naturally.", "effects": { "drop": "salvage", "credits": 15, "heat": 8, "standing": { "conreg": -1 } } }]
         },
         {
           "id": "pinger",
@@ -71,25 +71,47 @@
       ]
     },
     {
+      "id": "halloran-drop",
+      "kind": "derelict",
+      "title": "Halloran drop",
+      "text": "A sealed cargo pod on a slow drift, a Halloran tag on the hatch and no ship in sight. Somebody's drop, waiting for somebody's pickup.",
+      "choices": [
+        {
+          "id": "take",
+          "label": "Take it",
+          "outcomes": [
+            { "chance": 70, "text": "Machine parts, and cash in a coffee tin. The Hallorans count their drops. They'll know who came by.", "effects": { "drop": "salvage", "credits": 20, "standing": { "hallorans": -2 } } },
+            { "chance": 30, "text": "The pod was wired, as the family's pods are. Somebody will feel it tomorrow, but the tin came too.", "effects": { "credits": 20, "wound": { "hp": 3 }, "standing": { "hallorans": -2 } } }
+          ]
+        },
+        {
+          "id": "call",
+          "label": "Call it in",
+          "outcomes": [{ "chance": 100, "text": "You read the tag out on the family's band. A voice says thank you, which the Hallorans never say. Someone will remember.", "effects": { "standing": { "hallorans": 1 } } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Not your drop. Not your problem.", "effects": {} }] }
+      ]
+    },
+    {
       "id": "stalled-miner",
       "kind": "distress",
       "title": "Stalled miner",
-      "text": "A mining skiff on the emergency band: drive dead, two aboard, rations low. They can pay, they say. Miners always say that.",
+      "text": "A mining skiff on the emergency band: drive dead, two aboard, rations low, union pins on their collars. They can pay, they say. Miners always say that.",
       "choices": [
         {
           "id": "tow",
           "label": "Tow them in",
           "needs": { "supplies": 3 },
           "outcomes": [
-            { "chance": 80, "text": "They pay, and in cash. Somewhere a pig is flying.", "effects": { "supplies": -3, "credits": 25 } },
-            { "chance": 20, "text": "They pay in IOUs and a bag of ore samples. Worth about what you'd think.", "effects": { "supplies": -3, "credits": 5 } }
+            { "chance": 80, "text": "They pay, and in cash. Somewhere a pig is flying.", "effects": { "supplies": -3, "credits": 25, "standing": { "union": 1 } } },
+            { "chance": 20, "text": "They pay in IOUs and a bag of ore samples. Worth about what you'd think.", "effects": { "supplies": -3, "credits": 5, "standing": { "union": 1 } } }
           ]
         },
         {
           "id": "crate",
           "label": "Toss them a crate",
           "needs": { "supplies": 2 },
-          "outcomes": [{ "chance": 100, "text": "They swear they never saw you. Word gets around the right way.", "effects": { "supplies": -2, "heat": -4 } }]
+          "outcomes": [{ "chance": 100, "text": "They swear they never saw you. Word gets around the right way.", "effects": { "supplies": -2, "heat": -4, "standing": { "union": 1 } } }]
         },
         { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "The band goes quiet behind you.", "effects": {} }] }
       ]
@@ -134,6 +156,46 @@
       ]
     },
     {
+      "id": "fleet-tender",
+      "kind": "distress",
+      "title": "Fleet tender",
+      "text": "A Fleet supply tender on the emergency band, reactor scrammed, a midshipman reading regulations into the mic. The Fleet doesn't ask civilians for help. This one is asking.",
+      "choices": [
+        {
+          "id": "help",
+          "label": "Lend a hand",
+          "needs": { "supplies": 3 },
+          "outcomes": [{ "chance": 100, "text": "Your crew and theirs get the reactor back on your spares. The midshipman logs your ship as a friend of the Fleet, in triplicate.", "effects": { "supplies": -3, "standing": { "fleet": 2 } } }]
+        },
+        {
+          "id": "stores",
+          "label": "Raid the stores pod",
+          "outcomes": [{ "chance": 100, "text": "Their stores pod is right there, and they can't move to stop you. The midshipman takes your registration down, very slowly.", "effects": { "supplies": 6, "credits": 10, "standing": { "fleet": -2 } } }]
+        },
+        { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "The midshipman is still reading regulations as the band fades.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "survey-skiff",
+      "kind": "distress",
+      "title": "Survey skiff",
+      "text": "A Con-Reg survey skiff with a cracked drive housing, two surveyors in company orange asking for a tow to the lanes. They're very polite. They haven't checked your registration yet.",
+      "choices": [
+        {
+          "id": "tow",
+          "label": "Tow them to the lanes",
+          "needs": { "supplies": 3 },
+          "outcomes": [{ "chance": 100, "text": "They sign for the tow on a company form, in triplicate. A good word goes up the line, for what that's worth at Con-Reg.", "effects": { "supplies": -3, "credits": 15, "standing": { "conreg": 2 } } }]
+        },
+        {
+          "id": "cores",
+          "label": "Take their survey cores",
+          "outcomes": [{ "chance": 100, "text": "Survey cores sell well to the right broker, and you know three. The surveyors will file a complaint. Con-Reg reads every one.", "effects": { "credits": 35, "standing": { "conreg": -2 } } }]
+        },
+        { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "The skiff's lights shrink behind you, blinking politely.", "effects": {} }] }
+      ]
+    },
+    {
       "id": "ration-barge",
       "kind": "trader",
       "title": "Ration barge",
@@ -173,6 +235,27 @@
           "outcomes": [{ "chance": 100, "text": "Six crates. He counts the change twice.", "effects": { "credits": -5, "supplies": 6 } }]
         },
         { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "He's already looking at the next ship.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "coop-barge",
+      "kind": "trader",
+      "title": "Co-op barge",
+      "text": "A barge in union colours, selling rations at cost to members and with a markup to everyone else. The purser would like to know which you are.",
+      "choices": [
+        {
+          "id": "buy",
+          "label": "Buy 6 supplies",
+          "needs": { "credits": 6 },
+          "outcomes": [{ "chance": 100, "text": "Six crates, at the markup. The purser is polite about it.", "effects": { "credits": -6, "supplies": 6 } }]
+        },
+        {
+          "id": "fund",
+          "label": "Pay into the strike fund",
+          "needs": { "credits": 15 },
+          "outcomes": [{ "chance": 100, "text": "The purser writes you a receipt, and the radio does the rest. The halls will hear you paid in.", "effects": { "credits": -15, "standing": { "union": 2 } } }]
+        },
+        { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "The purser waves you off, union fashion.", "effects": {} }] }
       ]
     },
     {

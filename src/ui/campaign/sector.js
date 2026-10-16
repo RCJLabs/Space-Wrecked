@@ -25,8 +25,11 @@
 // the pursuer's hunters wait where it comes out, and the nodes they may
 // wait at are ringed in red; Regroup, away from stations, rests the crew a
 // day (Hide, in a nebula, sheds heat), and at a station the transponder is
-// swapped once a sector, from the left panel, each two taps. The run begins, its first sector
-// rolled, the first time the map opens.
+// swapped once a sector, from the left panel, each two taps. Since M33 the
+// crew's standing with each side shows under the ship's panel, a station of
+// a side wears its color on the chart and says its prices, and a jump's plan
+// says the heat of docking with the pursuer's side. The run begins, its
+// first sector rolled, the first time the map opens.
 //
 // Each node's button is its share of its column, so no two overlap and
 // each stays 48 px or more on the screens the game is for; its mark sits
@@ -41,7 +44,7 @@ import { createCrewCard } from './crewCard.js';
 import { crewCardText, crewHeading, crewSaid } from './crewText.js';
 import { createEventCard } from './eventCard.js';
 import { eventText, resultText } from './eventText.js';
-import { crewRows, heatChip, listRows } from './hubParts.js';
+import { crewRows, heatChip, listRows, panel, sideRows } from './hubParts.js';
 import { jumpText, sectorText } from './sectorText.js';
 
 const ARM_MS = 3000; // Jump on, Buy, Repair, Patch up, Scan, Regroup, the swap, Survey, Settle here, Sign on and Let go wait this long for a second tap
@@ -115,8 +118,10 @@ export const sectorScreen = {
     shipOpener.hidden = true;
     const shipPanel = node('section', 'hgr-panel sct-ship-panel');
     shipPanel.append(shipTitle, hold, shipOpener);
+    // The crew's standing with each side (M33).
+    const sideList = node('ul', 'hgr-sides');
     const side = node('div', 'hgr-side');
-    side.append(crewPanel, shipPanel);
+    side.append(crewPanel, shipPanel, panel('Sides', sideList));
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const hint = node('p', 'hgr-hint', 'Loading…');
@@ -204,6 +209,7 @@ export const sectorScreen = {
       heat.show(text.heat);
       crewList.replaceChildren(...crewRows(text.crew));
       hold.replaceChildren(...listRows(text.hold));
+      sideList.replaceChildren(...sideRows(text.sides));
       drawMap(run, text, plan);
       showInfo(text, plan);
       // A station selling three things or more crowds the foot: its buttons
@@ -368,6 +374,12 @@ export const sectorScreen = {
           dot.style.left = `${(n.x * columns - n.col) * 100}%`;
           dot.style.top = `${(n.y * n.rows - n.row) * 100}%`;
           button.append(dot);
+          // A station of a side (M33) wears the side's color by its mark.
+          if (n.side) {
+            const pip = node('i', 'sct-side');
+            Object.assign(pip.style, { left: dot.style.left, top: dot.style.top, background: n.side.color });
+            button.append(pip);
+          }
           // A world (M25) is named on the chart, with its kind.
           if (n.world) {
             const label = node('span', 'sct-label');
@@ -404,7 +416,8 @@ export const sectorScreen = {
         const kind = n.world ?? (n.known ? (defs.nodeTypes.get(n.type)?.name ?? n.type) : 'unknown');
         const surveyed = n.world ? (n.surveyed ? 'surveyed' : 'not surveyed') : null;
         const hunters = n.hunt ? `hunters ${n.hunt}%` : null;
-        button.setAttribute('aria-label', [n.name, kind === n.name ? null : kind, surveyed, where, hunters].filter(Boolean).join(', '));
+        const whose = n.side ? `${n.side.name}'s` : null;
+        button.setAttribute('aria-label', [n.name, kind === n.name ? null : kind, whose, surveyed, where, hunters].filter(Boolean).join(', '));
       }
       const here = sector.nodes[run.at];
       ship.style.left = `${here.x * 100}%`;
@@ -434,6 +447,8 @@ export const sectorScreen = {
       setText(infoName, here.name);
       setText(infoKind, here.kind);
       const said = leave ? [leave.title, ...leave.lines].map((line, i) => lineItem(line, i ? leave.tone : 'head')) : offer ? [offer.line, offer.why].filter(Boolean).map((line) => lineItem(line, 'info')) : [];
+      // A side's station (M33): whose it is, and what it charges the crew.
+      if (text.station) said.unshift(lineItem(text.station.line, text.station.tone));
       // A world's numbers once surveyed, or that a survey shows them; and
       // why a survey can't be made.
       for (const line of text.world ?? []) said.push(lineItem(line, 'info'));
