@@ -22,7 +22,8 @@
 //   - from each node, plan every way on to the jump point, a link at a
 //     time, and jump to the next node on the way that goes hungry least,
 //     then is worth most: the supplies and credits carried out, and the
-//     nodes passed;
+//     nodes passed. Managing heat, a dock with the pursuer's side counts as
+//     a hungry jump (M33);
 //   - with --long heat (the default), when heat is at LONG_FROM or over
 //     (voyagePlan.js), make a long jump on instead, if the supplies cover
 //     it and the way on from there goes hungry no more often; with --long

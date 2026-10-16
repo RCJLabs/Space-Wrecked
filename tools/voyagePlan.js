@@ -51,9 +51,10 @@
 // worth; weighs an event's heat at WORTH.hot; scans only below LONG_FROM;
 // and never regroups, since a day's rest costs more heat than it heals.
 // From M33 it prices a station's supplies at the share it charges the crew,
-// and so prefers a friendly side's station and keeps off the pursuer's
-// when another way calls at one without going hungry (WORTH.friendly, and
-// the docking heat).
+// and prefers a friendly side's station (WORTH.friendly). Managing heat, it
+// keeps off the pursuer's: a dock there counts as a hungry jump in its
+// choice of way (better), so it takes a way that calls at another station
+// whenever that way goes no hungrier.
 // Ignoring heat, none of these: it regroups away from stations when the
 // crew is down REST_HP hit points each on average and the holds keep
 // REST_JUMPS jumps' worth, and weighs heat at nothing. A managed long jump
@@ -342,9 +343,9 @@ function wayCost(campaign, rules, way, { supplies, credits }, judge, heat = 'man
   return { hungry, docks, value: WORTH.supply * supplies + credits + worth };
 }
 
-// Whether way a beats way b (or there is no b): hungry least, a dock with
-// the pursuer's side counting as once (M33: its heat is as bad as going on
-// into the next sector short), then worth most.
+// Whether way a beats way b (or there is no b): hungry least, each dock
+// with the pursuer's side counting as a hungry jump (M33: its heat is as
+// bad as going on into the next sector short), then worth most.
 function better(a, b) {
   if (!b) return true;
   const [short, shortB] = [a.hungry + a.docks, b.hungry + b.docks];

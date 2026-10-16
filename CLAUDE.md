@@ -29,7 +29,7 @@ A ship-first sandbox RPG in 3D: build a ship on a grid, run from a pursuer, and 
 - **Seeded RNG everywhere**, using `mulberry32` in `src/core/rng.js`. This covers battles, the approach phase, generators, loot and events. No bare `Math.random()` in game logic. RNG state is part of the save, so reloading never rerolls.
 - **All content is data** in `data/*.json`:
   - modules (each maker's versions with them) and the builder's part categories, hull frames, hull styles, styling pieces with the paints and trims, manufacturers, weapons, enemies, encounters, ship presets (each with its side's look and makers), the campaign's acts
-  - crew jobs, traits, recruits' names, backgrounds (each with its start, district and pursuer, the pursuer's words, fighters, ships and raiders in each act, and its payment or none), districts (each with its clients, sites and shop), the job sites' map templates, the run's sectors, the worlds past the charts, the colony's buildings (with the shots its defenses fire at a raid's lander) and what it builds (farms, mines, solar arrays and shelters), the places within reach of the colony
+  - crew jobs, traits, recruits' names, backgrounds (each with its start, district and pursuer, the pursuer's side and words, fighters, ships and raiders in each act, and its payment or none), districts (each with its clients, their sides, sites and shop), the job sites' map templates, the run's sectors, the worlds past the charts, the colony's buildings (with the shots its defenses fire at a raid's lander) and what it builds (farms, mines, solar arrays and shelters), the places within reach of the colony, the sides (with whose stations are whose)
   - how jobs, enemies and weapons look in a fight (`look` and `held`, checked against `src/render/figures/looks.js`)
   - mission and job templates (`data/contracts.json`), events, balance numbers
 
@@ -53,7 +53,7 @@ CNAME                       # spacewrecked.rcjlabs.com
 .well-known/assetlinks.json # TWA verification, added with the TWA
 src/
   core/      rng, save, blueprint codes, store, events
-  sim/       grid, builder rules, styling, makers, constraints, mapFromShip, battle, ai, approach, heat, campaign, colony (with its building by hand, its days and its expeditions), raids (with the colony as a battle map), economy, gen/
+  sim/       grid, builder rules, styling, makers, constraints, mapFromShip, battle, ai, approach, heat, standing (the sides), campaign, colony (with its building by hand, its days and its expeditions), raids (with the colony as a battle map), economy, gen/
   render/    3D camera, scenes and painters, part and styling piece models, figures (figures/), portraits (portraits/), hull tracer and hull shapes, SVG icons, tweens, particles
   ui/        screens, panels, gestures
   platform/  storage, service worker registration, haptics, orientation
@@ -62,7 +62,7 @@ assets/
   img/          WebP only
   LOG.md        prompt, date, model and hand edits for every image
   LICENSES.md   every third-party file and its license
-tools/       sim.js, blueprint.js, precache.js, icons.js, serve.js, validate-data.js (with validate-campaign.js, validate-sectors.js, validate-worlds.js, validate-colony.js, validate-expeditions.js, validate-events.js and checks.js), build-ship.js, battle-map.js, battle-log.js, gen-ship.js, jobs.js, run.js, raids.js, sectors.js, voyage.js (with voyagePlan.js), approach.js (with approachPlan.js), boarding.js, startShip.js, data.js
+tools/       sim.js, blueprint.js, precache.js, icons.js, serve.js, validate-data.js (with validate-campaign.js, validate-sectors.js, validate-worlds.js, validate-colony.js, validate-expeditions.js, validate-events.js, validate-factions.js and checks.js), build-ship.js, battle-map.js, battle-log.js, gen-ship.js, jobs.js, run.js, raids.js, sectors.js, voyage.js (with voyagePlan.js), approach.js (with approachPlan.js), boarding.js, startShip.js, data.js
 tests/       node --test files; golden/ holds golden maps and replays
 ROADMAP.md
 PROGRESS.md

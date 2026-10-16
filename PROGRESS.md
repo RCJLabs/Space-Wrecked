@@ -2,6 +2,183 @@
 
 Newest entry first.
 
+## M33 Factions (2026-10-16)
+
+**Status:** done, and the ROADMAP.md box is ticked. The crew has standing with four sides: Con-Reg, the Fleet, the Hallorans and the union. It runs from −10 to 10 in five levels. Act 1's jobs, the run's events and the sides' ships the crew strikes move it. In turn it sets the prices at each side's stations, the pay for a friendly side's jobs in act 1, and how the Fleet's patrols greet the ship. Docking at a station of the pursuer's side adds 10 heat.
+
+| Level | Standing | Prices at its stations | Act 1 pay | The Fleet's patrols |
+| --- | --- | --- | --- | --- |
+| Hostile | −6 and below | 150% | as written | fire first |
+| Cold | −5 to −2 | 125% | as written | as before |
+| Neutral | −1 to 1 | 100% | as written | as before |
+| Friendly | 2 to 5 | 90% | +10% | wave the ship through |
+| Trusted | 6 and up | 75% | +20% | wave the ship through |
+
+**How it was picked:** Evan answered four questions (2026-10-16), each with the recommended answer but the third:
+- **Scope:** factions now; quests across the acts in M33b; named companions in M33c.
+- **The sides:** the pursuers' three and the union.
+- **What standing changes:** "That, plus the Fleet's patrols": prices at the sides' stations, 10 heat for docking with the pursuer's side, more pay for a friendly side's jobs in act 1, and the Fleet's patrols.
+- **Before M33:** M32b's talents raised and the Provost's raid evened out, in a PR of their own (the entry below).
+
+Then calls I made, not asked, each easy to change (all data but the test player's rule):
+- **The numbers:** the levels' edges, a job ±2, a side's ship struck −3, the five prices and the two pay bonuses (the table above; all in `data/balance.json`).
+- **Neutral or cold, a patrol is as before.** Evan's pick named only the friendly and the hostile.
+- **The opening volley:** the corvette's guns fire at the first kind of part its tactics aim at that the crew's ship still has working, and the crew isn't evading yet. The log heads it "They opened fire", where it says "Last round".
+- **The four new events** (one each side, with their numbers):
+  - a Halloran drop (a derelict): take it (20 credits and a salvage roll, 30% of the time a wound of 3 instead of the roll; −2 Hallorans), call it in (+1), or leave it;
+  - a Fleet tender in trouble (a distress call): lend a hand (3 supplies, +2 Fleet), raid its stores pod (6 supplies and 10 credits, −2), or fly on;
+  - a Con-Reg survey skiff (a distress call): tow it to the lanes (3 supplies for 15 credits, +2 Con-Reg), take its survey cores (35 credits, −2), or fly on;
+  - a union co-op barge (a trader): buy 6 supplies for 6 credits, pay 15 into the strike fund (+2 union), or move on.
+- **The stalled miner's crew** wear union pins now, so its words say why towing them is +1 union.
+- **Which stations are whose:** by name, so the sectors roll as before: the union's are Union Hall Twelve, Dock Seven and Ruth's Canteen; Con-Reg's The Depot and Last Chance Supply; the Fleet's Rest Stop Nine and Station Okay; the Hallorans' Big Rita's and Halfway House. Mac's Pumps, Fuel and Grub and The Truck Stop are nobody's.
+- **Where the sides show:** a Sides panel in the hangar's side column and on the chart, a Sides section in the colony's info panel, and a pip in the side's color on its stations on the chart. The hangar's side column already filled the folded screen, so it now scrolls as a whole, each panel at its own height.
+- **The test player keeps off the pursuer's stations** (`tools/voyagePlan.js`). It prices a dock there as heat, the way it prices an event's heat, and counts the dock as a shortfall, as bad as going on into the next sector short. So it takes a way that calls at another station whenever that way goes no hungrier. As first written (a dock worth −20 credits), the miner's 30 voyages docked with Con-Reg in about half the runs, met the hunters in 16 and lost a raid in 10, over the Done when's limits (14 and 8).
+
+Done when (ROADMAP.md, M33, in full there):
+- **The sides:** four, standing −10 to 10 in five levels, a new campaign hostile with its pursuer's side.
+- **What moves it:** jobs done and lost, events' outcomes, a side's ship struck; clamped.
+- **What it changes:** prices at the sides' stations, docking heat, act 1's pay, the Fleet's patrols.
+- **Shown as it happens** (Law 4).
+- **Saves:** `SAVE_VERSION` 26, with a migration from 25.
+- **Every rule tested.**
+- **Balance:** act 1 and the voyage, within the M32b fixes' numbers; the test player's choice of stations; each side's standing reported.
+- **Touch** at the three sizes.
+
+How each is met:
+- **The sides:** `data/factions.json`, checked by `tools/validate-factions.js`; `tests/standing.test.js` (the levels and their edges, a new campaign's standing from each start).
+- **What moves it:** `tests/standing.test.js`: a job done and lost, for and against; every event's moves (the company wreck, the stalled miner and the four new ones); a side's ship boarded, blown up or left adrift, and any other end costing nothing; the clamp, and a side the content lacks passed by.
+- **What it changes:** `tests/standing.test.js`: each level's price at each service (supplies 15, 13, 10, 9 and 8 for ten; an engine's repair 75, 65, 50, 45 and 40; patching 6 hit points 18, 15, 12, 11 and 9; and each recruit's fee), each rounded as its price is; the docking heat and its line in the jump plan; the job's pay; the patrol waving the ship through and opening fire.
+- **Shown as it happens:** `tests/standingText.test.js` and the screens' text tests; by touch, below.
+- **Saves:** `tests/standing.test.js`: a v25 campaign opens with each side where its background starts a new one, and an approach under way meets no patrol.
+- **Every rule tested:** the tests above, and 23 new cases in `tests/data.test.js` for the validator: every side a client, job, pursuer, ship, event or station names must be one in `data/factions.json`, a job is never against its own client's side, and the hunters fly their pursuer's side.
+- **Balance and touch:** under Verified.
+
+Some of this changes what was there before:
+- **Prices** at a side's station are its level's share. Nobody's stations charge the whole price, as before. The start crew pays half again at its pursuer's stations.
+- **Act 1's pay:** a friendly side's job pays 10% more, a trusted side's 20%, in steps of 5 credits.
+- **The run's events:** the derelicts', distress calls' and traders' pools have 14 events where they had 10. The generator shuffles each pool, and the longer ones take more of a sector's rolls, so the sectors' names, events and hostile ships' seeds roll differently. Their shapes, kinds and links are as they were. `tests/golden/sectors.txt` was written again, on purpose.
+- **The patrol corvette** greets a crew by its standing with the Fleet.
+- **The hangar's side column** scrolls as a whole on short screens, where each panel scrolled inside itself.
+- **`SAVE_VERSION` 26.**
+- **The voyage's test player** keeps off the pursuer's stations (above), weighs a side's standing in its events' choices (2 credits a point), and prefers a friendly side's station (10 credits).
+- **Tests changed on purpose:**
+  - `campaign`, `encounter`, `expeditions`, `makers`, `orders`, `raids` and `ranks`: `SAVE_VERSION` 26, and standing where a whole campaign is compared;
+  - `contracts`: a job's words carry its sides and bonus;
+  - `sectorText`: a station's kind says its side ("Station · The union");
+  - `travel`: the jump plan's `dock`;
+  - `data`: the validator's counts ("22 events, 4 sides") and the new cases;
+  - `voyage`: below.
+
+### Shipped
+
+- **Data:**
+  - `factions.json` (new): the four sides, each with a name, a line, its color and, for the Fleet, its patrol's words; and the stations' sides by name;
+  - `balance.json`: `pursuerStanding` −10; the levels' edges (`coldStanding` −5, `neutralStanding` −1, `friendlyStanding` 2, `trustedStanding` 6); `jobStanding` 2, `lostStanding` 2, `shipStanding` 3; `hostilePrice` 150, `coldPrice` 125, `neutralPrice` 100, `friendlyPrice` 90, `trustedPrice` 75; `friendlyPay` 10, `trustedPay` 20; `dockHeat` 10;
+  - `districts.json`: Marta the steward and Gage the dockers' boss the union's, Sully the foreman Con-Reg's;
+  - `contracts.json`: `against` on 15 jobs, 6 against Con-Reg, 8 against the Fleet, 1 against the Hallorans;
+  - `backgrounds.json`: each pursuer's side;
+  - `ships.json`: the side of the patrol corvette (the Fleet's) and of the six hunters (their pursuer's);
+  - `events.json`: the company wreck stripped fast −1 Con-Reg, the stalled miner towed or tossed a crate +1 union, and the four new events.
+- **The sim:**
+  - `standing.js` (new): the levels, the moves and their clamp, a job's sides and pay, a station's side and share, the docking heat, a patrol's welcome, a struck ship's cost, and the shape checks;
+  - `campaign.js`: a new campaign's standing, and its check in a save;
+  - `contracts.js`: a job's end moves standing and pays the bonus;
+  - `events.js`: `standing` in an outcome's effects;
+  - `encounter.js` and `approach.js`: the patrol waving the ship through (an approach outcome, `waved`) or opening fire (`openingVolley`), and a side's ship struck;
+  - `travel.js`: the docking heat in the jump plan, and supplies at the share; `repair.js`, `patch.js` and `recruits.js`: their prices at the share (`costAt`);
+  - `runShape.js`: the approach's patrol, and standing's changes in outcomes and results;
+  - `save.js`: v26 and the migration; `defs.js`: the sides.
+- **The UI:**
+  - `standingText.js` (new): the sides' words: each side's row, a change with the level it leaves, a job's for and against, the bonus, a station's line, a patrol's words;
+  - the Sides panels (hangar, chart) and section (colony), and a station's pip on the chart;
+  - the job board's Sides fact and its pay with the bonus; the fight's end panel's moves; an event's result's moves; the approach's patrol words, its opening volley and its outcome's moves;
+  - a station's line, and its services' prices at the share; the jump plan's docking heat and the patrol ahead;
+  - `palette.js`: the sides' four colors.
+- **Tools:**
+  - `validate-factions.js` (new), and the sides' checks in `validate-data.js`, `validate-campaign.js` and `validate-events.js`;
+  - `run.js`: a job's pay with its bonus;
+  - `voyagePlan.js`: a station's prices at the share, standing's worth, friendly stations, and the pursuer's stations kept off;
+  - `voyage.js`: each side's standing at the launch and the landing, the patrols that waved the ship through or fired first, the docks with the pursuer and the calls at a friendly side's station; each step's price share and docking heat;
+  - `approach.js`: the rounds' outcomes (a patrol's wave is none).
+- **Tests:** three new files (`standing.test.js`, `standingText.test.js`, `voyagePlan.test.js`) and the changes above. 874 tests in all, 852 on main.
+- **Docs:** ROADMAP.md: §4.2 (the patrols), §4.4 (docking heat), §4.6 (prices and pay by standing), §4.9 (new: sides and standing), M33 as built, ticked, and five new in §9 (one narrowed: docking came in). CLAUDE.md: the sides in the content, `standing.js` and `validate-factions.js` in the layout.
+
+### Verified
+
+- **`node --test`:** 874 pass, the voyage tests' 15 and the planner's 4 among them. `node tools/validate-data.js`: OK (22 events, 4 sides). `tests/golden/sectors.txt` was written again on purpose (above); the other golden files are unchanged.
+- **`node tools/sim.js`** (run because `data/balance.json` changed; no number a fight uses did): identical to main's but for the time taken:
+  ```
+  All                1,000  50% (47–53)           37%        13%  7 (5–12)           30
+  Shots: 23,338, 23.3 a fight. Hit: crew 57%, boarders 41%.
+  A fight: 1.8 crew go down, 0.8 bleed out, 2.7 boarders die.
+  Job orders a fight: patch 0.8, suppress 0.4, weld 0.1.
+  ```
+- **Act 1** (`node tools/run.js --runs 50 --background …`): every run launches, slow medians 42, 40 and 45 minutes (the M32b fixes: 43, 40 and 45):
+
+  | Background | Jobs | Done | Quick | Slow |
+  | --- | --- | --- | --- | --- |
+  | Debt-bound miner | 6 (3 to 11) | 77% of 307 | 26 (11 to 51) | 42 (19 to 81) |
+  | Navy deserter | 6 (3 to 18) | 61% of 348 | 25 (11 to 94) | 40 (19 to 148) |
+  | Burned smuggler | 6 (2 to 26) | 76% of 362 | 28 (11 to 116) | 45 (18 to 184) |
+- **The run and the colony** (`node tools/voyage.js --runs 30 --background all`), the M32b fixes' in brackets:
+
+  | Background | Fed | Met | Raids | Won | Lost | Runs lost |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | Debt-bound miner | 24 (25) | 14 (9) | 49 | 38 | 11 | 8 (3) |
+  | Navy deserter | 25 (23) | 9 (9) | 24 | 21 | 3 | 3 (5) |
+  | Burned smuggler | 27 (29) | 9 (8) | 30 | 22 | 8 | 7 (5) |
+
+  Every run launches. Fed, met and runs lost are each within 5 of the fixes', the miner's met and runs lost exactly 5 more (known issues). Over 100 seeds, main's in brackets: the miner fed 83 (79), met 48 (35), runs lost 23 (18); the deserter 80 (83), 37 (39), 13 (20); the smuggler 91 (96), 20 (22), 17 (13).
+- **Standing,** the median at the launch, then at the landing (30 voyages):
+  - the miner: Con-Reg −10 → −10, the Fleet 0 → 0, the Hallorans 0 → −2, the union +2 → +3;
+  - the deserter: Con-Reg 0 → −2, the Fleet −10 → −10, the Hallorans 0 → −2, the union 0 → 0;
+  - the smuggler: Con-Reg 0 → −2, the Fleet −6 → −8, the Hallorans −10 → −10, the union 0 → +1. Act 1's customs jobs, against the Fleet, leave it hostile with the Fleet in most runs.
+- **The sides on the run,** over 100 voyages from each start:
+  - docked with the pursuer's side: the miner 26 times in 22 runs, the deserter 32 in 27, the smuggler 10 in 8. Of those 68 docks, 51 were where every way on called there, 9 where every other way went hungrier, 5 on a long jump away from where the hunters might wait, and 3 where another way came out as short and worth decided (`tests/voyagePlan.test.js` has the choice);
+  - called at a friendly side's station: the miner 168 times in 79 runs (the union, friendly from Marta's jobs), the deserter 10, the smuggler 7;
+  - the patrols: the deserter met 27 and every one fired first; the smuggler met 20, 16 firing first; the miner met 27, none either way. None waved the ship through (known issues).
+- **The voyage tests** pass. Changed on purpose:
+  - each step's money and heat as the rules move them: supplies, patching and recruits at the station's share, a jump's heat with the docking heat after it;
+  - the run's 14 events, every one played in 30 runs;
+  - two checks the new events tipped on seeds 1 to 30 are rates over 100 seeds against main's before M33 (CLAUDE.md): a recruit signed on with a cargo hold, in 10 or more of 30 when M23 measured it, now 49 of 100 (main's 44, within 15); and a surveyed world settled, 25 or more of 30 when M25 measured it, now 76 of 100 (main's 81);
+  - the colony's raid heat: the check said heat ends no higher than 40 or the landing's heat whenever a raid was faced, which held on seeds 1 to 30 by chance. Main misses it on seed 77 (58 at the end, 57 at the landing), as M33's rolls do on seed 27. Trips add heat after the last raid, so the check now allows the trips flown from the last raid's day on, the most the rules let it rise.
+- **By touch** (`m33/verify.mjs`, 29 checks at each of 905 × 370, 821 × 283 and 960 × 825, all passing):
+  - the hangar's Sides panel, the last row in sight with the column swiped to it; a union job's for and against on the board ("For the union (neutral): +2 done. Against Con-Reg (hostile): −2 done or lost."), its pay 120 credits;
+  - the job done: the end panel pays 120 and moves the sides ("The union +2: now friendly, +3." and "Con-Reg −2: still hostile, −10, as low as it goes."), within the screen; Continue, and the panel says the union Friendly +3, 3 to trusted;
+  - quit and reopen: the union still friendly; the next union job pays "130 credits (+10%: the union is friendly)", on the board's list too;
+  - on the chart: Union Hall Twelve, "Station · The union" with its pip; "The union's station: friendly, prices 90%."; supplies at 90%, Buy's first tap asking the price at 90%, Patch up at 90%;
+  - The Depot: "Station · Con-Reg", "Con-Reg's station: hostile, prices 150%.", supplies and patching at 150%; the jump plan there: "Con-Reg is after you, and this is their station: docking adds 10 heat, to N.";
+  - a patrol, the crew friendly with the Fleet: "The corvette waves you through." with the Fleet's words; Carry on, back on the chart with the node done;
+  - a patrol, the crew hostile with the Fleet: the hint gives the Fleet's words; the log's "They opened fire" and the volley, before any order;
+  - every button 48 px or more on each screen; offline, the hangar shows its sides; no console errors.
+- **Every earlier milestone's browser check:** running as this is written; the result goes here when it finishes.
+
+### Known issues
+
+- **The miner sits on the voyage's limits.** At 30 seeds it meets the hunters in 14 runs (limit 14) and loses a raid in 8 (limit 8); over 100 seeds, 48 and 23 against main's 35 and 18 on the same seeds. The deserter and the smuggler are level with main or better. What I found:
+  - **Docking with Con-Reg** (measured): 22 of the 100 runs dock with Con-Reg, 26 times in all: 21 where every way on called there and 3 where every other way went hungrier. Two of the twelve station names are Con-Reg's, and a sector often has no other station on the way. Those 22 runs meet the hunters in 14, against 9 for main on the same seeds.
+  - **Past the charts** (measured): the 78 runs that never dock meet the hunters in 34, against 26 for main on the same seeds, most of the difference in the system past the charts (23 runs against 14). Their heat entering it is main's (43 at the median), but they make 217 jumps there against main's 196, arriving with a little more in the holds (20 supplies at the median against 18). More jumps account for part of it; I couldn't tell the rest from chance in 78 runs.
+  
+  Ways to ease it, if you want to: fewer of Con-Reg's names among the stations, docking heat only when the ship buys there, or a lighter docking heat. Each is data, but the 10 heat and the names are your picks. Your call (§9).
+- **No patrol waves the test player through** (none in 300 voyages): no act 1 client is the Fleet's, and the only way up with the Fleet on the run is helping the Fleet tender (+2), which the test player passes for its stores. A player can earn it there. A Fleet client in act 1, or a quest in M33b, would make the wave something to work for (§9).
+- **The Narrows has no client of a side,** so the smuggler's standing only moves on the run (§9).
+- **Raids and act 3 don't move standing,** as the Done when says (§9).
+- **The hangar's side column scrolls** on the folded screen (821 × 283): the crew and the sides under the goal take a swipe.
+
+### Test on the phone
+
+1. **New game as the miner:** the hangar's Sides panel: Con-Reg hostile −10, the rest neutral. A job from Marta says "For the union" on the board, and one against Con-Reg says so.
+2. **Two union jobs:** the end panel says what each moved ("The union +2: now friendly"). The next union job pays 10% more.
+3. **Launch:** the chart's stations carry a pip in their side's color. At a union station the line says "friendly, prices 90%", and supplies cost 90%.
+4. **A Con-Reg station** (The Depot or Last Chance Supply): the jump plan says docking adds 10 heat, and its prices are 150%.
+5. **As the deserter, a patrol corvette:** it opens fire before the first round; the log says "They opened fire".
+6. **As the miner, help the Fleet tender** when one calls (+2 Fleet): the next patrol waves the ship through.
+7. **Quit and reopen:** the standing stays. An old save (v25) opens with its background's standing.
+
+### Next session
+
+M33b Quests (Phase 6). First task: settle its Done when with Evan (ROADMAP.md has a draft), and ask about the miner's voyage at the limits (known issues): whether to ease Con-Reg's stations on its way.
+
 ## M32b fixes: talents raised, the Provost's raid evened out (2026-10-16)
 
 At M33's start Evan took both of M32b's known issues on, as small fixes before M33 (2026-10-16):
