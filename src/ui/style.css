@@ -236,20 +236,50 @@ textarea {
   min-height: 0;
 }
 
+/* The side column: the crew, the holdings and the sides (M33), each panel
+   at its own height; on a short screen the column scrolls whole. */
 .hgr-side {
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
-/* The crew all show; the holdings scroll if they have to. */
-.hgr-side .hgr-panel:first-child {
+.hgr-side .hgr-panel {
   flex: none;
+  overflow: visible;
 }
 
-.hgr-side .hgr-panel:last-child {
-  flex: 0 1 auto;
+/* The sides (M33, hubParts.js sideRows): a mark in the side's color, its
+   name with how far to the next level under it, and its level and number,
+   colored by the level. */
+.hgr-sides li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+}
+
+.hgr-mark {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.hgr-sides li[data-level='hostile'] .hgr-num {
+  color: var(--c-bad);
+}
+
+.hgr-sides li[data-level='cold'] .hgr-num {
+  color: var(--c-dash);
+}
+
+.hgr-sides li[data-level='friendly'] .hgr-num,
+.hgr-sides li[data-level='trusted'] .hgr-num {
+  color: var(--c-good);
 }
 
 .hgr-goal li {
@@ -307,9 +337,10 @@ textarea {
 }
 
 /* Short screens: the side panels' crew rows are the names alone, a line
-   each, so the panels show whole. The crew card has the jobs. */
+   each, so the panels show whole. The crew card has the jobs. The sides
+   keep how far each is from its next level. */
 @media (max-height: 320px) {
-  .hgr-side .hgr-name small {
+  .hgr-side .hgr-crew .hgr-name small {
     display: none;
   }
 }
@@ -1242,6 +1273,18 @@ textarea {
 .sct-label b {
   color: var(--c-ink);
   font-weight: 700;
+}
+
+/* A station of a side (M33): a pip of the side's color at its mark's
+   corner. */
+.sct-side {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--c-space);
+  border-radius: 50%;
+  transform: translate(7px, -15px);
+  pointer-events: none;
 }
 
 .sct-node[data-seen='true'] .sct-dot {
@@ -3788,6 +3831,17 @@ textarea {
   color: var(--c-good);
   font-size: 13px;
   font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+}
+
+/* What a job's end moved with the sides (M33). */
+.fgt-over-sides {
+  margin: -4px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--c-ink);
+  font-size: 13px;
   line-height: 1.35;
   text-align: center;
 }

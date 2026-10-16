@@ -1,10 +1,11 @@
 // Text for an event at a node (src/sim/events.js): the event as it opens,
 // each choice with its odds and what each of its outcomes does, and what
-// happened once a choice is made. rules are the content tables
-// (src/sim/defs.js).
+// happened once a choice is made, standing with the sides included (M33,
+// standingText.js). rules are the content tables (src/sim/defs.js).
 import { sellPriceOf } from '../../sim/economy.js';
 import { choiceProblem } from '../../sim/events.js';
 import { openEvent } from '../../sim/travel.js';
+import { changeLines, sideCalled } from './standingText.js';
 
 // The event open where the ship is, or null:
 //   where     "Derelict · Old Beacon": the node's kind and name
@@ -58,8 +59,8 @@ function whereText(node, rules) {
 }
 
 // An outcome's effects in words, for the odds: "+10 credits, a salvaged
-// part". Nothing is "nothing". At the colony (M28) supplies are food, and
-// an event can bring materials.
+// part, the union +1". Nothing is "nothing". At the colony (M28) supplies
+// are food, and an event can bring materials.
 export function effectsText(effects, campaign, rules) {
   const said = [];
   if (effects.credits) said.push(`${signed(effects.credits)} credits`);
@@ -73,11 +74,13 @@ export function effectsText(effects, campaign, rules) {
     const dearest = dearestOnHand(campaign, rules);
     said.push(dearest ? `your ${partName(dearest, rules)} sold for ${sellPriceOf(dearest, rules)} credits` : 'a part sold');
   }
+  for (const [side, by] of Object.entries(effects.standing ?? {})) said.push(`${sideCalled(side, rules)} ${signed(by)}`);
   return said.length ? said.join(', ') : 'nothing';
 }
 
 // What a result's changes came to, in words: "+10 credits. Found: an
-// Armory. Kim hurt (3 hit points)." Nothing is "Nothing changes."
+// Armory. Kim hurt (3 hit points). The union +1: neutral, 1." Nothing is
+// "Nothing changes."
 export function changesText(changes, campaign, rules) {
   const said = [];
   const moved = [];
@@ -92,6 +95,7 @@ export function changesText(changes, campaign, rules) {
     const name = campaign.crew.find((member) => member.id === wound.id)?.name ?? 'Someone';
     said.push(`${name} hurt (${wound.hp} hit point${wound.hp === 1 ? '' : 's'}).`);
   }
+  said.push(...changeLines(changes.standing, rules));
   return said.length ? said.join(' ') : 'Nothing changes.';
 }
 

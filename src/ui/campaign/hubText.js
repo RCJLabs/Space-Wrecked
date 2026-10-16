@@ -9,6 +9,7 @@ import { baseOf, countOfAny } from '../../sim/makers.js';
 import { beginRaid } from '../../sim/raid.js';
 import { rankOf } from '../../sim/ranks.js';
 import { offerText } from './shopText.js';
+import { sidesText } from './standingText.js';
 
 export const LEVEL_NAMES = { calm: 'Calm', rumors: 'Rumors', hunters: 'Hunters', raid: 'Raid' };
 // On the run (act 2, M24), heat's own levels (heat.js RUN_LEVELS).
@@ -21,6 +22,8 @@ export const RUN_LEVEL_NAMES = { calm: 'Calm', rumors: 'Rumors', hunters: 'Hunte
 //               how many are on hand, and the shop's price if it has one;
 //               any maker's version of the part counts (M23g).
 //   crew        [{ name, job, hp, max }]: job is blank when it is the name
+//   sides       each side and the crew's standing with it (M33:
+//               standingText.js sidesText)
 //   holdings    [[label, value]]: credits, parts on hand and jobs
 //   hint        { tone, text }: what to do next
 //   build       true when a part on hand fixes a failing line
@@ -57,6 +60,7 @@ export function hangarText(campaign, rules) {
     home: act?.home ?? '',
     goal: { ready, lines },
     crew,
+    sides: sidesText(campaign, rules),
     holdings: [
       ['Credits', campaign.credits.toLocaleString('en')],
       ['Parts on hand', partsText(campaign.parts, rules)],

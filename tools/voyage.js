@@ -86,6 +86,7 @@ import { hireRecruit } from '../src/sim/recruits.js';
 import { regroup } from '../src/sim/regroup.js';
 import { repairShip } from '../src/sim/repair.js';
 import { settle } from '../src/sim/settle.js';
+import { stationSide } from '../src/sim/standing.js';
 import { survey } from '../src/sim/survey.js';
 import { swapTransponder } from '../src/sim/transponder.js';
 import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer } from '../src/sim/travel.js';
@@ -192,6 +193,13 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     peak: launched.heat,
     heat: [launched.heat, null],
     hp: [hpOf(campaign), null],
+    // Standing with each side (M33) at the launch and as the world is
+    // settled (null short of one); and the side's patrols that waved the
+    // ship through or fired first.
+    standing: { launch: launched.standing, landing: null },
+    waved: 0,
+    fired: 0,
+    docked: 0,
   };
   const hold = () => `${campaign.supplies} supplies, ${campaign.credits} credits, heat ${campaign.heat}`;
   // The parts a refit couldn't fit, and the ship then (voyagePlan.js refitAt).
@@ -238,6 +246,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     if (moved.hunt.chance > 0) tally.hotJumps += 1;
     tally.peak = Math.max(tally.peak, campaign.heat);
     if (plan.kind === 'long') tally.longJumps += 1;
+    if (plan.dock) tally.docked += 1;
     if (plan.hungry) tally.hungryJumps += 1;
     if (plan.hungry && before.run.sector.system) tally.systemHungry += 1;
     // A sector is crossed when the ship reaches its jump point.
@@ -250,7 +259,9 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       sectorLine();
     } else {
       const node = hereOf(campaign);
-      lines.push(`   ${plan.kind === 'long' ? 'Long jump' : 'Jump'} to ${node.name}${node.type === 'station' ? ' (a station)' : ''}${hungry}: ${hold()}.`);
+      const whose = stationSide(node, defs);
+      const station = node.type === 'station' ? ` (a station${whose ? `, ${defs.factions.sides.get(whose)?.name ?? whose}'s${plan.dock ? `, docking +${plan.dock} heat` : ''}` : ''})` : '';
+      lines.push(`   ${plan.kind === 'long' ? 'Long jump' : 'Jump'} to ${node.name}${station}${hungry}: ${hold()}.`);
     }
   };
   sectorLine();
@@ -269,9 +280,21 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
         if (!given.ok) throw new Error(given.error);
         campaign = given.campaign;
       }
-      const { outcome, round } = campaign.run.approach;
+      const { outcome, round, patrol } = campaign.run.approach;
       const { changes } = outcome;
       record('approach', before, { ship: enemy.ship, hunt, outcome: outcome.kind, how: outcome.how ?? null, rounds: round, changes, boarding: outcome.boarding, wrecks: Object.keys(campaign.wrecks).length });
+      // A side's patrol (M33) that waved the ship through is no approach.
+      if (patrol === 'waved') {
+        tally.waved += 1;
+        lines.push(`   ${enemy.name}: waved through. ${hold()}.`);
+        campaign = closeApproach(campaign).campaign;
+      }
+      if (patrol === 'fired') tally.fired += 1;
+    }
+    if (campaign.run.approach) {
+      const { enemy, hunt } = campaign.run.approach;
+      const { outcome, round } = campaign.run.approach;
+      const { changes } = outcome;
       tally.approaches += 1;
       if (hunt) {
         tally.hunts += 1;
@@ -355,6 +378,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
         const { world } = campaign.colony;
         const best = Math.max(...before.run.sector.nodes.filter((node) => node.world).map((node) => worldScore(defs, node.world, true)));
         record('settle', before, { world: world.name });
+        tally.standing.landing = campaign.standing;
         tally.settled = { name: world.name, kind: world.kind, surveyed: world.surveyed, score: worldScore(defs, world, world.surveyed), best, record: runRecord(campaign, defs) };
         lines.push(`   Settled ${world.name} (${kindName(defs, world)}, ${world.surveyed ? `surveyed, scoring ${worldScore(defs, world, true)}` : `not surveyed, its kind scoring ${worldScore(defs, world, false)}`}; the system's best scores ${best}): act 2 ends.`);
         landed = campaign;
@@ -865,8 +889,9 @@ export function voyage(defs, seed, options = {}, lifted = launchedAt(defs, seed,
 // Voyages from seeds 1 to `runs` from each background's start, side by
 // side (M30): how many launched, crossed fed all the way and met the
 // hunters, and the colony's raids faced, won and lost, with the runs that
-// lost one. { lines, rows }, a row a background: { id, name, launched,
-// fed, met, faced, won, lost, runsLost }.
+// lost one; and (M33) the median standing with each side at the launch and
+// at the landing. { lines, rows }, a row a background: { id, name,
+// launched, fed, met, faced, won, lost, runsLost, standing }.
 export function voyagesByBackground(defs, runs, options = {}) {
   const rows = [...defs.backgrounds.values()].map(({ id, name }) => {
     const done = manyVoyages(defs, runs, { ...options, background: id }).results.filter((r) => r.launched);
@@ -882,6 +907,7 @@ export function voyagesByBackground(defs, runs, options = {}) {
       won,
       lost: faced.length - won,
       runsLost: done.filter((r) => (r.tally.raids?.faced ?? []).some((raid) => !raid.won)).length,
+      standing: standingMedians(defs, done),
     };
   });
   const width = Math.max(...rows.map((row) => row.name.length), 10);
@@ -890,8 +916,24 @@ export function voyagesByBackground(defs, runs, options = {}) {
     `${runs} voyages from each background's start, campaign seeds 1 to ${runs}: launched, fed all the way, met the hunters, and the colony's raids.`,
     cells(['Background', 'Launched', 'Fed', 'Met', 'Raids', 'Won', 'Lost', 'Runs lost']),
     ...rows.map((row) => cells([row.name, row.launched, row.fed, row.met, row.faced, row.won, row.lost, row.runsLost])),
+    'Standing with each side, the median at the launch, then at the landing (M33):',
+    ...rows.map((row) => `${row.name.padEnd(width)}  ${standingLine(defs, row.standing)}`),
   ];
   return { lines, rows };
+}
+
+// The median standing with each side at the launch and at the landing (M33),
+// of the voyages that settled a world: { [side]: [launch, landing] }.
+function standingMedians(defs, done) {
+  const landed = done.filter((r) => r.tally.standing.landing);
+  const median = (values) => [...values].sort((a, b) => a - b)[Math.floor((values.length - 1) / 2)] ?? 0;
+  return Object.fromEntries([...defs.factions.sides.keys()].map((side) => [side, [median(landed.map((r) => r.tally.standing.launch[side] ?? 0)), median(landed.map((r) => r.tally.standing.landing[side] ?? 0))]]));
+}
+
+// "Con-Reg −10 → −10, the Fleet 0 → −2, …".
+function standingLine(defs, standing) {
+  const signedOf = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');
+  return Object.entries(standing).map(([side, [launch, landing]]) => `${defs.factions.sides.get(side)?.name ?? side} ${signedOf(launch)} → ${signedOf(landing)}`).join(', ');
 }
 
 // Voyages from seeds 1 to `runs`, summed up: { lines, results }.
@@ -928,6 +970,7 @@ export function manyVoyages(defs, runs, options = {}) {
     `Supplies bought: ${spread(of('bought'))}, for ${spread(of('spent'))} credits. Launch credits: ${spread(done.map((r) => r.steps[0]?.credits[0] ?? 0))}.`,
     `Heat at launch: ${spread(done.map((r) => r.tally.heat[0]))}; at the end: ${spread(done.map((r) => r.tally.heat[1]))}; at most: ${spread(of('peak'))}. Jumps where the hunters might wait: ${spread(of('hotJumps'))}.`,
     `The hunters: met in ${met} of ${done.length} runs, ${spread(of('hunts'))} a run (the task force ${spread(of('taskForces'))}), faced ${spread(of('huntsFaced'))}. Regroups ${spread(of('regroups'))}, days hidden ${spread(of('hides'))}, healing ${spread(of('rested'))}; transponder swaps ${spread(of('swaps'))} for ${spread(of('swapCredits'))} credits.`,
+    `The sides (M33): patrols waved the ship through ${spread(of('waved'))} times a run, fired first ${spread(of('fired'))}; docked with the pursuer's side ${spread(of('docked'))} times. Standing, the median at the launch, then at the landing: ${standingLine(defs, standingMedians(defs, done))}.`,
     ...results.filter((r) => !r.launched).map((r) => r.lines.at(-1)),
   ];
   return { lines, results };

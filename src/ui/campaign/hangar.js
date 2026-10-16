@@ -4,7 +4,8 @@
 // their hit points, and what the campaign holds. Build opens construction
 // mode (construction.js) on the ship; Jobs opens the job board (jobs.js),
 // where the parts still missing are earned, and Shop the district's shop
-// (shop.js), where they are bought. Heat shows by the act, with
+// (shop.js), where they are bought. Under them, the crew's standing with
+// each side (M33). Heat shows by the act, with
 // Pay to buy some off (a tap shows the price, a second pays); once heat
 // brings a raid, Defend takes the place of Jobs. Once every flight check
 // passes, Launch shows at the top of the goal: a tap says what launching
@@ -15,7 +16,7 @@ import { loadContent } from '../../platform/content.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
-import { createShipStand, crewRows, heatChip, listRows, panel } from './hubParts.js';
+import { createShipStand, crewRows, heatChip, listRows, panel, sideRows } from './hubParts.js';
 import { hangarText } from './hubText.js';
 
 const ARM_MS = 3000; // Pay and Launch wait this long for a second tap
@@ -33,9 +34,10 @@ export const hangarScreen = {
     const goalLines = node('ul', 'hgr-goal');
     const crewList = node('ul', 'hgr-crew');
     const holdings = node('dl', 'hgr-hold');
+    const sideList = node('ul', 'hgr-sides');
     const shipArea = node('div', 'hgr-ship');
     const side = node('div', 'hgr-side');
-    side.append(panel('Crew', crewList), panel('Hangar', holdings));
+    side.append(panel('Crew', crewList), panel('Hangar', holdings), panel('Sides', sideList));
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const hint = node('p', 'hgr-hint', 'Loading…');
@@ -108,6 +110,7 @@ export const hangarScreen = {
       );
       crewList.replaceChildren(...crewRows(text.crew));
       holdings.replaceChildren(...listRows(text.holdings));
+      sideList.replaceChildren(...sideRows(text.sides));
       // Heat, and the payment that buys some off.
       const { raid } = text;
       heat.show(text.heat);

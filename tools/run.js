@@ -10,8 +10,9 @@
 //   - face a raid that is due, unless a payment heads it off;
 //   - pay heat down when the next job would bring the hunters (or, with
 //     --heat, only before a raid, or never);
-//   - take the job worth most: its pay and its part, at the odds the test
-//     crew has had on that job and twist.
+//   - take the job worth most: its pay (with what its client's side adds,
+//     M33) and its part, at the odds the test crew has had on that job and
+//     twist.
 // In a fight the crew is played by the job player (src/sim/jobAi.js), or
 // in a raid by the AI; the enemy by the AI, pressing on in a raid.
 //
@@ -46,6 +47,7 @@ import { placedCells } from '../src/sim/modules.js';
 import { pressAction } from '../src/sim/press.js';
 import { beginRaid, endRaid } from '../src/sim/raid.js';
 import { DIFFICULTIES } from '../src/sim/settings.js';
+import { jobPay } from '../src/sim/standing.js';
 import { jobText } from '../src/ui/campaign/jobText.js';
 import { playOn } from './boarding.js';
 import { readData } from './data.js';
@@ -104,14 +106,15 @@ export function fitPart(ship, defs, type) {
   return best && { ship: best.ship, at: best.at };
 }
 
-// What a job on the board is worth to the run: its pay and its part (the
-// price of one the checklist needs, else what the shop would pay for it),
-// at the test crew's odds on it.
+// What a job on the board is worth to the run: its pay, with what its
+// client's side adds (M33), and its part (the price of one the checklist
+// needs, else what the shop would pay for it), at the test crew's odds on
+// it.
 function jobWorth(job, campaign, defs, needed) {
   const contract = defs.contracts.jobs.get(job.contract);
   const part = job.part ? (needOf(needed, job.part, defs) ? priceOf(job.part, defs) : sellPriceOf(job.part, defs)) ?? 0 : 0;
   const odds = (JOB_ODDS[job.contract] ?? MISSION_ODDS[contract.mission] ?? 0.5) * (TWIST_ODDS[job.twist] ?? 1);
-  return Math.min(0.95, odds) * (job.credits + part);
+  return Math.min(0.95, odds) * (jobPay(campaign, defs, job) + part);
 }
 
 // How many of a part the checklist still asks for, any maker's version

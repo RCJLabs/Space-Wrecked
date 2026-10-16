@@ -182,6 +182,7 @@ export const approachScreen = {
         outLines.replaceChildren(...lines.map((line) => node('li', null, line)));
       }
       logHead.hidden = !text.last.length;
+      setText(logHead, text.lastHead);
       log.replaceChildren(...text.last.map((line) => node('li', null, line)));
 
       const picked = armed === 'board' ? stakes.begin : armed === 'leave' ? stakes.leave : text.orders.find((order) => order.key === armed);

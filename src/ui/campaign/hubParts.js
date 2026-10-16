@@ -1,7 +1,7 @@
 // Pieces the campaign's homes share: the hangar (hangar.js), the sector
 // map on the run (sector.js) and the colony (colony.js). A titled panel,
-// the crew's rows, a list of labels and values, the heat meter, and the
-// ship standing still in the middle, seen from outside.
+// the crew's rows, the sides' rows (M33), a list of labels and values, the
+// heat meter, and the ship standing still in the middle, seen from outside.
 import { traceHull } from '../../render/hull.js';
 import { fitOrbit } from '../../render/orbit.js';
 import { palette, skinFor } from '../../render/palette.js';
@@ -42,6 +42,25 @@ export function crewRows(crew) {
     fill.style.width = `${(100 * hp) / max}%`;
     bar.append(fill);
     row.append(who, bar, node('span', 'hgr-num', `${hp}/${max}`));
+    return row;
+  });
+}
+
+// The sides' rows, from standingText.js sidesText (M33): a mark in the
+// side's color, its name with how far to the next level under it, and its
+// level and number, colored by the level.
+export function sideRows(sides) {
+  return sides.map(({ side, name, color, level, label, next, line }) => {
+    const row = node('li');
+    row.dataset.side = side;
+    row.dataset.level = level;
+    row.title = line;
+    row.setAttribute('aria-label', line);
+    const mark = node('i', 'hgr-mark');
+    mark.style.background = color;
+    const who = node('span', 'hgr-name');
+    who.append(node('span', null, name), node('small', null, next));
+    row.append(mark, who, node('span', 'hgr-num', label));
     return row;
   });
 }
