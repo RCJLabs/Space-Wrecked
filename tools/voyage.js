@@ -417,7 +417,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       if (!signed.ok) throw new Error(signed.error);
       campaign = signed.campaign;
       const member = campaign.crew.at(-1);
-      record('hire', before, { name: member.name, job: member.job, traits: member.traits });
+      record('hire', before, { name: member.name, job: member.job, traits: member.traits, fights: member.fights, background: member.background });
       tally.hired += 1;
       tally.hireCredits += signed.plan.fee;
       lines.push(`   Signed on ${member.name} (${defs.jobs.get(member.job)?.name ?? member.job}) for ${signed.plan.fee} credits: a crew of ${campaign.crew.length}, ${hold()}.`);

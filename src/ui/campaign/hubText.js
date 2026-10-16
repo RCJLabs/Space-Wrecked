@@ -7,6 +7,7 @@ import { heatLevel, paymentFor, pursuerOf, raidDue, runLevel } from '../../sim/h
 import { launchProblem } from '../../sim/launch.js';
 import { baseOf, countOfAny } from '../../sim/makers.js';
 import { beginRaid } from '../../sim/raid.js';
+import { rankOf } from '../../sim/ranks.js';
 import { offerText } from './shopText.js';
 
 export const LEVEL_NAMES = { calm: 'Calm', rumors: 'Rumors', hunters: 'Hunters', raid: 'Raid' };
@@ -75,12 +76,12 @@ export function actTitle(act, rules) {
   return `Act ${act} · ${rules.acts.get(act)?.name ?? 'Unknown'}`;
 }
 
-// The crew panel's rows: [{ name, job, hp, max }], job blank when it is
-// the name.
+// The crew panel's rows: [{ name, job, rank, hp, max }]: job blank when it
+// is the name; rank their rank (M32b), 0 for none.
 export function crewText(campaign, rules) {
   return campaign.crew.map((member) => {
     const job = rules.jobs.get(member.job)?.name ?? member.job;
-    return { name: member.name, job: job === member.name ? '' : job, hp: member.hp, max: maxHp(member, rules) };
+    return { name: member.name, job: job === member.name ? '' : job, rank: rankOf(member, rules), hp: member.hp, max: maxHp(member, rules) };
   });
 }
 

@@ -1,6 +1,8 @@
 // Text for the Fight screen: the status line, the round chip, the odds
 // card, and what a crew member's button says about them.
 import { describeEvent } from '../../sim/battleLog.js';
+import { orderOf } from '../../sim/orders.js';
+import { rankNameFor } from '../../sim/ranks.js';
 
 // The status line while an event plays out: the log's words (battleLog.js),
 // with a walk told without its tiles.
@@ -98,6 +100,8 @@ export function oddsText(shooter, target, odds, rules) {
     suppressed: () => `${shooter.name} suppressed`,
     marked: () => `${target.name} marked`,
     forgiving: () => 'Forgiving odds',
+    // A dart's rank (orders.js dartOdds, M32b), by the rank's name.
+    steady: () => rankNameFor(rules.jobs.get(shooter.kind), shooter.rank ?? 0, 'order') ?? 'Rank',
   };
   const rows = odds.hitParts.map((part) => [label[part.why](part), signed(part.value, part.why === 'aim')]);
   const sum = odds.hitParts.reduce((total, part) => total + part.value, 0);
@@ -124,16 +128,17 @@ export function stateText(unit) {
   return `${unit.ap} AP · ${unit.ammo} shot${unit.ammo === 1 ? '' : 's'}`;
 }
 
-// A unit's card: { title, lines }: its numbers, its job's order and the
-// uses left (M32), and what orders left on it.
+// A unit's card: { title, lines }: its numbers, its rank (M32b), its job's
+// order and the uses left (M32), and what orders left on it.
 export function unitText(unit, rules) {
   const weapon = rules.weapons.get(unit.weapon);
   const side = unit.side === 'crew' ? 'Crew' : 'Enemy';
-  const order = unit.side === 'crew' ? rules.jobs.get(unit.kind)?.order : null;
+  const order = orderOf(unit, rules);
+  const rank = unit.rank ? rules.jobs.get(unit.kind)?.ranks?.[unit.rank - 1]?.name : null;
   return {
     title: `${unit.name} ${unit.id}`,
     lines: [
-      `${side} · ${unit.hp}/${unit.maxHp} hit points · ${stateText(unit)}.`,
+      `${side}${unit.rank ? ` · rank ${unit.rank}${rank ? `, ${rank}` : ''}` : ''} · ${unit.hp}/${unit.maxHp} hit points · ${stateText(unit)}.`,
       `Aim ${unit.aim} · defense ${unit.defense} · armor ${unit.armor} · moves ${unit.mobility}.`,
       `${weapon.name}: damage ${weapon.damage[0]}–${weapon.damage[1]}, crit ${weapon.crit}%, ${unit.ammo}/${weapon.clip} shots.`,
       ...(order ? [`${order.name}: ${unit.uses} of ${order.uses} left this fight.`] : []),

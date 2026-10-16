@@ -41,7 +41,10 @@ test('a station offers recruitOffer recruits, from the data, the same on every v
   for (const recruit of offer) {
     const [first, last] = recruit.name.split(' ');
     assert.ok(rules.recruits.first.includes(first) && rules.recruits.last.includes(last), recruit.name);
-    assert.ok(rules.jobs.has(recruit.job) && recruit.traits.length === 1 && rules.traits.has(recruit.traits[0]), JSON.stringify(recruit));
+    // Since M32b the job, traits and fights come from their background.
+    const past = rules.recruits.backgrounds.get(recruit.background);
+    assert.ok(past && past.jobs.includes(recruit.job) && recruit.traits.length === past.traitCount && recruit.traits.every((id) => past.traits.includes(id)), JSON.stringify(recruit));
+    assert.ok(recruit.fights >= past.fights[0] && recruit.fights <= past.fights[1], JSON.stringify(recruit));
     assert.equal(recruit.hp, maxHp(recruit, rules), 'at full health');
   }
   assert.equal(new Set(offer.map((r) => r.name)).size, offer.length, 'no two alike');
@@ -63,15 +66,15 @@ test('signing on takes the fee and a free berth, and the rest of the offer stays
   const [first, second] = recruitOffer(campaign, rules);
   const after = hired(campaign, first.slot);
   const member = after.crew.at(-1);
-  assert.deepEqual(member, { id: 4, name: first.name, job: first.job, hp: first.hp, traits: first.traits, look: first.look });
-  assert.equal(after.credits, 500 - balance.recruitFee);
+  assert.deepEqual(member, { id: 4, name: first.name, job: first.job, hp: first.hp, traits: first.traits, look: first.look, fights: first.fights, background: first.background });
+  assert.equal(after.credits, 500 - first.fee);
   assert.equal(after.flags.recruitsHired, 1);
   assert.deepEqual(after.run.hired, [{ node: campaign.run.at, slot: first.slot }]);
   assert.deepEqual(recruitOffer(after, rules), [second], 'signed on, gone from the offer; the other unchanged');
   // The ship carries 4: no room for a fifth.
   assert.deepEqual(hirePlan(after, rules, second.slot), { ok: false, error: 'No room aboard: the berths and life support carry 4.' });
   // Short of the fee; away from a station; signed on already.
-  assert.equal(hirePlan({ ...campaign, credits: balance.recruitFee - 1 }, rules, first.slot).error, `Signing on costs ${balance.recruitFee} credits.`);
+  assert.equal(hirePlan({ ...campaign, credits: first.fee - 1 }, rules, first.slot).error, `Signing on costs ${first.fee} credits.`);
   assert.equal(hirePlan(onRun({ credits: 500 }), rules, 0).error, 'Recruits sign on at stations.');
   assert.equal(hirePlan(after, rules, first.slot).error, 'No one is for hire there.');
   // More quarters and life support, more room.

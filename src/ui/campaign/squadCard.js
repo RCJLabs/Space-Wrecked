@@ -11,7 +11,7 @@ import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { shortNames } from '../names.js';
-import { portraitImg, portraitUrl } from '../portrait.js';
+import { portraitImg, portraitUrl, withRank } from '../portrait.js';
 
 // toggle(id): take crew member id, or leave them aboard; done(): Done.
 export function createSquadCard({ toggle, done }) {
@@ -56,9 +56,12 @@ export function createSquadCard({ toggle, done }) {
         who.title = member.name;
         if (member.about) who.append(node('small', null, member.about));
         button.dataset.wounded = String(member.hp < member.max);
-        const face = portraitImg('crew-face', portraitUrl(member.face.look, member.face.job, member.face.trim, 'face'));
+        // A chevron for each rank over the portrait's corner (M32b): the
+        // card is too narrow on the cover screen for it in words.
+        const face = withRank(portraitImg('crew-face', portraitUrl(member.face.look, member.face.job, member.face.trim, 'face')), member.rank);
         button.append(box, face, who, node('span', 'hgr-num', `${member.hp}/${member.max}`));
-        button.setAttribute('aria-label', `${member.name}, ${member.hp} of ${member.max} hit points: ${member.going ? 'going' : 'staying aboard'}`);
+        const rank = member.rank ? `, rank ${member.rank}` : '';
+        button.setAttribute('aria-label', `${member.name}${rank}, ${member.hp} of ${member.max} hit points: ${member.going ? 'going' : 'staying aboard'}`);
         return { button, detach: onTap(button, () => toggle(member.id)) };
       });
       list.replaceChildren(...buttons.map((entry) => entry.button));

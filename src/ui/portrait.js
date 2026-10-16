@@ -3,6 +3,7 @@
 // data URL, each drawing made once and kept. An image keeps the SVG's ids
 // to itself, so any number of portraits can share a page.
 import { portraitSvg } from '../render/portraits/badge.js';
+import { icons } from './icons.js';
 
 // Drawings kept, oldest first; stepping through looks at captain creation
 // makes many.
@@ -34,4 +35,29 @@ export function portraitImg(className, url) {
   img.draggable = false;
   img.src = url;
   return img;
+}
+
+// A crew member's rank (M32b) as chevrons, one for each: a <span
+// class="rank-mark"> that says its rank to a screen reader, or null at rank
+// 0. It sits over a portrait's corner (withRank) or beside a name.
+export function rankMark(rank) {
+  const icon = rank > 0 ? icons[`rank${rank}`] : null;
+  if (!icon) return null;
+  const mark = document.createElement('span');
+  mark.className = 'rank-mark';
+  mark.innerHTML = icon;
+  mark.setAttribute('role', 'img');
+  mark.setAttribute('aria-label', `rank ${rank}`);
+  return mark;
+}
+
+// A portrait with its rank's chevrons over the corner, so a narrow card
+// shows the rank whatever its words leave out: the <img> alone at rank 0.
+export function withRank(img, rank) {
+  const mark = rankMark(rank);
+  if (!mark) return img;
+  const pic = document.createElement('span');
+  pic.className = 'ranked-face';
+  pic.append(img, mark);
+  return pic;
 }

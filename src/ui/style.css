@@ -1410,6 +1410,72 @@ textarea {
   color: var(--c-good);
 }
 
+/* A crew member's rank (M32b, portrait.js rankMark): a chevron for each,
+   over the corner of their portrait so a narrow card or the fight's column
+   keeps its width, or beside their name where there is no portrait. */
+.rank-mark {
+  display: inline-flex;
+  flex: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  background: var(--c-space);
+  color: var(--c-accent);
+  vertical-align: middle;
+}
+
+.rank-mark svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ranked-face {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.ranked-face .rank-mark {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+}
+
+.hgr-name .rank-mark,
+.fgt-name .rank-mark {
+  width: 13px;
+  height: 13px;
+  margin: -2px 0 0 4px;
+}
+
+/* A crew row's name and its rank's chevrons: the name is cut short, never
+   the chevrons. */
+.hgr-name > .hgr-named {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.hgr-named > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hgr-named .rank-mark {
+  margin-top: 0;
+}
+
+/* A crew member's rank and fights, and a recruit's past (M32b). */
+.hgr-name small.crew-rank {
+  color: var(--c-accent);
+}
+
+.hgr-name small.crew-past {
+  font-style: italic;
+}
+
 /* The look: the portrait beside a button a layer, each saying its choice,
    and Roll. */
 .cap-look {
@@ -1554,6 +1620,34 @@ textarea {
 
 #ui .cap-trait[aria-pressed='true'] .cap-trait-effect {
   color: var(--c-accent);
+}
+
+/* The traits' panel (M32b): its 20 picks scroll, and the last one tapped
+   stays in words under them, covering none. */
+.hgr-panel.cap-traits-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cap-traits-panel .cap-traits {
+  flex: 1 1 auto;
+  align-content: start;
+  min-height: 0;
+  margin-bottom: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.cap-traits-panel .cap-flavor {
+  flex: none;
+  margin: 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--c-line);
+}
+
+.cap-traits-panel .cap-flavor:empty {
+  display: none;
 }
 
 .cap-foot {
@@ -3288,6 +3382,7 @@ textarea {
   border-radius: 5px;
 }
 
+
 .fgt-who {
   display: flex;
   flex: 1;
@@ -3658,6 +3753,10 @@ textarea {
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
   transform: translate(-50%, -50%);
   pointer-events: auto;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .fgt-over p {
@@ -3679,6 +3778,18 @@ textarea {
   font-size: 14px;
   font-weight: 500;
   color: var(--c-ink);
+}
+
+/* Who reached a rank as the fight ended (M32b), a line each. */
+.fgt-over-ranks {
+  margin: -4px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--c-good);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
 }
 
 /* Update prompt */

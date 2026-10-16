@@ -1,8 +1,10 @@
 // Words for a crew job (M32): its name, and what it does besides its
 // numbers: its order in a fight, its ship effect and its colony effect, from
-// the numbers in data/jobs.json. The words for each kind live here; a job
-// made of kinds already here needs no code (tests/crewJobText.test.js checks
-// every kind has its words). rules are the content tables (src/sim/defs.js).
+// the numbers in data/jobs.json, at a crew member's rank (M32b), and what
+// each rank gives. The words for each kind live here; a job made of kinds
+// already here needs no code (tests/crewJobText.test.js checks every kind
+// has its words). rules are the content tables (src/sim/defs.js).
+import { jobAtRank, nextRankAt, rankOf } from '../../sim/ranks.js';
 
 // "+10", "−30": a change, signed.
 const signed = (n) => (n < 0 ? `−${Math.abs(n)}` : `+${n}`);
@@ -15,7 +17,7 @@ export const ORDER_WORDS = {
   patch: (o) => `an ally beside gets ${o.hp} hit points back; one who is down gets up.`,
   hustle: (o) => `${o.ap} more ${plural(o.ap, 'action', 'actions')} this turn.`,
   mark: (o) => `the crew's shots at an enemy in sight are ${signed(o.aim)} to hit until the crew's next turn ends.`,
-  sedate: () => "a dart at an enemy in sight, at a shot's odds: a hit puts it to sleep through its side's next turn. It ends the turn.",
+  sedate: (o) => `a dart at an enemy in sight, at a shot's odds${o.aim ? ` ${signed(o.aim)}` : ''}: a hit puts it to sleep through its side's next turn. It ends the turn.`,
   kit: (o) => `they or an ally beside get a full clip and ${o.armor} more armor, once each.`,
 };
 
@@ -39,6 +41,17 @@ export const COLONY_WORDS = {
   places: (n) => `${n === 1 ? 'one more place is' : `${n} more places are`} within reach`,
   farms: (n) => `each farm grows ${n} more food a day`,
   stores: (n) => `the stores keep ${n} more food and ${n} more materials`,
+};
+
+// Each order kind's number, short, for what a rank gives (rankGives).
+export const ORDER_SHORT = {
+  suppress: (o) => `${o.name} ${signed(o.aim)} aim`,
+  weld: (o) => `${o.name} ${o.rounds} ${plural(o.rounds, 'round', 'rounds')}`,
+  patch: (o) => `${o.name} ${o.hp} hit points`,
+  hustle: (o) => `${o.name} +${o.ap} ${plural(o.ap, 'action', 'actions')}`,
+  mark: (o) => `${o.name} ${signed(o.aim)} to hit`,
+  sedate: (o) => `${o.name} ${signed(o.aim)} to hit`,
+  kit: (o) => `${o.name} +${o.armor} armor`,
 };
 
 // The same, short, for a crew list's line (jobBrief).
@@ -71,11 +84,11 @@ export function byJob(member, rules) {
   return `${member.name} the ${jobName(member.job, rules).toLowerCase()}`;
 }
 
-// What a job brings besides its numbers: { order ("Suppress, 2 a fight:
-// ..."), ship ("Aboard: ..."), colony ("At the colony: ...") }, each null
-// where the job has none.
-export function jobSaid(job, rules) {
-  const def = rules.jobs.get(job);
+// What a job brings besides its numbers, at `rank` (0 for none): { order
+// ("Suppress, 2 a fight: ..."), ship ("Aboard: ..."), colony ("At the
+// colony: ...") }, each null where the job has none.
+export function jobSaid(job, rules, rank = 0) {
+  const def = jobAtRank(rules.jobs.get(job), rank);
   if (!def) return { order: null, ship: null, colony: null };
   const { order } = def;
   return {
@@ -85,14 +98,61 @@ export function jobSaid(job, rules) {
   };
 }
 
-// What a job brings, on one short line: "Mark ×2 · scans +1 link · +1
-// place" (its order and uses, then aboard, then at the colony). '' for a
-// job the data lacks.
-export function jobBrief(job, rules) {
-  const def = rules.jobs.get(job);
+// What a job brings at `rank`, on one short line: "Mark ×2 · scans +1
+// link · +1 place" (its order and uses, then aboard, then at the colony).
+// '' for a job the data lacks.
+export function jobBrief(job, rules, rank = 0) {
+  const def = jobAtRank(rules.jobs.get(job), rank);
   if (!def) return '';
   const short = (effects, words) => Object.entries(effects ?? {}).filter(([key]) => words[key]).map(([key, n]) => words[key](n));
   return [def.order ? `${def.order.name} ×${def.order.uses}` : null, ...short(def.station, STATION_SHORT), ...short(def.colony, COLONY_SHORT)].filter(Boolean).join(' · ');
+}
+
+// What a job's rank gives over the rank below, short: "Suppress −40 aim",
+// "Hustle ×2 a fight", "med bay +2 · infirmary +2". '' for a rank the job
+// lacks.
+export function rankGives(job, rank, rules) {
+  const def = rules.jobs.get(job);
+  if (!def?.ranks?.[rank - 1]) return '';
+  const [below, at] = [jobAtRank(def, rank - 1), jobAtRank(def, rank)];
+  const said = [];
+  if (at.order && at.order !== below.order) {
+    const changed = Object.keys(at.order).filter((key) => at.order[key] !== below.order?.[key]);
+    if (changed.includes('uses')) said.push(`${at.order.name} ×${at.order.uses} a fight`);
+    if (changed.some((key) => key !== 'uses') && ORDER_SHORT[at.order.type]) said.push(ORDER_SHORT[at.order.type](at.order));
+  }
+  for (const [layer, words] of [['station', STATION_SHORT], ['colony', COLONY_SHORT]]) {
+    if (at[layer] === below[layer]) continue;
+    for (const [key, n] of Object.entries(at[layer] ?? {})) if (n !== below[layer]?.[key] && words[key]) said.push(words[key](n));
+  }
+  return said.join(' · ');
+}
+
+// A crew member's rank and fights, on one line: "Rank 1, Pinning fire · 4
+// fights · rank 2 at 8", "2 fights · rank 1 at 3", "Rank 2, Gun captain · 9
+// fights". stood: how a recruit's fights read ("9 fights stood").
+export function rankLine(member, rules, stood = false) {
+  const rank = rankOf(member, rules);
+  const name = rules.jobs.get(member.job)?.ranks?.[rank - 1]?.name;
+  const fights = member.fights ?? 0;
+  const next = nextRankAt(member, rules);
+  return [
+    rank ? `Rank ${rank}${name ? `, ${name}` : ''}` : null,
+    `${fights} ${plural(fights, 'fight', 'fights')}${stood ? ' stood' : ''}`,
+    next === null ? null : `rank ${rank + 1} at ${next}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+// Who reaches a rank as a fight ends (campaign.js rankUps), a line each:
+// "Rosa Vint reaches rank 1, Pinning fire: Suppress −40 aim."
+export function rankUpLines(ups, rules) {
+  return ups.map(({ member, rank }) => {
+    const name = rules.jobs.get(member.job)?.ranks?.[rank - 1]?.name;
+    const gives = rankGives(member.job, rank, rules);
+    return `${member.name} reaches rank ${rank}${name ? `, ${name}` : ''}${gives ? `: ${gives}` : ''}.`;
+  });
 }
 
 function effectsSaid(where, effects, words) {

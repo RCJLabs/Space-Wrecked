@@ -46,6 +46,7 @@ import { colonyStats, donate, shipParts } from '../src/sim/colony.js';
 import { outcomeFor } from '../src/sim/events.js';
 import { shipStats } from '../src/sim/constraints.js';
 import { crewRoom } from '../src/sim/crew.js';
+import { feeOf } from '../src/sim/recruits.js';
 import { COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, playColony, playTrips, TRIP_DAYS, voyage, voyagesByBackground } from '../tools/voyage.js';
 import { bestWorld, FIT_ORDER, nextGift, systemMove } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
@@ -239,8 +240,9 @@ function checkStep(step, capacity, kinds) {
     return;
   }
   if (step.kind === 'hire') {
-    // The fee, and one more aboard at full health; nothing else moved.
-    assert.equal(step.credits[0] - step.credits[1], balance.recruitFee);
+    // Their fee, by their traits and rank, and one more aboard at full
+    // health; nothing else moved.
+    assert.equal(step.credits[0] - step.credits[1], feeOf({ job: step.job, traits: step.traits, fights: step.fights }, rules));
     assert.deepEqual(step.hp[1], [...step.hp[0], maxHp({ job: step.job, traits: step.traits }, rules)]);
     assert.deepEqual([after, step.heat[1]], [supplies, step.heat[0]]);
     return;

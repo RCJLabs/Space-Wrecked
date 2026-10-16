@@ -123,15 +123,15 @@ export function boardIt(campaign, rules) {
 }
 
 // The recruit to sign on where the ship is, by slot, or null: with room
-// aboard, the holds lasting HIRE_JUMPS jumps with one more, and the fee left
-// beyond a holdful's price, the one whose job the crew has fewest of, the
-// most hit points then the first slot breaking ties.
+// aboard and the holds lasting HIRE_JUMPS jumps with one more, of those
+// whose fee leaves a holdful's price, the one whose job the crew has fewest
+// of, the most hit points then the first slot breaking ties.
 export function hireWho(campaign, rules) {
-  const offer = recruitOffer(campaign, rules);
-  if (!offer.length || campaign.crew.length >= crewRoom(campaign.ship, rules)) return null;
+  if (campaign.crew.length >= crewRoom(campaign.ship, rules)) return null;
   if (supplyCapacity(campaign.ship, rules, campaign.crew) < HIRE_JUMPS * rules.balance.jumpSupplies * (campaign.crew.length + 1)) return null;
   const reserve = supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice;
-  if (campaign.credits - rules.balance.recruitFee < reserve) return null;
+  const offer = recruitOffer(campaign, rules).filter((recruit) => campaign.credits - recruit.fee >= reserve);
+  if (!offer.length) return null;
   const count = (job) => campaign.crew.filter((member) => member.job === job).length;
   return [...offer].sort((a, b) => count(a.job) - count(b.job) || b.hp - a.hp || a.slot - b.slot)[0].slot;
 }

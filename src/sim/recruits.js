@@ -1,33 +1,36 @@
 // Crew comings and goings on the run (ROADMAP §4.5, M23). Each station
 // offers recruitOffer recruits (data/balance.json): each a name from
-// data/recruits.json, a job, a trait and a look (looks.js, M23c), at full
-// health. They are rolled from the campaign's seed, the sector and the
-// station rather than the campaign's RNG, so a station offers the same
-// recruits on every visit and no other roll moves; one whose name is
-// already aboard is rolled again, and a look too close to one aboard or
-// offered before is rolled again. The look is rolled last, so it moves
-// none of the rest.
-// Signing one on costs recruitFee credits and needs room aboard (crew.js
-// crewRoom), and run.hired keeps who has signed on in this sector (travel.js).
+// data/recruits.json, a background from it (M32b), and from the background
+// a job, its count of traits, the fights already stood (ranks.js) and a
+// look (looks.js, M23c), at full health. They are rolled from the
+// campaign's seed, the sector and the station rather than the campaign's
+// RNG, so a station offers the same recruits on every visit and no other
+// roll moves; one whose name is already aboard is rolled again, and a look
+// too close to one aboard or offered before is rolled again. The look is
+// rolled last, so it moves none of the rest.
+// Signing one on costs their fee (feeOf: more for each trait and rank) and
+// needs room aboard (crew.js crewRoom), and run.hired keeps who has signed
+// on in this sector (travel.js). They keep their background aboard.
 // At a station the crew can also let anyone go but the captain. Pure.
-import { pick, seedFrom } from '../core/rng.js';
+import { int, pick, seedFrom, shuffle } from '../core/rng.js';
 import { maxHp } from './campaign.js';
 import { crewRoom } from './crew.js';
 import { tally } from './flags.js';
 import { rollLook } from './looks.js';
+import { rankOf } from './ranks.js';
 import { hereOf, holdOf, onTheRun } from './travel.js';
 
 // Tries at a name not aboard before taking one that is.
 const NAME_TRIES = 20;
 
 // The recruits station `nodeId` in the ship's sector offers, hired or not:
-// [{ slot, name, job, traits, hp, look }].
+// [{ slot, name, job, traits, hp, look, fights, background, fee }]:
+// fights they have already stood in, and their background's id.
 export function recruitsAt(campaign, rules, nodeId) {
   const { sector } = campaign.run;
-  const { first, last } = rules.recruits;
-  const jobs = [...rules.jobs.keys()];
-  const traits = [...rules.traits.keys()];
-  if (!first.length || !last.length || !jobs.length) return [];
+  const { first, last, backgrounds } = rules.recruits;
+  const pasts = [...backgrounds.values()];
+  if (!first.length || !last.length || !pasts.length) return [];
   const taken = new Set(campaign.crew.map((member) => member.name));
   const looks = campaign.crew.map((member) => member.look);
   const recruits = [];
@@ -42,14 +45,24 @@ export function recruitsAt(campaign, rules, nodeId) {
       name = `${a.value} ${b.value}`;
     }
     taken.add(name);
-    const job = pick(rng, jobs);
-    const trait = traits.length ? pick(job.state, traits) : { value: null, state: job.state };
-    const look = rollLook(trait.state, looks).value;
+    const past = pick(rng, pasts);
+    const job = pick(past.state, past.value.jobs);
+    const traits = shuffle(job.state, past.value.traits);
+    const fights = int(traits.state, ...past.value.fights);
+    const look = rollLook(fights.state, looks).value;
     looks.push(look);
-    const member = { name, job: job.value, traits: trait.value ? [trait.value] : [] };
-    recruits.push({ slot, ...member, hp: maxHp(member, rules), look });
+    const member = { name, job: job.value, traits: traits.value.slice(0, past.value.traitCount), fights: fights.value };
+    recruits.push({ slot, ...member, hp: maxHp(member, rules), look, background: past.value.id, fee: feeOf(member, rules) });
   }
   return recruits;
+}
+
+// What a recruit asks to sign on (M32b): recruitFee, with recruitTraitFee
+// more for each trait and recruitRankFee more for each rank their fights
+// have reached (data/balance.json).
+export function feeOf(recruit, rules) {
+  const { recruitFee, recruitTraitFee = 0, recruitRankFee = 0 } = rules.balance;
+  return recruitFee + recruitTraitFee * recruit.traits.length + recruitRankFee * rankOf(recruit, rules);
 }
 
 // The recruits for hire where the ship is: those of a station's not signed
@@ -70,7 +83,7 @@ export function hirePlan(campaign, rules, slot) {
   if (!recruit) return { ok: false, error: 'No one is for hire there.' };
   const room = crewRoom(campaign.ship, rules);
   if (campaign.crew.length >= room) return { ok: false, error: `No room aboard: the berths and life support carry ${room}.` };
-  const fee = rules.balance.recruitFee;
+  const { fee } = recruit;
   if (campaign.credits < fee) return { ok: false, error: `Signing on costs ${fee} credits.` };
   return { ok: true, recruit, fee, room };
 }
@@ -82,7 +95,7 @@ export function hireRecruit(campaign, rules, slot) {
   if (!plan.ok) return plan;
   const { recruit, fee } = plan;
   const id = Math.max(0, ...campaign.crew.map((member) => member.id)) + 1;
-  const member = { id, name: recruit.name, job: recruit.job, hp: recruit.hp, traits: [...recruit.traits], look: { ...recruit.look } };
+  const member = { id, name: recruit.name, job: recruit.job, hp: recruit.hp, traits: [...recruit.traits], look: { ...recruit.look }, fights: recruit.fights, background: recruit.background };
   const { run } = campaign;
   return {
     ok: true,

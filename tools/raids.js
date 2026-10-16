@@ -8,12 +8,15 @@
 //
 //   node tools/raids.js               150 fights a background at each
 //   node tools/raids.js --fights 500
+//   node tools/raids.js --rank 1      the start crew at job rank 1 (M32b),
+//                                     with the fights that rank asks for
 import { pathToFileURL } from 'node:url';
 import { seedFrom } from '../src/core/rng.js';
 import { aiAction } from '../src/sim/ai.js';
 import { playFrom } from '../src/sim/autoplay.js';
 import { newCampaign } from '../src/sim/campaign.js';
 import { pressAction } from '../src/sim/press.js';
+import { rankFights } from '../src/sim/ranks.js';
 import { beginRaid } from '../src/sim/raid.js';
 import { faceRaid } from '../src/sim/raids.js';
 import { settled } from '../tests/colonyKit.js';
@@ -23,13 +26,15 @@ const PLAYERS = { crew: aiAction, enemy: pressAction };
 const MAX_ROUNDS = 60;
 
 // The rows, a background each: { id, name, raiders: { hangar, colony } (the
-// encounters), hangar, colony } (the crew's wins of `fights`).
-export function runRaids(rules, { fights = 150 } = {}) {
+// encounters), hangar, colony } (the crew's wins of `fights`), the start
+// crew at job rank `rank` (M32b).
+export function runRaids(rules, { fights = 150, rank = 0 } = {}) {
   const hangar = readyToLaunch();
   const colony = settled();
+  const stood = rank ? rankFights(rules)[rank - 1] ?? 0 : 0;
   return [...rules.backgrounds.values()].map(({ id, name, pursuer }) => {
-    const crew = newCampaign(rules, 5, { background: id }).crew;
-    const row = { id, name, raiders: { hangar: pursuer.raiders, colony: pursuer.colony.raiders }, hangar: 0, colony: 0, fights };
+    const crew = newCampaign(rules, 5, { background: id }).crew.map((member) => ({ ...member, fights: stood }));
+    const row = { id, name, raiders: { hangar: pursuer.raiders, colony: pursuer.colony.raiders }, hangar: 0, colony: 0, fights, rank };
     for (let n = 1; n <= fights; n++) {
       const begun = beginRaid({ ...hangar, background: id, crew, heat: rules.balance.raidHeat, rng: seedFrom(`hangar ${n}`) }, rules);
       if (!begun.ok) throw new Error(`${name}: ${begun.error}`);
@@ -48,8 +53,9 @@ export function raidsText(rows, rules) {
   const party = (id) => rules.encounters.get(id).enemies.length;
   const width = Math.max(...rows.map((row) => row.name.length), 10);
   const percent = (won, row) => `${Math.round((100 * won) / row.fights)}%`;
+  const rank = rows[0]?.rank ? ` at rank ${rows[0].rank}` : '';
   return [
-    `Raids, the start crew against each pursuer's raiders, ${rows[0]?.fights ?? 0} fights each: the crew's wins.`,
+    `Raids, the start crew${rank} against each pursuer's raiders, ${rows[0]?.fights ?? 0} fights each: the crew's wins.`,
     `${'Background'.padEnd(width)}  ${'At the hangar'.padStart(13)}  ${'At the colony'.padStart(13)}`,
     ...rows.map((row) => `${row.name.padEnd(width)}  ${`${percent(row.hangar, row)} of ${party(row.raiders.hangar)}`.padStart(13)}  ${`${percent(row.colony, row)} of ${party(row.raiders.colony)}`.padStart(13)}`),
   ];
@@ -59,7 +65,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const { readData } = await import('./data.js');
   const { indexDefs } = await import('../src/sim/defs.js');
   const args = process.argv.slice(2);
-  const i = args.indexOf('--fights');
+  const given = (name, fallback) => (args.includes(name) ? Number(args[args.indexOf(name) + 1]) : fallback);
   const rules = indexDefs(readData());
-  console.log(raidsText(runRaids(rules, { fights: i >= 0 ? Number(args[i + 1]) : 150 }), rules).join('\n'));
+  console.log(raidsText(runRaids(rules, { fights: given('--fights', 150), rank: given('--rank', 0) }), rules).join('\n'));
 }

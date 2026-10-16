@@ -11,7 +11,7 @@
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
-import { portraitImg, portraitUrl } from '../portrait.js';
+import { portraitImg, portraitUrl, withRank } from '../portrait.js';
 
 // tap(key): a Sign on or Let go button's tap; done(): Done.
 export function createCrewCard({ tap, done }) {
@@ -66,16 +66,19 @@ export function createCrewCard({ tap, done }) {
     },
   };
 
-  // A row: their portrait, the name, what they are, their traits and what
-  // their job brings (M32), hit points, and a button for what can be done
-  // with them here, if anything.
-  function row({ name, about, traits, brief, hp, max, face }, action, armed) {
+  // A row: their portrait with a chevron for each rank, the name, what they
+  // are, a recruit's past, their rank and fights (M32b), their traits and
+  // what their job brings (M32), hit points, and a button for what can be
+  // done with them here, if anything.
+  function row({ name, about, past, rank, rankLine, traits, brief, hp, max, face }, action, armed) {
     const item = node('li');
     item.dataset.wounded = String(hp < max);
-    item.append(portraitImg('crew-face', portraitUrl(face.look, face.job, face.trim, 'face')));
+    item.append(withRank(portraitImg('crew-face', portraitUrl(face.look, face.job, face.trim, 'face')), rank));
     const who = node('span', 'hgr-name');
     who.append(node('span', null, name));
     if (about) who.append(node('small', null, about));
+    if (past) who.append(node('small', 'crew-past', past));
+    if (rankLine) who.append(node('small', 'crew-rank', rankLine));
     if (traits) who.append(node('small', null, traits));
     if (brief) who.append(node('small', 'crew-brief', brief));
     const health = node('span', 'sct-crew-hp');

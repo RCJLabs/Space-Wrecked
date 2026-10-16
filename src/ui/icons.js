@@ -33,6 +33,9 @@ export const icons = {
   mark: icon('<path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/><path d="m12 8 4 4-4 4-4-4z"/>'),
   sedate: icon('<path d="m14.5 3.5 6 6"/><path d="m17.5 6.5-9 9-3.5 1 1-3.5 9-9"/><path d="M3.5 20.5 6 18"/><path d="M11 9l4 4"/>'),
   kit: icon('<rect x="3.5" y="7" width="17" height="13" rx="1.5"/><path d="M9 7V4.5h6V7"/><path d="M12 10.5v6M9 13.5h6"/>'),
+  // A crew member's rank (M32b): a chevron for each.
+  rank1: icon('<path d="m5 15.5 7-6.5 7 6.5"/>'),
+  rank2: icon('<path d="m5 12 7-6.5 7 6.5"/><path d="m5 19 7-6.5 7 6.5"/>'),
   endTurn: icon('<path d="M4 12h12"/><path d="m11 6 6 6-6 6"/><path d="M20 5v14"/>'),
   skip: icon('<path d="m4 6 8 6-8 6z"/><path d="m12 6 8 6-8 6z"/>'),
   log: icon('<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>'),

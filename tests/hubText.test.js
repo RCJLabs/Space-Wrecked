@@ -26,9 +26,9 @@ test('the hangar shows the act, its goal with what is on hand, the crew and the 
     ],
   });
   assert.deepEqual(text.crew, [
-    { name: 'Marine', job: '', hp: 4, max: 10 },
-    { name: 'Ada', job: 'Engineer', hp: 8, max: 8 },
-    { name: campaign.crew[2].name, job: 'Medic', hp: 8, max: 8 },
+    { name: 'Marine', job: '', rank: 0, hp: 4, max: 10 },
+    { name: 'Ada', job: 'Engineer', rank: 0, hp: 8, max: 8 },
+    { name: campaign.crew[2].name, job: 'Medic', rank: 0, hp: 8, max: 8 },
   ]);
   // Heat has its own meter (text.heat), by the act.
   assert.deepEqual(text.holdings, [['Credits', '1,250'], ['Parts on hand', 'Crew quarters, Life support, Corridor ×2'], ['Jobs', 'None yet']]);

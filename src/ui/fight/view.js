@@ -59,8 +59,9 @@ const LOG_LINES = 16;
 //   objective(battle)   optional: the objective's line under the round,
 //              { title, progress, deadline, done }, or null for none
 //   ending(battle, log)   optional: how the fight ended, { tone, title,
-//              text }, for the end panel and the hint; boarders' words if
-//              not given
+//              text, ranks? }, for the end panel and the hint; boarders'
+//              words if not given. ranks: lines naming who reached a rank
+//              (M32b), under the text
 //   lookOf(unit, index)   optional: the look (src/sim/looks.js) of the
 //              crew unit at `index` among the crew, for its portrait; one
 //              is rolled if not given
@@ -77,8 +78,9 @@ export function mountFight(root, source) {
   const over = node('div', 'fgt-over');
   const overText = node('p');
   const overNote = node('p', 'fgt-over-note');
+  const overRanks = node('ul', 'fgt-over-ranks');
   const overButton = toolButton('fgt-again', source.over.icon, source.over.label);
-  over.append(overText, overNote, overButton);
+  over.append(overText, overNote, overRanks, overButton);
   const logButton = toolButton('fgt-tool', icons.log, 'Log');
   const fitButton = toolButton('fgt-tool', icons.fit, 'Fit');
   const extraTools = (source.tools ?? []).map((tool) => ({ ...tool, button: toolButton('fgt-tool', tool.icon, tool.label) }));
@@ -363,6 +365,9 @@ export function mountFight(root, source) {
       setText(overText, ending.title);
       setText(overNote, ending.text);
       overNote.hidden = !ending.text;
+      const ranks = ending.ranks ?? [];
+      if (overRanks.textContent !== ranks.join('')) overRanks.replaceChildren(...ranks.map((line) => node('li', null, line)));
+      overRanks.hidden = !ranks.length;
       over.dataset.tone = ending.tone;
     }
     if (!busy()) showBoard(fight, orders, playing?.frame ?? null);

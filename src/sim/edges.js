@@ -3,7 +3,9 @@
 // on the run, and its colony effect (`colony`), while one is home: or, as
 // the effect says below, in the squad or anywhere in the crew. A second of
 // the same job adds nothing, and of two jobs with the same effect the
-// better counts. Pure.
+// better counts. Each crew member brings their job's effects at their rank
+// (ranks.js, M32b), so the best rank of a job among them counts. Pure.
+import { memberJob } from './ranks.js';
 
 // Ship effects, each what it adds and how far it goes:
 //   heal        hit points a working med bay heals each of the wounded a
@@ -80,5 +82,5 @@ function by(members, rules, layer, key) {
 }
 
 function edgeOf(member, rules, layer, key) {
-  return rules.jobs.get(member.job)?.[layer]?.[key] ?? 0;
+  return memberJob(member, rules)?.[layer]?.[key] ?? 0;
 }

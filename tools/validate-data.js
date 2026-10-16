@@ -18,6 +18,7 @@ import { withBases } from '../src/sim/defs.js';
 import { COLONY_EFFECTS, STATION_EFFECTS } from '../src/sim/edges.js';
 import { SITE_CHARS } from '../src/sim/gen/site.js';
 import { ORDER_KINDS } from '../src/sim/orders.js';
+import { jobAtRank, RANK_LAYERS } from '../src/sim/ranks.js';
 import { TRAIT_STATS } from '../src/sim/traits.js';
 import { TIP_IDS } from '../src/ui/tipSteps.js';
 import { isId, isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
@@ -129,11 +130,18 @@ const BALANCE = {
   repairPercent: [0, 100],
   patchPrice: [0, 100],
   // Crew on the run (src/sim/recruits.js, crew.js): what a recruit asks to
-  // sign on, how many a station offers, and the squad a boarding takes (up
-  // to MAX_SQUAD).
+  // sign on (the fee, and on top of it a price for each trait and each
+  // rank, M32b), how many a station offers, and the squad a boarding takes
+  // (up to MAX_SQUAD).
   recruitFee: [0, 1000],
+  recruitTraitFee: [0, 1000],
+  recruitRankFee: [0, 1000],
   recruitOffer: [0, 4],
   squadSize: [1, 5],
+  // Job ranks (src/sim/ranks.js, M32b): the fights a crew member stands in
+  // to reach their job's rank 1 and rank 2.
+  rankOneFights: [1, 99],
+  rankTwoFights: [1, 999],
   // Heat on the run (src/sim/hunt.js, regroup.js): the chance the
   // pursuer's hunters wait where a jump comes out, from huntHeat, and the
   // task force's from raidHeat (certain at the most heat); a day's rest's
@@ -172,9 +180,14 @@ const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', '
 const RANGE_BANDS = ['close', 'mid', 'long'];
 // Crew jobs and enemies are both fighters, with the same fields. A job
 // can also have an order in a fight (src/sim/orders.js), a ship effect
-// (station) and a colony effect (colony, src/sim/edges.js) (§4.5, M32).
+// (station) and a colony effect (colony, src/sim/edges.js) (§4.5, M32), and
+// its ranks (src/sim/ranks.js, M32b): one for each of the balance's rank
+// fights, each { name, text } and the numbers it lays over the job's order,
+// station or colony.
 const FIGHTER_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'weapon', 'look'];
-const JOB_KEYS = ['order', 'station', 'colony'];
+const JOB_KEYS = ['order', 'station', 'colony', 'ranks'];
+const RANK_KEYS = ['name', 'text', ...RANK_LAYERS];
+const RANKS = 2;
 const MAX_USES = 9;
 const TILE_RULE_KEYS = ['walk', 'cover', 'blocksSight'];
 // Traits (src/sim/traits.js): what each can add to a fighter's numbers, up
@@ -272,6 +285,7 @@ export function validateData(data) {
       if (!isIntIn(balance[key], min, max)) fail('balance.json', `${key} must be a whole number from ${min} to ${max}`);
     }
     if (balance.midRange < balance.closeRange) fail('balance.json', 'midRange must be at least closeRange');
+    if (!(balance.rankOneFights < balance.rankTwoFights)) fail('balance.json', 'rankTwoFights must be more than rankOneFights');
     if (!(balance.rumorHeat < balance.huntHeat && balance.huntHeat < balance.raidHeat)) fail('balance.json', 'heat thresholds must rise: rumorHeat, then huntHeat, then raidHeat');
     if (!(balance.heatAfterRaid < balance.raidHeat)) fail('balance.json', 'heatAfterRaid must be under raidHeat, or one raid brings the next');
     if (!(balance.heatAfterRaid < balance.huntHeat)) fail('balance.json', 'heatAfterRaid must be under huntHeat, or facing the hunters leaves them on the trail');
@@ -299,7 +313,7 @@ export function validateData(data) {
   jobs.forEach((job, i) => checkFighter(job, `jobs.json ${job.id ?? `#${i}`}`, weaponIds, fail, { job: true }));
   enemies.forEach((enemy, i) => checkFighter(enemy, `enemies.json ${enemy.id ?? `#${i}`}`, weaponIds, fail));
   const enemyIds = new Set(enemies.map((enemy) => enemy.id));
-  checkTraits(data.traits, fail);
+  const traitIds = checkTraits(data.traits, fail);
   checkTips(data.tips, fail);
 
   // Who fights: the squad by job, and each encounter's enemies.
@@ -428,7 +442,7 @@ export function validateData(data) {
     if (ship.party !== undefined && !encounterById.has(ship.party)) fail(where, `party: unknown encounter "${ship.party}"`);
     if (ship.tactics !== undefined && ship.party === undefined) fail(where, 'a preset with tactics needs a party for the boarding fights');
   }
-  const scripts = checkCampaignFiles(data, { jobIds, enemyIds, moduleIds, frameById, encounters: encounterById, presets }, fail);
+  const scripts = checkCampaignFiles(data, { jobIds, enemyIds, traitIds, moduleIds, frameById, encounters: encounterById, presets }, fail);
   // The starting ships are built only from content that checks out.
   if (!problems.length) checkStartShips(data, scripts, fail);
   return problems;
@@ -612,10 +626,11 @@ function checkTactics(tactics, where, fail) {
 // crit chance and extra damage on a crit, and the shots in a clip.
 // The traits: each with a name, a line about it, and what it adds to a
 // fighter's numbers, at least one of them. A captain picks CAPTAIN_TRAITS,
-// so there are at least that many.
+// so there are at least that many. Returns their ids, for the recruits'
+// backgrounds (validate-campaign.js).
 function checkTraits(file, fail) {
   const traits = listOf(file, 'traits', 'traits.json', fail);
-  uniqueIds(traits, 'traits.json', fail);
+  const ids = uniqueIds(traits, 'traits.json', fail);
   if (traits.length < CAPTAIN_TRAITS) fail('traits.json', `needs at least ${CAPTAIN_TRAITS} traits for a captain to pick`);
   traits.forEach((trait, i) => {
     const where = `traits.json ${trait.id ?? `#${i}`}`;
@@ -632,6 +647,7 @@ function checkTraits(file, fail) {
     }
     if (!Object.keys(effects).length) fail(where, 'effects must change something');
   });
+  return ids;
 }
 
 // The tips: one for each step the game has (TIP_IDS), and no others.
@@ -681,6 +697,7 @@ function checkFighter(fighter, where, weaponIds, fail, { job = false } = {}) {
   if (job && fighter.order !== undefined) checkOrder(fighter.order, `${where} order`, fail);
   if (job && fighter.station !== undefined) checkEffects(fighter.station, STATION_EFFECTS, `${where} station`, fail);
   if (job && fighter.colony !== undefined) checkEffects(fighter.colony, COLONY_EFFECTS, `${where} colony`, fail);
+  if (job && fighter.ranks !== undefined) checkRanks(fighter, `${where} ranks`, fail);
   if (!isText(fighter.name)) fail(where, 'name must be a non-empty string');
   const ranges = { hp: [1, 99], aim: [0, 100], defense: [0, 100], mobility: [1, 20], armor: [0, 20] };
   for (const [key, [min, max]] of Object.entries(ranges)) {
@@ -709,6 +726,42 @@ function checkOrder(order, where, fail) {
   for (const [key, [min, max]] of Object.entries(kind.fields)) {
     if (!isIntIn(order[key], min, max)) fail(where, `${key} must be a whole number from ${min} to ${max}`);
   }
+}
+
+// A job's ranks: RANKS of them, each a name, words and at least one layer
+// of numbers. A rank sharpens what the job already does: its order's uses
+// and numbers, and the effects the job has, each still within its range
+// once laid over the job's (ranks.js jobAtRank).
+function checkRanks(job, where, fail) {
+  if (!Array.isArray(job.ranks) || job.ranks.length !== RANKS) {
+    fail(where, `must be a list of ${RANKS} ranks, one for each of the balance's rank fights`);
+    return;
+  }
+  job.ranks.forEach((rank, i) => {
+    const at = `${where} ${i + 1}`;
+    if (!isObject(rank)) {
+      fail(at, 'must be { name, text, order?, station?, colony? }');
+      return;
+    }
+    for (const key of Object.keys(rank)) if (!RANK_KEYS.includes(key)) fail(at, `unknown field "${key}"`);
+    if (!isText(rank.name)) fail(at, 'name must be a non-empty string');
+    if (!isText(rank.text)) fail(at, 'text must be a non-empty string');
+    if (!RANK_LAYERS.some((layer) => rank[layer] !== undefined)) fail(at, `must sharpen at least one of ${RANK_LAYERS.join(', ')}`);
+    for (const layer of RANK_LAYERS) {
+      if (rank[layer] === undefined) continue;
+      if (!isObject(rank[layer]) || !isObject(job[layer])) {
+        fail(at, `${layer} must be numbers for the job's own ${layer}`);
+        continue;
+      }
+      for (const key of Object.keys(rank[layer])) {
+        if (key === 'type' || key === 'name' || !(key in job[layer])) fail(at, `${layer} can't set "${key}": the job's ${layer} has no such number`);
+      }
+    }
+    const ranked = jobAtRank(job, i + 1);
+    if (rank.order && job.order) checkOrder(ranked.order, `${at} order`, fail);
+    if (rank.station && job.station) checkEffects(ranked.station, STATION_EFFECTS, `${at} station`, fail);
+    if (rank.colony && job.colony) checkEffects(ranked.colony, COLONY_EFFECTS, `${at} colony`, fail);
+  });
 }
 
 // A job's ship or colony effects: { effect: amount }, each known, within
@@ -844,7 +897,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   console.log(
     `validate-data: OK (${count(data.modules.modules.length, 'module')}, ${count(data.frames.frames.length, 'frame')}, ` +
       `${count(data.manufacturers.manufacturers.length, 'manufacturer')}, ${count(data.hulls.hulls.length, 'hull style')}, ${count(data.styling.pieces.length, 'styling piece')}, ${count(data.weapons.weapons.length, 'weapon')}, ` +
-      `${count(data.jobs.jobs.length, 'crew job')}, ${count(data.traits.traits.length, 'trait')}, ${data.enemies.enemies.length} enem${data.enemies.enemies.length === 1 ? 'y' : 'ies'}, ` +
+      `${count(data.jobs.jobs.length, 'crew job')}, ${count(data.traits.traits.length, 'trait')}, ${count(data.recruits.backgrounds.length, "recruits' background")}, ${data.enemies.enemies.length} enem${data.enemies.enemies.length === 1 ? 'y' : 'ies'}, ` +
       `${count(data.encounters.encounters.length, 'encounter')}, ${count(data.ships.ships.length, 'ship preset')}, ` +
       `${count(data.campaign.acts.length, 'act')}, ${count(data.backgrounds.backgrounds.length, 'background')}, ` +
       `${count(data.districts.districts.length, 'district')}, ${count(data.sites.maps.length, 'site map')}, ` +

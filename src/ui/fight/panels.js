@@ -11,7 +11,7 @@
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { shortNames } from '../names.js';
-import { portraitImg } from '../portrait.js';
+import { portraitImg, rankMark, withRank } from '../portrait.js';
 import { stateText } from './hints.js';
 
 // onSelect(id), onEnd()
@@ -29,7 +29,7 @@ export function createCrewBar({ onSelect, onEnd }) {
     // selected: the id giving orders; faces: Map id -> portrait URL
     // (src/ui/portrait.js).
     update(units, colors, selected, faces = new Map()) {
-      const key = units.map((u) => `${u.id} ${faces.get(u.id) ?? ''}`).join();
+      const key = units.map((u) => `${u.id} ${u.rank ?? 0} ${faces.get(u.id) ?? ''}`).join();
       if (key !== built) build(units, colors, faces, key);
       for (const unit of units) {
         const row = rows.get(unit.id);
@@ -50,8 +50,9 @@ export function createCrewBar({ onSelect, onEnd }) {
     },
   };
 
-  // A button a unit: their portrait beside their name, cut short
-  // (names.js), and hit points, and their state under them.
+  // A button a unit: their portrait, with a chevron in its corner for each
+  // rank (M32b), beside their name, cut short (names.js), and hit points,
+  // and their state under them.
   function build(units, colors, faces, key) {
     for (const row of rows.values()) row.detach();
     rows = new Map();
@@ -69,10 +70,11 @@ export function createCrewBar({ onSelect, onEnd }) {
       const who = node('span', 'fgt-who');
       who.append(node('span', 'fgt-name', short[i]), bar);
       const top = node('span', 'fgt-top');
-      if (faces.get(unit.id)) top.append(portraitImg('fgt-face', faces.get(unit.id)));
+      if (faces.get(unit.id)) top.append(withRank(portraitImg('fgt-face', faces.get(unit.id)), unit.rank ?? 0));
+      else if (unit.rank) who.firstChild.append(rankMark(unit.rank));
       top.append(who);
       button.append(top, state);
-      button.setAttribute('aria-label', `${unit.name} ${unit.id}`);
+      button.setAttribute('aria-label', `${unit.name} ${unit.id}${unit.rank ? `, rank ${unit.rank}` : ''}`);
       list.append(button);
       rows.set(unit.id, { button, fill, state, detach: onTap(button, () => onSelect(unit.id)) });
     }

@@ -5,8 +5,8 @@
 // rolls them all, the portrait showing it in the helmet of the job picked.
 // The name comes filled in from the background's list, to keep or change;
 // the job is one of the start crew's; and two traits are picked from
-// data/traits.json, each tap showing what the trait is, and a third tap
-// dropping the first. Start begins the campaign, in place of any under way
+// data/traits.json (20 since M32b, scrolling in their panel), each tap
+// showing what the trait is, and a third tap dropping the first. Start begins the campaign, in place of any under way
 // (the title asked first); Back goes back to the backgrounds with nothing
 // changed.
 import { seedFrom } from '../../core/rng.js';
@@ -53,7 +53,10 @@ export const captainScreen = {
     const startButton = toolButton('cap-start', icons.next, 'Start');
     startButton.disabled = true;
     foot.append(backButton, hint, startButton);
+    // The 20 traits scroll in their panel, with the last one tapped in words
+    // under them (M32b).
     const traitsPanel = panel(`Traits · pick ${CAPTAIN_TRAITS}`, traitGrid, flavor);
+    traitsPanel.classList.add('cap-traits-panel');
     el.append(head, panel('Look', look), panel('Captain', nameLabel, node('p', 'cap-label', 'Job'), jobRow, numbers, does), traitsPanel, foot);
     root.append(el);
 
