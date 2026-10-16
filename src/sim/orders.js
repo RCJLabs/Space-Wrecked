@@ -16,9 +16,11 @@
 //   hustle   { ap }     itself: `ap` more actions this turn. It costs none.
 //   mark     { aim }    an enemy in sight: the other side's shots at it take
 //                       `aim` until the crew's next turn ends.
-//   sedate   {}         an enemy in sight: a dart, rolled at a shot's odds
-//                       (odds.js). A hit puts it to sleep through its side's
-//                       next turn. Ends the unit's turn and uses a round.
+//   sedate   { aim }    an enemy in sight: a dart, rolled at a shot's odds
+//                       (odds.js) and `aim` more (0, or a xenobiologist's
+//                       rank 1, M32b). A hit puts it to sleep through its
+//                       side's next turn. Ends the unit's turn and uses a
+//                       round.
 //   kit      { armor }  itself or an ally beside, once each: a full clip
 //                       and `armor` more armor for the rest of the fight.
 // The others take one action. What orders leave on a unit: `uses` (the
@@ -30,6 +32,7 @@ import { percent } from '../core/rng.js';
 import { SIDES } from './grid.js';
 import { edgeKey, wallAt } from './mapFromShip.js';
 import { shotOdds } from './odds.js';
+import { jobAtRank } from './ranks.js';
 import { canSee } from './sight.js';
 import { weldedAt } from './terrain.js';
 
@@ -42,16 +45,17 @@ export const ORDER_KINDS = {
   patch: { fields: { hp: [1, 99] }, reaches: 'ally' },
   hustle: { fields: { ap: [1, 3] }, reaches: 'self' },
   mark: { fields: { aim: [1, 100] }, reaches: 'enemy' },
-  sedate: { fields: {}, reaches: 'enemy' },
+  sedate: { fields: { aim: [0, 100] }, reaches: 'enemy' },
   kit: { fields: { armor: [1, 5] }, reaches: 'kit' },
 };
 
 // The crew's turn ends a mark lasts, the one it was made in counted.
 const MARK_TURNS = 2;
 
-// A unit's order (its job's, data/jobs.json), or null: enemies have none.
+// A unit's order (its job's, data/jobs.json, at the unit's rank, M32b), or
+// null: enemies have none.
 export function orderOf(unit, rules) {
-  return unit.side === 'crew' ? rules.jobs.get(unit.kind)?.order ?? null : null;
+  return unit.side === 'crew' ? jobAtRank(rules.jobs.get(unit.kind), unit.rank ?? 0)?.order ?? null : null;
 }
 
 // What a new unit starts a fight with: its order's uses, and nothing on it.
@@ -83,9 +87,14 @@ export function orderTargets(battle, unit, rules) {
   }
 }
 
-// The odds of a sedative dart: a shot's, part by part (odds.js).
+// The odds of a sedative dart: a shot's, part by part (odds.js), and the
+// order's own `aim` as a part of its own ('steady') when it has any.
 export function dartOdds(battle, unit, target, rules) {
-  return shotOdds(battle, unit, target, rules);
+  const odds = shotOdds(battle, unit, target, rules);
+  const steady = orderOf(unit, rules)?.aim ?? 0;
+  if (!steady) return odds;
+  const hitParts = [...odds.hitParts, { why: 'steady', value: steady }];
+  return { ...odds, hitParts, hit: Math.max(0, Math.min(100, hitParts.reduce((sum, part) => sum + part.value, 0))) };
 }
 
 // Carries out the unit's order on the draft. Returns an error, or null.

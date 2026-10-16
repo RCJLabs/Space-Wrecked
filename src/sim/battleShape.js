@@ -99,7 +99,8 @@ function isUnit(unit, map) {
     isInt(unit.bleed, 0, MAX) && isInt(unit.air, 0, MAX) &&
     isInt(unit.uses, 0, MAX) && (unit.mark === null || (isRecord(unit.mark) && isInt(unit.mark.aim, -MAX, MAX) && isInt(unit.mark.turns, 1, MAX))) &&
     (unit.suppressed === null || (isRecord(unit.suppressed) && isInt(unit.suppressed.aim, -MAX, MAX))) &&
-    typeof unit.asleep === 'boolean' && typeof unit.kitted === 'boolean'
+    typeof unit.asleep === 'boolean' && typeof unit.kitted === 'boolean' &&
+    (unit.rank === undefined || (unit.side === 'crew' && isInt(unit.rank, 1, MAX)))
   );
 }
 

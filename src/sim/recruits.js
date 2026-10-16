@@ -21,7 +21,8 @@ import { hereOf, holdOf, onTheRun } from './travel.js';
 const NAME_TRIES = 20;
 
 // The recruits station `nodeId` in the ship's sector offers, hired or not:
-// [{ slot, name, job, traits, hp, look }].
+// [{ slot, name, job, traits, hp, look, fights }]: fights they have already
+// stood in (ranks.js).
 export function recruitsAt(campaign, rules, nodeId) {
   const { sector } = campaign.run;
   const { first, last } = rules.recruits;
@@ -47,7 +48,7 @@ export function recruitsAt(campaign, rules, nodeId) {
     const look = rollLook(trait.state, looks).value;
     looks.push(look);
     const member = { name, job: job.value, traits: trait.value ? [trait.value] : [] };
-    recruits.push({ slot, ...member, hp: maxHp(member, rules), look });
+    recruits.push({ slot, ...member, hp: maxHp(member, rules), look, fights: 0 });
   }
   return recruits;
 }
@@ -82,7 +83,7 @@ export function hireRecruit(campaign, rules, slot) {
   if (!plan.ok) return plan;
   const { recruit, fee } = plan;
   const id = Math.max(0, ...campaign.crew.map((member) => member.id)) + 1;
-  const member = { id, name: recruit.name, job: recruit.job, hp: recruit.hp, traits: [...recruit.traits], look: { ...recruit.look } };
+  const member = { id, name: recruit.name, job: recruit.job, hp: recruit.hp, traits: [...recruit.traits], look: { ...recruit.look }, fights: recruit.fights };
   const { run } = campaign;
   return {
     ok: true,

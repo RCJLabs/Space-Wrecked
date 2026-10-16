@@ -54,6 +54,8 @@
   "recruitFee": 50,
   "recruitOffer": 2,
   "squadSize": 3,
+  "rankOneFights": 3,
+  "rankTwoFights": 8,
   "huntChance": 10,
   "taskForceChance": 35,
   "regroupHp": 3,

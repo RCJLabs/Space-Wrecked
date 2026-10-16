@@ -1,6 +1,7 @@
 // Text for the Fight screen: the status line, the round chip, the odds
 // card, and what a crew member's button says about them.
 import { describeEvent } from '../../sim/battleLog.js';
+import { orderOf } from '../../sim/orders.js';
 
 // The status line while an event plays out: the log's words (battleLog.js),
 // with a walk told without its tiles.
@@ -129,7 +130,7 @@ export function stateText(unit) {
 export function unitText(unit, rules) {
   const weapon = rules.weapons.get(unit.weapon);
   const side = unit.side === 'crew' ? 'Crew' : 'Enemy';
-  const order = unit.side === 'crew' ? rules.jobs.get(unit.kind)?.order : null;
+  const order = orderOf(unit, rules);
   return {
     title: `${unit.name} ${unit.id}`,
     lines: [

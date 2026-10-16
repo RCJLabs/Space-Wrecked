@@ -67,17 +67,20 @@ import { edgeKey, wallAt } from './mapFromShip.js';
 import { reachable, sideToward } from './moves.js';
 import { shotOdds } from './odds.js';
 import { doOrder, endOrders, endWelds, freshOrders, wakeTurn } from './orders.js';
+import { jobAtRank } from './ranks.js';
 import { canSee } from './sight.js';
 import { hazardAt, inReach, walkable, weldedAt } from './terrain.js';
 
-// setup: { map, units: [{ kind, x, y, name?, hp?, bonus? }], seed, first?,
-// options?, objective? }. kind is a crew job (data/jobs.json), which puts
-// the unit on the crew's side, or an enemy (data/enemies.json). bonus adds
-// to its kind's numbers: { hp, aim, defense, mobility, armor }, each
+// setup: { map, units: [{ kind, x, y, name?, hp?, bonus?, rank? }], seed,
+// first?, options?, objective? }. kind is a crew job (data/jobs.json), which
+// puts the unit on the crew's side, or an enemy (data/enemies.json). bonus
+// adds to its kind's numbers: { hp, aim, defense, mobility, armor }, each
 // optional (a captain's traits, the difficulty), with at least 1 hit point
-// and 1 of mobility left. A unit starts with all its hit points, or with hp
-// if given: a wounded crew member's, from 1 up. Units get ids by side in
-// order: c1, c2... and e1, e2... seed is a number or a string. The
+// and 1 of mobility left. rank is a crew member's job rank (ranks.js, M32b):
+// their order is the rank's, and a unit above rank 0 keeps it as `rank`. A
+// unit starts with all its hit points, or with hp if given: a wounded crew
+// member's, from 1 up. Units get ids by side in order: c1, c2... and e1,
+// e2... seed is a number or a string. The
 // objective starts with nothing done: give a grab its crates and a hack its
 // terminal and turns. The first side's turn starts at once. Returns
 // { battle, events }.
@@ -85,7 +88,7 @@ export function createBattle({ map, units, seed, first = 'crew', options = {}, o
   const counts = { crew: 0, enemy: 0 };
   const battle = {
     map,
-    units: units.map(({ kind, x, y, name, hp: wounded, bonus = {} }) => {
+    units: units.map(({ kind, x, y, name, hp: wounded, bonus = {}, rank = 0 }) => {
       const job = rules.jobs.get(kind);
       const template = job ?? rules.enemies.get(kind);
       if (!template) throw new Error(`createBattle: no job or enemy "${kind}"`);
@@ -118,7 +121,8 @@ export function createBattle({ map, units, seed, first = 'crew', options = {}, o
         status: 'active',
         bleed: 0,
         air: rules.balance.suitAir,
-        ...freshOrders(job?.order),
+        ...freshOrders(jobAtRank(job, rank)?.order),
+        ...(job && rank > 0 ? { rank } : {}),
       };
     }),
     doors: [],

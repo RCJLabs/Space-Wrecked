@@ -65,7 +65,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  24  every job: a battle's units keep their order's uses and what orders
 //      left on them, the battle its welded doors, and each of the run's
 //      scans how far it reached (M32)
-export const SAVE_VERSION = 24;
+//  25  ranks: every crew member counts the fights they have stood in, and
+//      a recruit keeps their background (M32b)
+export const SAVE_VERSION = 25;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -330,6 +332,17 @@ export const MIGRATIONS = [
         campaign = { ...campaign, fight: { ...fight, battle: { ...battle, units, welds: [] } } };
       }
       return { ...data, campaign };
+    },
+  },
+  // Ranks (M32b). Nothing counted fights before, so everyone aboard starts
+  // at 0; the start crew and recruits signed on before have no background.
+  // A fight under way keeps its units as they are: at rank 0.
+  {
+    from: 24,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign) || !Array.isArray(data.campaign.crew)) return data;
+      const crew = data.campaign.crew.map((member) => (isObject(member) ? { ...member, fights: 0 } : member));
+      return { ...data, campaign: { ...data.campaign, crew } };
     },
   },
 ];
