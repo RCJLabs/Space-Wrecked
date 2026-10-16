@@ -19,7 +19,7 @@ Newest entry first.
 - **What loyalty earns:** their talent past rank 2, a third rank of their job's order with numbers of their own.
 - **Where the loyalty quest is done:** a place at the colony, a ship held by someone from their past, as a thread's act 3 step.
 
-**For Evan to confirm:** the test players' rule for companions, which is stricter than the Done when's words. Signing a companion on wherever a berth was free, and starting every chain whose price left the buffer, 100 voyages from each start ended fed in 47, 53 and 81 against M33b's 73, 90 and 98, and met the hunters in 61, 37 and 34 against 37, 21 and 14: three of the six bars broken by far. A fourth mouth empties the start ships' 30 supplies in 7 jumps, and the chains' steps cost detours. So the test players now:
+**For Evan to confirm:** the test players' rule for companions, which is stricter than the Done when's words. Signing a companion on wherever a berth was free, and starting every chain whose price left the buffer, 100 voyages from each start ended fed in 47, 53 and 81 against M33b's 73, 90 and 98, and met the hunters in 61, 37 and 34 against 37, 21 and 14: all six of those bars broken, by 16 to 37. A fourth mouth empties the miner's and the deserter's 30 supplies in 7 jumps (the smuggler's ship carries 60 or 70), and the chains' steps cost detours. So the test players now:
 - sign a companion on only where the holds would feed them for 10 jumps, their lockers counted, the rule they already had for recruits;
 - start a side's chain only for that, or (as M33b had it for the Fleet) where it would make friends with a side whose patrols then wave the ship through;
 - start one side's chain at a time. With bunks aboard, a berth for each, it chased three at once, and the crew it signed on went hungry.
@@ -63,7 +63,7 @@ Some of this changes what was there before:
 - **Tests changed on purpose:**
   - `expeditions`, `makers`, `orders`, `raids`, `ranks`, `standing`: `SAVE_VERSION` 29;
   - `data`: the validator's counts ("4 companions") and the new cases; `questText`: the tender's step's words; `harness`: `--compare` names `--talent`;
-  - `voyage`: three checks moved from 24 fed in 30 to a rate over 100 seeds, held within 15 of main's (fed with a cargo hold, bunks and the large hold: main 90, 90 and 98), as CLAUDE.md asks; the step check takes what the holds carried from the voyage, a companion's lockers counted from the step they sign on; the M33b test's deserter no longer never starts the Fleet's chain: from M33c it starts it for Varga.
+  - `voyage`: three checks moved from 24 fed in 30 to a rate over 100 seeds, held within 15 of main's (fed with a cargo hold, bunks and the large hold: main 90, 90 and 98), as CLAUDE.md asks; the step check takes what the holds carried from the voyage, a companion's lockers counted from the step they sign on; the M33b test no longer holds that the deserter never starts the Fleet's chain: from M33c it may, for Varga.
 
 ### Shipped
 
@@ -108,7 +108,7 @@ Some of this changes what was there before:
   | Ama Osei | 1 · 1 · 0 | 0 · 0 · 0 | 28 · 22 · 12 |
   | Dez Halloran | 2 · 2 · 1 | 2 · 1 · 1 | 24 · 21 · 11 |
 
-  The miner starts the Fleet's chain in 30 voyages, nearly all for the wave: a patrol waves it through in 14 (18 times). It signs Varga on in 1: elsewhere the holds wouldn't feed a fourth for 10 jumps.
+  The miner starts the Fleet's chain in 30 voyages, and a patrol waves it through in 14 (18 times). It signs Varga on in 1 of the 27 where it meets her: the test player signs a companion on only with a berth free and the holds to feed them for 10 jumps.
 - **The talents** (`node tools/sim.js --talent <companion> --compare`, 1,000 fights each on the ten ships, against the same squad with every order at rank 2), the crew's wins:
 
   | Talent | Rank 2 | With it | Orders a fight |
@@ -129,7 +129,16 @@ Some of this changes what was there before:
   - a quit and reopen, Teo still loyal; offline, reloaded;
   - a fight: three chevrons on his button and in its name, Kit out · 3, its preview with +2 armor;
   - every button 48 px or more on the event card, the crew cards and in the fight; no console errors.
-- **Every earlier milestone's browser check** REGRESS
+- **Every earlier milestone's browser check** passes, run one after another (`m33c/regress.sh`), at the three sizes unless named:
+  - M33b's 43, the M33 fix's 38, M32b's fixes 27, M32 22 and its orders 48, M31 28, M30 27, M29 34, M28 32, M27 32, M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 20 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 40 and M8's extras (the cache holds all 246 files; offline, the fight sandbox and the builder open). M14 plays jobs until it has played each kind, so its count moves with the jobs it takes: 43 in the dev tools' run.
+
+  Five copies were adapted, not the game (`verify33c.mjs`): M31's, M30's, M29's, M28's and M27's expect a save made by main to be saved again as v29, not v28.
+
+  M32b's first copy still looks for Suppress · 2 and Sedate · 2, as in M33's entry; its fix's copy passes in its place.
 
 ### Known issues
 
