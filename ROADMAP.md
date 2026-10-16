@@ -1042,7 +1042,42 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
   Fixed after M32b (2026-10-16, Evan's calls, in a PR of their own before M33):
   - **Talents raised:** rank 1 gives the job's order a use more as well as its sharper number: Suppress, Weld, Patch, Mark and Sedate three times a fight at rank 1's numbers. Hustle, whose rank 1 was already a use, sharpens its number instead: two more actions. Kit out keeps M32b's rank 1, a use more: at 2 armor it moved the harness's fights 20 points and made the smuggler's raids at rank 1 17 points easier than Con-Reg's (Evan's call).
   - **The Provost's raid at the hangar evened out:** an MP and two cadets (`provosthangar`), the cadet sturdier (7 hit points, aim 70, from 6 and 65). The colony keeps an MP, a cadet and an MP. M30's test plays 300 fights a row, not 150.
-- [ ] M33 Factions, quests and companions. Draft: factions whose standing moves with the jobs and events the crew takes; quests that chain jobs and events across the acts; named companions with loyalty quests (§9).
+- [ ] **M33 Factions.** Nobody remembers who the crew worked for. A job's client, the side its enemies are on, the company wreck stripped or the stalled miner towed, a patrol corvette boarded: none of it carries past the job or the node. Every station charges the same, and every patrol fights.
+
+  Evan's picks (2026-10-16), each the recommended option but the last:
+  - **Scope:** factions now; quests across the acts in M33b; named companions with loyalty quests in M33c, built on M33b's chains.
+  - **The sides:** the pursuers' three and the union: Con-Reg, the Fleet (with its Provost and customs), the Hallorans, and the union (the steward's local, the dockers, the union halls on the run). Each background starts hostile with its pursuer's side and neutral with the rest. Landladies, missions and dealers are on nobody's side.
+  - **What standing changes:** prices at the sides' stations (friendly cheaper, cold and hostile dearer), 10 heat for docking with the pursuer's side (§4.4's unbuilt rule), more pay for a friendly side's jobs in act 1, and the Fleet's patrols: a crew in good with the Fleet passes, and one it is hostile to is fired on.
+  - Before M33, M32b's talents raised and the Provost's hangar raid evened out, in a PR of their own (PROGRESS.md, "M32b fixes").
+
+  Measured before settling this (the test players, campaign seeds 1 to 50 in act 1 and 1 to 30 on the voyage, from each start): act 1 launches after 5 or 6 jobs at the median, from 4 clients, rarely more than 2 for one. A voyage settles 10 or 11 events, buys at 5 or 6 stations and meets 1 or 2 hostile ships that aren't the hunters, nearly all pirate cutters; the patrol's corvettes come 5 to 12 times in 30 voyages. A colony flies 9 to 12 trips in 60 days. Of the 18 events only two have a side in them (the company wreck, the stalled miner), so standing is mostly made in act 1 and spent at the run's stations.
+
+  **Done when:**
+  - **The sides** (`data/factions.json`): four, each with a name, a line about it and its color. Standing runs from −10 to 10 in five levels: hostile (−6 and below), cold (−5 to −2), neutral (−1 to 1), friendly (2 to 5) and trusted (6 and up), the edges in `data/balance.json`. A new campaign starts its pursuer's side at −10 and the rest at 0.
+  - **What moves it** (the numbers in `data/balance.json`):
+    - **A job** in act 1 is for its client's side, if the client has one (`side` in `data/districts.json`: the steward and the dockers' boss for the union, the company foreman for Con-Reg), and against the side its enemies are on, if any (`against` in `data/contracts.json`: Con-Reg's guards, Recovery and strikebreakers, the Fleet's customs and MPs, the Hallorans' collectors). Done: +2 for, −2 against. Lost: −2 against.
+    - **An event's outcome** can move it (`standing` in its effects, `data/events.json`): stripping the company wreck fast −1 Con-Reg, the stalled miner towed or tossed a crate +1 union, and four new events where a side meets the ship, one each: a Fleet tender in trouble (a distress call), a union co-op barge (a trader), a Halloran drop (a derelict) and a Con-Reg survey skiff (a distress call).
+    - **A side's ship** boarded, blown up or left adrift by the crew: −3 with its side (`side` in `data/ships.json`: the patrol corvette the Fleet's, and the hunters their pursuer's).
+    - Standing stays within −10 to 10. Raids and act 3 don't move it (§9).
+  - **What it changes:**
+    - **Stations:** each belongs to a side or none, by its name (`stations` in `data/factions.json`, so no new roll and the same sectors): of the 12 names, 3 are the union's, 2 each Con-Reg's, the Fleet's and the Hallorans', and 3 nobody's. There, supplies, repairs, patching and recruits cost the side's level's share of the price: trusted 75%, friendly 90%, neutral 100%, cold 125%, hostile 150% (`data/balance.json`), rounded as each price is. Docking at a station of the pursuer's side adds 10 heat (`dockHeat`).
+    - **Act 1 jobs** from a client whose side is friendly pay 10% more, trusted 20%, in steps of 5 credits.
+    - **The Fleet's patrols:** a crew friendly or trusted with the Fleet is waved through (no approach; the node is done). A hostile one is fired on: the corvette's guns get a volley before the first round. Neutral or cold, the approach is as before (my call: Evan's pick names only the friendly and the hostile).
+  - **Shown as it happens** (Law 4): the sides and each one's level on the hangar's, the chart's and the colony's panels, with how far to the next level; each change where it happens (a job's end, an event's result, an approach's end) with the level it leaves; on the job board, whom a job is for and against and its pay with the bonus; on the chart, a station's side, and in its services the prices at its level; in the jump plan, the docking heat; on the approach screen, the patrol's words.
+  - **Saves:** `SAVE_VERSION` 26, with a migration from 25: a v25 campaign starts each side where its background starts a new one (tested).
+  - **Every rule tested:** each move (jobs done and lost, an event's outcome, a side's ship), the clamp, each level's price at each service, the docking heat, the job's pay, the patrol waving through and opening fire, and the validator's checks on every side named in the data.
+  - **Balance:**
+    - **Act 1** (`tools/run.js`, 50 runs from each start): every run launches, and each slow median is within 10 minutes of the M32b fixes' (43, 40 and 45).
+    - **The voyage** (`tools/voyage.js --background all`, 30 runs): the test player prefers a station of a friendly side and keeps off the pursuer's when another is within reach; fed, met the hunters and runs with a raid lost each no worse than the M32b fixes' (fed 25, 23 and 29; met 9, 9 and 8; lost 3, 5 and 5) by more than 5 runs of 30. Each side's standing at the launch and at the landing is reported. The voyage tests pass, a check new content breaks turned into a rate over 100 seeds (CLAUDE.md).
+  - **Touch,** at the three sizes:
+    - the sides on the hangar's panel, and a job's for and against on the board;
+    - a union job done and its standing at the end, then a union job's pay with its bonus;
+    - a station's side on the chart, its prices at a friendly side's and a hostile side's;
+    - the docking heat in the jump plan;
+    - a patrol waving the ship through, and one opening fire;
+    - a quit and reopen that keeps the standing.
+- [ ] M33b Quests. Draft: chains of jobs and events across the acts, each a few steps with a pay-off at the end: a side's own, offered once the crew stands well with it, and each background's thread (the miner's debt, the deserter's pardon, the smuggler's cargo; §9's lever for the Fleet Provost and the backgrounds past act 1).
+- [ ] M33c Companions. Draft: named crew with a face, a past and a loyalty quest built on M33b's chains, joining through one; loyalty earns them something a recruit doesn't have (§9).
 - [ ] M34 Image pass: Base44 portraits and scenes. Draft: WebP portraits for named characters (companions, the districts' clients) and scenes (the hangar, the lift-off, the landing), each logged in `assets/LOG.md`. Recruits keep their layered portraits, drawn in code since M23c.
 - [ ] M35 Audio pass with ZzFX. Draft: sounds made in code with ZzFX (approved for M35): shots and hits, the builder's placing, and the menus; a mute and a volume in the settings; audio starts after the first tap.
 
