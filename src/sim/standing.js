@@ -22,7 +22,9 @@
 //     name), supplies, repairs, patching and recruits cost the side's
 //     level's share of the price (hostilePrice to trustedPrice, in percent),
 //     rounded as each price is;
-//   - docking at a station of the pursuer's side adds dockHeat (travel.js);
+//   - at a station of the pursuer's side, the crew's first trade since the
+//     ship arrived adds dockHeat: they log the ship (travel.js tradeHeat and
+//     dockShip; M33's fix, where it was the jump there);
 //   - a job in act 1 from a client whose side is friendly pays friendlyPay
 //     percent more, and trusted trustedPay, in steps of PAY_STEP;
 //   - a side's ship met at a node (encounter.js) waves a friendly or trusted
@@ -157,8 +159,9 @@ export function mostFor(credits, price, share) {
   return price * share > 0 ? Math.floor((100 * credits + 49) / (price * share)) : Infinity;
 }
 
-// The heat of docking at node `node`: dockHeat at a station of the pursuer's
-// side, else 0.
+// The heat of docking at node `node`, paid on the first trade there
+// (travel.js tradeHeat): dockHeat at a station of the pursuer's side, else
+// 0.
 export function dockHeat(campaign, rules, node) {
   const side = stationSide(node, rules);
   return side !== null && side === pursuerSide(campaign, rules) ? rules.balance.dockHeat : 0;

@@ -27,6 +27,8 @@
 //   swapped  whether the transponder has been swapped in this sector
 //            (transponder.js, M24)
 //   surveyed the worlds surveyed in the system (survey.js, M25)
+//   docked   whether the crew has traded at the station the ship is at
+//            since it arrived (dockShip; M33's fix)
 // campaign.supplies: what the ship carries, up to supplyCapacity.
 //
 // A jump goes to a linked node: each crew member eats jumpSupplies, and heat
@@ -40,8 +42,10 @@
 // (campaign.js refitShip): the ship can't leave a station while a flight
 // check fails, and supplies past what the holds take after a refit stay
 // behind at the next jump, before it eats. A station of a side (M33,
-// standing.js) charges its level's share of the price, and docking at one
-// of the pursuer's side adds dockHeat, after the jump's heat. From
+// standing.js) charges its level's share of the price. At one of the
+// pursuer's side, the crew's first trade since the ship arrived adds
+// dockHeat: they log the ship (dockShip). Passing through costs nothing,
+// and neither does a refit or letting crew go. From
 // the jump point, leaving the sector is a jump into the next one's way in,
 // rolled from the campaign's RNG as it is left; from the last sector's, into
 // the system's, rolled the same way. The flags count the jumps,
@@ -118,7 +122,7 @@ export function beginRun(campaign, rules) {
 
 // A run entering `sector`, with the sectors behind it.
 function freshRun(sector, past) {
-  return { sector, at: sector.start, seen: [sector.start], past, done: [], scans: [], result: null, approach: null, hired: [], swapped: false, surveyed: [] };
+  return { sector, at: sector.start, seen: [sector.start], past, done: [], scans: [], result: null, approach: null, hired: [], swapped: false, surveyed: [], docked: false };
 }
 
 // The event open at the ship's node: { node, event } (the event from
@@ -248,8 +252,7 @@ export function jumpFixes(campaign, rules) {
 
 // What a jump to node `to` takes, before it is made: { ok: true, kind:
 // 'jump' or 'long', supplies (what it eats), left (the supplies the holds
-// can't take, left behind first), heat (its change), dock (the heat of
-// docking there after it: standing.js dockHeat), hungry (the supplies
+// can't take, left behind first), heat (its change), hungry (the supplies
 // carried don't cover it), heal (what the med bay heals each of the
 // wounded on the way), fixes (the wrecked parts an engineer fixes on the
 // way, jumpFixes), hunt (the chance the hunters wait there, hunt.js
@@ -273,9 +276,8 @@ export function jumpPlan(campaign, rules, to) {
   const heal = healRate(campaign, rules) * (long ? longJumpFactor : 1);
   const left = suppliesOver(campaign, rules);
   const heat = long ? longJumpHeat : jumpHeat;
-  const dock = dockHeat(campaign, rules, node);
-  const hunt = huntOdds(campaign, rules, withHeat(withHeat(campaign.heat, heat), dock), node.type);
-  return { ok: true, kind: long ? 'long' : 'jump', supplies, left, heat, dock, hungry: campaign.supplies - left < supplies, heal, fixes: jumpFixes(campaign, rules), hunt };
+  const hunt = huntOdds(campaign, rules, withHeat(campaign.heat, heat), node.type);
+  return { ok: true, kind: long ? 'long' : 'jump', supplies, left, heat, hungry: campaign.supplies - left < supplies, heal, fixes: jumpFixes(campaign, rules), hunt };
 }
 
 // Jumps to node `to`, where the hunters may be waiting, or a hostile ship
@@ -286,21 +288,39 @@ export function jump(campaign, rules, to) {
   if (!plan.ok) return plan;
   const moved = spend(campaign, rules, plan);
   const { run } = moved;
-  const arrived = { ...moved, run: { ...run, at: to, seen: run.seen.includes(to) ? run.seen : [...run.seen, to], result: null } };
+  const arrived = { ...moved, run: { ...run, at: to, seen: run.seen.includes(to) ? run.seen : [...run.seen, to], result: null, docked: false } };
   const met = rollHunt(arrived, rules);
   return { ok: true, plan, campaign: openApproach(met.campaign, rules), hunt: met.hunt };
 }
 
 // What the station the ship is at sells: { ok: true, price (a supply),
 // share (of the price, in percent, the station charges: standing.js), room
-// (in the holds), most (what the credits and the room allow) }, or { ok:
-// false, error } away from one.
+// (in the holds), most (what the credits and the room allow), dock (the
+// heat buying adds: tradeHeat) }, or { ok: false, error } away from one.
 export function supplyOffer(campaign, rules) {
   if (!onTheRun(campaign, rules) || hereOf(campaign)?.type !== 'station') return { ok: false, error: 'Supplies are sold at stations.' };
   const price = rules.balance.supplyPrice;
   const share = shareHere(campaign, rules);
   const room = Math.max(0, supplyCapacity(campaign.ship, rules, campaign.crew) - campaign.supplies);
-  return { ok: true, price, share, room, most: Math.min(room, mostFor(campaign.credits, price, share)) };
+  return { ok: true, price, share, room, most: Math.min(room, mostFor(campaign.credits, price, share)), dock: tradeHeat(campaign, rules) };
+}
+
+// The heat a trade at the station the ship is at adds (M33's fix): its
+// docking heat (standing.js dockHeat, at a station of the pursuer's side)
+// the first time the crew trades there since the ship arrived, else 0.
+export function tradeHeat(campaign, rules) {
+  const { run } = campaign;
+  return run && !run.docked ? dockHeat(campaign, rules, run.sector.nodes[run.at]) : 0;
+}
+
+// The campaign once the crew has traded at the station the ship is at: the
+// ship docked there, with the heat of it (tradeHeat). Every service a
+// station charges for docks it first: supplies, repairs (repair.js),
+// patching (patch.js), a recruit signed on (recruits.js) and the
+// transponder swap (transponder.js).
+export function dockShip(campaign, rules) {
+  if (campaign.run.docked) return campaign;
+  return { ...campaign, heat: withHeat(campaign.heat, tradeHeat(campaign, rules)), run: { ...campaign.run, docked: true } };
 }
 
 // What `count` supplies cost at the station an offer is from: their price
@@ -318,7 +338,8 @@ export function buySupplies(campaign, rules, count) {
   if (count > offer.room) return { ok: false, error: offer.room ? `The holds take ${offer.room} more.` : 'The holds are full.' };
   const cost = suppliesCost(offer, count);
   if (cost > campaign.credits) return { ok: false, error: `${count} cost ${cost} credits.` };
-  return { ok: true, campaign: { ...campaign, supplies: campaign.supplies + count, credits: campaign.credits - cost, flags: tally(campaign.flags, { suppliesBought: count }) } };
+  const docked = dockShip(campaign, rules);
+  return { ok: true, campaign: { ...docked, supplies: campaign.supplies + count, credits: campaign.credits - cost, flags: tally(campaign.flags, { suppliesBought: count }) } };
 }
 
 // What leaving the sector from its jump point takes: a jump's supplies,
@@ -360,9 +381,9 @@ export function leaveSector(campaign, rules) {
 }
 
 // A jump's cost: the supplies the holds can't take, left behind; supplies
-// eaten (and, short of them, hunger); heat, and docking's after it; what
-// the med bay heals on the way (after any hunger); the wrecks an engineer
-// fixes; and the flags' count.
+// eaten (and, short of them, hunger); heat; what the med bay heals on the
+// way (after any hunger); the wrecks an engineer fixes; and the flags'
+// count.
 function spend(campaign, rules, plan) {
   const left = plan.left ?? 0;
   const fed = plan.hungry ? campaign.crew.map((member) => ({ ...member, hp: Math.max(1, member.hp - rules.balance.hungerHp) })) : campaign.crew;
@@ -371,7 +392,7 @@ function spend(campaign, rules, plan) {
   const wrecks = { ...campaign.wrecks };
   for (const fix of fixes) delete wrecks[fix.uid];
   const flags = tally(campaign.flags, { jumps: 1, longJumps: plan.kind === 'long' ? 1 : 0, hungryJumps: plan.hungry ? 1 : 0, hpHealed: healed, suppliesLeft: left, jumpFixes: fixes.length });
-  return { ...campaign, supplies: Math.max(0, campaign.supplies - left - plan.supplies), heat: withHeat(withHeat(campaign.heat, plan.heat), plan.dock ?? 0), crew, wrecks, flags };
+  return { ...campaign, supplies: Math.max(0, campaign.supplies - left - plan.supplies), heat: withHeat(campaign.heat, plan.heat), crew, wrecks, flags };
 }
 
 export { tally } from './flags.js';

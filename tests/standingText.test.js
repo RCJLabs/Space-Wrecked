@@ -1,18 +1,19 @@
 // The words for standing (src/ui/campaign/standingText.js, M33) where they
 // show: the sides on the homes' panels with how far to the next level; a
 // change where it happens, with the level it leaves; a job's sides and its
-// pay with the bonus; a station's side and prices; the docking heat and a
-// patrol's greeting in the jump plan; and the patrol's words on the
-// approach screen.
+// pay with the bonus; a station's side and prices, and at one of the
+// pursuer's side what trading there adds (M33's fix); a patrol's greeting in
+// the jump plan; and the patrol's words on the approach screen.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { newCampaign } from '../src/sim/campaign.js';
+import { maxHp, newCampaign } from '../src/sim/campaign.js';
 import { withBoard } from '../src/sim/contracts.js';
 import { chooseEvent } from '../src/sim/events.js';
 import { launch } from '../src/sim/launch.js';
-import { beginRun, jump, linked } from '../src/sim/travel.js';
+import { beginRun, buySupplies, jump, linked } from '../src/sim/travel.js';
 import { approachText } from '../src/ui/campaign/approachText.js';
 import { colonyText } from '../src/ui/campaign/colonyText.js';
+import { crewCardText } from '../src/ui/campaign/crewText.js';
 import { changesText, effectsText, resultText } from '../src/ui/campaign/eventText.js';
 import { hangarText } from '../src/ui/campaign/hubText.js';
 import { jobOutcome, jobText } from '../src/ui/campaign/jobText.js';
@@ -101,24 +102,50 @@ test("a station's side on the chart, and in its services its prices at the crew'
   const hall = there(ahead(onRun({ standing: STOOD }), { type: 'station', name: 'Union Hall Twelve' }));
   const node = hall.run.sector.nodes[hall.run.at];
   assert.deepEqual(nodeText(node, rules), { name: 'Union Hall Twelve', kind: 'Station · The union', text: rules.nodeTypes.get('station').text });
-  assert.deepEqual(stationText(node, hall, rules), { side: 'union', name: 'The union', color: sidesText(hall, rules)[3].color, line: "The union's station: friendly, prices 90%.", tone: 'good' });
+  assert.deepEqual(stationText(node, hall, rules), { side: 'union', name: 'The union', color: sidesText(hall, rules)[3].color, line: "The union's station: friendly, prices 90%.", tone: 'good', dock: null });
   const text = sectorText(hall, rules);
   assert.equal(text.station.line, "The union's station: friendly, prices 90%.");
   assert.match(text.offer.line, /^Supplies, 1 credit each, 90% here\./);
   assert.deepEqual(text.nodes[hall.run.at].side, { name: 'The union', color: text.station.color });
   const depot = there(ahead(onRun({ standing: STOOD }), { type: 'station', name: 'The Depot' }));
   assert.deepEqual([stationText(depot.run.sector.nodes[depot.run.at], depot, rules).line, sectorText(depot, rules).station.tone], ["Con-Reg's station: hostile, prices 150%.", 'warn']);
+  // Con-Reg is the miner's pursuer (M33's fix): what the first trade adds,
+  // at the station, in each service's first tap and in the hint; once paid,
+  // that it is.
+  const before = sectorText(depot, rules);
+  assert.deepEqual(before.station.dock, { line: 'Con-Reg is after you: trade here and they log the ship, heat +10. Passing through costs nothing.', tone: 'warn' });
+  const after = depot.heat + rules.balance.dockHeat;
+  assert.ok(before.offer.buys.every((buy) => buy.text.endsWith(` Con-Reg logs the ship: heat +10 to ${after}. Tap again to buy.`)), before.offer.buys.map((buy) => buy.text).join(' | '));
+  assert.equal(before.swap.text, `Con-Reg logs the ship: heat +10 to ${after}. Then a clean transponder, once a sector: heat −30 to ${after - 30}, for ${rules.balance.swapPrice} credits. Tap again to swap.`);
+  assert.deepEqual(before.hint, { tone: 'warn', text: 'Con-Reg is after you, and this is their station: your first trade here adds 10 heat. Passing through costs nothing.' });
+  // Patching, repairs and a recruit signed on say it too.
+  const engine = depot.ship.modules.find((m) => m.type === 'engine').uid;
+  const worn = { ...depot, crew: depot.crew.map((member) => ({ ...member, hp: maxHp(member, rules) - 1 })), wrecks: { [engine]: 'fire' } };
+  const logs = ` Con-Reg logs the ship: heat +10 to ${after}.`;
+  assert.ok(sectorText(worn, rules).patch.text.includes(logs), sectorText(worn, rules).patch.text);
+  assert.ok(sectorText(worn, rules).repair.text.includes(logs), sectorText(worn, rules).repair.text);
+  const signable = crewCardText(worn, rules).hire.recruits.filter((recruit) => recruit.ok);
+  assert.ok(signable.length && signable.every((recruit) => recruit.text.includes(logs)), 'each recruit the credits cover');
+  const traded = sectorText(buySupplies({ ...depot, supplies: 0 }, rules, 1).campaign, rules);
+  assert.deepEqual(traded.station.dock, { line: 'Con-Reg has logged the ship: trading on here adds no more heat.', tone: 'info' });
+  assert.ok(traded.offer.buys.every((buy) => !/logs the ship/.test(buy.text)));
+  assert.ok(!/logs the ship/.test(traded.swap.text));
+  // The Hallorans log the ship at the smuggler's.
+  const rita = there(ahead({ ...onRun({ standing: STOOD }), background: 'smuggler' }, { type: 'station', name: "Big Rita's" }));
+  assert.equal(sectorText(rita, rules).station.dock.line, 'The Hallorans are after you: trade here and they log the ship, heat +10. Passing through costs nothing.');
+  assert.match(sectorText(rita, rules).swap.text, /^The Hallorans log the ship: heat \+10 to \d+\. Then a clean transponder/);
   const pumps = there(ahead(onRun({ standing: STOOD }), { type: 'station', name: "Mac's Pumps" }));
   assert.equal(sectorText(pumps, rules).station, null, "nobody's station");
   assert.equal(sectorText(pumps, rules).nodes[pumps.run.at].side, null);
 });
 
-test("the jump plan: the heat of docking with the pursuer's side, and how a side's patrol will greet the crew", () => {
+test("the jump plan: what trading at a station of the pursuer's side adds, and how a side's patrol will greet the crew", () => {
   const set = ahead(onRun({ standing: STOOD }), { type: 'station', name: 'The Depot' });
   const plan = jumpText(set.campaign, rules, set.to);
-  assert.ok(plan.lines.includes(`Con-Reg is after you, and this is their station: docking adds 10 heat, to ${set.campaign.heat + rules.balance.jumpHeat + 10}.`), plan.lines.join(' | '));
-  assert.equal(plan.tone, 'warn');
-  assert.ok(!jumpText(ahead(onRun({ standing: STOOD }), { type: 'station', name: 'Union Hall Twelve' }).campaign, rules, set.to).lines.some((line) => /docking/.test(line)));
+  assert.ok(plan.lines.includes('Con-Reg is after you, and this is their station: trading there adds 10 heat. Passing through costs nothing.'), plan.lines.join(' | '));
+  assert.ok(plan.lines.includes(`Heat +${rules.balance.jumpHeat}: ${set.campaign.heat + rules.balance.jumpHeat}.`), 'the jump adds its own heat, no more');
+  assert.equal(plan.tone, 'info', 'the jump there costs nothing more');
+  assert.ok(!jumpText(ahead(onRun({ standing: STOOD }), { type: 'station', name: 'Union Hall Twelve' }).campaign, rules, set.to).lines.some((line) => /trading there/.test(line)));
   const patrol = (fleet) => {
     const near = ahead(onRun({ standing: { ...STOOD, fleet } }), { type: 'hostile', hostile: { ship: 'corvette', seed: 1 } });
     return jumpText(near.campaign, rules, near.to).lines;

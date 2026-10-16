@@ -12,6 +12,7 @@ import { rankOf } from '../../sim/ranks.js';
 import { dismissPlan, hirePlan, recruitOffer } from '../../sim/recruits.js';
 import { hereOf, onTheRun, supplyCapacity } from '../../sim/travel.js';
 import { jobBrief, rankLine } from './crewJobText.js';
+import { dockSaid } from './standingText.js';
 
 // How a trait's numbers read: "aim +5", "hit points +2".
 const STAT_NAMES = { hp: 'hit points', aim: 'aim', defense: 'defense', mobility: 'mobility', armor: 'armor' };
@@ -124,7 +125,8 @@ function medbayLine(campaign, rules) {
 }
 
 // A recruit for hire, as the card offers them, in the trim of the place
-// they would take in the crew.
+// they would take in the crew. At a station of the pursuer's side, signing
+// on can be the trade that logs the ship (M33's fix).
 function recruitText(campaign, rules, recruit, place) {
   const plan = hirePlan(campaign, rules, recruit.slot);
   const { fee } = recruit;
@@ -148,7 +150,7 @@ function recruitText(campaign, rules, recruit, place) {
     ok: plan.ok,
     label: `Sign on · ${fee}`,
     ask: `Sign on for ${fee}?`,
-    text: `Sign ${recruit.name} on for ${fee} credits. A crew of ${crew} eats ${each} supplies a jump, and full holds last ${jumps} jumps. Tap again to sign on.`,
+    text: `Sign ${recruit.name} on for ${fee} credits.${dockSaid(campaign, rules, plan.dock)} A crew of ${crew} eats ${each} supplies a jump, and full holds last ${jumps} jumps. Tap again to sign on.`,
     why: plan.ok ? null : plan.error,
   };
 }

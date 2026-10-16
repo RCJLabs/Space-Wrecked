@@ -31,7 +31,7 @@ const ID = /^[a-z][a-z0-9-]*$/;
 // null if it reads.
 export function runProblem(run) {
   if (!isRecord(run)) return 'is unreadable';
-  const { sector, at, seen, past, done, scans, result, approach, hired, swapped, surveyed } = run;
+  const { sector, at, seen, past, done, scans, result, approach, hired, swapped, surveyed, docked } = run;
   if (!isRecord(sector) || !isInt(sector.index, 1, 99) || !isName(sector.name) || !(sector.system === undefined || sector.system === true)) return 'has an unreadable sector';
   const { nodes, links } = sector;
   if (!Array.isArray(nodes) || nodes.length < 2 || nodes.length > MAX_NODES) return 'has an unreadable map';
@@ -77,6 +77,9 @@ export function runProblem(run) {
   // The worlds surveyed in the system (survey.js): worlds the ship has been
   // to, each once.
   if (!isNodeList(surveyed) || !surveyed.every((id) => seen.includes(id) && nodes[id].world)) return 'has unreadable surveys';
+  // Whether the crew has traded where the ship is (travel.js dockShip): only
+  // ever at a station.
+  if (typeof docked !== 'boolean' || (docked && nodes[at].type !== 'station')) return 'has an unreadable dock';
   return null;
 }
 

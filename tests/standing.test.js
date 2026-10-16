@@ -1,8 +1,9 @@
 // Standing with the sides (src/sim/standing.js, M33): five levels from -10
 // to 10; what moves it (a job done or lost, an event's outcome, a side's ship
 // struck), always within -10 to 10; and what it changes (a side's station's
-// prices, docking with the pursuer's side, a friendly side's pay, the
-// Fleet's patrols). Saved from v26.
+// prices, trading at a station of the pursuer's side, a friendly side's pay,
+// the Fleet's patrols). Saved from v26; docking on trade from v27 (M33's
+// fix).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { makeSave, MIGRATIONS, parseSave, SAVE_VERSION } from '../src/core/save.js';
@@ -12,13 +13,14 @@ import { closeApproach, giveOrder } from '../src/sim/encounter.js';
 import { chooseEvent } from '../src/sim/events.js';
 import { launch } from '../src/sim/launch.js';
 import { hasTag } from '../src/sim/modules.js';
-import { patchPlan } from '../src/sim/patch.js';
-import { feeOf, recruitsAt } from '../src/sim/recruits.js';
-import { repairPlan } from '../src/sim/repair.js';
+import { patchCrew, patchPlan } from '../src/sim/patch.js';
+import { dismissCrew, feeOf, hirePlan, hireRecruit, recruitOffer, recruitsAt } from '../src/sim/recruits.js';
+import { repairPlan, repairShip } from '../src/sim/repair.js';
 import { seedFrom } from '../src/core/rng.js';
 import { initialState, saveData } from '../src/sim/root.js';
 import { costAt, jobMoves, jobPay, jobSides, levelOf, moveStanding, nextLevel, pursuerSide, shipMoves, standingWith, stationSide, STRUCK } from '../src/sim/standing.js';
-import { beginRun, buySupplies, holdOf, jump, jumpPlan, linked, supplyOffer } from '../src/sim/travel.js';
+import { swapPlan, swapTransponder } from '../src/sim/transponder.js';
+import { beginRun, buySupplies, holdOf, jump, jumpPlan, linked, supplyOffer, tradeHeat } from '../src/sim/travel.js';
 import { OUTCOMES } from '../src/sim/approach.js';
 import { rules } from './battleKit.js';
 import { readyToLaunch } from './launchKit.js';
@@ -267,23 +269,76 @@ test("a side's station charges its level's share: supplies, repairs, patching an
   assert.equal(supplyOffer({ ...atUnionHall(AT.hostile), credits: 4 }, rules).most, 2, 'two cost 3; three cost 4.5, a half rounded up to 5');
 });
 
-test("docking at a station of the pursuer's side adds 10 heat, shown in the jump plan", () => {
-  for (const [background, name] of [['miner', 'The Depot'], ['deserter', 'Rest Stop Nine'], ['smuggler', "Big Rita's"]]) {
-    const campaign = { ...onRun(), background };
-    const set = ahead(campaign, { type: 'station', name });
-    const plan = jumpPlan(set.campaign, rules, set.to);
-    assert.deepEqual([plan.ok, plan.heat, plan.dock], [true, balance.jumpHeat, balance.dockHeat], background);
-    assert.equal(jump(set.campaign, rules, set.to).campaign.heat, campaign.heat + balance.jumpHeat + balance.dockHeat);
+// The crew of `background` jumped to a station named `name` one node on:
+// hurt, with a wreck aboard and credits to spare, so every service there
+// has something to do. { before (a node short of it), there }.
+function atStationNamed(name, background = 'miner') {
+  const set = ahead({ ...onRun({ credits: 900 }), background }, { type: 'station', name });
+  const arrived = jump(set.campaign, rules, set.to).campaign;
+  const uid = arrived.ship.modules.find((m) => m.type === 'engine').uid;
+  const crew = arrived.crew.map((member) => ({ ...member, hp: maxHp(member, rules) - 2 }));
+  return { before: set.campaign, there: { ...arrived, crew, supplies: 0, wrecks: { [uid]: 'fire' } } };
+}
+
+// Each service a station charges for, as the first trade: its plan's dock,
+// and the trade.
+const SERVICES = {
+  supplies: { plan: (c) => supplyOffer(c, rules), trade: (c) => buySupplies(c, rules, 5) },
+  repair: { plan: (c) => repairPlan(c, rules), trade: (c) => repairShip(c, rules) },
+  patch: { plan: (c) => patchPlan(c, rules), trade: (c) => patchCrew(c, rules) },
+  hire: { plan: (c) => hirePlan(c, rules, recruitOffer(c, rules)[0].slot), trade: (c) => hireRecruit(c, rules, recruitOffer(c, rules)[0].slot) },
+  swap: { plan: (c) => swapPlan(c, rules), trade: (c) => swapTransponder(c, rules) },
+};
+
+test("at a station of the pursuer's side the first trade adds 10 heat, once a visit; the jump there and letting crew go add none", () => {
+  const { before, there } = atStationNamed('The Depot');
+  const plan = jumpPlan(before, rules, there.run.at);
+  assert.deepEqual([plan.ok, plan.heat, 'dock' in plan], [true, balance.jumpHeat, false], 'the jump there is a jump');
+  assert.equal(there.heat, before.heat + balance.jumpHeat);
+  assert.deepEqual([there.run.docked, tradeHeat(there, rules)], [false, balance.dockHeat]);
+  // Letting a crew member go pays no one.
+  const mate = there.crew.find((member) => member.id !== there.captain);
+  const fewer = dismissCrew(there, rules, mate.id).campaign;
+  assert.deepEqual([fewer.heat, fewer.run.docked], [there.heat, false]);
+  for (const [name, { plan: planOf, trade }] of Object.entries(SERVICES)) {
+    const planned = planOf(fewer);
+    assert.deepEqual([planned.ok, planned.dock], [true, balance.dockHeat], `${name}: ${planned.error}`);
+    const done = trade(fewer);
+    assert.ok(done.ok, `${name}: ${done.error}`);
+    // The swap's fall comes after the docking heat.
+    const swap = name === 'swap' ? balance.swapHeat : 0;
+    assert.equal(done.campaign.heat, fewer.heat + balance.dockHeat + swap, name);
+    assert.equal(done.campaign.run.docked, true, name);
+    assert.deepEqual(campaignProblems(done.campaign), [], name);
+    // Logged once: the next trade there adds none, and the plans say so.
+    assert.equal(tradeHeat(done.campaign, rules), 0, name);
+    assert.equal(supplyOffer(done.campaign, rules).dock, 0, name);
+    assert.equal(buySupplies(done.campaign, rules, 1).campaign.heat, done.campaign.heat, `${name}, then supplies`);
   }
-  // Another side's station, or nobody's: no docking heat.
+  // Away and back: a new visit, and its first trade adds the heat again.
+  const traded = buySupplies(there, rules, 5).campaign;
+  const away = jump(traded, rules, before.run.at).campaign;
+  assert.equal(away.run.docked, false);
+  const back = jump(away, rules, there.run.at).campaign;
+  assert.equal(tradeHeat(back, rules), balance.dockHeat);
+  assert.equal(buySupplies(back, rules, 1).campaign.heat, back.heat + balance.dockHeat);
+  // The deserter's and the smuggler's pursuers have their stations too.
+  for (const [background, name] of [['deserter', 'Rest Stop Nine'], ['smuggler', "Big Rita's"]]) {
+    const at = atStationNamed(name, background).there;
+    assert.equal(buySupplies(at, rules, 5).campaign.heat, at.heat + balance.dockHeat, background);
+  }
+  // Another side's station, or nobody's: trading adds no heat.
   for (const name of ['Union Hall Twelve', 'Rest Stop Nine', "Mac's Pumps"]) {
-    const set = ahead(onRun(), { type: 'station', name });
-    assert.equal(jumpPlan(set.campaign, rules, set.to).dock, 0, name);
+    const at = atStationNamed(name).there;
+    assert.equal(tradeHeat(at, rules), 0, name);
+    const bought = buySupplies(at, rules, 5).campaign;
+    assert.deepEqual([bought.heat, bought.run.docked], [at.heat, true], name);
   }
 });
 
 test('saves: v26 for standing; a v25 campaign stands where its background starts a new one, and an approach under way meets no patrol', () => {
-  assert.equal(SAVE_VERSION, 26);
+  // 27 since M33's fix: docking on trade.
+  assert.equal(SAVE_VERSION, 27);
   const step = MIGRATIONS.find((m) => m.from === 25);
   for (const background of ['miner', 'deserter', 'smuggler']) {
     const campaign = newCampaign(rules, 4, { background });
@@ -311,4 +366,38 @@ test('saves: v26 for standing; a v25 campaign stands where its background starts
   const waved = atPatrol(AT.friendly).after;
   assert.deepEqual(campaignProblems({ ...waved, run: { ...waved.run, approach: { ...waved.run.approach, patrol: null } } }), ["The campaign's run has an unreadable approach."], 'waved through needs its patrol');
   assert.deepEqual(campaignProblems({ ...met, run: { ...met.run, approach: { ...met.run.approach, patrol: 'saluted' } } }), ["The campaign's run has an unreadable approach."]);
+});
+
+test("saves: v27 for docking on trade; a v26 ship at its pursuer's station has docked there, anywhere else not", () => {
+  assert.equal(SAVE_VERSION, 27);
+  const step = MIGRATIONS.find((m) => m.from === 26);
+  const v26 = (campaign) => {
+    const { docked, ...run } = campaign.run;
+    return { ...saveData(initialState(5)), campaign: { ...campaign, run } };
+  };
+  // Before the fix, the jump to a station of the pursuer's side paid its
+  // docking heat: the ship has docked there.
+  for (const [background, name, docked] of [['miner', 'The Depot', true], ['miner', 'Last Chance Supply', true], ['deserter', 'Station Okay', true], ['smuggler', 'Halfway House', true], ['miner', 'Rest Stop Nine', false], ['deserter', 'The Depot', false], ['miner', "Mac's Pumps", false]]) {
+    const { there } = atStationNamed(name, background);
+    const up = step.up(v26(there)).campaign;
+    assert.deepEqual(up, { ...there, run: { ...there.run, docked } }, `${background} at ${name}`);
+    assert.equal(tradeHeat(up, rules), 0, 'nothing more to pay, at its pursuer\'s or anyone else\'s');
+    const opened = parseSave(JSON.stringify({ version: 26, data: v26(there) }));
+    assert.equal(opened.ok, true, opened.error);
+    assert.deepEqual(opened.save.data.campaign.run.docked, docked);
+  }
+  // Away from a station, or before the run: not docked, or nothing to do.
+  const { before } = atStationNamed('The Depot');
+  assert.equal(step.up(v26(before)).campaign.run.docked, false);
+  assert.deepEqual(step.up({ campaign: null }), { campaign: null });
+  const launched = launch(readyToLaunch(), rules).campaign;
+  assert.equal(step.up({ campaign: launched }).campaign, launched);
+  // A quit and reopen keeps it; broken ones are caught.
+  const traded = buySupplies(atStationNamed('The Depot').there, rules, 5).campaign;
+  const again = parseSave(JSON.stringify(makeSave({ ...saveData(initialState(5)), campaign: traded })));
+  assert.equal(again.ok, true, again.error);
+  assert.deepEqual(again.save.data.campaign, traded);
+  for (const broken of [{ ...traded.run, docked: 'yes' }, { ...before.run, docked: true }]) {
+    assert.deepEqual(campaignProblems({ ...traded, run: broken }), ["The campaign's run has an unreadable dock."], JSON.stringify(broken.docked));
+  }
 });
