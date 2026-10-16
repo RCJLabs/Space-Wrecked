@@ -119,7 +119,7 @@ Some of this changes what was there before:
   - `boarding.js`: `playOn`, the drag phase's step nearer and `sealedIn`;
   - `run.js`: act 1's fights through `playOn`;
   - `voyage.js` and `voyagePlan.js`: the lockers, free surveys, trip days, and the trips stopping at a sealed fight.
-- **Tests:** four new files (`orders.test.js`, `orderAi.test.js`, `edges.test.js`, `crewJobText.test.js`), a sealed fight in `boarding.test.js`, each job's own helmet in `portraits.test.js`, and the changes above. {{N}} tests in all, 780 on M31.
+- **Tests:** four new files (`orders.test.js`, `orderAi.test.js`, `edges.test.js`, `crewJobText.test.js`), a sealed fight in `boarding.test.js`, each job's own helmet in `portraits.test.js`, and the changes above. 823 tests in all, 780 on M31.
 - **Docs:** ROADMAP.md: §4.5 and §5 (the jobs as built), M32 as built, ticked, §8's stall risk, and five new in §9.
 
 Decisions made along the way, not asked (each easy to change):
@@ -176,7 +176,7 @@ M32b Talents, traits and recruits' backgrounds (Phase 6). First task: settle its
 
 ### Verified here
 
-- `node --test`: {{N}} pass, in about {{T}}. `node tools/validate-data.js`: OK (7 crew jobs, 6 weapons, 15 enemies, 21 encounters).
+- `node --test`: 823 pass, in about 4 min 30 s. `node tools/validate-data.js`: OK (7 crew jobs, 6 weapons, 15 enemies, 21 encounters).
 - **The golden files are unchanged**, and the fixed-seed battle replays as before: the scripted player gives no orders.
 - **The fights** (`node tools/sim.js --orders none --compare`; the balance rule: no number in `data/balance.json` changed). The squad of M11 (a marine, an engineer and a medic) against the boarding party on the ten ships, with every order → with none:
 
@@ -247,7 +247,19 @@ M32b Talents, traits and recruits' backgrounds (Phase 6). First task: settle its
 - **M32's browser checks by touch,** at 905 × 370, 821 × 283 and 960 × 825:
   - `m32/fight-orders.mjs`: 48 of 48 at each. Each order previewed (the hint, Sedate's odds card) and given; a quit and reopen; every button 48 px or more; no console errors.
   - `m32/verify.mjs`: 22 of 22 at each. The deserter's and smuggler's captains and crews; the crew card's and recruits' lines; a scout signed on; the scan's words; offline; no console errors.
-- **Every earlier milestone's browser check** (`m32/regress.sh`): {{regression}}
+- **Every earlier milestone's browser check** passes, run one after another, at the three sizes unless named:
+  - M31 28, M30 27, M29 34, M28 32, M27 32, M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 20 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 39 (its count goes with the jobs it rolls), and M8's extras.
+
+  Eleven copies were adapted, not the game, for what M32 changes on purpose (`verify32.mjs` in each, M14's saves check `saves32.mjs`):
+  - M31's, M30's, M29's, M28's and M27's: a save made by main comes back as v24. M30's also has the new start crews and the Provost's raid (two MPs and a cadet), M29's the marine at home calling the lander's shots at 60%, and M27's the miner's engineer digging 1 more material a mine.
+  - M19's: its walk to act 2's last jump point now sees off a hunter waiting where a sector begins. The miner's engineer fixes a wreck after each jump, so in sector 4 the ship outruns a hunt that boarded it on main, keeps its heat, and meets a Con-Reg gunship entering sector 5.
+  - M18's, M16's, M15's and both of M14's: the crew's AI now gives its job's order first, and these checks have no button for an order, so their players play with the orders left out and the fights go as main's. M17's, M13's, M10's and M8's play without meeting one.
+
+  M23g's and M23e's run as M31 adapted them (`verify31.mjs`); `m32/regress.sh` first ran their older copies, which fail on M31's makers as they did in M31. A container restart cut the chain in two, and the checks it had not reached ran after it (`m32/regress-rest.sh` and `regress-rest2.sh`).
 
 ## M31 Manufacturers (2026-10-15)
 
