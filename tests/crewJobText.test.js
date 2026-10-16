@@ -64,22 +64,26 @@ test("each job says its order, what it does aboard and what it does at the colon
   assert.equal(byJob({ name: 'Mara Quist', job: 'xenobiologist' }, rules), 'Mara Quist the xenobiologist');
 });
 
-test('what each rank gives, short, from its numbers (M32b)', () => {
+test('what each rank gives, short, from its numbers (M32b; rank 1 a use and a sharper number since its fix)', () => {
   const said = [...rules.jobs.keys()].map((job) => [job, rankGives(job, 1, rules), rankGives(job, 2, rules)]);
   assert.deepEqual(said, [
-    ['marine', 'Suppress −40 aim', 'guns +15'],
-    ['engineer', 'Weld 5 rounds', 'fixes 2 wrecks a jump'],
-    ['medic', 'Patch 5 hit points', 'med bay +2 · infirmary +2'],
-    ['pilot', 'Hustle ×2 a fight', 'evasion +15'],
-    ['scout', 'Mark +20 to hit', 'scans +2 links'],
-    ['xenobiologist', 'Sedate +10 to hit', 'farms +2'],
-    ['quartermaster', 'Kit out ×3 a fight', 'lockers +20 · stores +40'],
+    ['marine', 'Suppress ×3 a fight, −40 aim', 'guns +15'],
+    ['engineer', 'Weld ×3 a fight, 5 rounds', 'fixes 2 wrecks a jump'],
+    ['medic', 'Patch ×3 a fight, 5 hit points', 'med bay +2 · infirmary +2'],
+    ['pilot', 'Hustle ×2 a fight, +2 actions', 'evasion +15'],
+    ['scout', 'Mark ×3 a fight, +20 to hit', 'scans +2 links'],
+    ['xenobiologist', 'Sedate ×3 a fight, +10 to hit', 'farms +2'],
+    ['quartermaster', 'Kit out ×3 a fight, +2 armor', 'lockers +20 · stores +40'],
   ]);
+  // Only a use, or only a number, reads as one.
+  const lone = { ...rules, jobs: new Map([['marine', { ...rules.jobs.get('marine'), ranks: [{ name: 'Lone', text: '', order: { aim: -40 } }] }], ['pilot', { ...rules.jobs.get('pilot'), ranks: [{ name: 'Lone', text: '', order: { uses: 2 } }] }]]) };
+  assert.equal(rankGives('marine', 1, lone), 'Suppress −40 aim');
+  assert.equal(rankGives('pilot', 1, lone), 'Hustle ×2 a fight');
   assert.equal(rankGives('marine', 3, rules), '', 'no rank 3');
   // A rank's words come with the job's: the order and effects at that rank.
   assert.match(jobSaid('xenobiologist', rules, 1).order, /at a shot's odds \+10:/);
   assert.match(jobSaid('xenobiologist', rules).order, /at a shot's odds:/);
-  assert.equal(jobBrief('medic', rules, 2), 'Patch ×2 · med bay +2 · infirmary +2');
+  assert.equal(jobBrief('medic', rules, 2), 'Patch ×3 · med bay +2 · infirmary +2');
 });
 
 test("a crew member's rank and fights on a line, and who reaches a rank as a fight ends (M32b)", () => {
@@ -88,7 +92,7 @@ test("a crew member's rank and fights on a line, and who reaches a rank as a fig
   assert.equal(rankLine({ job: 'scout', fights: 3 }, rules), 'Rank 1, Spotter · 3 fights · rank 2 at 8');
   assert.equal(rankLine({ job: 'pilot', fights: 12 }, rules, true), 'Rank 2, Ace · 12 fights stood');
   assert.deepEqual(rankUpLines([{ member: { name: 'Rosa Vint', job: 'marine' }, rank: 1 }, { member: { name: 'Bram Dahl', job: 'quartermaster' }, rank: 2 }], rules), [
-    'Rosa Vint reaches rank 1, Pinning fire: Suppress −40 aim.',
+    'Rosa Vint reaches rank 1, Pinning fire: Suppress ×3 a fight, −40 aim.',
     'Bram Dahl reaches rank 2, Stores master: lockers +20 · stores +40.',
   ]);
 });
