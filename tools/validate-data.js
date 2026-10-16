@@ -130,9 +130,12 @@ const BALANCE = {
   repairPercent: [0, 100],
   patchPrice: [0, 100],
   // Crew on the run (src/sim/recruits.js, crew.js): what a recruit asks to
-  // sign on, how many a station offers, and the squad a boarding takes (up
-  // to MAX_SQUAD).
+  // sign on (the fee, and on top of it a price for each trait and each
+  // rank, M32b), how many a station offers, and the squad a boarding takes
+  // (up to MAX_SQUAD).
   recruitFee: [0, 1000],
+  recruitTraitFee: [0, 1000],
+  recruitRankFee: [0, 1000],
   recruitOffer: [0, 4],
   squadSize: [1, 5],
   // Job ranks (src/sim/ranks.js, M32b): the fights a crew member stands in
@@ -310,7 +313,7 @@ export function validateData(data) {
   jobs.forEach((job, i) => checkFighter(job, `jobs.json ${job.id ?? `#${i}`}`, weaponIds, fail, { job: true }));
   enemies.forEach((enemy, i) => checkFighter(enemy, `enemies.json ${enemy.id ?? `#${i}`}`, weaponIds, fail));
   const enemyIds = new Set(enemies.map((enemy) => enemy.id));
-  checkTraits(data.traits, fail);
+  const traitIds = checkTraits(data.traits, fail);
   checkTips(data.tips, fail);
 
   // Who fights: the squad by job, and each encounter's enemies.
@@ -439,7 +442,7 @@ export function validateData(data) {
     if (ship.party !== undefined && !encounterById.has(ship.party)) fail(where, `party: unknown encounter "${ship.party}"`);
     if (ship.tactics !== undefined && ship.party === undefined) fail(where, 'a preset with tactics needs a party for the boarding fights');
   }
-  const scripts = checkCampaignFiles(data, { jobIds, enemyIds, moduleIds, frameById, encounters: encounterById, presets }, fail);
+  const scripts = checkCampaignFiles(data, { jobIds, enemyIds, traitIds, moduleIds, frameById, encounters: encounterById, presets }, fail);
   // The starting ships are built only from content that checks out.
   if (!problems.length) checkStartShips(data, scripts, fail);
   return problems;
@@ -623,10 +626,11 @@ function checkTactics(tactics, where, fail) {
 // crit chance and extra damage on a crit, and the shots in a clip.
 // The traits: each with a name, a line about it, and what it adds to a
 // fighter's numbers, at least one of them. A captain picks CAPTAIN_TRAITS,
-// so there are at least that many.
+// so there are at least that many. Returns their ids, for the recruits'
+// backgrounds (validate-campaign.js).
 function checkTraits(file, fail) {
   const traits = listOf(file, 'traits', 'traits.json', fail);
-  uniqueIds(traits, 'traits.json', fail);
+  const ids = uniqueIds(traits, 'traits.json', fail);
   if (traits.length < CAPTAIN_TRAITS) fail('traits.json', `needs at least ${CAPTAIN_TRAITS} traits for a captain to pick`);
   traits.forEach((trait, i) => {
     const where = `traits.json ${trait.id ?? `#${i}`}`;
@@ -643,6 +647,7 @@ function checkTraits(file, fail) {
     }
     if (!Object.keys(effects).length) fail(where, 'effects must change something');
   });
+  return ids;
 }
 
 // The tips: one for each step the game has (TIP_IDS), and no others.
@@ -892,7 +897,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   console.log(
     `validate-data: OK (${count(data.modules.modules.length, 'module')}, ${count(data.frames.frames.length, 'frame')}, ` +
       `${count(data.manufacturers.manufacturers.length, 'manufacturer')}, ${count(data.hulls.hulls.length, 'hull style')}, ${count(data.styling.pieces.length, 'styling piece')}, ${count(data.weapons.weapons.length, 'weapon')}, ` +
-      `${count(data.jobs.jobs.length, 'crew job')}, ${count(data.traits.traits.length, 'trait')}, ${data.enemies.enemies.length} enem${data.enemies.enemies.length === 1 ? 'y' : 'ies'}, ` +
+      `${count(data.jobs.jobs.length, 'crew job')}, ${count(data.traits.traits.length, 'trait')}, ${count(data.recruits.backgrounds.length, "recruits' background")}, ${data.enemies.enemies.length} enem${data.enemies.enemies.length === 1 ? 'y' : 'ies'}, ` +
       `${count(data.encounters.encounters.length, 'encounter')}, ${count(data.ships.ships.length, 'ship preset')}, ` +
       `${count(data.campaign.acts.length, 'act')}, ${count(data.backgrounds.backgrounds.length, 'background')}, ` +
       `${count(data.districts.districts.length, 'district')}, ${count(data.sites.maps.length, 'site map')}, ` +

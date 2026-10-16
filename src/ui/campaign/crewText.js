@@ -120,7 +120,7 @@ function medbayLine(campaign, rules) {
 // they would take in the crew.
 function recruitText(campaign, rules, recruit, place) {
   const plan = hirePlan(campaign, rules, recruit.slot);
-  const fee = rules.balance.recruitFee;
+  const { fee } = recruit;
   const crew = campaign.crew.length + 1;
   const each = rules.balance.jumpSupplies * crew;
   const jumps = Math.floor(supplyCapacity(campaign.ship, rules, [...campaign.crew, recruit]) / Math.max(1, each));

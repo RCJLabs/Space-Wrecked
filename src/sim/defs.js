@@ -98,8 +98,9 @@ export function indexDefs(files) {
     // draw parts from.
     events: byId(events?.events),
     eventDrops: events?.drops ?? {},
-    // The names recruits at stations draw on (recruits.js): { first, last }.
-    recruits: { first: recruits?.first ?? [], last: recruits?.last ?? [] },
+    // The names recruits at stations draw on, and since M32b the pasts they
+    // come from, by id (recruits.js): { first, last, backgrounds }.
+    recruits: { first: recruits?.first ?? [], last: recruits?.last ?? [], backgrounds: byId(recruits?.backgrounds) },
     // The first-run tips' words (src/ui/tips.js), by id.
     tips: byId(tips?.tips),
   };

@@ -50,10 +50,11 @@ test('at a station: the recruits for hire with their fee and what they eat, and 
   assert.equal(card.hire.line, null);
   assert.equal(card.hire.recruits.length, balance.recruitOffer);
   const [first] = card.hire.recruits;
-  assert.deepEqual([first.key, first.name, first.about, first.ok, first.label, first.ask], ['hire:0', offer[0].name, rules.jobs.get(offer[0].job).name, true, `Sign on · ${balance.recruitFee}`, `Sign on for ${balance.recruitFee}?`]);
+  const { fee } = offer[0];
+  assert.deepEqual([first.key, first.name, first.about, first.ok, first.label, first.ask], ['hire:0', offer[0].name, rules.jobs.get(offer[0].job).name, true, `Sign on · ${fee}`, `Sign on for ${fee}?`]);
   assert.match(first.traits, /^[A-Z][a-z ]+: [a-z ]+ [+−]\d+/, 'a trait and what it does');
   const eats = 4 * balance.jumpSupplies;
-  assert.equal(first.text, `Sign ${first.name} on for ${balance.recruitFee} credits. A crew of 4 eats ${eats} supplies a jump, and full holds last ${Math.floor(balance.baseSupplies / eats)} jumps. Tap again to sign on.`);
+  assert.equal(first.text, `Sign ${first.name} on for ${fee} credits. A crew of 4 eats ${eats} supplies a jump, and full holds last ${Math.floor(balance.baseSupplies / eats)} jumps. Tap again to sign on.`);
   assert.deepEqual(card.members.map((m) => m.dismiss?.key ?? null), [null, 'let:2', 'let:3'], 'the captain stays');
   assert.equal(card.members[1].dismiss.text, `Let ${campaign.crew[1].name} go here, with nothing paid back: a crew of 2. Tap again to let them go.`);
   assert.deepEqual(crewHeading(campaign, rules), { text: `Crew · ${balance.recruitOffer} for hire`, hire: true });
@@ -77,7 +78,8 @@ test('a full ship or short credits: the recruits say why, and the panel stops of
   assert.equal(crewSaid(card, 'hire:1'), null, 'a recruit who can\'t sign on says nothing on a tap');
   assert.deepEqual(crewHeading(full, rules), { text: 'Crew', hire: false });
   assert.equal(card.hint.text, 'Tap Let go to see what it leaves, and again to let them go.');
-  assert.equal(crewCardText({ ...campaign, credits: balance.recruitFee - 1 }, rules).hire.line, `Signing on costs ${balance.recruitFee} credits.`);
+  const offer = recruitOffer(campaign, rules);
+  assert.equal(crewCardText({ ...campaign, credits: Math.min(...offer.map((r) => r.fee)) - 1 }, rules).hire.line, `Signing on costs ${offer[0].fee} credits.`);
   // Everyone signed on: no one left.
   let all = { ...campaign, ship: withPart(withPart(campaign.ship, rules, 'quarters'), rules, 'lifesupport') };
   for (const recruit of recruitOffer(all, rules)) all = hireRecruit(all, rules, recruit.slot).campaign;

@@ -8,7 +8,7 @@
 // places within reach of the colony (expeditions.json,
 // validate-expeditions.js), whose events are events.json's.
 import { buildShip, layoutProblems } from '../src/sim/builder.js';
-import { ACTS, MAX_NAME } from '../src/sim/campaign.js';
+import { ACTS, CAPTAIN_TRAITS, MAX_NAME } from '../src/sim/campaign.js';
 import { MISSIONS } from '../src/sim/contracts.js';
 import { MAX_STOCK, PAY_STEP } from '../src/sim/economy.js';
 import { indexDefs } from '../src/sim/defs.js';
@@ -31,8 +31,18 @@ const MAX_AHEAD = 240;
 const BACKGROUND_KEYS = ['id', 'name', 'blurb', 'pursuer', 'launch', 'captains', 'district', 'start'];
 // Recruits' names (recruits.js): a first and a last name, each list of 2
 // or more, and each name short enough that the two fit a crew member's.
-const RECRUIT_KEYS = ['first', 'last'];
+// And since M32b the backgrounds they come from.
+const RECRUIT_KEYS = ['first', 'last', 'backgrounds'];
+const NAME_KEYS = ['first', 'last'];
 const MAX_RECRUIT_NAMES = 200;
+// A recruit's background (M32b): a line about it, the jobs and traits it
+// rolls from, how many traits each recruit takes from them (no more than a
+// captain picks, CAPTAIN_TRAITS), and the fights already stood, [least,
+// most].
+const PAST_KEYS = ['id', 'name', 'text', 'jobs', 'traits', 'traitCount', 'fights'];
+const MAX_PASTS = 40;
+const MAX_PAST_TEXT = 140;
+const MAX_PAST_FIGHTS = 99;
 // Names the captain's name field offers, each a name a captain can have.
 const MAX_CAPTAINS = 20;
 // The words as the ship lifts off (launch.js), and the pursuer's when it
@@ -101,7 +111,7 @@ export function checkCampaignFiles(data, ids, fail) {
   for (const kind of data.expeditions?.kinds ?? []) {
     if (kind?.held?.chance !== 100 && !covered.has(kind?.id)) fail(`expeditions.json kind ${kind?.id}`, 'has places with events, but events.json has none of its kind');
   }
-  checkRecruits(data.recruits, fail);
+  checkRecruits(data.recruits, ids, fail);
   const maps = checkSiteMaps(data.sites, fail);
   const districts = checkDistricts(data.districts, maps, ids, fail);
   const scripts = checkBackgrounds(data.backgrounds, districts, ids, fail);
@@ -111,16 +121,18 @@ export function checkCampaignFiles(data, ids, fail) {
   return scripts;
 }
 
-// The names recruits draw on: lists of first and last names, none twice.
-function checkRecruits(file, fail) {
+// The names recruits draw on: lists of first and last names, none twice;
+// and the backgrounds they come from, each rolling from jobs and traits
+// that exist.
+function checkRecruits(file, ids, fail) {
   const where = 'recruits.json';
   if (!isObject(file)) {
-    fail(where, 'must be an object of first and last names');
+    fail(where, 'must be an object of first and last names and backgrounds');
     return;
   }
   knownKeys(file, RECRUIT_KEYS, where, fail);
   const most = Math.floor((MAX_NAME - 1) / 2);
-  for (const key of RECRUIT_KEYS) {
+  for (const key of NAME_KEYS) {
     const names = file[key];
     if (!isListIn(names, 2, MAX_RECRUIT_NAMES) || !names.every((name) => isText(name) && name === name.trim() && name.length <= most)) {
       fail(where, `${key} must be a list of 2 to ${MAX_RECRUIT_NAMES} names of up to ${most} letters`);
@@ -128,6 +140,25 @@ function checkRecruits(file, fail) {
       fail(where, `${key} has a name twice`);
     }
   }
+  const pasts = listOf(file, 'backgrounds', where, fail);
+  if (!pasts.length || pasts.length > MAX_PASTS) fail(where, `backgrounds must be a list of 1 to ${MAX_PASTS}`);
+  uniqueIds(pasts, `${where} backgrounds`, fail);
+  pasts.forEach((past, i) => checkPast(past, `${where} background ${past.id ?? `#${i}`}`, ids, fail));
+}
+
+// One background recruits come from.
+function checkPast(past, where, { jobIds, traitIds }, fail) {
+  knownKeys(past, PAST_KEYS, where, fail);
+  if (!isText(past.name) || past.name.length > MAX_NAME) fail(where, `name must be a non-empty string of up to ${MAX_NAME} letters`);
+  if (!isText(past.text) || past.text.length > MAX_PAST_TEXT) fail(where, `text must be a non-empty string of up to ${MAX_PAST_TEXT} letters`);
+  if (!isListIn(past.jobs, 1, jobIds.size) || new Set(past.jobs).size !== past.jobs.length) fail(where, 'jobs must be a list of crew jobs, none twice');
+  else for (const job of past.jobs) if (!jobIds.has(job)) fail(where, `jobs: unknown job "${job}"`);
+  if (!isListIn(past.traits, 0, traitIds.size) || new Set(past.traits).size !== past.traits.length) fail(where, 'traits must be a list of traits, none twice');
+  else for (const trait of past.traits) if (!traitIds.has(trait)) fail(where, `traits: unknown trait "${trait}"`);
+  if (!isIntIn(past.traitCount, 0, Math.min(CAPTAIN_TRAITS, Array.isArray(past.traits) ? past.traits.length : 0))) {
+    fail(where, `traitCount must be a whole number from 0 to ${CAPTAIN_TRAITS}, and no more than its traits`);
+  }
+  if (!isRange(past.fights, 0, MAX_PAST_FIGHTS)) fail(where, `fights must be [least, most], whole numbers from 0 to ${MAX_PAST_FIGHTS}`);
 }
 
 // Each starting ship builds part by part with the builder's rules, and its

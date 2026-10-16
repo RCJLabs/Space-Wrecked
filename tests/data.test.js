@@ -348,6 +348,25 @@ const cases = [
   ['a build whose least is unbounded', (d) => (d.colony.builds[0].least = -1), /colony.json build farm: least must be a whole number from 0 to 9/],
   ['a build with a stray field', (d) => (d.colony.builds[0].power = 2), /colony.json build farm: unknown field "power"/],
   ['a build with no words', (d) => delete d.colony.builds[1].text, /colony.json build mine: text must be a non-empty string/],
+  // M32b: ranks, the fee and recruits' backgrounds.
+  ['a job with one rank', (d) => (d.jobs.jobs[0].ranks = d.jobs.jobs[0].ranks.slice(0, 1)), /jobs\.json marine ranks: must be a list of 2 ranks/],
+  ['a rank with no name', (d) => (d.jobs.jobs[1].ranks[1].name = ''), /jobs\.json engineer ranks 2: name must be a non-empty string/],
+  ['a rank that sharpens nothing', (d) => delete d.jobs.jobs.find((j) => j.id === 'medic').ranks[0].order, /medic ranks 1: must sharpen at least one of order, station, colony/],
+  ['a rank setting a number its job lacks', (d) => (d.jobs.jobs.find((j) => j.id === 'pilot').ranks[0].order.aim = 10), /pilot ranks 1: order can't set "aim": the job's order has no such number/],
+  ['a rank past its order\'s range', (d) => (d.jobs.jobs.find((j) => j.id === 'scout').ranks[0].order.aim = 500), /scout ranks 1 order: aim must be a whole number from 1 to 100/],
+  ['a rank past its effect\'s range', (d) => (d.jobs.jobs.find((j) => j.id === 'quartermaster').ranks[1].station.lockers = 500), /quartermaster ranks 2 station: lockers must be a whole number from 1 to 99/],
+  ['rank 2 before rank 1', (d) => (d.balance.rankTwoFights = 2), /rankTwoFights must be more than rankOneFights/],
+  ['a rank priced in the thousands', (d) => (d.balance.recruitRankFee = 5000), /recruitRankFee must be a whole number from 0 to 1000/],
+  ['no recruits\' backgrounds', (d) => (d.recruits.backgrounds = []), /recruits\.json: backgrounds must be a list of 1 to 40/],
+  ['a background id twice', (d) => (d.recruits.backgrounds[1].id = 'green-hand'), /recruits\.json backgrounds: duplicate id "green-hand"/],
+  ['a background with no line', (d) => delete d.recruits.backgrounds[3].text, /background survey-hand: text must be a non-empty string/],
+  ['a background rolling an unknown job', (d) => d.recruits.backgrounds[1].jobs.push('cook'), /background station-kid: jobs: unknown job "cook"/],
+  ['a background rolling a job twice', (d) => d.recruits.backgrounds[1].jobs.push('pilot'), /background station-kid: jobs must be a list of crew jobs, none twice/],
+  ['a background rolling an unknown trait', (d) => d.recruits.backgrounds[1].traits.push('lucky'), /background station-kid: traits: unknown trait "lucky"/],
+  ['a background giving more traits than a captain picks', (d) => (d.recruits.backgrounds[6].traitCount = 3), /background hired-gun: traitCount must be a whole number from 0 to 2/],
+  ['a background giving more traits than it lists', (d) => (d.recruits.backgrounds[0].traitCount = 1), /background green-hand: traitCount must be a whole number from 0 to 2, and no more than its traits/],
+  ['a background with its fights backwards', (d) => (d.recruits.backgrounds[7].fights = [12, 8]), /background fleet-veteran: fights must be \[least, most\]/],
+  ['a background with its own fee', (d) => (d.recruits.backgrounds[2].fee = 10), /background laid-off-miner: unknown field "fee"/],
 ];
 
 function pursuerRun(d) {
@@ -384,5 +403,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 6 weapons, 7 crew jobs, 6 traits, 15 enemies, 21 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 26 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 18 events\)/);
+  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 6 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 15 enemies, 21 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 26 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 18 events\)/);
 });
