@@ -2,6 +2,164 @@
 
 Newest entry first.
 
+## M33b Quests (2026-10-16)
+
+**Status:** done, and the ROADMAP.md box is ticked. Each background has a thread with a step in each act, and the Fleet has a chain that starts at its tender. A thread finished at the colony eases its pursuer off: heat −30, its side raised to cold, and its raids find the colony at half the odds. A step not done in its act ends its quest.
+
+| Quest | Act 1: a job | The run: an event | The colony: a place |
+| --- | --- | --- | --- |
+| The miner's debt | Rook's, at Depot 4: heat −20 | Con-Reg's courier: heat −15 (a wound one time in four) | Con-Reg's claims tender, Recovery's crew aboard |
+| The deserter's pardon | Mother Ilse's, at the Brig: heat −20 | the Resolute: 20 credits, heat −15, the Fleet +4 | the Provost's courier, its patrol aboard |
+| The smuggler's cargo | Ferris's, at the customs pound: heat −20 | the lost cargo: heat −15, the Hallorans +4 | the Hallorans' runner, collectors aboard |
+| The tender's stores (the Fleet's) | | the stolen stores pod: tagged, 25 credits and the Fleet +4, done; stripped, 8 supplies, 10 credits and the Fleet −2, gone cold | |
+
+**How it was picked:** Evan answered four questions at the start (2026-10-16), each with the recommended answer:
+- **Scope:** each background's thread, a step in each act, and the Fleet's chain, started at its tender: the way to the wave M33's fix moved here. The other sides' chains went to §9.
+- **A thread's pay-off,** at the colony: the pursuer eases off. Its raids find the colony at half the odds, heat falls 30, and standing with its side rises to cold.
+- **A missed step:** the trail goes cold. Launch, and leaving the last sector, say so first.
+- **The miner's voyages** (the M33 fix's known issue): on to quests, measured against the fix's numbers.
+
+And two at the end (2026-10-16), each with the recommended answer:
+- **The voyage measured over 100 seeds,** not 30. Every number passed the 30-seed limits but the miner's fed (19 against the fix's 26). The quest job changes act 1's jobs and so the campaign's rolls at launch, so each seed is a different voyage from there on: seeds 1 to 30 compare unrelated voyages. Over 100 seeds every start is within 15 of the fix's.
+- **M30's voyage check held no worse than main's,** not about the same. The deserter meets the hunters in 21 runs of 100 against main's 45: its thread takes 35 heat off a pursuer who takes no payments.
+
+Calls I made, each easy to change (all data but the test players' rules):
+- **The quests' words and numbers** above, in `data/quests.json`, `data/contracts.json` (three jobs marked `quest`) and `data/events.json` (four events marked `quest`, and the tender's help now mentions the stolen pod).
+- **A quest's job** is offered above the board while its step is open, rolled from the campaign's seed, the quest and the jobs done and lost so far. The offer holds until a job is done or lost, and the board's own rolls are as before.
+- **Where a quest's event goes:** on a node of its own kind in each sector the ship enters while the step is open, else an empty node, else any event's node; never the way in, the jump point, a station, a nebula or a hostile ship. It is seeded from the campaign, the quest and the sector, so the rest of the sector rolls as before.
+- **The places' crews:** each pursuer's ship is held by her own boarding crew of three: Recovery's at the claims tender, the collectors at the runner, and the Provost's patrol (two MPs) at the courier. The colony's raiding parties, as first written (three to five fighters), were much harder than a derelict. With the courier's own boarding party (two MPs and a rating) the deserter won 24% of its fights there; with the patrol it wins 58%, against 61% at the hulks the squatters hold.
+- **The Resolute's spares** cost 20 credits. At 40 the deserter's run step went cold in 26 voyages of 100, the ship short of the credits when it got there; at 20, in 8.
+- **The marks:** a small diamond in the good color at a quest node's upper left, until its event is settled; on the board, the quest's name on its job and an accent edge.
+- **The test players** (below).
+
+Done when (ROADMAP.md, M33b, in full there):
+- **Quests as data,** validated, each step in its act: a job, an event, a place.
+- **The threads** and **the pay-off**, **the Fleet's chain**, **the trail going cold.**
+- **Shown** (Law 4).
+- **Saves:** `SAVE_VERSION` 28, with a migration from 27.
+- **Every rule tested.**
+- **The test players** take the steps.
+- **Balance:** act 1 within 10 minutes of the fix's; the voyage no worse than the fix's over 100 seeds by more than 15; the quests reported; a patrol's wave in some voyages; the voyage tests passing.
+- **Touch** at the three sizes.
+
+How each is met:
+- **Quests as data:** `data/quests.json`, checked by `tools/validate-quests.js` (run by `validate-data.js`); 15 new cases in `tests/data.test.js`: one thread a background, a side's chain's start on the run, steps in act order with each act's own keys, a step's job or event marked for its quest and every marked one named, an act 2 event with a choice that leaves it, a place's ship, crew and numbers, a pay-off's standing a level.
+- **The threads, the pay-off, the chain and the cold rule:** `tests/quests.test.js` (10 tests): each kind of step done and missed, the cold rule at the launch and as the ship leaves the last sector, the pay-off's heat, standing and odds, the Fleet's start and both its ends, the quest job off the rotation with the board's rolls as before, the event's placing (seeded, on the charts, again in the next sector), the place kept until done, and the migration.
+- **Shown:** `tests/questText.test.js` (5 tests) and the screens' text tests; by touch, below.
+- **Saves:** `tests/quests.test.js`: a v27 campaign gets its background's thread at its act's step, none gone cold, the Fleet's chain not started; broken quests caught.
+- **The test players:** `tests/run.test.js` (every act 1 run launches with its thread's job done, some taken only once the ship is ready) and `tests/voyage.test.js`'s new test (below).
+- **Balance and touch:** under Verified.
+
+Some of this changes what was there before:
+- **The board** lists the quest's job first while its step is open, above the three.
+- **The sectors:** while a run's step is open, one node of each sector entered is the quest's. So the voyages roll differently from launch, and act 1's runs launch differently.
+- **The colony's places:** the quest's place is listed after those rolled, within the six.
+- **Launch's first tap** and the last jump point's plan name the quests they would end.
+- **The colony's raid odds** are halved once the thread is done; heat falls 30 and the pursuer's side rises to cold.
+- **`SAVE_VERSION` 28.**
+- **The test players** take the steps (below).
+- **Tests changed on purpose:**
+  - `campaign`, `expeditions`, `makers`, `orders`, `raids`, `ranks` and `standing`: `SAVE_VERSION` 28, and the quests where a whole campaign is compared;
+  - `contracts`, `sector`, `voyage`: the quests' own jobs and events left out of the rotation, the pools and the run's events;
+  - `system`, `travel`: the leave plan's `cold`;
+  - `expeditions`, `raids`: an old save's colony gets its thread at the place, and the place after the rolled ones;
+  - `launchText`: Launch's ask warns of the debt;
+  - `data`: the validator's counts ("4 quests") and the new cases;
+  - `run`, `voyage`: below.
+
+### Shipped
+
+- **Data:** `quests.json` (new): the three threads and the Fleet's chain, each with a name, a line and its steps, and the threads' pay-off; `contracts.json`: Losing the paper, The warrant and Forty crates, each marked for its quest; `events.json`: the courier, the Resolute, the lost cargo and the stores pod, each marked for its quest, and the tender's help pointing at the pod; `balance.json`: `easedOdds` 50.
+- **The sim:**
+  - `quests.js` (new): the open steps, the quest jobs, a step done (its effects, then the next or the pay-off), going cold, the quest nodes placed on each new sector, an event's choice settling a step, the quest places and who holds them, and the eased odds;
+  - `questShape.js` (new): a campaign's quests and a quest's note read and checked;
+  - `contracts.js`: `takeQuestJob`; a quest job won does its step;
+  - `travel.js`: the quest nodes on the run's sectors, on the charts; the last sector's leave plan names the quests it would end, and leaving ends them;
+  - `events.js`: a choice's note on its quest; `launch.js`: act 1's steps go cold; `expeditions.js`: the quest's place beside the rolled ones, held by its crew, its win the pay-off; `raids.js`: the eased odds; `standing.js`: `floorOf`;
+  - `campaign.js`, `runShape.js`, `tripShape.js`, `root.js`: the quests in a new campaign, in its checks and in the actions.
+- **Saves:** `SAVE_VERSION` 28. The migration from 27 gives a campaign its background's thread at its act's step: act 1's job; the run's event, from the next sector, or the colony's place once the ship is past the charts; none gone cold, and the Fleet's chain not started.
+- **The words** (`src/ui/campaign/questText.js`, new): the Quests panel at the hangar, on the chart and at the colony; a quest job's tag and its Quest fact; a step's words at a fight's end; what came of a quest at an event, a fight's end and the homecoming; each choice's first tap at a quest's node or the tender; a quest node's and place's lines; the eased odds; the warnings.
+- **The screens:** the panels (`hangar.js`, `sector.js`, `colony.js`); the board's quest job first, tagged (`jobs.js`); the chart's diamond and the node's label (`sector.js`); the fight's end (`fight.js`); the event card (`eventCard.js`); the places and the trip (`tripText.js`); the raid odds in the needs (`raidText.js`) and Next day's first tap (`colonyText.js`).
+- **Tools:**
+  - `run.js`: the thread's job weighed by its pay and the heat its step takes off at a payment's price (the deserter's at the cheapest any pursuer takes), and taken before launching in any case; the summary says when and in how many tries;
+  - `voyagePlan.js`: a choice that does a quest's step is worth 40 credits, one that ends it −40; on the way a quest's node counts at the share of the act's sectors gone; the tender gets a hand where the chain would leave the crew friendly with the Fleet and the holds keep 4 jumps' worth after it; the colony's quest place is flown to first of the held;
+  - `voyage.js`: what came of each quest on the way, the colony's daily odds of being found and the pay-off's day, and a quests line per start in `--background all`.
+- **Tests:** `quests.test.js` and `questText.test.js` (new), the validator's cases, and the changes above.
+- **Docs:** ROADMAP.md §4.10 (new: quests as built), §4.9 (the pay-off's standing and the Fleet's wave), M33b's entry (Evan's two calls at the end, the smuggler's job site put right, as built).
+
+### Verified
+
+- **`node --test`:** 893 pass (877 on main). `node tools/validate-data.js`: OK (4 quests). The golden files are unchanged.
+- **`node tools/sim.js`** (run because `data/balance.json` gained `easedOdds`; no number a fight uses changed): identical to main's but for the time taken.
+- **Act 1** (`node tools/run.js --runs 50 --background …`): every run launches with its thread's job done, at job 3, 3 and 2 at the median (1 to 7), the first try in nearly all (at most 3); 3, 7 and 6 runs take it only once the ship is ready. Slow medians 41, 42 and 47 minutes against the fix's 42, 40 and 45.
+- **The voyage, 100 seeds** (`tools/voyage.js`), the fix's over the same seeds in brackets, against the Done when's limit (no worse by more than 15):
+
+  | Background | Fed | Met the hunters | Runs with a raid lost |
+  | --- | --- | --- | --- |
+  | Debt-bound miner | 73 (84) | 37 (45) | 21 (25) |
+  | Navy deserter | 90 (88) | 21 (36) | 13 (11) |
+  | Burned smuggler | 98 (92) | 14 (18) | 11 (14) |
+
+  On seeds 1 to 30 (`--background all`), the fix's in brackets: the miner 19 (26), 14 (15) and 6 (6); the deserter 28 (27), 4 (10) and 3 (1); the smuggler 30 (27), 5 (5) and 1 (5).
+- **The quests, 100 voyages from each start:**
+
+  | Background | Run step done | Gone cold | Place won (fights) | The Fleet's chain | Waved through |
+  | --- | --- | --- | --- | --- | --- |
+  | Debt-bound miner | 99 | 1 | 67 (67 of 104) | started 37, done 28 | 14 runs |
+  | Navy deserter | 92 | 8 | 61 (61 of 105) | never | none |
+  | Burned smuggler | 100 | 0 | 86 (86 of 106) | started 6, done 6 | none |
+
+  The run's step is done in the first sector in 51, 44 and 76 voyages. After the pay-off the colony's odds of being found fall from 2.2, 1.6 and 1.3% a day to 0.1, 0.2 and 0.0%; raids faced before it 44, 35 and 38, after it 2, 3 and 0 (on far fewer days at home: 128, 96 and 106 against 2,014, 1,848 and 2,588).
+- **Where the miner's fed went** (300 seeds each): main 248, M33b 228. Two parts:
+  - **the reshuffle:** with the quests in play but no quest worth to the player, it is fed in 239. The different launch and the placed quest nodes change every roll after: 39 seeds go fed to hungry against main and 30 the other way, within chance;
+  - **the Fleet's chain:** between that player and the final one, 16 seeds go hungry and 5 the other way, and without the tender rule it is fed in 237. Lending a hand costs 3 supplies, and tagging the pod gives up its 8.
+
+  Guarding the help with more held back (8 jumps' worth) feeds the miner in 237 but leaves no wave on seeds 1 to 30, so the player keeps its buffer, 4.
+- **The voyage tests** pass. Changed on purpose: the run's events leave out the quests' own; two checks the quests broke on seeds 1 to 30 (the careful player fed without refits, 19; runs with a refit, 12) are rates over 100 seeds against main's before M33b (82 and 69: now 72 and 61); the refitting player's fed, 19 of 30 against M23h's 24, is held over 100 seeds as main's before M31 within 15 (73: now 73); surgery against the med bay over 100 seeds (seeds 1 to 30 had surgery patching 43 to the med bay's 36); M30's check no worse than main's. New: the careful player takes the quests' steps (every launch with the thread's job done, the run's step in 80 or more of 100 from each start, the place won and the odds falling by more than half, the Fleet's chain the miner's and never the deserter's, a patrol's wave, the report's lines).
+- **By touch** (`m33b/verify.mjs`, at 905 × 370, 821 × 283 and 960 × 825): 43 of 43 at each size:
+  - the debt's job first on the board, tagged, its Quest fact; taken, the quest's fight; done, the step's words and heat at the end; the hangar's quests after; its job off the board; a quit and reopen;
+  - Launch's warning; launched, the debt gone cold on the chart's panel;
+  - the courier's node marked and named; its first tap's words; each choice's first tap; the result; the mark gone, step 3 of 3;
+  - the tender: Lend a hand's first tap, its result, the chain on the panel; the next sector's pod marked; Tag's first tap and result; the chain done, the Fleet 2 to 6;
+  - the colony's place, tagged and held; flown to, who is aboard and what a win does; boarded; won, the pay-off at the fight's end; home, the trip's report, the needs' halved odds, the quests done, Next day's first tap with half the odds; a quit and reopen; offline;
+  - every button 48 px or more at the hangar, the board, the chart and the colony; no console errors.
+- **Every earlier milestone's browser check** passes, run one after another (`m33b/regress.sh`), at the three sizes unless named:
+  - the M33 fix's 38, M32b's fixes 27, M32 22 and its orders 48, M31 28, M30 27, M29 34, M28 32, M27 32, M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 20 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 40 and M8's extras (the cache holds all 238 files; offline, the fight sandbox and the builder open).
+
+  Eight copies were adapted, not the game (`verify33b.mjs`, and M14's `saves33b.mjs`):
+  - M31's, M30's, M29's, M28's and M27's expect a save made by main to be saved again as v28, not v27; M28's also expects the debt's place after the three places rolled;
+  - the M33 fix's, M15's and M14's two tap or count the board's own jobs, the debt's job heading the board now;
+  - M17's expects Launch's first tap to warn of the debt.
+
+  The M33 fix's first copy fails the three checks its new copy changes (the board's first job), and M32b's first copy still looks for Suppress · 2 and Sedate · 2, as in M33's entry.
+
+### Known issues
+
+- **The miner is fed in 73 voyages of 100,** 11 under the fix's 84 (within the 15 Evan's call allows; 19 of 30 on seeds 1 to 30, against 26). About half is the Fleet's chain's price in supplies, by design: lending a hand costs 3 and tagging the pod gives up its 8. The rest is within chance (above). If the chain should cost less, a tagged pod could hand back some supplies as the Fleet's thanks.
+- **The deserter's crew is weaker aboard ships** than the others': it wins 61% of its fights at the hulks the squatters hold, against the miner's 78% and the smuggler's 65%, and 58% at the Provost's courier. Its pay-off comes in 61 voyages of 100, against 67 and 86.
+- **The deserter's run step goes cold in 8 voyages of 100:** the Resolute's spares cost 20 credits, and the ship sometimes reaches her short of them in every sector.
+- **Few days at home after a pay-off:** the place is won about day 33 of the colony's 60, and most days after are spent on trips, so the odds after it are measured over about a hundred days at home a start.
+- **The smuggler's Fleet chain rarely starts** (6 of 100) and never brings a wave: act 1's customs jobs leave it hostile with the Fleet, and lending a hand and tagging the pod wouldn't make it friendly, so the test player raids the stores.
+- **Earlier milestones' browser checks that read the board by its rows** were adapted (above): the quest's job heads the board now. A check written later that taps the first job will take the quest's.
+
+### Test on the phone
+
+1. **As the miner, open the job board:** the first job is "Losing the paper", tagged "The miner's debt". Do it: the end panel says your file is gone and heat −20 (less if heat was low); the hangar's Quests panel says step 2 of 3.
+2. **Launch without doing it** (a new game, the ship ready): Launch's first tap says launching ends the miner's debt. Launch, and the chart's Quests panel says it has gone cold.
+3. **On the chart,** a quest's node wears a small green diamond. Tap it: its line names the quest. Jump there: "Find your file"'s first tap says it does step 2 of 3; choose it, and the diamond goes.
+4. **At a Fleet tender,** Lend a hand: its first tap says it starts the tender's stores. In the next sector the stolen stores pod is marked; tag it for the Fleet: the Fleet +4, and with the Fleet friendly a patrol waves you through.
+5. **At the colony,** the claims tender is listed as the debt's, held. Fly there and board her; win: the end panel says Con-Reg eased off, heat −30, Con-Reg cold. Home, the raid odds in the needs say halved, and Next day's first tap says half the odds.
+6. **Leave the last sector** with a step undone: the jump point's plan warns that the quest ends.
+7. **An old save** (from before this update) opens with its background's thread at its act's step.
+
+### Next session
+
+M33c Companions (Phase 6). First task: settle its Done when with Evan (ROADMAP.md has a draft: named crew with a face, a past and a loyalty quest built on M33b's chains).
+
 ## M33 fixes: docking heat on the trade, the record put right (2026-10-16)
 
 After M33 Evan took all three of my recommendations ("Go with all recommendations", 2026-10-16):
