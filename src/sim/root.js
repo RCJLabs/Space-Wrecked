@@ -7,6 +7,7 @@ import { beginFight, captainProblem, firstBackground, newCampaign, refitShip, sa
 import { donate } from './colony.js';
 import { build, moveBuilding, takeDown } from './colonyBuild.js';
 import { nextDay } from './days.js';
+import { cheat } from './dev.js';
 import { endJob, takeJob, takeQuestJob, withBoard } from './contracts.js';
 import { buyPart, sellPart } from './economy.js';
 import { beginBoarding, closeApproach, endBoarding, giveOrder } from './encounter.js';
@@ -162,6 +163,8 @@ export function initialState(seed) {
 //                                  or what a boarding came to, on the run
 //                                  or at a place on a trip (M28); or what
 //                                  a raid on the colony came to (M29)
+//   dev/cheat { cheat, rules }     a cheat from the ?dev=1 menu (dev.js),
+//                                  where the campaign is; the screen stays
 export function reduce(state, action) {
   switch (action.type) {
     case 'save/restore':
@@ -294,6 +297,10 @@ export function reduce(state, action) {
       // away, change screen.
       const screen = SCREEN_CHANGES.includes(action.type) ? campaignScreen(done.campaign) : state.screen;
       return { ...state, campaign: done.campaign, screen };
+    }
+    case 'dev/cheat': {
+      const done = state.campaign && cheat(state.campaign, action.rules, action.cheat);
+      return done?.ok ? { ...state, campaign: done.campaign } : state;
     }
     default: {
       if (action.type.startsWith('builds/')) {
