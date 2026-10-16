@@ -10,7 +10,9 @@
 // a place can (expeditions.js PLACE_EFFECTS, PLACE_NEEDS), and only such
 // an event brings materials. From M33 an event on the run can move the
 // crew's standing with the sides (data/factions.json); one at the colony
-// can't, as act 3 doesn't move it.
+// can't, as act 3 doesn't move it. From M33c a choice on the run can sign a
+// companion on (data/companions.json): it needs a berth, and every outcome
+// of a choice that needs one signs someone on.
 import { EFFECTS, NEEDS } from '../src/sim/events.js';
 import { PLACE_EFFECTS, PLACE_NEEDS } from '../src/sim/expeditions.js';
 import { isId, isIntIn, isObject, isText, knownKeys, listOf, uniqueIds } from './checks.js';
@@ -35,9 +37,9 @@ const MAX_STANDING = 10;
 
 // kinds: the node kinds that hold events (data/sectors.json, events: true).
 // moduleIds: the parts. places: the kinds of place (validate-expeditions.js).
-// sides: the sides' ids (validate-factions.js). Returns the kinds the
-// events cover, as a Set.
-export function checkEvents(file, kinds, moduleIds, fail, places = new Set(), sides = new Set()) {
+// sides: the sides' ids (validate-factions.js). companions: the
+// companions' ids (M33c). Returns the kinds the events cover, as a Set.
+export function checkEvents(file, kinds, moduleIds, fail, places = new Set(), sides = new Set(), companions = new Set()) {
   const where = 'events.json';
   const covered = new Set();
   if (!isObject(file)) {
@@ -74,7 +76,7 @@ export function checkEvents(file, kinds, moduleIds, fail, places = new Set(), si
       return;
     }
     uniqueIds(event.choices, at, fail);
-    event.choices.forEach((choice, c) => checkChoice(choice, `${at} choice ${choice?.id ?? `#${c}`}`, { drops, moduleIds, sides }, fail, atPlace));
+    event.choices.forEach((choice, c) => checkChoice(choice, `${at} choice ${choice?.id ?? `#${c}`}`, { drops, moduleIds, sides, companions }, fail, atPlace));
     // An open event holds every jump: one choice must always be there to make.
     if (!event.choices.some((choice) => isObject(choice) && (choice.needs === undefined || (isObject(choice.needs) && !Object.keys(choice.needs).length)))) {
       fail(at, 'needs a choice that needs nothing, so the ship is never stuck at it');
@@ -112,9 +114,10 @@ function checkChoice(choice, at, known, fail, atPlace) {
     else checkEffects(outcome.effects, needs, `${where} effects`, known, fail, atPlace);
   });
   if (total !== 100) fail(at, `outcome chances must add up to 100, not ${total}`);
+  if (needs.berth && !choice.outcomes.every((outcome) => isObject(outcome?.effects) && outcome.effects.joins !== undefined)) fail(at, 'needs a berth, so every outcome must sign someone on (joins)');
 }
 
-function checkEffects(effects, needs, at, { drops, moduleIds, sides }, fail, atPlace) {
+function checkEffects(effects, needs, at, { drops, moduleIds, sides, companions }, fail, atPlace) {
   knownKeys(effects, atPlace ? PLACE_EFFECTS : EFFECTS.filter((key) => key !== 'materials'), at, fail);
   for (const key of ['credits', 'supplies', 'heat', 'materials']) {
     if (effects[key] !== undefined && (!isIntIn(effects[key], -MAX_AMOUNT, MAX_AMOUNT) || effects[key] === 0)) fail(at, `${key} must be a whole number other than 0, from ${-MAX_AMOUNT} to ${MAX_AMOUNT}`);
@@ -134,6 +137,10 @@ function checkEffects(effects, needs, at, { drops, moduleIds, sides }, fail, atP
   if (effects.sell !== undefined) {
     if (!isIntIn(effects.sell, 1, MAX_SELL)) fail(at, `sell must be a whole number from 1 to ${MAX_SELL}`);
     else if ((needs.parts ?? 0) < effects.sell) fail(at, `sells ${effects.sell}, so the choice must need at least that many parts`);
+  }
+  if (effects.joins !== undefined) {
+    if (!companions.has(effects.joins)) fail(at, `joins: unknown companion "${effects.joins}" (companions.json)`);
+    if ((needs.berth ?? 0) < 1) fail(at, 'signs a companion on, so the choice must need a berth');
   }
   if (effects.standing !== undefined) {
     if (!isObject(effects.standing) || !Object.keys(effects.standing).length) fail(at, 'standing must be an object of sides, each with what it moves by');

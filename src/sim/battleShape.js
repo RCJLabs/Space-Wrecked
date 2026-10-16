@@ -100,7 +100,8 @@ function isUnit(unit, map) {
     isInt(unit.uses, 0, MAX) && (unit.mark === null || (isRecord(unit.mark) && isInt(unit.mark.aim, -MAX, MAX) && isInt(unit.mark.turns, 1, MAX))) &&
     (unit.suppressed === null || (isRecord(unit.suppressed) && isInt(unit.suppressed.aim, -MAX, MAX))) &&
     typeof unit.asleep === 'boolean' && typeof unit.kitted === 'boolean' &&
-    (unit.rank === undefined || (unit.side === 'crew' && isInt(unit.rank, 1, MAX)))
+    (unit.rank === undefined || (unit.side === 'crew' && isInt(unit.rank, 1, MAX))) &&
+    (unit.talent === undefined || (unit.side === 'crew' && typeof unit.talent === 'string' && unit.talent !== ''))
   );
 }
 

@@ -2,6 +2,164 @@
 
 Newest entry first.
 
+## M33c Companions (2026-10-16)
+
+**Status:** done, and the ROADMAP.md box is ticked. Four companions, one for each side, each met at the end of their side's chain on the run and brought aboard in a free berth. Joining opens their loyalty quest: a ship within reach of the colony, held by someone from their past. Won, they are loyal, and their job's order is at a third rank, their talent, in every fight after.
+
+| Companion | Side, job | Chain: started by, then the step | Loyalty place | Talent, over rank 2's |
+| --- | --- | --- | --- | --- |
+| Ines Varga | the Fleet, engineer | lending the tender a hand; the stolen stores pod | the pirates' cutter | Bosun's weld: a door shut 8 rounds, against 5 |
+| Teo Brandt | the union, quartermaster | paying into the strike fund; the hall's food run | the strikebreakers' tug | Steward's kit: +2 armor, against +1 |
+| Ama Osei | Con-Reg, scout | towing the survey skiff; the surveyor's lifepod | the survey chief's tug | Surveyor's eye: +30 to hit, against +20 |
+| Dez Halloran | the Hallorans, medic | calling the drop in; the family's runner | the family's runner | Family medicine: 8 hit points, against 5 |
+
+**How it was picked:** Evan answered four questions at the start (2026-10-16), each with the recommended answer:
+- **Who and where:** one companion for each side, met on the run at that side's event. The union's, Con-Reg's and the Hallorans' chains, in §9 since M33b, come now.
+- **When they come aboard:** at the chain's end, given a free berth, as a recruit needs one. Their loyalty quest follows.
+- **What loyalty earns:** their talent past rank 2, a third rank of their job's order with numbers of their own.
+- **Where the loyalty quest is done:** a place at the colony, a ship held by someone from their past, as a thread's act 3 step.
+
+**For Evan to confirm:** the test players' rule for companions, which is stricter than the Done when's words. Signing a companion on wherever a berth was free, and starting every chain whose price left the buffer, 100 voyages from each start ended fed in 47, 53 and 81 against M33b's 73, 90 and 98, and met the hunters in 61, 37 and 34 against 37, 21 and 14: all six of those bars broken, by 16 to 37. A fourth mouth empties the miner's and the deserter's 30 supplies in 7 jumps (the smuggler's ship carries 60 or 70), and the chains' steps cost detours. So the test players now:
+- sign a companion on only where the holds would feed them for 10 jumps, their lockers counted, the rule they already had for recruits;
+- start a side's chain only for that, or (as M33b had it for the Fleet) where it would make friends with a side whose patrols then wave the ship through;
+- start one side's chain at a time. With bunks aboard, a berth for each, it chased three at once, and the crew it signed on went hungry.
+
+The game itself is as the Done when has it: anyone can sign a companion on wherever a berth is free.
+
+Calls I made, each easy to change (all data but the test players' rules and the screens):
+- **The companions and their words** above, in `data/companions.json`, the chains and loyalty quests in `data/quests.json` and the events in `data/events.json`. Signing on costs what the other choice at the step pays: Varga in place of the 25-credit fee; Teo, the local's 10 credits; Ama, the 20 credits her survey lines would fetch; Dez, three of the Hallorans' four points (the family wants him back).
+- **The loyalty places' crews:** the cutter, the pod thieves (two pirates and a brute); the strikebreakers' tug, two hired heavies and a company guard; the survey chief's tug, his guards; the family's runner, the collectors.
+- **A loyal companion's job still ranks by fights** for what it does aboard and at the colony (Varga's Running repairs at 8 fights, as anyone's). Only the order is the talent's.
+- **The crew card at the colony,** opened from the crew in its panel: the colony had only a list of names, and companions turn loyal there.
+- **What the crew eats** on the choice that signs a companion on, as on a recruit's Sign on.
+
+Done when (ROADMAP.md, M33c, in full there):
+- **Companions as data,** validated.
+- **Each joins through their side's chain:** the chain's start, its step, a choice with them and one without, left and gone cold.
+- **The four.**
+- **Loyalty:** the loyalty quest, its place, the win, and a companion let go.
+- **Shown** (Law 4).
+- **Saves:** `SAVE_VERSION` 29, with a migration from 28.
+- **Every rule tested.**
+- **The test players** start chains, sign companions on and fly to their places.
+- **Balance:** the voyage no worse than M33b's by more than 15 on each bar; each companion met, aboard and loyal reported; each talent measured against rank 2; act 1 untouched.
+- **Touch** at the three sizes.
+
+How each is met:
+- **Companions as data:** `data/companions.json`, checked by `tools/validate-companions.js` (run by `validate-data.js`): a name, a side (one companion a side), a job, two traits, the fights stood, a face `looks.js` draws, a past, a chain of their own side whose step has one choice that signs them on and does the step, a loyalty quest marked for them, and a talent whose numbers are rank 2's or sharper, one of them sharper, each within its order's range. No other event may sign anyone on. 20 new cases in `tests/data.test.js`.
+- **The chains, loyalty and the third rank:** `tests/companions.test.js` (7 tests): each chain's start and its step in the next sector; signing on with a berth (their name, job, traits, fights and face, at full health, the loyalty quest open) and without one (refused, the step still done without them, ended or left); the loyalty place, held, lost and won; the talent's order in a fight for each of the four, and Dez's Patch healing 8 where rank 1's heals 5; a companion let go; the migration and the checks.
+- **Shown:** `tests/companionText.test.js` (6 tests): the event card's companion and the choice's berth and food; the result; the crew card on the run and at the colony, loyal and not; the Quests panel; the loyalty place and its win; the unit's card in a fight, and the three chevrons. By touch, below.
+- **Saves:** v29 reads a v28 save as it is: nobody aboard was a companion yet.
+- **The test players:** `tests/voyage.test.js`'s new test: over 100 voyages from each start, each companion signs on in some run, only at their chain's step and never before the launch, one side's chain at a time, and the loyal have won their place. `tools/voyage.js` reports who was met, signed on and loyal.
+- **Balance and touch:** under Verified.
+
+Some of this changes what was there before:
+- **The sides' events** start chains: the strike fund, the survey skiff's tow and the Halloran drop's call, as the tender's help did in M33b; their steps come in the sectors after.
+- **The tender's stores pod** has a choice more: tag it and sign Varga on.
+- **The colony's places** list a loyalty place for each companion aboard, beside the thread's.
+- **The crew card** opens at the colony; a companion's row has their side, past and loyalty; a loyal one's rank is the third wherever ranks show.
+- **`SAVE_VERSION` 29.**
+- **The test players** (above), and so the test voyages from launch.
+- **Tests changed on purpose:**
+  - `expeditions`, `makers`, `orders`, `raids`, `ranks`, `standing`: `SAVE_VERSION` 29;
+  - `data`: the validator's counts ("4 companions") and the new cases; `questText`: the tender's step's words; `harness`: `--compare` names `--talent`;
+  - `voyage`: three checks moved from 24 fed in 30 to a rate over 100 seeds, held within 15 of main's (fed with a cargo hold, bunks and the large hold: main 90, 90 and 98), as CLAUDE.md asks; the step check takes what the holds carried from the voyage, a companion's lockers counted from the step they sign on; the M33b test no longer holds that the deserter never starts the Fleet's chain: from M33c it may, for Varga.
+
+### Shipped
+
+- **Data:** `companions.json` (new): the four; `quests.json`: the union's, Con-Reg's and the Hallorans' chains, the Fleet's chain's step done by signing Varga on too, and the four loyalty quests with their places; `events.json`: the food run, the lifepod and the runner, and the stores pod's choice that signs Varga on; `encounters.json`: the pod thieves and the strikebreakers.
+- **The sim:**
+  - `companions.js` (new): who a companion is, who is aboard, the free berths, signing on (with their loyalty quest), loyalty;
+  - `talents.js` (new): the third rank, rank 2's order with the talent's numbers over it;
+  - `events.js`: the `joins` effect and the `berth` need; `quests.js`: a loyalty quest done makes them loyal; `recruits.js`: letting a companion go ends their loyalty quest;
+  - `campaign.js`, `battle.js`, `orders.js`: a loyal companion fights at the third rank with their talent; `campaign.js`, `battleShape.js`, `runShape.js`: the new fields checked.
+- **Saves:** `SAVE_VERSION` 29, a migration from 28 that leaves the save as it is.
+- **The screens:**
+  - `companionText.js` (new): the companion's card, the choice's words, signing on, loyalty;
+  - `eventText.js`, `eventCard.js`: the companion offering to come aboard, the berth and the food on the choice, who signed on;
+  - `crewText.js`, `crewCard.js`, `crewJobText.js`: side, past and loyalty on the crew card, the shown rank (the third, loyal) and its words; the card's words at the colony;
+  - `colony.js`: the crew card at the colony;
+  - `questText.js`: the chains' and loyalty quests' lines, and the loyal line at the fight's end and the homecoming;
+  - `hints.js`: the talent named on the unit's card, its numbers on the order's line; `icons.js`: three chevrons;
+  - `style.css`: the event card's companion, the loyalty line, the colony's grid placed for the card.
+- **Tools:** `validate-companions.js` (new); `voyagePlan.js`: the test players' rules for chains and companions; `voyage.js`: companions met, signed on and loyal in the report, what the holds carried each step, the thread's pay-off not a loyalty place's; `sim.js`: `--talent <companion>`.
+- **Docs:** ROADMAP.md §4.10 and §4.11 (new), M33c ticked and as built, §9 (the companions and the other sides' chains out; four new lines in); CLAUDE.md's data, sim and tools lists.
+
+### Verified
+
+- **`node --test`:** 918 pass (903 on main). `node tools/validate-data.js`: OK (4 companions, 11 quests). The golden files are unchanged.
+- **`node tools/sim.js`** (run because `battle.js` changed; no number in `data/balance.json` did): identical to main's but for the time taken.
+- **Act 1 untouched:** each start's launch from seeds 1 to 100 is main's to the byte, 300 of 300.
+- **The voyage, 100 seeds** (`node tools/voyage.js --runs 100 --background all`), M33b's in brackets, against the Done when's limit (no worse by more than 15):
+
+  | Background | Fed | Met the hunters | Runs with a raid lost |
+  | --- | --- | --- | --- |
+  | Debt-bound miner | 68 (73) | 42 (37) | 18 (21) |
+  | Navy deserter | 82 (90) | 26 (21) | 12 (13) |
+  | Burned smuggler | 88 (98) | 28 (14) | 7 (11) |
+
+  The smuggler meets the hunters in 14 more runs of 100, 1 inside the limit.
+- **The companions, the same voyages:** signed on in 21, 19 and 56 voyages (two in one of the smuggler's), loyal by the end in 8, 7 and 29. Each, met at their chain's step · signed on · loyal by the end:
+
+  | Companion | Debt-bound miner | Navy deserter | Burned smuggler |
+  | --- | --- | --- | --- |
+  | Ines Varga | 27 · 1 · 0 | 2 · 2 · 2 | 14 · 10 · 6 |
+  | Teo Brandt | 18 · 17 · 7 | 17 · 16 · 4 | 6 · 4 · 0 |
+  | Ama Osei | 1 · 1 · 0 | 0 · 0 · 0 | 28 · 22 · 12 |
+  | Dez Halloran | 2 · 2 · 1 | 2 · 1 · 1 | 24 · 21 · 11 |
+
+  The miner starts the Fleet's chain in 30 voyages, and a patrol waves it through in 14 (18 times). It signs Varga on in 1 of the 27 where it meets her: the test player signs a companion on only with a berth free and the holds to feed them for 10 jumps.
+- **The talents** (`node tools/sim.js --talent <companion> --compare`, 1,000 fights each on the ten ships, against the same squad with every order at rank 2), the crew's wins:
+
+  | Talent | Rank 2 | With it | Orders a fight |
+  | --- | --- | --- | --- |
+  | Bosun's weld (Varga) | 51% | 51% | weld 0.2 → 0.2 |
+  | Steward's kit (Teo) | 47% | 75% | kit 2.8 → 2.7 |
+  | Surveyor's eye (Ama) | 41% | 45% | mark 1.6 → 1.7 |
+  | Family medicine (Dez) | 51% | 53% | patch 0.7 → 0.4 |
+
+  Teo's and Ama's squads have their job in place of the engineer (`--squad marine,quartermaster,medic` and `marine,scout,medic`).
+- **The voyage tests** pass. Changed on purpose: three checks the companions broke on seeds 1 to 30 (24 or more of 30 fed with a cargo hold, with bunks, with the large hold) are rates over 100 seeds held within 15 of main's 90, 90 and 98: now 76, 75 and 93. Bunks sit on the limit. The step check takes what the holds carried from the voyage; the M33b test's deserter may start the Fleet's chain, for Varga. New: over 100 voyages from each start, each companion signs on in some voyage, only at their chain's step and after the launch, one side's chain at a time, and the loyal have won their place.
+- **By touch** (`m33c/verify.mjs`, at 905 × 370, 821 × 283 and 960 × 825): 38 of 38 at each size:
+  - the strike fund's first tap starting the hall's food run, its result, the chart's quests; no face on that card;
+  - the food run: Teo's face, name, side, job and past, read out whole; the choice taking a berth, 1 free; its first tap with what the crew eats, in sight under his past; signed on, the chain done and his loyalty quest open, his face still on the card; the crew panel and quests after; with no berth free, the choice refused and saying why;
+  - his crew card on the run: face, side and job, past, rank 1 and what loyalty would earn; Done shuts it;
+  - the colony: his place named for his quest and held; flown to, who holds her; boarded and won, the fight's end saying he is loyal; home, the report and the quests;
+  - the colony's crew card: three chevrons, rank 3 by his talent and its numbers; over the panel and the ground, which take no taps under it; Done shuts it;
+  - a quit and reopen, Teo still loyal; offline, reloaded;
+  - a fight: three chevrons on his button and in its name, Kit out · 3, its preview with +2 armor;
+  - every button 48 px or more on the event card, the crew cards and in the fight; no console errors.
+- **Every earlier milestone's browser check** passes, run one after another (`m33c/regress.sh`), at the three sizes unless named:
+  - M33b's 43, the M33 fix's 38, M32b's fixes 27, M32 22 and its orders 48, M31 28, M30 27, M29 34, M28 32, M27 32, M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8;
+  - M22 35, M21 32, M19 52, M20 32;
+  - M18 43, M17 37, M16 29, M15 30;
+  - M10 20 (its three sizes in one run), and M8's fights and column;
+  - at 905 × 370 only: M14's saves 10, M13 24, M14 40 and M8's extras (the cache holds all 246 files; offline, the fight sandbox and the builder open). M14 plays jobs until it has played each kind, so its count moves with the jobs it takes: 43 in the dev tools' run.
+
+  Five copies were adapted, not the game (`verify33c.mjs`): M31's, M30's, M29's, M28's and M27's expect a save made by main to be saved again as v29, not v28.
+
+  M32b's first copy still looks for Suppress · 2 and Sedate · 2, as in M33's entry; its fix's copy passes in its place.
+
+### Known issues
+
+- **Teo's Steward's kit is strong:** with it the squad wins 75% of the harness's fights against 47% at rank 2. Kit's armor is a whole number, so +2 is the least past rank 2's +1. Varga's Bosun's weld changes nothing the AI notices: it welds 0.2 times a fight. Both in §9, for Phase 7's balance runs.
+- **A chain started in act 2's last sector goes cold as the ship leaves:** its step comes from the next sector on. The last jump point's plan says so; the start's first tap doesn't (§9).
+- **Companions rarely sign on in the miner's and deserter's test voyages** but Teo, whose lockers carry him: a fourth mouth needs holds for 10 jumps. A player can sign anyone on wherever a berth is free; the holds are theirs to watch (§9).
+- **The squad at a loyalty place needn't have the companion in it** (§9).
+- **At 821 × 283 a companion's row on the crew card is taller than the list:** with the card's words above it, it reads in two swipes, the name and face, then the past and loyalty.
+
+### Test on the phone
+
+1. On the run, take a side's event that starts a chain (the co-op barge's strike fund, the survey skiff's tow, the Halloran drop's call, or the Fleet tender's help): its first tap says it starts a quest, and the Quests panel shows it.
+2. In the next sector, at the chain's marked node, the companion's face, name, side, job and past show on the card. The choice that signs them on says it takes a berth, and its first tap what the crew eats. Sign them on: the crew panel has four.
+3. Tap the crew panel: their row has their past and what loyalty earns.
+4. Settle; at the colony their place is in the list, named for their quest and held. Fly out with a full squad, board her and win: the fight's end says they are loyal.
+5. Tap the crew in the colony's panel: the crew card shows three chevrons on their face and their talent's numbers. In the next fight, their button has three chevrons, and their order's preview uses the talent's number.
+
+### Next session
+
+M34 Image pass: settle its Done when with Evan (its draft names the companions among the portraits to paint), then build it. First, Evan's call on the test players' companion rule above.
+
 ## Dev tools: cheats and God mode (2026-10-16)
 
 Evan: "Before the next milestone, add dev tools like adding currency, God mode, etc." A **Cheats** section in the `?dev=1` menu, under Sandboxes. Its top line says where the campaign stands (act, credits, heat, crew, supplies or food and materials, in a fight). Each button plays its cheat on the campaign where it is, and the line under the buttons says what it did ("Credits 0 → 1000.") or why it didn't ("Not in a fight: win it first.").

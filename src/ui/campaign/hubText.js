@@ -7,8 +7,8 @@ import { heatLevel, paymentFor, pursuerOf, raidDue, runLevel } from '../../sim/h
 import { launchProblem } from '../../sim/launch.js';
 import { baseOf, countOfAny } from '../../sim/makers.js';
 import { beginRaid } from '../../sim/raid.js';
-import { rankOf } from '../../sim/ranks.js';
 import { coldAt } from '../../sim/quests.js';
+import { shownRank } from './crewJobText.js';
 import { coldWarning, questsText } from './questText.js';
 import { offerText } from './shopText.js';
 import { sidesText } from './standingText.js';
@@ -87,11 +87,12 @@ export function actTitle(act, rules) {
 }
 
 // The crew panel's rows: [{ name, job, rank, hp, max }]: job blank when it
-// is the name; rank their rank (M32b), 0 for none.
+// is the name; rank their rank (M32b), 0 for none, a loyal companion's the
+// third (M33c, crewJobText.js shownRank).
 export function crewText(campaign, rules) {
   return campaign.crew.map((member) => {
     const job = rules.jobs.get(member.job)?.name ?? member.job;
-    return { name: member.name, job: job === member.name ? '' : job, rank: rankOf(member, rules), hp: member.hp, max: maxHp(member, rules) };
+    return { name: member.name, job: job === member.name ? '' : job, rank: shownRank(member, rules), hp: member.hp, max: maxHp(member, rules) };
   });
 }
 

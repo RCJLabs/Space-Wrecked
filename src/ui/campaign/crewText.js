@@ -3,31 +3,40 @@
 // bay heals, and at a station the recruits for hire and letting crew go;
 // the crew panel's heading; what a first tap on the card says; and the
 // squad a boarding takes, for the approach screen's picker (approach.js).
-// rules are the content tables (src/sim/defs.js).
+// From M33c the crew card opens at the colony too, and a companion's row
+// has their side, past and loyalty. rules are the content tables
+// (src/sim/defs.js).
 import { crewColor } from '../../render/units.js';
 import { maxHp } from '../../sim/campaign.js';
+import { companionOf } from '../../sim/companions.js';
 import { crewRoom, defaultSquad } from '../../sim/crew.js';
 import { healRate } from '../../sim/medbay.js';
 import { rankOf } from '../../sim/ranks.js';
 import { dismissPlan, hirePlan, recruitOffer } from '../../sim/recruits.js';
 import { hereOf, onTheRun, supplyCapacity } from '../../sim/travel.js';
-import { jobBrief, rankLine } from './crewJobText.js';
+import { companionAbout, loyaltyLine } from './companionText.js';
+import { jobBrief, memberBrief, rankLine, shownRank } from './crewJobText.js';
 import { dockSaid } from './standingText.js';
 
 // How a trait's numbers read: "aim +5", "hit points +2".
 const STAT_NAMES = { hp: 'hit points', aim: 'aim', defense: 'defense', mobility: 'mobility', armor: 'armor' };
 
 // The crew card:
-//   title    "Crew · 3 aboard, room for 4"
+//   title    "Crew · 3 aboard, room for 4", at the colony "Crew · 3 at the
+//            colony"
 //   text     the room, what the med bay heals, where crew come and go
-//   members  [{ id, name, about, rank, rankLine, traits, brief, hp, max,
-//            face, dismiss }]: about is "Captain · Marine", or the job
-//            unless it is the name, and a recruit's background (M32b); rank
-//            their rank, 0 for none, and rankLine it with their fights
-//            (crewJobText.js rankLine); brief what the job brings at their
-//            rank (jobBrief, M32); face is what their portrait is drawn
-//            from (faceOf); dismiss { key, ok, label, ask, text, why } at a
-//            station, null elsewhere and for the captain
+//   members  [{ id, name, about, past, rank, rankLine, loyalty, traits,
+//            brief, hp, max, face, dismiss }]: about is "Captain · Marine",
+//            or the job unless it is the name, and a recruit's background
+//            (M32b), or a companion's side (M33c: "Engineer · The Fleet");
+//            past a companion's, none for anyone else; rank their rank, 0
+//            for none, a loyal companion's the third (crewJobText.js
+//            shownRank), and rankLine it with their fights (rankLine);
+//            loyalty a companion's (companionText.js loyaltyLine), or null;
+//            brief what the job brings at their rank (memberBrief, M32);
+//            face is what their portrait is drawn from (faceOf); dismiss {
+//            key, ok, label, ask, text, why } at a station, null elsewhere
+//            and for the captain
 //   hire     null away from a station, else { title, line, recruits: [{
 //            key, slot, name, about, past, rank, rankLine, traits, brief,
 //            hp, max, face, ok, label, ask, text, why }] }: past is the
@@ -37,19 +46,24 @@ const STAT_NAMES = { hp: 'hit points', aim: 'aim', defense: 'defense', mobility:
 export function crewCardText(campaign, rules) {
   const room = crewRoom(campaign.ship, rules);
   const atStation = onTheRun(campaign, rules) && hereOf(campaign)?.type === 'station';
-  const lines = [`The berths and life support carry ${room}.`, medbayLine(campaign, rules)];
-  if (!atStation) lines.push('Crew sign on and are let go at stations.');
+  // At the colony (M33c) the card is the crew's, with no berths to fill.
+  const home = Boolean(campaign.colony);
+  const lines = home ? ['Everyone at the colony, and what each brings to it.'] : [`The berths and life support carry ${room}.`, medbayLine(campaign, rules)];
+  if (!atStation && !home) lines.push('Crew sign on and are let go at stations.');
   const members = campaign.crew.map((member, i) => {
     const job = jobName(member.job, rules);
     const captain = member.id === campaign.captain;
+    const companion = companionOf(rules, member.companion);
     return {
       id: member.id,
       name: member.name,
-      about: [captain ? 'Captain' : null, job === member.name ? null : job, pastOf(member, rules)?.name].filter(Boolean).join(' · '),
-      rank: rankOf(member, rules),
+      about: [captain ? 'Captain' : null, companion ? companionAbout(companion, rules) : job === member.name ? null : job, pastOf(member, rules)?.name].filter(Boolean).join(' · '),
+      past: companion?.past,
+      rank: shownRank(member, rules),
       rankLine: rankLine(member, rules),
+      loyalty: loyaltyLine(member, campaign, rules),
       traits: traitsText(member.traits, rules),
-      brief: jobBrief(member.job, rules, rankOf(member, rules)),
+      brief: memberBrief(member, rules),
       hp: member.hp,
       max: maxHp(member, rules),
       face: faceOf(member, rules, i),
@@ -59,11 +73,11 @@ export function crewCardText(campaign, rules) {
   const recruits = atStation ? recruitOffer(campaign, rules).map((recruit, i) => recruitText(campaign, rules, recruit, campaign.crew.length + i)) : [];
   const line = !recruits.length ? 'No one else is for hire here.' : (recruits.find((recruit) => !recruit.ok)?.why ?? null);
   return {
-    title: `Crew · ${campaign.crew.length} aboard, room for ${room}`,
+    title: home ? `Crew · ${campaign.crew.length} at the colony` : `Crew · ${campaign.crew.length} aboard, room for ${room}`,
     text: lines.join(' '),
     members,
     hire: atStation ? { title: `For hire at ${hereOf(campaign).name}`, line, recruits } : null,
-    hint: cardHint(atStation, recruits, members),
+    hint: home ? { tone: 'info', text: 'Tap Done for the colony.' } : cardHint(atStation, recruits, members),
   };
 }
 
@@ -87,8 +101,9 @@ export function crewSaid(card, armed) {
 // The squad picker, for a boarding: { show (more aboard than a squad
 // takes), size, label, line, title, text, members: [{ id, name, about,
 // rank, hp, max, face, going }] }: about is the job, rank their rank (M32b,
-// 0 for none). line says who goes and who sits it out. picked: the crew
-// ids picked, or null for the default (crew.js).
+// 0 for none; a loyal companion's the third, M33c). line says who goes and
+// who sits it out. picked: the crew ids picked, or null for the default
+// (crew.js).
 export function squadText(campaign, rules, picked = null) {
   const size = rules.balance.squadSize;
   const going = new Set(picked ?? defaultSquad(campaign.crew, rules));
@@ -103,7 +118,7 @@ export function squadText(campaign, rules, picked = null) {
     text: 'Tap someone to take them or leave them aboard. The rest sit this one out.',
     members: campaign.crew.map((member, i) => {
       const job = jobName(member.job, rules);
-      return { id: member.id, name: member.name, about: job === member.name ? '' : job, rank: rankOf(member, rules), hp: member.hp, max: maxHp(member, rules), face: faceOf(member, rules, i), going: going.has(member.id) };
+      return { id: member.id, name: member.name, about: job === member.name ? '' : job, rank: shownRank(member, rules), hp: member.hp, max: maxHp(member, rules), face: faceOf(member, rules, i), going: going.has(member.id) };
     }),
   };
 }

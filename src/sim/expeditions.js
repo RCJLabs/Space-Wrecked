@@ -256,7 +256,7 @@ export function chooseAtPlace(campaign, rules, id) {
   if (!here?.event) return { ok: false, error: 'There is nothing to decide here.' };
   const choice = here.event.choices.find((entry) => entry.id === id);
   if (!choice) return { ok: false, error: 'There is no such choice.' };
-  const why = choiceProblem(campaign, choice);
+  const why = choiceProblem(campaign, choice, rules);
   if (why) return { ok: false, error: why };
   let rng = campaign.rng;
   let roll = null;

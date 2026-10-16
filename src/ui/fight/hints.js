@@ -3,6 +3,7 @@
 import { describeEvent } from '../../sim/battleLog.js';
 import { orderOf } from '../../sim/orders.js';
 import { rankNameFor } from '../../sim/ranks.js';
+import { ORDER_SHORT } from '../campaign/crewJobText.js';
 
 // The status line while an event plays out: the log's words (battleLog.js),
 // with a walk told without its tiles.
@@ -100,8 +101,9 @@ export function oddsText(shooter, target, odds, rules) {
     suppressed: () => `${shooter.name} suppressed`,
     marked: () => `${target.name} marked`,
     forgiving: () => 'Forgiving odds',
-    // A dart's rank (orders.js dartOdds, M32b), by the rank's name.
-    steady: () => rankNameFor(rules.jobs.get(shooter.kind), shooter.rank ?? 0, 'order') ?? 'Rank',
+    // A dart's rank (orders.js dartOdds, M32b), by the rank's name; a loyal
+    // companion's, by their talent's (M33c).
+    steady: () => talentName(shooter, rules) ?? rankNameFor(rules.jobs.get(shooter.kind), shooter.rank ?? 0, 'order') ?? 'Rank',
   };
   const rows = odds.hitParts.map((part) => [label[part.why](part), signed(part.value, part.why === 'aim')]);
   const sum = odds.hitParts.reduce((total, part) => total + part.value, 0);
@@ -128,23 +130,29 @@ export function stateText(unit) {
   return `${unit.ap} AP · ${unit.ammo} shot${unit.ammo === 1 ? '' : 's'}`;
 }
 
-// A unit's card: { title, lines }: its numbers, its rank (M32b), its job's
-// order and the uses left (M32), and what orders left on it.
+// A unit's card: { title, lines }: its numbers, its rank (M32b), a loyal
+// companion's the third, by their talent's name (M33c), its job's order
+// and the uses left (M32), and what orders left on it.
 export function unitText(unit, rules) {
   const weapon = rules.weapons.get(unit.weapon);
   const side = unit.side === 'crew' ? 'Crew' : 'Enemy';
   const order = orderOf(unit, rules);
-  const rank = unit.rank ? rules.jobs.get(unit.kind)?.ranks?.[unit.rank - 1]?.name : null;
+  const rank = talentName(unit, rules) ?? (unit.rank ? rules.jobs.get(unit.kind)?.ranks?.[unit.rank - 1]?.name : null);
   return {
     title: `${unit.name} ${unit.id}`,
     lines: [
       `${side}${unit.rank ? ` · rank ${unit.rank}${rank ? `, ${rank}` : ''}` : ''} · ${unit.hp}/${unit.maxHp} hit points · ${stateText(unit)}.`,
       `Aim ${unit.aim} · defense ${unit.defense} · armor ${unit.armor} · moves ${unit.mobility}.`,
       `${weapon.name}: damage ${weapon.damage[0]}–${weapon.damage[1]}, crit ${weapon.crit}%, ${unit.ammo}/${weapon.clip} shots.`,
-      ...(order ? [`${order.name}: ${unit.uses} of ${order.uses} left this fight.`] : []),
+      ...(order ? [`${order.name}: ${unit.uses} of ${order.uses} left this fight${unit.talent && ORDER_SHORT[order.type] ? `, ${ORDER_SHORT[order.type](order)} each` : ''}.`] : []),
       ...ordersOn(unit),
     ],
   };
+}
+
+// A loyal companion's talent's name (M33c, battle.js `talent`), or null.
+function talentName(unit, rules) {
+  return unit.talent ? (rules.companions?.get(unit.talent)?.talent?.name ?? null) : null;
 }
 
 // What orders left on a unit, a line each.

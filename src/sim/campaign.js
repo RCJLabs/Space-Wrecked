@@ -18,13 +18,16 @@
 //            hangar in act 1, in the holds on the run. Refitting the ship
 //            (construction mode, at the hangar or a station) takes parts
 //            from here and puts back what comes off.
-//   crew     [{ id, name, job, hp, traits, look, fights, background? }]:
+//   crew     [{ id, name, job, hp, traits, look, fights, background?,
+//            companion?, loyal? }]:
 //            everyone aboard. hp is what they have now: wounds carry from
 //            fight to fight, up to the most they can have (maxHp). traits
 //            are ids in data/traits.json (traits.js). look is what their
 //            portrait is drawn from (looks.js). fights counts the fights they
 //            have stood in, which set their job's rank (ranks.js, M32b), and
-//            a recruit's background is one of data/recruits.json's.
+//            a recruit's background is one of data/recruits.json's. A
+//            companion (M33c, companions.js) has their id as companion, and
+//            loyal: true once their loyalty quest is done.
 //   captain  the id of the crew member who is the player's captain: named,
 //            with a job and CAPTAIN_TRAITS traits, when the campaign
 //            starts
@@ -77,6 +80,7 @@ import { enemyBonus } from './settings.js';
 import { rankOf } from './ranks.js';
 import { isQuests, startingQuests } from './questShape.js';
 import { isStanding, startStanding } from './standing.js';
+import { talentOrder, TALENT_RANK } from './talents.js';
 import { traitBonus } from './traits.js';
 
 export { actOf } from './acts.js';
@@ -283,9 +287,11 @@ export function maxHp(member, rules) {
 
 // A crew member as a battle unit starts (battle.js createBattle), less
 // where they stand: their job, name, hit points now, what their traits add
-// and their job's rank (ranks.js).
+// and their job's rank (ranks.js); a loyal companion, their talent, past
+// rank 2 (M33c, talents.js).
 export function crewUnit(member, rules) {
   const unit = { kind: member.job, name: member.name, hp: Math.min(member.hp, maxHp(member, rules)), bonus: traitBonus(member.traits, rules) };
+  if (member.loyal && talentOrder(rules, member.companion)) return { ...unit, rank: TALENT_RANK, talent: member.companion };
   const rank = rankOf(member, rules);
   return rank > 0 ? { ...unit, rank } : unit;
 }
@@ -569,7 +575,8 @@ function isCrew(crew) {
     return (
       isName(member.name) && typeof member.job === 'string' && ID.test(member.job) && isInt(member.hp, 1, 999) &&
       Array.isArray(member.traits) && member.traits.length <= MAX_TRAITS && member.traits.every(isId) && new Set(member.traits).size === member.traits.length &&
-      isLook(member.look) && isInt(member.fights, 0, MAX_FIGHTS) && (member.background === undefined || isId(member.background))
+      isLook(member.look) && isInt(member.fights, 0, MAX_FIGHTS) && (member.background === undefined || isId(member.background)) &&
+      (member.companion === undefined || isId(member.companion)) && (member.loyal === undefined || (member.loyal === true && member.companion !== undefined))
     );
   });
 }

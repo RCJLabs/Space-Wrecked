@@ -3,10 +3,15 @@
 // its fight's end; a quest's node on the chart and what its event did; the
 // colony's quest place and the pay-off at its fight's end; the odds a
 // pursuer eased off finds the colony at; and the warnings before quests go
-// cold. rules are the content tables (src/sim/defs.js).
+// cold. From M33c a side's chain brings its companion aboard, and their
+// loyalty quest, done, makes them loyal. rules are the content tables
+// (src/sim/defs.js).
+import { aboard, companionOf } from '../../sim/companions.js';
 import { jobHeat, pursuerOf, withHeat } from '../../sim/heat.js';
 import { eased, openStep, questOf, stepDone } from '../../sim/quests.js';
 import { jobMoves, moveStanding } from '../../sim/standing.js';
+import { TALENT_RANK } from '../../sim/talents.js';
+import { loyalSaid } from './companionText.js';
 import { changeLines, signed } from './standingText.js';
 
 const LABELS = { done: 'Done', cold: 'Gone cold' };
@@ -14,23 +19,36 @@ const LABELS = { done: 'Done', cold: 'Gone cold' };
 // The quests the campaign has, in the data's order, for a home's panel:
 // [{ id, name, state ('open', 'done' or 'cold'), label ("Step 2 of 3",
 // "Done", "Gone cold"), next (the open step's words, or what came of the
-// quest), line (all of it, for a screen reader) }].
+// quest), line (all of it, for a screen reader) }]. A companion's loyalty
+// quest (M33c) goes cold as they are let go.
 export function questsText(campaign, rules) {
   return [...rules.quests.values()]
     .filter((quest) => campaign.quests?.[quest.id])
     .map((quest) => {
       const { step, state } = campaign.quests[quest.id];
       const label = state === 'open' ? `Step ${step + 1} of ${quest.steps.length}` : LABELS[state];
-      const next = state === 'open' ? quest.steps[step]?.next ?? '' : state === 'done' ? doneLine(quest, campaign, rules) : 'A step was left undone in its act.';
+      const next = state === 'open' ? quest.steps[step]?.next ?? '' : state === 'done' ? doneLine(quest, campaign, rules) : coldLine(quest, rules);
       return { id: quest.id, name: quest.name, state, label, next, line: `${quest.name}: ${label.toLowerCase()}. ${next}` };
     });
 }
 
-// What a quest done left: a thread's pursuer easing off, or the side's
-// chain's thanks.
+// What a quest done left: a thread's pursuer easing off; a companion loyal
+// (M33c); the companion a side's chain brought aboard, while they are; or
+// the side's chain's thanks.
 function doneLine(quest, campaign, rules) {
   if (quest.payoff?.eased) return `${pursuerOf(campaign, rules)?.name ?? 'The pursuer'} has eased off: its raids come half as often.`;
+  const loyal = companionOf(rules, quest.companion);
+  if (loyal) return `${loyal.name} is loyal: rank ${TALENT_RANK}, ${loyal.talent.name}.`;
+  const joined = [...(rules.companions?.values() ?? [])].find((companion) => companion.chain === quest.id && aboard(campaign, companion.id));
+  if (joined) return `${joined.name} came aboard.`;
   return quest.side ? `${capital(rules.factions.sides.get(quest.side)?.name ?? quest.side)} remember${rules.factions.sides.get(quest.side)?.name?.endsWith('s') ? '' : 's'} it.` : 'Done.';
+}
+
+// What a quest gone cold left: a companion's loyalty quest, them let go
+// (M33c); any other, a step undone in its act.
+function coldLine(quest, rules) {
+  const companion = companionOf(rules, quest.companion);
+  return companion ? `${companion.name} was let go before it was done.` : 'A step was left undone in its act.';
 }
 
 // A quest's job on the board (quests.js questJobs): { tag (the quest's
@@ -70,7 +88,8 @@ export function questPlaceEnd(place, won, campaign, rules) {
 // for an event's result, a fight's end or the homecoming. started: "A new
 // quest: The tender's stores. …"; done: "The miner's debt: step 2 of 3
 // done. Next: …"; finished: the quest done, its pay-off's words and what
-// they came to; cold: "… has gone cold."
+// they came to, and a companion's loyalty quest their talent (M33c,
+// companionText.js loyalSaid); cold: "… has gone cold."
 export function questNoteLines(note, rules, campaign = null) {
   const quest = note ? questOf(rules, note.quest) : null;
   if (!quest) return [];
@@ -80,7 +99,8 @@ export function questNoteLines(note, rules, campaign = null) {
     const next = quest.steps[note.step + 1];
     return [`${quest.name}: step ${note.step + 1} of ${quest.steps.length} done.${next ? ` Next: ${next.next}` : ''}`, ...noteChanges(note, rules)];
   }
-  return [`${quest.name}: done.${quest.payoff?.said ? ` ${quest.payoff.said}` : ''}`, ...noteChanges(note, rules)];
+  const loyal = companionOf(rules, quest.companion);
+  return [`${quest.name}: done.${quest.payoff?.said ? ` ${quest.payoff.said}` : ''}`, ...noteChanges(note, rules), ...(loyal ? [loyalSaid(loyal, rules)] : [])];
 }
 
 // A note's changes, a line each: "Heat −30.", credits, and the sides'.

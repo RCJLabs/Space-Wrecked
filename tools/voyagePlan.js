@@ -27,14 +27,29 @@
 //            on the way (M33): its prices, and calling there to keep it so
 //   quest    40 for a choice that does a quest's open step, and against one
 //            that ends it (M33b); and for the choice that starts a side's
-//            chain where the chain done would leave the crew friendly or
-//            better with the side (chainBefriends) and the holds keep
-//            HELP_JUMPS jumps' worth after it: the Fleet's tender lent a
-//            hand. On the way, a node's quest counts at a share of it, the
-//            sectors gone over the act's (questPull): a quest's node comes
-//            back in each sector while its step is open, so early on the way
-//            goes by it only where that costs little, and in the act's last
-//            sector wherever it goes hungry no more often
+//            chain, where the start's price leaves its buffer (the holds keep
+//            HELP_JUMPS jumps' worth after it, and the purse, if it pays, a
+//            holdful's price, as a recruit's fee must) and a sector of the
+//            act is still to come for its step. It starts one side's chain at
+//            a time (chainOpen), and only to gain by it: from M33c its
+//            companion, where they could come aboard (a berth free, and the
+//            holds lasting HIRE_JUMPS jumps with them aboard, as for a
+//            recruit: feeds); or, as M33b's Fleet chain, where it would leave
+//            the crew friendly or better with a side whose patrols then wave
+//            the ship through (chainBefriends). On the way, a node's quest
+//            counts at a share of it, the sectors gone over the act's
+//            (questPull): a quest's node comes back in each sector while its
+//            step is open, so early on the way goes by it only where that
+//            costs little, and in the act's last sector wherever it goes
+//            hungry no more often
+//   companion 100 for the choice at a chain's step that signs its companion
+//            on (M33c), on top of the step's worth, where the holds would
+//            feed them (feeds): more than any other choice there is worth,
+//            so they come aboard; the berth is the choice's need. Signing on
+//            wherever a berth was free, and starting every chain, 100
+//            voyages from each start ended fed in 47, 53 and 81 (M33b: 73,
+//            90 and 98): a fourth mouth empties the start ship's 30 supplies
+//            in 7 jumps
 // A station of the pursuer's side is worth its docking heat (M33), priced
 // as an event's heat is, from the heat after the jump there. A choice is
 // worth what its outcomes are, each at its chance. A node
@@ -130,7 +145,7 @@ import { swapPlan } from '../src/sim/transponder.js';
 import { failingCheck, jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity, tradeHeat, within } from '../src/sim/travel.js';
 import { fitPart } from './run.js';
 
-export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30, nebula: 15, hot: 1.5, hunted: -40, volley: -10, standing: 2, friendly: 10, quest: 40 };
+export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30, nebula: 15, hot: 1.5, hunted: -40, volley: -10, standing: 2, friendly: 10, quest: 40, companion: 100 };
 const BUFFER_JUMPS = 4;
 export const HIRE_JUMPS = 10;
 // How the test player treats heat (M24), and the managing player's lines.
@@ -286,7 +301,7 @@ function dearest(campaign, rules, count) {
 export function bestChoice(campaign, rules, event, heat = 'manage', pull = 1) {
   let best = null;
   for (const choice of event.choices) {
-    if (choiceProblem(campaign, choice)) continue;
+    if (choiceProblem(campaign, choice, rules)) continue;
     const worth = choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * effectsWorth(campaign, rules, outcome.effects, heat), 0) + pull * questWorth(campaign, rules, event, choice);
     if (!best || worth > best.worth) best = { choice, worth };
   }
@@ -301,19 +316,48 @@ function questPull(campaign, rules) {
 }
 
 // What a choice does to the quests, in credits (M33b): WORTH.quest for one
-// that does an open step, against one that ends it; for one that starts a
-// side's chain, WORTH.quest where the chain would befriend the side
-// (chainBefriends), else nothing.
+// that does an open step, against one that ends it, and WORTH.companion on
+// top for one that signs a companion on where the holds would feed them
+// (M33c); for one that starts a side's chain, WORTH.quest where it gains by
+// it (see the top of the file) and its price leaves the buffer, else
+// nothing.
 function questWorth(campaign, rules, event, choice) {
   const open = event.quest ? openStep(campaign, rules, event.quest) : null;
   if (open?.step.event === event.id) {
-    if (open.step.done.includes(choice.id)) return WORTH.quest;
+    // A companion signing on (M33c) is part of what the step is worth.
+    const joins = choice.outcomes.find((outcome) => outcome.effects.joins)?.effects.joins;
+    if (open.step.done.includes(choice.id)) return WORTH.quest + (joins && feeds(campaign, rules, joins) ? WORTH.companion : 0);
     return (open.step.cold ?? []).includes(choice.id) ? -WORTH.quest : 0;
   }
   const starts = [...(rules.quests?.values() ?? [])].find((quest) => quest.start?.event === event.id && quest.start.choice === choice.id && !campaign.quests?.[quest.id]);
-  if (!starts || !chainBefriends(campaign, rules, starts, choice)) return 0;
-  const after = campaign.supplies + choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * (outcome.effects.supplies ?? 0), 0);
-  return after >= HELP_JUMPS * jumpSupplies(campaign, rules) ? WORTH.quest : 0;
+  if (!starts || campaign.run.sector.index >= (rules.acts.get(2)?.sectors ?? 0)) return 0;
+  // One side's chain at a time; for its companion, where they could come
+  // aboard (M33c), or, as in M33b, where it would befriend a side whose
+  // patrols then wave the ship through.
+  if (chainOpen(campaign, rules)) return 0;
+  const companion = [...(rules.companions?.values() ?? [])].find((one) => one.chain === starts.id);
+  const forCompanion = companion && crewRoom(campaign.ship, rules) > campaign.crew.length && feeds(campaign, rules, companion.id);
+  const forPatrols = Boolean(rules.factions?.sides.get(starts.side)?.patrol) && chainBefriends(campaign, rules, starts, choice);
+  if (!forCompanion && !forPatrols) return 0;
+  const expected = (key) => choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * (outcome.effects[key] ?? 0), 0);
+  if (campaign.supplies + expected('supplies') < HELP_JUMPS * jumpSupplies(campaign, rules)) return 0;
+  const reserve = supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice;
+  return expected('credits') < 0 && campaign.credits + expected('credits') < reserve ? 0 : WORTH.quest;
+}
+
+// Whether a side's chain is under way (M33c): it starts one at a time.
+// With a berth for each, bunks had it chasing three at once, and the crew
+// it signed on went hungry.
+function chainOpen(campaign, rules) {
+  return [...(rules.quests?.values() ?? [])].some((quest) => quest.side && campaign.quests?.[quest.id]?.state === 'open');
+}
+
+// Whether the holds would last HIRE_JUMPS jumps with companion `id` aboard
+// (M33c), their lockers counted, as for a recruit (hireWho).
+function feeds(campaign, rules, id) {
+  const companion = rules.companions.get(id);
+  const crew = [...campaign.crew, { job: companion.job, fights: companion.fights, traits: companion.traits }];
+  return supplyCapacity(campaign.ship, rules, crew) >= HIRE_JUMPS * rules.balance.jumpSupplies * crew.length;
 }
 
 // Whether a side's chain (M33b), started with `choice` and each step done,
@@ -717,7 +761,7 @@ export function placeChoice(campaign, rules, event) {
     (effects.wound ? PLACE_HP * effects.wound.hp * (effects.wound.all ? squad : 1) : 0);
   let best = null;
   for (const choice of event.choices) {
-    if (choiceProblem(campaign, choice)) continue;
+    if (choiceProblem(campaign, choice, rules)) continue;
     const value = choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * worth(outcome.effects), 0);
     if (!best || value > best.worth) best = { choice, worth: value };
   }

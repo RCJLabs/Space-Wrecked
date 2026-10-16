@@ -72,7 +72,7 @@ test("the board: a quest's job says its quest, its step and what it adds; its fi
 
 test("what came of a quest, as an event's result, a fight's end or the homecoming says it", () => {
   const start = newCampaign(rules, 5);
-  assert.deepEqual(questNoteLines({ quest: 'tender', did: 'started', step: 0, changes: none }, rules), ["A new quest: The tender's stores. The tender's stolen stores pod: marked on the chart, from the next sector on."]);
+  assert.deepEqual(questNoteLines({ quest: 'tender', did: 'started', step: 0, changes: none }, rules), ["A new quest: The tender's stores. The tender's stolen stores pod: marked on the chart, from the next sector on. Her bosun would sign on, given a berth."]);
   assert.deepEqual(questNoteLines({ quest: 'debt', did: 'done', step: 1, changes: none }, rules), ["The miner's debt: step 2 of 3 done. Next: Con-Reg's claims tender, within reach of the colony: Recovery holds her."]);
   assert.deepEqual(questNoteLines({ quest: 'tender', did: 'cold', step: 0, changes: none }, rules), ["The tender's stores has gone cold."]);
   assert.deepEqual(questNoteLines({ quest: 'debt', did: 'finished', step: 2, changes: { credits: 0, heat: -30, standing: [{ side: 'conreg', by: 5, from: -10, to: -5 }] } }, rules, start), [

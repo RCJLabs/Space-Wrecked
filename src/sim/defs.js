@@ -4,10 +4,10 @@
 // empty tables.
 
 // The content files, by name: data/<name>.json.
-export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'hulls', 'styling', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'worlds', 'colony', 'expeditions', 'events', 'recruits', 'tips', 'factions', 'quests'];
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'hulls', 'styling', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'worlds', 'colony', 'expeditions', 'events', 'recruits', 'tips', 'factions', 'quests', 'companions'];
 
 export function indexDefs(files) {
-  const { modules, frames, manufacturers, hulls, styling, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, worlds, colony, expeditions, events, recruits, tips, factions, quests } = files;
+  const { modules, frames, manufacturers, hulls, styling, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, worlds, colony, expeditions, events, recruits, tips, factions, quests, companions } = files;
   return {
     balance,
     tilesPerCell: modules.tilesPerCell,
@@ -111,6 +111,10 @@ export function indexDefs(files) {
     // and pay-off, and the words that say what quests are.
     quests: byId(quests?.quests),
     questsText: quests?.text ?? '',
+    // The companions (M33c, companions.js): each by id in data order, with
+    // their side, job, traits, face, past, chain, loyalty quest and talent.
+    companions: byId(companions?.companions),
+    companionsText: companions?.text ?? '',
   };
 }
 

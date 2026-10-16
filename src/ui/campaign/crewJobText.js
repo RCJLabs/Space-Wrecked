@@ -1,10 +1,12 @@
 // Words for a crew job (M32): its name, and what it does besides its
 // numbers: its order in a fight, its ship effect and its colony effect, from
 // the numbers in data/jobs.json, at a crew member's rank (M32b), and what
-// each rank gives. The words for each kind live here; a job made of kinds
-// already here needs no code (tests/crewJobText.test.js checks every kind
-// has its words). rules are the content tables (src/sim/defs.js).
+// each rank gives; and a loyal companion's third rank, their talent (M33c).
+// The words for each kind live here; a job made of kinds already here needs
+// no code (tests/crewJobText.test.js checks every kind has its words). rules
+// are the content tables (src/sim/defs.js).
 import { jobAtRank, nextRankAt, rankOf } from '../../sim/ranks.js';
+import { talentOrder, TALENT_RANK } from '../../sim/talents.js';
 
 // "+10", "−30": a change, signed.
 const signed = (n) => (n < 0 ? `−${Math.abs(n)}` : `+${n}`);
@@ -100,23 +102,54 @@ export function jobSaid(job, rules, rank = 0) {
 
 // What a job brings at `rank`, on one short line: "Mark ×2 · scans +1
 // link · +1 place" (its order and uses, then aboard, then at the colony).
-// '' for a job the data lacks.
-export function jobBrief(job, rules, rank = 0) {
+// order, if given, is the order in the job's (a talent's, M33c). '' for a
+// job the data lacks.
+export function jobBrief(job, rules, rank = 0, order = null) {
   const def = jobAtRank(rules.jobs.get(job), rank);
   if (!def) return '';
   const short = (effects, words) => Object.entries(effects ?? {}).filter(([key]) => words[key]).map(([key, n]) => words[key](n));
-  return [def.order ? `${def.order.name} ×${def.order.uses}` : null, ...short(def.station, STATION_SHORT), ...short(def.colony, COLONY_SHORT)].filter(Boolean).join(' · ');
+  const orders = order ?? def.order;
+  return [orders ? `${orders.name} ×${orders.uses}` : null, ...short(def.station, STATION_SHORT), ...short(def.colony, COLONY_SHORT)].filter(Boolean).join(' · ');
+}
+
+// What a crew member brings, on one short line (jobBrief at their rank): a
+// loyal companion's order is their talent (M33c).
+export function memberBrief(member, rules) {
+  return jobBrief(member.job, rules, rankOf(member, rules), talentOf(member, rules)?.order ?? null);
+}
+
+// A loyal companion's talent (M33c, talents.js): { name, order (their
+// job's order at the third rank) }, or null for anyone else.
+export function talentOf(member, rules) {
+  if (!member?.loyal || !member.companion) return null;
+  const name = rules.companions?.get(member.companion)?.talent?.name;
+  const order = talentOrder(rules, member.companion);
+  return name && order ? { name, order } : null;
+}
+
+// The rank a crew member shows, in chevrons and words: a loyal companion's
+// is the third, their talent's (M33c); anyone else's their job's (M32b).
+export function shownRank(member, rules) {
+  return talentOf(member, rules) ? TALENT_RANK : rankOf(member, rules);
+}
+
+// A talent's order and its numbers, short: "Weld ×3 a fight, 8 rounds".
+export function talentGives(talent) {
+  const { order } = talent;
+  const short = ORDER_SHORT[order.type]?.(order);
+  return `${order.name} ×${order.uses} a fight${short ? `, ${short}` : ''}`;
 }
 
 // What a job's rank gives over the rank below, short: "Suppress ×3 a
 // fight, −40 aim", "med bay +2 · infirmary +2". '' for a rank the job
-// lacks.
-export function rankGives(job, rank, rules) {
+// lacks. orders: false leaves its order out, for a loyal companion's, whose
+// order is their talent (M33c).
+export function rankGives(job, rank, rules, orders = true) {
   const def = rules.jobs.get(job);
   if (!def?.ranks?.[rank - 1]) return '';
   const [below, at] = [jobAtRank(def, rank - 1), jobAtRank(def, rank)];
   const said = [];
-  if (at.order && at.order !== below.order) {
+  if (orders && at.order && at.order !== below.order) {
     const changed = Object.keys(at.order).filter((key) => at.order[key] !== below.order?.[key]);
     const parts = [
       changed.includes('uses') ? `×${at.order.uses} a fight` : null,
@@ -133,16 +166,22 @@ export function rankGives(job, rank, rules) {
 
 // A crew member's rank and fights, on one line: "Rank 1, Pinning fire · 4
 // fights · rank 2 at 8", "2 fights · rank 1 at 3", "Rank 2, Gun captain · 9
-// fights". stood: how a recruit's fights read ("9 fights stood").
+// fights". stood: how a recruit's fights read ("9 fights stood"). A loyal
+// companion is at the third rank, their talent's, and their job's next rank
+// still comes with fights, by its name (M33c): "Rank 3, Bosun's weld · 4
+// fights · Running repairs at 8".
 export function rankLine(member, rules, stood = false) {
   const rank = rankOf(member, rules);
-  const name = rules.jobs.get(member.job)?.ranks?.[rank - 1]?.name;
+  const ranks = rules.jobs.get(member.job)?.ranks ?? [];
+  const name = ranks[rank - 1]?.name;
+  const talent = talentOf(member, rules);
   const fights = member.fights ?? 0;
   const next = nextRankAt(member, rules);
+  const nextSaid = talent ? `${ranks[rank]?.name ?? `rank ${rank + 1}`} at ${next}` : `rank ${rank + 1} at ${next}`;
   return [
-    rank ? `Rank ${rank}${name ? `, ${name}` : ''}` : null,
+    talent ? `Rank ${TALENT_RANK}, ${talent.name}` : rank ? `Rank ${rank}${name ? `, ${name}` : ''}` : null,
     `${fights} ${plural(fights, 'fight', 'fights')}${stood ? ' stood' : ''}`,
-    next === null ? null : `rank ${rank + 1} at ${next}`,
+    next === null ? null : nextSaid,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -150,11 +189,15 @@ export function rankLine(member, rules, stood = false) {
 
 // Who reaches a rank as a fight ends (campaign.js rankUps), a line each:
 // "Rosa Vint reaches rank 1, Pinning fire: Suppress ×3 a fight, −40 aim."
+// A loyal companion, at the third rank already, reaches the rank by its
+// name (M33c): "Ines Varga reaches Running repairs: fixes 2 wrecks a jump."
 export function rankUpLines(ups, rules) {
   return ups.map(({ member, rank }) => {
     const name = rules.jobs.get(member.job)?.ranks?.[rank - 1]?.name;
-    const gives = rankGives(member.job, rank, rules);
-    return `${member.name} reaches rank ${rank}${name ? `, ${name}` : ''}${gives ? `: ${gives}` : ''}.`;
+    const loyal = Boolean(talentOf(member, rules));
+    const gives = rankGives(member.job, rank, rules, !loyal);
+    const reaches = loyal && name ? name : `rank ${rank}${name ? `, ${name}` : ''}`;
+    return `${member.name} reaches ${reaches}${gives ? `: ${gives}` : ''}.`;
   });
 }
 

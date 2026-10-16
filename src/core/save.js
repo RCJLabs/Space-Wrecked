@@ -76,7 +76,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      node may carry a quest's event, a place at the colony may be a
 //      quest's, and a job a fight is on, an event's result and a trip's
 //      may say what came of a quest (M33b)
-export const SAVE_VERSION = 28;
+//  29  companions: a crew member may be a companion, and loyal; a battle
+//      unit a loyal companion's talent; and an event's result may say who
+//      signed on (M33c)
+export const SAVE_VERSION = 29;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -402,6 +405,14 @@ export const MIGRATIONS = [
       const step = act === 1 ? 0 : past ? 2 : 1;
       return { ...data, campaign: { ...data.campaign, quests: thread ? { [thread]: { step, state: 'open' } } : {} } };
     },
+  },
+  // Companions (M33c). A save from before has no one aboard who is a
+  // companion, no unit with a talent and no result with someone signed on,
+  // and no companion's chain or loyalty quest under way: it reads as it is.
+  // A side's chain whose start was chosen before it existed doesn't start.
+  {
+    from: 28,
+    up: (data) => data,
   },
 ];
 

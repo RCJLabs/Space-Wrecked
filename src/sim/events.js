@@ -6,7 +6,8 @@
 // places within reach hold events of their own kinds too (expeditions.js),
 // which only the squad there can be hurt by.
 //
-// A choice can need credits, supplies or parts on hand. Its outcomes each
+// A choice can need credits, supplies, parts on hand or, from M33c, a free
+// berth (a companion signing on). Its outcomes each
 // have a chance in 100, shown as they are rolled: one roll from 0 to 99
 // picks the outcome whose share of the hundred it falls in, in the order
 // written. An outcome's effects:
@@ -25,6 +26,9 @@
 //                             first, at what the shop pays (economy.js)
 //   standing { [side]: by }   the crew's standing with each side moved
 //                             (standing.js, M33); only on the run
+//   joins                     a companion signs on (companions.js, M33c),
+//                             in a free berth; only on the run, and only
+//                             by a choice that needs a berth
 // The run keeps the nodes whose events are settled and the last one
 // settled, until the next jump (travel.js). The flags count the events
 // settled. From M33b a choice can move a quest on (quests.js atEvent): at
@@ -33,6 +37,7 @@
 // Pure: every roll is the campaign's.
 import { int } from '../core/rng.js';
 import { storesOf } from './colony.js';
+import { freeBerths, joinCompanion } from './companions.js';
 import { pickWeighted } from './drops.js';
 import { sellPriceOf } from './economy.js';
 import { withHeat } from './heat.js';
@@ -41,20 +46,22 @@ import { atEvent } from './quests.js';
 import { moveStanding } from './standing.js';
 import { openEvent, supplyCapacity } from './travel.js';
 
-export const EFFECTS = ['credits', 'supplies', 'heat', 'materials', 'wound', 'part', 'drop', 'sell', 'standing'];
-export const NEEDS = ['credits', 'supplies', 'parts'];
+export const EFFECTS = ['credits', 'supplies', 'heat', 'materials', 'wound', 'part', 'drop', 'sell', 'standing', 'joins'];
+export const NEEDS = ['credits', 'supplies', 'parts', 'berth'];
 
 // The parts on hand, counted.
 export function partsOnHand(campaign) {
   return Object.values(campaign.parts).reduce((sum, count) => sum + count, 0);
 }
 
-// Why a choice can't be made now, or null if it can.
-export function choiceProblem(campaign, choice) {
+// Why a choice can't be made now, or null if it can. A berth is one the
+// ship has room for and nobody sleeps in (companions.js freeBerths).
+export function choiceProblem(campaign, choice, rules) {
   const needs = choice.needs ?? {};
   if (needs.credits && campaign.credits < needs.credits) return `Needs ${needs.credits} credits.`;
   if (needs.supplies && campaign.supplies < needs.supplies) return `Needs ${needs.supplies} supplies.`;
   if (needs.parts && partsOnHand(campaign) < needs.parts) return needs.parts === 1 ? 'Needs a part on hand.' : `Needs ${needs.parts} parts on hand.`;
+  if (needs.berth && freeBerths(campaign, rules) < needs.berth) return 'Needs a free berth.';
   return null;
 }
 
@@ -79,7 +86,7 @@ export function chooseEvent(campaign, rules, id) {
   if (!open) return { ok: false, error: 'There is nothing to decide here.' };
   const choice = open.event.choices.find((entry) => entry.id === id);
   if (!choice) return { ok: false, error: 'There is no such choice.' };
-  const why = choiceProblem(campaign, choice);
+  const why = choiceProblem(campaign, choice, rules);
   if (why) return { ok: false, error: why };
   let rng = campaign.rng;
   let roll = null;
@@ -103,7 +110,8 @@ export function chooseEvent(campaign, rules, id) {
 // An outcome's effects on the campaign: { campaign, changes }. changes say
 // what they came to: { credits, supplies, heat, materials } as added,
 // wounds [{ id, hp }] as lost, parts [type] as gained, sold [{ part,
-// credits }], standing as moved (standing.js moveStanding's changes).
+// credits }], standing as moved (standing.js moveStanding's changes), and
+// joined, the companion who signed on, if one did (M33c).
 // among: the ids a wound can fall on (a trip's squad), or null for the
 // whole crew.
 export function applyEffects(campaign, rules, effects, { among = null } = {}) {
@@ -180,6 +188,11 @@ export function applyEffects(campaign, rules, effects, { among = null } = {}) {
     const moved = moveStanding(next, rules, effects.standing);
     next = moved.campaign;
     changes.standing = moved.changes;
+  }
+  if (effects.joins) {
+    const signed = joinCompanion(next, rules, effects.joins);
+    next = signed.campaign;
+    if (signed.joined) changes.joined = effects.joins;
   }
   return { campaign: next, changes };
 }

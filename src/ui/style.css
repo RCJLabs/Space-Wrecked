@@ -713,6 +713,29 @@ textarea {
   color: var(--c-good);
 }
 
+/* A companion a choice would sign on (M33c, eventCard.js): their face, and
+   their name, side and job, and past beside it, the past whole. */
+.sct-event-who {
+  flex: none;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 5px 0;
+  border-top: 1px solid var(--c-line);
+  border-bottom: 1px solid var(--c-line);
+  font-size: 13.5px;
+  line-height: 1.25;
+}
+
+.sct-event-who[hidden] {
+  display: none;
+}
+
+.sct-event-who .hgr-name small.crew-past {
+  white-space: normal;
+}
+
 .sct-event-choices {
   flex: none;
   display: flex;
@@ -1561,6 +1584,11 @@ textarea {
 
 .hgr-name small.crew-past {
   font-style: italic;
+}
+
+/* A companion's loyalty (M33c): what earns it, or their talent. */
+.hgr-name small.crew-loyal {
+  color: var(--c-dash);
 }
 
 /* The look: the portrait beside a button a layer, each saying its choice,
@@ -4434,6 +4462,56 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Each part in its place, so the crew card (M33c) can lie over the left
+   panel and the ground. */
+.cln .hgr-head {
+  grid-row: 1;
+}
+
+.cln .cln-info {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.cln .cln-scene {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.cln .cln-parts {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.cln .hgr-foot {
+  grid-row: 3;
+}
+
+/* The crew in the colony's panel: a button over the heading and the list
+   opens the crew card, as the crew panel on the chart does. */
+.cln-crew {
+  position: relative;
+  min-height: 48px;
+  margin-top: 10px;
+}
+
+.cln-crew h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.cln-crew h2 b {
+  color: var(--c-accent);
+  font-size: 18px;
+  line-height: 0.6;
+}
+
+.cln[data-crew='true'] .cln-crew h2 {
+  color: var(--c-accent);
 }
 
 .cln-info h2:not(:first-child) {

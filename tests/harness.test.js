@@ -7,7 +7,7 @@ import { indexDefs } from '../src/sim/defs.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { readData } from '../tools/data.js';
 import { EXAMPLE_SCRIPT } from '../tools/build-ship.js';
-import { DEFAULTS, parseArgs, reportText, rulesFor, rulesWith, runFights, setupText, share, shipsFor, summarize } from '../tools/sim.js';
+import { DEFAULTS, parseArgs, reportText, rulesFor, rulesWith, runFights, setupText, share, shipsFor, summarize, talentJobOf } from '../tools/sim.js';
 
 const data = readData();
 const rules = indexDefs(data);
@@ -32,7 +32,7 @@ test('the command line: defaults, every option, and what is wrong with a bad one
     [['--fights'], /--fights needs a value/],
     [['--set', 'halfCover'], /--set needs name=number/],
     [['--boarders', 'human'], /--boarders is played by ai or scripted/],
-    [['--compare'], /--compare needs a --set, --orders or --rank/],
+    [['--compare'], /--compare needs a --set, --orders, --rank or --talent/],
     [['--rank', 'one'], /--rank needs a whole number, 0 or more/],
     [['--bogus'], /Unknown option "--bogus"/],
   ];
@@ -185,6 +185,21 @@ test('the crew at a rank (M32b): each order as its rank sharpens it, against the
     assert.ok(ranked.some((r) => r.given[kind] > 0), `${kind} is given at rank 1`);
     assert.notDeepEqual(ranked, green, `${kind} at rank 1 changes the fights`);
   }
+});
+
+test("a companion's talent (M33c): their job at the third rank, against the same fights all at rank 2", () => {
+  assert.deepEqual(parseArgs(['--talent', 'osei', '--compare']), { ...DEFAULTS, talent: 'osei', rank: 2, compare: true });
+  assert.throws(() => talentJobOf(rules, 'osei'), /The squad \(marine, engineer, medic\) has no scout for osei's talent: name one with --squad/);
+  assert.throws(() => talentJobOf(rules, 'nobody'), /No companion "nobody" in data\/companions\.json/);
+  const scouts = rulesFor(rules, { squad: ['scout', 'engineer', 'medic'] }).rules;
+  assert.equal(talentJobOf(scouts, 'osei'), 'scout');
+  const text = setupText(scouts, { ...DEFAULTS, ...parseArgs(['--talent', 'osei', '--compare']) }, shipsFor(['example'], scouts), data.balance);
+  assert.match(text, /with every job order at rank 2, the scout at rank 3 with Ama Osei's Surveyor's eye \(before: all at rank 2\), against/);
+  const ships = shipsFor(['example', 'cutter', 'hauler'], scouts);
+  const fights = (talent) => runFights(scouts, { ...DEFAULTS, ships, fights: 24, rank: 2, talent });
+  const [plain, talented] = [fights(null), fights('osei')];
+  assert.ok(talented.some((r) => r.given.mark > 0), 'the talent is given');
+  assert.notDeepEqual(talented, plain, 'the talent changes the fights');
 });
 
 test('the harness runs from the command line', () => {
