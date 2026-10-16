@@ -2,6 +2,107 @@
 
 Newest entry first.
 
+## M32b fixes: talents raised, the Provost's raid evened out (2026-10-16)
+
+At M33's start Evan took both of M32b's known issues on, as small fixes before M33 (2026-10-16):
+- **The talents:** "Raise them now, a small fix first": rank 1 adds a use as well as its sharper number, measured against rank 0 again.
+- **The Provost's raid:** "Even it out now, a small fix first" (the recommended answer): the deserter's crew within 10 points of the miner's against Con-Reg over 500 fights, at rank 0 and rank 1; M30's test over 300 fights.
+- **Kit out,** asked once measured: "3 uses at +1 armor" (the recommended answer). At 2 armor its rank 1 moved the harness's fights from 45% to 65%, where every other order's moves 2 points or less, and the smuggler's raids at rank 1 came out 17 points easier than Con-Reg's (82% to 65% at the hangar). It keeps M32b's rank 1, the one exception to the rule.
+
+Both fixes are one PR: the raid had to be measured at rank 1 with the new talents.
+
+### Shipped
+
+- **Rank 1** (`data/jobs.json`), M32b's in brackets:
+
+  | Job | Rank 1 |
+  | --- | --- |
+  | Marine | Pinning fire: Suppress ×3 at −40 aim (×2) |
+  | Engineer | Hot welds: Weld ×3 for 5 rounds (×2) |
+  | Medic | Field surgery: Patch ×3 at 5 hit points (×2) |
+  | Pilot | Second wind: Hustle ×2 for two more actions (one) |
+  | Scout | Spotter: Mark ×3 at +20 (×2) |
+  | Xenobiologist | Steady dart: Sedate ×3 at +10 (×2) |
+  | Quartermaster | Deep pockets: Kit out ×3 at 1 armor, as before |
+
+  Hustle's rank 1 was already a use, so it sharpens its number instead. Second wind's words say so: "Always has another move or two in them."
+- **A rank's words** say a use and a number at once: "Suppress ×3 a fight, −40 aim" (`crewJobText.js` rankGives), on the fight's end panel and wherever a rank is told.
+- **The Provost's raid at the hangar:** an MP and two cadets (`provosthangar`, new in `data/encounters.json`), where it was an MP, a cadet and an MP. The cadet has 7 hit points and aim 70 (6 and 65); it is in no other party. The colony's raid is still an MP, a cadet and an MP (`provostraid`), with the sturdier cadet. The words of the raid at the dry dock's gate are unchanged.
+- **Tests:**
+  - `ranks.test.js`: every rank 1 adds a use, and every one but Kit out sharpens a number; each order at rank 1 with its uses and number;
+  - `crewJobText.test.js`: the words for a use and a number, or one alone;
+  - `backgrounds.test.js`: M30's raid test over 300 fights;
+  - `data.test.js`: 22 encounters.
+- **Docs:** ROADMAP.md §2, §4.4 and §4.5 (the raid parties, which also brings the colony's as M32 left them, and the ranks' rule), M32b's section (what was fixed after it), §9 (the talents' idea narrowed, the Provost's dropped).
+
+### Verified
+
+- **`node --test`:** 852 pass, the voyage tests' 15 among them. `node tools/validate-data.js`: OK. The golden files are unchanged.
+- **Each order at rank 1 against rank 0** (`node tools/sim.js --fights 300 --squad <the job's> --orders <the order> --rank 1 --compare`), the crew's wins, M32b's rank 1 in brackets:
+
+  | Order | Rank 0 | Rank 1 |
+  | --- | --- | --- |
+  | Suppress | 46% | 45% (45%) |
+  | Weld | 48% | 48% (49%) |
+  | Patch | 48% | 50% (48%) |
+  | Hustle | 27% | 27% (27%) |
+  | Mark | 35% | 33% (35%) |
+  | Sedate | 17% | 18% (17%) |
+  | Kit out | 45% | 46% (46%) |
+
+  Every order at once, the default squad: 50% → 51%, as in M32b. The harness's AI gives Suppress, Weld, Patch and Hustle under once a fight and Mark and Sedate under twice, so a use more seldom gets used: the third use is for a player to find.
+- **The Provost's hangar party, tried** (`tools/raids.js` over 500 fights, the deserter's start crew; Con-Reg's numbers for the miner's are 57% at the hangar and 42% at the colony at rank 0, 65% and 64% at rank 1):
+
+  | Party at the hangar | Cadet | Rank 0 | Rank 1 |
+  | --- | --- | --- | --- |
+  | MP, cadet, MP (M32's) | 6 hit points, aim 65 | 42% | 45% |
+  | two MPs and a cadet, either other order | 6, 65 | 33–34% | 47–48% |
+  | an MP and two cadets, any order | 6, 65 | 72–74% | 78–82% |
+  | MP, cadet, cadet | 8, 65 | 56% (colony 34%) | 67% (colony 53%) |
+  | MP, cadet, cadet | 6, 75 | 67% | 71% |
+  | **MP, cadet, cadet** | **7, 70** | **61% (colony 38%)** | **67% (colony 57%)** |
+
+  Only the cadet's own numbers could land between two MPs and a cadet (15 to 24 behind) and an MP and two cadets (15 to 17 ahead). At 8 hit points the colony's raid at rank 1 fell 11 behind.
+- **Raids** (`node tools/raids.js --fights 500`, and `--rank 1`), the crew's wins, M32b's in brackets:
+
+  | Background | Hangar, rank 0 | Colony, rank 0 | Hangar, rank 1 | Colony, rank 1 |
+  | --- | --- | --- | --- | --- |
+  | Debt-bound miner | 57% of 4 (57%) | 42% of 4 (42%) | 65% (63%) | 64% (52%) |
+  | Navy deserter | 61% of 3 (42%) | 38% of 3 (46%) | 67% (46%) | 57% (56%) |
+  | Burned smuggler | 51% of 6 (51%) | 43% of 5 (43%) | 67% (62%) | 65% (57%) |
+
+  Each pursuer's raids are within 10 points of Con-Reg's at both ranks, the most 7 (the deserter's colony at rank 1). Over M30's 300 fights: the deserter 64% and 40%, the smuggler 50% and 42%, against 57% and 42%.
+- **Act 1** (`node tools/run.js --runs 50 --background …`): every run launches, slow medians 43, 40 and 45 minutes (M32b: 43, 37 and 45).
+- **The run and the colony** (`node tools/voyage.js --runs 30 --background all`), M32b's in brackets:
+
+  | Background | Fed | Met | Raids | Won | Lost | Runs lost |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | Debt-bound miner | 25 (25) | 9 (10) | 27 | 22 | 5 | 3 (3) |
+  | Navy deserter | 23 (23) | 9 (10) | 28 | 23 | 5 | 5 (4) |
+  | Burned smuggler | 29 (29) | 8 (9) | 18 | 13 | 5 | 5 (5) |
+
+  Every run launches; fed, met and runs lost are each within 2 of M32b's.
+- **The voyage tests** pass as they are.
+- **By touch,** at 905 × 370, 821 × 283 and 960 × 825:
+  - M32b's check, adapted for the fix (`m32b/verify-fix.mjs`: the ranked marine's Suppress · 3 and the xenobiologist's Sedate · 3): 27 of 27 at each.
+  - Every earlier milestone's check passes, one after another, at the three sizes unless named: M32 22 and its orders 48, M31 28, M30 27, M29 34, M28 32, M27 32, M26 18, M25 21, M24 20, M23h 16, M23g 20, M23f 28, M23e 27, M23d 25, M23c 25, M23 36, M23b 8; M22 35, M21 32, M19 52, M20 32; M18 43, M17 37, M16 29, M15 30; M10 20 (its three sizes in one run), and M8's fights and column; at 905 × 370 only, M14's saves 10, M13 24, M14 41 (its count goes with the jobs it rolls) and M8's extras.
+  - M30's runs as a copy adapted for the fix (`m30/verify-fix.mjs`): the deserter's hangar raid is an MP and two cadets. Kit out's return to M32b's rank 1 landed while the run was under way; no check plays a quartermaster at rank 1.
+
+### Known issues
+
+- **The third use is the harness's to ignore:** with a use more at rank 1, every order still moves its fights 2 points or less, as its AI seldom spends what it has. Whether the ranks now feel right is for the phone (§9).
+- **Kit out's rank 1 is the exception** to the rule: a use, no sharper number.
+
+### Test on the phone
+
+1. **A fight with a crew at rank 1** (three jobs into act 1): the order buttons count three uses (Suppress · 3, Weld · 3, Patch · 3), and a pilot's Hustle gives two more actions.
+2. **The fight's end** as someone reaches rank 1: "Suppress ×3 a fight, −40 aim".
+3. **As the deserter, a raid at the hangar:** an MP and two cadets at the gate.
+
+### Next session
+
+M33 Factions (its Done when settled with Evan's picks, 2026-10-16): first task, write the Done when into ROADMAP.md and open its draft PR.
+
 ## M32b Talents, traits and recruits' backgrounds (2026-10-16)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every crew member now counts the fights they stand in, and at 3 and 8 reaches their job's rank 1 and rank 2: rank 1 sharpens the job's order, rank 2 its effect aboard or at the colony. There are 20 traits, and every recruit comes from one of 8 backgrounds that sets their job, traits and fights already stood, and with them their fee.
