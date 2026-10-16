@@ -179,8 +179,10 @@ test('the captain screen offers each of the start crew\'s jobs once, and names t
   assert.deepEqual(captainText(rules, draft, 'smuggler').jobs.map((job) => job.id), ['engineer', 'quartermaster', 'medic']);
 });
 
-test("each pursuer's raids are beaten about as often as Con-Reg's, at the hangar and at the colony: within 10 points over 150 fights (M30, tools/raids.js)", () => {
-  const rows = runRaids(rules);
+// Over 300 fights since the M32b fix (Evan's call, 2026-10-16): 150 hid a
+// 15-point gap at the Provost's hangar that 500 showed.
+test("each pursuer's raids are beaten about as often as Con-Reg's, at the hangar and at the colony: within 10 points over 300 fights (M30, tools/raids.js)", () => {
+  const rows = runRaids(rules, { fights: 300 });
   const miner = rows.find((row) => row.id === 'miner');
   for (const row of rows) {
     for (const where of ['hangar', 'colony']) assert.ok(Math.abs(row[where] - miner[where]) <= 0.1 * row.fights, `${row.id} at the ${where}: ${row[where]} won, against ${miner[where]} against Con-Reg`);

@@ -85,7 +85,7 @@
           "raid": "The Fleet Provost is at the dry dock's gate with a warrant and a squad of MPs."
         },
         "hunters": ["mp"],
-        "raiders": "provostraid",
+        "raiders": "provosthangar",
         "run": {
           "levels": {
             "calm": "Out here the Provost is a name on a wanted list nobody reads. Keep it that way.",
