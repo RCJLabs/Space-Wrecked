@@ -27,13 +27,17 @@
 //                             (standing.js, M33); only on the run
 // The run keeps the nodes whose events are settled and the last one
 // settled, until the next jump (travel.js). The flags count the events
-// settled. Pure: every roll is the campaign's.
+// settled. From M33b a choice can move a quest on (quests.js atEvent): at
+// a quest's node it can do the quest's step or end the quest, and the
+// choice a side's chain starts at starts it; the result says so (quest).
+// Pure: every roll is the campaign's.
 import { int } from '../core/rng.js';
 import { storesOf } from './colony.js';
 import { pickWeighted } from './drops.js';
 import { sellPriceOf } from './economy.js';
 import { withHeat } from './heat.js';
 import { tally } from './flags.js';
+import { atEvent } from './quests.js';
 import { moveStanding } from './standing.js';
 import { openEvent, supplyCapacity } from './travel.js';
 
@@ -65,9 +69,11 @@ export function outcomeFor(outcomes, roll) {
 }
 
 // Makes choice `id` at the event open at the ship's node: rolls its
-// outcome, if it has more than one, and has its effects. Returns { ok:
-// true, campaign, result } or { ok: false, error }. result is what the run
-// keeps (travel.js): { node, event, choice, outcome, roll, changes }.
+// outcome, if it has more than one, and has its effects, then what it does
+// to the quests (M33b). Returns { ok: true, campaign, result } or { ok:
+// false, error }. result is what the run keeps (travel.js): { node, event,
+// choice, outcome, roll, changes }, and quest (questShape.js isQuestNote)
+// when a quest moved.
 export function chooseEvent(campaign, rules, id) {
   const open = openEvent(campaign, rules);
   if (!open) return { ok: false, error: 'There is nothing to decide here.' };
@@ -85,11 +91,12 @@ export function chooseEvent(campaign, rules, id) {
   const outcome = roll === null ? 0 : outcomeFor(choice.outcomes, roll);
   const done = applyEffects({ ...campaign, rng }, rules, choice.outcomes[outcome].effects);
   const { run } = campaign;
-  const result = { node: run.at, event: open.event.id, choice: choice.id, outcome, roll, changes: done.changes };
+  const quested = atEvent(done.campaign, rules, run.sector.nodes[run.at], open.event.id, choice.id);
+  const result = { node: run.at, event: open.event.id, choice: choice.id, outcome, roll, changes: done.changes, ...(quested.note ? { quest: quested.note } : {}) };
   return {
     ok: true,
     result,
-    campaign: { ...done.campaign, flags: tally(done.campaign.flags, { events: 1 }), run: { ...run, done: [...run.done, run.at], result } },
+    campaign: { ...quested.campaign, flags: tally(quested.campaign.flags, { events: 1 }), run: { ...run, done: [...run.done, run.at], result } },
   };
 }
 

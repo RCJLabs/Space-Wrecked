@@ -33,6 +33,7 @@ import { colonyMap, raidStarts } from './colonyMap.js';
 import { colonyEdge } from './edges.js';
 import { tally } from './flags.js';
 import { pursuerOf, runLevel, withHeat } from './heat.js';
+import { eased } from './quests.js';
 import { enemyBonus } from './settings.js';
 
 const MAX_SEED = 0xffffffff;
@@ -60,12 +61,15 @@ export function tripHeatOf(campaign, rules) {
 }
 
 // The day's odds, in percent, of the pursuer finding the colony at the
-// day's end: by heat's level and the lanes, none while a raid is coming.
+// day's end: by heat's level and the lanes, none while a raid is coming;
+// and once the background's thread is done (M33b, quests.js eased), at
+// easedOdds percent of that, rounded as the odds are.
 export function foundOdds(campaign, rules) {
   if (!campaign.colony || campaign.colony.raid) return 0;
   const key = RAID_ODDS[runLevel(campaign.heat, rules)];
   if (!key) return 0;
-  return Math.min(100, Math.round((rules.balance[key] * lanesPercent(campaign.colony, rules)) / 100));
+  const share = eased(campaign, rules) ? rules.balance.easedOdds : 100;
+  return Math.min(100, Math.round((rules.balance[key] * lanesPercent(campaign.colony, rules) * share) / 10000));
 }
 
 // True on the day the raid's lander is down, and every day after until it

@@ -129,7 +129,7 @@ test('the jump point leads on into the next sector, named afresh, and from the a
   const exit = at(run, run.run.sector.exit);
   const { ok, campaign, plan } = leaveSector(exit, rules);
   assert.ok(ok);
-  assert.deepEqual(plan, { ok: true, kind: 'sector', supplies: 3, left: 0, heat: balance.jumpHeat, hungry: false, heal: 0, fixes: [], hunt: { chance: 0, ship: null, why: null } });
+  assert.deepEqual(plan, { ok: true, kind: 'sector', supplies: 3, left: 0, heat: balance.jumpHeat, hungry: false, heal: 0, fixes: [], hunt: { chance: 0, ship: null, why: null }, cold: [] });
   assert.equal(campaign.run.sector.index, 2);
   assert.deepEqual(campaign.run.past, [run.run.sector.name]);
   assert.notEqual(campaign.run.sector.name, run.run.sector.name);

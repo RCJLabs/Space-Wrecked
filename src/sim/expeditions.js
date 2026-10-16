@@ -15,8 +15,11 @@
 // raid's lander comes down at the colony: those at home face it, and Fly
 // on passes the rest of the leg. From M32 the crew's jobs help (edges.js):
 // a pilot in the squad flies each leg a day shorter, never under 1, and a
-// scout in the crew finds one more place within reach. Pure: every roll is
-// the campaign's.
+// scout in the crew finds one more place within reach. From M33b a quest's
+// step at the colony is a place of its own, listed after the others until
+// it is done (quests.js withQuestPlaces): her ship held by the party the
+// step names, and a win there does the step. Pure: every roll is the
+// campaign's.
 //
 // A place (colony.places, and the trip's; tripShape.js):
 //   kind    its kind's id (data/expeditions.json kinds)
@@ -25,6 +28,7 @@
 //   event   the event there (data/events.json, of the kind's id), or null
 //   held    true for a derelict the scavengers hold: a fight, no event
 //   seed    what her ship is generated from (gen/ship.js)
+//   quest   a quest's place (M33b): the quest's id; else absent
 // The trip (colony.trip, null while the ship is home):
 //   place   the place, as it was listed
 //   squad   the crew ids aboard, in the crew's order
@@ -53,6 +57,7 @@ import { generateShip } from './gen/ship.js';
 import { withHeat } from './heat.js';
 import { mapFromShip } from './mapFromShip.js';
 import { hasTag } from './modules.js';
+import { heldBy, stepDone, withQuestPlaces } from './quests.js';
 import { downText, raidDown, tripHeatOf } from './raids.js';
 import { enemyBonus } from './settings.js';
 import { MAX_PLACES } from './tripShape.js';
@@ -98,7 +103,7 @@ export function rollPlaces(campaign, rules) {
   const taken = new Set();
   const left = (kind) => (kind.worlds ? worlds : spec.names[kind.id] ?? []).filter((name) => !taken.has(name));
   const places = [];
-  const count = Math.min(MAX_PLACES, (spec?.places ?? 0) + colonyEdge(campaign.crew, rules, 'places'));
+  const count = Math.min(MAX_PLACES - questRoom(campaign, rules), (spec?.places ?? 0) + colonyEdge(campaign.crew, rules, 'places'));
   for (let n = 0; n < count; n++) {
     const table = Object.fromEntries([...spec.kinds.values()].filter((kind) => left(kind).length).map((kind) => [kind.id, kind.weight]));
     if (!Object.keys(table).length) break;
@@ -110,7 +115,7 @@ export function rollPlaces(campaign, rules) {
     taken.add(name);
     const days = roll(kind.days[0], kind.days[1]);
     const held = kind.held ? roll(0, 99) < kind.held.chance : false;
-    const events = held ? [] : [...rules.events.values()].filter((event) => event.kind === kind.id);
+    const events = held ? [] : [...rules.events.values()].filter((event) => event.kind === kind.id && !event.quest);
     const event = events.length ? events[roll(0, events.length - 1)].id : null;
     places.push({ kind: kind.id, name, days, event, held, seed: roll(0, MAX_SEED) });
   }
@@ -124,11 +129,19 @@ export function legDays(place, squad, rules) {
 }
 
 // The campaign with its places rolled, at the colony with the ship home
-// and none listed; else the campaign as it is.
+// and none listed, and the quests' places on the list (M33b); else the
+// campaign as it is.
 export function withPlaces(campaign, rules) {
-  if (!atColony(campaign, rules) || campaign.colony.trip || campaign.colony.places.length || !rules.expeditions) return campaign;
+  if (!atColony(campaign, rules) || campaign.colony.trip || !rules.expeditions) return campaign;
+  if (campaign.colony.places.length) return withQuestPlaces(campaign, rules);
   const { places, rng } = rollPlaces(campaign, rules);
-  return places.length ? { ...campaign, rng, colony: { ...campaign.colony, places } } : campaign;
+  return withQuestPlaces(places.length ? { ...campaign, rng, colony: { ...campaign.colony, places } } : campaign, rules);
+}
+
+// How many places the quests' open steps hold on the list (M33b): a rolled
+// list leaves room for them.
+function questRoom(campaign, rules) {
+  return [...(rules.quests?.values() ?? [])].filter((quest) => campaign.quests?.[quest.id]?.state === 'open' && quest.steps[campaign.quests[quest.id].step]?.act === 3).length;
 }
 
 // What a trip to the place listed at index would come to with squad (crew
@@ -262,16 +275,17 @@ export function chooseAtPlace(campaign, rules, id) {
 
 // The fight due where the squad is, as it would begin, for the screens and
 // boardPlace: { place, preset (her ship's), party (the scavengers' enemy
-// ids), salvage (how many of her parts a win strips), materials ([least,
-// most] a win brings) }, or null with none due.
+// ids, or a quest's place's holders', M33b), encounter (the party's id),
+// salvage (how many of her parts a win strips), materials ([least, most] a
+// win brings) }, or null with none due.
 export function placeFightDue(campaign, rules) {
   const trip = campaign.colony?.trip;
   if (!trip?.place.held || trip.done || trip.leg || campaign.fight) return null;
-  const held = kindOf(trip.place, rules)?.held;
+  const held = trip.place.quest ? heldBy(trip.place, rules) : kindOf(trip.place, rules)?.held;
   const preset = held ? rules.ships.get(held.ship) : null;
   const party = held ? rules.encounters.get(held.party)?.enemies : null;
   if (!preset || !party) return null;
-  return { place: trip.place, preset, party, salvage: held.salvage, materials: held.materials };
+  return { place: trip.place, preset, party, encounter: held.party, salvage: held.salvage, materials: held.materials };
 }
 
 // Boards the derelict the scavengers hold where the squad is: the whole
@@ -316,7 +330,7 @@ export function boardPlace(campaign, rules, { forgiving = false, difficulty = 'n
     return member ? { ...unit, ...crewUnit(member, rules) } : { ...unit, bonus };
   });
   const { battle, events } = createBattle({ map, units: fighters, seed, options: { forgiving, press: false } }, rules);
-  const encounter = kindOf(due.place, rules).held.party;
+  const { encounter } = due;
   const fight = { encounter, seed, crew: members.map((member) => member.id), battle, log: events, job: null, raid: false, boarding: { dir: 'them', salvage: { parts, credits: 0, materials: materials.value } } };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };
 }
@@ -324,8 +338,10 @@ export function boardPlace(campaign, rules, { forgiving = false, difficulty = 'n
 // After the fight at a place, once it is won or lost (campaign.js
 // endFight: wounds kept, the fights counted): a win brings her salvage
 // home, her parts into the hold and her materials into the colony's stores
-// as far as they go; a loss brings the squad back hurt with nothing. The
-// trip is done either way. Any other fight is left as it is.
+// as far as they go, and at a quest's place does its step (M33b,
+// quests.js stepDone; the result keeps what came of it, as quest); a loss
+// brings the squad back hurt with nothing, and a quest's place stays on
+// the list. The trip is done either way. Any other fight is left as it is.
 export function endPlaceFight(campaign, rules) {
   const { fight } = campaign;
   if (!fight?.boarding || !campaign.colony?.trip) return campaign;
@@ -340,11 +356,13 @@ export function endPlaceFight(campaign, rules) {
     const room = Math.max(0, storesOf(after, rules).total - after.colony.materials);
     materials = Math.min(salvage.materials ?? 0, room);
   }
-  const result = { won, parts: won ? [...salvage.parts] : [], materials };
-  const ids = new Set(after.crew.map((member) => member.id));
-  const trip = { ...after.colony.trip, squad: after.colony.trip.squad.filter((id) => ids.has(id)), done: true, result };
-  const flags = tally(after.flags, { [won ? 'placeFightsWon' : 'placeFightsLost']: 1, tripParts: result.parts.length, tripMaterials: materials });
-  return { ...after, parts, flags, colony: { ...after.colony, materials: after.colony.materials + materials, trip } };
+  const quested = won && after.colony.trip.place.quest ? stepDone(after, rules, after.colony.trip.place.quest) : { campaign: after, note: null };
+  const ended = quested.campaign;
+  const result = { won, parts: won ? [...salvage.parts] : [], materials, ...(quested.note ? { quest: quested.note } : {}) };
+  const ids = new Set(ended.crew.map((member) => member.id));
+  const trip = { ...ended.colony.trip, squad: ended.colony.trip.squad.filter((id) => ids.has(id)), done: true, result };
+  const flags = tally(ended.flags, { [won ? 'placeFightsWon' : 'placeFightsLost']: 1, tripParts: result.parts.length, tripMaterials: materials });
+  return { ...ended, parts, flags, colony: { ...ended.colony, materials: ended.colony.materials + materials, trip } };
 }
 
 // What flying home would come to: { ok: true, days (back), eats, food

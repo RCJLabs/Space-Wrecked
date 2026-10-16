@@ -322,8 +322,9 @@ test("the run's fourteen events play from data (M20's ten and M33's four), hosti
   assert.ok(careful.every((trip) => trip.launched && trip.ended), 'every run launches and settles a world past the charts');
   const played = new Set(trips.flatMap((trip) => trip.steps.filter((step) => step.kind === 'event').map((step) => step.event)));
   // The run's events: those of a kind of node (the colony's places have the
-  // rest, M28).
-  const runEvents = [...rules.events.values()].filter((event) => rules.nodeTypes.get(event.kind)?.events);
+  // rest, M28), but the quests' own, which quests.js places where a quest's
+  // step is open (M33b; the quests' tests have them).
+  const runEvents = [...rules.events.values()].filter((event) => rules.nodeTypes.get(event.kind)?.events && !event.quest);
   assert.equal(played.size, runEvents.length, `events played: ${[...played].join(', ')}`);
   assert.equal(runEvents.length, 14);
   const met = careful.flatMap((trip) => trip.steps.filter((step) => step.kind === 'approach'));

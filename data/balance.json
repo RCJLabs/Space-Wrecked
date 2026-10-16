@@ -74,6 +74,7 @@
   "raidOddsHunters": 6,
   "raidOddsTaskForce": 10,
   "raidOddsCornered": 15,
+  "easedOdds": 50,
   "raidWarning": 3,
   "landingHit": 50,
   "raidShieldArmor": 1,

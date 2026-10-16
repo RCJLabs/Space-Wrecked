@@ -14,6 +14,11 @@
 // site, twist, pay and seed rolled with the board, so an offer never
 // changes once it is made. A job on the board:
 //   { contract, client, site, twist, seed, credits, part }
+// From M33b a quest's step in act 1 is a contract of the quest's own
+// (quest), never on the board's rotation: quests.js questJobs offers it
+// above the board while the step is open, with quest set to the quest's
+// id, and takeQuestJob takes it. Done, the quest moves on (quests.js
+// stepDone); lost, it is offered again.
 // twist is null or a twist's id. credits is the pay, the twist's change
 // included, and part null or a module type that comes with it. seed makes
 // the fight: the site's map, who comes and where everyone starts, and
@@ -29,6 +34,7 @@ import { PAY_STEP, rollStock } from './economy.js';
 import { generateSite } from './gen/site.js';
 import { huntersFor, jobHeat, raidDue, withHeat } from './heat.js';
 import { enemyBonus } from './settings.js';
+import { questJobs, stepDone } from './quests.js';
 import { jobMoves, jobPay, moveStanding } from './standing.js';
 
 // The missions the rules know. A new one means new rules (battle.js), so
@@ -36,10 +42,11 @@ import { jobMoves, jobPay, moveStanding } from './standing.js';
 export const MISSIONS = ['clear', 'grab', 'hack'];
 const MAX_SEED = 0xffffffff;
 
-// The contracts the board can offer in a district: those at its sites.
+// The contracts the board can offer in a district: those at its sites,
+// but a quest's own (M33b).
 export function contractsIn(rules, district) {
   const sites = new Set((rules.districts.get(district)?.sites ?? []).map((site) => site.id));
-  return [...rules.contracts.jobs.values()].filter((contract) => contract.sites.every((site) => sites.has(site)));
+  return [...rules.contracts.jobs.values()].filter((contract) => !contract.quest && contract.sites.every((site) => sites.has(site)));
 }
 
 // The twists a contract can come with: those for any mission, and those
@@ -161,10 +168,19 @@ export function jobSetup(job, rules, crew, { hunters = [], forgiving = false, di
 // { ok: true, campaign } with the fight on, or { ok: false, error } saying
 // why it can't.
 export function takeJob(campaign, rules, index, setup = {}) {
+  return startJob(campaign, rules, campaign.board[index], setup);
+}
+
+// Takes the job a quest's open step offers (quests.js questJobs, M33b): its
+// fight begins, as takeJob's.
+export function takeQuestJob(campaign, rules, quest, setup = {}) {
+  return startJob(campaign, rules, questJobs(campaign, rules).find((offer) => offer.quest === quest), setup);
+}
+
+function startJob(campaign, rules, job, setup) {
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
   if (!atHangar(campaign, rules)) return { ok: false, error: 'Jobs are taken from the hangar.' };
   if (raidDue(campaign, rules)) return { ok: false, error: 'Not with a raid at the door.' };
-  const job = campaign.board[index];
   if (!job || !rules.contracts.jobs.has(job.contract) || !rules.sites.has(job.site)) return { ok: false, error: 'That job is gone.' };
   if (!campaign.crew.length) return { ok: false, error: 'There is no one to send.' };
   const unknown = campaign.crew.find((member) => !rules.jobs.has(member.job));
@@ -187,7 +203,8 @@ export function takeJob(campaign, rules, index, setup = {}) {
 // standing it moves with the sides it was for and against (standing.js
 // jobMoves, M33), the job counted in the flags (jobsDone or jobsFailed), a
 // new board with none of the old one's jobs, and a new stock at the shop.
-// A fight still going is left as it is.
+// A quest's job done moves its quest on (quests.js stepDone, M33b). A
+// fight still going is left as it is.
 export function endJob(campaign, rules) {
   const { fight } = campaign;
   const after = endFight(campaign, rules);
@@ -202,7 +219,7 @@ export function endJob(campaign, rules) {
   const rolled = district ? rollBoard(rules, after.rng, district, skip) : { board: [], rng: after.rng };
   const restocked = district ? rollStock(rules, rolled.rng, district) : { stock: after.shop, rng: rolled.rng };
   const { campaign: moved } = moveStanding(after, rules, jobMoves(job, rules, won));
-  return {
+  const ended = {
     ...moved,
     credits: after.credits + (won ? jobPay(campaign, rules, job) : 0),
     heat: withHeat(after.heat, jobHeat(job, rules).heat),
@@ -213,4 +230,5 @@ export function endJob(campaign, rules) {
     spent,
     rng: restocked.rng,
   };
+  return won && job.quest ? stepDone(ended, rules, job.quest).campaign : ended;
 }

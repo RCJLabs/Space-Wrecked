@@ -10,7 +10,8 @@
 // by weight (empty space, derelicts, distress calls, traders, hazards,
 // hostile ships). A node of a kind that holds events is given one of its
 // kind (data/events.json), none twice in a sector while the kind's events
-// last. A node of a kind with ships on it is given one: a preset from the
+// last; a quest's own events (M33b) are never in the pool, and quests.js
+// places them. A node of a kind with ships on it is given one: a preset from the
 // kind's list, by weight among those that come this far into the run, and
 // the seed its ship is generated from when the ship meets it.
 // Nodes are named from their kind's list, none twice in a sector, and the
@@ -111,7 +112,7 @@ export function generateSector(rules, seed, index, { avoid = [] } = {}) {
   const pools = new Map();
   for (const node of nodes) {
     if (!rules.nodeTypes.get(node.type)?.events) continue;
-    if (!pools.get(node.type)?.length) pools.set(node.type, mixed([...rules.events.values()].filter((event) => event.kind === node.type).map((event) => event.id)));
+    if (!pools.get(node.type)?.length) pools.set(node.type, mixed([...rules.events.values()].filter((event) => event.kind === node.type && !event.quest).map((event) => event.id)));
     const event = pools.get(node.type).shift();
     if (event) node.event = event;
   }

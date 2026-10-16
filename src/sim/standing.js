@@ -55,6 +55,12 @@ export function levelOf(value, rules) {
   return level;
 }
 
+// The least standing at a level: where it begins (M33b, a quest's pay-off
+// raises the pursuer's side to one).
+export function floorOf(level, rules) {
+  return level === LEVELS[0] ? STANDING_MIN : rules.balance[EDGES[level]];
+}
+
 // The next level up from a standing and the points it takes to reach it:
 // { level, by }, or null at the top.
 export function nextLevel(value, rules) {

@@ -5,10 +5,12 @@
 // what was the district's stays behind: the job board and the shop's
 // stock, which acts.js keeps to the hangar from then on. A raid at the
 // door doesn't stop it: the pursuer finds an empty hangar (the flags say
-// so, for the words), and heat goes along. Pure.
+// so, for the words), and heat goes along. A quest whose step is still the
+// hangar's goes cold (M33b, quests.js): the trail ends at the launch. Pure.
 import { atHangar } from './acts.js';
 import { ACTS, shipChecklist } from './campaign.js';
 import { raidDue } from './heat.js';
+import { goCold } from './quests.js';
 
 // Why the campaign can't launch now, or null if it can.
 export function launchProblem(campaign, rules) {
@@ -19,11 +21,13 @@ export function launchProblem(campaign, rules) {
   return null;
 }
 
-// Launches: the campaign in the next act, at its hub. Returns { ok: true,
-// campaign } or { ok: false, error }.
+// Launches: the campaign in the next act, at its hub, the quests still
+// open in act 1 gone cold. Returns { ok: true, campaign, cold (their ids) }
+// or { ok: false, error }.
 export function launch(campaign, rules) {
   const why = launchProblem(campaign, rules);
   if (why) return { ok: false, error: why };
   const flags = raidDue(campaign, rules) ? { ...campaign.flags, escapedRaid: true } : campaign.flags;
-  return { ok: true, campaign: { ...campaign, act: campaign.act + 1, place: 'hub', board: [], shop: [], flags } };
+  const { campaign: cooled, cold } = goCold(campaign, rules, 1);
+  return { ok: true, cold, campaign: { ...cooled, act: campaign.act + 1, place: 'hub', board: [], shop: [], flags } };
 }

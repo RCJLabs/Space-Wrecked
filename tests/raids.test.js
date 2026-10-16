@@ -334,8 +334,9 @@ test('while the ship is away: a leg stops on the raid\'s day, those at home face
 });
 
 test('saves: v23 for the raid coming and a leg it stopped; a v22 colony opens with none coming; broken ones are caught', () => {
-  // 24 since M32's orders in a fight, 27 since M33's fix.
-  assert.equal(SAVE_VERSION, 27);
+  // 24 since M32's orders in a fight, 27 since M33's fix, 28 since M33b's
+  // quests.
+  assert.equal(SAVE_VERSION, 28);
   const base = { ...at(settled(), { places: [far] }), heat: 30 };
   const old = (campaign) => ({ ...saveData(initialState(3)), campaign });
   const step = MIGRATIONS.find((s) => s.from === 22);
@@ -350,10 +351,13 @@ test('saves: v23 for the raid coming and a leg it stopped; a v22 colony opens wi
   assert.equal(none, null);
   assert.deepEqual(step.up(old({ ...flying, colony: { ...v22away, trip: v22trip } })).campaign, flying);
   assert.equal(step.up(old(null)).campaign, null);
-  // Through the front door, from v22.
-  const opened = parseSave(JSON.stringify({ version: 22, data: old({ ...base, colony: v22colony }) }));
+  // Through the front door, from v22: a campaign from before quests gets
+  // its background's thread at the colony's step (v28, M33b).
+  const { quests, ...v22campaign } = base;
+  assert.ok(quests);
+  const opened = parseSave(JSON.stringify({ version: 22, data: old({ ...v22campaign, colony: v22colony }) }));
   assert.equal(opened.ok, true, opened.error);
-  assert.deepEqual(opened.save.data.campaign, base);
+  assert.deepEqual(opened.save.data.campaign, { ...base, quests: { debt: { step: 2, state: 'open' } } });
   // A raid coming, a leg stopped and a raid fight each reload as they were.
   const coming = { ...base, colony: { ...base.colony, raid: { found: 1, lands: 2 } } };
   const stopped = flyOut(coming, rules, 0, [1]).campaign;

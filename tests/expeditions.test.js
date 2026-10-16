@@ -14,6 +14,7 @@ import { build, buildPlan, takeDownPlan } from '../src/sim/colonyBuild.js';
 import { dayPlan, nextDay } from '../src/sim/days.js';
 import { applyEffects } from '../src/sim/events.js';
 import { boardPlace, chooseAtPlace, endPlaceFight, flyHome, flyOut, homePlan, otherWorlds, placeFightDue, rollPlaces, tripHere, tripPlan, withPlaces } from '../src/sim/expeditions.js';
+import { questPlaces } from '../src/sim/quests.js';
 import { campaignScreen, initialState, reduce, saveData } from '../src/sim/root.js';
 import { fightPlace } from '../tools/boarding.js';
 import { rules } from './battleKit.js';
@@ -269,13 +270,17 @@ test('saves: v22 for the places and the trip; a v21 colony opens with no trip, i
   assert.equal(step.up(old(null)).campaign, null);
   const opened = parseSave(JSON.stringify({ version: 21, data: old({ ...listed, colony: v21colony }) }));
   assert.equal(opened.ok, true, opened.error);
-  // 24 since M32's orders in a fight, 27 since M33's fix.
-  assert.equal(SAVE_VERSION, 27);
+  // 24 since M32's orders in a fight, 27 since M33's fix, 28 since M33b's
+  // quests.
+  assert.equal(SAVE_VERSION, 28);
   const reopened = opened.save.data.campaign;
   assert.deepEqual([reopened.colony.places, reopened.colony.trip], [[], null]);
-  // The colony screen asks for its places, and they are the seed's.
+  // The colony screen asks for its places, and they are the seed's, with
+  // the thread's place after them: from v28 (M33b) a save from before
+  // quests gets its background's thread at its act's step, the colony's.
   const state = reduce({ ...initialState(3), campaign: reopened, screen: 'colony' }, { type: 'campaign/places', rules });
-  assert.deepEqual(state.campaign.colony.places, rollPlaces(reopened, rules).places);
+  assert.deepEqual(reopened.quests, { debt: { step: 2, state: 'open' } });
+  assert.deepEqual(state.campaign.colony.places, [...rollPlaces(reopened, rules).places, ...questPlaces(reopened, rules)]);
   // Out on a trip, at the place, and in the fight there: each reloads as it was.
   const out = reduce({ ...state }, { type: 'campaign/trip/out', index: 0, squad: [1, 2], rules });
   assert.ok(out.campaign.colony.trip);

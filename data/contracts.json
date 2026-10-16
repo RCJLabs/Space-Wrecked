@@ -331,6 +331,45 @@
       "credits": [60, 90],
       "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1 } },
       "pitch": "The Pikes have taken over the back room at {site} and drink on the house. {client} says the house is closing."
+    },
+    {
+      "id": "losepaper",
+      "title": "Losing the paper",
+      "mission": "hack",
+      "turns": 2,
+      "clients": ["rook"],
+      "sites": ["depot"],
+      "encounter": "guards",
+      "against": "conreg",
+      "credits": [40, 60],
+      "quest": "debt",
+      "pitch": "Con-Reg keeps the paper on every miner's debt on a terminal at {site}. {client} has money on how long you'll last, and wants better odds: lose your file, and he'll pay for the trouble."
+    },
+    {
+      "id": "warrant",
+      "title": "A clerk's favour",
+      "mission": "hack",
+      "turns": 2,
+      "clients": ["ilse"],
+      "sites": ["brig"],
+      "encounter": "provostpatrol",
+      "against": "fleet",
+      "credits": [30, 50],
+      "quest": "pardon",
+      "pitch": "The Provost's clerk drinks at {site} on credit, and {client} holds his bill. While the duty MPs walk their rounds his terminal is yours: lose a warrant in the filing. Yours."
+    },
+    {
+      "id": "crates",
+      "title": "Eleven crates",
+      "mission": "grab",
+      "crates": 2,
+      "clients": ["ferris"],
+      "sites": ["pound"],
+      "encounter": "customs",
+      "against": "fleet",
+      "credits": [30, 50],
+      "quest": "cargo",
+      "pitch": "Customs fished eleven of your forty crates out of the river and stacked them in {site}, to sell back to the Hallorans at auction. {client} knows which two pallets. Bring them out."
     }
   ]
 }

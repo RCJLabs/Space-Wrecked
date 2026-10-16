@@ -11,7 +11,9 @@
 //            start, exit }. A node of a kind that holds events has one
 //            (node.event, an id in data/events.json). The system past the
 //            charts is one too, with system: true, its worlds' nodes each
-//            carrying their world, and no jump point (exit: null)
+//            carrying their world, and no jump point (exit: null). From
+//            M33b a node can carry a quest's event (node.quest, its id),
+//            put there as the sector is entered (quests.js placeQuests)
 //   at       the node the ship is at
 //   seen     the nodes it has been to in this sector, in order
 //   past     the names of the sectors crossed before, oldest first
@@ -48,7 +50,9 @@
 // and neither does a refit or letting crew go. From
 // the jump point, leaving the sector is a jump into the next one's way in,
 // rolled from the campaign's RNG as it is left; from the last sector's, into
-// the system's, rolled the same way. The flags count the jumps,
+// the system's, rolled the same way. Each sector entered gets the events of
+// the quests' steps open on the run (M33b, quests.js), and leaving the last
+// one ends any such quest: it goes cold. The flags count the jumps,
 // the long ones, the hungry ones, the hit points the med bay healed, the
 // supplies bought, those left behind, and the scans.
 //
@@ -63,8 +67,8 @@
 // the chance, by the heat the ship arrives with, and arriving rolls it
 // before anything else there. An event where they wait comes once they are
 // dealt with. What a node holds is known for the way in, the jump point and
-// the kinds on the charts (stations, nebulae), and for any node the ship
-// has been at or next to; a scan shows every node within scanRange links
+// the kinds on the charts (stations, nebulae), a quest's node (M33b), and
+// for any node the ship has been at or next to; a scan shows every node within scanRange links
 // of the ship (and a scout's more), for scanHeat.
 import { int } from '../core/rng.js';
 import { actOf, atStation } from './acts.js';
@@ -77,6 +81,7 @@ import { generateSystem } from './gen/system.js';
 import { withHeat } from './heat.js';
 import { huntOdds, rollHunt } from './hunt.js';
 import { healCrew, healRate } from './medbay.js';
+import { coldAt, goCold, placeQuests } from './quests.js';
 import { wrecksToRepair } from './repair.js';
 import { costAt, dockHeat, mostFor, shareHere } from './standing.js';
 
@@ -116,7 +121,7 @@ export function beginRun(campaign, rules) {
   if (!onTheRun(campaign, rules)) return { ok: false, error: 'The run starts once the ship has launched.' };
   if (campaign.run) return { ok: false, error: 'The run is under way.' };
   const { value: seed, state: rng } = int(campaign.rng, 0, MAX_SEED);
-  const sector = generateSector(rules, seed, 1);
+  const sector = placeQuests(generateSector(rules, seed, 1), campaign, rules);
   return { ok: true, campaign: { ...campaign, rng, supplies: supplyCapacity(campaign.ship, rules, campaign.crew), run: freshRun(sector, []) } };
 }
 
@@ -166,7 +171,7 @@ export function within(sector, id, links) {
 export function knownNodes(run, rules) {
   const { sector } = run;
   const charted = (type) => FIXED.includes(type) || rules.nodeTypes.get(type)?.charted === true;
-  const known = new Set(sector.nodes.filter((node) => charted(node.type)).map((node) => node.id));
+  const known = new Set(sector.nodes.filter((node) => charted(node.type) || node.quest).map((node) => node.id));
   for (const id of run.seen) {
     known.add(id);
     for (const next of linked(sector, id)) known.add(next);
@@ -362,22 +367,28 @@ export function leavePlan(campaign, rules) {
   const left = suppliesOver(campaign, rules);
   const { jumpHeat } = rules.balance;
   const hunt = huntOdds(campaign, rules, withHeat(campaign.heat, jumpHeat), 'start');
-  return { ok: true, kind: last ? 'system' : 'sector', supplies, left, heat: jumpHeat, hungry: campaign.supplies - left < supplies, heal: healRate(campaign, rules), fixes: jumpFixes(campaign, rules), hunt };
+  // Leaving the last sector, the quests whose step is on the run go cold
+  // (M33b): their ids, for the plan to say so first.
+  const cold = last ? coldAt(campaign, rules, 2).map((quest) => quest.id) : [];
+  return { ok: true, kind: last ? 'system' : 'sector', supplies, left, heat: jumpHeat, hungry: campaign.supplies - left < supplies, heal: healRate(campaign, rules), fixes: jumpFixes(campaign, rules), hunt, cold };
 }
 
-// Leaves the sector into the next one, or from the last into the system
-// past the charts, where the hunters may be waiting at the way in. Returns
-// { ok: true, campaign, plan, hunt } or { ok: false, error }.
+// Leaves the sector into the next one, with the quests' events placed on it
+// (M33b), or from the last into the system past the charts, the quests
+// still open on the run gone cold; the hunters may be waiting at the way
+// in. Returns { ok: true, campaign, plan, hunt, cold (the quests gone cold,
+// by id) } or { ok: false, error }.
 export function leaveSector(campaign, rules) {
   const plan = leavePlan(campaign, rules);
   if (!plan.ok) return plan;
   const moved = spend(campaign, rules, plan);
-  const { value: seed, state: rng } = int(moved.rng, 0, MAX_SEED);
+  const cooled = plan.kind === 'system' ? goCold(moved, rules, 2) : { campaign: moved, cold: [] };
+  const { value: seed, state: rng } = int(cooled.campaign.rng, 0, MAX_SEED);
   const past = [...campaign.run.past, campaign.run.sector.name];
   const index = campaign.run.sector.index + 1;
-  const sector = plan.kind === 'system' ? generateSystem(rules, seed, index) : generateSector(rules, seed, index, { avoid: past });
-  const met = rollHunt({ ...moved, rng, run: freshRun(sector, past) }, rules);
-  return { ok: true, plan, campaign: met.campaign, hunt: met.hunt };
+  const sector = plan.kind === 'system' ? generateSystem(rules, seed, index) : placeQuests(generateSector(rules, seed, index, { avoid: past }), cooled.campaign, rules);
+  const met = rollHunt({ ...cooled.campaign, rng, run: freshRun(sector, past) }, rules);
+  return { ok: true, plan, campaign: met.campaign, hunt: met.hunt, cold: cooled.cold };
 }
 
 // A jump's cost: the supplies the holds can't take, left behind; supplies

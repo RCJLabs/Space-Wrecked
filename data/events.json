@@ -165,7 +165,7 @@
           "id": "help",
           "label": "Lend a hand",
           "needs": { "supplies": 3 },
-          "outcomes": [{ "chance": 100, "text": "Your crew and theirs get the reactor back on your spares. The midshipman logs your ship as a friend of the Fleet, in triplicate.", "effects": { "supplies": -3, "standing": { "fleet": 2 } } }]
+          "outcomes": [{ "chance": 100, "text": "The reactor's back on your spares, and the midshipman logs you a friend of the Fleet. Pirates took her other stores pod: the Fleet would like it home.", "effects": { "supplies": -3, "standing": { "fleet": 2 } } }]
         },
         {
           "id": "stores",
@@ -479,6 +479,75 @@
           "outcomes": [{ "chance": 100, "text": "The probe's panels and frame, light and easy to carry.", "effects": { "materials": 4 } }]
         },
         { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "It can lie there a while longer.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "refiled",
+      "kind": "distress",
+      "quest": "debt",
+      "title": "Con-Reg courier",
+      "text": "A Con-Reg courier skiff on the emergency band, one engine out. Her hold is full of paper filed again from Depot 4's backups, and yours is in there somewhere.",
+      "choices": [
+        {
+          "id": "board",
+          "label": "Find your file",
+          "outcomes": [
+            { "chance": 75, "text": "Her pilot opens the hold for a tow and doesn't watch what goes out the airlock. Con-Reg's paper on you is a cloud of confetti.", "effects": { "heat": -15 } },
+            { "chance": 25, "text": "Her pilot did watch. The argument costs someone a bruise, and the paper goes out the airlock all the same.", "effects": { "heat": -15, "wound": { "hp": 3 } } }
+          ]
+        },
+        { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "Someone else will tow her. Your paper will get where it's going.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "resolute",
+      "kind": "distress",
+      "quest": "pardon",
+      "title": "The Resolute",
+      "text": "A Fleet tender at anchor, running lights low: the Resolute, your old ship. Her chief is on the open band, asking anyone for spares. The crate you walked off with would have seen her right.",
+      "choices": [
+        {
+          "id": "pay",
+          "label": "Pay for her spares",
+          "needs": { "credits": 40 },
+          "outcomes": [{ "chance": 100, "text": "The chief knows your voice and doesn't say so. He logs the money as a gift from a friend of the Fleet, which the Provost will have to read.", "effects": { "credits": -40, "heat": -15, "standing": { "fleet": 4 } } }]
+        },
+        { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "Someone else will see her right. Probably.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "lostcargo",
+      "kind": "derelict",
+      "quest": "cargo",
+      "title": "Lost cargo",
+      "text": "Twenty-nine crates still roped together, tumbling slow where you cut them loose, the Hallorans' seal on every one.",
+      "choices": [
+        {
+          "id": "haul",
+          "label": "Haul it in for them",
+          "outcomes": [{ "chance": 100, "text": "Twenty-nine crates, left at the family's next drop with your compliments. Old Halloran is almost pleased.", "effects": { "heat": -15, "standing": { "hallorans": 4 } } }]
+        },
+        { "id": "leave", "label": "Leave it drifting", "outcomes": [{ "chance": 100, "text": "They've waited this long.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "storespod",
+      "kind": "derelict",
+      "quest": "tender",
+      "title": "Stolen stores pod",
+      "text": "The Fleet tender's other stores pod, tumbling where the pirates left it: seals cut, her number still stencilled on the side. They took the good stuff and left the rest.",
+      "choices": [
+        {
+          "id": "tag",
+          "label": "Tag it for the Fleet",
+          "outcomes": [{ "chance": 100, "text": "You tow it to the beacon and log it on the Fleet's band. A lieutenant thanks you by name, and a finder's fee follows.", "effects": { "credits": 25, "standing": { "fleet": 4 } } }]
+        },
+        {
+          "id": "strip",
+          "label": "Strip what's left",
+          "outcomes": [{ "chance": 100, "text": "Tinned rations and a crate of filters, the tender's number on every tin. The Fleet will know.", "effects": { "supplies": 8, "credits": 10, "standing": { "fleet": -2 } } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "It isn't going anywhere.", "effects": {} }] }
       ]
     }
   ]
