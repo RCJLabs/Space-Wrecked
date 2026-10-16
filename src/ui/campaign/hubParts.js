@@ -8,6 +8,7 @@ import { palette, skinFor } from '../../render/palette.js';
 import { BOARD_VIEW, boardBox, createBoard } from '../../render/shipView.js';
 import { node, setText } from '../fight/panels.js';
 import { shortNames } from '../names.js';
+import { rankMark } from '../portrait.js';
 
 const MARGIN = 10; // pixels around the ship
 const NO_MIN = [0, 0]; // the view fits the ship alone, however small
@@ -19,15 +20,21 @@ export function panel(title, ...children) {
 }
 
 // The crew list's rows, from crewText (hubText.js): the name cut short
-// (names.js), with the job under it when the name isn't the job's, a bar
-// for hit points, and the numbers. The crew card has the whole name.
+// (names.js) with a chevron for each rank (M32b), the job under it when the
+// name isn't the job's, a bar for hit points, and the numbers. The crew
+// card has the whole name.
 export function crewRows(crew) {
   const short = shortNames(crew.map(({ name }) => name));
-  return crew.map(({ name, job, hp, max }, i) => {
+  return crew.map(({ name, job, rank, hp, max }, i) => {
     const row = node('li');
     row.dataset.wounded = String(hp < max);
     const who = node('span', 'hgr-name');
-    who.append(node('span', null, short[i]));
+    // The name cut short, never the chevrons after it.
+    const named = node('span', 'hgr-named');
+    named.append(node('span', null, short[i]));
+    const mark = rankMark(rank);
+    if (mark) named.append(mark);
+    who.append(named);
     who.title = name;
     if (job) who.append(node('small', null, job));
     const bar = node('span', 'hgr-hp');

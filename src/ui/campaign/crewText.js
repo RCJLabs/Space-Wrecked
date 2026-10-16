@@ -8,9 +8,10 @@ import { crewColor } from '../../render/units.js';
 import { maxHp } from '../../sim/campaign.js';
 import { crewRoom, defaultSquad } from '../../sim/crew.js';
 import { healRate } from '../../sim/medbay.js';
+import { rankOf } from '../../sim/ranks.js';
 import { dismissPlan, hirePlan, recruitOffer } from '../../sim/recruits.js';
 import { hereOf, onTheRun, supplyCapacity } from '../../sim/travel.js';
-import { jobBrief } from './crewJobText.js';
+import { jobBrief, rankLine } from './crewJobText.js';
 
 // How a trait's numbers read: "aim +5", "hit points +2".
 const STAT_NAMES = { hp: 'hit points', aim: 'aim', defense: 'defense', mobility: 'mobility', armor: 'armor' };
@@ -18,16 +19,19 @@ const STAT_NAMES = { hp: 'hit points', aim: 'aim', defense: 'defense', mobility:
 // The crew card:
 //   title    "Crew · 3 aboard, room for 4"
 //   text     the room, what the med bay heals, where crew come and go
-//   members  [{ id, name, about, traits, brief, hp, max, face, dismiss }]:
-//            about is "Captain · Marine", or the job unless it is the name;
-//            brief what the job brings (crewJobText.js jobBrief, M32);
-//            face is what their portrait is drawn from (faceOf); dismiss
-//            { key, ok, label, ask, text, why } at a station, null
-//            elsewhere and for the captain
+//   members  [{ id, name, about, rank, rankLine, traits, brief, hp, max,
+//            face, dismiss }]: about is "Captain · Marine", or the job
+//            unless it is the name, and a recruit's background (M32b); rank
+//            their rank, 0 for none, and rankLine it with their fights
+//            (crewJobText.js rankLine); brief what the job brings at their
+//            rank (jobBrief, M32); face is what their portrait is drawn
+//            from (faceOf); dismiss { key, ok, label, ask, text, why } at a
+//            station, null elsewhere and for the captain
 //   hire     null away from a station, else { title, line, recruits: [{
-//            key, slot, name, about, traits, brief, hp, max, face, ok,
-//            label, ask, text, why }] }: line says why no one can sign on,
-//            or that no one is left, or is null
+//            key, slot, name, about, past, rank, rankLine, traits, brief,
+//            hp, max, face, ok, label, ask, text, why }] }: past is the
+//            line about their background, the label their fee; line says
+//            why no one can sign on, or that no one is left, or is null
 //   hint     { tone, text } for the foot while nothing has had a first tap
 export function crewCardText(campaign, rules) {
   const room = crewRoom(campaign.ship, rules);
@@ -40,9 +44,11 @@ export function crewCardText(campaign, rules) {
     return {
       id: member.id,
       name: member.name,
-      about: [captain ? 'Captain' : null, job === member.name ? null : job].filter(Boolean).join(' · '),
+      about: [captain ? 'Captain' : null, job === member.name ? null : job, pastOf(member, rules)?.name].filter(Boolean).join(' · '),
+      rank: rankOf(member, rules),
+      rankLine: rankLine(member, rules),
       traits: traitsText(member.traits, rules),
-      brief: jobBrief(member.job, rules),
+      brief: jobBrief(member.job, rules, rankOf(member, rules)),
       hp: member.hp,
       max: maxHp(member, rules),
       face: faceOf(member, rules, i),
@@ -78,9 +84,10 @@ export function crewSaid(card, armed) {
 }
 
 // The squad picker, for a boarding: { show (more aboard than a squad
-// takes), size, label, line, title, text, members: [{ id, name, about, hp,
-// max, face, going }] }. line says who goes and who sits it out. picked:
-// the crew ids picked, or null for the default (crew.js).
+// takes), size, label, line, title, text, members: [{ id, name, about,
+// rank, hp, max, face, going }] }: about is the job, rank their rank (M32b,
+// 0 for none). line says who goes and who sits it out. picked: the crew
+// ids picked, or null for the default (crew.js).
 export function squadText(campaign, rules, picked = null) {
   const size = rules.balance.squadSize;
   const going = new Set(picked ?? defaultSquad(campaign.crew, rules));
@@ -95,7 +102,7 @@ export function squadText(campaign, rules, picked = null) {
     text: 'Tap someone to take them or leave them aboard. The rest sit this one out.',
     members: campaign.crew.map((member, i) => {
       const job = jobName(member.job, rules);
-      return { id: member.id, name: member.name, about: job === member.name ? '' : job, hp: member.hp, max: maxHp(member, rules), face: faceOf(member, rules, i), going: going.has(member.id) };
+      return { id: member.id, name: member.name, about: job === member.name ? '' : job, rank: rankOf(member, rules), hp: member.hp, max: maxHp(member, rules), face: faceOf(member, rules, i), going: going.has(member.id) };
     }),
   };
 }
@@ -124,13 +131,17 @@ function recruitText(campaign, rules, recruit, place) {
   const crew = campaign.crew.length + 1;
   const each = rules.balance.jumpSupplies * crew;
   const jumps = Math.floor(supplyCapacity(campaign.ship, rules, [...campaign.crew, recruit]) / Math.max(1, each));
+  const past = pastOf(recruit, rules);
   return {
     key: `hire:${recruit.slot}`,
     slot: recruit.slot,
     name: recruit.name,
-    about: jobName(recruit.job, rules),
+    about: [jobName(recruit.job, rules), past?.name].filter(Boolean).join(' · '),
+    past: past?.text ?? null,
+    rank: rankOf(recruit, rules),
+    rankLine: rankLine(recruit, rules, true),
     traits: traitsText(recruit.traits, rules),
-    brief: jobBrief(recruit.job, rules),
+    brief: jobBrief(recruit.job, rules, rankOf(recruit, rules)),
     hp: recruit.hp,
     max: recruit.hp,
     face: faceOf(recruit, rules, place),
@@ -170,6 +181,12 @@ function listed(names) {
 
 function jobName(job, rules) {
   return rules.jobs.get(job)?.name ?? job;
+}
+
+// A recruit's background (data/recruits.json, M32b), or null for the start
+// crew and one the data no longer has.
+function pastOf(member, rules) {
+  return rules.recruits.backgrounds.get(member.background) ?? null;
 }
 
 // "Steady hands: aim +5", traits joined.

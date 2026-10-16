@@ -6,13 +6,14 @@ import { test } from 'node:test';
 import { COLONY_EFFECTS, STATION_EFFECTS } from '../src/sim/edges.js';
 import { ORDER_KINDS } from '../src/sim/orders.js';
 import { captainText } from '../src/ui/campaign/captainText.js';
-import { byJob, COLONY_SHORT, COLONY_WORDS, jobBrief, jobName, jobSaid, ORDER_WORDS, STATION_SHORT, STATION_WORDS } from '../src/ui/campaign/crewJobText.js';
+import { byJob, COLONY_SHORT, COLONY_WORDS, jobBrief, jobName, jobSaid, ORDER_SHORT, ORDER_WORDS, rankGives, rankLine, rankUpLines, STATION_SHORT, STATION_WORDS } from '../src/ui/campaign/crewJobText.js';
 import { crewCardText } from '../src/ui/campaign/crewText.js';
 import { rules } from './battleKit.js';
 import { readyToLaunch } from './launchKit.js';
 
 test('every order kind and every ship and colony effect has its words', () => {
   assert.deepEqual(Object.keys(ORDER_WORDS).sort(), Object.keys(ORDER_KINDS).sort());
+  assert.deepEqual(Object.keys(ORDER_SHORT).sort(), Object.keys(ORDER_KINDS).sort());
   assert.deepEqual(Object.keys(STATION_WORDS).sort(), Object.keys(STATION_EFFECTS).sort());
   assert.deepEqual(Object.keys(COLONY_WORDS).sort(), Object.keys(COLONY_EFFECTS).sort());
   assert.deepEqual(Object.keys(STATION_SHORT).sort(), Object.keys(STATION_EFFECTS).sort());
@@ -61,4 +62,33 @@ test("each job says its order, what it does aboard and what it does at the colon
   assert.equal(jobName('scout', rules), 'Scout');
   assert.equal(jobName('cook', rules), 'cook');
   assert.equal(byJob({ name: 'Mara Quist', job: 'xenobiologist' }, rules), 'Mara Quist the xenobiologist');
+});
+
+test('what each rank gives, short, from its numbers (M32b)', () => {
+  const said = [...rules.jobs.keys()].map((job) => [job, rankGives(job, 1, rules), rankGives(job, 2, rules)]);
+  assert.deepEqual(said, [
+    ['marine', 'Suppress −40 aim', 'guns +15'],
+    ['engineer', 'Weld 5 rounds', 'fixes 2 wrecks a jump'],
+    ['medic', 'Patch 5 hit points', 'med bay +2 · infirmary +2'],
+    ['pilot', 'Hustle ×2 a fight', 'evasion +15'],
+    ['scout', 'Mark +20 to hit', 'scans +2 links'],
+    ['xenobiologist', 'Sedate +10 to hit', 'farms +2'],
+    ['quartermaster', 'Kit out ×3 a fight', 'lockers +20 · stores +40'],
+  ]);
+  assert.equal(rankGives('marine', 3, rules), '', 'no rank 3');
+  // A rank's words come with the job's: the order and effects at that rank.
+  assert.match(jobSaid('xenobiologist', rules, 1).order, /at a shot's odds \+10:/);
+  assert.match(jobSaid('xenobiologist', rules).order, /at a shot's odds:/);
+  assert.equal(jobBrief('medic', rules, 2), 'Patch ×2 · med bay +2 · infirmary +2');
+});
+
+test("a crew member's rank and fights on a line, and who reaches a rank as a fight ends (M32b)", () => {
+  assert.equal(rankLine({ job: 'marine', fights: 0 }, rules), '0 fights · rank 1 at 3');
+  assert.equal(rankLine({ job: 'marine', fights: 1 }, rules), '1 fight · rank 1 at 3');
+  assert.equal(rankLine({ job: 'scout', fights: 3 }, rules), 'Rank 1, Spotter · 3 fights · rank 2 at 8');
+  assert.equal(rankLine({ job: 'pilot', fights: 12 }, rules, true), 'Rank 2, Ace · 12 fights stood');
+  assert.deepEqual(rankUpLines([{ member: { name: 'Rosa Vint', job: 'marine' }, rank: 1 }, { member: { name: 'Bram Dahl', job: 'quartermaster' }, rank: 2 }], rules), [
+    'Rosa Vint reaches rank 1, Pinning fire: Suppress −40 aim.',
+    'Bram Dahl reaches rank 2, Stores master: lockers +20 · stores +40.',
+  ]);
 });

@@ -63,3 +63,9 @@ export function jobAtRank(job, rank) {
 export function memberJob(member, rules) {
   return jobAtRank(rules.jobs.get(member.job), rankOf(member, rules));
 }
+
+// The name of the highest of a job's ranks up to `rank` that sharpens its
+// `layer` (one of RANK_LAYERS), or null for none.
+export function rankNameFor(job, rank, layer) {
+  return (job?.ranks ?? []).slice(0, Math.max(0, rank)).filter((step) => step[layer]).at(-1)?.name ?? null;
+}

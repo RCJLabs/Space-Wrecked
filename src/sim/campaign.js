@@ -369,15 +369,16 @@ export function saveFight(campaign, battle, log) {
 //   stabilized or bled out comes back with 1, badly hurt;
 // - in an act whose home heals (act 1's hangar), everyone heals fully;
 // - anyone killed (only where death is permanent) leaves the crew;
+// - everyone who stood in it counts it (rankUps says who reaches a rank);
 // - the flags count the fights won and lost.
 // A fight still going is left as it is. A job's pay is contracts.js's.
 export function endFight(campaign, rules) {
   const { fight } = campaign;
   if (!fight?.battle.winner) return campaign;
   const heals = actOf(campaign, rules)?.heals === true;
-  const fought = fight.battle.units.filter((unit) => unit.side === 'crew');
+  const stood = standing(fight, fight.battle);
   const crew = campaign.crew.flatMap((member) => {
-    const unit = fought[fight.crew.indexOf(member.id)];
+    const unit = stood.get(member.id);
     if (unit?.status === 'dead') return [];
     // Everyone who stood in it counts it, won or lost (ranks.js, M32b).
     const counted = unit ? { ...member, fights: (member.fights ?? 0) + 1 } : member;
@@ -388,6 +389,29 @@ export function endFight(campaign, rules) {
   const flag = fight.battle.winner === 'crew' ? 'fightsWon' : 'fightsLost';
   const flags = { ...campaign.flags, [flag]: (campaign.flags[flag] ?? 0) + 1 };
   return { ...campaign, place: 'hub', fight: null, crew, flags };
+}
+
+// Who reaches a new rank as the fight under way ends (ranks.js, M32b), by
+// endFight's count: [{ member, rank }] in the crew's order, each standing
+// in it and alive. battle is the fight's as it stands, once it has a
+// winner; [] before.
+export function rankUps(campaign, battle, rules) {
+  const { fight } = campaign;
+  if (!fight || !battle?.winner) return [];
+  const stood = standing(fight, battle);
+  return campaign.crew.flatMap((member) => {
+    const unit = stood.get(member.id);
+    if (!unit || unit.status === 'dead') return [];
+    const rank = rankOf({ ...member, fights: (member.fights ?? 0) + 1 }, rules);
+    return rank > rankOf(member, rules) ? [{ member, rank }] : [];
+  });
+}
+
+// The crew in a fight, by id: the unit each crew member is in battle
+// (fight.crew lists them in the order of its crew units).
+function standing(fight, battle) {
+  const units = battle.units.filter((unit) => unit.side === 'crew');
+  return new Map(fight.crew.map((id, i) => [id, units[i]]).filter(([, unit]) => unit));
 }
 
 // What is wrong with a saved campaign, as sentences for the player; an

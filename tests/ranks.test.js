@@ -9,7 +9,7 @@ import { makeSave, MIGRATIONS, parseSave, SAVE_VERSION } from '../src/core/save.
 import { choicesFor, hitChance, sideStats } from '../src/sim/approach.js';
 import { act, createBattle } from '../src/sim/battle.js';
 import { battleProblem } from '../src/sim/battleShape.js';
-import { beginFight, campaignProblems, crewUnit, endFight, newCampaign } from '../src/sim/campaign.js';
+import { beginFight, campaignProblems, crewUnit, endFight, newCampaign, rankUps } from '../src/sim/campaign.js';
 import { storesOf } from '../src/sim/colony.js';
 import { colonyBy, colonyEdge, stationBy, stationEdge } from '../src/sim/edges.js';
 import { approachIntent, approachState } from '../src/sim/encounter.js';
@@ -18,9 +18,10 @@ import { edgeKey } from '../src/sim/mapFromShip.js';
 import { healRate } from '../src/sim/medbay.js';
 import { shotOdds } from '../src/sim/odds.js';
 import { dartOdds } from '../src/sim/orders.js';
-import { jobAtRank, memberJob, nextRankAt, rankFor, rankOf } from '../src/sim/ranks.js';
+import { jobAtRank, memberJob, nextRankAt, rankFor, rankNameFor, rankOf } from '../src/sim/ranks.js';
 import { initialState, saveData } from '../src/sim/root.js';
 import { beginRun, jump, jumpPlan, linked, scanPlan, supplyCapacity } from '../src/sim/travel.js';
+import { oddsText, unitText } from '../src/ui/fight/hints.js';
 import { openMap, rules, wall } from './battleKit.js';
 import { settled } from './colonyKit.js';
 import { CUTTER_SEED, readyToLaunch } from './launchKit.js';
@@ -91,12 +92,41 @@ test('everyone who stands in a fight counts it when it ends, won or lost; whoeve
   assert.deepEqual(beginFight(seasoned, rules).campaign.fight.battle.units.filter((u) => u.side === 'crew').map((u) => u.rank), [1, 1, 1]);
 });
 
+test('who reaches a rank as a fight ends, by its count: standing in it and alive, the one sitting out not; none while it goes on', () => {
+  const start = newCampaign(rules, 5);
+  // 2, 7 and 2 fights: the first and second reach a rank if they stand in
+  // this one; the third is killed.
+  const before = { ...start, crew: start.crew.map((m, i) => ({ ...m, fights: [2, 7, 2][i] })) };
+  const fighting = beginFight(before, rules).campaign;
+  const units = fighting.fight.battle.units.map((u) => (u.id === 'c3' ? { ...u, status: 'dead', hp: 0 } : u));
+  const satOut = { ...start.crew[0], id: 9, name: 'Sat Out', fights: 2 };
+  const campaign = { ...fighting, crew: [...fighting.crew, satOut] };
+  const battle = { ...fighting.fight.battle, units, winner: 'enemy' };
+  assert.deepEqual(rankUps(campaign, battle, rules).map(({ member, rank }) => [member.id, rank]), [[1, 1], [2, 2]]);
+  assert.deepEqual(rankUps(campaign, { ...battle, winner: null }, rules), [], 'not over yet');
+  // endFight agrees.
+  const after = endFight({ ...campaign, fight: { ...campaign.fight, battle } }, rules);
+  assert.deepEqual(after.crew.map((m) => [m.id, rankOf(m, rules)]), [[1, 1], [2, 2], [9, 0]]);
+});
+
+test('the name of the rank that sharpens each layer: an order\'s at rank 1 and on, an effect\'s at rank 2', () => {
+  const marine = rules.jobs.get('marine');
+  assert.deepEqual([0, 1, 2].map((rank) => rankNameFor(marine, rank, 'order')), [null, 'Pinning fire', 'Pinning fire']);
+  assert.deepEqual([0, 1, 2].map((rank) => rankNameFor(marine, rank, 'station')), [null, null, 'Gun captain']);
+  assert.equal(rankNameFor(undefined, 2, 'order'), null);
+});
+
 test("a crew member's rank goes into a fight: the unit keeps it, starts with its order's uses, and reads back", () => {
   const member = newCampaign(rules, 5).crew[0];
   assert.equal(crewUnit({ ...member, fights: 3 }, rules).rank, 1);
   assert.equal('rank' in crewUnit({ ...member, fights: 2 }, rules), false, 'rank 0 adds nothing');
   const battle = fight(openMap(8, 2), [{ kind: 'pilot', x: 0, y: 0, rank: 1 }, { kind: 'pilot', x: 0, y: 1 }, { kind: 'pirate', x: 7, y: 0 }]);
   assert.deepEqual([who(battle, 'c1').rank, who(battle, 'c1').uses, 'rank' in who(battle, 'c2'), who(battle, 'c2').uses], [1, 2, false, 1]);
+  // Its card says so, and counts its uses against the rank's.
+  const card = unitText(who(battle, 'c1'), rules).lines;
+  assert.match(card[0], /^Crew · rank 1, Second wind · 8\/8 hit points/);
+  assert.ok(card.includes('Hustle: 2 of 2 left this fight.'), card.join(' | '));
+  assert.match(unitText(who(battle, 'c2'), rules).lines[0], /^Crew · 8\/8 hit points/);
   assert.equal(battleProblem(JSON.parse(JSON.stringify(battle))), null);
   assert.notEqual(battleProblem({ ...battle, units: battle.units.map((u) => (u.id === 'e1' ? { ...u, rank: 1 } : u)) }), null, 'an enemy has no rank');
   assert.notEqual(battleProblem({ ...battle, units: battle.units.map((u) => (u.id === 'c1' ? { ...u, rank: 0 } : u)) }), null, 'a rank is 1 or more');
@@ -153,6 +183,10 @@ test("Xenobiologist rank 1, Steady dart: Sedate's dart is +10, shown as a part o
   assert.deepEqual(dartOdds(battle, who(battle, 'c2'), who(battle, 'e1'), rules), shotOdds(battle, who(battle, 'c2'), who(battle, 'e1'), rules), 'rank 0: a shot\'s odds');
   const { events } = play(battle, order('c1', { target: 'e1' }));
   assert.equal(events[0].chance, dart.hit);
+  // The odds card shows it as a row of its own, by the rank's name.
+  const card = oddsText(who(battle, 'c1'), who(battle, 'e1'), dart, rules);
+  assert.deepEqual(card.rows.at(-1), ['Steady dart', '+10']);
+  assert.equal(card.hit, dart.hit);
 });
 
 test('Quartermaster rank 1, Deep pockets: Kit out three times a fight', () => {

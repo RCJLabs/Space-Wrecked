@@ -6,7 +6,9 @@ import { test } from 'node:test';
 import { launch } from '../src/sim/launch.js';
 import { hireRecruit, recruitOffer } from '../src/sim/recruits.js';
 import { beginRun, linked } from '../src/sim/travel.js';
+import { jobBrief, rankLine } from '../src/ui/campaign/crewJobText.js';
 import { crewCardText, crewHeading, crewSaid, squadText } from '../src/ui/campaign/crewText.js';
+import { crewText as crewRowsText } from '../src/ui/campaign/hubText.js';
 import { jumpText, sectorText } from '../src/ui/campaign/sectorText.js';
 import { withPart } from '../tools/startShip.js';
 import { rules } from './battleKit.js';
@@ -51,7 +53,9 @@ test('at a station: the recruits for hire with their fee and what they eat, and 
   assert.equal(card.hire.recruits.length, balance.recruitOffer);
   const [first] = card.hire.recruits;
   const { fee } = offer[0];
-  assert.deepEqual([first.key, first.name, first.about, first.ok, first.label, first.ask], ['hire:0', offer[0].name, rules.jobs.get(offer[0].job).name, true, `Sign on · ${fee}`, `Sign on for ${fee}?`]);
+  const past = rules.recruits.backgrounds.get(offer[0].background);
+  assert.deepEqual([first.key, first.name, first.about, first.ok, first.label, first.ask], ['hire:0', offer[0].name, `${rules.jobs.get(offer[0].job).name} · ${past.name}`, true, `Sign on · ${fee}`, `Sign on for ${fee}?`]);
+  assert.deepEqual([first.past, first.rankLine], [past.text, rankLine(offer[0], rules, true)]);
   assert.match(first.traits, /^[A-Z][a-z ]+: [a-z ]+ [+−]\d+/, 'a trait and what it does');
   const eats = 4 * balance.jumpSupplies;
   assert.equal(first.text, `Sign ${first.name} on for ${fee} credits. A crew of 4 eats ${eats} supplies a jump, and full holds last ${Math.floor(balance.baseSupplies / eats)} jumps. Tap again to sign on.`);
@@ -129,4 +133,37 @@ test('the map: a working med bay in the holdings, and what it heals on a jump wi
   assert.ok(jumpText(hurt(campaign, { marine: 4 }), rules, to).lines.includes(line));
   const bay = campaign.ship.modules.find((m) => m.type === 'medbay').uid;
   assert.ok(!sectorText({ ...campaign, wrecks: { [bay]: 'fire' } }, rules).hold.some(([label]) => label === 'Med bay'), 'wrecked, it heals nothing');
+});
+
+test("ranks on the cards (M32b): each one's rank and fights, a recruit's background, rank and fee before signing on and their background after, and the squad's ranks", () => {
+  const station = atStation({ credits: 500 });
+  // A station offering a Fleet veteran, at rank 2.
+  const seed = Array.from({ length: 200 }, (_, i) => i + 1).find((n) => recruitOffer({ ...station, seed: n }, rules).some((r) => r.background === 'fleet-veteran'));
+  const campaign = { ...station, seed, crew: station.crew.map((m, i) => ({ ...m, fights: [4, 2, 9][i] })) };
+  const card = crewCardText(campaign, rules);
+  const [captain, second, third] = campaign.crew;
+  assert.deepEqual(card.members.map((m) => m.rank), [1, 0, 2]);
+  assert.equal(card.members[0].rankLine, `Rank 1, ${rules.jobs.get(captain.job).ranks[0].name} · 4 fights · rank 2 at 8`);
+  assert.equal(card.members[1].rankLine, '2 fights · rank 1 at 3');
+  assert.equal(card.members[2].rankLine, `Rank 2, ${rules.jobs.get(third.job).ranks[1].name} · 9 fights`);
+  assert.equal(card.members[2].brief, jobBrief(third.job, rules, 2), 'what the job brings, at their rank');
+  assert.notEqual(card.members[2].brief, jobBrief(third.job, rules), 'rank 2 sharpens it');
+  assert.equal(card.members[1].past, undefined, 'the start crew have no background');
+  const veteran = recruitOffer(campaign, rules).find((r) => r.background === 'fleet-veteran');
+  const offered = card.hire.recruits.find((r) => r.slot === veteran.slot);
+  const job = rules.jobs.get(veteran.job);
+  assert.equal(offered.about, `${job.name} · Fleet veteran`);
+  assert.equal(offered.past, rules.recruits.backgrounds.get('fleet-veteran').text);
+  assert.deepEqual([offered.rank, offered.rankLine], [2, `Rank 2, ${job.ranks[1].name} · ${veteran.fights} fights stood`]);
+  assert.equal(offered.label, `Sign on · ${veteran.fee}`);
+  assert.equal(veteran.fee, 150, 'two traits at rank 2');
+  // Signed on: their background stays with them on the card.
+  const signed = hireRecruit({ ...campaign, credits: 500 }, rules, veteran.slot).campaign;
+  const member = crewCardText(signed, rules).members.at(-1);
+  assert.equal(member.about, `${job.name} · Fleet veteran`);
+  assert.deepEqual([member.rank, member.rankLine], [2, `Rank 2, ${job.ranks[1].name} · ${veteran.fights} fights`]);
+  // The squad card and the crew panels' rows carry each one's rank, for
+  // its chevrons.
+  assert.deepEqual(squadText(campaign, rules).members.map((m) => [m.about, m.rank]), campaign.crew.map((m, i) => [rules.jobs.get(m.job).name, [1, 0, 2][i]]));
+  assert.deepEqual(crewRowsText(campaign, rules).map((row) => [row.job, row.rank]), campaign.crew.map((m, i) => [rules.jobs.get(m.job).name, [1, 0, 2][i]]));
 });
