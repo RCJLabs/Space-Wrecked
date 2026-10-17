@@ -2,6 +2,119 @@
 
 Newest entry first.
 
+## M36 Events (2026-10-17)
+
+**Status:** done, and the ROADMAP.md box is ticked.
+- **100 events,** the 29 before among them, unchanged:
+  - on the run: derelicts 12, distress calls 12, traders 10, hazards 11, and each background's own 4;
+  - at the colony's places: 9 for each kind.
+- **A choice can need someone:** an Engineer, say, or someone with the Cool head trait. The card names who would take it, or says who it needs.
+- **Traps:** 6 on the run, where a ship comes out firing, and 2 at hulks, where the scavengers were waiting.
+- **The ship hurt or mended:** 7 events wreck parts, and 8 repair them.
+- **No event comes twice** while its kind has others left. Saves are v31.
+
+**How it was picked:** Gate 6's entry below has Evan's answers. ROADMAP.md has the Done when in full, and what was built where it differs.
+
+**What shipped:**
+- **The content** (`data/events.json`): 71 new events, written as the old ones are.
+  - Every job is needed by some choice, and 10 traits are.
+  - The traps on the run are the cutter's (three times) and one for each background's pursuer: the repo tug, the Provost's cutter, and the Hallorans' runner.
+  - Each background's 4 are its pursuer's and its past's: the miner's union and debts, the deserter's old division and amnesty, the smuggler's caches and fences.
+- **The rules** (`src/sim/events.js`, `eventPool.js`, `expeditions.js`, `encounter.js`):
+  - `needs.job`, `needs.trait` and `needs.wrecks`;
+  - `background`;
+  - `ambush` (a preset on the run, `true` at a hulk);
+  - `wreck`, `repair`;
+  - `campaign.eventsMet`.
+  - **Who takes a choice:** the first in the crew's order who fits, in the squad at a place. A wound falls on them while they have more than 1 hit point.
+  - **A wreck** rolls among the parts a volley could hit, then the crew jury-rigs a reactor and an engine as after an approach. **A repair** takes the dearest wreck first.
+- **The words:**
+  - The card names who takes a choice: "Quill Petrov · 80% · 20%". Its first tap says "Quill Petrov takes it."
+  - The odds say a trap ("a trap: a Pirate cutter, firing first"), "a part aboard wrecked", and which part a repair mends ("the Weapon mount repaired").
+  - Results list what was wrecked, what the crew got going again, and what was repaired.
+  - A trap's approach reads "A trap · Pirate cutter", with the event's own words over her volley. Afterwards the event's card says what sprang it.
+  - At a place, a trap leaves her held: board her, or fly home and leave her be.
+- **Saves:** `SAVE_VERSION` 31, with a migration from 30 that starts a save with no events met. The save checks know a trap's approach, a sprung place, and the new changes.
+- **The validator:** the new fields; a trap only at a kind of place the scavengers hold, and on the run only a preset with tactics; a repair sold only with wrecks to mend.
+- **The test players** (`tools/voyagePlan.js`, `tools/voyage.js`):
+  - They make a choice only with whoever it needs aboard (in the squad at a place).
+  - They price a trap as a hostile ship that fires first, a wreck at a station's repair, and a repair at what a station would charge.
+  - They fight a place's trap then and there. Their report counts the traps and the parts wrecked and mended.
+
+**Calls I made, each easy to change:**
+- **Who takes a choice is the first in the crew's order who fits.** The player can't pick who goes. A picker would mean a step between the two taps.
+- **A trap at a hulk** keeps M28's rule for held places: the squad can fly home without fighting. The test player never springs one (it weighs the fight at 16, as two parts lost), so hulk traps are covered by the rule tests and by touch, not by the voyages.
+- **Tuned after measuring.** The first measurement had the bunks voyages fed in 72 of 100, three under the bar, and the hunters met twice as often as on main. Two causes:
+  - **Heat cover:** the old loose rock's "hide" came up more than once a voyage and shed 6 heat each time. Diluted among 11 hazards, it seldom does. Going dark in a solar flare and threading a minefield now shed heat too.
+  - **Credits:** the new events paid less (about 30 credits a voyage). So: the chandler sells stores, and five new events pay a little more (the reactor's cabins, the shrine, the gutted cutter's locker, the fever ship, the red flare).
+  - **The test player spent its purse at events,** on guns and repairs, then couldn't swap its transponder. It now spends credits at an event only beyond a holdful's price, as it already did at stations, except on supplies or a quest's step.
+- **The voyage tests,** adapted under the rule for checks new content breaks:
+  - the run's events count over 100 seeds: the tinker's barge never came up on seeds 1 to 30;
+  - the step-by-step check also walks the deserter's runs: no miner's run on seeds 1 to 30 repaired at a station since M36 (on main, one of 210 did), and the deserter's do;
+  - a new test holds the repeats and the backgrounds' events to the Done when.
+- **The golden sectors** (`tests/golden/sectors.txt`) were regenerated on purpose: the same maps and kinds, with events, the hostile ships' seeds and the names drawn anew from the new pools.
+
+**Measured** over 100 voyages from each start (`tools/voyage.js`, as the voyage tests fly them), main today beside M36. Every rate is within its margin of `MAIN`:
+
+| Rate, in 100 voyages | `MAIN` | Bar | Main today | M36 |
+| --- | --- | --- | --- | --- |
+| Miner refitting: fed all the way | 73 | 58 or more | 68 | 72 |
+| met the hunters in the sectors | 33 | 48 or fewer | 26 | 35 |
+| met the hunters at all | 42 | 57 or fewer | 42 | 47 |
+| lost a raid at the colony | 29 | 44 or fewer | 18 | 18 |
+| hungry in the system | 14 | 29 or fewer | 3 | 8 |
+| two worlds or more surveyed | 68 | 53 or more | 74 | 65 |
+| settled a surveyed world | 81 | 66 or more | 82 | 79 |
+| everyone housed at the colony | 41 | 26 or more | 28 | 39 |
+| short of air at the colony | 0 | 5 or fewer | 0 | 2 |
+| a refit on the way | 69 | 54 or more | 61 | 63 |
+| Miner ignoring heat: met the hunters | 100 | 85 or more | 100 | 99 |
+| Miner, no refits: fed | 82 | 67 or more | 68 | 77 |
+| never scanned | 0 | 5 or fewer | 0 | 2 |
+| fed with a med bay | 79 | 64 or more | 67 | 78 |
+| fed with surgery | 81 | 66 or more | 69 | 81 |
+| signed a recruit (cargo hold) | 44 | 29 or more | 38 | 44 |
+| fed with a cargo hold | 90 | 75 or more | 76 | 81 |
+| fed with bunks | 90 | 75 or more | 75 | 75 |
+| fed with the large hold | 98 | 83 or more | 93 | 90 |
+| Deserter: fed | 80 | 65 or more | 82 | 83 |
+| met the hunters | 45 | 60 or fewer | 26 | 34 |
+| lost a raid | 20 | 35 or fewer | 12 | 19 |
+| Smuggler: fed | 89 | 74 or more | 88 | 90 |
+| met the hunters | 19 | 34 or fewer | 28 | 25 |
+| lost a raid | 18 | 33 or fewer | 7 | 7 |
+
+- **Repeats:** on main, 92 to 99 voyages of 100 met some event twice on the run (2 or 3 a voyage at the median). With M36, none did, in 100 of 100 from each start, and none met a place's event twice at the colony. A voyage meets 10 or 11 events on the run, as before.
+- **Traps:** 5 to 14 a hundred voyages on the run, by set; none at the places (the test player declines them). Wrecks from events left 4 to 7 parts wrecked a hundred voyages (more were hit and jury-rigged); events mended 0 to 2, and 11 for the player ignoring heat.
+- **The hunters, met more often:** in the miner's refitting voyages, 129 meetings a hundred voyages against main's 87, in 47 voyages against 42. It was 155 at first and 168 after the content tune; the purse rule brought it to 129. What's left is likely the hazards' thinner cover and the traps' own shooting (not measured apart). It is within the bar, but the run is a little hotter than main's.
+
+**Done when** (ROADMAP.md, M36, in full there), and how each is met:
+- **100 events,** counted as the Done when counts them: `tests/eventKinds.test.js` (the content test) and `validate-data`.
+- **Needs, backgrounds, traps, wrecks and repairs, fewer repeats, v31:** `tests/eventKinds.test.js` (9 tests), the UI's words in `tests/eventKindsText.test.js` (4).
+- **The test players and the measurements:** above, and in `tests/voyage.test.js`: every `MAIN` rate within its margin, and the M36 test (no repeats in 9 of 10, each background's own on its runs alone).
+- **Touch:** `m36/verify.mjs`, 27 checks at each of the three sizes. All pass. It covers a choice by job naming who takes it and one no one aboard can take; a trap's approach in the event's words, her volley first, and the event's card after; a wreck and a repair in results; and a hulk's trap, from a choice the squad can't take, through the sprung trap, to the squatters' fight. Offline after a reload, every button 48 px or more, no console errors.
+
+**Verified:**
+- `node --test`: 956 tests pass (942 before). `validate-data`: OK, 100 events.
+- `m36/verify.mjs` at the three sizes, as above.
+- Every earlier milestone's browser check (`m36/regress.sh`, M35's to M8's, with M35's, M34's and M31's to M27's copies adapted for v31): running as this is written; the result goes here before the merge.
+
+**Known issues:**
+- **The hunters come more often** on the miner's run than on main, within the bar (above).
+- **Fed with bunks is 75 of 100,** exactly the bar, as main's is today. The next content to move the voyage may tip it.
+- **Station repairs are rarer:** none in the miner's 600 voyages without refits.
+- **The test player never springs a trap at a place,** so no voyage measures one.
+- **The two hulk traps** both bring the squatters, the only party a hulk has.
+
+**What Evan should test on the phone:**
+- **A voyage's events:** different ones all the way, and the job and trait choices. Each names who would take it, or is greyed out saying who it needs.
+- **A trap on the run:** her volley lands before your first order, the screen says "A trap", and the event's card says what sprang it afterwards.
+- **A hazard that wrecks a part, then a trader that repairs it:** the card names the part.
+- **At the colony:** a derelict with the squatters' camp or the ghost freighter. Spring the trap, then board her, or fly home and leave her.
+- **An old save** (v30) opens, with no events met.
+
+**Next session's first task:** settle M37's Done when with Evan (Weapons and enemies, drafted in ROADMAP.md).
+
 ## Gate 6 (2026-10-17)
 
 **Passed.** Evan's answer after M35: "Merge and continue". M35 was already merged, so I asked whether "continue" meant the gate had passed. The answer: "Yes: Gate 6 passed".

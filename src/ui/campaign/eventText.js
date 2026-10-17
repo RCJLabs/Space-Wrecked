@@ -153,7 +153,7 @@ export function changesText(changes, campaign, rules) {
   said.push(...changeLines(changes.standing, rules));
   // What it did to the ship (M36): parts wrecked, those the crew got going
   // again, parts repaired, and a trap sprung.
-  const named = (uid) => partName(campaign.ship.modules.find((module) => module.uid === uid)?.type, rules);
+  const named = (uid) => partName(campaign.ship.modules.find((module) => module.uid === uid)?.type, rules) ?? 'part';
   if (changes.wrecked?.length) said.push(`Wrecked: ${listed(changes.wrecked.map((wreck) => `the ${partName(wreck.type, rules)} (${WRECK_WORDS[wreck.wreck] ?? 'out'})`))}.`);
   if (changes.rigged?.length) said.push(`The crew gets ${listed(changes.rigged.map((uid) => `the ${named(uid).toLowerCase()}`))} going again.`);
   if (changes.repaired?.length) said.push(`Repaired: ${listed(changes.repaired.map((fixed) => `the ${partName(fixed.type, rules)}`))}.`);

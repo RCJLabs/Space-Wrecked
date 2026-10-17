@@ -77,6 +77,7 @@ test('a trap, wrecks and repairs in the odds, a repair naming the dearest wrecks
   if (hit.changes.rigged.length) assert.match(said, / going again\.$/);
   const fixed = applyEffects(wrecked, rules, { repair: 1 });
   assert.equal(changesText(fixed.changes, fixed.campaign, rules), `Repaired: the ${name(dearest.type)}.`);
+  assert.equal(changesText({ ...NOTHING, rigged: [999] }, run, rules), 'The crew gets the part going again.', 'a part since taken off');
   assert.equal(changesText({ ...NOTHING, ambush: 'cutter' }, run, rules), `A trap: a ${cutter} fired first.`);
   assert.equal(changesText({ ...NOTHING, ambush: true }, run, rules), 'A trap: they hold her now.');
 });
