@@ -17,7 +17,7 @@ Newest entry first.
 - **The controls:** one volume and a mute.
 
 **What shipped:**
-- **ZzFX 1.3.2** (MIT, Frank Force) in `src/platform/zzfx.js`, unchanged, with its line in `assets/LICENSES.md`.
+- **ZzFX 1.3.2** (MIT, Frank Force) in `src/platform/zzfx.js`, as published but for its line endings, with its line in `assets/LICENSES.md`.
   - It is loaded with the sounds on the first tap: no AudioContext before it, and none at all while sound is off.
   - It is precached, so sound works offline.
 - **The sounds** (`data/sounds.json`, 19 of them): each is ZzFX's parameters by name, what it is for, and how loud it is meant to be.
@@ -60,7 +60,7 @@ Done when (ROADMAP.md, M35, in full there), and how each is met:
 - `node --test`: 942 tests pass. `validate-data`: OK, 19 sounds. No rules or balance changed, and the golden files are unchanged.
 - `m35/verify.mjs` at the three sizes, with Chromium kept as quiet as a phone until touched:
   - no AudioContext and no ZzFX before the first tap; then one AudioContext, running;
-  - the settings: Sound and Volume first, every choice 48 px or more, a volume saved and heard at, Off silencing the taps after it, On bringing them back;
+  - the settings: Sound and Volume first, every choice 48 px or more, a volume saved and the next sound played at it, Off silencing the taps after it, On bringing them back;
   - a save with sound off: taps load nothing;
   - a tap's sound, and the hangar's Pay, off, refusing;
   - the builder: a part placed by two taps, taken off by Delete;
