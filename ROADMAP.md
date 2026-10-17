@@ -1341,6 +1341,7 @@ These ideas wait until v0.4 or later:
 - closing doors in battle, and locked doors: since M7 a unit can open a door beside it, but not shut one (raised in M7: defenders sealing a breach)
 - fog of war: since M8 every enemy is always shown; hiding those no one in the crew can see would make scouting matter (raised in M7, decided against for now in M8)
 - the camera following the action in an enemy turn: on a ship too big for the screen, part of a turn can play out of view (raised in M8)
+- the lift-off's and the landing's backdrop as layers the compositor moves, under a canvas of the ship's own: no backdrop drawing in a frame at all, if the phone stutters unfolded where this machine's processor-drawn canvas spends 2.8 to 3.6 ms on it (raised in M34)
 - dragging to lay a run of corridor in one go: since M5b a corridor is one cell, so a long one takes two taps a cell (raised in M5b; could come sooner if Gate 1 finds it tedious)
 - doorways onto lockers: the builder puts a doorway in the middle of a shared wall even with a locker, crates or machinery behind it. That can leave a room out of reach on foot in a fight. Generated ships avoid it; a player's ship still can, with no warning (raised in M10)
 - an enemy hull frame: §5 counts one for v0.1, but every preset builds on the starter yard for now. One comes when enemy ships need a bigger yard or a higher cap (raised in M10)
