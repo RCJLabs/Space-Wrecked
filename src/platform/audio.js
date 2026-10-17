@@ -10,7 +10,9 @@
 //                      one after another, and a tap's own sound gives way to
 //                      any other: one tap, one sound
 //   playNow(id)        a sound at once, sound off or not (the dev menu)
-//   audioStatus()      a line on how sound stands (the dev menu)
+//   audioStatus()      a line on how sound stands, with the last few
+//                      played (the dev menu)
+//   recentSounds()     the ids of the last RECENT sounds played
 //
 // ZzFX scales a sound by its own volume (0.3) as it makes it and again as
 // it plays it; the samples are made once with the first scaling (the
@@ -23,6 +25,7 @@ import { loadContent } from './content.js';
 
 const MAX_VOICES = 12; // sounds playing at once; any more are dropped
 const GAP = 0.05; // s between sounds cued together
+const RECENT = 40;
 
 let setting = { sound: true, volume: 70 };
 let touched = false; // the page has had its first tap
@@ -31,6 +34,7 @@ let ready = null; // { ZZFX, ctx, gain, sounds } once loaded
 const buffers = new Map(); // id -> AudioBuffer
 let voices = 0;
 let pending = [];
+const recent = [];
 
 export function startAudio(store) {
   follow(store.getState().settings);
@@ -62,7 +66,11 @@ export async function playNow(id) {
 export function audioStatus() {
   if (!setting.sound) return 'Sound: off';
   if (!ready) return touched ? 'Sound: loading' : 'Sound: waiting for the first tap';
-  return `Sound: ${setting.volume}%, ${ready.ctx.state}, ${voices} playing`;
+  return `Sound: ${setting.volume}%, ${ready.ctx.state}, ${voices} playing; last: ${recent.slice(-6).join(', ') || 'none'}`;
+}
+
+export function recentSounds() {
+  return [...recent];
 }
 
 function follow(settings) {
@@ -116,6 +124,8 @@ function start(id, delay) {
   };
   voices += 1;
   source.start(ctx.currentTime + delay);
+  recent.push(id);
+  if (recent.length > RECENT) recent.shift();
   return delay + buffer.duration;
 }
 
