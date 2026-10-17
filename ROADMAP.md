@@ -1368,11 +1368,96 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
   - **The dev menu** plays each sound, and its status line says how sound stands and what played last.
   - **Act 3's words ahead,** as at M29's close: "All of v0.4 is here, sound included. Still to come in v1.0: balance, a tutorial, and the release on Google Play." (§6's v1.0.)
 
-**Gate 6:** v0.4 plays on the phone: each of the three backgrounds from New game to the colony, with its own pursuer, the sides, quests and companions, the painted scenes, and sound; and Evan wants to keep going. ROADMAP named no gate for Phase 6; this one was drafted at M35's close.
+**Gate 6:** v0.4 plays on the phone: each of the three backgrounds from New game to the colony, with its own pursuer, the sides, quests and companions, the painted scenes, and sound; and Evan wants to keep going. ROADMAP named no gate for Phase 6; this one was drafted at M35's close. **Passed 2026-10-17** ("Merge and continue", then "Yes: Gate 6 passed"). v0.4 is done.
 
 ### Phase 7: Content and balance
 
 Rosters, balance runs, difficulty settings, accessibility (a colorblind-safe palette, text size), and tutorial polish.
+
+Detailed at the start of M36, once v0.4 was done. The rosters come first, so the balance runs measure the game with its content in. The Done whens past M36 are drafts, to settle as each milestone starts.
+
+- [ ] **M36 Events.** The run's nodes and the colony's places hold 29 events, 7 of them the quests' steps. Over 30 careful voyages from each start:
+  - a voyage meets 11 to 13 events on the run at the median, 2 to 3 of them for the second time (up to 6);
+  - only 16 to 19 different events ever come up on the run;
+  - a colony's 30 days of trips meet 2 to 4 of their place events for the second time (up to 7).
+
+  A choice can need credits, supplies, parts or a berth. An outcome moves credits, supplies, heat, materials, standing, wounds and parts.
+
+  Evan's picks (2026-10-17):
+  - **First in Phase 7:** events, the content furthest behind §5's v1.0 column (100 or more).
+  - **How many:** 100 in all, about 70 new.
+  - **New kinds,** all four offered:
+    - choices only someone aboard can take, by job or trait;
+    - each background's own;
+    - traps that start a fight;
+    - events that wreck or mend the ship.
+
+  **Done when:**
+  - **100 events** in `data/events.json`, the quests' 7 among them:
+    - on the run: derelicts 12, distress calls 12, traders 10, hazards 11 (45; 14 before);
+    - each background's own, 4 on its runs (12);
+    - at the colony's places: hulks, wreckage, rocks and planets, 9 each (36; 8 before);
+    - written as today's are: short and dry, each choice saying what it risks.
+  - **A choice can need someone** (`needs.job`, `needs.trait`): on the run anyone aboard, at a place the squad there.
+    - The choice names who would take it.
+    - One no one can take says who it needs.
+    - Every job, and at least 8 of the 20 traits, is needed by some choice.
+  - **A background's own events** (`background`) come only on its runs.
+  - **Traps** (`ambush`): an outcome that starts a fight.
+    - On the run, a hostile ship's approach at the node, against the preset the event names, the enemy firing first (the patrol's opening volley, M33).
+    - At a hulk, the scavengers were waiting: the place is held, and the squad's fight is a held place's (M28).
+    - At least 6 traps on the run and 2 at hulks.
+  - **The ship hurt or mended** (`wreck`, `repair`):
+    - wrecks by roll among the working parts, as a volley's, with the reactor and the engine jury-rigged as after an approach;
+    - repairs the dearest wreck first;
+    - at least 4 events that wreck and 4 that repair.
+  - **Fewer repeats:**
+    - An event settled once doesn't come again in the campaign while its kind has others left: the run's later sectors and the colony's places draw from the rest.
+    - The places listed together don't share one.
+    - `SAVE_VERSION` 31 keeps the events met; a save from before starts with none met.
+  - **The test players** take the new choices where they're worth most: who is aboard, what a trap risks, what a wreck costs to repair.
+  - **Measured** over 100 voyages from each start:
+    - each of the voyage tests' rates within its margin of main's (`MAIN`, `tests/voyage.test.js`): fed, met the hunters, the colony's raids;
+    - no event met twice on the run in 9 voyages of 10, and none twice at the colony in 9 of 10.
+  - **Every rule tested:**
+    - the needs;
+    - a background's draw;
+    - a trap on the run and at a hulk;
+    - a wreck and a repair;
+    - the events met, and their migration;
+    - the validator's checks.
+  - **Touch,** at the three sizes:
+    - a choice by job that names who would take it, and one no one aboard can take;
+    - a trap's approach, the enemy's volley first;
+    - a wreck and a repair in a result;
+    - a hulk's trap and its fight;
+    - offline, and no console errors.
+- [ ] **M37 Weapons and enemies.** Six weapons against §5's 15, and 15 enemies against 15 to 20. The draft:
+  - about nine weapons, each with its held look, its sound and its numbers;
+  - a few enemies to carry them;
+  - the shops and the salvage stocking them.
+- [ ] **M38 Missions and jobs.** Three mission types (clear out, grab, hack) against §5's 8, and 29 jobs against 40 or more. The draft:
+  - five mission types, each with its objective, its AI and its words: extract (carrying the crates out, §9), escort, defend, sabotage, rescue;
+  - about a dozen new jobs across the three districts.
+- [ ] **M39 Parts and hull frames.** 21 module types against §5's 40 to 60, and one hull frame against 6. The draft:
+  - the types §9 asks for, a scanner first;
+  - frames for bigger ships, and an enemy frame (§9).
+- [ ] **M40 Balance runs.** The draft:
+  - the voyage's rates, held at main's since M31, brought to their first targets (§9);
+  - the miner's hunters past the charts, the deserter's crew aboard ships, the talents' worth (§9);
+  - act 1, the voyage and the colony measured from each start.
+- [ ] **M41 Difficulty settings.** Easy, Normal and Hard since M18, a few numbers each. The draft:
+  - each setting through all three acts;
+  - permanent death as a harder setting (§9).
+- [ ] **M42 Accessibility.** The draft:
+  - a colorblind-safe palette;
+  - text size;
+  - reduced motion in a fight (§9).
+- [ ] **M43 Tutorial polish.** M18's tips cover building, the job board and the first fight. The draft:
+  - tips past the first fight, for the run and the colony (§9);
+  - a stranger plays from New game to the colony unaided.
+
+**Gate 7 (draft):** v1.0's content plays on the phone, balanced from each start, with a tutorial a stranger can follow; and Evan wants to release.
 
 ### Phase 8: Release (v1.0)
 

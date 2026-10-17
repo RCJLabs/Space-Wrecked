@@ -2,6 +2,26 @@
 
 Newest entry first.
 
+## Gate 6 (2026-10-17)
+
+**Passed.** Evan's answer after M35: "Merge and continue". M35 was already merged, so I asked whether "continue" meant the gate had passed. The answer: "Yes: Gate 6 passed".
+- ROADMAP.md named no gate for Phase 6. The one passed was drafted at M35's close: "v0.4 plays on the phone: each of the three backgrounds from New game to the colony, with its own pursuer, the sides, quests and companions, the painted scenes, and sound; and Evan wants to keep going." v0.4 is done: Phase 6.
+- No phone results came with it, and none have come back for M14 to M35. The gate is Evan's call, so it stands as passed.
+- Phase 7 starts with M36 (events). ROADMAP.md held Phase 7's details until v0.4 was done. They are drafted there now: M36's Done when in full, the rest as drafts, and Gate 7 drafted.
+- **How M36 was picked** (Evan, 2026-10-17, each the recommended answer but the last, where Evan took all four):
+  - **First in Phase 7:** events, the content furthest behind §5's v1.0 column: 22 general events and 7 quest steps against 100 or more.
+  - **How many:** to 100 in all.
+  - **New kinds:** job or trait choices, each background's own, traps that start a fight, and events that wreck or mend the ship.
+- **Measured before settling it** (30 careful voyages from each start, `tools/voyage.js`, the quests' steps included):
+
+  | Start | Events on the run, a voyage | Met for the second time | Different events over 30 voyages | Trips at the colony | Place events met for the second time |
+  | --- | --- | --- | --- | --- | --- |
+  | Miner | 11 (6 to 16) | 3 (up to 5) | 17 | 9 | 2 (up to 5) |
+  | Deserter | 12 (8 to 15) | 2 (up to 6) | 16 | 12 | 4 (up to 7) |
+  | Smuggler | 13 (8 to 17) | 3 (up to 5) | 19 | 10 | 3 (up to 6) |
+
+  Medians, ranges in brackets. A sector never repeats an event, but its pool starts over at the next sector; the places draw theirs each time the list is rolled, independently.
+
 ## M35 Audio pass with ZzFX (2026-10-17)
 
 **Status:** done, and the ROADMAP.md box is ticked. M35 was Phase 6's last milestone: Gate 6 is drafted in ROADMAP.md and is Evan's call.
