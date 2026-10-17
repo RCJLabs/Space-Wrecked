@@ -111,7 +111,10 @@ export function checkCampaignFiles(data, ids, fail) {
   const nodeKinds = new Set((data.sectors?.nodes ?? []).map((node) => node?.id));
   const places = checkExpeditions(data.expeditions, nodeKinds, ids, fail);
   const sides = ids.sides ?? new Set();
-  const covered = checkEvents(data.events, holding, ids.moduleIds, fail, places, sides, ids.companions ?? new Set());
+  const backgrounds = new Set((data.backgrounds?.backgrounds ?? []).map((background) => background?.id));
+  const held = new Set((data.expeditions?.kinds ?? []).filter((kind) => kind?.held).map((kind) => kind.id));
+  const more = { jobs: ids.jobIds ?? new Set(), traits: ids.traitIds ?? new Set(), backgrounds, presets: ids.presets ?? new Map(), held };
+  const covered = checkEvents(data.events, holding, ids.moduleIds, fail, places, sides, ids.companions ?? new Set(), more);
   for (const kind of holding) if (!covered.has(kind)) fail(`sectors.json node ${kind}`, 'holds events, but events.json has none of its kind');
   for (const kind of data.expeditions?.kinds ?? []) {
     if (kind?.held?.chance !== 100 && !covered.has(kind?.id)) fail(`expeditions.json kind ${kind?.id}`, 'has places with events, but events.json has none of its kind');

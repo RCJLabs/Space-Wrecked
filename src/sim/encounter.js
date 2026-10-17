@@ -55,6 +55,8 @@
 //   hunt     whether it is the pursuer's hunters (M24)
 //   patrol   null, or how a side's ship greeted the crew (M33): 'waved'
 //            through or 'fired' on
+//   ambush   on a trap's approach (M36, openAmbush), what sprang it: {
+//            event, choice, outcome }; else not there
 //   enemy    { ship (the preset), name, crew }
 //   them     the other ship's side: { ship, damage, wrecked }
 //   you      the player's side: { damage, wrecked }; its ship is the
@@ -62,7 +64,8 @@
 //   round    the round to play next, 1 up
 //   fired    whether a gun has fired yet
 //   last     the round played last: { order, intent, events }, or null;
-//            before round 1, a patrol's opening volley, with order null
+//            before round 1, a patrol's or a trap's opening volley, with
+//            order null
 //   outcome  null until it ends, then { kind, how?, changes, boarding }.
 //            changes: { credits, parts (found), lost (a part or credits,
 //            or null), heat, patched (uids got going again), standing
@@ -154,6 +157,22 @@ export function openHunt(campaign, rules, ship, seed) {
   return { ...campaign, flags: tally(campaign.flags, { hunts: 1 }), run: { ...run, done, approach } };
 }
 
+// Opens a trap's approach where the ship is (events.js, M36): preset
+// `ship`, generated from `seed`, firing first, as a hostile patrol does
+// (openingVolley). trap is { event, choice, outcome }: what sprang it. The
+// event's node is settled already, so the approach settles nothing more.
+export function openAmbush(campaign, rules, ship, seed, trap) {
+  const { run } = campaign;
+  if (!run || run.approach) return campaign;
+  const approach = approachAgainst(campaign, rules, ship, seed, false);
+  if (!approach) return campaign;
+  const opened = { ...campaign, run: { ...run, approach: { ...approach, ambush: trap } } };
+  const shot = openingVolley(approachState(opened, rules), campaign.rng, rules);
+  const last = shot.events.length ? { order: null, intent: { kind: 'fire', at: shot.events[0].at }, events: shot.events } : null;
+  const fired = { ...approach, ambush: trap, you: { damage: shot.you.damage, wrecked: shot.you.wrecked }, fired: shot.fired, last };
+  return { ...campaign, rng: shot.rng, flags: tally(campaign.flags, { ambushes: 1 }), run: { ...run, approach: fired } };
+}
+
 // A fresh approach at the ship's node against preset `id` generated from
 // `seed`, or null if the preset has no tactics or won't generate.
 function approachAgainst(campaign, rules, id, seed, hunt) {
@@ -238,7 +257,8 @@ function settle(campaign, rules, outcome) {
     wrecks: kept.wrecked,
     flags: tally(campaign.flags, { approaches: 1, approachesWon: won, approachesLost: outcome.kind === 'boardedBy' ? 1 : 0, huntsFaced: faced ? 1 : 0 }),
     // The hunters don't settle the node: an event there is still to come.
-    run: { ...run, done: approach.hunt ? run.done : [...run.done, approach.node], approach: { ...approach, outcome: { ...outcome, changes, boarding } } },
+    // A trap's node (M36) was settled by its event.
+    run: { ...run, done: approach.hunt || run.done.includes(approach.node) ? run.done : [...run.done, approach.node], approach: { ...approach, outcome: { ...outcome, changes, boarding } } },
   };
 }
 

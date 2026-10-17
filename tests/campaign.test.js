@@ -78,6 +78,7 @@ test("a new campaign starts in act 1 at the hangar, with its background's start"
     // Its background's thread, at its first step (M33b).
     quests: { debt: { step: 0, state: 'open' } },
     flags: {},
+    eventsMet: [],
     ship,
     wrecks: {},
     board: [],

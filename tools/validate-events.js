@@ -12,7 +12,12 @@
 // crew's standing with the sides (data/factions.json); one at the colony
 // can't, as act 3 doesn't move it. From M33c a choice on the run can sign a
 // companion on (data/companions.json): it needs a berth, and every outcome
-// of a choice that needs one signs someone on.
+// of a choice that needs one signs someone on. From M36 an event can be a
+// background's own (data/backgrounds.json); a choice can need someone of a
+// job (data/jobs.json) or with a trait (data/traits.json); and an outcome
+// can wreck parts of the ship (only on the run) or repair them, or spring
+// a trap: on the run a ship preset (data/ships.json) that can fight an
+// approach, at a place `true`, at a kind of place the scavengers can hold.
 import { EFFECTS, NEEDS } from '../src/sim/events.js';
 import { PLACE_EFFECTS, PLACE_NEEDS } from '../src/sim/expeditions.js';
 import { isId, isIntIn, isObject, isText, knownKeys, listOf, uniqueIds } from './checks.js';
@@ -20,7 +25,7 @@ import { isId, isIntIn, isObject, isText, knownKeys, listOf, uniqueIds } from '.
 const FILE_KEYS = ['drops', 'events'];
 // A quest's event (M33b, validate-quests.js) names its quest and is never in
 // a sector's pool, so it covers no kind.
-const EVENT_KEYS = ['id', 'kind', 'quest', 'title', 'text', 'choices'];
+const EVENT_KEYS = ['id', 'kind', 'quest', 'background', 'title', 'text', 'choices'];
 const CHOICE_KEYS = ['id', 'label', 'needs', 'outcomes'];
 const OUTCOME_KEYS = ['chance', 'text', 'effects'];
 const MAX_TITLE = 24;
@@ -34,12 +39,19 @@ const MAX_WOUND = 20;
 const MAX_SELL = 5;
 // What an outcome moves a side's standing by, at most, either way.
 const MAX_STANDING = 10;
+// The parts an outcome wrecks or repairs, at most.
+const MAX_SHIP_PARTS = 3;
+// The needs that name someone (M36), by what their ids must be.
+const WHO_NEEDS = { job: 'jobs', trait: 'traits' };
 
 // kinds: the node kinds that hold events (data/sectors.json, events: true).
 // moduleIds: the parts. places: the kinds of place (validate-expeditions.js).
 // sides: the sides' ids (validate-factions.js). companions: the
-// companions' ids (M33c). Returns the kinds the events cover, as a Set.
-export function checkEvents(file, kinds, moduleIds, fail, places = new Set(), sides = new Set(), companions = new Set()) {
+// companions' ids (M33c). more (M36): { jobs, traits, backgrounds (ids),
+// presets (id -> ship preset), held (the kinds of place the scavengers can
+// hold) }. Returns the kinds the events cover, as a Set.
+export function checkEvents(file, kinds, moduleIds, fail, places = new Set(), sides = new Set(), companions = new Set(), more = {}) {
+  const { jobs = new Set(), traits = new Set(), backgrounds = new Set(), presets = new Map(), held = new Set() } = more;
   const where = 'events.json';
   const covered = new Set();
   if (!isObject(file)) {
@@ -69,6 +81,7 @@ export function checkEvents(file, kinds, moduleIds, fail, places = new Set(), si
     if (!kinds.has(event.kind) && !atPlace) fail(at, `kind must be a node kind that holds events or a kind of place (${[...kinds, ...places].join(', ')})`);
     else if (event.quest === undefined) covered.add(event.kind);
     if (event.quest !== undefined && !isText(event.quest)) fail(at, 'quest must be the id of the quest whose step it is');
+    if (event.background !== undefined && !backgrounds.has(event.background)) fail(at, `background must be a background's id (${[...backgrounds].join(', ')})`);
     if (!isText(event.title) || event.title.length > MAX_TITLE) fail(at, `title must be a non-empty string of up to ${MAX_TITLE} letters`);
     if (!isText(event.text) || event.text.length > MAX_TEXT) fail(at, `text must be a non-empty string of up to ${MAX_TEXT} letters`);
     if (!Array.isArray(event.choices) || event.choices.length < 1 || event.choices.length > MAX_CHOICES) {
@@ -76,7 +89,7 @@ export function checkEvents(file, kinds, moduleIds, fail, places = new Set(), si
       return;
     }
     uniqueIds(event.choices, at, fail);
-    event.choices.forEach((choice, c) => checkChoice(choice, `${at} choice ${choice?.id ?? `#${c}`}`, { drops, moduleIds, sides, companions }, fail, atPlace));
+    event.choices.forEach((choice, c) => checkChoice(choice, `${at} choice ${choice?.id ?? `#${c}`}`, { drops, moduleIds, sides, companions, jobs, traits, presets, held, kind: event.kind }, fail, atPlace));
     // An open event holds every jump: one choice must always be there to make.
     if (!event.choices.some((choice) => isObject(choice) && (choice.needs === undefined || (isObject(choice.needs) && !Object.keys(choice.needs).length)))) {
       fail(at, 'needs a choice that needs nothing, so the ship is never stuck at it');
@@ -93,7 +106,11 @@ function checkChoice(choice, at, known, fail, atPlace) {
   if (choice.needs !== undefined && !isObject(choice.needs)) fail(at, 'needs must be an object');
   else {
     knownKeys(needs, atPlace ? PLACE_NEEDS : NEEDS, `${at} needs`, fail);
-    for (const [key, value] of Object.entries(needs)) if (!isIntIn(value, 1, MAX_AMOUNT)) fail(`${at} needs`, `${key} must be a whole number from 1 to ${MAX_AMOUNT}`);
+    for (const [key, value] of Object.entries(needs)) {
+      if (key in WHO_NEEDS) {
+        if (!known[WHO_NEEDS[key]].has(value)) fail(`${at} needs`, `${key} "${value}" is not one of ${WHO_NEEDS[key]}.json's`);
+      } else if (!isIntIn(value, 1, MAX_AMOUNT)) fail(`${at} needs`, `${key} must be a whole number from 1 to ${MAX_AMOUNT}`);
+    }
   }
   if (!Array.isArray(choice.outcomes) || choice.outcomes.length < 1 || choice.outcomes.length > MAX_OUTCOMES) {
     fail(at, `outcomes must be a list of 1 to ${MAX_OUTCOMES}`);
@@ -117,7 +134,7 @@ function checkChoice(choice, at, known, fail, atPlace) {
   if (needs.berth && !choice.outcomes.every((outcome) => isObject(outcome?.effects) && outcome.effects.joins !== undefined)) fail(at, 'needs a berth, so every outcome must sign someone on (joins)');
 }
 
-function checkEffects(effects, needs, at, { drops, moduleIds, sides, companions }, fail, atPlace) {
+function checkEffects(effects, needs, at, { drops, moduleIds, sides, companions, presets, held, kind }, fail, atPlace) {
   knownKeys(effects, atPlace ? PLACE_EFFECTS : EFFECTS.filter((key) => key !== 'materials'), at, fail);
   for (const key of ['credits', 'supplies', 'heat', 'materials']) {
     if (effects[key] !== undefined && (!isIntIn(effects[key], -MAX_AMOUNT, MAX_AMOUNT) || effects[key] === 0)) fail(at, `${key} must be a whole number other than 0, from ${-MAX_AMOUNT} to ${MAX_AMOUNT}`);
@@ -137,6 +154,15 @@ function checkEffects(effects, needs, at, { drops, moduleIds, sides, companions 
   if (effects.sell !== undefined) {
     if (!isIntIn(effects.sell, 1, MAX_SELL)) fail(at, `sell must be a whole number from 1 to ${MAX_SELL}`);
     else if ((needs.parts ?? 0) < effects.sell) fail(at, `sells ${effects.sell}, so the choice must need at least that many parts`);
+  }
+  for (const key of ['wreck', 'repair']) {
+    if (effects[key] !== undefined && !isIntIn(effects[key], 1, MAX_SHIP_PARTS)) fail(at, `${key} must be a whole number from 1 to ${MAX_SHIP_PARTS}`);
+  }
+  if (effects.ambush !== undefined) {
+    if (atPlace) {
+      if (effects.ambush !== true) fail(at, 'ambush at a place must be true: the scavengers were waiting');
+      else if (!held.has(kind)) fail(at, `ambush: the scavengers can't hold a place of kind "${kind}" (expeditions.json held)`);
+    } else if (!presets.get(effects.ambush)?.tactics) fail(at, `ambush "${effects.ambush}" must be a ship preset that can fight an approach (ships.json, with tactics)`);
   }
   if (effects.joins !== undefined) {
     if (!companions.has(effects.joins)) fail(at, `joins: unknown companion "${effects.joins}" (companions.json)`);

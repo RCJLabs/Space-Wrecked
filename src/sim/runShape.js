@@ -98,18 +98,24 @@ export function isWorld(world) {
 // the pursuer's hunters (hunt.js), wherever they found the ship, which
 // settle nothing. A side's patrol (M33) waved the ship through, ending it
 // before round 1, or fired first, its volley the last before round 1 with
-// no order of the player's; the hunters are never a patrol.
+// no order of the player's; the hunters are never a patrol. A trap (M36)
+// is sprung by the event at its node, settled already, and fires first as
+// a patrol does; it is never the hunters' or a patrol's.
 function isApproach(approach, nodes, at, done) {
-  if (!isRecord(approach) || approach.node !== at || typeof approach.hunt !== 'boolean' || !(approach.hunt || nodes[at].hostile)) return false;
-  const { enemy, them, you, round, fired, last, outcome, patrol } = approach;
-  if (!(patrol === null || (!approach.hunt && (patrol === 'waved' || patrol === 'fired')))) return false;
+  if (!isRecord(approach) || approach.node !== at || typeof approach.hunt !== 'boolean') return false;
+  const { enemy, them, you, round, fired, last, outcome, patrol, ambush } = approach;
+  const trap = ambush !== undefined;
+  if (trap && !(isRecord(ambush) && ambush.event === nodes[at].event && isId(ambush.choice) && isInt(ambush.outcome, 0, 9) && !approach.hunt)) return false;
+  if (!(approach.hunt || trap || nodes[at].hostile)) return false;
+  if (!(patrol === null || (!approach.hunt && !trap && (patrol === 'waved' || patrol === 'fired')))) return false;
   if ((patrol === 'waved') !== (outcome?.kind === 'waved')) return false;
   if (!isRecord(enemy) || !isId(enemy.ship) || !isText(enemy.name) || !isInt(enemy.crew, 1, MAX_CREW)) return false;
   if (!isRecord(them) || !isShipData(them.ship) || !isSide(them) || !isRecord(you) || !isSide(you)) return false;
   if (!isInt(round, 1, MAX_ROUNDS) || typeof fired !== 'boolean') return false;
-  const opening = patrol === 'fired' && round === 1;
+  const opening = (patrol === 'fired' || trap) && round === 1;
   if (last !== null && !(isRecord(last) && (isOrder(last.order) || (opening && last.order === null)) && isOrder(last.intent) && Array.isArray(last.events) && last.events.every(isRecord))) return false;
   if (approach.hunt) return outcome === null || isOutcome(outcome);
+  if (trap) return done.includes(at) && (outcome === null || isOutcome(outcome));
   if (outcome === null) return !done.includes(at);
   return done.includes(at) && isOutcome(outcome);
 }
@@ -155,7 +161,22 @@ function isResult(result, nodes, done) {
     changes.sold.every((sale) => isRecord(sale) && isId(sale.part) && isInt(sale.credits, 0, MAX_CHANGE)) &&
     (changes.standing === undefined || isStandingChanges(changes.standing)) &&
     (changes.joined === undefined || isId(changes.joined)) &&
+    isShipChanges(changes) &&
+    (result.taker === undefined || isInt(result.taker, 0, MAX_CHANGE)) &&
     (result.quest === undefined || isQuestNote(result.quest))
+  );
+}
+
+// What an event did to the ship (M36, events.js applyEffects), where it
+// did anything: parts wrecked, got going again and repaired, and a trap
+// sprung. A trip's result (tripShape.js) has them too.
+export function isShipChanges(changes) {
+  const isUid = (uid) => isInt(uid, 0, MAX_CHANGE);
+  return (
+    (changes.wrecked === undefined || (Array.isArray(changes.wrecked) && changes.wrecked.every((part) => isRecord(part) && isUid(part.uid) && isId(part.type) && WRECKS.includes(part.wreck)))) &&
+    (changes.rigged === undefined || (Array.isArray(changes.rigged) && changes.rigged.every(isUid))) &&
+    (changes.repaired === undefined || (Array.isArray(changes.repaired) && changes.repaired.every((part) => isRecord(part) && isUid(part.uid) && isId(part.type)))) &&
+    (changes.ambush === undefined || changes.ambush === true || isId(changes.ambush))
   );
 }
 

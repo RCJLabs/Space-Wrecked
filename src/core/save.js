@@ -81,7 +81,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      signed on (M33c)
 //  30  sound: the settings say whether the game plays sound, and how loud
 //      (M35)
-export const SAVE_VERSION = 30;
+//  31  events: the campaign keeps the events it has met; a trap's approach
+//      says what sprang it; an event's result may say who took its choice
+//      and what it did to the ship (M36)
+export const SAVE_VERSION = 31;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -421,6 +424,12 @@ export const MIGRATIONS = [
   {
     from: 29,
     up: (data) => (isObject(data) && isObject(data.settings) ? { ...data, settings: { ...data.settings, sound: true, volume: 70 } } : data),
+  },
+  // Events met (M36). A campaign from before kept none: every event is
+  // fresh to it again.
+  {
+    from: 30,
+    up: (data) => (isObject(data) && isObject(data.campaign) ? { ...data, campaign: { ...data.campaign, eventsMet: [] } } : data),
   },
 ];
 
