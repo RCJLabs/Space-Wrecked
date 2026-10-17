@@ -4,13 +4,15 @@
 // ships can be met at a sector's nodes (the Fleet's corvettes), which wave
 // a friend through and fire on an enemy; the stations that belong to a
 // side, each by a name the sectors give stations (data/sectors.json); and
-// the side each ship preset is on (data/ships.json). Returns the sides'
-// ids, for the other files that name them.
+// the side each ship preset is on (data/ships.json). Since M37, what the
+// racks at each side's stations sell (`arms`), and at stations of nobody's
+// (the file's `arms`): weapons by weight, enough for a rack (rackSize).
+// Returns the sides' ids, for the other files that name them.
 import { sideColors } from '../src/render/palette.js';
 import { isObject, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 
-const FILE_KEYS = ['sides', 'stations'];
-const SIDE_KEYS = ['id', 'name', 'blurb', 'color', 'patrol'];
+const FILE_KEYS = ['sides', 'stations', 'arms'];
+const SIDE_KEYS = ['id', 'name', 'blurb', 'color', 'patrol', 'arms'];
 const PATROL_KEYS = ['waved', 'fired'];
 const MAX_NAME = 24;
 const MAX_BLURB = 160;
@@ -36,9 +38,13 @@ export function checkFactions(data, presets, fail) {
       if (side !== undefined) atNodes.add(side);
     }
   }
+  const weaponIds = new Set((data.weapons?.weapons ?? []).map((weapon) => weapon.id));
+  const rack = data.balance?.rackSize ?? 0;
+  checkArms(file.arms, `${where} arms`, weaponIds, rack, fail);
   sides.forEach((side, i) => {
     const at = `${where} side ${side.id ?? `#${i}`}`;
     knownKeys(side, SIDE_KEYS, at, fail);
+    if (side.arms !== undefined) checkArms(side.arms, `${at} arms`, weaponIds, rack, fail);
     if (!isText(side.name) || side.name.length > MAX_NAME) fail(at, `name must be a non-empty string of up to ${MAX_NAME} letters`);
     if (!isText(side.blurb) || side.blurb.length > MAX_BLURB) fail(at, `blurb must be a non-empty string of up to ${MAX_BLURB} letters`);
     if (typeof side.color !== 'string' || !Object.hasOwn(sideColors, side.color)) fail(at, `color must be one of src/render/palette.js sideColors (${Object.keys(sideColors).join(', ')})`);
@@ -67,4 +73,18 @@ export function checkFactions(data, presets, fail) {
     if (ship.side !== undefined && !ids.has(ship.side)) fail(`ships.json ${ship.id}`, `side: unknown side "${ship.side}" (factions.json)`);
   }
   return ids;
+}
+
+// What a rack sells: { [weapon id]: weight }, weights 1 to 100, with at
+// least `least` weapons, a rack's worth, in it.
+export function checkArms(table, where, weaponIds, least, fail) {
+  if (!isObject(table)) {
+    fail(where, 'must be an object of weapons, each with its weight');
+    return;
+  }
+  for (const [id, weight] of Object.entries(table)) {
+    if (!weaponIds.has(id)) fail(where, `"${id}" is not a weapon`);
+    if (!(Number.isInteger(weight) && weight >= 1 && weight <= 100)) fail(where, `${id}'s weight must be a whole number from 1 to 100`);
+  }
+  if (Object.keys(table).length < least) fail(where, `needs at least ${least} weapons, a whole rack's worth`);
 }

@@ -50,6 +50,13 @@
 //            voyages from each start ended fed in 47, 53 and 81 (M33b: 73,
 //            90 and 98): a fourth mouth empties the start ship's 30 supplies
 //            in 7 jumps
+//   arms     a quarter of its price for a weapon (M37) GAIN points better,
+//            for a fight aboard a ship, than anything someone who could
+//            carry it has (arms.js upgradeOf): a part's worth, half what act
+//            1's dealer would pay; any other, nothing, with no dealer on the
+//            run to sell it to. At 1.5 times its price the player raided
+//            lockers and walked into traps for weapons over supplies, and
+//            fewer voyages crossed fed (PROGRESS.md, M37)
 // A station of the pursuer's side is worth its docking heat (M33), priced
 // as an event's heat is, from the heat after the jump there. From M36 an
 // event's trap is worth a hostile ship that fires first (hostile and volley
@@ -129,8 +136,10 @@
 // choice worth most (placeChoice): materials and food a point each, as far
 // as the stores take them, a part PLACE_PART, a wound PLACE_HP a hit point;
 // from M36 a wreck mended PLACE_PART (it can go to the colony again), a
-// trap PLACE_TRAP against, and only what the squad can take. A trap's fight
-// is fought then and there.
+// trap PLACE_TRAP against, and only what the squad can take; from M37 a
+// weapon GAIN points better, for a raid on the ground, than anything
+// someone who could carry it has (arms.js), PLACE_PART. A trap's fight is
+// fought then and there.
 // From M29, while a raid is coming it stays home and sets down from the
 // hold what will help when the lander comes (raidPrep): guns that fire at
 // it, then a shield and an armory for the defenders, each only where it
@@ -140,7 +149,7 @@ import { canRefit, maxHp, refitShip, shipChecklist } from '../src/sim/campaign.j
 import { buildingOf, colonyStats, givesOf, shipParts, storesOf, yieldOf } from '../src/sim/colony.js';
 import { build, buildPlan, takeDown } from '../src/sim/colonyBuild.js';
 import { crewRoom } from '../src/sim/crew.js';
-import { sellPriceOf } from '../src/sim/economy.js';
+import { sellPriceOf, weaponPrice } from '../src/sim/economy.js';
 import { wrecksOn } from '../src/sim/encounter.js';
 import { eventsOf, freshest } from '../src/sim/eventPool.js';
 import { choiceProblem, wreckable } from '../src/sim/events.js';
@@ -155,9 +164,10 @@ import { regroupPlan } from '../src/sim/regroup.js';
 import { dockHeat, levelOf, moveStanding, patrolWelcome, priceShare, standingWith, stationSide } from '../src/sim/standing.js';
 import { swapPlan } from '../src/sim/transponder.js';
 import { failingCheck, jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity, tradeHeat, within } from '../src/sim/travel.js';
+import { upgradeOf } from './arms.js';
 import { fitPart } from './run.js';
 
-export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30, nebula: 15, hot: 1.5, hunted: -40, volley: -10, standing: 2, friendly: 10, quest: 40, companion: 100 };
+export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30, nebula: 15, hot: 1.5, hunted: -40, volley: -10, standing: 2, friendly: 10, quest: 40, companion: 100, arms: 0.25 };
 const BUFFER_JUMPS = 4;
 export const HIRE_JUMPS = 10;
 // How the test player treats heat (M24), and the managing player's lines.
@@ -291,6 +301,10 @@ export function effectsWorth(campaign, rules, effects, heat = 'manage') {
   if (effects.sell) worth += (1 - WORTH.part) * dearest(campaign, rules, effects.sell);
   // Standing (M33), as far as it would move.
   if (effects.standing) worth += WORTH.standing * moveStanding(campaign, rules, effects.standing).changes.reduce((sum, change) => sum + change.to - change.from, 0);
+  // A weapon (M37): GAIN points better than anyone who could carry it has,
+  // aboard a ship, WORTH.arms of its price; else nothing, with no dealer on
+  // the run to sell it to.
+  if (effects.arms) worth += upgradeOf(campaign, rules, effects.arms, 'ship') ? WORTH.arms * (weaponPrice(effects.arms, rules) ?? 0) : 0;
   // A trap, parts wrecked and wrecks mended (M36).
   if (effects.ambush) worth += WORTH.hostile + WORTH.volley;
   if (effects.wreck) worth -= wreckCost(campaign, rules, effects.wreck);
@@ -333,8 +347,9 @@ function dearest(campaign, rules, count) {
 // `pull` of its worth: all of it at the event, questPull's on the way. From
 // M36, as at a station, it spends credits only beyond a holdful's price
 // (dipsReserve), but on supplies or a quest's step: the traders sell parts,
-// repairs and quiet now, and a purse spent on them left nothing for the
-// holds or the transponder. With every choice dipping, it judges them all.
+// repairs and quiet now, and weapons from M37, and a purse spent on them
+// left nothing for the holds or the transponder. With every choice dipping,
+// it judges them all.
 export function bestChoice(campaign, rules, event, heat = 'manage', pull = 1) {
   const reserve = supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice;
   const judged = [];
@@ -814,6 +829,7 @@ export function placeChoice(campaign, rules, event) {
     Math.min(Math.max(0, stores - campaign.colony.materials), effects.materials ?? 0) +
     Math.min(Math.max(0, stores - campaign.supplies), Math.max(0, effects.supplies ?? 0)) +
     (effects.drop || effects.part ? PLACE_PART : 0) +
+    (effects.arms && upgradeOf(campaign, rules, effects.arms, 'ground') ? PLACE_PART : 0) +
     PLACE_PART * Math.min(effects.repair ?? 0, wrecks) -
     (effects.ambush ? PLACE_TRAP : 0) -
     (effects.wound ? PLACE_HP * effects.wound.hp * (effects.wound.all ? squad : 1) : 0);

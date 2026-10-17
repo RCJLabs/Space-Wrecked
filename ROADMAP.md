@@ -230,6 +230,14 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Overwatch:** the unit fires once, at the first enemy that steps into its sight during the other side's turn, with the overwatch penalty; not while that enemy is passing through an ally's tile, so two units never share one. It ends at the start of the unit's own next turn.
 - **Down, not dead:** crew at 0 HP go down and bleed out over 3 of their own turns (`balance.bleedOutTurns`) unless an ally beside them stabilizes them. Bleeding out puts them out of the fight, badly hurt, or kills them where permanent death is on (harder settings only). Enemies at 0 HP die.
 - **Hazards** (M7): fire burns 2 at the start of each of a unit's turns there. In vacuum, suit air lasts 3 turns, then the unit takes 2 a turn (the oxygen clock).
+- **Weapons** (M37, `data/weapons.json`, `src/sim/weapons.js`): 15, each a sidearm, a long gun or a heavy weapon. Five rules are a weapon's data, and only the nine new weapons have any:
+  - a **burst** (`burst`): that many shots at the target, each rolled at the odds shown, the burst's aim penalty part of them, until it drops; overwatch fires one, without the penalty;
+  - **armor piercing** (`pierce`): that much of the target's armor doesn't count;
+  - **reach** (`reach`): no shot past that many tiles, by a side or a corner, overwatch too;
+  - a **stun** (`stun`): a hit puts the target to sleep through its side's next turn;
+  - **fire** (`burn`): a hit sets the target's tile burning for that many rounds, burning as a wrecked room's fire does, then it goes out. Burning tiles show on the board.
+
+  The odds card, the unit card and the tile card say each. **Loadouts** (`src/sim/loadout.js`): each crew member carries one weapon, their job's to start, and swaps it between fights for a spare of a kind their job carries (`arms` in `data/jobs.json`), two taps on the crew card. Spares are on hand (`campaign.arms`).
 - **Objectives:** eliminate, extract, hack, rescue, hold, salvage. M7 has eliminate: a side wins when the other has no one standing. M14 adds two for jobs, besides clearing out:
   - **grab:** grab every tagged crate (the site's loot tiles), each from beside it;
   - **hack:** work the terminal for a number of rounds.
@@ -253,6 +261,8 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   A plan's score is in expected hit points. It is the harm its shot should do (kills count 4 more), minus the harm every enemy who can see where it ends up could do to it there, and minus the overwatch fire on the way. Overwatch adds something, more with an enemy close enough to step into sight. When it won't shoot, each step from the enemy costs a little. Doors its path opens count.
 
   A shot worth taking goes before holding back, unless it is reckless. The AI never ends up in the open (seen by an enemy with no cover between) unless no cover is in reach, or the shot from there beats every covered tile's. The weights are starting values for M11 to tune.
+
+  Since M37 it weighs each weapon rule: a burst's shots and the armor pierced in the harm, a stunned target's lost turn (2.5), and the fire a hit leaves under its target. A unit with a reach closes to it (0.5 for each step past it) and watches only with an enemy that could step within it, and standing in a tile a weapon set burning counts its burn. A wrecked room's fire, which never goes out, it crosses as before.
 - **Raiders press on** (M15, `src/sim/press.js`): with an enemy in sight a raider plays as the AI does; otherwise it walks toward the crew and opens the doors in its way, so a raid can't stall at a door. A battle with `options.press` (a raid) plays its enemy this way, and the test player that plays the crew on jobs (`src/sim/jobAi.js`) is built on it. Boarders still play the AI alone.
 
 ### 4.4 Heat
@@ -320,6 +330,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Jobs pay** (M14) credits, and on some jobs a part from the job's drop table (M16, §4.7): the repossession always pays an engine, once; the scrap run sometimes. Credits also buy heat off: a payment on the debt, 50 credits for 15 (M15, §4.4). A lost raid can take half of them.
 - **Prices** (M16, `src/sim/economy.js`): a part costs its module's cost (`buyPercent` 100 in `data/balance.json`), and the shop buys one back for half (`sellPercent` 50), rounded down to 5 credits. The engine, at 200, is the dear part.
 - **The shop** (M16): the district's dealer, Dutch's yard (`shop` in `data/districts.json`). It has 4 different parts at a time, picked by weight from its table (engines weigh most) when each job board is rolled, so it turns over after every job. A price is fixed when it is offered. It buys any part on hand.
+- **Weapons for sale** (M37): act 1's dealers stock 2 weapons beside their 4 parts (`armsSize`), rolled with the board from a table of their own, and buy a spare back at half price. Each station on the run has a rack of 2 (`rackSize` in `data/balance.json`), from its side's table (`arms` in `data/factions.json`) or the stations' own, the same on every visit, at its side's prices; one bought is gone. A won fight leaves one of the fallen's weapons 30% of the time (`gearChance`), and some events give or sell one (`arms` among an outcome's effects).
 - **Lifting off** (M16): act 1 ends by lifting off Homeworld, so its checklist asks for thrust at least the ship's mass (`liftOff` 1 in `data/campaign.json`), where the frame asks half. The start ship needs three engines; stripping it can save one at most. Only the campaign asks this.
 - **Supplies** (M19, `src/sim/travel.js`; the numbers in `data/balance.json`): a jump eats one per crew member (`jumpSupplies`), a long jump three times that (`longJumpFactor`). The ship carries 30 in its lockers (`baseSupplies`, 24 in M19) and 20 more for each cargo hold. The run starts with them full. Stations sell them at 1 credit each (`supplyPrice`). A jump the supplies don't cover still goes: they run out, and each crew member loses 2 hit points (`hungerHp`), never the last one. In act 2 the crew heals at stations for credits (M22) and, since M23, in a working med bay over jumps (§4.5). A recruit is one more mouth: the start ship's 30 lockers last a crew of 4 seven jumps.
   - **Tuning** (M19's test player, `tools/voyage.js`, 30 launches from M16's test runs): 12 lockers at 3 credits starved every run, since 12 supplies don't reach from one station to the next. At 24 and 1 credit, a careful player with no long jumps crosses three sectors without going hungry in 18 of 30 runs, and all five in 8. The runs that go hungry launched with few credits: launch money is median 50 (0 to 220), and act 2 pays nothing until M20's nodes. M20 retunes this once nodes pay.
@@ -516,6 +527,8 @@ The v1.0 column is a set of targets, not commitments.
 - **Debt-bound miner** (M14). Con-Reg Recovery, the company's repo crews, hunt you by tracking your ship's registration, and take payments on the debt. Act 1's district is the Tailings, with 10 jobs.
 - **Navy deserter** (M30). The Fleet Provost, the Navy's police, take no payments. The district is the Strand, the spaceport's sailors' quarter, with 8 jobs. A marine, a pilot and a medic (two marines before M32), no credits.
 - **Burned smuggler** (M30). The Halloran family want their cargo's worth, and take a dearer vig. The district is the Narrows, the old town's back streets, with 8 jobs. An engineer, a quartermaster and a medic (two engineers before M32), 75 credits.
+
+**Weapons and enemies as built** (M37): 15 weapons, 5 sidearms, 6 long guns and 4 heavy weapons; 20 enemy types, a new one for each side: the pirates' gunner, the scavvers' torcher, Con-Reg's breacher, the Provost's proctor and the Hallorans' cutter.
 
 **Jobs as built** (M32): all seven of §4.5's, each with an order, an effect aboard and an effect at the colony. Two weapons came with them, the scout's long rifle and the xenobiologist's dart gun, six in all.
 
@@ -1447,10 +1460,96 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
     - the step-by-step check also walks the deserter's runs, where station repairs come up (none on the miner's seeds 1 to 30 since M36; one of 210 on main);
     - a new test holds the repeats and the backgrounds' own events to the Done when.
   - **The golden sectors** (`tests/golden/sectors.txt`) were regenerated on purpose: the same maps and kinds, with the events, the hostile ships' seeds and the names drawn anew from the new pools.
-- [ ] **M37 Weapons and enemies.** Six weapons against §5's 15, and 15 enemies against 15 to 20. The draft:
-  - about nine weapons, each with its held look, its sound and its numbers;
-  - a few enemies to carry them;
-  - the shops and the salvage stocking them.
+- [x] **M37 Weapons and enemies.** Six weapons against §5's 15, and 15 enemies against 15 to 20.
+  - **Who carries what:** a crew member carries their job's weapon, always; an enemy its type's. The new weapons would come only through enemies.
+  - **The weapons are plain numbers:** damage, accuracy at each range, crit and clip. They differ a lot. AI against AI, the whole squad carrying one weapon, the crew wins:
+
+    | Weapon | Aboard ships (600 fights) | On job sites (360 jobs) |
+    | --- | --- | --- |
+    | Shotgun | 78% | 78% |
+    | As issued | 51% | 66% |
+    | Rifle | 33% | 64% |
+    | Long rifle | 24% | 63% |
+    | Carbine | 23% | 55% |
+    | Pistol | 13% | 54% |
+    | Dart gun | 3% | 36% |
+
+  - **Why:** aboard ships 58% of shots are taken close (3 tiles or under) and 3% long; on the job sites 37% close and 22% long. The shotgun is best everywhere, hidden only because the job fixes who carries it (the engineer).
+  - **The enemies,** four of a type against the start squad aboard ships: the crew beats collectors and scavvers 91% of the time, pirates, claim jumpers and Pike soldiers 78%, ratings 62%, agents 49%, cadets 43%, guards 35%, customs officers 29%, dockers 21%, brutes and heavies 7%, enforcers 4%, MPs 3%.
+
+  Evan's picks (2026-10-17):
+  - **Loadouts by job:** each crew member carries one weapon, their job's to start. Each weapon is a sidearm, a long gun or a heavy weapon, and each job carries some kinds. Spares are kept aboard and swapped between fights.
+  - **New rules, all four offered:** bursts, armor piercing, a stun at arm's reach, and fire.
+  - **Five new enemy types,** one for each side.
+  - **Where weapons come from, all four offered:** act 1's shops, won fights, events, and racks at stations.
+
+  **Done when:**
+  - **15 weapons** in `data/weapons.json`, the six before unchanged in their numbers. Each has:
+    - its kind (`kind`): sidearm, long gun or heavy;
+    - its numbers and its price (`cost`);
+    - its held look (`held`): its shape and, on the new ones, a fitting of its own (a drum, a scope, coils, a fuel tank, prongs or a nail box), checked against what can be drawn;
+    - its shot's sound, five of them new (a burst's rattle, a rail's crack, a rivet's thunk, a torch's roar, a baton's snap), each at its loudness (`tools/sounds.js`).
+  - **The nine new weapons:**
+    - sidearms: a machine pistol (bursts), a shock baton (stuns, at arm's reach) and a sawn-off;
+    - long guns: an autogun (bursts), a rail rifle (pierces armor) and a marksman's rifle;
+    - heavy: a rivet gun (pierces armor), a cutting torch (fire) and a riot gun.
+  - **The rules,** each a weapon's data, so a new weapon needs no engine edit:
+    - **Bursts** (`burst`): a shot is a burst of that many shots at the target, each rolled on its own at the shown odds with the burst's aim penalty as a part of them, each a round. It stops when the target drops. Overwatch fires one shot without the penalty.
+    - **Armor piercing** (`pierce`): that much of the target's armor doesn't count against the damage.
+    - **Reach** (`reach`): no shot past that many tiles, by a side or a corner (overwatch too). The baton reaches 1, the torch 2.
+    - **Stun** (`stun`): a hit puts the target to sleep through its side's next turn, as Sedate does.
+    - **Fire** (`burn`): a hit sets the target's tile burning for that many rounds, burning as a wrecked room's fire does: 2 at the start of each of a unit's turns there. Burning tiles show on the board, and the fire goes out on its own.
+    - Each shows on the odds card and the unit's card, in the numbers rolled (Law 4).
+  - **Loadouts:**
+    - jobs carry kinds (`arms` in `data/jobs.json`): a medic and a xenobiologist sidearms; an engineer sidearms and heavy; a pilot and a scout sidearms and long guns; a marine and a quartermaster all three;
+    - a crew member's weapon is saved with them; spares are on hand (`campaign.arms`);
+    - swapping takes two taps on the crew card, at any time but in a fight, from the spares of the kinds their job carries;
+    - a recruit and a companion come with their job's weapon, and a crew member let go hands theirs in;
+    - Sedate needs a dart gun in hand.
+  - **Where weapons come from:**
+    - **Act 1's shops:** each district's dealer stocks 2 weapons beside its 4 parts, rolled with the board from a table of its own, and buys any spare at half price.
+    - **Won fights:** a won job, raid, boarding or hulk can leave one of the fallen enemies' weapons, by a roll (`gearChance` in `data/balance.json`). The odds show where the fight's stakes do, and what it left shows at the fight's end.
+    - **Events:** derelicts' lockers and the colony's hulks give weapons, and traders on the run sell them (`arms` among an outcome's effects).
+    - **Stations' racks:** each station sells 2 weapons, the same on every visit, at its side's prices. One bought is gone from the rack.
+  - **Five new enemy types,** each carrying a new weapon and joining a party or two of its side's:
+    - the pirates' gunner (an autogun);
+    - the scavvers' torcher (a cutting torch);
+    - Con-Reg's breacher (a rivet gun);
+    - the Provost's proctor (a shock baton, in riot armor);
+    - the Hallorans' cutter (a machine pistol).
+
+    Each has its look. Each party it joins wins within 5 points of its rate before (the harness, `tools/boarding.js` or `tools/raids.js`), and each pursuer's raids stay within M30's 10 points of Con-Reg's.
+  - **The AI and the test players** weigh each rule: a burst's shots, the armor pierced, a stunned target's lost turn, a fire's burns. They close to their reach and keep off burning tiles. The test players carry the best weapon of their kinds for the fight ahead, and buy weapons where the purse allows beyond a holdful's price, as at events.
+  - **Every weapon measured** aboard ships, on job sites and against armor (the Provost's patrol), the whole squad carrying it (`tools/sim.js`):
+    - each new weapon is within 5 points of the best of its kind in at least one of the three;
+    - none is 5 points better than every other of its kind in all three;
+    - the six before, and the shotgun's lead, are left for M40's balance runs (§9).
+  - **`SAVE_VERSION` 32:** a save from before gives each crew member their job's weapon, with none spare. A fight under way keeps going.
+  - **Measured over 100 voyages from each start:** each of the voyage tests' rates within its margin of main's (`MAIN`). Act 1's test runs launch in about as many jobs as main's (the median within 1).
+  - **The golden battle logs don't change:** the six weapons before keep their numbers, and the new rules are only the new weapons'.
+  - **Every rule tested:** bursts, piercing, reach, stun and fire, in the odds and the rolls; loadouts and their swaps; each source; the migration; the validator's checks.
+  - **Touch,** at the three sizes:
+    - a swap on the crew card, offering only the kinds the job carries;
+    - weapons bought at the shop and at a station's rack;
+    - a burst's shots, armor pierced on the odds card, a target out of the baton's reach, a stun, and a fire on the board;
+    - a weapon left by a won fight;
+    - offline, and no console errors.
+
+  As built (2026-10-17), where it differs from the above or adds to it:
+  - **Two weapons hit harder after the table** (PROGRESS.md has it): the machine pistol does 2–4 in bursts of 2 at −10 each (2–3 at −15), and the rivet gun 4–6 (3–5). Before, neither came within 5 points of its kind's best anywhere.
+  - **The held looks** have a seventh fitting, the sawn-off's twin barrels (`twin`).
+  - **The enemies, tuned until each party was within 5 points** of its rate before:
+    - the gunner has 7 hit points and aims 50;
+    - the torcher 5 and 45, with no defense;
+    - the breacher 6 hit points and no armor;
+    - the proctor armor 1, as an MP's, where the Done when had riot armor: with 2, the crew beat the frigate's party at home in 16% of 1,000 fights against 31% before;
+    - the cutter 5 hit points.
+  - **The breacher joined the recovery party** (the repo tug and the recovery jobs), not the raiders: in the raid party, Con-Reg's raids moved 8 and 20 points.
+  - **The test players' weapons** (`tools/arms.js`): each weapon's wins in the table, aboard ships and on job sites, rank them for the fight ahead. They buy a weapon only 20 points better (`GAIN`) than what someone who could carry it has, beyond a holdful's price and a transponder swap's, and value one at an event at a part's worth, a quarter of its price. Bought as the Done when first put it, weapons spent the purse that keeps the hunters off: as many as 22 fewer voyages of 100 crossed fed.
+  - **The test harness** (`tools/boarding.js`): a side moving to get an enemy in sight now looks any distance and walks the way there (a boarding stalled with both sides on overwatch out of sight). And once a fight drags, a move must close in: in a raid, a crew member with a torch out of reach and the raiders facing them stepped out and back for 20 rounds.
+  - **The voyage tests' two bars,** fed with a cargo hold and with bunks, hold main's rates before M37 (81 and 75; Evan's call, 2026-10-17). On seeds 1 to 100 M37's voyages came to 74 and 68, under the old bars; on seeds 101 to 200 they matched main's.
+  - **A station's rack sits in its left panel,** under the transponder swap, not in the foot. Beside Buy, Fill up, Repair and Patch up, its buttons left the hint no room and ran off the tab-size screen, as the transponder swap's had before M24 moved it.
+  - **A weapon's numbers show beside the button tapped:** under the crew card's swaps, or under the rack's button. The hint says only what the second tap does. With the numbers and rules in it, it ran past its three lines at the tab size and lost "Tap again to buy."
 - [ ] **M38 Missions and jobs.** Three mission types (clear out, grab, hack) against §5's 8, and 29 jobs against 40 or more. The draft:
   - five mission types, each with its objective, its AI and its words: extract (carrying the crates out, §9), escort, defend, sabotage, rescue;
   - about a dozen new jobs across the three districts.
@@ -1621,6 +1720,9 @@ These ideas wait until v0.4 or later:
 - companions on the start ships: a fourth mouth needs 40 supplies for 10 jumps, and the miner's and the deserter's ships carry 30, so their test voyages sign a companion on mostly where it is Teo, whose lockers carry him (raised in M33c)
 
 - more sounds: each order its own (a weld's crackle, a patch's hiss, a mark's ping), a fight won or lost, footsteps, music (raised in M35)
+- the weapons' balance: the shotgun is the best weapon both aboard ships and on the ground (the whole squad carrying it wins 78% both ways, against 51% and 66% as issued), and the rifle beats the carbine both ways (33% against 23% aboard, 64% against 55% on the ground). Seven enemy types carry the carbine, so changing it moves every fight they're in. For M40's balance runs (raised in M37)
+- the AI's out-and-back steps: in some layouts a unit steps out with one action and back with the next, turn after turn. In a raid on the colony, the raiders and a crew member with a torch out of reach did it for 20 rounds. In play the player moves the crew; the test harness makes both sides close in once a fight drags (raised in M37)
+- the worth of a weapon on the run: bought freely, the test players' weapons spent the purse that keeps the hunters off, and as many as 22 fewer voyages of 100 crossed fed. They buy only big steps up now, beyond a holdful's price and a swap's. Weapons may want to be cheaper, or the run's fights to matter more; and the table's wins are the whole squad carrying each, so what one member gains is a guess (raised in M37)
 - the credits screen: ZzFX is the first entry in `assets/LICENSES.md`, and the screen that lists them comes with the release (Phase 8; raised in M35)
 
 Ideas that come up during a session go here, not into code.

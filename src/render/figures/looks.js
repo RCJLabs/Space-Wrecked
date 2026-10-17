@@ -28,9 +28,12 @@ export const LOOK_KEYS = ['suit', 'build', 'helmet', 'back', 'marks'];
 
 // A weapon in hand, in cells: its length from stock to muzzle, the height
 // of its body, the thickness of its barrel, and whether it takes one hand or
-// two.
-export const HELD_KEYS = ['length', 'height', 'bore', 'hands'];
+// two. And a fitting of its own, if it has one (M37, weapon.js): a drum
+// magazine, a scope, coils along the barrel, a fuel tank under it, prongs
+// at the muzzle, a box of nails, or twin barrels.
+export const HELD_KEYS = ['length', 'height', 'bore', 'hands', 'fitting'];
 export const HELD_RANGES = { length: [0.08, 0.6], height: [0.02, 0.12], bore: [0.004, 0.03] };
+export const FITTINGS = ['drum', 'scope', 'coils', 'tank', 'prongs', 'box', 'twin'];
 
 // What a unit wears when its kind has no look (a test's, or content made
 // before looks): a plain suit and a carbine.
@@ -60,5 +63,6 @@ export function heldProblems(held) {
     if (!(typeof held[key] === 'number' && held[key] >= min && held[key] <= max)) problems.push(`held.${key} must be a number from ${min} to ${max}`);
   }
   if (held.hands !== 1 && held.hands !== 2) problems.push('held.hands must be 1 or 2');
+  if (held.fitting !== undefined && !FITTINGS.includes(held.fitting)) problems.push(`held.fitting must be one of ${FITTINGS.join(', ')}`);
   return problems;
 }

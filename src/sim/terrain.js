@@ -39,9 +39,16 @@ export function shutDoor(battle, x, y, side) {
   return wallAt(battle.map, x, y, side) === 'door' && !battle.doors.includes(edgeKey(x, y, side)) && !weldedAt(battle, x, y, side);
 }
 
-// The hazard on the tile at (x, y): null, 'fire', 'vacuum' or 'rubble'.
+// The hazard on the tile at (x, y): null, 'fire', 'vacuum' or 'rubble'. A
+// tile a weapon set burning (battle.js fires, M37) is on fire too.
 export function hazardAt(battle, x, y) {
-  return cellAt(battle.map.hazards, x, y) ?? null;
+  return cellAt(battle.map.hazards, x, y) ?? (burningAt(battle, x, y) ? 'fire' : null);
+}
+
+// True if a weapon's fire burns on the tile at (x, y) now (battle.js fires,
+// M37): one that goes out, unlike a wrecked room's.
+export function burningAt(battle, x, y) {
+  return Boolean(battle.fires?.some(({ at }) => at[0] === x && at[1] === y));
 }
 
 // True if a unit at `from` can reach the tile at `to` with its hands, as it

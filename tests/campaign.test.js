@@ -71,6 +71,8 @@ test("a new campaign starts in act 1 at the hangar, with its background's start"
     place: 'hub',
     credits: 0,
     parts: { quarters: 1, lifesupport: 1, corridor: 2 },
+    // M37: no spare weapons; everyone carries their job's.
+    arms: {},
     captain: 1,
     heat: 0,
     // M33: hostile with the pursuer's side, Con-Reg, and neutral with the rest.

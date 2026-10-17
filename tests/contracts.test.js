@@ -217,15 +217,18 @@ test('a job in words: the board card, the objective and the pay', () => {
     mission: 'Grab and go',
     brief: "Grab 1 tagged crate. You have to stand right beside a crate to grab it, and the job's done when the last one's in hand.",
     twist: { name: 'Rush job', text: 'Done by the end of round 6, or nobody gets paid.' },
-    against: 'Recovery agent ×2, Hired heavy',
+    // M37: Con-Reg's breacher among them.
+    against: 'Recovery agent, Hired heavy, Con-Reg breacher',
     // M33: whom it is against, and no client's side to add to the pay.
     sides: 'Against Con-Reg: −2 done or lost.',
     pay: '35 credits + Engine',
     bonus: null,
     heat: '+8 heat',
+    // M37: what a win can leave the crew.
+    gear: 'Win: 30% to pick up one of their weapons.',
   });
   assert.equal(jobText({ ...job, contract: 'jumpers', site: 'pit9', client: 'marta', twist: null }, rules).heat, '+15 heat, loud');
-  assert.equal(jobText(job, rules, ['agent']).against, 'Recovery agent ×3, Hired heavy', 'a hunter along');
+  assert.equal(jobText(job, rules, ['agent']).against, 'Recovery agent ×2, Hired heavy, Con-Reg breacher', 'a hunter along');
   assert.equal(jobText({ ...job, site: 'yard', contract: 'scrap', client: 'dutch', twist: null }, rules).where, 'The Cable Street yard');
   assert.equal(jobText({ ...job, contract: 'payroll', site: 'pit9', client: 'marta', twist: 'overtime' }, rules).brief, "Work the terminal for 2 turns. It takes a crew member's whole turn, and it only counts once a round.");
   assert.equal(jobText({ ...job, contract: 'scrap', site: 'yard', client: 'dutch', twist: null }, rules).brief, "Grab 3 tagged crates. You have to stand right beside a crate to grab it, and the job's done when the last one's in hand.");

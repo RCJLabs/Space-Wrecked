@@ -4,13 +4,15 @@
       "id": "conreg",
       "name": "Con-Reg",
       "blurb": "Consolidated Regolith: the Company. It owns the mines, the miners' debts and the lawyers who collect them.",
-      "color": "yellow"
+      "color": "yellow",
+      "arms": { "rivetgun": 3, "railrifle": 2, "rifle": 2, "carbine": 2, "baton": 1 }
     },
     {
       "id": "fleet",
       "name": "the Fleet",
       "blurb": "The Navy: its ships and stores, its customs men in every port, and the Provost who keeps its sailors from leaving.",
       "color": "blue",
+      "arms": { "marksman": 3, "baton": 2, "rifle": 2, "longrifle": 2, "riotgun": 1 },
       "patrol": {
         "waved": "The corvette checks your transponder against the Fleet's lists, finds a friend of the Fleet, and waves you on without a search.",
         "fired": "The corvette checks your transponder against the Fleet's lists and doesn't bother hailing. Her guns are firing before you clear the beacon."
@@ -20,15 +22,18 @@
       "id": "hallorans",
       "name": "the Hallorans",
       "blurb": "Old Halloran's family: the Narrows' loans, rackets and rents, collected with a smile.",
-      "color": "magenta"
+      "color": "magenta",
+      "arms": { "machinepistol": 3, "sawnoff": 3, "autogun": 2, "pistol": 2 }
     },
     {
       "id": "union",
       "name": "the union",
       "blurb": "The miners' locals, the dockers and the union halls on the run. They look after their own, and remember who helped.",
-      "color": "brick"
+      "color": "brick",
+      "arms": { "torch": 3, "rivetgun": 3, "shotgun": 2, "pistol": 2, "carbine": 1 }
     }
   ],
+  "arms": { "pistol": 3, "carbine": 3, "rifle": 2, "shotgun": 2, "dartgun": 1, "autogun": 1, "sawnoff": 1 },
   "stations": {
     "Union Hall Twelve": "union",
     "Dock Seven": "union",

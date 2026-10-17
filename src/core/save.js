@@ -84,7 +84,11 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  31  events: the campaign keeps the events it has met; a trap's approach
 //      says what sprang it; an event's result may say who took its choice
 //      and what it did to the ship (M36)
-export const SAVE_VERSION = 31;
+//  32  weapons: a crew member can carry a weapon of their own, and the
+//      campaign keeps its spare weapons; the shop sells weapons too; the run
+//      keeps what it has bought off the stations' racks; an event's result
+//      may say what weapon it found (M37)
+export const SAVE_VERSION = 32;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -430,6 +434,17 @@ export const MIGRATIONS = [
   {
     from: 30,
     up: (data) => (isObject(data) && isObject(data.campaign) ? { ...data, campaign: { ...data.campaign, eventsMet: [] } } : data),
+  },
+  // Weapons join the campaign: everyone carries their job's (no weapon of
+  // their own set), none are spare, and a run under way has bought nothing
+  // off a rack.
+  {
+    from: 31,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign)) return data;
+      const { run } = data.campaign;
+      return { ...data, campaign: { ...data.campaign, arms: {}, run: isObject(run) ? { ...run, racked: [] } : run } };
+    },
   },
 ];
 

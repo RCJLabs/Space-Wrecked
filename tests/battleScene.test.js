@@ -148,3 +148,16 @@ test('the view opens on the ship and pans over the whole map', () => {
   assert.ok(fit.y1 >= map.hatches[0].y + 1.4);
   assert.ok(fit.z1 >= 0.87, 'tall enough for a locker');
 });
+
+test("a weapon's fire (M37) burns on its tile over the floor, a glow and flames each, and none once it is out", () => {
+  const map = exampleMap();
+  const floor = [...tiles(map)].find((tile) => tile.kind === 'floor');
+  const plain = battleScene({ map, skin });
+  const burning = battleScene({ map, skin, fires: [{ at: [floor.x, floor.y], until: 3 }] });
+  const fire = (scene) => scene.glows.filter((g) => g.color === palette.fire);
+  assert.equal(fire(plain).length, 0);
+  assert.equal(fire(burning).length, 1);
+  assert.deepEqual(fire(burning)[0].at.slice(0, 2), [floor.x + 0.5, floor.y + 0.5]);
+  assert.ok(burning.faces.some((f) => f.emissive && f.color === palette.fireCore && f.pts.every(([x, y]) => x >= floor.x && x <= floor.x + 1 && y >= floor.y && y <= floor.y + 1)));
+  assert.deepEqual(battleScene({ map, skin, fires: [] }), plain);
+});

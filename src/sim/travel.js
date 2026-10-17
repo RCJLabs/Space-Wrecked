@@ -127,7 +127,7 @@ export function beginRun(campaign, rules) {
 
 // A run entering `sector`, with the sectors behind it.
 function freshRun(sector, past) {
-  return { sector, at: sector.start, seen: [sector.start], past, done: [], scans: [], result: null, approach: null, hired: [], swapped: false, surveyed: [], docked: false };
+  return { sector, at: sector.start, seen: [sector.start], past, done: [], scans: [], result: null, approach: null, hired: [], racked: [], swapped: false, surveyed: [], docked: false };
 }
 
 // The event open at the ship's node: { node, event } (the event from

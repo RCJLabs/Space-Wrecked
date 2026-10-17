@@ -47,6 +47,19 @@
 //                                        tools/boarding.js): the squad at home
 //                                        and aboard each hostile preset's ship,
 //                                        the fights spread over the rows
+//   node tools/sim.js --weapon autogun   the whole squad carries the weapon
+//                                        (M37). With --compare, the same
+//                                        fights with the squad as issued first
+//   node tools/sim.js --sites            the fights on act 1's job sites
+//                                        instead: the first three jobs on a
+//                                        fresh board of each background, seeds
+//                                        from 1, the crew played by the job
+//                                        player (jobAi.js), 60 rounds at most
+//   node tools/sim.js --weapons          every weapon's table (M37): the crew's
+//                                        wins with the whole squad carrying
+//                                        each, aboard ships, on job sites and
+//                                        against armor (the Provost's patrol),
+//                                        --fights in each
 //
 // Each fight gets its own seed; on a preset, its own generated ship too.
 import { readFileSync } from 'node:fs';
@@ -54,11 +67,14 @@ import { basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { decodeBlueprint } from '../src/core/blueprint.js';
 import { aiAction } from '../src/sim/ai.js';
-import { autoplay } from '../src/sim/autoplay.js';
+import { autoplay, playFrom } from '../src/sim/autoplay.js';
 import { buildShip, layoutProblems } from '../src/sim/builder.js';
+import { newCampaign } from '../src/sim/campaign.js';
+import { takeJob, withBoard } from '../src/sim/contracts.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { deploy } from '../src/sim/deploy.js';
 import { generateShip } from '../src/sim/gen/ship.js';
+import { jobAction } from '../src/sim/jobAi.js';
 import { mapFromShip } from '../src/sim/mapFromShip.js';
 import { scriptedAction } from '../src/sim/scripted.js';
 import { TALENT_RANK } from '../src/sim/talents.js';
@@ -67,7 +83,14 @@ import { readData } from './data.js';
 import { validateData } from './validate-data.js';
 
 const PLAYERS = { ai: aiAction, scripted: scriptedAction };
-export const DEFAULTS = { fights: 1000, ships: null, sets: [], crew: 'ai', boarders: 'ai', rounds: 30, seed: 'balance', encounter: null, compare: false, json: false, boardings: false, squad: null, orders: 'all', rank: 0, talent: null };
+export const DEFAULTS = { fights: 1000, ships: null, sets: [], crew: 'ai', boarders: 'ai', rounds: 30, seed: 'balance', encounter: null, compare: false, json: false, boardings: false, squad: null, orders: 'all', rank: 0, talent: null, weapon: null, sites: false, weapons: false };
+// A job site's fight still going after this many rounds stops with no
+// winner, as act 1's test runs stop it (tools/run.js).
+const SITE_ROUNDS = 60;
+// The jobs a fresh board gives the job sites' fights.
+const SITE_JOBS = 3;
+// The armor the weapons' table is measured against (M37).
+const ARMORED = 'provostpatrol';
 // A talent's run (M33c) puts the rest of the crew at this rank, the
 // talent's own rank's below.
 const TALENT_BELOW = TALENT_RANK - 1;
@@ -97,10 +120,13 @@ export function parseArgs(argv) {
     else if (arg === '--orders') options.orders = value();
     else if (arg === '--rank') options.rank = whole(value(), arg, 0);
     else if (arg === '--talent') options.talent = value();
+    else if (arg === '--weapon') options.weapon = value();
+    else if (arg === '--sites') options.sites = true;
+    else if (arg === '--weapons') options.weapons = true;
     else throw new Error(`Unknown option "${arg}".`);
   }
   if (options.talent) options.rank = TALENT_BELOW;
-  if (options.compare && !options.sets.length && options.orders === 'all' && !options.rank) throw new Error('--compare needs a --set, --orders, --rank or --talent to compare with.');
+  if (options.compare && !options.sets.length && options.orders === 'all' && !options.rank && !options.weapon) throw new Error('--compare needs a --set, --orders, --rank, --talent or --weapon to compare with.');
   return options;
 }
 
@@ -190,7 +216,7 @@ export function shipsFor(names, rules) {
 // orders count each side's actions; given, the crew's job orders by kind
 // (M32); shots are { side, chance, hit, overwatch, crit, damage }; downs,
 // outs and deaths count crew downed, crew bled out and boarders killed.
-export function runFights(rules, { ships, fights, seed, crew, boarders, rounds, encounter, rank = 0, talent = null }) {
+export function runFights(rules, { ships, fights, seed, crew, boarders, rounds, encounter, rank = 0, talent = null, weapon = null }) {
   const party = encounter ? rules.encounters.get(encounter) : rules.encounters.values().next().value;
   if (!party) throw new Error(`No encounter "${encounter}" in data/encounters.json.`);
   const talentJob = talent ? talentJobOf(rules, talent) : null;
@@ -208,11 +234,73 @@ export function runFights(rules, { ships, fights, seed, crew, boarders, rounds, 
     }
     const placed = deploy(map, rules.squad, party.enemies, rules);
     if (!placed.ok) throw new Error(`${source.label}: ${placed.error}`);
-    const units = ranked(placed.units, rules, rank, talent, talentJob);
+    const units = armed(ranked(placed.units, rules, rank, talent, talentJob), rules, weapon);
     const played = autoplay({ map, units, seed: fightSeed }, rules, players, { maxRounds: rounds });
     records.push(record(source.label, played));
   }
   return records;
+}
+
+// The fights on act 1's job sites (M37's weapons' table): the first
+// SITE_JOBS jobs on a fresh board of each background in turn, campaign
+// seeds from 1, until there are `fights`; the crew played by the job player
+// (jobAi.js), the enemy by the AI, the whole crew carrying `weapon` if one
+// is given. One record a fight, as runFights's, by background.
+export function runSites(rules, { fights, weapon = null }) {
+  const records = [];
+  const backgrounds = [...rules.backgrounds.values()];
+  for (let seed = 1; records.length < fights; seed++) {
+    for (const background of backgrounds) {
+      const campaign = withBoard(newCampaign(rules, seed, { background: background.id }), rules);
+      const crew = weapon ? campaign.crew.map((member) => ({ ...member, weapon })) : campaign.crew;
+      for (let index = 0; index < Math.min(SITE_JOBS, campaign.board.length) && records.length < fights; index++) {
+        const taken = takeJob({ ...campaign, crew }, rules, index);
+        if (!taken.ok) throw new Error(`${background.name}, seed ${seed}: ${taken.error}`);
+        records.push(record(background.name, playFrom(taken.campaign.fight.battle, rules, { crew: jobAction, enemy: aiAction }, { maxRounds: SITE_ROUNDS })));
+      }
+    }
+  }
+  return records;
+}
+
+// Every weapon's table (M37): the crew's wins with the whole squad as
+// issued and then carrying each weapon, aboard ships (against the first
+// encounter), on job sites and against armor (ARMORED), `fights` in each.
+// [{ weapon (null as issued), kind, aboard, sites, armor }], each a share.
+export function runWeapons(rules, { ships, fights, seed, rounds }) {
+  const base = { ships, fights, seed, crew: 'ai', boarders: 'ai', rounds };
+  const wins = (records) => share(records.filter((r) => r.winner === 'crew').length, records.length);
+  return [null, ...rules.weapons.keys()].map((weapon) => ({
+    weapon,
+    kind: weapon ? rules.weapons.get(weapon).kind : null,
+    aboard: wins(runFights(rules, { ...base, weapon })),
+    sites: wins(runSites(rules, { fights, weapon })),
+    armor: wins(runFights(rules, { ...base, weapon, encounter: ARMORED })),
+  }));
+}
+
+// The weapons' table as text: a row a weapon, its kind's best in each
+// column marked *.
+export function weaponsText(rows, rules, fights) {
+  const pct = (s) => `${Math.round(s.rate * 100)}%`;
+  const best = {};
+  for (const row of rows.filter((r) => r.kind)) {
+    for (const column of ['aboard', 'sites', 'armor']) best[`${row.kind} ${column}`] = Math.max(best[`${row.kind} ${column}`] ?? 0, row[column].rate);
+  }
+  const cell = (row, column) => `${pct(row[column])}${row.kind && row[column].rate === best[`${row.kind} ${column}`] ? '*' : ' '}`;
+  const lines = [['Weapon', 'Kind', 'Aboard ships', 'Job sites', 'Against armor']];
+  for (const row of rows) lines.push([row.weapon ? rules.weapons.get(row.weapon).name : 'As issued', row.kind ?? '', cell(row, 'aboard'), cell(row, 'sites'), cell(row, 'armor')]);
+  return [
+    `The crew's wins, the whole squad (${rules.squad.join(', ')}) carrying each weapon: aboard ships against the ${rules.encounters.values().next().value.name.toLowerCase()}, on act 1's job sites, and against the ${rules.encounters.get(ARMORED).name.toLowerCase()}'s armor; ${commas(fights)} fights in each. * marks the best of its kind.`,
+    '',
+    ...table(lines),
+  ].join('\n');
+}
+
+// The crew's units carrying `weapon`, if one is given; the enemy's as they
+// are.
+function armed(units, rules, weapon) {
+  return weapon ? units.map((unit) => (rules.jobs.has(unit.kind) ? { ...unit, weapon } : unit)) : units;
 }
 
 // The job of companion `talent` (M33c), which the squad must have.
@@ -395,9 +483,10 @@ export function setupText(rules, options, ships, balance) {
     ? ` at rank ${options.rank}, the ${rules.jobs.get(companion.job)?.name.toLowerCase() ?? companion.job} at rank ${TALENT_RANK} with ${companion.name}'s ${companion.talent.name}${options.compare ? ` (before: all at rank ${options.rank})` : ''}`
     : options.rank ? ` at rank ${options.rank}${options.compare ? ' (before: rank 0)' : ''}` : '';
   const before = options.compare && !options.rank && options.orders !== 'all' ? ' (before: every job order)' : '';
+  const carrying = options.weapon ? `, each carrying the ${rules.weapons.get(options.weapon).name.toLowerCase()}${options.compare ? ' (before: as issued)' : ''}` : '';
   return [
     `${commas(options.fights)} fights on ${ships.map((s) => s.label.toLowerCase()).join(', ')}.`,
-    `The squad (${rules.squad.join(', ')}), played by ${who('crew')} with ${orders}${before}${rank}, against the ${party.name.toLowerCase()} (${party.enemies.join(', ')}), played by ${who('boarders')}.`,
+    `The squad (${rules.squad.join(', ')})${carrying}, played by ${who('crew')} with ${orders}${before}${rank}, against the ${party.name.toLowerCase()} (${party.enemies.join(', ')}), played by ${who('boarders')}.`,
     `${options.rounds} rounds at most, seed "${options.seed}"${sets ? `, with ${sets}` : ''}.`,
   ].join(' ');
 }
@@ -428,12 +517,30 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     if (!options.json) console.log(`\n${commas(perRow * rows.length)} fights in ${((performance.now() - started) / 1000).toFixed(1)} s.`);
     process.exit(0);
   }
+  if (options.weapon && !changed.rules.weapons.has(options.weapon)) fail(`No weapon "${options.weapon}": name one from data/weapons.json (${[...changed.rules.weapons.keys()].join(', ')}).`);
   let ships;
   try {
     ships = shipsFor(options.ships, changed.rules);
     if (options.talent) talentJobOf(changed.rules, options.talent);
   } catch (err) {
     fail(err.message);
+  }
+  if (options.weapons) {
+    const started = performance.now();
+    const rows = runWeapons(changed.rules, { ...options, ships });
+    console.log(options.json ? JSON.stringify(rows, null, 2) : weaponsText(rows, changed.rules, options.fights));
+    if (!options.json) console.log(`\nIn ${((performance.now() - started) / 1000).toFixed(1)} s.`);
+    process.exit(0);
+  }
+  if (options.sites) {
+    const started = performance.now();
+    const summary = summarize(runSites(changed.rules, options));
+    const before = options.compare && options.weapon ? summarize(runSites(changed.rules, { ...options, weapon: null })) : null;
+    const carrying = options.weapon ? `, the whole crew carrying the ${changed.rules.weapons.get(options.weapon).name.toLowerCase()}${before ? ' (before: as issued)' : ''}` : '';
+    const setup = `${commas(options.fights)} fights on act 1's job sites: the first ${SITE_JOBS} jobs on a fresh board of each background, campaign seeds from 1, the crew played by the job player${carrying}, ${SITE_ROUNDS} rounds at most.`;
+    console.log(options.json ? JSON.stringify(before ? { before, after: summary } : summary, null, 2) : reportText(summary, setup, before));
+    if (!options.json) console.log(`\nIn ${((performance.now() - started) / 1000).toFixed(1)} s.`);
+    process.exit(0);
   }
   // Balance numbers don't change the maps, so both runs share the ships.
   // A rank compares with the same fights at rank 0; otherwise the data as it
@@ -442,7 +549,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const summary = summarize(runFights(changed.rules, { ...options, ships }));
   const plain = () => rulesFor(rulesWith(data, []).rules, { squad: options.squad }).rules;
   // A talent (M33c) compares with the same fights all at rank 2.
-  const before = options.compare ? summarize(runFights(options.rank ? changed.rules : plain(), { ...options, ships, rank: options.talent ? options.rank : 0, talent: null })) : null;
+  const before = options.compare ? summarize(runFights(options.rank ? changed.rules : plain(), { ...options, ships, rank: options.talent ? options.rank : 0, talent: null, weapon: null })) : null;
   const seconds = (performance.now() - started) / 1000;
   if (options.json) {
     console.log(JSON.stringify(before ? { before, after: summary } : summary, null, 2));

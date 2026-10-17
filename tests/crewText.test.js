@@ -28,7 +28,7 @@ test('the crew card away from a station: who is aboard, the room and the med bay
   const campaign = onRun({ credits: 500 });
   const card = crewCardText(campaign, rules);
   assert.equal(card.title, 'Crew · 3 aboard, room for 4');
-  assert.equal(card.text, 'The berths and life support carry 4. With no med bay aboard, wounds heal only when a station patches the crew. Crew sign on and are let go at stations.');
+  assert.equal(card.text, 'The berths and life support carry 4. With no med bay aboard, wounds heal only when a station patches the crew. Crew sign on and are let go at stations. No spare weapons on hand.');
   const [a, b, c] = campaign.crew.map((m) => m.name);
   assert.deepEqual(
     card.members.map(({ name, about, hp, max, dismiss }) => [name, about, hp, max, dismiss]),
@@ -106,9 +106,9 @@ test('the map\'s hint at a station points to the recruits, once nothing more pre
 
 test('the crew card says what the med bay heals, and when it is wrecked', () => {
   const campaign = withBay(atStation());
-  assert.match(crewCardText(campaign, rules).text, /The med bay heals each of the wounded 2 a jump\.$/);
+  assert.match(crewCardText(campaign, rules).text, /The med bay heals each of the wounded 2 a jump\. No spare weapons on hand\.$/);
   const bay = campaign.ship.modules.find((m) => m.type === 'medbay').uid;
-  assert.match(crewCardText({ ...campaign, wrecks: { [bay]: 'fire' } }, rules).text, /The med bay is wrecked: it heals no one until a station repairs it\.$/);
+  assert.match(crewCardText({ ...campaign, wrecks: { [bay]: 'fire' } }, rules).text, /The med bay is wrecked: it heals no one until a station repairs it\. No spare weapons on hand\.$/);
 });
 
 test('the squad picker: shown only with more aboard than a squad takes; the healthiest unless picked', () => {
