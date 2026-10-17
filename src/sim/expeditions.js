@@ -51,7 +51,8 @@ import { passDay } from './days.js';
 import { deploy } from './deploy.js';
 import { pickWeighted } from './drops.js';
 import { colonyEdge } from './edges.js';
-import { applyEffects, choiceProblem, outcomeFor } from './events.js';
+import { eventsOf, freshest } from './eventPool.js';
+import { applyEffects, choiceProblem, metEvent, outcomeFor, takerOf } from './events.js';
 import { tally } from './flags.js';
 import { generateShip } from './gen/ship.js';
 import { withHeat } from './heat.js';
@@ -66,9 +67,11 @@ const MAX_SEED = 0xffffffff;
 // What an event at a place can do and need (data/events.json): food (the
 // run's supplies), materials, wounds and parts. Credits buy nothing at the
 // colony, and a place's events leave heat alone: a trip adds its own as it
-// flies out (M29).
-export const PLACE_EFFECTS = ['supplies', 'materials', 'wound', 'part', 'drop'];
-export const PLACE_NEEDS = ['supplies', 'parts'];
+// flies out (M29). From M36 one can need someone in the squad, repair the
+// ship's wrecks, or spring a trap at a kind of place the scavengers can
+// hold: they were waiting, and the place is held.
+export const PLACE_EFFECTS = ['supplies', 'materials', 'wound', 'part', 'drop', 'repair', 'ambush'];
+export const PLACE_NEEDS = ['supplies', 'parts', 'job', 'trait', 'wrecks'];
 
 // A place's kind (data/expeditions.json), or null.
 export function kindOf(place, rules) {
@@ -90,7 +93,9 @@ export function otherWorlds(campaign) {
 // worlds names its places for the system's other worlds); a name of its
 // kind, none twice in the list; its days within the kind's; whether the
 // scavengers hold it, at the kind's chance; its event, one of the kind's,
-// unless held; and its ship's seed.
+// unless held; and its ship's seed. A kind's events (M36) are its own and
+// the background's, none twice in the list, and none met before while the
+// kind has others left (events.js eventsMet).
 export function rollPlaces(campaign, rules) {
   const spec = rules.expeditions;
   let rng = campaign.rng;
@@ -115,8 +120,8 @@ export function rollPlaces(campaign, rules) {
     taken.add(name);
     const days = roll(kind.days[0], kind.days[1]);
     const held = kind.held ? roll(0, 99) < kind.held.chance : false;
-    const events = held ? [] : [...rules.events.values()].filter((event) => event.kind === kind.id && !event.quest);
-    const event = events.length ? events[roll(0, events.length - 1)].id : null;
+    const events = held ? [] : freshest(eventsOf(rules, kind.id, campaign.background), campaign.eventsMet ?? [], places.map((place) => place.event));
+    const event = events.length ? events[roll(0, events.length - 1)] : null;
     places.push({ kind: kind.id, name, days, event, held, seed: roll(0, MAX_SEED) });
   }
   return { places, rng };
@@ -249,14 +254,18 @@ export function tripHere(campaign, rules) {
 
 // Makes choice id at the event where the squad is: rolls its outcome, if
 // it has more than one (0 to 99, as on the run), and has its effects, a
-// wound only ever on the squad. Returns { ok: true, campaign, result } or
-// { ok: false, error }.
+// wound only ever on the squad; a choice that needs someone (M36) needs
+// them in the squad, and its wound falls on them. A trap (M36) leaves the
+// place held, its event spent, and the squad's fight there due
+// (placeFightDue); the trip is done once that is over. Returns { ok: true,
+// campaign, result } or { ok: false, error }.
 export function chooseAtPlace(campaign, rules, id) {
   const here = atColony(campaign, rules) ? tripHere(campaign, rules) : null;
   if (!here?.event) return { ok: false, error: 'There is nothing to decide here.' };
   const choice = here.event.choices.find((entry) => entry.id === id);
   if (!choice) return { ok: false, error: 'There is no such choice.' };
-  const why = choiceProblem(campaign, choice, rules);
+  const { squad } = campaign.colony.trip;
+  const why = choiceProblem(campaign, choice, rules, { among: squad });
   if (why) return { ok: false, error: why };
   let rng = campaign.rng;
   let roll = null;
@@ -266,11 +275,15 @@ export function chooseAtPlace(campaign, rules, id) {
     rng = rolled.state;
   }
   const outcome = roll === null ? 0 : outcomeFor(choice.outcomes, roll);
-  const done = applyEffects({ ...campaign, rng }, rules, choice.outcomes[outcome].effects, { among: campaign.colony.trip.squad });
-  const result = { event: here.event.id, choice: choice.id, outcome, roll, changes: done.changes };
-  const after = done.campaign;
-  const flags = tally(after.flags, { placeEvents: 1, tripParts: done.changes.parts.length, tripMaterials: done.changes.materials, tripFood: Math.max(0, done.changes.supplies) });
-  return { ok: true, result, campaign: { ...after, flags, colony: { ...after.colony, trip: { ...after.colony.trip, done: true, result } } } };
+  const { effects } = choice.outcomes[outcome];
+  const taker = takerOf(campaign, choice, squad);
+  const done = applyEffects({ ...campaign, rng }, rules, effects, { among: squad, taker: taker?.id ?? null });
+  const result = { event: here.event.id, choice: choice.id, outcome, roll, changes: done.changes, ...(taker ? { taker: taker.id } : {}) };
+  const after = metEvent(done.campaign, here.event.id);
+  const flags = tally(after.flags, { placeEvents: 1, tripParts: done.changes.parts.length, tripMaterials: done.changes.materials, tripFood: Math.max(0, done.changes.supplies), ...(effects.ambush ? { placeAmbushes: 1 } : {}) });
+  const { trip } = after.colony;
+  const next = effects.ambush ? { ...trip, place: { ...trip.place, held: true, event: null }, done: false, result } : { ...trip, done: true, result };
+  return { ok: true, result, campaign: { ...after, flags, colony: { ...after.colony, trip: next } } };
 }
 
 // The fight due where the squad is, as it would begin, for the screens and

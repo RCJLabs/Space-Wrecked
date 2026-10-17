@@ -86,9 +86,10 @@ export function createEventCard({ choose, close }) {
       button.disabled = !choice.ok;
       button.dataset.armed = String(armed === choice.id);
       button.append(node('span', null, armed === choice.id ? `${choice.label}?` : choice.label));
-      const small = choice.why ?? [choice.odds, choice.berth].filter(Boolean).join(' · ');
+      // Who takes it (M36), its odds and the berth it takes, or why not.
+      const small = choice.why ?? [choice.taker, choice.odds, choice.berth].filter(Boolean).join(' · ');
       if (small) button.append(node('small', null, small));
-      button.setAttribute('aria-label', choice.ok ? `${choice.label}. ${choice.outcomes.map((o) => `${o.chance}%: ${o.says}`).join('. ')}` : `${choice.label}. ${choice.why}`);
+      button.setAttribute('aria-label', choice.ok ? `${choice.label}${choice.taker ? `, ${choice.taker} takes it` : ''}. ${choice.outcomes.map((o) => `${o.chance}%: ${o.says}`).join('. ')}` : `${choice.label}. ${choice.why}`);
       return { button, detach: onTap(button, () => tap(choice)) };
     });
     choices.replaceChildren(...buttons.map((entry) => entry.button));

@@ -121,7 +121,7 @@ export function beginRun(campaign, rules) {
   if (!onTheRun(campaign, rules)) return { ok: false, error: 'The run starts once the ship has launched.' };
   if (campaign.run) return { ok: false, error: 'The run is under way.' };
   const { value: seed, state: rng } = int(campaign.rng, 0, MAX_SEED);
-  const sector = placeQuests(generateSector(rules, seed, 1), campaign, rules);
+  const sector = placeQuests(generateSector(rules, seed, 1, { background: campaign.background, met: campaign.eventsMet ?? [] }), campaign, rules);
   return { ok: true, campaign: { ...campaign, rng, supplies: supplyCapacity(campaign.ship, rules, campaign.crew), run: freshRun(sector, []) } };
 }
 
@@ -386,7 +386,7 @@ export function leaveSector(campaign, rules) {
   const { value: seed, state: rng } = int(cooled.campaign.rng, 0, MAX_SEED);
   const past = [...campaign.run.past, campaign.run.sector.name];
   const index = campaign.run.sector.index + 1;
-  const sector = plan.kind === 'system' ? generateSystem(rules, seed, index) : placeQuests(generateSector(rules, seed, index, { avoid: past }), cooled.campaign, rules);
+  const sector = plan.kind === 'system' ? generateSystem(rules, seed, index) : placeQuests(generateSector(rules, seed, index, { avoid: past, background: campaign.background, met: cooled.campaign.eventsMet ?? [] }), cooled.campaign, rules);
   const met = rollHunt({ ...cooled.campaign, rng, run: freshRun(sector, past) }, rules);
   return { ok: true, plan, campaign: met.campaign, hunt: met.hunt, cold: cooled.cold };
 }

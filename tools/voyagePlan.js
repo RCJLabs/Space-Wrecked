@@ -51,7 +51,13 @@
 //            90 and 98): a fourth mouth empties the start ship's 30 supplies
 //            in 7 jumps
 // A station of the pursuer's side is worth its docking heat (M33), priced
-// as an event's heat is, from the heat after the jump there. A choice is
+// as an event's heat is, from the heat after the jump there. From M36 an
+// event's trap is worth a hostile ship that fires first (hostile and volley
+// together); a part it wrecks costs what a station would charge to repair
+// it, on average over the working parts a wreck could hit (wreckCost); and
+// a repair is worth what a station would charge for the wrecks it mends,
+// the dearest first (mendWorth). A choice that needs someone (M36) it makes
+// only with them aboard. A choice is
 // worth what its outcomes are, each at its chance. A node
 // whose kind is known is worth its event's best choice until settled, or a
 // hostile ship's worth until met; one still unknown, what the mix's kinds
@@ -121,7 +127,10 @@
 // full health, else the nearest place, never one its food doesn't cover
 // or that would come home past the days it plays. At an event it makes the
 // choice worth most (placeChoice): materials and food a point each, as far
-// as the stores take them, a part PLACE_PART, a wound PLACE_HP a hit point.
+// as the stores take them, a part PLACE_PART, a wound PLACE_HP a hit point;
+// from M36 a wreck mended PLACE_PART (it can go to the colony again), a
+// trap PLACE_TRAP against, and only what the squad can take. A trap's fight
+// is fought then and there.
 // From M29, while a raid is coming it stays home and sets down from the
 // hold what will help when the lander comes (raidPrep): guns that fire at
 // it, then a shield and an armory for the defenders, each only where it
@@ -132,13 +141,16 @@ import { buildingOf, colonyStats, givesOf, shipParts, storesOf, yieldOf } from '
 import { build, buildPlan, takeDown } from '../src/sim/colonyBuild.js';
 import { crewRoom } from '../src/sim/crew.js';
 import { sellPriceOf } from '../src/sim/economy.js';
-import { choiceProblem } from '../src/sim/events.js';
+import { wrecksOn } from '../src/sim/encounter.js';
+import { eventsOf, freshest } from '../src/sim/eventPool.js';
+import { choiceProblem, wreckable } from '../src/sim/events.js';
 import { tripPlan } from '../src/sim/expeditions.js';
 import { LANES } from '../src/sim/gen/system.js';
 import { withHeat } from '../src/sim/heat.js';
 import { huntOdds } from '../src/sim/hunt.js';
 import { openStep } from '../src/sim/quests.js';
 import { recruitOffer } from '../src/sim/recruits.js';
+import { repairPrice, wrecksToRepair } from '../src/sim/repair.js';
 import { regroupPlan } from '../src/sim/regroup.js';
 import { dockHeat, levelOf, moveStanding, patrolWelcome, priceShare, standingWith, stationSide } from '../src/sim/standing.js';
 import { swapPlan } from '../src/sim/transponder.js';
@@ -279,7 +291,28 @@ export function effectsWorth(campaign, rules, effects, heat = 'manage') {
   if (effects.sell) worth += (1 - WORTH.part) * dearest(campaign, rules, effects.sell);
   // Standing (M33), as far as it would move.
   if (effects.standing) worth += WORTH.standing * moveStanding(campaign, rules, effects.standing).changes.reduce((sum, change) => sum + change.to - change.from, 0);
+  // A trap, parts wrecked and wrecks mended (M36).
+  if (effects.ambush) worth += WORTH.hostile + WORTH.volley;
+  if (effects.wreck) worth -= wreckCost(campaign, rules, effects.wreck);
+  if (effects.repair) worth += mendWorth(campaign, rules, effects.repair);
   return worth;
+}
+
+// What wrecking `count` parts costs (M36): a station's repair of each, on
+// average over the working parts a wreck could hit.
+function wreckCost(campaign, rules, count) {
+  const prices = wreckable(campaign.ship, wrecksOn(campaign.ship, campaign.wrecks), rules).map((module) => repairPrice(module.type, rules) ?? 0);
+  return prices.length ? (Math.min(count, prices.length) * prices.reduce((sum, price) => sum + price, 0)) / prices.length : 0;
+}
+
+// What mending `count` wrecks is worth (M36): a station's price for the
+// dearest of them, as many as it mends.
+function mendWorth(campaign, rules, count) {
+  return wrecksToRepair(campaign, rules)
+    .map((wreck) => wreck.price)
+    .sort((a, b) => b - a)
+    .slice(0, count)
+    .reduce((sum, price) => sum + price, 0);
 }
 
 // What the shop pays, on average, for a part from a drop table.
@@ -297,15 +330,30 @@ function dearest(campaign, rules, count) {
 
 // The choice the player makes at an event: { choice, worth }, the one worth
 // most of those it can make, with what it does to a quest (questWorth) at
-// `pull` of its worth: all of it at the event, questPull's on the way.
+// `pull` of its worth: all of it at the event, questPull's on the way. From
+// M36, as at a station, it spends credits only beyond a holdful's price
+// (dipsReserve), but on supplies or a quest's step: the traders sell parts,
+// repairs and quiet now, and a purse spent on them left nothing for the
+// holds or the transponder. With every choice dipping, it judges them all.
 export function bestChoice(campaign, rules, event, heat = 'manage', pull = 1) {
-  let best = null;
+  const reserve = supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice;
+  const judged = [];
   for (const choice of event.choices) {
     if (choiceProblem(campaign, choice, rules)) continue;
-    const worth = choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * effectsWorth(campaign, rules, outcome.effects, heat), 0) + pull * questWorth(campaign, rules, event, choice);
-    if (!best || worth > best.worth) best = { choice, worth };
+    const quest = questWorth(campaign, rules, event, choice);
+    const worth = choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * effectsWorth(campaign, rules, outcome.effects, heat), 0) + pull * quest;
+    judged.push({ choice, worth, dips: quest <= 0 && dipsReserve(campaign, choice, reserve) });
   }
+  const kept = judged.some((entry) => !entry.dips) ? judged.filter((entry) => !entry.dips) : judged;
+  let best = null;
+  for (const { choice, worth } of kept) if (!best || worth > best.worth) best = { choice, worth };
   return best;
+}
+
+// Whether a choice pays credits out of the reserve (a holdful's price) for
+// anything but supplies.
+function dipsReserve(campaign, choice, reserve) {
+  return choice.outcomes.some(({ effects }) => (effects.credits ?? 0) < 0 && !(effects.supplies > 0) && campaign.credits + effects.credits < reserve);
 }
 
 // The share of a quest's worth a node on the way counts (M33b): the
@@ -376,7 +424,10 @@ function chainBefriends(campaign, rules, quest, choice) {
 }
 
 // What an unknown node is worth on average: the mix's kinds by weight, each
-// its events' best choices on average, or a hostile ship's worth.
+// its events' best choices on average, or a hostile ship's worth. Since M36
+// its events are those the campaign's pool still holds (eventPool.js): its
+// background's own among them, and none it has met while the kind has
+// others.
 function unknownWorth(campaign, rules, heat) {
   const mix = Object.entries(rules.sectors.mix);
   const total = mix.reduce((sum, [, weight]) => sum + weight, 0);
@@ -386,7 +437,7 @@ function unknownWorth(campaign, rules, heat) {
       worth += (weight / total) * WORTH.hostile;
       continue;
     }
-    const events = [...rules.events.values()].filter((event) => event.kind === kind && !event.quest);
+    const events = freshest(eventsOf(rules, kind, campaign.background), campaign.eventsMet ?? []).map((id) => rules.events.get(id));
     if (!events.length) continue;
     const each = events.reduce((sum, event) => sum + (bestChoice(campaign, rules, event, heat)?.worth ?? 0), 0) / events.length;
     worth += (weight / total) * each;
@@ -670,6 +721,9 @@ export function nextBuild(campaign, rules) {
 export const FIT_SHARE = 0.75;
 const PLACE_PART = 8;
 const PLACE_HP = 2;
+// A trap at a place (M36): the scavengers' fight there with the squad as it
+// is, which the player otherwise takes on only at full strength (nextPlace).
+const PLACE_TRAP = 16;
 
 // Who flies on a trip now: the healthiest of those healed to FIT_SHARE of
 // their most, up to squadSize, the crew's order breaking ties; their ids,
@@ -753,15 +807,19 @@ export function nextPlace(campaign, rules, squad, days = Infinity) {
 // one worth most of those it can make, the first on a tie.
 export function placeChoice(campaign, rules, event) {
   const stores = storesOf(campaign, rules).total;
-  const squad = campaign.colony.trip?.squad.length ?? 1;
+  const among = campaign.colony.trip?.squad ?? null;
+  const squad = among?.length ?? 1;
+  const wrecks = Object.keys(wrecksOn(campaign.ship, campaign.wrecks)).length;
   const worth = (effects) =>
     Math.min(Math.max(0, stores - campaign.colony.materials), effects.materials ?? 0) +
     Math.min(Math.max(0, stores - campaign.supplies), Math.max(0, effects.supplies ?? 0)) +
-    (effects.drop || effects.part ? PLACE_PART : 0) -
+    (effects.drop || effects.part ? PLACE_PART : 0) +
+    PLACE_PART * Math.min(effects.repair ?? 0, wrecks) -
+    (effects.ambush ? PLACE_TRAP : 0) -
     (effects.wound ? PLACE_HP * effects.wound.hp * (effects.wound.all ? squad : 1) : 0);
   let best = null;
   for (const choice of event.choices) {
-    if (choiceProblem(campaign, choice, rules)) continue;
+    if (choiceProblem(campaign, choice, rules, { among })) continue;
     const value = choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * worth(outcome.effects), 0);
     if (!best || value > best.worth) best = { choice, worth: value };
   }

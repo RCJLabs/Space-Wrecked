@@ -3,7 +3,7 @@
 // Shape only: whether a place's kind and event are the content's is the
 // rules' business. Pure.
 import { isQuestNote } from './questShape.js';
-import { MAX_PLACE_NAME } from './runShape.js';
+import { isShipChanges, MAX_PLACE_NAME } from './runShape.js';
 
 // More places than the list holds (data/expeditions.json places, held to
 // this by tools/validate-expeditions.js, and a scout's more, capped at it:
@@ -41,7 +41,10 @@ export function tripProblem(trip, crew) {
     return "names a squad that isn't the crew's";
   }
   if (trip.result !== null && !isResult(trip.result)) return 'has an unreadable result';
-  if ((trip.result !== null) !== trip.done) return "doesn't match what was done";
+  // A trap at the place (M36) leaves its event's result while its fight is
+  // still to come.
+  const sprung = trip.result !== null && !trip.done && trip.place.held && trip.result.changes?.ambush === true;
+  if ((trip.result !== null) !== trip.done && !sprung) return "doesn't match what was done";
   if (trip.leg !== null && !isLeg(trip.leg)) return 'has an unreadable leg';
   if (trip.leg?.dir === 'out' && trip.done) return "is done at a place it hasn't reached";
   return null;
@@ -61,7 +64,7 @@ function isResult(result) {
   if (typeof result.won === 'boolean') {
     return Array.isArray(result.parts) && result.parts.length <= MAX_SALVAGE && result.parts.every(isId) && isInt(result.materials, 0, MAX_AMOUNT) && (result.quest === undefined || (result.won && isQuestNote(result.quest)));
   }
-  return isId(result.event) && isId(result.choice) && isInt(result.outcome, 0, 9) && (result.roll === null || isInt(result.roll, 0, 99)) && isRecord(result.changes);
+  return isId(result.event) && isId(result.choice) && isInt(result.outcome, 0, 9) && (result.roll === null || isInt(result.roll, 0, 99)) && isRecord(result.changes) && isShipChanges(result.changes) && (result.taker === undefined || isInt(result.taker, 0, MAX_AMOUNT));
 }
 
 function isRecord(value) {

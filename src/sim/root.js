@@ -35,9 +35,10 @@ import { beginRun, buySupplies, jump, leaveSector, scan } from './travel.js';
 // (M26).
 export const PLACE_SCREENS = { hub: 'hub', fight: 'campaign-fight' };
 export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'sector', 'approach', 'landing', 'colony'];
-// The moves on the run that can open an approach (a hostile ship, or the
-// pursuer's hunters) or put one away, and so change the screen.
-const SCREEN_CHANGES = ['campaign/jump', 'campaign/sector/leave', 'campaign/regroup', 'campaign/survey', 'campaign/approach/close'];
+// The moves on the run that can open an approach (a hostile ship, the
+// pursuer's hunters, or a trap an event sprang, M36) or put one away, and
+// so change the screen.
+const SCREEN_CHANGES = ['campaign/jump', 'campaign/sector/leave', 'campaign/regroup', 'campaign/survey', 'campaign/event/choose', 'campaign/approach/close'];
 
 // The screen a campaign is played on where it is now: its fight, or its
 // act's home: the hangar in act 1, the sector map on the run (act 2), or the

@@ -39,6 +39,8 @@
 //            cold (quests.js, M33b). A new campaign starts its
 //            background's thread at its first step.
 //   flags    { [name]: true, a number or a short text }: what has happened
+//   eventsMet  the ids of the events settled, oldest first (M36,
+//            events.js metEvent)
 //   ship     the ship (builder.js)
 //   wrecks   { [uid]: 'fire' | 'vacuum' | 'rubble' }: the ship's modules
 //            wrecked in approaches (encounter.js), until a station repairs
@@ -105,6 +107,9 @@ export const MAX_SUPPLIES = 9999;
 export const MAX_BOARD = 12;
 // More one-off jobs than act 1 has: the same kind of guard.
 export const MAX_SPENT = 100;
+// More events than the content has: the same kind of guard (events.js
+// keeps the last this many).
+const MAX_MET = 500;
 // More sides than the content has (data/factions.json): the same kind of
 // guard.
 const MAX_SIDES = 20;
@@ -158,6 +163,9 @@ export function newCampaign(rules, seed, { background = firstBackground(rules), 
     standing: startStanding(rules, background),
     quests: startingQuests(rules, background),
     flags: {},
+    // The events settled so far, by id (M36, events.js metEvent): a sector
+    // or a place draws one again only once its kind has no others left.
+    eventsMet: [],
     ship,
     wrecks: {},
     board: [],
@@ -457,6 +465,7 @@ export function campaignProblems(value) {
   if (!isRecord(value.flags) || !Object.entries(value.flags).every(([name, flag]) => FLAG.test(name) && name.length <= 32 && isFlag(flag))) {
     wrong('flags are unreadable');
   }
+  if (!Array.isArray(value.eventsMet) || value.eventsMet.length > MAX_MET || !value.eventsMet.every(isId) || new Set(value.eventsMet).size !== value.eventsMet.length) wrong('events met are unreadable');
   if (!isShipData(value.ship)) wrong('ship is unreadable');
   else if (!isWrecks(value.wrecks, value.ship)) wrong('wrecks are unreadable');
   if (!Array.isArray(value.board) || value.board.length > MAX_BOARD || !value.board.every(isJob)) wrong('job board is unreadable');

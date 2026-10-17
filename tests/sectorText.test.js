@@ -9,6 +9,7 @@ import { beginRun, brokenWhy, buySupplies, failingCheck, jumpPlan, knownNodes, l
 import { fitPart } from '../tools/run.js';
 import { continueText } from '../src/ui/campaign/hubText.js';
 import { jumpText, nodeText, sectorText, worldSaid } from '../src/ui/campaign/sectorText.js';
+import { sideName } from '../src/ui/campaign/standingText.js';
 import { rules } from './battleKit.js';
 import { readyToLaunch } from './launchKit.js';
 
@@ -96,7 +97,10 @@ test('a station sells a jump\'s worth and a fill-up, each with its price', () =>
   assert.equal(text.offer.line, `Supplies, ${balance.supplyPrice} credit${balance.supplyPrice === 1 ? '' : 's'} each. The holds take ${room} more.`);
   assert.deepEqual(text.offer.buys.map((buy) => [buy.count, buy.label]), [[3, 'Buy 3'], [room, `Fill up · ${room}`]]);
   assert.deepEqual(text.here, nodeText(station, rules));
-  assert.equal(text.here.kind, 'Station · The union', "a station of a side's says whose (M33)");
+  const side = rules.factions.stations[station.name];
+  assert.ok(side, 'the first station is a side\'s');
+  assert.equal(text.here.kind, `Station · ${sideName(side, rules)}`, "a station of a side's says whose (M33)");
+  assert.match(text.here.kind, /^Station · The [A-Z]/);
   assert.equal(text.hint.tone, 'good');
   const broke = sectorText({ ...docked, credits: 0 }, rules);
   assert.deepEqual([broke.offer.buys, broke.offer.why], [[], 'You have 0 credits.']);

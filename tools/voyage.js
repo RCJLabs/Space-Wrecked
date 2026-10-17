@@ -61,7 +61,11 @@
 // thread's pay-off. From M33c it starts each side's chain where the start's
 // price leaves its buffer, signs the chain's companion on where a berth is
 // free, and flies to their loyalty place as to a quest's; the report says
-// who was met, signed on and loyal.
+// who was met, signed on and loyal. From M36 it makes a choice that needs
+// someone only with them aboard (in the squad, at a place), meets a trap's
+// ship as any hostile ship, the trap's volley first, and fights a place's
+// trap then and there; the report counts the traps and what events
+// wrecked and mended.
 //
 //   node tools/voyage.js               a voyage from campaign seed 1, step by step
 //   node tools/voyage.js --seed 7      another seed
@@ -230,6 +234,10 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     // The companions (M33c) met at their chain's step, and those who signed
     // on, by id in the order they did.
     companions: { met: [], joined: [] },
+    // Events' traps sprung, and the parts events wrecked and mended (M36).
+    ambushes: 0,
+    eventWrecks: 0,
+    eventRepairs: 0,
   };
   const hold = () => `${campaign.supplies} supplies, ${campaign.credits} credits, heat ${campaign.heat}`;
   // The parts a refit couldn't fit, and the ship then (voyagePlan.js refitAt).
@@ -331,10 +339,11 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       if (patrol === 'fired') tally.fired += 1;
     }
     if (campaign.run.approach) {
-      const { enemy, hunt } = campaign.run.approach;
+      const { enemy, hunt, ambush } = campaign.run.approach;
       const { outcome, round } = campaign.run.approach;
       const { changes } = outcome;
       tally.approaches += 1;
+      if (ambush) tally.ambushes += 1;
       if (hunt) {
         tally.hunts += 1;
         if (FACED.includes(outcome.kind)) tally.huntsFaced += 1;
@@ -343,7 +352,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       if (outcome.kind === 'boarded' || outcome.kind === 'destroyed') tally.approachesWon += 1;
       if (outcome.kind === 'boardedBy') tally.approachesLost += 1;
       tally.approachCredits += changes.credits;
-      lines.push(`   ${hunt ? 'The hunters, in a ' : ''}${enemy.name}: ${outcome.kind}${outcome.how ? ` (${outcome.how})` : ''} in round ${round}, ${Object.keys(campaign.wrecks).length} wrecked aboard. ${hold()}.`);
+      lines.push(`   ${hunt ? 'The hunters, in a ' : ambush ? 'A trap: ' : ''}${enemy.name}: ${outcome.kind}${outcome.how ? ` (${outcome.how})` : ''} in round ${round}, ${Object.keys(campaign.wrecks).length} wrecked aboard. ${hold()}.`);
       // Its boarding, if it ended in one: fought, or a disabled ship left.
       if (outcome.boarding === 'due' && (outcome.kind === 'boardedBy' || boardIt(campaign, defs))) {
         const ready = campaign;
@@ -390,6 +399,8 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       tally.found += changes.parts.length;
       tally.sold += changes.sold.length;
       tally.wounds += changes.wounds.reduce((sum, wound) => sum + wound.hp, 0);
+      tally.eventWrecks += changes.wrecked?.length ?? 0;
+      tally.eventRepairs += changes.repaired?.length ?? 0;
       const said = pick.choice.outcomes[result.outcome].text;
       lines.push(`   ${open.event.title}: ${pick.choice.label}${result.roll === null ? '' : ` (rolled ${result.roll})`}. ${said} ${hold()}.`);
       if (result.quest) questNote(result.quest, before.run.sector.index);
@@ -400,6 +411,8 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
         tally.companions.joined.push(changes.joined);
         lines.push(`   ${defs.companions.get(changes.joined)?.name ?? changes.joined} signs on: a crew of ${campaign.crew.length}.`);
       }
+      // A trap (M36): its ship, met before anything else.
+      if (campaign.run.approach) continue;
     }
     // The system past the charts (M25): a survey, a jump between its
     // worlds, or settling, which ends the voyage. There is nothing else to
@@ -577,7 +590,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
   const { sector } = campaign.run;
   const where = ended ? `Settled ${tally.settled.name} in ${sector.name}` : sector.system ? `Stopped in ${sector.name}, past the charts` : `Stopped in sector ${sector.index}`;
   lines.push(
-    `${where}, ${tally.crossed} sectors crossed, ${tally.surveys} world${tally.surveys === 1 ? '' : 's'} surveyed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits; boarded ${tally.boardings} (won ${tally.boardingsWon}), left ${tally.left}, fought off ${tally.defencesWon} of ${tally.defences}; salvage ${tally.salvaged} parts and ${tally.salvageCredits} credits, lost ${tally.partsLost} parts and ${tally.creditsLost} credits, ${tally.fightHp} hit points; patched ${tally.patchedHp} for ${tally.patchCredits} credits; ${tally.repairs} repairs for ${tally.repairCredits} credits; signed on ${tally.hired}, healed ${tally.healed} in the med bay; refitted ${tally.fitted} parts at ${tally.refits} stations. The hunters: met ${tally.hunts} (${tally.taskForces} the task force), faced ${tally.huntsFaced}; ${tally.hotJumps} jumps where they might wait; ${tally.regroups} regroups and ${tally.hides} days hidden, healing ${tally.rested}; ${tally.swaps} transponder swaps for ${tally.swapCredits} credits. Heat ${tally.heat[0]} to ${tally.heat[1]}, at most ${tally.peak}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
+    `${where}, ${tally.crossed} sectors crossed, ${tally.surveys} world${tally.surveys === 1 ? '' : 's'} surveyed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost, ${tally.ambushes} traps, ${tally.eventWrecks} parts wrecked and ${tally.eventRepairs} mended; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits; boarded ${tally.boardings} (won ${tally.boardingsWon}), left ${tally.left}, fought off ${tally.defencesWon} of ${tally.defences}; salvage ${tally.salvaged} parts and ${tally.salvageCredits} credits, lost ${tally.partsLost} parts and ${tally.creditsLost} credits, ${tally.fightHp} hit points; patched ${tally.patchedHp} for ${tally.patchCredits} credits; ${tally.repairs} repairs for ${tally.repairCredits} credits; signed on ${tally.hired}, healed ${tally.healed} in the med bay; refitted ${tally.fitted} parts at ${tally.refits} stations. The hunters: met ${tally.hunts} (${tally.taskForces} the task force), faced ${tally.huntsFaced}; ${tally.hotJumps} jumps where they might wait; ${tally.regroups} regroups and ${tally.hides} days hidden, healing ${tally.rested}; ${tally.swaps} transponder swaps for ${tally.swapCredits} credits. Heat ${tally.heat[0]} to ${tally.heat[1]}, at most ${tally.peak}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
   );
   if (ended) lines.push(`The act's record: ${tally.settled.record.map(([label, value]) => `${label} ${value}`).join('; ')}.`);
   return { ended, steps, sectors, system, tally, lines, campaign, landed, home, travelled };
@@ -806,6 +819,8 @@ export function playTrips(campaign, defs, days = TRIP_DAYS) {
       food: since('tripFood'),
       won: since('placeFightsWon'),
       lost: since('placeFightsLost'),
+      // Places' traps sprung (M36).
+      traps: since('placeAmbushes'),
       left: flown.filter((trip) => trip.what === 'left her').length,
       built,
       moved,
@@ -837,6 +852,12 @@ function flyTrip(campaign, defs, index, squad, raids) {
     if (!chose.ok) throw new Error(chose.error);
     now = chose.campaign;
     what = `${here.event.title}: ${pick.choice.label}`;
+    // A trap (M36): the place is held, and the squad fights there now.
+    if (tripHere(now, defs).held) {
+      const fought = fightPlace(now, defs);
+      now = fought.campaign;
+      what += fought.won ? ', a trap: won' : ', a trap: lost';
+    }
   } else if (here.held) {
     const fought = fightPlace(now, defs);
     // The thread's place (M33b), not a companion's loyalty place (M33c).
@@ -847,7 +868,7 @@ function flyTrip(campaign, defs, index, squad, raids) {
   if (raidDown(now)) now = faceRaid(now, defs, raids);
   const home = flyHome(now, defs);
   if (!home.ok) throw new Error(home.error);
-  return { campaign: onWay(home.campaign, defs, raids), record: { day, name: place.name, kind: place.kind, days: out.plan.days.out + home.plan.days, squad: squad.length, what, quest: place.quest ?? null, wonOn } };
+  return { campaign: onWay(home.campaign, defs, raids), record: { day, name: place.name, kind: place.kind, days: out.plan.days.out + home.plan.days, squad: squad.length, what, event: here.event?.id ?? null, quest: place.quest ?? null, wonOn } };
 }
 
 // A leg a raid stopped (M29): those at home face it, and the ship flies
@@ -1132,7 +1153,7 @@ export function manyVoyages(defs, runs, options = {}) {
     `The quests (M33b): ${questsLine(questCounts(defs, done))}`,
     `The companions (M33c): ${companionsLine(companionCounts(defs, done))}.`,
     `Jumps: ${spread(of('jumps'))}, long ${spread(of('longJumps'))}, hungry ${spread(of('hungryJumps'))}.`,
-    `At the nodes: ${spread(of('events'))} events, ${spread(of('eventCredits'))} credits and ${spread(of('eventSupplies'))} supplies from them, ${spread(of('found'))} parts found, ${spread(of('sold'))} sold, ${spread(of('wounds'))} hit points lost; ${spread(of('scans'))} scans.`,
+    `At the nodes: ${spread(of('events'))} events, ${spread(of('eventCredits'))} credits and ${spread(of('eventSupplies'))} supplies from them, ${spread(of('found'))} parts found, ${spread(of('sold'))} sold, ${spread(of('wounds'))} hit points lost; traps ${spread(of('ambushes'))}, in ${done.filter((r) => r.tally.ambushes > 0).length} of ${done.length} runs; parts wrecked ${spread(of('eventWrecks'))} and mended ${spread(of('eventRepairs'))}; ${spread(of('scans'))} scans.`,
     `Hostile ships: ${spread(of('approaches'))} met, ${spread(of('approachesWon'))} disabled or blown up, ${spread(of('approachesLost'))} boarding us. Boarded her ${spread(of('boardings'))} times (won ${spread(of('boardingsWon'))}), left her ${spread(of('left'))}; fought off ${spread(of('defencesWon'))} of ${spread(of('defences'))} boardings. Salvage: ${spread(of('salvaged'))} parts and ${spread(of('salvageCredits'))} credits. Lost: ${spread(of('partsLost'))} parts and ${spread(of('creditsLost'))} credits; ${spread(of('fightHp'))} hit points in the fights. Lost a boarding at home: ${done.filter((r) => r.steps.some((step) => step.kind === 'boarding' && step.dir === 'you' && !step.won)).length} of ${done.length}; dragged past 40 rounds: ${done.reduce((sum, r) => sum + r.tally.dragged, 0)}.`,
     `At stations: patched ${spread(of('patchedHp'))} hit points for ${spread(of('patchCredits'))} credits; ${spread(of('repairs'))} repairs for ${spread(of('repairCredits'))} credits. Crew at the end: ${spread(done.map((r) => r.campaign.crew.reduce((sum, m) => sum + m.hp, 0)))} hit points.`,
     `Crew: signed on ${spread(of('hired'))} for ${spread(of('hireCredits'))} credits, ${done.filter((r) => r.tally.hired > 0).length} of ${done.length} runs; ${spread(done.map((r) => r.campaign.crew.length))} aboard at the end. The med bay healed ${spread(of('healed'))} hit points.`,
@@ -1208,7 +1229,7 @@ function tripsSummary(done) {
   return (
     `The colony's ${TRIP_DAYS} days of trips: trips ${median(played.map((trips) => trips.flown.length))}, flown in ${played.filter((trips) => trips.flown.length > 0).length} of ${played.length}; days away ${median(played.map((trips) => trips.away))}; ` +
     `brought parts ${median(played.map((trips) => trips.parts))}, materials ${median(played.map((trips) => trips.materials))}, food ${median(played.map((trips) => trips.food))}; ` +
-    `boardings won ${sum('won')}, lost ${sum('lost')}; built ${Object.entries(built).map(([name, n]) => `${name} ${n}`).join(', ') || 'nothing'}; refitted aboard in ${played.filter((trips) => trips.moved.length > 0).length}; hungry days ${median(played.map((trips) => trips.hungry))}.`
+    `boardings won ${sum('won')}, lost ${sum('lost')}; traps ${sum('traps')}; built ${Object.entries(built).map(([name, n]) => `${name} ${n}`).join(', ') || 'nothing'}; refitted aboard in ${played.filter((trips) => trips.moved.length > 0).length}; hungry days ${median(played.map((trips) => trips.hungry))}.`
   );
 }
 

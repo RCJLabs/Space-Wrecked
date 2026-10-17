@@ -5,8 +5,10 @@
 // src/sim/hunt.js) say whose they are, and what facing them did to heat. A
 // side's patrol (M33) says its words as it waves the ship through or opens
 // fire, and the end says what striking a side's ship cost with it
-// (standingText.js). The rules are src/sim/approach.js's, played by
-// src/sim/encounter.js. rules are the content tables (src/sim/defs.js).
+// (standingText.js). A trap sprung at an event (M36) says so, and the
+// event's words for it, its ship having fired first. The rules are
+// src/sim/approach.js's, played by src/sim/encounter.js. rules are the
+// content tables (src/sim/defs.js).
 import { AIMS, choicesFor, closeChance, FACED, fleeChance, sideStats } from '../../sim/approach.js';
 import { approachIntent, approachState } from '../../sim/encounter.js';
 import { pursuerOf } from '../../sim/heat.js';
@@ -20,7 +22,8 @@ const WRECK_WORDS = { fire: 'on fire', vacuum: 'open to vacuum', rubble: 'full o
 
 // The approach going on, as the screen shows it, or null with none:
 //   act, where, round   "Act 2 · The run", "Hostile ship · Pirate cutter"
-//                       ("The hunters · Con-Reg repo tug"), "Round 1 of 3"
+//                       ("The hunters · Con-Reg repo tug", "A trap ·
+//                       Pirate cutter"), "Round 1 of 3"
 //   heat                the hangar's meter (hubText.js heatText)
 //   you, them           { name, stats: [[label, value]], wrecked }: wrecked
 //                       { [uid]: wreck }, for the boards
@@ -29,7 +32,7 @@ const WRECK_WORDS = { fire: 'on fire', vacuum: 'open to vacuum', rubble: 'full o
 //   orders              [{ key, order, label, small, ok, why, ask, text }]:
 //                       the four kinds to fire at, evade, flee and close
 //   last                the last round, as lines, or []; before round 1,
-//                       a patrol's opening volley (M33)
+//                       a patrol's opening volley (M33), or a trap's (M36)
 //   lastHead            what last is: "Last round", or "They opened fire"
 //   outcome             null while it goes on, else { title, lines, board
 //                       ('you' or 'them': the ship that is boarded, or
@@ -45,7 +48,7 @@ export function approachText(campaign, rules) {
   const outcome = approach.outcome ? outcomeText(approach, campaign, rules) : null;
   return {
     act: actTitle(campaign.act, rules),
-    where: `${approach.hunt ? 'The hunters' : 'Hostile ship'} · ${approach.enemy.name}`,
+    where: `${approach.hunt ? 'The hunters' : approach.ambush ? 'A trap' : 'Hostile ship'} · ${approach.enemy.name}`,
     round: outcome ? 'Over' : `Round ${approach.round} of ${rules.balance.approachRounds}`,
     heat: heatText(campaign, rules),
     you: sideText('Your ship', state.you, rules),
@@ -55,7 +58,7 @@ export function approachText(campaign, rules) {
     last: approach.last ? roundLines(approach.last, state, theirName, rules) : [],
     lastHead: approach.last?.order === null ? 'They opened fire' : 'Last round',
     outcome,
-    hint: outcome ? outcomeHint(outcome) : approach.last?.order === null ? patrolHint(approach, rules) : approach.last ? { tone: 'info', text: '' } : openingHint(approach, campaign, rules),
+    hint: hintFor(approach, outcome, campaign, rules),
   };
 }
 
@@ -222,10 +225,28 @@ function outcomeText(approach, campaign, rules) {
   return { title, lines, board, boarding: stakes };
 }
 
+// What to do now: once it is over, carry on or fight; before the first
+// order, a trap's words (M36) or a patrol's that opened fire (M33), or how
+// it opens; and nothing more between rounds.
+function hintFor(approach, outcome, campaign, rules) {
+  if (outcome) return outcomeHint(outcome);
+  if (approach.ambush && (!approach.last || approach.last.order === null)) return trapHint(approach, rules);
+  if (approach.last?.order === null) return patrolHint(approach, rules);
+  return approach.last ? { tone: 'info', text: '' } : openingHint(approach, campaign, rules);
+}
+
 // A side's patrol that opened fire before the first round (M33): its words,
 // and how orders are given.
 function patrolHint(approach, rules) {
   return { tone: 'bad', text: `${patrolWords(approach, rules) ?? 'They opened fire.'} Tap an order to see its odds; tap it again to give it.` };
+}
+
+// A trap sprung at an event (M36): the words of the outcome that sprang
+// it, and how orders are given.
+function trapHint(approach, rules) {
+  const { event, choice, outcome } = approach.ambush;
+  const said = rules.events.get(event)?.choices.find((entry) => entry.id === choice)?.outcomes[outcome]?.text;
+  return { tone: 'bad', text: `${said ?? 'It was a trap.'} Tap an order to see its odds; tap it again to give it.` };
 }
 
 // What to do as it opens: the hunters, whose they are and what facing

@@ -229,7 +229,8 @@ export function createTrips(ctx) {
     button.disabled = !choice.ok;
     button.dataset.armed = String(armed() === key);
     button.append(node('span', null, armed() === key ? `${choice.label}?` : choice.label));
-    const small = choice.why ?? choice.odds;
+    // Who in the squad takes it (M36) and its odds, or why not.
+    const small = choice.why ?? [choice.taker, choice.odds].filter(Boolean).join(' · ');
     if (small) button.append(node('small', null, small));
     button.setAttribute('aria-label', choice.ok ? choice.ask.replace(' Tap again to choose.', '') : `${choice.label}. ${choice.why}`);
     ctx.keep(onTap(button, () => tapChoice(choice, key)));
@@ -248,7 +249,9 @@ export function createTrips(ctx) {
     disarm();
     const rules = defs();
     const result = chooseAtPlace(campaign, rules, choice.id);
-    say(result.ok ? { text: 'Done. Fly home when ready.', tone: 'good' } : { text: result.error, tone: 'bad' });
+    // A trap (M36): the place is held now, and the squad is in it.
+    const trapped = result.ok && result.result.changes.ambush;
+    say(!result.ok ? { text: result.error, tone: 'bad' } : trapped ? { text: 'A trap: they were waiting. Board her, or fly home and leave her be.', tone: 'bad' } : { text: 'Done. Fly home when ready.', tone: 'good' });
     game.dispatch({ type: 'campaign/trip/choose', choice: choice.id, rules });
     refresh();
   }

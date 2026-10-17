@@ -42,7 +42,11 @@
 // M33c's: each side's chain brings a companion, whom the careful player
 // signs on at the chain's step, only where they could come aboard and be
 // fed, and takes to their loyalty place at the colony; the report says who
-// was met, signed on and loyal.
+// was met, signed on and loyal. And M36's: the run's 45 events and each
+// background's own four play from data, a background's only on its runs;
+// over 100 voyages from each start, no event comes twice on the run in 9
+// of 10, nor at the colony's places; and the rates main's voyages held stay
+// within their margins (MAIN).
 // Each voyage launches from a test run of act 1 (tools/run.js) and is
 // played by the test player in tools/voyage.js. The voyages before M23h's
 // fly as fitted, with no refits, so each compares one part's difference.
@@ -166,6 +170,11 @@ test('supplies and heat move as data/balance.json and data/events.json say, step
       }
     }
   }
+  // Station repairs come seldom in the miner's runs (one of the 210 above
+  // on main), and since M36's events none on its seeds 1 to 30: the
+  // deserter's runs repair now and then, so theirs are walked too, but for
+  // their refits (the refit test's).
+  for (const trip of deserters) for (const step of trip.steps) if (step.kind !== 'refit') checkStep(step, step.room, kinds);
   assert.deepEqual([...kinds].sort(), ['approach', 'boarding', 'buy', 'event', 'hide', 'hire', 'jump', 'long', 'patch', 'repair', 'scan', 'sector', 'settle', 'survey', 'swap', 'system'], 'every kind of step comes up');
 });
 
@@ -342,16 +351,18 @@ function checkHunt(step) {
   if (step.hunt.roll !== null) assert.equal(step.hunt.found, step.hunt.roll < step.hunt.chance, 'rolled as shown');
 }
 
-test("the run's fourteen events play from data (M20's ten and M33's four), hostile ships are met and boardings fought, and the run pays its way: 24 or more of 30 careful runs cross all five sectors fed, since M33b as main's within 15 of 100", () => {
+test("the run's events play from data (M20's ten, M33's four and M36's 31, and the miner's own four), hostile ships are met and boardings fought, and the run pays its way: 24 or more of 30 careful runs cross all five sectors fed, since M33b as main's within 15 of 100", () => {
   assert.ok(careful.every((trip) => trip.launched && trip.ended), 'every run launches and settles a world past the charts');
   // The run's events: those of a kind of node (the colony's places have the
   // rest, M28), but the quests' own, which quests.js places where a quest's
   // step is open and the test player plays since M33b (the quests' tests
-  // have them).
-  const played = new Set(trips.flatMap((trip) => trip.steps.filter((step) => step.kind === 'event' && !rules.events.get(step.event)?.quest).map((step) => step.event)));
-  const runEvents = [...rules.events.values()].filter((event) => rules.nodeTypes.get(event.kind)?.events && !event.quest);
+  // have them); and since M36 the backgrounds' own, the miner's in these
+  // runs (the M36 test has the others'). With M36's 49 the first RUNS
+  // seeds missed the tinker's barge: every one comes up over RATE_RUNS.
+  const played = new Set(carefulAll.flatMap((trip) => trip.steps.filter((step) => step.kind === 'event' && !rules.events.get(step.event)?.quest).map((step) => step.event)));
+  const runEvents = [...rules.events.values()].filter((event) => rules.nodeTypes.get(event.kind)?.events && !event.quest && (!event.background || event.background === 'miner'));
   assert.equal(played.size, runEvents.length, `events played: ${[...played].join(', ')}`);
-  assert.equal(runEvents.length, 14);
+  assert.equal(runEvents.length, 49);
   const met = careful.flatMap((trip) => trip.steps.filter((step) => step.kind === 'approach'));
   assert.ok(met.length >= RUNS, `hostile ships met: ${met.length}`);
   assert.ok(['escaped', 'boardedBy'].every((kind) => met.some((step) => step.outcome === kind)), `outcomes: ${[...new Set(met.map((step) => step.outcome))]}`);
@@ -759,6 +770,28 @@ test("from each background's start, the careful player crosses fed, meets the hu
   const side = voyagesByBackground(rules, 1);
   assert.deepEqual(side.rows.map((row) => row.id), [...rules.backgrounds.keys()]);
   assert.match(side.lines[1], /^Background +Launched +Fed +Met +Raids +Won +Lost +Runs lost$/);
+});
+
+// M36: the events met. An event met comes again only once its kind has
+// no others left (eventPool.js), so over RATE_RUNS voyages from each start
+// none comes twice on the run in 9 of 10, nor at the colony's places
+// (M36's Done when); and each background's own events come on its runs,
+// and no other's.
+test("events come again only once their kind has no others left: from each start, over 100 voyages, none twice on the run in 9 of 10, nor at the colony's places; and a background's own events on its runs alone (M36)", () => {
+  const twice = (ids) => ids.length !== new Set(ids).size;
+  const pooled = (id) => id && !rules.events.get(id)?.quest;
+  for (const [id, all] of [['miner', refittingAll], ['deserter', desertersAll], ['smuggler', smugglersAll]]) {
+    const onRun = all.filter((r) => twice(r.steps.filter((step) => step.kind === 'event' && pooled(step.event)).map((step) => step.event))).length;
+    const atColony = all.filter((r) => twice((r.tally.trips?.flown ?? []).map((flown) => flown.event).filter(pooled))).length;
+    assert.ok(onRun <= RATE_RUNS / 10, `${id}: an event met twice on the run in ${onRun} of ${RATE_RUNS}`);
+    assert.ok(atColony <= RATE_RUNS / 10, `${id}: an event met twice at the colony in ${atColony} of ${RATE_RUNS}`);
+    const met = new Set(all.flatMap((r) => r.steps.filter((step) => step.kind === 'event').map((step) => step.event)));
+    const own = [...rules.events.values()].filter((event) => event.background === id).map((event) => event.id);
+    const others = [...rules.events.values()].filter((event) => event.background && event.background !== id).map((event) => event.id);
+    assert.equal(own.length, 4);
+    assert.deepEqual(own.filter((event) => !met.has(event)), [], `${id}: its own events met`);
+    assert.deepEqual(others.filter((event) => met.has(event)), [], `${id}: none of another's`);
+  }
 });
 
 test("the careful player takes the companions' chains (M33c): it signs each on at their chain's step, never before the launch, and takes them to their loyalty place; the report says who", () => {

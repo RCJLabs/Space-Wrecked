@@ -11,7 +11,9 @@
 // hostile ships). A node of a kind that holds events is given one of its
 // kind (data/events.json), none twice in a sector while the kind's events
 // last; a quest's own events (M33b) are never in the pool, and quests.js
-// places them. A node of a kind with ships on it is given one: a preset from the
+// places them. From M36 a background's own events are in its campaign's
+// pool and no other's, and an event the campaign has met comes again only
+// once its kind has no others left (eventPool.js). A node of a kind with ships on it is given one: a preset from the
 // kind's list, by weight among those that come this far into the run, and
 // the seed its ship is generated from when the ship meets it.
 // Nodes are named from their kind's list, none twice in a sector, and the
@@ -20,6 +22,7 @@
 // sector.
 import { int, seedFrom, shuffle } from '../../core/rng.js';
 import { pickWeighted } from '../drops.js';
+import { eventsOf, freshest } from '../eventPool.js';
 
 const MAX_SEED = 0xffffffff;
 // Where nodes sit on the map, each from 0 to 1: this far from its edges.
@@ -29,11 +32,13 @@ const MARGIN = 0.08;
 const JITTER = { y: 0.18, x: 0.2 };
 
 // rules: indexDefs (sectors, nodeTypes); seed: a number or string; index:
-// the sector's place in the run, 1 up. Returns { index, name, nodes, links,
-// start, exit }: nodes [{ id, col, row, x, y, type, name, event?, hostile?
-// }] by id, 0 up, column by column and top down, hostile being { ship, seed
-// }; links [[a, b]] with a < b.
-export function generateSector(rules, seed, index, { avoid = [] } = {}) {
+// the sector's place in the run, 1 up; avoid: sector names to pass over;
+// background, met: the campaign's background and the events it has met
+// (M36). Returns { index, name, nodes, links, start, exit }: nodes [{ id,
+// col, row, x, y, type, name, event?, hostile? }] by id, 0 up, column by
+// column and top down, hostile being { ship, seed }; links [[a, b]] with
+// a < b.
+export function generateSector(rules, seed, index, { avoid = [], background = null, met = [] } = {}) {
   const spec = rules.sectors;
   let rng = seedFrom(seed);
   const roll = (min, max) => {
@@ -110,11 +115,15 @@ export function generateSector(rules, seed, index, { avoid = [] } = {}) {
 
   // Events, for the kinds that hold them.
   const pools = new Map();
+  const placed = [];
   for (const node of nodes) {
     if (!rules.nodeTypes.get(node.type)?.events) continue;
-    if (!pools.get(node.type)?.length) pools.set(node.type, mixed([...rules.events.values()].filter((event) => event.kind === node.type && !event.quest).map((event) => event.id)));
+    if (!pools.get(node.type)?.length) pools.set(node.type, mixed(freshest(eventsOf(rules, node.type, background), met, placed)));
     const event = pools.get(node.type).shift();
-    if (event) node.event = event;
+    if (event) {
+      node.event = event;
+      placed.push(event);
+    }
   }
 
   // Hostile ships, for the kinds with ships on them.

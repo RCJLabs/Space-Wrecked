@@ -33,7 +33,7 @@ A ship-first sandbox RPG in 3D: build a ship on a grid, run from a pursuer, and 
   - crew jobs, traits, recruits' names, backgrounds (each with its start, district and pursuer, the pursuer's side and words, fighters, ships and raiders in each act, and its payment or none), districts (each with its clients, their sides, sites and shop), the job sites' map templates, the run's sectors, the worlds past the charts (each kind naming the scene it lands on), the colony's buildings (with the shots its defenses fire at a raid's lander) and what it builds (farms, mines, solar arrays and shelters), the places within reach of the colony, the sides (with whose stations are whose), the quests (each background's thread and the sides' chains, their steps and pay-offs, and each companion's loyalty quest), the companions (each with their side, job, traits, face, the clothes and gear of their bust, past, chain, loyalty quest and talent)
   - the sounds (each one's ZzFX parameters by name, and how loud it is meant to be) and the sound each weapon's shot makes
   - how jobs, enemies and weapons look in a fight (`look` and `held`, checked against `src/render/figures/looks.js`)
-  - mission and job templates (`data/contracts.json`), events, balance numbers
+  - mission and job templates (`data/contracts.json`), events (each choice's needs, a job or a trait among them; each background's own; traps, wrecks and repairs), balance numbers
 
   Adding content never requires engine edits.
 - **The simulation is pure.** `src/sim/` takes plain data and returns plain data. It has no DOM, `window`, timers, `Date.now()` or `Math.random()`, and it must run under Node for tests and balance scripts.
@@ -55,7 +55,7 @@ CNAME                       # spacewrecked.rcjlabs.com
 .well-known/assetlinks.json # TWA verification, added with the TWA
 src/
   core/      rng, save, blueprint codes, store, events, sound parameters (soundParams.js)
-  sim/       grid, builder rules, styling, makers, constraints, mapFromShip, battle, ai, approach, heat, standing (the sides), quests, companions (with their talents), campaign, colony (with its building by hand, its days and its expeditions), raids (with the colony as a battle map), economy, dev (the dev menu's cheats; God mode is god), gen/
+  sim/       grid, builder rules, styling, makers, constraints, mapFromShip, battle, ai, approach, heat, standing (the sides), events (with the pools they are drawn from, eventPool.js), quests, companions (with their talents), campaign, colony (with its building by hand, its days and its expeditions), raids (with the colony as a battle map), economy, dev (the dev menu's cheats; God mode is god), gen/
   render/    3D camera, scenes and painters, part and styling piece models, figures (figures/), portraits (portraits/, the companions' busts with them), painted backdrops (scenes/), hull tracer and hull shapes, SVG icons, tweens, particles
   ui/        screens, panels, gestures, which moment plays which sound (sounds.js), the ?dev=1 menu (dev/)
   platform/  storage, service worker registration, haptics, orientation, audio (audio.js, playing zzfx.js)
