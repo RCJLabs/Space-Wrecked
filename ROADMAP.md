@@ -1447,10 +1447,80 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
     - the step-by-step check also walks the deserter's runs, where station repairs come up (none on the miner's seeds 1 to 30 since M36; one of 210 on main);
     - a new test holds the repeats and the backgrounds' own events to the Done when.
   - **The golden sectors** (`tests/golden/sectors.txt`) were regenerated on purpose: the same maps and kinds, with the events, the hostile ships' seeds and the names drawn anew from the new pools.
-- [ ] **M37 Weapons and enemies.** Six weapons against §5's 15, and 15 enemies against 15 to 20. The draft:
-  - about nine weapons, each with its held look, its sound and its numbers;
-  - a few enemies to carry them;
-  - the shops and the salvage stocking them.
+- [ ] **M37 Weapons and enemies.** Six weapons against §5's 15, and 15 enemies against 15 to 20.
+  - **Who carries what:** a crew member carries their job's weapon, always; an enemy its type's. The new weapons would come only through enemies.
+  - **The weapons are plain numbers:** damage, accuracy at each range, crit and clip. They differ a lot. AI against AI, the whole squad carrying one weapon, the crew wins:
+
+    | Weapon | Aboard ships (600 fights) | On job sites (360 jobs) |
+    | --- | --- | --- |
+    | Shotgun | 78% | 78% |
+    | As issued | 51% | 66% |
+    | Rifle | 33% | 64% |
+    | Long rifle | 24% | 63% |
+    | Carbine | 23% | 55% |
+    | Pistol | 13% | 54% |
+    | Dart gun | 3% | 36% |
+
+  - **Why:** aboard ships 58% of shots are taken close (3 tiles or under) and 3% long; on the job sites 37% close and 22% long. The shotgun is best everywhere, hidden only because the job fixes who carries it (the engineer).
+  - **The enemies,** four of a type against the start squad aboard ships: the crew beats collectors and scavvers 91% of the time, pirates, claim jumpers and Pike soldiers 78%, ratings 62%, agents 49%, cadets 43%, guards 35%, customs officers 29%, dockers 21%, brutes and heavies 7%, enforcers 4%, MPs 3%.
+
+  Evan's picks (2026-10-17):
+  - **Loadouts by job:** each crew member carries one weapon, their job's to start. Each weapon is a sidearm, a long gun or a heavy weapon, and each job carries some kinds. Spares are kept aboard and swapped between fights.
+  - **New rules, all four offered:** bursts, armor piercing, a stun at arm's reach, and fire.
+  - **Five new enemy types,** one for each side.
+  - **Where weapons come from, all four offered:** act 1's shops, won fights, events, and racks at stations.
+
+  **Done when:**
+  - **15 weapons** in `data/weapons.json`, the six before unchanged in their numbers. Each has:
+    - its kind (`kind`): sidearm, long gun or heavy;
+    - its numbers and its price (`cost`);
+    - its held look (`held`): its shape and, on the new ones, a fitting of its own (a drum, a scope, coils, a fuel tank, prongs or a nail box), checked against what can be drawn;
+    - its shot's sound, five of them new (a burst's rattle, a rail's crack, a rivet's thunk, a torch's roar, a baton's snap), each at its loudness (`tools/sounds.js`).
+  - **The nine new weapons:**
+    - sidearms: a machine pistol (bursts), a shock baton (stuns, at arm's reach) and a sawn-off;
+    - long guns: an autogun (bursts), a rail rifle (pierces armor) and a marksman's rifle;
+    - heavy: a rivet gun (pierces armor), a cutting torch (fire) and a riot gun.
+  - **The rules,** each a weapon's data, so a new weapon needs no engine edit:
+    - **Bursts** (`burst`): a shot is a burst of that many shots at the target, each rolled on its own at the shown odds with the burst's aim penalty as a part of them, each a round. It stops when the target drops. Overwatch fires one shot without the penalty.
+    - **Armor piercing** (`pierce`): that much of the target's armor doesn't count against the damage.
+    - **Reach** (`reach`): no shot past that many tiles, by a side or a corner (overwatch too). The baton reaches 1, the torch 2.
+    - **Stun** (`stun`): a hit puts the target to sleep through its side's next turn, as Sedate does.
+    - **Fire** (`burn`): a hit sets the target's tile burning for that many rounds, burning as a wrecked room's fire does: 2 at the start of each of a unit's turns there. Burning tiles show on the board, and the fire goes out on its own.
+    - Each shows on the odds card and the unit's card, in the numbers rolled (Law 4).
+  - **Loadouts:**
+    - jobs carry kinds (`arms` in `data/jobs.json`): a medic and a xenobiologist sidearms; an engineer sidearms and heavy; a pilot and a scout sidearms and long guns; a marine and a quartermaster all three;
+    - a crew member's weapon is saved with them; spares are on hand (`campaign.arms`);
+    - swapping takes two taps on the crew card, at any time but in a fight, from the spares of the kinds their job carries;
+    - a recruit and a companion come with their job's weapon, and a crew member let go hands theirs in;
+    - Sedate needs a dart gun in hand.
+  - **Where weapons come from:**
+    - **Act 1's shops:** each district's dealer stocks 2 weapons beside its 4 parts, rolled with the board from a table of its own, and buys any spare at half price.
+    - **Won fights:** a won job, raid, boarding or hulk can leave one of the fallen enemies' weapons, by a roll (`gearChance` in `data/balance.json`). The odds show where the fight's stakes do, and what it left shows at the fight's end.
+    - **Events:** derelicts' lockers and the colony's hulks give weapons, and traders on the run sell them (`arms` among an outcome's effects).
+    - **Stations' racks:** each station sells 2 weapons, the same on every visit, at its side's prices. One bought is gone from the rack.
+  - **Five new enemy types,** each carrying a new weapon and joining a party or two of its side's:
+    - the pirates' gunner (an autogun);
+    - the scavvers' torcher (a cutting torch);
+    - Con-Reg's breacher (a rivet gun);
+    - the Provost's proctor (a shock baton, in riot armor);
+    - the Hallorans' cutter (a machine pistol).
+
+    Each has its look. Each party it joins wins within 5 points of its rate before (the harness, `tools/boarding.js` or `tools/raids.js`), and each pursuer's raids stay within M30's 10 points of Con-Reg's.
+  - **The AI and the test players** weigh each rule: a burst's shots, the armor pierced, a stunned target's lost turn, a fire's burns. They close to their reach and keep off burning tiles. The test players carry the best weapon of their kinds for the fight ahead, and buy weapons where the purse allows beyond a holdful's price, as at events.
+  - **Every weapon measured** aboard ships, on job sites and against armor (the Provost's patrol), the whole squad carrying it (`tools/sim.js`):
+    - each new weapon is within 5 points of the best of its kind in at least one of the three;
+    - none is 5 points better than every other of its kind in all three;
+    - the six before, and the shotgun's lead, are left for M40's balance runs (§9).
+  - **`SAVE_VERSION` 32:** a save from before gives each crew member their job's weapon, with none spare. A fight under way keeps going.
+  - **Measured over 100 voyages from each start:** each of the voyage tests' rates within its margin of main's (`MAIN`). Act 1's test runs launch in about as many jobs as main's (the median within 1).
+  - **The golden battle logs don't change:** the six weapons before keep their numbers, and the new rules are only the new weapons'.
+  - **Every rule tested:** bursts, piercing, reach, stun and fire, in the odds and the rolls; loadouts and their swaps; each source; the migration; the validator's checks.
+  - **Touch,** at the three sizes:
+    - a swap on the crew card, offering only the kinds the job carries;
+    - weapons bought at the shop and at a station's rack;
+    - a burst's shots, armor pierced on the odds card, a target out of the baton's reach, a stun, and a fire on the board;
+    - a weapon left by a won fight;
+    - offline, and no console errors.
 - [ ] **M38 Missions and jobs.** Three mission types (clear out, grab, hack) against §5's 8, and 29 jobs against 40 or more. The draft:
   - five mission types, each with its objective, its AI and its words: extract (carrying the crates out, §9), escort, defend, sabotage, rescue;
   - about a dozen new jobs across the three districts.
@@ -1621,6 +1691,7 @@ These ideas wait until v0.4 or later:
 - companions on the start ships: a fourth mouth needs 40 supplies for 10 jumps, and the miner's and the deserter's ships carry 30, so their test voyages sign a companion on mostly where it is Teo, whose lockers carry him (raised in M33c)
 
 - more sounds: each order its own (a weld's crackle, a patch's hiss, a mark's ping), a fight won or lost, footsteps, music (raised in M35)
+- the weapons' balance: the shotgun is the best weapon both aboard ships and on the ground (the whole squad carrying it wins 78% both ways, against 51% and 66% as issued), and the rifle beats the carbine both ways (33% against 23% aboard, 64% against 55% on the ground). Seven enemy types carry the carbine, so changing it moves every fight they're in. For M40's balance runs (raised in M37)
 - the credits screen: ZzFX is the first entry in `assets/LICENSES.md`, and the screen that lists them comes with the release (Phase 8; raised in M35)
 
 Ideas that come up during a session go here, not into code.
