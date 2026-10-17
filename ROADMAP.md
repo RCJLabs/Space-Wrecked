@@ -1265,7 +1265,26 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
   - **The crew card opens at the colony too:** the colony had only a list of names, and a companion turns loyal there.
   - **The choice signing a companion on says what the crew eats with them aboard,** as a recruit's sign-on does.
   - **A loyal companion's rank shows as the third** on the crew card, the squad picker and the crew panel's rows, as in fights; their job's next rank by fights is named for what it gives ("Running repairs at 8"), and reaching it says the same, without the order: their talent has it already.
-- [ ] M34 Image pass: Base44 portraits and scenes. Draft: WebP portraits for named characters (companions, the districts' clients) and scenes (the hangar, the lift-off, the landing), each logged in `assets/LOG.md`. Recruits keep their layered portraits, drawn in code since M23c.
+- [ ] **M34 Scenes and companions, drawn in code.** The title is stars and words, the lift-off and the landing show the ship over the same starfield whichever world it leaves or reaches, and the four companions wear the same helmet badge as any recruit. The draft named Base44 paintings for these.
+
+  Evan's picks (2026-10-17):
+  - **No Base44 in M34:** the scenes are drawn in code by the game's own renderer. Painted art, store art first, waits for later (§3: Base44 at development time only).
+  - **Which:** the title's backdrop (the hangar), the lift-off's (the grey rock below) and a landing backdrop for each kind of world (ocean, desert, ice, jungle, barren rock); and the four companions' portraits. The districts' clients wait for Phase 7.
+  - **The companions, redrawn richer in code:** a bust of their own, in more detail than a recruit's badge, big where they offer to come aboard (about 100 px on the event card); cropped to the face at 40 px on the crew card and the squad pickers; the fight's buttons keep the helmet badge, as every crew member's figure in a fight is suited.
+  - **The look:** painted, my call: a dark navy ground, with amber and cyan rim light from the palette.
+
+  **Done when:**
+  - **Scenes as data and drawings** (`src/render/scenes/`): each scene a pure function from its id and a seed to plain shapes (paths, ellipses, gradients and glows), the same seed drawing the same; a painter draws the shapes on the canvas. Colors come from palette tokens. Seven scenes: the hangar, the homeworld's grey rock and the five kinds of world. Act 1 names the lift-off's scene in `data/campaign.json`, and each kind of world its landing's in `data/worlds.json`, checked by the validator; a kind without one takes barren rock's.
+  - **The title** stands over the hangar, its words and buttons as readable as over the stars: a contrast of at least 4.5 to 1 between the words and the scene behind them, measured in the browser.
+  - **The lift-off:** the ship lifts off the grey rock: the ground close under it on the pad, falling away as it climbs, and the rock seen whole, a world below, as it flies off.
+  - **The landing:** the same run backwards over the world settled, by its kind: the world seen whole as the ship comes in, its ground rising to meet it, and the ground under the ship at rest, in the colony's colors for that kind (M26).
+  - **Reduced motion** shows the still moment: the ship on the pad over the rock, and at rest on the world's ground.
+  - **Frame budget:** a scene is painted once a size into an offscreen canvas; a frame of the lift-off or the landing only draws it, scaled and faded, then the ship. Timed in the browser, a scene adds under 2 ms a frame at the three sizes.
+  - **The companions:** each of the four drawn as a bust of their own (`src/render/portraits/`): their face from their look, bareheaded, with clothes and gear of their own named in data (`bust` in `data/companions.json`, its choices drawings in code, checked by the validator), in the painted look. About 100 px beside the event's words where they offer to come aboard and once signed on, the choices still in sight; cropped to the face at 40 px on the crew card and the squad pickers; the fight's buttons keep the helmet badge. Everyone else's portrait is as it was.
+  - **Saves:** unchanged at v29: the scenes and the busts come from what a save holds already, the world's kind and the companion's id.
+  - **Offline:** nothing new to fetch; only code changes in the cache.
+  - **Every rule tested:** each scene drawn the same from the same seed, inside its frame, from palette colors; every kind of world with its scene; the busts the same each time, each companion's own, and their face crop; the validator's new checks.
+  - **Touch,** at the three sizes: the title's buttons over the hangar; the lift-off; the landing on each kind of world; the event card's bust beside the words with every choice in sight; the face crops on the crew card and the squad picker; reduced motion; no console errors.
 - [ ] M35 Audio pass with ZzFX. Draft: sounds made in code with ZzFX (approved for M35): shots and hits, the builder's placing, and the menus; a mute and a volume in the settings; audio starts after the first tap.
 
 ### Phase 7: Content and balance
