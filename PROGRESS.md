@@ -97,7 +97,14 @@ Newest entry first.
 **Verified:**
 - `node --test`: 956 tests pass (942 before). `validate-data`: OK, 100 events.
 - `m36/verify.mjs` at the three sizes, as above.
-- Every earlier milestone's browser check (`m36/regress.sh`, M35's to M8's, with M35's, M34's and M31's to M27's copies adapted for v31): running as this is written; the result goes here before the merge.
+- **Every earlier milestone's browser check** passes, one after another at the three sizes (`m36/regress.sh`), M35's to M8's. Things to know:
+  - **The copies that read a save's version** (M35's, M34's, and M31's to M27's) are adapted for M36: saves are v31.
+  - **Four more copies are adapted for M36,** for fixed seeds its events moved or a call one had wrong:
+    - **M32b's two:** the first station's first recruit is now a scout at 8 hit points, who sits a boarding out, so two of the crew reach a rank where three did. The copies sign on a recruit tougher than the captain, as main's marine was.
+    - **M23's:** that recruit is now a marine, so hurting every marine hurt him too. It hurts only the captain, as `tests/crewText.test.js` now does.
+    - **M19's:** it asked `choiceProblem` without the rules, which a choice needing a job reads to say who it needs. It passes them now.
+  - **M18's swipe at the tab size** scrolled 29 px against its bar of 30 in the chain, and passed (43 of 43) when run again. M36 doesn't touch the settings.
+  - **M32b's first copy** still looks for Suppress · 2 and Sedate · 2, as it has since M33; its fix's copy passes in its place.
 
 **Known issues:**
 - **The hunters come more often** on the miner's run than on main, within the bar (above).
