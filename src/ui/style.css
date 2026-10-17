@@ -445,6 +445,31 @@ textarea {
   gap: 10px;
 }
 
+/* The hangar (hangar.js): each part in its place, so the crew card (M37)
+   can lie over the goal and the ship. */
+.hgr-hangar > .hgr-head {
+  grid-row: 1;
+}
+
+.hgr-hangar > .hgr-goal-panel {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.hgr-hangar > .hgr-ship {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.hgr-hangar > .hgr-side {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.hgr-hangar > .hgr-foot {
+  grid-row: 3;
+}
+
 .hgr-hint {
   flex: 1;
   margin: 0;
@@ -1548,6 +1573,38 @@ textarea {
   color: var(--c-good);
 }
 
+/* What they carry (M37), and under the row a button for each spare weapon
+   they could take: two taps to swap, the first saying what it does. */
+.hgr-name small.crew-arms {
+  color: var(--c-accent);
+}
+
+.crew-swaps {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  padding-bottom: 2px;
+}
+
+.crew-swaps-label {
+  color: var(--c-ink-dim);
+  font-size: 12px;
+}
+
+#ui .crew-swap {
+  min-height: 48px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+#ui .crew-swap[data-armed='true'] {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
 /* A crew member's rank (M32b, portrait.js rankMark): a chevron for each,
    over the corner of their portrait so a narrow card or the fight's column
    keeps its width, or beside their name where there is no portrait. */
@@ -2441,6 +2498,13 @@ textarea {
 .shop-pick .shop-need {
   flex: none;
   color: var(--c-accent);
+  font-size: 11.5px;
+}
+
+/* A weapon among the parts (M37). */
+.shop-pick .shop-arm {
+  flex: none;
+  color: var(--c-ink-dim);
   font-size: 11.5px;
 }
 

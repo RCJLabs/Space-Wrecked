@@ -143,7 +143,7 @@ test('the Fleet Provost takes no payments: no Pay at the hangar, and the hints s
   assert.equal(text.heat.payment, null);
   assert.equal(text.hint.text, `${rules.backgrounds.get('deserter').pursuer.levels.hunters} The Fleet Provost takes no payments: heat only falls once a raid is faced.`);
   const raid = hangarText({ ...hot, heat: 80 }, rules);
-  assert.equal(raid.hint.text, `${rules.backgrounds.get('deserter').pursuer.levels.raid} Defend the ship.`);
+  assert.equal(raid.hint.text, `${rules.backgrounds.get('deserter').pursuer.levels.raid} Win: 30% to pick up one of their weapons. Defend the ship.`);
   // The Hallorans take theirs, dearer than Con-Reg's.
   const smuggler = { ...withBoard(newCampaign(rules, 4, { background: 'smuggler' }), rules), heat: 55, credits: 500, parts: {} };
   const terms = paymentFor(smuggler, rules);

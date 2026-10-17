@@ -1,6 +1,7 @@
 // What is on a battle map tile, for its card: the room and what stands on
 // the tile, what is on its edges, and any wreck. doors: a battle's open
-// doors (battle.doors), if any.
+// doors (battle.doors), if any; fires: the fires a weapon set (M37,
+// battle.fires), if any.
 import { cellAt } from '../../sim/grid.js';
 import { edgeKey, wallAt } from '../../sim/mapFromShip.js';
 
@@ -19,7 +20,7 @@ export function roomName(map, uid, defs) {
 
 // { title, lines } for tile (x, y). On a job's site, an area walls close
 // off is no room: the tile is called what it is.
-export function tileText(map, x, y, defs, doors = []) {
+export function tileText(map, x, y, defs, doors = [], fires = []) {
   const uid = cellAt(map.roomAt, x, y);
   const kind = cellAt(map.tiles, x, y);
   const room = uid !== null && map.rooms.some((r) => r.uid === uid);
@@ -37,5 +38,7 @@ export function tileText(map, x, y, defs, doors = []) {
     const wreck = cellAt(map.hazards, x, y);
     if (wreck) lines.push(`Wrecked: ${WRECK_TEXT[wreck]}.`);
   }
+  const fire = fires.find(({ at }) => at[0] === x && at[1] === y);
+  if (fire) lines.push(`Burning through round ${fire.until}: ${defs.balance.fireDamage} to anyone at the start of their turn here.`);
   return { title, lines };
 }

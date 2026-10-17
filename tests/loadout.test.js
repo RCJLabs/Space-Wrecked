@@ -14,6 +14,7 @@ import { launch } from '../src/sim/launch.js';
 import { carriedWords, handedIn, sparesFor, swapProblem, swapWeapon, weaponOf } from '../src/sim/loadout.js';
 import { buyFromRack, rackAt, rackHere } from '../src/sim/racks.js';
 import { dismissCrew } from '../src/sim/recruits.js';
+import { initialState, reduce } from '../src/sim/root.js';
 import { beginRun } from '../src/sim/travel.js';
 import { rules } from './battleKit.js';
 import { readyToLaunch } from './launchKit.js';
@@ -135,6 +136,26 @@ test('an event can put a weapon on hand; a crew member let go hands theirs in', 
   const gone = dismissCrew(there, rules, leaving.id);
   assert.ok(gone.ok, gone.error);
   assert.equal(gone.campaign.arms[weaponOf(leaving, rules)], 1);
+});
+
+test('through the game: a swap, a spare sold at the hangar and a weapon bought from a rack; one that fails changes nothing', () => {
+  const state = { ...initialState(1), screen: 'hub', campaign: withSpares(fresh(), { riotgun: 1 }) };
+  const marine = memberOf(state.campaign, 'marine');
+  const swapped = reduce(state, { type: 'campaign/arms/swap', id: marine.id, weapon: 'riotgun', rules });
+  assert.equal(weaponOf(swapped.campaign.crew.find((m) => m.id === marine.id), rules), 'riotgun');
+  assert.equal(reduce(swapped, { type: 'campaign/arms/swap', id: marine.id, weapon: 'riotgun', rules }), swapped, 'none left on hand');
+  const sold = reduce(swapped, { type: 'campaign/arms/sell', weapon: 'rifle', rules });
+  assert.deepEqual(sold.campaign.arms, {});
+  assert.equal(sold.campaign.credits, swapped.campaign.credits + weaponSellPrice('rifle', rules));
+  assert.equal(reduce(sold, { type: 'campaign/arms/sell', weapon: 'rifle', rules }), sold);
+  const run = beginRun(launch(readyToLaunch(), rules).campaign, rules).campaign;
+  const station = run.run.sector.nodes.find((node) => node.type === 'station');
+  const there = { ...initialState(1), screen: 'sector', campaign: { ...run, credits: 999, run: { ...run.run, at: station.id, seen: [...new Set([...run.run.seen, station.id])] } } };
+  const [first] = rackAt(there.campaign, rules, station.id);
+  const bought = reduce(there, { type: 'campaign/arms/rack', slot: first.slot, rules });
+  assert.equal(bought.campaign.arms[first.weapon], 1);
+  assert.equal(bought.screen, 'sector');
+  assert.equal(reduce(bought, { type: 'campaign/arms/rack', slot: first.slot, rules }), bought, 'gone from the rack');
 });
 
 test('SAVE_VERSION 32: a save from before keeps everyone with their job\'s weapon and none spare, and racks with nothing bought', () => {

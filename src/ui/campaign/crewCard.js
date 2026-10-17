@@ -2,7 +2,10 @@
 // hire, over the left panel and the chart, opened from the crew panel. Its
 // words are crewText.js's. Signing a recruit on and letting someone go take
 // two taps, as the map's other orders do: sector.js keeps which button has
-// had its first tap and says in the foot what the second does.
+// had its first tap and says in the foot what the second does. Since M37
+// each row says what they carry, with a button for each spare weapon on
+// hand they could take, two taps to swap; the card opens at the hangar and
+// the colony too.
 //
 //   card.show(text, armed)   crewCardText's card, or null (the card hides);
 //                            armed is the key of the button that has had
@@ -13,7 +16,7 @@ import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { faceUrl, portraitImg, withRank } from '../portrait.js';
 
-// tap(key): a Sign on or Let go button's tap; done(): Done.
+// tap(key): a Sign on, Let go or spare weapon button's tap; done(): Done.
 export function createCrewCard({ tap, done }) {
   const el = node('section', 'sct-crew');
   el.setAttribute('aria-label', 'Crew');
@@ -69,9 +72,10 @@ export function createCrewCard({ tap, done }) {
   // A row: their portrait with a chevron for each rank, the name, what they
   // are, a recruit's or a companion's past, their rank and fights (M32b), a
   // companion's loyalty (M33c), their traits and what their job brings
-  // (M32), hit points, and a button for what can be done with them here, if
-  // anything.
-  function row({ name, about, past, rank, rankLine, loyalty, traits, brief, hp, max, face }, action, armed) {
+  // (M32), what they carry (M37), hit points, and a button for what can be
+  // done with them here, if anything; under it, a button for each spare
+  // weapon they could take.
+  function row({ name, about, past, rank, rankLine, loyalty, traits, brief, weapon, hp, max, face }, action, armed) {
     const item = node('li');
     item.dataset.wounded = String(hp < max);
     item.append(withRank(portraitImg('crew-face', faceUrl(face, 'face')), rank));
@@ -83,6 +87,7 @@ export function createCrewCard({ tap, done }) {
     if (loyalty) who.append(node('small', 'crew-loyal', loyalty));
     if (traits) who.append(node('small', null, traits));
     if (brief) who.append(node('small', 'crew-brief', brief));
+    if (weapon) who.append(node('small', 'crew-arms', weapon.line));
     const health = node('span', 'sct-crew-hp');
     const bar = node('span', 'hgr-hp');
     const fill = node('span');
@@ -100,6 +105,21 @@ export function createCrewCard({ tap, done }) {
       button.setAttribute('aria-label', action.ok ? `${name}: ${on ? action.ask : action.label}` : `${name}: ${action.why}`);
       buttons.push({ detach: onTap(button, () => tap(action.key)) });
       item.append(button);
+    }
+    if (weapon?.swaps.length) {
+      const swaps = node('div', 'crew-swaps');
+      swaps.append(node('span', 'crew-swaps-label', 'Swap for'));
+      for (const swap of weapon.swaps) {
+        const on = armed === swap.key;
+        const button = node('button', 'btn crew-swap', on ? `${swap.label}: ${swap.ask}` : swap.label);
+        button.type = 'button';
+        button.disabled = !swap.ok;
+        button.dataset.armed = String(on);
+        button.setAttribute('aria-label', swap.ok ? `${name}: swap for the ${swap.label.toLowerCase()}` : `${name}: ${swap.why}`);
+        buttons.push({ detach: onTap(button, () => tap(swap.key)) });
+        swaps.append(button);
+      }
+      item.append(swaps);
     }
     return item;
   }

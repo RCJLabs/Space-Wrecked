@@ -174,7 +174,7 @@ test('the shop in words: what the ship needs first, prices, why not, and what to
   assert.deepEqual(shopText({ ...campaign, credits: 400 }, rules).hint, { tone: 'good', text: 'The ship needs the Engine: buy it, then fit it with Build.' });
   assert.deepEqual(shopText({ ...campaign, parts: {} }, rules).hint, { tone: 'info', text: 'The Engine the ship needs is 200 credits. Jobs pay the rest.' });
   assert.deepEqual(shopText({ ...campaign, parts: {}, shop: [] }, rules).hint, { tone: 'info', text: "Dutch's yard is sold out. The stock turns over after every job." });
-  assert.deepEqual(shopText({ ...campaign, parts: {}, shop: [{ part: 'cargo', price: 60 }] }, rules).hint.text, 'Pick a part to read about it. Buying or selling takes two taps.');
+  assert.deepEqual(shopText({ ...campaign, parts: {}, shop: [{ part: 'cargo', price: 60 }] }, rules).hint.text, 'Pick a part or a weapon to read about it. Buying or selling takes two taps.');
   assert.equal(shopText({ ...campaign, background: 'nobody' }, rules), null);
   assert.equal(offerText(campaign, rules, 'engine'), "200 at Dutch's yard");
   assert.equal(offerText(campaign, rules, 'reactor'), null);

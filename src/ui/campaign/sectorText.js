@@ -8,7 +8,8 @@
 // survey (survey.js) and settling (settle.js); since M33, the crew's
 // standing with each side, a station's side and what it charges, and the
 // heat of trading at a station of the pursuer's side (standingText.js;
-// M33's fix, where it was docking there). The event
+// M33's fix, where it was docking there); since M37, a station's weapons
+// rack (racks.js). The event
 // card's words are eventText.js's, and the approach screen's
 // approachText.js's. rules are the content tables (src/sim/defs.js).
 import { actOf, canRefit } from '../../sim/campaign.js';
@@ -19,6 +20,7 @@ import { crewRoom } from '../../sim/crew.js';
 import { stationBy } from '../../sim/edges.js';
 import { healRate } from '../../sim/medbay.js';
 import { patchPlan } from '../../sim/patch.js';
+import { rackHere, rackPlan } from '../../sim/racks.js';
 import { recruitOffer } from '../../sim/recruits.js';
 import { regroupPlan } from '../../sim/regroup.js';
 import { repairPlan, wrecksToRepair } from '../../sim/repair.js';
@@ -28,6 +30,7 @@ import { swapPlan } from '../../sim/transponder.js';
 import { dockHeat, patrolWelcome, pursuerSide, stationSide } from '../../sim/standing.js';
 import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesCost, suppliesOver, supplyCapacity, supplyOffer } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
+import { aWeapon, rulesLine, weaponFacts, weaponWord } from './armsText.js';
 import { byJob } from './crewJobText.js';
 import { questOf } from '../../sim/quests.js';
 import { coldWarning, questNodeText, questsText } from './questText.js';
@@ -68,6 +71,9 @@ import { dockSaid, sideColor, sideIs, sideName, sidesText, stationText } from '.
 //                from one or with no one hurt: { ok, label, ask, text, why }
 //   repair       what the station would repair, or null away from one or
 //                with nothing wrecked: { ok, label, ask, text, why }
+//   rack         the station's weapons rack (M37), or null away from one or
+//                with nothing left on it: { line, items: [{ slot, key,
+//                name, ok, label, ask, text, why }] }, key 'rack:<slot>'
 //   leave        null away from the jump point; there { ok, label, ask,
 //                title, lines, tone }: on into the next sector, or from the
 //                act's last into the system past the charts
@@ -138,6 +144,7 @@ export function sectorText(campaign, rules) {
     offer: offer.ok ? offerText(campaign, rules, offer) : null,
     refit: refitText(campaign, rules),
     repair: offer.ok ? repairText(campaign, rules) : null,
+    rack: offer.ok ? rackText(campaign, rules) : null,
     patch: offer.ok ? patchText(campaign, rules) : null,
     leave,
     scan: scanText(campaign, rules),
@@ -284,6 +291,32 @@ function patchText(campaign, rules) {
     ask: `Patch for ${plan.cost}?`,
     text: `${all ? 'Patches up' : 'Your credits cover'} ${who} for ${plan.cost} credits${all ? '' : `, of ${plan.total} to heal everyone`}.${dockSaid(campaign, rules, plan.dock)} Tap again to patch up.`,
     why: null,
+  };
+}
+
+// The station's weapons rack (M37, racks.js), each weapon two taps, or
+// null with nothing left on it.
+function rackText(campaign, rules) {
+  const items = rackHere(campaign, rules);
+  if (!items.length) return null;
+  return {
+    line: `Weapons rack: ${listed(items.map((item) => `${aWeapon(item.weapon, rules)} for ${item.price}`))}.`,
+    items: items.map((item) => {
+      const plan = rackPlan(campaign, rules, item.slot);
+      const weapon = rules.weapons.get(item.weapon);
+      const said = rulesLine(weapon);
+      const [what] = weaponFacts(item.weapon, rules);
+      return {
+        slot: item.slot,
+        key: `rack:${item.slot}`,
+        name: weapon?.name ?? item.weapon,
+        ok: plan.ok,
+        label: `${weapon?.name ?? item.weapon} · ${item.price}`,
+        ask: `Buy for ${item.price}?`,
+        text: `The ${weaponWord(item.weapon, rules)} for ${item.price} credits: ${what.charAt(0).toLowerCase()}${what.slice(1)}.${said ? ` ${said}` : ''} It goes on hand, to swap in on the crew card.${dockSaid(campaign, rules, plan.dock)} Tap again to buy.`,
+        why: plan.ok ? null : plan.error,
+      };
+    }),
   };
 }
 
@@ -545,4 +578,9 @@ function systemHint(campaign, rules) {
 
 function capital(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// "a, b and c".
+function listed(items) {
+  return items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
 }

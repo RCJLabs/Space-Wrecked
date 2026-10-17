@@ -9,7 +9,8 @@
 //   path, and whether it takes one action or both (a dash). Only a second
 //   tap on that tile makes it.
 // - A tap on an enemy it can see shows the shot, with the odds part by
-//   part (odds.js). Only a second tap on that enemy, or Fire, takes it.
+//   part (odds.js). Only a second tap on that enemy, or Fire, takes it. An
+//   enemy in sight but past the weapon's reach (M37) says so.
 // - Its job's order (orders.js) is shown first, at whom or what it would
 //   reach, and only a second press takes it. While an order that reaches an
 //   enemy is shown, a tap on another enemy shows it at them instead.
@@ -59,6 +60,7 @@ import { act, targetsFor } from './battle.js';
 import { shotOdds } from './odds.js';
 import { dartOdds, ORDER_KINDS, orderOf, orderTargets } from './orders.js';
 import { canSee } from './sight.js';
+import { outOfReach, withinReach } from './weapons.js';
 import { SIDES } from './grid.js';
 import { reachable } from './moves.js';
 import { pressAction } from './press.js';
@@ -217,6 +219,9 @@ function aim(fight, id, rules) {
   }
   if (unit.ammo < 1) return withNotice(fight, 'bad', `${unit.name} has to reload first.`);
   const shot = targetsFor(fight.battle, unit, rules).find((t) => t.target.id === id);
+  const weapon = rules.weapons.get(unit.weapon);
+  const seen = canSee(fight.battle, [unit.x, unit.y], [target.x, target.y], rules);
+  if (!shot && seen && !withinReach(weapon, [unit.x, unit.y], [target.x, target.y])) return withNotice({ ...fight, preview: null }, 'info', `${outOfReach(unit, { ...target, name: `${target.name} ${target.id}` }, weapon)} Move ${unit.name} closer.`);
   if (!shot) return withNotice({ ...fight, preview: null }, 'info', `${unit.name} can't see ${target.name} ${target.id} from here.`);
   return { ...fight, preview: { type: 'shoot', target: id, odds: shot.odds } };
 }
@@ -227,7 +232,12 @@ function nextTarget(fight, rules) {
   if (!unit) return fight;
   if (unit.ammo < 1) return withNotice(fight, 'bad', `${unit.name} has to reload first.`);
   const targets = sortedTargets(fight.battle, unit, rules);
-  if (!targets.length) return withNotice(fight, 'info', `${unit.name} can't see anyone to shoot.`);
+  if (!targets.length) {
+    const weapon = rules.weapons.get(unit.weapon);
+    const sighted = weapon.reach && fight.battle.units.some((u) => u.side !== unit.side && u.status === 'active' && canSee(fight.battle, [unit.x, unit.y], [u.x, u.y], rules));
+    const tiles = `${weapon.reach} tile${weapon.reach === 1 ? '' : 's'}`;
+    return withNotice(fight, 'info', sighted ? `No one in sight is within ${tiles}, the ${weapon.name.toLowerCase()}'s reach.` : `${unit.name} can't see anyone to shoot.`);
+  }
   const shown = fight.preview?.type === 'shoot' ? targets.findIndex((t) => t.target.id === fight.preview.target) : -1;
   const { target, odds } = targets[(shown + 1) % targets.length];
   if (target.id === fight.preview?.target) return fight;

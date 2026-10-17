@@ -91,7 +91,7 @@ test("a held derelict: who holds her, what a win brings, Board her's ask; the fi
   const out = flyOut(listing(settled(), [hulk]), rules, 0, [1, 2, 3]).campaign;
   const held = awayText(out, rules);
   assert.deepEqual(held.held, {
-    lines: ['Squatters hold her: Scavver ×2, Hired heavy.', 'Win: strip 2 of her parts, and 4 to 8 materials.', 'Lose: the squad comes back hurt, with nothing. Or fly home and leave her be.'],
+    lines: ['Squatters hold her: Scavver, Hired heavy, Scavver torcher.', 'Win: strip 2 of her parts, and 4 to 8 materials.', 'Win: 30% to pick up one of their weapons.', 'Lose: the squad comes back hurt, with nothing. Or fly home and leave her be.'],
     ask: 'Board Long Haul: the squad against the squatters, aboard her. Tap again to board.',
   });
   assert.equal(held.home.ok, true);

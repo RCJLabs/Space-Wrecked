@@ -25,9 +25,10 @@ import { endColonyRaid, faceRaid, raidTake } from '../src/sim/raids.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { mapFromShip } from '../src/sim/mapFromShip.js';
 import { shotOdds } from '../src/sim/odds.js';
-import { reachable } from '../src/sim/moves.js';
+import { reachable, stepsFrom } from '../src/sim/moves.js';
 import { advance, pressAction } from '../src/sim/press.js';
 import { canSee } from '../src/sim/sight.js';
+import { armFor } from './arms.js';
 import { launchedShip } from './startShip.js';
 
 // Who plays which side: the side aboard the other's ship presses on.
@@ -53,18 +54,20 @@ const RAID_PLAYERS = { crew: aiAction, enemy: pressAction };
 // The boarding fight that is due in a campaign, fought out by the AI and
 // ended (encounter.js beginBoarding, endBoarding): { campaign, won, rounds,
 // dir, salvage, dragged }. dragged: it went past DRAGGING rounds and both
-// sides pressed on. Throws if it can't begin, or stalls even so.
+// sides pressed on. Throws if it can't begin, or stalls even so. The crew
+// goes in with the best weapons on hand for a fight aboard a ship (M37,
+// arms.js).
 export function fightBoarding(campaign, rules) {
-  const begun = beginBoarding(campaign, rules);
+  const begun = beginBoarding(armFor(campaign, rules, 'ship'), rules);
   if (!begun.ok) throw new Error(begun.error);
   return fightThrough(begun.campaign, rules, endBoarding);
 }
 
 // The fight at a place the scavengers hold, on a trip from the colony
 // (M28: expeditions.js boardPlace, endPlaceFight), fought out by the AI and
-// ended, as fightBoarding's.
+// ended, as fightBoarding's, armed for a fight aboard her.
 export function fightPlace(campaign, rules) {
-  const begun = boardPlace(campaign, rules);
+  const begun = boardPlace(armFor(campaign, rules, 'ship'), rules);
   if (!begun.ok) throw new Error(begun.error);
   return fightThrough(begun.campaign, rules, endPlaceFight);
 }
@@ -73,9 +76,10 @@ export function fightPlace(campaign, rules) {
 // fire at the lander first) and, with any raiders landed and anyone home,
 // fought out by the AI and ended (endColonyRaid): { campaign, landing,
 // fought (true with a fight), won, rounds, dragged, taken (what a lost
-// raid took, raids.js raidTake, or null) }.
+// raid took, raids.js raidTake, or null) }. Those at home are armed for a
+// fight on the ground.
 export function fightRaid(campaign, rules) {
-  const faced = faceRaid(campaign, rules);
+  const faced = faceRaid(armFor(campaign, rules, 'ground'), rules);
   if (!faced.ok) throw new Error(faced.error);
   if (!faced.fight) return { campaign: faced.campaign, landing: faced.landing, fought: false, won: faced.won, rounds: 0, dragged: false, taken: faced.taken };
   const done = fightThrough(faced.campaign, rules, endColonyRaid, RAID_PLAYERS);
@@ -134,27 +138,44 @@ export function sealedIn(battle, rules) {
 
 // Pressing on, past DRAGGING rounds: as pressAction, but a hopeless shot
 // or overwatch gives way to a step nearer, or with none and no enemy in
-// sight, to the nearest tile with one in sight, where there is one.
+// sight, to the nearest tile with one in sight, where there is one; and
+// from M37 a move that ends no nearer the enemy gives way to a step nearer
+// (a torch's reach short of the enemy, the AI stepped out and back each
+// turn, and so did the raiders it faced, for good).
 function charge(battle, rules) {
   const action = pressAction(battle, rules);
-  if (action.type !== 'shoot' && action.type !== 'overwatch') return action;
   const unit = battle.units.find((u) => u.id === action.unit);
+  if (action.type === 'move') return nearer(battle, unit, action.to, rules) ? action : (advance(battle, unit, rules) ?? action);
+  if (action.type !== 'shoot' && action.type !== 'overwatch') return action;
   const target = action.type === 'shoot' ? battle.units.find((u) => u.id === action.target) : null;
   if (target && shotOdds(battle, unit, target, rules).hit >= HOPELESS) return action;
   return advance(battle, unit, rules) ?? (target ? null : intoSight(battle, unit, rules)) ?? action;
 }
 
-// A move to the cheapest tile in one action's reach with an enemy in
-// sight, or null.
+// Whether tile `to` is fewer steps from the nearest enemy than where the
+// unit stands.
+function nearer(battle, unit, [x, y], rules) {
+  const foes = battle.units.filter((u) => u.side !== unit.side && u.status === 'active');
+  const away = stepsFrom(battle, foes.map((u) => [u.x, u.y]), rules);
+  return (away.get(`${x},${y}`) ?? Infinity) < (away.get(`${unit.x},${unit.y}`) ?? Infinity);
+}
+
+// A move toward the cheapest tile with an enemy in sight, however far,
+// as far along the way as one action takes it; or null. (Till M37 only a
+// tile in one action's reach: two sides whose fallen shut the short way
+// between them watched for each other for good.)
 function intoSight(battle, unit, rules) {
   const foes = battle.units.filter((u) => u.side !== unit.side && u.status === 'active');
   const sees = (x, y) => foes.some((foe) => canSee(battle, [x, y], [foe.x, foe.y], rules));
   if (sees(unit.x, unit.y)) return null;
   let best = null;
-  for (const spot of reachable(battle, unit, unit.mobility, rules).values()) {
+  for (const spot of reachable(battle, unit, Infinity, rules).values()) {
     if ((!best || spot.cost < best.cost) && sees(spot.x, spot.y)) best = spot;
   }
-  return best && { type: 'move', unit: unit.id, to: [best.x, best.y] };
+  if (!best) return null;
+  const near = reachable(battle, unit, unit.mobility, rules);
+  const to = [...best.path].reverse().find(([x, y]) => near.has(`${x},${y}`));
+  return to && (to[0] !== unit.x || to[1] !== unit.y) ? { type: 'move', unit: unit.id, to } : null;
 }
 
 // The harness's rows: two for each hostile preset with a party.

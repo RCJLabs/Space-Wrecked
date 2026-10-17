@@ -9,6 +9,7 @@ import { maxHp } from '../../sim/campaign.js';
 import { colonyBy } from '../../sim/edges.js';
 import { homePlan, kindOf, onPlan, otherWorlds, placeFightDue, tripHere } from '../../sim/expeditions.js';
 import { pursuerOf } from '../../sim/heat.js';
+import { aWeapon, gearLine } from './armsText.js';
 import { byJob } from './crewJobText.js';
 import { faceOf } from './crewText.js';
 import { changesText, choiceSaid } from './eventText.js';
@@ -147,7 +148,8 @@ function broughtText(result, campaign, rules) {
   const parts = result.won !== undefined ? result.parts : result.changes.parts;
   const materials = result.won !== undefined ? result.materials : result.changes.materials;
   const food = result.won !== undefined ? 0 : Math.max(0, result.changes.supplies);
-  const said = [...parts.map((type) => aPart(type, rules)), ...(materials ? [`${materials} materials`] : []), ...(food ? [`${food} food`] : [])];
+  const arms = result.won !== undefined ? [] : result.changes.arms ?? [];
+  const said = [...parts.map((type) => aPart(type, rules)), ...arms.map((id) => aWeapon(id, rules)), ...(materials ? [`${materials} materials`] : []), ...(food ? [`${food} food`] : [])];
   return said.length ? `It brought ${listed(said)}.` : 'It brought nothing.';
 }
 
@@ -182,12 +184,12 @@ function heldText(campaign, rules) {
   const quest = questPlaceText(due.place, rules);
   if (quest) {
     return {
-      lines: [`${quest.line} Aboard: ${party}.`, `Win: ${quest.tag} is done, and ${due.salvage ? `${due.salvage} of her parts and ` : ''}${least} to ${most} materials.`, 'Lose: the squad comes back hurt, and she is still there. Or fly home and leave her for now.'],
+      lines: [`${quest.line} Aboard: ${party}.`, `Win: ${quest.tag} is done, and ${due.salvage ? `${due.salvage} of her parts and ` : ''}${least} to ${most} materials.`, ...[gearLine(rules)].filter(Boolean), 'Lose: the squad comes back hurt, and she is still there. Or fly home and leave her for now.'],
       ask: `Board ${due.place.name}: the squad against her crew, aboard her. Tap again to board.`,
     };
   }
   return {
-    lines: [`Squatters hold her: ${party}.`, `Win: strip ${due.salvage} of her parts, and ${least} to ${most} materials.`, 'Lose: the squad comes back hurt, with nothing. Or fly home and leave her be.'],
+    lines: [`Squatters hold her: ${party}.`, `Win: strip ${due.salvage} of her parts, and ${least} to ${most} materials.`, ...[gearLine(rules)].filter(Boolean), 'Lose: the squad comes back hurt, with nothing. Or fly home and leave her be.'],
     ask: `Board ${due.place.name}: the squad against the squatters, aboard her. Tap again to board.`,
   };
 }

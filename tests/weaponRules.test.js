@@ -5,7 +5,7 @@
 // whatever data/weapons.json says.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { harm, plansFor } from '../src/sim/ai.js';
+import { bestPlan, harm, plansFor, WEIGHTS } from '../src/sim/ai.js';
 import { act, createBattle, targetsFor } from '../src/sim/battle.js';
 import { describeEvent } from '../src/sim/battleLog.js';
 import { battleProblem } from '../src/sim/battleShape.js';
@@ -164,6 +164,19 @@ test('the AI weighs the rules: a burst\'s shots, nothing past its reach, and the
   const stay = (b) => plansFor(b, who(b, 'e1'), rules).find((plan) => plan.ap === 0 && !plan.open);
   assert.equal(stay(hot).threat - stay(cold).threat, rules.balance.fireDamage);
   assert.equal(stay(wrecked).threat, stay(cold).threat);
+});
+
+test('with a reach, the AI closes to it, and its overwatch counts for little till an enemy is about that close', () => {
+  const battle = fight(openMap(12, 1), [{ kind: 'marine', x: 0, y: 0 }, { kind: 'pirate', x: 11, y: 0 }], { first: 'enemy' });
+  const unit = { ...who(battle, 'e1'), weapon: 't-reach' };
+  const plans = plansFor(battle, unit, rules);
+  const here = plans.find((plan) => plan.ap === 0 && plan.then?.type === 'overwatch');
+  assert.equal(here.attack, WEIGHTS.idle, 'nothing for its watch from out here');
+  const best = bestPlan(plans);
+  assert.ok(best.steps < here.steps - unit.mobility, `it closes in, dashing: ${here.steps} steps to ${best.steps}`);
+  // Next to an enemy, it strikes.
+  const near = fight(openMap(12, 1), [{ kind: 'marine', x: 0, y: 0 }, { kind: 'pirate', x: 1, y: 0 }], { first: 'enemy' });
+  assert.equal(bestPlan(plansFor(near, { ...who(near, 'e1'), weapon: 't-reach' }, rules)).then?.type, 'shoot');
 });
 
 test('Sedate needs a dart gun in hand; Suppress reaches only as far as the weapon', () => {

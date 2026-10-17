@@ -175,7 +175,8 @@ test('supplies and heat move as data/balance.json and data/events.json say, step
   // deserter's runs repair now and then, so theirs are walked too, but for
   // their refits (the refit test's).
   for (const trip of deserters) for (const step of trip.steps) if (step.kind !== 'refit') checkStep(step, step.room, kinds);
-  assert.deepEqual([...kinds].sort(), ['approach', 'boarding', 'buy', 'event', 'hide', 'hire', 'jump', 'long', 'patch', 'repair', 'scan', 'sector', 'settle', 'survey', 'swap', 'system'], 'every kind of step comes up');
+  // A weapon bought from a station's rack (M37) comes up too.
+  assert.deepEqual([...kinds].sort(), ['approach', 'arms', 'boarding', 'buy', 'event', 'hide', 'hire', 'jump', 'long', 'patch', 'repair', 'scan', 'sector', 'settle', 'survey', 'swap', 'system'], 'every kind of step comes up');
 });
 
 // One step of a voyage, as the rules say it moves things.
@@ -283,6 +284,16 @@ function checkStep(step, capacity, kinds) {
     checkDock(step);
     return;
   }
+  if (step.kind === 'arms') {
+    // M37: a weapon from the station's rack, at its price there, with a
+    // holdful's price and a transponder swap's left over; nothing else moved.
+    assert.ok(rules.weapons.has(step.weapon), step.weapon);
+    assert.equal(step.credits[0] - step.credits[1], step.price);
+    assert.ok(step.credits[1] >= step.room * balance.supplyPrice + balance.swapPrice, `${step.credits[1]} credits left`);
+    assert.deepEqual([after, step.hp[1], step.parts[1]], [supplies, step.hp[0], step.parts[0]]);
+    checkDock(step);
+    return;
+  }
   if (step.kind === 'hire') {
     // Their fee, by their traits and rank, at the station's share (M33),
     // and one more aboard at full health; nothing else moved.
@@ -306,6 +317,8 @@ function checkStep(step, capacity, kinds) {
     assert.deepEqual([step.credits[1] - step.credits[0], after - supplies, step.heat[1] - step.heat[0]], [changes.credits, changes.supplies, changes.heat]);
     assert.equal(step.parts[1] - step.parts[0], changes.parts.length - changes.sold.length);
     assert.equal(changes.parts.length, (effects.part ? 1 : 0) + (effects.drop ? 1 : 0));
+    // A weapon on hand (M37), as written.
+    assert.deepEqual(changes.arms ?? [], effects.arms ? [effects.arms] : []);
     // A companion signed on (M33c): one more aboard, at full health, and
     // only by a choice that signs them on.
     const companion = rules.companions.get(changes.joined);

@@ -26,8 +26,9 @@
 // fight on the colony's grid (src/sim/raids.js), or says what came of the
 // landing without one. From M33c a tap on the crew opens the crew card
 // (crewCard.js) over the panel and the ground: each one's face, rank and
-// what they bring, a companion's past and loyalty. The campaign is saved
-// after every change, so Continue on the title comes back here.
+// what they bring, a companion's past and loyalty, and from M37 what they
+// carry, a spare weapon swapped in two taps. The campaign is saved after
+// every change, so Continue on the title comes back here.
 import { loadContent } from '../../platform/content.js';
 import { buildPlan, build, movePlan, takeDown, takeDownPlan, turnedSpot } from '../../sim/colonyBuild.js';
 import { buildingName, siteDef } from '../../sim/colony.js';
@@ -42,7 +43,7 @@ import { buildingInfo, builtText, colonyText, dayReport, dayText, givenText, pla
 import { createStand } from './colonyStand.js';
 import { createTrips } from './colonyTrip.js';
 import { createCrewCard } from './crewCard.js';
-import { crewCardText } from './crewText.js';
+import { crewCardText, crewSaid } from './crewText.js';
 import { crewRows, heatChip, listRows, questRows, sideRows } from './hubParts.js';
 import { easedSaid } from './questText.js';
 import { defendText, landingReport, raidHint } from './raidText.js';
@@ -93,7 +94,7 @@ export const colonyScreen = {
     // In Next day's place while a raid's lander is down (M29).
     const defendButton = toolButton('hgr-tool cln-defend', icons.shoot, 'Defend');
     foot.append(titleButton, hint, refitButton, dayButton, defendButton);
-    const crewCard = createCrewCard({ tap: () => {}, done: () => toggleCrew(false) });
+    const crewCard = createCrewCard({ tap: tapCrew, done: () => toggleCrew(false) });
     el.append(head, info, sceneArea, side, foot, crewCard.el);
     root.append(el);
 
@@ -104,7 +105,7 @@ export const colonyScreen = {
     // type, placement, uid } (uid: the building being moved, else null);
     // or { kind: 'look', uid }.
     let mode = { kind: 'browse' };
-    let armed = null; // 'day', 'defend' or 'down', or a trip's: a first tap waiting for its second
+    let armed = null; // 'day', 'defend' or 'down', a trip's, or a crew card swap's ('arm:<id>:<weapon>', M37): a first tap waiting for its second
     let said = null; // { text, tone }: what the last tap came to, until the next
     let marked = null; // the ship's parts a refusal is about
     let armTimer = 0;
@@ -189,7 +190,10 @@ export const colonyScreen = {
       // The crew card, over the panel and the ground, which take no taps
       // under it.
       const crew = crewOpen ? crewCardText(campaign, defs) : null;
-      crewCard.show(crew, null);
+      const swapping = typeof armed === 'string' && armed.startsWith('arm:');
+      const crewAsk = swapping ? crewSaid(crew, armed) : null;
+      if (swapping && !crewAsk) disarm();
+      crewCard.show(crew, armed);
       el.dataset.crew = String(crewOpen);
       crewOpener.setAttribute('aria-expanded', String(crewOpen));
       info.inert = crewOpen;
@@ -216,9 +220,10 @@ export const colonyScreen = {
       defendButton.dataset.armed = String(armed === 'defend');
       refitButton.disabled = away;
 
-      const tripArmed = armed !== null && !['day', 'defend', 'down'].includes(armed);
+      const tripArmed = armed !== null && !['day', 'defend', 'down'].includes(armed) && !armed.startsWith('arm:');
       const defend = armed === 'defend' ? defendText(campaign, defs) : null;
-      const words = armed === null && crew ? crew.hint
+      const words = crewAsk ? crewAsk
+        : armed === null && crew ? crew.hint
         : armed === 'day' ? dayText(dayPlan(campaign, defs), easedSaid(campaign, defs))
         : defend ? (defend.ok ? { text: defend.ask, tone: 'warn' } : { text: defend.why, tone: 'bad' })
         : armed === 'down' ? takeDownText(takeDownPlan(campaign, defs, mode.uid))
@@ -245,6 +250,21 @@ export const colonyScreen = {
       crewOpen = open;
       disarm();
       render(true);
+    }
+
+    // A spare weapon's button on the crew card (M37): the first tap says
+    // what the swap does, the second makes it.
+    function tapCrew(key) {
+      if (!defs) return;
+      if (armed !== key) {
+        said = null;
+        arm(key);
+        return;
+      }
+      disarm();
+      const [, id, weapon] = key.split(':');
+      game.dispatch({ type: 'campaign/arms/swap', id: Number(id), weapon, rules: defs });
+      if (alive) render(true);
     }
 
     // The ghost's plan where it stands: buildPlan's, or movePlan's for a

@@ -19,7 +19,10 @@
 //   - the overwatch fire it would walk through on the way
 //   - when it won't shoot, a little for every step it ends up from the
 //     nearest enemy, so with no one in sight it pushes in from the airlock
-//     and through the doors (a shot's odds already count the distance)
+//     and through the doors (a shot's odds already count the distance); a
+//     weapon with a reach (M37) closes to it, each step past its reach
+//     counting more, and watches only with an enemy close enough to step
+//     within it
 //   - the fire it would burn in, standing where a weapon set a tile burning
 //     (M37); a wrecked room's fire, which never goes out, it crosses as
 //     before, or it could never reach the far side of one
@@ -53,6 +56,7 @@ export const WEIGHTS = {
   safety: 0.8, // how much the harm it can be expected to take counts
   near: 0.2, // each step from the nearest enemy, when it won't shoot
   stun: 2.5, // a stunned enemy's lost turn: about one shot's harm
+  close: 0.5, // each step past its reach from the nearest enemy, for a weapon with one (M37)
 };
 const WATCH_STEPS = 8; // an enemy this many steps off could come into sight
 const FAR = 99; // steps to an enemy it can't walk to
@@ -87,6 +91,7 @@ export function plansFor(battle, unit, rules) {
   const plans = [];
   // What it can do from a spot, in a battle with its doors as given.
   const weapon = rules.weapons.get(unit.weapon);
+  const reach = weapon?.reach ?? null;
   const consider = (field, spot, ap, open) => {
     const there = { ...unit, x: spot.x, y: spot.y };
     const seenBy = foes.filter((f) => canSee(field, [f.x, f.y], [spot.x, spot.y], rules));
@@ -112,7 +117,8 @@ export function plansFor(battle, unit, rules) {
       const flanked = coverFrom(field, [foe.x, foe.y], [spot.x, spot.y], rules).flanked;
       plans.push({ ...base, then: { type: 'shoot', target: foe.id, flanked }, attack: harm(field, there, foe, rules) });
     }
-    plans.push({ ...base, then: { type: 'overwatch' }, attack: base.steps <= WATCH_STEPS ? WEIGHTS.overwatch : WEIGHTS.idle });
+    const watching = reach ? base.steps <= reach + 1 : base.steps <= WATCH_STEPS;
+    plans.push({ ...base, then: { type: 'overwatch' }, attack: watching ? WEIGHTS.overwatch : WEIGHTS.idle });
   };
   for (const spot of reachable(battle, unit, unit.mobility * Math.min(unit.ap, 2), rules).values()) {
     consider(withDoorsOpened(battle, spot.path), spot, spot.cost === 0 ? 0 : spot.cost <= unit.mobility ? 1 : 2, null);
@@ -125,7 +131,8 @@ export function plansFor(battle, unit, rules) {
       consider({ ...battle, doors: [...battle.doors, edgeKey(unit.x, unit.y, side)] }, here, 1, side);
     }
   }
-  for (const plan of plans) plan.score = plan.attack - WEIGHTS.safety * (plan.threat + plan.risk) - (isShot(plan) ? 0 : WEIGHTS.near * plan.steps);
+  const far = (steps) => (reach ? WEIGHTS.close * Math.max(0, steps - reach) : WEIGHTS.near * steps);
+  for (const plan of plans) plan.score = plan.attack - WEIGHTS.safety * (plan.threat + plan.risk) - (isShot(plan) ? 0 : far(plan.steps));
   return plans;
 }
 

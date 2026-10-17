@@ -7,14 +7,17 @@
 // raiders the guns stopped. A boarding (M22) shows hers left and, at the
 // end, what it came to (boardingText.js); a fight at home is the
 // boarders'. Whatever the fight, the end panel names who reaches a rank as
-// it ends (M32b), and a job's what it moves with the sides (M33). Title leaves it as it is, for Continue; once it is won or
+// it ends (M32b), a job's what it moves with the sides (M33), and a won
+// fight a weapon it left behind (M37). Title leaves it as it is, for Continue; once it is won or
 // lost, Continue takes the crew home, or back to the run. The board is
 // ../fight/view.js's.
 import { rankUps } from '../../sim/campaign.js';
+import { gearWon } from '../../sim/gear.js';
 import { endingFor } from '../fight/hints.js';
 import { mountFight } from '../fight/view.js';
 import { icons } from '../icons.js';
 import { boardingObjective, boardingOutcome } from './boardingText.js';
+import { aWeapon } from './armsText.js';
 import { rankUpLines } from './crewJobText.js';
 import { jobOutcome, objectiveText, raidObjective, raidOutcome } from './jobText.js';
 import { questJobEnd, questPlaceEnd } from './questText.js';
@@ -71,7 +74,10 @@ export const campaignFightScreen = {
         // What the fight did to a quest (M33b): a quest's job done, or its
         // place at the colony won; then the sides.
         const quests = job() ? questJobEnd(job(), won, campaign, defs) : fightOn()?.boarding && campaign.colony?.trip ? questPlaceEnd(campaign.colony.trip.place, won, campaign, defs) : [];
-        const sides = [...quests, ...(job() ? jobEndLines(campaign, defs, job(), won) : [])];
+        // A weapon of the fallen's it left (gear.js), the roll endFight makes.
+        const gear = gearWon(fightOn(), battle, defs);
+        const left = gear ? [`Left behind: ${aWeapon(gear, defs)}, on hand to swap in on the crew card.`] : [];
+        const sides = [...left, ...quests, ...(job() ? jobEndLines(campaign, defs, job(), won) : [])];
         return { ...endedAs(battle, log, campaign), ranks, sides };
       },
       onChange(fight, prev) {

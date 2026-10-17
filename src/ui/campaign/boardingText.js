@@ -6,10 +6,12 @@
 // brings materials. rules are the content tables (src/sim/defs.js).
 import { boardingDue } from '../../sim/encounter.js';
 import { raidLoss } from '../../sim/raid.js';
+import { gearLine } from './armsText.js';
 
 // The boarding that is due, as the approach screen offers it, or null:
 //   dir      'them' (the crew boards her) or 'you' (she boards the player)
-//   lines    her crew, and what winning and losing come to
+//   lines    her crew, and what winning and losing come to (since M37,
+//            the chance a win leaves one of their weapons)
 //   begin    { label, ask, text }: the button that starts the fight
 //   leave    { label, ask, text }: leaving her instead, or null when she
 //            is the one boarding
@@ -26,6 +28,7 @@ export function boardingStakes(campaign, rules) {
       lines: [
         `Her crew: ${crew}.`,
         `Win aboard her: strip ${parts} part${parts === 1 ? '' : 's'} off her, and her scrap, ${min} to ${max} credits.`,
+        ...[gearLine(rules)].filter(Boolean),
         'Lose: the crew is beaten back to your ship, hurt.',
       ],
       begin: { label: 'Board her', ask: 'Board her?', text: `Board the ${name}: your crew against hers, aboard her. Tap again to board.` },
@@ -36,7 +39,7 @@ export function boardingStakes(campaign, rules) {
   const taken = loss?.part ? `they take the ${partName(loss.part, rules)} you have on hand` : loss?.credits ? `they take ${loss.credits} credits` : 'they find nothing worth taking';
   return {
     dir: 'you',
-    lines: [`Her boarders: ${crew}.`, `Throw them off: their gear is worth ${min} to ${max} credits.`, `Lose: ${taken}.`],
+    lines: [`Her boarders: ${crew}.`, `Throw them off: their gear is worth ${min} to ${max} credits.`, ...[gearLine(rules)].filter(Boolean), `Lose: ${taken}.`],
     begin: { label: 'Fight them off', ask: 'Fight?', text: 'Fight them off, aboard your own ship.' },
     leave: null,
   };

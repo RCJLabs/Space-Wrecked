@@ -20,7 +20,7 @@ test('the squad starts on the bridge and the boarders at the hatch, nearest firs
     { kind: 'engineer', x: 9, y: 3 },
     { kind: 'medic', x: 10, y: 3 },
     { kind: 'pirate', x: 5, y: 4 },
-    { kind: 'pirate', x: 5, y: 3 },
+    { kind: 'gunner', x: 5, y: 3 },
     { kind: 'brute', x: 4, y: 4 },
     { kind: 'pirate', x: 6, y: 4 },
   ]);

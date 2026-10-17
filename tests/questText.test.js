@@ -128,7 +128,7 @@ test("the colony: the quest's place is named for its quest, held, and Next day's
   const there = flyOut(home, rules, rows.length - 1, [1, 2]).campaign;
   const away = awayText(there, rules);
   assert.equal(away.where, "The miner's debt · 2 days from home");
-  assert.equal(away.held.lines[0], `${rules.quests.get('debt').steps[2].place.text} Aboard: Recovery agent ×2, Hired heavy.`);
+  assert.equal(away.held.lines[0], `${rules.quests.get('debt').steps[2].place.text} Aboard: Recovery agent, Hired heavy, Con-Reg breacher.`);
   assert.match(away.held.lines[1], /^Win: The miner's debt is done, and 1 of her parts and 4 to 8 materials\.$/);
   // Done: the odds halved, and said so.
   const done = { ...settled(), heat: 50, quests: { debt: { step: 2, state: 'done' } } };

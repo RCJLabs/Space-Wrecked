@@ -15,8 +15,11 @@
 //     M23h), unless --refit no; then fill the holds, as far as the credits
 //     go, then patch up the crew, then repair, then sign a recruit on where
 //     there is room (voyagePlan.js hireWho), with what the credits cover
-//     beyond a holdful's price;
-//   - fight a boarding with the healthiest squadSize of the crew (crew.js);
+//     beyond a holdful's price, and since M37 buy a weapon from its rack
+//     GAIN points better than anyone who could carry it has (arms.js), with
+//     what is left beyond a holdful's price and a transponder swap's;
+//   - fight a boarding with the healthiest squadSize of the crew (crew.js),
+//     each carrying the best weapon on hand of their job's kinds (M37);
 //   - with --scan yes (the default), scan wherever a scan would show a
 //     node ahead; with --scan no, never;
 //   - from each node, plan every way on to the jump point, a link at a
@@ -98,6 +101,7 @@ import { approachState, closeApproach, giveOrder } from '../src/sim/encounter.js
 import { chooseEvent, partsOnHand } from '../src/sim/events.js';
 import { launch } from '../src/sim/launch.js';
 import { patchCrew } from '../src/sim/patch.js';
+import { buyFromRack, rackHere } from '../src/sim/racks.js';
 import { eased, questOf, threadOf } from '../src/sim/quests.js';
 import { raidLoss } from '../src/sim/raid.js';
 import { landingPlan, raidDown } from '../src/sim/raids.js';
@@ -112,6 +116,7 @@ import { swapTransponder } from '../src/sim/transponder.js';
 import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer, tradeHeat } from '../src/sim/travel.js';
 import { runRecord } from '../src/ui/campaign/launchText.js';
 import { captainOrder } from './approachPlan.js';
+import { upgradeOf } from './arms.js';
 import { fightBoarding, fightPlace, fightRaid, SealedIn } from './boarding.js';
 import { readData } from './data.js';
 import { runToLaunch } from './run.js';
@@ -189,6 +194,10 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     patchCredits: 0,
     repairs: 0,
     repairCredits: 0,
+    // Weapons bought from stations' racks (M37), and what they cost; and
+    // those won in fights.
+    armsBought: 0,
+    armsCredits: 0,
     hired: 0,
     hireCredits: 0,
     healed: 0,
@@ -554,6 +563,21 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       tally.repairs += fixed.plan.repairs.length;
       tally.repairCredits += fixed.plan.cost;
       lines.push(`   Repaired ${fixed.plan.repairs.map((repair) => repair.type).join(', ')} for ${fixed.plan.cost} credits${logged(step)}: ${hold()}.`);
+    }
+    // A weapon from the station's rack (M37) GAIN points better than anyone
+    // who could carry it has, for a fight aboard a ship, with what is left
+    // beyond a holdful's price and a transponder swap's, which keeps the
+    // hunters off: beyond a holdful's alone, fewer voyages crossed fed.
+    for (const item of trading ? rackHere(campaign, defs) : []) {
+      if (!upgradeOf(campaign, defs, item.weapon, 'ship') || campaign.credits - item.price < reserve + defs.balance.swapPrice) continue;
+      const before = campaign;
+      const bought = buyFromRack(campaign, defs, item.slot);
+      if (!bought.ok) continue;
+      campaign = bought.campaign;
+      const step = record('arms', before, { weapon: item.weapon, price: item.price, dock: bought.plan.dock });
+      tally.armsBought += 1;
+      tally.armsCredits += item.price;
+      lines.push(`   Bought the ${defs.weapons.get(item.weapon).name.toLowerCase()} for ${item.price} credits${logged(step)}: ${hold()}.`);
     }
     // A day hidden in a nebula, or regrouping: the hunters may find a ship
     // that regroups, and then their approach comes first.

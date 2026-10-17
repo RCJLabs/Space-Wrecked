@@ -15,10 +15,10 @@
     { "id": "collector", "name": "Halloran collector", "hp": 6, "aim": 55, "defense": 5, "mobility": 5, "armor": 0, "weapon": "pistol", "look": { "suit": "skinsuit", "build": "light", "helmet": "egg", "back": "none", "marks": "seams" } },
     { "id": "enforcer", "name": "Halloran enforcer", "hp": 11, "aim": 60, "defense": 0, "mobility": 3, "armor": 1, "weapon": "shotgun", "look": { "suit": "skinsuit", "build": "heavy", "helmet": "mirror", "back": "none", "marks": "seams" } },
     { "id": "pike", "name": "Pike soldier", "hp": 7, "aim": 60, "defense": 0, "mobility": 4, "armor": 0, "weapon": "carbine", "look": { "suit": "skinsuit", "build": "standard", "helmet": "mirror", "back": "spine", "marks": "seams" } },
-    { "id": "gunner", "name": "Pirate gunner", "hp": 8, "aim": 55, "defense": 0, "mobility": 4, "armor": 0, "weapon": "autogun", "look": { "suit": "skinsuit", "build": "standard", "helmet": "crest", "back": "jump", "marks": "seams" } },
-    { "id": "torcher", "name": "Scavver torcher", "hp": 7, "aim": 55, "defense": 5, "mobility": 4, "armor": 0, "weapon": "torch", "look": { "suit": "eva", "build": "standard", "helmet": "lamps", "back": "none", "marks": "stripes" } },
-    { "id": "breacher", "name": "Con-Reg breacher", "hp": 9, "aim": 60, "defense": 0, "mobility": 4, "armor": 1, "weapon": "rivetgun", "look": { "suit": "eva", "build": "heavy", "helmet": "lamps", "back": "none", "marks": "plain" } },
-    { "id": "proctor", "name": "Provost proctor", "hp": 9, "aim": 65, "defense": 5, "mobility": 4, "armor": 2, "weapon": "baton", "look": { "suit": "skinsuit", "build": "standard", "helmet": "mirror", "back": "jump", "marks": "plates" } },
-    { "id": "cutter", "name": "Halloran cutter", "hp": 7, "aim": 60, "defense": 5, "mobility": 5, "armor": 0, "weapon": "machinepistol", "look": { "suit": "skinsuit", "build": "heavy", "helmet": "crest", "back": "jump", "marks": "plates" } }
+    { "id": "gunner", "name": "Pirate gunner", "hp": 7, "aim": 50, "defense": 0, "mobility": 4, "armor": 0, "weapon": "autogun", "look": { "suit": "skinsuit", "build": "standard", "helmet": "crest", "back": "jump", "marks": "seams" } },
+    { "id": "torcher", "name": "Scavver torcher", "hp": 5, "aim": 45, "defense": 0, "mobility": 4, "armor": 0, "weapon": "torch", "look": { "suit": "eva", "build": "standard", "helmet": "lamps", "back": "none", "marks": "stripes" } },
+    { "id": "breacher", "name": "Con-Reg breacher", "hp": 6, "aim": 60, "defense": 0, "mobility": 4, "armor": 0, "weapon": "rivetgun", "look": { "suit": "eva", "build": "heavy", "helmet": "lamps", "back": "none", "marks": "plain" } },
+    { "id": "proctor", "name": "Provost proctor", "hp": 9, "aim": 65, "defense": 5, "mobility": 4, "armor": 1, "weapon": "baton", "look": { "suit": "skinsuit", "build": "standard", "helmet": "mirror", "back": "jump", "marks": "plates" } },
+    { "id": "cutter", "name": "Halloran cutter", "hp": 5, "aim": 60, "defense": 5, "mobility": 5, "armor": 0, "weapon": "machinepistol", "look": { "suit": "skinsuit", "build": "heavy", "helmet": "crest", "back": "jump", "marks": "plates" } }
   ]
 }

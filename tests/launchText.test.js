@@ -25,7 +25,7 @@ test('with a raid at the door, a ready ship can still lift off from under it', (
   assert.equal(text.launch.ok, true);
   assert.deepEqual(text.hint, {
     tone: 'bad',
-    text: 'Con-Reg Recovery is at the hangar door with a court order and a lot of friends. Launch, and leave them an empty hangar.',
+    text: 'Con-Reg Recovery is at the hangar door with a court order and a lot of friends. Win: 30% to pick up one of their weapons. Launch, and leave them an empty hangar.',
   });
 });
 

@@ -9,15 +9,17 @@ import { build, moveBuilding, takeDown } from './colonyBuild.js';
 import { nextDay } from './days.js';
 import { cheat } from './dev.js';
 import { endJob, takeJob, takeQuestJob, withBoard } from './contracts.js';
-import { buyPart, sellPart } from './economy.js';
+import { buyPart, sellPart, sellWeapon } from './economy.js';
 import { beginBoarding, closeApproach, endBoarding, giveOrder } from './encounter.js';
 import { chooseEvent } from './events.js';
 import { boardPlace, chooseAtPlace, endPlaceFight, flyHome, flyOn, flyOut, withPlaces } from './expeditions.js';
 import { makePayment } from './heat.js';
 import { launch } from './launch.js';
+import { swapWeapon } from './loadout.js';
 import { beginRaid, endRaid } from './raid.js';
 import { endColonyRaid, faceRaid } from './raids.js';
 import { patchCrew } from './patch.js';
+import { buyFromRack } from './racks.js';
 import { dismissCrew, hireRecruit } from './recruits.js';
 import { regroup } from './regroup.js';
 import { repairShip } from './repair.js';
@@ -82,6 +84,14 @@ export function initialState(seed) {
 //   campaign/buy { index, rules }  the part at index in the shop's stock,
 //                                  bought
 //   campaign/sell { part, rules }  a part on hand, sold to the shop
+//   campaign/arms/sell { weapon, rules }   a spare weapon on hand, sold to
+//                                  the shop (M37)
+//   campaign/arms/swap { id, weapon, rules }   crew member id takes the
+//                                  spare weapon, and theirs goes on hand,
+//                                  anywhere but in a fight (loadout.js)
+//   campaign/arms/rack { slot, rules }   the weapon in the rack's slot at
+//                                  the station the ship is at, bought
+//                                  (racks.js)
 //   campaign/job/take { index, rules }   the crew takes the board's job at
 //                                  index: its fight begins. Every fight
 //                                  takes forgiving odds and the difficulty
@@ -199,8 +209,16 @@ export function reduce(state, action) {
       return withCampaign(state, state.campaign && refitShip(state.campaign, action.ship, action.rules));
     case 'campaign/pay':
     case 'campaign/buy':
-    case 'campaign/sell': {
-      const trade = { 'campaign/pay': (c) => makePayment(c, action.rules), 'campaign/buy': (c) => buyPart(c, action.rules, action.index), 'campaign/sell': (c) => sellPart(c, action.rules, action.part) }[action.type];
+    case 'campaign/sell':
+    case 'campaign/arms/sell':
+    case 'campaign/arms/swap': {
+      const trade = {
+        'campaign/pay': (c) => makePayment(c, action.rules),
+        'campaign/buy': (c) => buyPart(c, action.rules, action.index),
+        'campaign/sell': (c) => sellPart(c, action.rules, action.part),
+        'campaign/arms/sell': (c) => sellWeapon(c, action.rules, action.weapon),
+        'campaign/arms/swap': (c) => swapWeapon(c, action.rules, action.id, action.weapon),
+      }[action.type];
       const done = state.campaign && trade(state.campaign);
       return done?.ok ? { ...state, campaign: done.campaign } : state;
     }
@@ -257,6 +275,7 @@ export function reduce(state, action) {
     case 'campaign/patch':
     case 'campaign/hire':
     case 'campaign/dismiss':
+    case 'campaign/arms/rack':
     case 'campaign/donate':
     case 'campaign/build':
     case 'campaign/move':
@@ -282,6 +301,7 @@ export function reduce(state, action) {
         'campaign/patch': (c) => patchCrew(c, action.rules),
         'campaign/hire': (c) => hireRecruit(c, action.rules, action.slot),
         'campaign/dismiss': (c) => dismissCrew(c, action.rules, action.id),
+        'campaign/arms/rack': (c) => buyFromRack(c, action.rules, action.slot),
         'campaign/donate': (c) => donate(c, action.rules, action.uid),
         'campaign/build': (c) => build(c, action.rules, action.what, action.placement ?? null),
         'campaign/move': (c) => moveBuilding(c, action.rules, action.uid, action.placement),
