@@ -121,14 +121,16 @@ test('the nodes between roll their kinds from the mix, and those that hold event
     // None twice in a sector while the kind's events last.
     for (const kind of Object.keys(spec.mix)) {
       const ids = sector.nodes.filter((node) => node.type === kind && node.event).map((node) => node.event);
-      const pool = [...rules.events.values()].filter((event) => event.kind === kind && !event.quest).length;
+      const pool = [...rules.events.values()].filter((event) => event.kind === kind && !event.quest && !event.background).length;
       assert.equal(new Set(ids).size, Math.min(ids.length, pool), `seed ${seed}: ${kind} events ${ids}`);
     }
   }
   for (const kind of Object.keys(spec.mix)) assert.ok(kinds.get(kind) > 100, `${kind} comes up: ${kinds.get(kind)}`);
   // Every event of a kind of node comes up, but a quest's own, which
-  // quests.js places (M33b); the colony's places have the rest (M28).
-  assert.equal(events.size, [...rules.events.values()].filter((event) => rules.nodeTypes.get(event.kind)?.events && !event.quest).length, 'every event comes up');
+  // quests.js places (M33b), and a background's, which only its campaign
+  // meets (M36, tests/eventKinds.test.js); the colony's places have the
+  // rest (M28).
+  assert.equal(events.size, [...rules.events.values()].filter((event) => rules.nodeTypes.get(event.kind)?.events && !event.quest && !event.background).length, 'every event comes up');
   for (const event of rules.events.values()) if (event.quest) assert.ok(!events.has(event.id), `${event.id} is a quest's: never rolled`);
   // The mix's weights show: empty space comes as many times as often as a
   // trader as its weight is times the trader's.

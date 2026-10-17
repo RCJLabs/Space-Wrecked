@@ -245,3 +245,24 @@ test('the validator: who a choice needs, a background, traps, wrecks and repairs
   ];
   for (const [wrong, why] of bad) assert.ok(problems(wrong).some((problem) => why.test(problem)), `${JSON.stringify(wrong.choices[0])}: ${problems(wrong).join(' | ')}`);
 });
+
+test("the content: 100 events, the run's and the places' kinds as the Done when counts them, every job and 8 traits needed, the traps, wrecks and repairs", () => {
+  const all = [...content.events.values()];
+  assert.equal(all.length, 100);
+  const general = (kind) => all.filter((event) => event.kind === kind && !event.quest && !event.background).length;
+  assert.deepEqual(['derelict', 'distress', 'trader', 'hazard'].map(general), [12, 12, 10, 11]);
+  for (const background of content.backgrounds.keys()) assert.equal(all.filter((event) => event.background === background).length, 4, background);
+  assert.deepEqual(['hulk', 'wreckage', 'rock', 'planet'].map(general), [9, 9, 9, 9]);
+  assert.equal(all.filter((event) => event.quest).length, 7);
+  const choices = all.flatMap((event) => event.choices.map((one) => ({ event, choice: one })));
+  const needed = (key) => new Set(choices.map(({ choice: one }) => one.needs?.[key]).filter(Boolean));
+  assert.deepEqual([...needed('job')].sort(), [...content.jobs.keys()].sort(), 'every job');
+  assert.ok(needed('trait').size >= 8, `${needed('trait').size} traits`);
+  const outcomesOf = (event) => event.choices.flatMap((one) => one.outcomes);
+  const places = new Set(['hulk', 'wreckage', 'rock', 'planet']);
+  const traps = all.filter((event) => outcomesOf(event).some((outcome) => outcome.effects.ambush));
+  assert.ok(traps.filter((event) => !places.has(event.kind)).length >= 6, 'traps on the run');
+  assert.ok(traps.filter((event) => event.kind === 'hulk').length >= 2, 'traps at hulks');
+  assert.ok(all.filter((event) => outcomesOf(event).some((outcome) => outcome.effects.wreck)).length >= 4, 'events that wreck');
+  assert.ok(all.filter((event) => outcomesOf(event).some((outcome) => outcome.effects.repair)).length >= 4, 'events that repair');
+});

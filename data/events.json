@@ -93,6 +93,187 @@
       ]
     },
     {
+      "id": "cold-reactor",
+      "kind": "derelict",
+      "title": "Cold reactor",
+      "text": "A freighter adrift with her reactor scrammed and stable. A whole core in its cradle is worth a fortune to the right yard, if it stays stable on the way out.",
+      "choices": [
+        {
+          "id": "pull",
+          "label": "Pull the core",
+          "needs": { "job": "engineer" },
+          "outcomes": [
+            { "chance": 80, "text": "Your engineer walks the core out of its cradle like a nervous dog. It's yours now.", "effects": { "part": "smallreactor" } },
+            { "chance": 20, "text": "The core spits as it comes free, and your engineer takes the burn. The core comes anyway.", "effects": { "part": "smallreactor", "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "cabins",
+          "label": "Strip the cabins",
+          "outcomes": [{ "chance": 100, "text": "Blankets, tins and a jar of coins under a bunk. Nobody needs a reactor for that.", "effects": { "supplies": 5, "credits": 5 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Stable is a relative term. You leave it be.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "seed-ark",
+      "kind": "derelict",
+      "title": "Seed ark",
+      "text": "An old colony ark, her sleepers long dead in their pods. Her hydroponics bays still glow green, tended by machines that never got the news.",
+      "choices": [
+        {
+          "id": "harvest",
+          "label": "Harvest the bays",
+          "outcomes": [
+            { "chance": 70, "text": "Lettuce, beans and something like rice, by the crate.", "effects": { "supplies": 10 } },
+            { "chance": 30, "text": "Something in the bays bites. You come away with half a crate and a bandaged hand.", "effects": { "supplies": 5, "wound": { "hp": 2 } } }
+          ]
+        },
+        {
+          "id": "catalogue",
+          "label": "Catalogue the seeds",
+          "needs": { "job": "xenobiologist" },
+          "outcomes": [{ "chance": 100, "text": "Your xenobiologist sorts the seed stock by hand. Some of it sells, and some of it you eat.", "effects": { "supplies": 8, "credits": 15 } }]
+        },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "The machines go on gardening for nobody.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "silent-gunboat",
+      "kind": "derelict",
+      "title": "Silent gunboat",
+      "text": "A pirate gunboat, dark and listing, her guns still on their mounts. Pirates don't leave guns behind. Unless they're coming back for them.",
+      "choices": [
+        {
+          "id": "strip",
+          "label": "Strip her guns",
+          "outcomes": [
+            { "chance": 60, "text": "The guns come off clean. Nobody comes back for them.", "effects": { "part": "weapon" } },
+            { "chance": 40, "text": "They were coming back. Her sister ship comes round the far side with her guns hot.", "effects": { "ambush": "cutter" } }
+          ]
+        },
+        {
+          "id": "scout",
+          "label": "Scout her first",
+          "needs": { "job": "scout" },
+          "outcomes": [{ "chance": 100, "text": "Your scout spots the second ship tucked in her shadow. You take what you can reach and go quietly.", "effects": { "drop": "salvage" } }]
+        },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "Some bait is too obvious to take.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "holed-tanker",
+      "kind": "derelict",
+      "title": "Holed tanker",
+      "text": "A water tanker split along her spine, her cargo spilling out in a slow, glittering cloud of ice.",
+      "choices": [
+        {
+          "id": "scoop",
+          "label": "Scoop the ice",
+          "outcomes": [{ "chance": 100, "text": "Water is food, out here. The holds take what they can.", "effects": { "supplies": 8 } }]
+        },
+        {
+          "id": "pumps",
+          "label": "Pull her pumps",
+          "needs": { "job": "engineer" },
+          "outcomes": [{ "chance": 100, "text": "Your engineer pulls a water reclaimer out whole. Somebody will want it.", "effects": { "part": "lifesupport" } }]
+        },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "The cloud glitters on behind you.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "mail-runner",
+      "kind": "derelict",
+      "title": "Dead mail runner",
+      "text": "A courier drone out of fuel, her hold full of letters nobody will ever read. The postmark is three years old.",
+      "choices": [
+        {
+          "id": "read",
+          "label": "Read the mail",
+          "outcomes": [
+            { "chance": 50, "text": "Bank codes, mostly expired. Not all of them. Someone will notice.", "effects": { "credits": 30, "heat": 6 } },
+            { "chance": 50, "text": "Love letters and complaints, and a little cash folded into a birthday card.", "effects": { "credits": 5 } }
+          ]
+        },
+        {
+          "id": "deliver",
+          "label": "Deliver it",
+          "needs": { "job": "pilot" },
+          "outcomes": [{ "chance": 100, "text": "Your pilot plots the drop. The lanes pay a postage bounty, and honest ships draw fewer eyes.", "effects": { "credits": 15, "heat": -4 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Three more years won't hurt it.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "wayside-shrine",
+      "kind": "derelict",
+      "title": "Wayside shrine",
+      "text": "A shrine built into a dead hull by passing spacers: candles in jars, ration tins, photographs, a wrench polished bright.",
+      "choices": [
+        {
+          "id": "take",
+          "label": "Take the offerings",
+          "outcomes": [
+            { "chance": 70, "text": "Coins, mostly, and a good wrench. Nobody's watching. Probably.", "effects": { "credits": 15 } },
+            { "chance": 30, "text": "Coins and a good wrench. Then a run of bad luck: the airlock bites everyone on the way out.", "effects": { "credits": 15, "wound": { "hp": 2, "all": true } } }
+          ]
+        },
+        {
+          "id": "custom",
+          "label": "Keep the custom",
+          "needs": { "trait": "old-hand" },
+          "outcomes": [{ "chance": 100, "text": "Old hands know the custom: take what you need, leave what you can. You need rations.", "effects": { "supplies": 6 } }]
+        },
+        {
+          "id": "leave",
+          "label": "Leave it be",
+          "outcomes": [{ "chance": 100, "text": "You leave it as you found it. Someone in the crew lights a candle.", "effects": {} }]
+        }
+      ]
+    },
+    {
+      "id": "stray-buoy",
+      "kind": "derelict",
+      "title": "Stray nav buoy",
+      "text": "A lane buoy knocked off its station, blinking the wrong numbers at nobody.",
+      "choices": [
+        {
+          "id": "reset",
+          "label": "Put it back",
+          "needs": { "job": "pilot" },
+          "outcomes": [{ "chance": 100, "text": "Your pilot nudges it home. The lanes pay a finder's fee and log you as helpful.", "effects": { "credits": 10, "heat": -3 } }]
+        },
+        {
+          "id": "strip",
+          "label": "Strip its cells",
+          "outcomes": [{ "chance": 100, "text": "Its power cells sell well. The buoy screams on every band as it dies.", "effects": { "credits": 15, "heat": 4 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Somebody else can get lost by it.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "gutted-cutter",
+      "kind": "derelict",
+      "title": "Gutted cutter",
+      "text": "A pirate cutter holed and dead. Her spares locker is still sealed, which is more than anyone can say for her crew.",
+      "choices": [
+        {
+          "id": "locker",
+          "label": "Crack the locker",
+          "outcomes": [{ "chance": 100, "text": "Spares, the right sizes. The worst of your wrecks is working again before you cast off.", "effects": { "repair": 1, "credits": 5 } }]
+        },
+        {
+          "id": "gun",
+          "label": "Take her gun",
+          "outcomes": [
+            { "chance": 70, "text": "One gun, unbolted and stowed.", "effects": { "part": "weapon" } },
+            { "chance": 30, "text": "The gun was wired to go off. It did. You keep the gun.", "effects": { "part": "weapon", "wound": { "hp": 3 } } }
+          ]
+        },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "Her crew can keep her.", "effects": {} }] }
+      ]
+    },
+    {
       "id": "stalled-miner",
       "kind": "distress",
       "title": "Stalled miner",
@@ -196,6 +377,173 @@
       ]
     },
     {
+      "id": "fever-ship",
+      "kind": "distress",
+      "title": "Fever ship",
+      "text": "A family hauler flying the yellow flag: fever aboard, no medic, a child coughing on the open band. They can pay, a little.",
+      "choices": [
+        {
+          "id": "treat",
+          "label": "Send your medic",
+          "needs": { "job": "medic" },
+          "outcomes": [
+            { "chance": 75, "text": "Your medic doses the lot of them. They pay what they can, and the kids wave from the viewport.", "effects": { "credits": 10, "heat": -3 } },
+            { "chance": 25, "text": "They pay, and your medic brings the fever home. A day in the bunk, maybe two.", "effects": { "credits": 10, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "toss",
+          "label": "Toss them medicine",
+          "needs": { "supplies": 2 },
+          "outcomes": [{ "chance": 100, "text": "A crate from the medical stores, sent across on a line. They swear they never saw you.", "effects": { "supplies": -2, "heat": -4 } }]
+        },
+        { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "The coughing follows you a while on the band.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "lifeboat-beacon",
+      "kind": "distress",
+      "title": "Lifeboat beacon",
+      "text": "A lifeboat's beacon on the emergency band, strong and steady. Lifeboats don't usually drift this straight.",
+      "choices": [
+        {
+          "id": "answer",
+          "label": "Go alongside",
+          "outcomes": [
+            { "chance": 55, "text": "Two miners, half frozen and very grateful. They tip in ore money and share their rations.", "effects": { "credits": 20, "supplies": 4 } },
+            { "chance": 45, "text": "The lifeboat is empty and the beacon is bait. A cutter drops out of the dark behind you.", "effects": { "ambush": "cutter" } }
+          ]
+        },
+        {
+          "id": "read",
+          "label": "Read the drift first",
+          "needs": { "job": "scout" },
+          "outcomes": [{ "chance": 100, "text": "Your scout reads the drift: nobody drifts that straight. You leave the bait for someone else.", "effects": {} }]
+        },
+        { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "The beacon keeps calling. Not to you.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "jammed-airlock",
+      "kind": "distress",
+      "title": "Jammed airlock",
+      "text": "A survey crew locked inside their own ship by a jammed airlock, reading out their air on the band in a careful voice.",
+      "choices": [
+        {
+          "id": "cut",
+          "label": "Cut them out",
+          "needs": { "job": "engineer" },
+          "outcomes": [{ "chance": 100, "text": "Your engineer has the lock open in ten minutes. They pay in cash, and in tears.", "effects": { "credits": 20 } }]
+        },
+        {
+          "id": "blow",
+          "label": "Blow the hatch",
+          "outcomes": [
+            { "chance": 70, "text": "The hatch goes, and so does some of their paint. They pay anyway.", "effects": { "credits": 20 } },
+            { "chance": 30, "text": "The hatch goes harder than planned. Someone on your side takes a piece of it.", "effects": { "credits": 20, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "fly",
+          "label": "Keep flying",
+          "outcomes": [{ "chance": 100, "text": "They're still reading out their air as the band fades.", "effects": {} }]
+        }
+      ]
+    },
+    {
+      "id": "runaway-tug",
+      "kind": "distress",
+      "title": "Runaway tug",
+      "text": "An automated ore tug, its brain fried, pushing a rock the size of a station toward the lanes.",
+      "choices": [
+        {
+          "id": "stop",
+          "label": "Talk it down",
+          "needs": { "job": "pilot" },
+          "outcomes": [{ "chance": 100, "text": "Your pilot gets alongside and talks it into a safe orbit. The lanes are grateful, and don't ask your name.", "effects": { "credits": 25, "heat": -5 } }]
+        },
+        {
+          "id": "strip",
+          "label": "Strip it as it goes",
+          "outcomes": [
+            { "chance": 60, "text": "A part off its hull, grabbed on the fly.", "effects": { "drop": "salvage" } },
+            { "chance": 40, "text": "The rock clips you on the way out. Something aboard takes it badly.", "effects": { "wreck": 1 } }
+          ]
+        },
+        { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "Someone else can stop it. Someone will. Probably.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "mutiny",
+      "kind": "distress",
+      "title": "Mutiny on the band",
+      "text": "A freighter's captain on the band, locked in her cabin, her crew holding the bridge. She'll pay for help, she says, if she lives.",
+      "choices": [
+        {
+          "id": "board",
+          "label": "Board and settle it",
+          "needs": { "job": "marine" },
+          "outcomes": [
+            { "chance": 70, "text": "Your marine settles it in three minutes. The captain pays, and keeps paying.", "effects": { "credits": 35 } },
+            { "chance": 30, "text": "Settled, after a fashion. Your marine wears the bruises; the captain pays.", "effects": { "credits": 35, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "talk",
+          "label": "Talk them down",
+          "needs": { "trait": "cool-head" },
+          "outcomes": [{ "chance": 100, "text": "You never raise your voice. By the end of it they're apologising to her. She pays you anyway.", "effects": { "credits": 30 } }]
+        },
+        { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "Not your ship. Not your mutiny.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "burning-barge",
+      "kind": "distress",
+      "title": "Burning barge",
+      "text": "A barge with a fire in her hold, venting smoke, her crew asking anyone at all for help with it.",
+      "choices": [
+        {
+          "id": "fight",
+          "label": "Fight the fire",
+          "needs": { "job": "engineer" },
+          "outcomes": [
+            { "chance": 80, "text": "Your engineer smothers it from outside. Her captain pays in cash, gratefully.", "effects": { "credits": 30 } },
+            { "chance": 20, "text": "Smothered, and your engineer takes a scorching for it. The captain pays.", "effects": { "credits": 30, "wound": { "hp": 2 } } }
+          ]
+        },
+        {
+          "id": "take",
+          "label": "Take her cargo",
+          "outcomes": [{ "chance": 100, "text": "Her crew are busy with the fire. Her cargo isn't. They watch you take it.", "effects": { "supplies": 8, "heat": 6 } }]
+        },
+        { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "The smoke trails behind you for an hour.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "red-flare",
+      "kind": "distress",
+      "title": "Red flare",
+      "text": "A red flare off the lane: the old sign for a ship in trouble. Also the old sign for an ambush.",
+      "choices": [
+        {
+          "id": "answer",
+          "label": "Answer the flare",
+          "outcomes": [
+            { "chance": 60, "text": "A courier with a busted drive, paying in spares for a tow.", "effects": { "drop": "salvage", "credits": 5 } },
+            { "chance": 40, "text": "An ambush, as old as the flare. A cutter comes round the rock with her guns out.", "effects": { "ambush": "cutter" } }
+          ]
+        },
+        {
+          "id": "guns",
+          "label": "Answer, guns out",
+          "needs": { "job": "marine" },
+          "outcomes": [{ "chance": 100, "text": "Your marine on the guns. Whoever set the flare thinks better of it, and leaves their flare gun behind.", "effects": { "credits": 10 } }]
+        },
+        { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "The flare burns out behind you.", "effects": {} }] }
+      ]
+    },
+    {
       "id": "ration-barge",
       "kind": "trader",
       "title": "Ration barge",
@@ -259,6 +607,169 @@
       ]
     },
     {
+      "id": "tinker-barge",
+      "kind": "trader",
+      "title": "Tinker's barge",
+      "text": "A tinker with a hold full of tools and a sign hand-painted on the hull: REPAIRS. CASH. NO QUESTIONS.",
+      "choices": [
+        {
+          "id": "one",
+          "label": "Fix one wreck",
+          "needs": { "credits": 20, "wrecks": 1 },
+          "outcomes": [{ "chance": 100, "text": "Cash, no questions. She has the worst of it working in an afternoon.", "effects": { "credits": -20, "repair": 1 } }]
+        },
+        {
+          "id": "two",
+          "label": "Fix two wrecks",
+          "needs": { "credits": 35, "wrecks": 2 },
+          "outcomes": [{ "chance": 100, "text": "Two jobs, one price, and she hums the whole time.", "effects": { "credits": -35, "repair": 2 } }]
+        },
+        { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "She's already painting the next sign.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "bulk-rations",
+      "kind": "trader",
+      "title": "Bulk rations",
+      "text": "A grain hauler selling off a spoiled shipment cheap. Mostly spoiled, the captain says. He won't say how mostly.",
+      "choices": [
+        {
+          "id": "buy",
+          "label": "Buy the lot",
+          "needs": { "credits": 5 },
+          "outcomes": [
+            { "chance": 70, "text": "Mostly is about half. Twelve crates of the good stuff.", "effects": { "credits": -5, "supplies": 12 } },
+            { "chance": 30, "text": "Mostly is more than half. Six crates you'd eat.", "effects": { "credits": -5, "supplies": 6 } }
+          ]
+        },
+        {
+          "id": "sort",
+          "label": "Have it sorted",
+          "needs": { "credits": 5, "job": "quartermaster" },
+          "outcomes": [{ "chance": 100, "text": "Your quartermaster knows good grain by the smell. Twelve crates, every one sound.", "effects": { "credits": -5, "supplies": 12 } }]
+        },
+        { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "He's still shouting prices as you leave.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "fence",
+      "kind": "trader",
+      "title": "Fence",
+      "text": "A fence with a ship full of other people's things, buying anything that isn't nailed down and some things that are.",
+      "choices": [
+        {
+          "id": "sell",
+          "label": "Sell him two parts",
+          "needs": { "parts": 2 },
+          "outcomes": [{ "chance": 100, "text": "He pays fair, for a fence. His buyers talk, though.", "effects": { "sell": 2, "heat": 3 } }]
+        },
+        {
+          "id": "tip",
+          "label": "Buy a tip",
+          "needs": { "credits": 10 },
+          "outcomes": [{ "chance": 100, "text": "He knows who's looking for you, and where they aren't.", "effects": { "credits": -10, "heat": -8 } }]
+        },
+        {
+          "id": "lean",
+          "label": "Lean on him",
+          "needs": { "trait": "hothead" },
+          "outcomes": [
+            { "chance": 70, "text": "He pays you to go away. It's a business expense.", "effects": { "credits": 25, "heat": 4 } },
+            { "chance": 30, "text": "His bodyguard leans back. You leave with some of his money and a cut lip.", "effects": { "credits": 15, "wound": { "hp": 3 }, "heat": 4 } }
+          ]
+        },
+        { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "He's already pricing your ship.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "chandler",
+      "kind": "trader",
+      "title": "Ship's chandler",
+      "text": "A chandler's barge: spares, rope, paint and gossip, all sold by the kilo.",
+      "choices": [
+        {
+          "id": "spares",
+          "label": "Buy spares",
+          "needs": { "credits": 25, "wrecks": 1 },
+          "outcomes": [{ "chance": 100, "text": "The right spares, at the wrong price. The worst of your wrecks is working again.", "effects": { "credits": -25, "repair": 1 } }]
+        },
+        {
+          "id": "gossip",
+          "label": "Swap gossip",
+          "outcomes": [
+            { "chance": 50, "text": "You learn where the hunters were seen last, and where they weren't.", "effects": { "heat": -5 } },
+            { "chance": 50, "text": "You learn some things. The chandler learns more. Your name, for one.", "effects": { "heat": 4 } }
+          ]
+        },
+        { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "The chandler waves with a rope in each hand.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "arms-dealer",
+      "kind": "trader",
+      "title": "Arms dealer",
+      "text": "A quiet ship selling quiet guns. The dealer's prices aren't quiet at all.",
+      "choices": [
+        {
+          "id": "buy",
+          "label": "Buy a gun",
+          "needs": { "credits": 30 },
+          "outcomes": [{ "chance": 100, "text": "A gun, crated, with the serials filed off.", "effects": { "credits": -30, "part": "weapon" } }]
+        },
+        {
+          "id": "haggle",
+          "label": "Talk guns with him",
+          "needs": { "credits": 20, "job": "marine" },
+          "outcomes": [{ "chance": 100, "text": "Your marine knows guns, and tells him so at length. He knocks a third off to make it stop.", "effects": { "credits": -20, "part": "weapon" } }]
+        },
+        { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "He doesn't wave. Dealers don't.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "data-broker",
+      "kind": "trader",
+      "title": "Data broker",
+      "text": "A data broker selling charts, codes and rumour from a ship that's mostly antennas.",
+      "choices": [
+        {
+          "id": "charts",
+          "label": "Buy fresh charts",
+          "needs": { "credits": 15 },
+          "outcomes": [{ "chance": 100, "text": "Charts with the patrol routes marked. Old, but not that old.", "effects": { "credits": -15, "heat": -6 } }]
+        },
+        {
+          "id": "logs",
+          "label": "Sell your logs",
+          "outcomes": [{ "chance": 100, "text": "Your logs say where you've been. Now so does everyone she sells them to.", "effects": { "credits": 20, "heat": 8 } }]
+        },
+        { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "Her antennas swivel to follow you out.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "junk-auction",
+      "kind": "trader",
+      "title": "Junk auction",
+      "text": "A salvage barge auctioning sealed crates, sight unseen, to whoever's in range of her band.",
+      "choices": [
+        {
+          "id": "bid",
+          "label": "Bid on a crate",
+          "needs": { "credits": 15 },
+          "outcomes": [
+            { "chance": 60, "text": "A part in the crate, still in its foam.", "effects": { "credits": -15, "drop": "salvage" } },
+            { "chance": 40, "text": "Ration bars. A lot of ration bars.", "effects": { "credits": -15, "supplies": 6 } }
+          ]
+        },
+        {
+          "id": "watch",
+          "label": "Watch the bidding",
+          "needs": { "credits": 15, "job": "scout" },
+          "outcomes": [{ "chance": 100, "text": "Your scout watches who bids on what, and you bid on the crate the dealer's cousin wanted.", "effects": { "credits": -15, "drop": "salvage" } }]
+        },
+        { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "The auctioneer is still talking when the band cuts out.", "effects": {} }] }
+      ]
+    },
+    {
       "id": "ion-storm",
       "kind": "hazard",
       "title": "Ion storm",
@@ -311,6 +822,516 @@
       ]
     },
     {
+      "id": "micrometeors",
+      "kind": "hazard",
+      "title": "Micrometeor sleet",
+      "text": "Sand-sized rock at orbital speed, hissing off the hull like rain on a tin roof. Most of it bounces.",
+      "choices": [
+        {
+          "id": "ride",
+          "label": "Ride it out",
+          "outcomes": [
+            { "chance": 60, "text": "Hiss, rattle, and silence. Nothing important was hit.", "effects": {} },
+            { "chance": 40, "text": "Something important was hit. The board lights up red.", "effects": { "wreck": 1 } }
+          ]
+        },
+        {
+          "id": "burn",
+          "label": "Burn clear",
+          "needs": { "supplies": 3 },
+          "outcomes": [{ "chance": 100, "text": "Burning hard eats into the stores, but the hull stays whole.", "effects": { "supplies": -3 } }]
+        },
+        {
+          "id": "lee",
+          "label": "Find a lee",
+          "needs": { "job": "pilot" },
+          "outcomes": [{ "chance": 100, "text": "Your pilot tucks the ship in behind a rock until it passes. Not a scratch.", "effects": {} }]
+        }
+      ]
+    },
+    {
+      "id": "solar-flare",
+      "kind": "hazard",
+      "title": "Solar flare",
+      "text": "The local star throws a flare. Every screen aboard goes white, then dark, then white again.",
+      "choices": [
+        {
+          "id": "push",
+          "label": "Push through",
+          "outcomes": [
+            { "chance": 50, "text": "The screens come back. Everything still works. Everyone checks twice.", "effects": {} },
+            { "chance": 50, "text": "The screens come back, and one system doesn't.", "effects": { "wreck": 1 } }
+          ]
+        },
+        {
+          "id": "dark",
+          "label": "Go dark and wait",
+          "needs": { "supplies": 2 },
+          "outcomes": [{ "chance": 100, "text": "A day cold and dark, eating out of tins. The flare passes and nothing breaks.", "effects": { "supplies": -2 } }]
+        },
+        {
+          "id": "shield",
+          "label": "Shield the core",
+          "needs": { "job": "engineer" },
+          "outcomes": [{ "chance": 100, "text": "Your engineer pulls the right breakers in the right order. Nothing fries.", "effects": {} }]
+        }
+      ]
+    },
+    {
+      "id": "gravity-well",
+      "kind": "hazard",
+      "title": "Gravity well",
+      "text": "A dead star, dense and dark, missing from the charts. The ship's course is already bending toward it.",
+      "choices": [
+        {
+          "id": "sling",
+          "label": "Slingshot round it",
+          "needs": { "job": "pilot" },
+          "outcomes": [{ "chance": 100, "text": "Your pilot throws you round it and out the far side, faster and harder to follow.", "effects": { "heat": -8 } }]
+        },
+        {
+          "id": "claw",
+          "label": "Claw away",
+          "needs": { "supplies": 4 },
+          "outcomes": [{ "chance": 100, "text": "Every thruster you have, for an hour, and the stores to show for it.", "effects": { "supplies": -4 } }]
+        },
+        {
+          "id": "coast",
+          "label": "Coast round it",
+          "outcomes": [
+            { "chance": 70, "text": "A long, slow, sickening curve. Nobody throws up. Nearly nobody.", "effects": {} },
+            { "chance": 30, "text": "The curve tightens. Everyone aboard spends it pinned to the deck.", "effects": { "wound": { "hp": 2, "all": true } } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "static-cloud",
+      "kind": "hazard",
+      "title": "Static cloud",
+      "text": "A cloud of charged dust that crawls over the hull in sparks. It's very pretty. It's eating the paint.",
+      "choices": [
+        {
+          "id": "ground",
+          "label": "Ground the hull",
+          "needs": { "job": "engineer" },
+          "outcomes": [{ "chance": 100, "text": "Your engineer grounds the hull, and the sparks run off into the dark.", "effects": {} }]
+        },
+        {
+          "id": "push",
+          "label": "Push through",
+          "outcomes": [
+            { "chance": 60, "text": "The sparks die behind you, and the cloud hides you as well as anything could.", "effects": { "heat": -4 } },
+            { "chance": 40, "text": "The cloud hides you, and shorts something out on the way.", "effects": { "heat": -4, "wreck": 1 } }
+          ]
+        },
+        {
+          "id": "round",
+          "label": "Go round",
+          "needs": { "supplies": 3 },
+          "outcomes": [{ "chance": 100, "text": "The long way round. The paint survives.", "effects": { "supplies": -3 } }]
+        }
+      ]
+    },
+    {
+      "id": "ice-field",
+      "kind": "hazard",
+      "title": "Ice field",
+      "text": "A field of dirty ice, tumbling slow, thick enough to hide in and full of water.",
+      "choices": [
+        {
+          "id": "mine",
+          "label": "Mine the ice",
+          "outcomes": [
+            { "chance": 75, "text": "Ice, melted down for the stores.", "effects": { "supplies": 8 } },
+            { "chance": 25, "text": "Ice, and a block of it on someone's arm.", "effects": { "supplies": 8, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "hide",
+          "label": "Hide in it a day",
+          "needs": { "supplies": 2 },
+          "outcomes": [{ "chance": 100, "text": "A day nosing through the ice, eating and waiting. Anyone watching loses you.", "effects": { "supplies": -2, "heat": -6 } }]
+        },
+        { "id": "round", "label": "Go round", "outcomes": [{ "chance": 100, "text": "Nothing mined, and nobody hurt.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "old-minefield",
+      "kind": "hazard",
+      "title": "Old minefield",
+      "text": "A minefield from a war nobody won. Most of the mines are dead. Most.",
+      "choices": [
+        {
+          "id": "mark",
+          "label": "Mark the live ones",
+          "needs": { "job": "scout" },
+          "outcomes": [{ "chance": 100, "text": "Your scout marks the live ones. The dead ones are full of parts.", "effects": { "drop": "salvage" } }]
+        },
+        {
+          "id": "thread",
+          "label": "Thread through",
+          "outcomes": [
+            { "chance": 60, "text": "Nothing goes off. Everyone breathes out at once.", "effects": {} },
+            { "chance": 40, "text": "One goes off. Not close, but close enough.", "effects": { "wreck": 1 } }
+          ]
+        },
+        {
+          "id": "long",
+          "label": "Go the long way",
+          "needs": { "supplies": 4 },
+          "outcomes": [{ "chance": 100, "text": "A long day round the edge of it, and the stores to show for it.", "effects": { "supplies": -4 } }]
+        }
+      ]
+    },
+    {
+      "id": "radiation-belt",
+      "kind": "hazard",
+      "title": "Radiation belt",
+      "text": "A belt of hard radiation round a dead gas giant. The shortcut runs right through it.",
+      "choices": [
+        {
+          "id": "run",
+          "label": "Run it",
+          "outcomes": [{ "chance": 100, "text": "Everyone glows a little. Nobody follows you through.", "effects": { "wound": { "hp": 2, "all": true }, "heat": -6 } }]
+        },
+        {
+          "id": "dose",
+          "label": "Run it dosed",
+          "needs": { "job": "medic" },
+          "outcomes": [{ "chance": 100, "text": "Your medic doses everyone before the run. Nobody glows, and nobody follows.", "effects": { "heat": -6 } }]
+        },
+        {
+          "id": "round",
+          "label": "Go round",
+          "needs": { "supplies": 3 },
+          "outcomes": [{ "chance": 100, "text": "The long way round, and the safe one.", "effects": { "supplies": -3 } }]
+        }
+      ]
+    },
+    {
+      "id": "drive-shudder",
+      "kind": "hazard",
+      "title": "Drive shudder",
+      "text": "The drive starts to shudder. Something in the coupling is working loose, and the noise is getting worse.",
+      "choices": [
+        {
+          "id": "fix",
+          "label": "Fix it now",
+          "needs": { "job": "engineer" },
+          "outcomes": [{ "chance": 100, "text": "Your engineer finds the loose coupling, and fixes the old wreck next to it while in there.", "effects": { "repair": 1 } }]
+        },
+        {
+          "id": "nurse",
+          "label": "Nurse it along",
+          "outcomes": [
+            { "chance": 70, "text": "It shakes, and rattles, and holds.", "effects": {} },
+            { "chance": 30, "text": "It doesn't hold. Something gives with a bang.", "effects": { "wreck": 1 } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "comet-tail",
+      "kind": "hazard",
+      "title": "Comet's tail",
+      "text": "A comet's tail, thick with ice and gas, glittering across a thousand kilometres of dark.",
+      "choices": [
+        {
+          "id": "skim",
+          "label": "Skim it",
+          "outcomes": [
+            { "chance": 80, "text": "Ice by the hold-load, scooped as you pass.", "effects": { "supplies": 6 } },
+            { "chance": 20, "text": "Ice by the hold-load, and a rock inside the ice.", "effects": { "supplies": 6, "wreck": 1 } }
+          ]
+        },
+        {
+          "id": "slow",
+          "label": "Skim it slow",
+          "needs": { "job": "pilot" },
+          "outcomes": [{ "chance": 100, "text": "Your pilot skims it slow and steady. Ice, and no rocks.", "effects": { "supplies": 8 } }]
+        },
+        { "id": "clear", "label": "Steer clear", "outcomes": [{ "chance": 100, "text": "It glitters on behind you.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "company-courier",
+      "kind": "distress",
+      "background": "miner",
+      "title": "Company courier",
+      "text": "A Con-Reg courier on the emergency band, begging a tow. Her registration says courier. Her hull plates say otherwise.",
+      "choices": [
+        {
+          "id": "answer",
+          "label": "Go alongside",
+          "outcomes": [
+            { "chance": 45, "text": "She's real, and the Company pays its tows, eventually. A credit note, at least.", "effects": { "credits": 15 } },
+            { "chance": 55, "text": "Her hull plates were right. The courier drops her disguise: a repo tug, grapples out.", "effects": { "ambush": "repotug" } }
+          ]
+        },
+        {
+          "id": "read",
+          "label": "Read her plates",
+          "needs": { "job": "engineer" },
+          "outcomes": [{ "chance": 100, "text": "Your engineer reads the plates: repo tug, painted over. You leave her calling.", "effects": { "heat": -2 } }]
+        },
+        { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "The Company can tow its own.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "union-runner",
+      "kind": "trader",
+      "background": "miner",
+      "title": "Union runner",
+      "text": "A union boat running parts to striking halls, selling a few on the side to anyone who isn't the Company.",
+      "choices": [
+        {
+          "id": "buy",
+          "label": "Buy a part",
+          "needs": { "credits": 25 },
+          "outcomes": [{ "chance": 100, "text": "Salvage, union-priced. The purser writes you a receipt anyway.", "effects": { "credits": -25, "drop": "salvage", "standing": { "union": 1 } } }]
+        },
+        {
+          "id": "fund",
+          "label": "Pay into the fund",
+          "needs": { "credits": 10 },
+          "outcomes": [{ "chance": 100, "text": "The purser puts it in the strike fund, and tells you where the repo crews drink.", "effects": { "credits": -10, "standing": { "union": 2 }, "heat": -3 } }]
+        },
+        { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "The purser waves you off, union fashion.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "old-shift",
+      "kind": "distress",
+      "background": "miner",
+      "title": "Old shift crew",
+      "text": "Miners from your old shift on the Tailings, broke and stranded and very glad to hear your voice. They still owe the Company too.",
+      "choices": [
+        {
+          "id": "lift",
+          "label": "Lift them to the lanes",
+          "needs": { "supplies": 4 },
+          "outcomes": [{ "chance": 100, "text": "Four days of rations and a lot of old stories. The halls will hear you looked after your own.", "effects": { "supplies": -4, "standing": { "union": 2 } } }]
+        },
+        {
+          "id": "lend",
+          "label": "Lend them credits",
+          "needs": { "credits": 15 },
+          "outcomes": [{ "chance": 100, "text": "They'll pay it back, they say. They tell you where the repo crews are working instead.", "effects": { "credits": -15, "heat": -6 } }]
+        },
+        {
+          "id": "fly",
+          "label": "Keep flying",
+          "outcomes": [{ "chance": 100, "text": "Their voices fade into the static, still telling stories.", "effects": {} }]
+        }
+      ]
+    },
+    {
+      "id": "debt-ledger",
+      "kind": "derelict",
+      "background": "miner",
+      "title": "Debt ledger",
+      "text": "A Con-Reg records skiff, gutted, its ledger core still humming. Your debt is in there somewhere, with everyone else's.",
+      "choices": [
+        {
+          "id": "wipe",
+          "label": "Wipe the core",
+          "needs": { "job": "engineer" },
+          "outcomes": [{ "chance": 100, "text": "Your engineer wipes it clean. A lot of debts just got harder to collect, yours among them.", "effects": { "heat": -10, "standing": { "conreg": -1 } } }]
+        },
+        {
+          "id": "sell",
+          "label": "Sell the core",
+          "outcomes": [{ "chance": 100, "text": "A broker pays well for Company ledgers. The Company pays better to learn who sold one.", "effects": { "credits": 30, "heat": 6 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Let it hum.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "amnesty-beacon",
+      "kind": "distress",
+      "background": "deserter",
+      "title": "Amnesty beacon",
+      "text": "A Fleet beacon broadcasting an amnesty for deserters: come home, it says, and all is forgiven. The Provost wrote it.",
+      "choices": [
+        {
+          "id": "answer",
+          "label": "Answer it",
+          "outcomes": [
+            { "chance": 30, "text": "It's real, more or less. A clerk logs you as returning and forgets to finish the form.", "effects": { "heat": -12 } },
+            { "chance": 70, "text": "Nothing is forgiven. A Provost cutter comes out of the beacon's shadow.", "effects": { "ambush": "provostcutter" } }
+          ]
+        },
+        {
+          "id": "jam",
+          "label": "Jam the beacon",
+          "needs": { "job": "pilot" },
+          "outcomes": [{ "chance": 100, "text": "Your pilot still knows the Fleet's beacon codes. It goes on broadcasting to nobody.", "effects": { "heat": -4 } }]
+        },
+        { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "Forgiveness can wait.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "old-division",
+      "kind": "trader",
+      "background": "deserter",
+      "title": "Old division",
+      "text": "A hired barge full of Fleet sailors on shore leave: your old division. They know your face.",
+      "choices": [
+        {
+          "id": "round",
+          "label": "Buy a round",
+          "needs": { "credits": 10 },
+          "outcomes": [{ "chance": 100, "text": "They drink to you, and swear they never saw you.", "effects": { "credits": -10, "heat": -6, "standing": { "fleet": 1 } } }]
+        },
+        {
+          "id": "spares",
+          "label": "Swap stories for spares",
+          "outcomes": [
+            { "chance": 60, "text": "Your old mates fix what they can, for old times' sake.", "effects": { "repair": 1 } },
+            { "chance": 40, "text": "Someone in the division talks to the Provost before you're out of range.", "effects": { "heat": 6 } }
+          ]
+        },
+        { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "They sing you out on the band. Badly.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "fleet-cache",
+      "kind": "derelict",
+      "background": "deserter",
+      "title": "Fleet cache",
+      "text": "A Fleet supply cache in a dead hull, sealed with codes you used to know by heart.",
+      "choices": [
+        {
+          "id": "codes",
+          "label": "Open it",
+          "needs": { "job": "marine" },
+          "outcomes": [{ "chance": 100, "text": "Your marine still knows the codes. Rations and cash, signed for by nobody.", "effects": { "supplies": 10, "credits": 10, "heat": 4 } }]
+        },
+        {
+          "id": "cut",
+          "label": "Cut it open",
+          "outcomes": [
+            { "chance": 60, "text": "Rations and cash, and an alarm screaming on the Fleet band.", "effects": { "supplies": 8, "heat": 8 } },
+            { "chance": 40, "text": "The cache defends itself. Someone takes a shock, and the alarm screams on.", "effects": { "wound": { "hp": 3 }, "heat": 8 } }
+          ]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "The Fleet can keep its cache.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "deserters-den",
+      "kind": "trader",
+      "background": "deserter",
+      "title": "Deserters' den",
+      "text": "A ship full of deserters like you, trading forged papers and old grudges.",
+      "choices": [
+        {
+          "id": "papers",
+          "label": "Buy new papers",
+          "needs": { "credits": 30 },
+          "outcomes": [{ "chance": 100, "text": "New names, new numbers, and a Provost file that ends in a dead end.", "effects": { "credits": -30, "heat": -15 } }]
+        },
+        {
+          "id": "codes",
+          "label": "Sell them your codes",
+          "outcomes": [{ "chance": 100, "text": "They pay well for Fleet codes. The Fleet will know whose.", "effects": { "credits": 25, "standing": { "fleet": -2 } } }]
+        },
+        { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "They wave. Nobody uses names.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "warm-drop",
+      "kind": "derelict",
+      "background": "smuggler",
+      "title": "Warm drop",
+      "text": "A Halloran cargo pod drifting where no pod should be, its tag still warm.",
+      "choices": [
+        {
+          "id": "grab",
+          "label": "Grab it",
+          "outcomes": [
+            { "chance": 45, "text": "A real drop, careless of them. Parts, and a tin of cash.", "effects": { "drop": "salvage", "credits": 20 } },
+            { "chance": 55, "text": "The pod was a lure. A Halloran runner was waiting in the dust.", "effects": { "ambush": "runner" } }
+          ]
+        },
+        {
+          "id": "read",
+          "label": "Read the tag",
+          "needs": { "job": "quartermaster" },
+          "outcomes": [{ "chance": 100, "text": "Your quartermaster knows the family's tags: this one's a lure. You leave it be.", "effects": { "heat": -2 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Not your drop. Not this time.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "old-fence",
+      "kind": "trader",
+      "background": "smuggler",
+      "title": "Old fence",
+      "text": "Your old fence from the Narrows, running a quiet barge out past the lanes. She's glad to see you. She's always glad to see money.",
+      "choices": [
+        {
+          "id": "sell",
+          "label": "Sell her two parts",
+          "needs": { "parts": 2 },
+          "outcomes": [{ "chance": 100, "text": "She pays over the odds, for old times' sake.", "effects": { "sell": 2, "credits": 10 } }]
+        },
+        {
+          "id": "news",
+          "label": "Buy news",
+          "needs": { "credits": 10 },
+          "outcomes": [{ "chance": 100, "text": "She knows where the Hallorans are looking, and where they've given up.", "effects": { "credits": -10, "heat": -8 } }]
+        },
+        { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "She blows you a kiss on the band.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "customs-cutter",
+      "kind": "distress",
+      "background": "smuggler",
+      "title": "Customs cutter",
+      "text": "A customs cutter on the emergency band: drive out, crew of two, hold full of seized cargo. Seized from people like you.",
+      "choices": [
+        {
+          "id": "tow",
+          "label": "Tow them in",
+          "needs": { "supplies": 3 },
+          "outcomes": [{ "chance": 100, "text": "You tow the customs men home. The Fleet logs you as helpful, which is a first.", "effects": { "supplies": -3, "standing": { "fleet": 2 }, "heat": -4 } }]
+        },
+        {
+          "id": "lighten",
+          "label": "Lighten their hold",
+          "outcomes": [{ "chance": 100, "text": "Seized cargo, seized again. Customs takes your registration, very slowly.", "effects": { "credits": 35, "standing": { "fleet": -2 }, "heat": 6 } }]
+        },
+        { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "Customs can tow customs.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "old-cache",
+      "kind": "derelict",
+      "background": "smuggler",
+      "title": "Your old cache",
+      "text": "A cache you hid years ago in a dead freighter, before the Hallorans burned you. Still there, if nobody found it.",
+      "choices": [
+        {
+          "id": "dig",
+          "label": "Dig it out",
+          "outcomes": [
+            { "chance": 70, "text": "Cash and rations, right where you left them.", "effects": { "credits": 30, "supplies": 6 } },
+            { "chance": 30, "text": "Cash and rations, and someone was watching your old cache.", "effects": { "credits": 30, "supplies": 6, "heat": 8 } }
+          ]
+        },
+        {
+          "id": "quiet",
+          "label": "Dig it out quietly",
+          "needs": { "job": "scout" },
+          "outcomes": [{ "chance": 100, "text": "Your scout checks the dark first. Nobody's watching. Cash and rations.", "effects": { "credits": 30, "supplies": 6 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Some savings are better left saved.", "effects": {} }] }
+      ]
+    },
+    {
       "id": "cold-hauler",
       "kind": "hulk",
       "title": "Cold hauler",
@@ -352,6 +1373,153 @@
           "outcomes": [{ "chance": 100, "text": "Sealed rations by the case, still good, or good enough.", "effects": { "supplies": 8 } }]
         },
         { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "The squad looks once round her dark decks and turns for home.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "squatters-camp",
+      "kind": "hulk",
+      "title": "Squatters' camp",
+      "text": "A hauler with fresh scorch marks on her hull and a light on in her galley. Somebody lives aboard.",
+      "choices": [
+        {
+          "id": "board",
+          "label": "Go aboard",
+          "outcomes": [
+            { "chance": 50, "text": "They left in a hurry, and left their stores.", "effects": { "materials": 6, "supplies": 4 } },
+            { "chance": 50, "text": "They didn't leave. The squatters come out of the holds, armed.", "effects": { "ambush": true } }
+          ]
+        },
+        {
+          "id": "hail",
+          "label": "Hail them",
+          "needs": { "trait": "cool-head" },
+          "outcomes": [{ "chance": 100, "text": "You never raise your voice. They trade food for news, and point you at the next wreck.", "effects": { "supplies": 6 } }]
+        },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "Live and let live.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "ghost-freighter",
+      "kind": "hulk",
+      "title": "Ghost freighter",
+      "text": "A freighter with her lights out and her airlock open, and a fresh boot print in the frost on her deck.",
+      "choices": [
+        {
+          "id": "search",
+          "label": "Search her",
+          "outcomes": [
+            { "chance": 60, "text": "Whoever left the print is long gone. Their crate isn't.", "effects": { "drop": "colony" } },
+            { "chance": 40, "text": "Whoever left the print was waiting in the dark.", "effects": { "ambush": true } }
+          ]
+        },
+        {
+          "id": "frost",
+          "label": "Read the frost",
+          "needs": { "job": "scout" },
+          "outcomes": [{ "chance": 100, "text": "Your scout reads the frost: one set of prints, going out. The squad strips her in peace.", "effects": { "drop": "colony", "materials": 3 } }]
+        },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "The print stays in the frost.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "engine-room",
+      "kind": "hulk",
+      "title": "Intact engine room",
+      "text": "A tug with her bow torn away and her engine room still pressurised, its spares racked neatly.",
+      "choices": [
+        {
+          "id": "spares",
+          "label": "Strip the spares",
+          "outcomes": [{ "chance": 100, "text": "Spares for the ship's worst wreck, and some plating besides.", "effects": { "repair": 1, "materials": 3 } }]
+        },
+        {
+          "id": "plating",
+          "label": "Cut her plating",
+          "outcomes": [{ "chance": 100, "text": "Plating, cut and stacked. Slow work.", "effects": { "materials": 7 } }]
+        },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "Her engine room keeps its spares.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "hospital-hulk",
+      "kind": "hulk",
+      "title": "Hospital hulk",
+      "text": "A hospital ship, abandoned in good order, her stores still sealed and her theatre lights still on.",
+      "choices": [
+        {
+          "id": "theatre",
+          "label": "Strip the theatre",
+          "needs": { "job": "medic" },
+          "outcomes": [{ "chance": 100, "text": "Your medic unbolts a whole med bay and knows which crates to bring.", "effects": { "part": "medbay", "supplies": 4 } }]
+        },
+        { "id": "stores", "label": "Take the stores", "outcomes": [{ "chance": 100, "text": "Sealed rations by the case.", "effects": { "supplies": 8 } }] },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "The theatre lights stay on behind you.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "dead-gunboat",
+      "kind": "hulk",
+      "title": "Dead gunboat",
+      "text": "A gunboat with her guns still mounted and her crew long gone.",
+      "choices": [
+        {
+          "id": "turret",
+          "label": "Unbolt a turret",
+          "needs": { "job": "engineer" },
+          "outcomes": [{ "chance": 100, "text": "Your engineer unbolts a turret whole. The colony could use it.", "effects": { "part": "weapon" } }]
+        },
+        {
+          "id": "armour",
+          "label": "Cut her armour",
+          "outcomes": [
+            { "chance": 70, "text": "Armour plate by the slab.", "effects": { "materials": 8 } },
+            { "chance": 30, "text": "Armour plate by the slab, and a slab on someone's foot.", "effects": { "materials": 8, "wound": { "hp": 3 } } }
+          ]
+        },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "Her guns stay aimed at nobody.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "sleeper-ship",
+      "kind": "hulk",
+      "title": "Sleeper ship",
+      "text": "A colony ship with her sleepers still in their pods, long past waking. Her seed vault reads cold and sealed.",
+      "choices": [
+        {
+          "id": "seeds",
+          "label": "Open the seed vault",
+          "needs": { "job": "xenobiologist" },
+          "outcomes": [{ "chance": 100, "text": "Your xenobiologist sorts the good seed from the dead: a season's planting, and something to eat now.", "effects": { "supplies": 12 } }]
+        },
+        {
+          "id": "plating",
+          "label": "Strip her plating",
+          "outcomes": [{ "chance": 100, "text": "Plating and beams. Nobody looks at the pods.", "effects": { "materials": 6 } }]
+        },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "You leave the sleepers sleeping.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "leaking-tanker",
+      "kind": "hulk",
+      "title": "Leaking tanker",
+      "text": "A fuel tanker venting a slow, glittering leak. Her hull plating is the light, good kind.",
+      "choices": [
+        {
+          "id": "strip",
+          "label": "Strip her plating",
+          "outcomes": [
+            { "chance": 70, "text": "Light plating, stacked in the hold.", "effects": { "materials": 9 } },
+            { "chance": 30, "text": "A spark in the wrong place. Everyone comes home singed.", "effects": { "materials": 5, "wound": { "hp": 2, "all": true } } }
+          ]
+        },
+        {
+          "id": "careful",
+          "label": "Strip her carefully",
+          "needs": { "trait": "careful" },
+          "outcomes": [{ "chance": 100, "text": "Careful, every cut of it. Light plating, and no sparks.", "effects": { "materials": 9 } }]
+        },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "Leaks are someone else's problem.", "effects": {} }] }
       ]
     },
     {
@@ -402,6 +1570,151 @@
       ]
     },
     {
+      "id": "tagged-debris",
+      "kind": "wreckage",
+      "title": "Tagged debris",
+      "text": "A slow cloud of wreckage, every piece tagged and numbered by someone who meant to come back for it.",
+      "choices": [
+        {
+          "id": "take",
+          "label": "Take what's tagged",
+          "outcomes": [{ "chance": 100, "text": "Tagged plating, in order. Very convenient.", "effects": { "materials": 8 } }]
+        },
+        {
+          "id": "best",
+          "label": "Find the best of it",
+          "needs": { "job": "scout" },
+          "outcomes": [{ "chance": 100, "text": "Your scout reads the tags: the best piece is a whole part.", "effects": { "drop": "colony", "materials": 4 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Someone may yet come back for it.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "empty-pods",
+      "kind": "wreckage",
+      "title": "Empty escape pods",
+      "text": "A string of escape pods, every one launched and every one empty. Whoever was in them got somewhere.",
+      "choices": [
+        {
+          "id": "strip",
+          "label": "Strip the pods",
+          "outcomes": [{ "chance": 100, "text": "Emergency rations and light frames, from every pod.", "effects": { "supplies": 6, "materials": 3 } }]
+        },
+        { "id": "leave", "label": "Leave them", "outcomes": [{ "chance": 100, "text": "They got somewhere. Good luck to them.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "broken-ring",
+      "kind": "wreckage",
+      "title": "Broken ring",
+      "text": "What's left of a mining station, its ring broken in three and slowly turning.",
+      "choices": [
+        {
+          "id": "cut",
+          "label": "Cut the ring",
+          "outcomes": [
+            { "chance": 75, "text": "Ring sections, cut and stacked.", "effects": { "materials": 12 } },
+            { "chance": 25, "text": "A section turns into someone. Half a hold, and a wound.", "effects": { "materials": 6, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "hab",
+          "label": "Search the habitat",
+          "outcomes": [
+            { "chance": 60, "text": "In a sealed locker: a part, still in its mounts.", "effects": { "drop": "colony" } },
+            { "chance": 40, "text": "Mostly empty. Some rations.", "effects": { "supplies": 4 } }
+          ]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "It turns on without you.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "tool-locker",
+      "kind": "wreckage",
+      "title": "Drifting tool locker",
+      "text": "A tool locker the size of a cabin, drifting free of whatever it was bolted to.",
+      "choices": [
+        {
+          "id": "haul",
+          "label": "Haul it aboard",
+          "outcomes": [{ "chance": 100, "text": "Tools and spares: the ship's worst wreck gets seen to on the way home.", "effects": { "repair": 1, "materials": 2 } }]
+        },
+        {
+          "id": "sort",
+          "label": "Sort it properly",
+          "needs": { "job": "engineer" },
+          "outcomes": [{ "chance": 100, "text": "Your engineer knows what fits what. Two wrecks seen to before you're home.", "effects": { "repair": 2 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "It drifts on, full of tools.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "frozen-crates",
+      "kind": "wreckage",
+      "title": "Frozen crates",
+      "text": "Crates of food spilled from a broken hauler, frozen hard and perfectly kept.",
+      "choices": [
+        {
+          "id": "gather",
+          "label": "Gather the crates",
+          "outcomes": [
+            { "chance": 80, "text": "Food, frozen and fine.", "effects": { "supplies": 10 } },
+            { "chance": 20, "text": "Food, frozen and fine, and a crate on someone's hand.", "effects": { "supplies": 6, "wound": { "hp": 2 } } }
+          ]
+        },
+        {
+          "id": "sort",
+          "label": "Sort the best",
+          "needs": { "job": "quartermaster" },
+          "outcomes": [{ "chance": 100, "text": "Your quartermaster knows a good crate from a burst one. A full hold.", "effects": { "supplies": 14 } }]
+        },
+        { "id": "leave", "label": "Leave them", "outcomes": [{ "chance": 100, "text": "They'll keep.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "drone-net",
+      "kind": "wreckage",
+      "title": "Drone net",
+      "text": "A broken net of old sensor drones, some still blinking at each other across the dark.",
+      "choices": [
+        {
+          "id": "collect",
+          "label": "Collect the drones",
+          "outcomes": [{ "chance": 100, "text": "Drone frames, light and strong.", "effects": { "materials": 6 } }]
+        },
+        {
+          "id": "wire",
+          "label": "Wire one up",
+          "needs": { "job": "engineer" },
+          "outcomes": [{ "chance": 100, "text": "Your engineer gets one working, and it's worth more working.", "effects": { "drop": "colony" } }]
+        },
+        { "id": "leave", "label": "Leave them", "outcomes": [{ "chance": 100, "text": "They blink on.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "warship-spine",
+      "kind": "wreckage",
+      "title": "Warship's spine",
+      "text": "A warship's spine, kilometres long, picked clean except where it was too heavy to move.",
+      "choices": [
+        {
+          "id": "cut",
+          "label": "Cut a section",
+          "outcomes": [
+            { "chance": 70, "text": "A section of spine, the best steel for light years.", "effects": { "materials": 10 } },
+            { "chance": 30, "text": "The section shifts as it comes free. Someone takes the weight of it.", "effects": { "materials": 10, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "seams",
+          "label": "Cut along the seams",
+          "needs": { "trait": "steady" },
+          "outcomes": [{ "chance": 100, "text": "Steady hands find the seams the yard welded. It comes apart like it was made to.", "effects": { "materials": 12 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Her bones stay where they fell.", "effects": {} }] }
+      ]
+    },
+    {
       "id": "rich-seam",
       "kind": "rock",
       "title": "Rich seam",
@@ -443,6 +1756,150 @@
       ]
     },
     {
+      "id": "crystal-pocket",
+      "kind": "rock",
+      "title": "Crystal pocket",
+      "text": "A hollow in the rock lined with crystals that ring when the squad's lamps touch them.",
+      "choices": [
+        {
+          "id": "cut",
+          "label": "Cut them out",
+          "outcomes": [
+            { "chance": 70, "text": "Crystal by the crate. It rings all the way home.", "effects": { "materials": 8 } },
+            { "chance": 30, "text": "One shatters as it comes free. Someone bleeds.", "effects": { "materials": 6, "wound": { "hp": 2 } } }
+          ]
+        },
+        {
+          "id": "slow",
+          "label": "Cut them out slow",
+          "needs": { "trait": "patient" },
+          "outcomes": [{ "chance": 100, "text": "You'd wait all day for the right cut. Today you did. Not one breaks.", "effects": { "materials": 10 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "It rings softly as the squad goes.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "old-workings",
+      "kind": "rock",
+      "title": "Old workings",
+      "text": "Shafts sunk by someone long gone, their props still holding. Mostly.",
+      "choices": [
+        {
+          "id": "work",
+          "label": "Work the old faces",
+          "outcomes": [
+            { "chance": 60, "text": "The old faces still give.", "effects": { "materials": 10 } },
+            { "chance": 40, "text": "A prop gives. The squad gets out with half a load and bruises.", "effects": { "materials": 4, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "shore",
+          "label": "Shore it up first",
+          "needs": { "job": "engineer" },
+          "outcomes": [{ "chance": 100, "text": "Your engineer shores the props before anyone goes in. Every face gives.", "effects": { "materials": 10 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Someone else can trust the props.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "ice-cave",
+      "kind": "rock",
+      "title": "Ice cave",
+      "text": "A cave of blue ice under the rock's skin, clean enough to drink as it is.",
+      "choices": [
+        { "id": "ice", "label": "Cut ice", "outcomes": [{ "chance": 100, "text": "Ice by the block: water for the stores.", "effects": { "supplies": 8 } }] },
+        {
+          "id": "both",
+          "label": "Cut ice and rock",
+          "outcomes": [
+            { "chance": 70, "text": "Ice and ore, both.", "effects": { "supplies": 6, "materials": 4 } },
+            { "chance": 30, "text": "Ice and ore, and the cave roof drops a slab.", "effects": { "supplies": 6, "wound": { "hp": 2 } } }
+          ]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "It stays blue and clean.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "gas-pocket",
+      "kind": "rock",
+      "title": "Gas pocket",
+      "text": "The scanner says there's a pocket of gas behind the next face. The scanner has been wrong before.",
+      "choices": [
+        {
+          "id": "blast",
+          "label": "Blast through",
+          "outcomes": [
+            { "chance": 60, "text": "The scanner was wrong. The face comes down clean.", "effects": { "materials": 12 } },
+            { "chance": 40, "text": "The scanner was right. Everyone comes out coughing, with half a load.", "effects": { "materials": 6, "wound": { "hp": 2, "all": true } } }
+          ]
+        },
+        {
+          "id": "vent",
+          "label": "Vent it first",
+          "needs": { "trait": "shift-fit" },
+          "outcomes": [{ "chance": 100, "text": "Twelve-hour shifts on the ore line taught you to vent first. A full load, and nobody coughing.", "effects": { "materials": 12 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Some faces are better left.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "old-claim",
+      "kind": "rock",
+      "title": "Old claim",
+      "text": "A claim marker on the rock, its owner's name worn off, and a cache of tools beneath it.",
+      "choices": [
+        {
+          "id": "tools",
+          "label": "Take the tools",
+          "outcomes": [{ "chance": 100, "text": "Good tools: the ship's worst wreck gets fixed on the way home.", "effects": { "repair": 1, "materials": 2 } }]
+        },
+        { "id": "leave", "label": "Leave the claim", "outcomes": [{ "chance": 100, "text": "Somebody's claim. Still.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "metal-vein",
+      "kind": "rock",
+      "title": "Metal vein",
+      "text": "A vein of native metal, bright and soft, running deep into the rock.",
+      "choices": [
+        {
+          "id": "dig",
+          "label": "Dig it deep",
+          "outcomes": [
+            { "chance": 75, "text": "The vein holds all the way down.", "effects": { "materials": 12 } },
+            { "chance": 25, "text": "The face slumps halfway down. Half a load, and bruises.", "effects": { "materials": 6, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "lift",
+          "label": "Lift it out whole",
+          "needs": { "trait": "bruiser" },
+          "outcomes": [{ "chance": 100, "text": "Built like a cargo lifter, and today it shows. The whole vein comes out.", "effects": { "materials": 14 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "It'll keep.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "tumbling-rock",
+      "kind": "rock",
+      "title": "Tumbling rock",
+      "text": "A rock tumbling end over end, too fast to land on and just slow enough to grapple.",
+      "choices": [
+        {
+          "id": "grapple",
+          "label": "Grapple it",
+          "needs": { "job": "pilot" },
+          "outcomes": [{ "chance": 100, "text": "Your pilot matches the tumble. The squad cuts a full load before letting go.", "effects": { "materials": 12 } }]
+        },
+        {
+          "id": "loose",
+          "label": "Take what's loose",
+          "outcomes": [{ "chance": 100, "text": "Loose rock, picked out of the spin.", "effects": { "materials": 4 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "It tumbles on.", "effects": {} }] }
+      ]
+    },
+    {
       "id": "something-grows",
       "kind": "planet",
       "title": "Something grows",
@@ -479,6 +1936,147 @@
           "outcomes": [{ "chance": 100, "text": "The probe's panels and frame, light and easy to carry.", "effects": { "materials": 4 } }]
         },
         { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "It can lie there a while longer.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "fungus-forest",
+      "kind": "planet",
+      "title": "Fungus forest",
+      "text": "Towers of fungus taller than the ship, pale and soft. The scanners can't say if they're safe to eat.",
+      "choices": [
+        {
+          "id": "harvest",
+          "label": "Harvest it",
+          "outcomes": [
+            { "chance": 60, "text": "Safe enough. Better than safe: it tastes of bread.", "effects": { "supplies": 10 } },
+            { "chance": 40, "text": "Not safe. Everyone comes home green, with half a load.", "effects": { "supplies": 4, "wound": { "hp": 2, "all": true } } }
+          ]
+        },
+        {
+          "id": "test",
+          "label": "Test it first",
+          "needs": { "job": "xenobiologist" },
+          "outcomes": [{ "chance": 100, "text": "Your xenobiologist finds the safe kind. A full hold, and nobody green.", "effects": { "supplies": 12 } }]
+        },
+        { "id": "orbit", "label": "Stay in orbit", "outcomes": [{ "chance": 100, "text": "The towers sway in a wind nobody can hear.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "wild-farm",
+      "kind": "planet",
+      "title": "Gone-wild farm",
+      "text": "Fields gone wild around a farmhouse dome, the crops run to seed and still growing.",
+      "choices": [
+        { "id": "gather", "label": "Gather what grows", "outcomes": [{ "chance": 100, "text": "Grain gone wild, still good.", "effects": { "supplies": 10 } }] },
+        { "id": "dome", "label": "Strip the dome", "outcomes": [{ "chance": 100, "text": "Dome panels, light and clear.", "effects": { "materials": 6 } }] },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "It grows on without anyone.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "grazing-herds",
+      "kind": "planet",
+      "title": "Grazing herds",
+      "text": "Herds of something big and slow grazing the plains. They don't look dangerous. They don't look small, either.",
+      "choices": [
+        {
+          "id": "hunt",
+          "label": "Hunt one",
+          "needs": { "job": "marine" },
+          "outcomes": [{ "chance": 100, "text": "Your marine brings one down cleanly. Meat for weeks.", "effects": { "supplies": 12 } }]
+        },
+        {
+          "id": "chase",
+          "label": "Run one down",
+          "outcomes": [
+            { "chance": 50, "text": "One brought down, and meat for weeks.", "effects": { "supplies": 12 } },
+            { "chance": 50, "text": "It wasn't as slow as it looked. Someone gets trampled; some meat comes home.", "effects": { "supplies": 6, "wound": { "hp": 3 } } }
+          ]
+        },
+        { "id": "leave", "label": "Leave them", "outcomes": [{ "chance": 100, "text": "They graze on, unconcerned.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "ravine-lander",
+      "kind": "planet",
+      "title": "Lander in a ravine",
+      "text": "A colony lander on its side at the bottom of a ravine, its cargo still strapped down.",
+      "choices": [
+        {
+          "id": "climb",
+          "label": "Climb down to it",
+          "outcomes": [
+            { "chance": 70, "text": "A part, still strapped down, hauled up on lines.", "effects": { "drop": "colony" } },
+            { "chance": 30, "text": "The lines slip. Someone falls the last bit, and only some panels come up.", "effects": { "materials": 3, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "quick",
+          "label": "Go down quick",
+          "needs": { "trait": "quick" },
+          "outcomes": [{ "chance": 100, "text": "First one down and first one up. The part, and some panels too.", "effects": { "drop": "colony", "materials": 3 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "It stays in its ravine.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "hot-springs",
+      "kind": "planet",
+      "title": "Hot springs",
+      "text": "Steaming pools in a high valley, rich in minerals and pleasantly warm.",
+      "choices": [
+        {
+          "id": "crust",
+          "label": "Cut the mineral crust",
+          "outcomes": [{ "chance": 100, "text": "Mineral crust, cut in slabs.", "effects": { "materials": 8 } }]
+        },
+        { "id": "water", "label": "Bottle the water", "outcomes": [{ "chance": 100, "text": "Clean water, and plenty of it.", "effects": { "supplies": 6 } }] },
+        { "id": "leave", "label": "Leave them", "outcomes": [{ "chance": 100, "text": "Somebody wanted a bath. Nobody got one.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "old-ruins",
+      "kind": "planet",
+      "title": "Old ruins",
+      "text": "Ruins older than any colony, half buried in red sand. Nobody who built them has ever been asked about it.",
+      "choices": [
+        {
+          "id": "dig",
+          "label": "Dig at the ruins",
+          "outcomes": [
+            { "chance": 60, "text": "Something useful under the sand, left by somebody useful.", "effects": { "drop": "colony" } },
+            { "chance": 40, "text": "Sand, mostly, and some stone worth cutting.", "effects": { "materials": 4 } }
+          ]
+        },
+        {
+          "id": "read",
+          "label": "Read the ruins",
+          "needs": { "job": "xenobiologist" },
+          "outcomes": [{ "chance": 100, "text": "Your xenobiologist reads where the builders kept their tools. They're still there.", "effects": { "drop": "colony", "materials": 4 } }]
+        },
+        { "id": "leave", "label": "Leave them", "outcomes": [{ "chance": 100, "text": "They've waited this long.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "storm-plain",
+      "kind": "planet",
+      "title": "Storm plain",
+      "text": "A plain swept by lightning, glassy with fused sand, a wrecked weather station in the middle of it.",
+      "choices": [
+        {
+          "id": "strip",
+          "label": "Strip the station",
+          "outcomes": [
+            { "chance": 70, "text": "Panels and wiring, pulled between strikes.", "effects": { "materials": 8 } },
+            { "chance": 30, "text": "A strike lands close. Someone's hair stands up and stays up.", "effects": { "materials": 8, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "lulls",
+          "label": "Strip it in the lulls",
+          "needs": { "trait": "jumpy" },
+          "outcomes": [{ "chance": 100, "text": "You flinch at every flash, which is why you're still breathing. Panels, and no burns.", "effects": { "materials": 8 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "The lightning keeps it.", "effects": {} }] }
       ]
     },
     {

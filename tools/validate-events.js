@@ -111,6 +111,7 @@ function checkChoice(choice, at, known, fail, atPlace) {
         if (!known[WHO_NEEDS[key]].has(value)) fail(`${at} needs`, `${key} "${value}" is not one of ${WHO_NEEDS[key]}.json's`);
       } else if (!isIntIn(value, 1, MAX_AMOUNT)) fail(`${at} needs`, `${key} must be a whole number from 1 to ${MAX_AMOUNT}`);
     }
+    if (needs.wrecks !== undefined && !choice.outcomes?.every((outcome) => (outcome?.effects?.repair ?? 0) >= needs.wrecks)) fail(at, 'needs wrecks to repair, so every outcome must repair at least that many');
   }
   if (!Array.isArray(choice.outcomes) || choice.outcomes.length < 1 || choice.outcomes.length > MAX_OUTCOMES) {
     fail(at, `outcomes must be a list of 1 to ${MAX_OUTCOMES}`);

@@ -56,7 +56,12 @@ test('at a station: the recruits for hire with their fee and what they eat, and 
   const past = rules.recruits.backgrounds.get(offer[0].background);
   assert.deepEqual([first.key, first.name, first.about, first.ok, first.label, first.ask], ['hire:0', offer[0].name, `${rules.jobs.get(offer[0].job).name} · ${past.name}`, true, `Sign on · ${fee}`, `Sign on for ${fee}?`]);
   assert.deepEqual([first.past, first.rankLine], [past.text, rankLine(offer[0], rules, true)]);
-  assert.match(first.traits, /^[A-Z][a-z ]+: [a-z ]+ [+−]\d+/, 'a trait and what it does');
+  // Each recruit's traits and what they do; one with none says nothing.
+  card.hire.recruits.forEach((recruit, i) => {
+    if (offer[i].traits.length) assert.match(recruit.traits, /^[A-Z][a-z ]+: [a-z ]+ [+−]\d+/, 'a trait and what it does');
+    else assert.equal(recruit.traits, '');
+  });
+  assert.ok(offer.some((r) => r.traits.length), 'one of them with a trait');
   const eats = 4 * balance.jumpSupplies;
   assert.equal(first.text, `Sign ${first.name} on for ${fee} credits. A crew of 4 eats ${eats} supplies a jump, and full holds last ${Math.floor(balance.baseSupplies / eats)} jumps. Tap again to sign on.`);
   assert.deepEqual(card.members.map((m) => m.dismiss?.key ?? null), [null, 'let:2', 'let:3'], 'the captain stays');
@@ -108,7 +113,9 @@ test('the crew card says what the med bay heals, and when it is wrecked', () => 
 
 test('the squad picker: shown only with more aboard than a squad takes; the healthiest unless picked', () => {
   assert.equal(squadText(onRun(), rules).show, false, 'three aboard: all go');
-  const four = hurt(hireRecruit(atStation({ credits: 500 }), rules, 0).campaign, { marine: 2 });
+  // The captain, a marine, hurt; the recruit may be a marine too, and stays whole.
+  const signed = hireRecruit(atStation({ credits: 500 }), rules, 0).campaign;
+  const four = { ...signed, crew: signed.crew.map((m) => (m.id === signed.captain ? { ...m, hp: 2 } : m)) };
   const [marine, engineer, medic, recruit] = four.crew.map((m) => m.name);
   const text = squadText(four, rules);
   assert.equal(text.show, true);

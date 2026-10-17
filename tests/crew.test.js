@@ -111,7 +111,8 @@ test('the squad: the whole crew while it fits, else the healthiest squadSize, in
 });
 
 // A campaign at a cutter whose approach ended with her boarding the ship,
-// the crew 4 strong: the last a recruit at full health, and the marine hurt.
+// the crew 4 strong: the last a recruit at full health, and the first
+// marine hurt (the recruit may be a marine too).
 function boardedWithFour() {
   const signed = hired(atStation({ credits: 500 }));
   const { sector } = signed.run;
@@ -121,7 +122,10 @@ function boardedWithFour() {
   for (let seed = 0; seed < 3000; seed++) {
     let at = { ...met, rng: seedFrom(seed) };
     while (!at.run.approach.outcome) at = giveOrder(at, rules, { kind: 'evade' }).campaign;
-    if (at.run.approach.outcome.kind === 'boardedBy') return hurt(at, { marine: 2 });
+    if (at.run.approach.outcome.kind === 'boardedBy') {
+      const marine = at.crew.find((m) => m.job === 'marine').id;
+      return { ...at, crew: at.crew.map((m) => (m.id === marine ? { ...m, hp: 2 } : m)) };
+    }
   }
   throw new Error('No seed ends in boardedBy');
 }

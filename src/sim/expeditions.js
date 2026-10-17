@@ -71,7 +71,7 @@ const MAX_SEED = 0xffffffff;
 // ship's wrecks, or spring a trap at a kind of place the scavengers can
 // hold: they were waiting, and the place is held.
 export const PLACE_EFFECTS = ['supplies', 'materials', 'wound', 'part', 'drop', 'repair', 'ambush'];
-export const PLACE_NEEDS = ['supplies', 'parts', 'job', 'trait'];
+export const PLACE_NEEDS = ['supplies', 'parts', 'job', 'trait', 'wrecks'];
 
 // A place's kind (data/expeditions.json), or null.
 export function kindOf(place, rules) {

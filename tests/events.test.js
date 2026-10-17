@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { makeSave, MIGRATIONS, parseSave } from '../src/core/save.js';
 import { seedFrom } from '../src/core/rng.js';
-import { campaignProblems } from '../src/sim/campaign.js';
+import { campaignProblems, maxHp } from '../src/sim/campaign.js';
 import { sellPriceOf } from '../src/sim/economy.js';
 import { applyEffects, chooseEvent, choiceProblem, outcomeFor } from '../src/sim/events.js';
 import { launch } from '../src/sim/launch.js';
+import { hasTag } from '../src/sim/modules.js';
 import { initialState, reduce, saveData } from '../src/sim/root.js';
 import { beginRun, jump, jumpPlan, knownNodes, leavePlan, linked, openEvent, scan, scanPlan, within } from '../src/sim/travel.js';
 import { rules } from './battleKit.js';
@@ -125,11 +126,25 @@ test('a choice needing credits, supplies or a part can only be made with them', 
   assert.equal(chooseEvent(onRun(), rules, 'leave').error, 'There is nothing to decide here.');
 });
 
+// The campaign with whoever a choice needs aboard (M36): the second crew
+// member takes its job and trait, and the ship has the wrecks it would
+// repair.
+function withNeeds(campaign, choice) {
+  const { job, trait, wrecks } = choice.needs ?? {};
+  const crew = campaign.crew.map((member, i) => {
+    if (i !== 1 || (!job && !trait)) return member;
+    const next = { ...member, job: job ?? member.job, traits: trait ? [trait] : member.traits };
+    return { ...next, hp: Math.min(next.hp, maxHp(next, rules)) };
+  });
+  const hit = campaign.ship.modules.filter((module) => ['weapon', 'engine', 'reactor', 'shield'].some((tag) => hasTag(rules.modules.get(module.type), tag))).slice(0, wrecks ?? 0);
+  return { ...campaign, crew, wrecks: Object.fromEntries(hit.map((module) => [module.uid, 'fire'])) };
+}
+
 test('every choice of every event plays, and leaves a campaign that saves', () => {
   for (const event of rules.events.values()) {
     for (const choice of event.choices) {
       for (const seed of [1, 2, 3, 4]) {
-        const at = { ...atEvent(event.id, { credits: 60 }), parts: { corridor: 1 }, rng: seedFrom(seed) };
+        const at = withNeeds({ ...atEvent(event.id, { credits: 60 }), parts: { corridor: 1, armory: 1 }, rng: seedFrom(seed) }, choice);
         const made = chooseEvent(at, rules, choice.id);
         assert.ok(made.ok, `${event.id} ${choice.id}: ${made.error}`);
         assert.deepEqual(campaignProblems(made.campaign), [], `${event.id} ${choice.id}`);

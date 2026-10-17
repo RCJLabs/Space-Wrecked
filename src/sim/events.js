@@ -10,7 +10,8 @@
 // berth (a companion signing on); from M36, someone of a job or with a
 // trait: anyone aboard on the run, someone in the squad at a place. The
 // first such in the crew's order takes it (takerOf), and a wound that falls
-// on one falls on them while they have more than 1. Its outcomes each
+// on one falls on them while they have more than 1. A choice that pays for
+// repairs needs that many wrecks aboard to repair (wrecks, M36). Its outcomes each
 // have a chance in 100, shown as they are rolled: one roll from 0 to 99
 // picks the outcome whose share of the hundred it falls in, in the order
 // written. An outcome's effects:
@@ -71,7 +72,7 @@ import { moveStanding } from './standing.js';
 import { openEvent, supplyCapacity } from './travel.js';
 
 export const EFFECTS = ['credits', 'supplies', 'heat', 'materials', 'wound', 'part', 'drop', 'sell', 'standing', 'joins', 'wreck', 'repair', 'ambush'];
-export const NEEDS = ['credits', 'supplies', 'parts', 'berth', 'job', 'trait'];
+export const NEEDS = ['credits', 'supplies', 'parts', 'berth', 'job', 'trait', 'wrecks'];
 // The tags of the parts an event can wreck: those a volley can hit.
 const WRECKABLE = [...new Set(Object.values(AIM_TAGS).flat())];
 const MAX_MET = 500;
@@ -103,6 +104,7 @@ export function choiceProblem(campaign, choice, rules, { among = null } = {}) {
   if (needs.parts && partsOnHand(campaign) < needs.parts) return needs.parts === 1 ? 'Needs a part on hand.' : `Needs ${needs.parts} parts on hand.`;
   if (needs.berth && freeBerths(campaign, rules) < needs.berth) return 'Needs a free berth.';
   if ((needs.job || needs.trait) && !takerOf(campaign, choice, among)) return `Needs ${whoNeeded(needs, rules)}${among ? ' in the squad' : ' aboard'}.`;
+  if (needs.wrecks && Object.keys(wrecksOn(campaign.ship, campaign.wrecks)).length < needs.wrecks) return needs.wrecks === 1 ? 'Nothing on the ship is wrecked.' : `Needs ${needs.wrecks} wrecks aboard to repair.`;
   return null;
 }
 
@@ -278,6 +280,12 @@ export function applyEffects(campaign, rules, effects, { among = null, taker = n
   return { campaign: next, changes };
 }
 
+// The ship's parts a wreck (M36) could hit: those a volley could
+// (approach.js AIM_TAGS), not wrecked already (wrecks by uid).
+export function wreckable(ship, wrecks, rules) {
+  return ship.modules.filter((module) => !(module.uid in wrecks) && rules.modules.has(module.type) && WRECKABLE.some((tag) => hasTag(rules.modules.get(module.type), tag)));
+}
+
 // `count` of the ship's working parts a volley could hit, wrecked one at a
 // time by a roll, each with a wreck by a roll, as a volley wrecks them;
 // then the crew gets one reactor and one engine going. Returns { campaign,
@@ -287,7 +295,7 @@ function wreckParts(campaign, rules, count) {
   const wrecks = { ...wrecksOn(campaign.ship, campaign.wrecks) };
   const fresh = [];
   for (let n = 0; n < count; n++) {
-    const working = campaign.ship.modules.filter((module) => !(module.uid in wrecks) && rules.modules.has(module.type) && WRECKABLE.some((tag) => hasTag(rules.modules.get(module.type), tag)));
+    const working = wreckable(campaign.ship, wrecks, rules);
     if (!working.length) break;
     const at = int(rng, 0, working.length - 1);
     const kind = int(at.state, 0, WRECKS.length - 1);
