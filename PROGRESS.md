@@ -175,10 +175,11 @@ The voyage tests' rates over 100 voyages from each start, main today beside M37.
 **Verified:**
 - `node --test`: 989 tests pass (956 before). New: `tests/weaponRules.test.js`, `tests/loadout.test.js`, `tests/armsText.test.js` and `tests/arms.test.js`, and the voyage's step check for weapons. `validate-data`: OK, 15 weapons and 20 enemies.
 - `m37/verify.mjs` at the three sizes, as above.
-- **Every earlier milestone's browser check,** at the three sizes unless named, each the latest adapted copy. The first pass found the three screen fixes above. Rerun on the final code, every one from M37's to M18's passes but M32b's first copy, whose 2 known failures (its orders' words since M36) its fix copy covers, as in M36. M17's and the earlier ones are still running; this line is updated when they end. The copies adapted for M37:
+- **Every earlier milestone's browser check,** at the three sizes unless named, each the latest adapted copy. The first pass found the three screen fixes above. Rerun on the final code, every one passes but M32b's first copy, whose 2 known failures (its orders' words since M36) its fix copy covers, as in M36. The copies adapted for M37:
   - **for saves at v32:** M35's, M34's, M31's, M30's, M29's, M28's and M27's;
   - **for M37's words:** M33b's, M30's, M29's and M28's (what a win can leave, and the new enemies in their parties); M23's (the spares on hand in the crew card's words); M22's and M21's (the pirates' gunner among the cutter's crew);
-  - **for the rack in the left panel:** M21's and M19's bring a button into sight before trying its middle, as M22's does, since the panel scrolls at the tab size.
+  - **for the rack in the left panel:** M21's and M19's bring a button into sight before trying its middle, as M22's does, since the panel scrolls at the tab size;
+  - **for the dealer's weapons:** M16's counts them in the stock beside its parts.
 
   Two checks, M32b's fix copy at open and M23b's at tab, lost their port to the other half of the rerun running beside them, and passed run again.
 
