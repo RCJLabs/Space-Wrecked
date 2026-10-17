@@ -178,7 +178,8 @@ test('wrecks by roll among what a volley can hit, the reactor and engine got goi
   assert.ok(wrecked.length >= 1 && wrecked.length <= 2);
   for (const part of wrecked) {
     assert.ok(hittable(part.type), `${part.type} is one a volley could hit`);
-    assert.equal(hit.campaign.wrecks[part.uid], part.wreck);
+    // Each part hit stays wrecked, but one the crew got going again.
+    assert.equal(hit.campaign.wrecks[part.uid], rigged.includes(part.uid) ? undefined : part.wreck);
   }
   assert.ok(Array.isArray(rigged));
   for (const tag of ['reactor', 'engine']) {

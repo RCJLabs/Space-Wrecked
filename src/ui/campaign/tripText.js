@@ -2,15 +2,16 @@
 // within reach, a trip's plan, where the squad is and what is there, and
 // what each leg's days came to; since M29 a leg a raid stopped, and Fly
 // on; since M33b a quest's place, named for its quest, and what winning
-// her did to the quest. rules are the content tables (src/sim/defs.js).
+// her did to the quest; since M36 who in the squad would take a choice,
+// and a trap that leaves the place held. rules are the content tables
+// (src/sim/defs.js).
 import { maxHp } from '../../sim/campaign.js';
 import { colonyBy } from '../../sim/edges.js';
-import { choiceProblem } from '../../sim/events.js';
 import { homePlan, kindOf, onPlan, otherWorlds, placeFightDue, tripHere } from '../../sim/expeditions.js';
 import { pursuerOf } from '../../sim/heat.js';
 import { byJob } from './crewJobText.js';
 import { faceOf } from './crewText.js';
-import { changesText, effectsText } from './eventText.js';
+import { changesText, choiceSaid } from './eventText.js';
 import { questNoteLines, questPlaceText } from './questText.js';
 
 // The places within reach, a row each: [{ index, name, kind (its kind's
@@ -85,7 +86,8 @@ export function planText(plan, campaign, rules) {
 // with the ship home: { title (the place), where ("Ore rock · 2 days from
 // home"), squad (their names), event, held, result, home, leg, on }.
 //   event   the event to decide there: { title, text, choices: [{ id,
-//           label, ok, why, odds, ask }] }, as the run's (eventText.js)
+//           label, ok, why, odds, taker, ask }] }, as the run's
+//           (eventText.js), but only the squad can take a choice
 //   held    the squatters' derelict, still to fight for: { lines, ask }
 //   result  what came of it: { title, text }
 //   home    Fly home: { ok, ask (its first tap's words), why }
@@ -149,18 +151,16 @@ function broughtText(result, campaign, rules) {
   return said.length ? `It brought ${listed(said)}.` : 'It brought nothing.';
 }
 
-// The event at a place, as eventText.js has the run's.
+// The event at a place, as eventText.js has the run's: a choice that needs
+// someone (M36) needs them in the squad.
 function eventAt(event, campaign, rules) {
+  const among = campaign.colony.trip?.squad ?? [];
   return {
     title: event.title,
     text: event.text,
     choices: event.choices.map((choice) => {
-      const why = choiceProblem(campaign, choice, rules);
-      const outcomes = choice.outcomes.map((outcome) => ({ chance: outcome.chance, says: effectsText(outcome.effects, campaign, rules) }));
-      const sure = outcomes.length === 1;
-      const odds = sure ? '' : outcomes.map((outcome) => `${outcome.chance}%`).join(' · ');
-      const told = sure ? `${capital(outcomes[0].says)}.` : outcomes.map((outcome) => `${outcome.chance}%: ${outcome.says}.`).join(' ');
-      return { id: choice.id, label: choice.label, ok: !why, why, odds, ask: `${choice.label}: ${told} Tap again to choose.` };
+      const said = choiceSaid(choice, campaign, rules, among);
+      return { ...said, ask: `${said.ask} Tap again to choose.` };
     }),
   };
 }
@@ -229,10 +229,6 @@ function aPart(type, rules) {
 // "a, b and c".
 function listed(items) {
   return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
-}
-
-function capital(text) {
-  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function lowerFirst(text) {

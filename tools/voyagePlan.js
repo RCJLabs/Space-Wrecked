@@ -142,6 +142,7 @@ import { build, buildPlan, takeDown } from '../src/sim/colonyBuild.js';
 import { crewRoom } from '../src/sim/crew.js';
 import { sellPriceOf } from '../src/sim/economy.js';
 import { wrecksOn } from '../src/sim/encounter.js';
+import { eventsOf, freshest } from '../src/sim/eventPool.js';
 import { choiceProblem, wreckable } from '../src/sim/events.js';
 import { tripPlan } from '../src/sim/expeditions.js';
 import { LANES } from '../src/sim/gen/system.js';
@@ -329,15 +330,30 @@ function dearest(campaign, rules, count) {
 
 // The choice the player makes at an event: { choice, worth }, the one worth
 // most of those it can make, with what it does to a quest (questWorth) at
-// `pull` of its worth: all of it at the event, questPull's on the way.
+// `pull` of its worth: all of it at the event, questPull's on the way. From
+// M36, as at a station, it spends credits only beyond a holdful's price
+// (dipsReserve), but on supplies or a quest's step: the traders sell parts,
+// repairs and quiet now, and a purse spent on them left nothing for the
+// holds or the transponder. With every choice dipping, it judges them all.
 export function bestChoice(campaign, rules, event, heat = 'manage', pull = 1) {
-  let best = null;
+  const reserve = supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice;
+  const judged = [];
   for (const choice of event.choices) {
     if (choiceProblem(campaign, choice, rules)) continue;
-    const worth = choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * effectsWorth(campaign, rules, outcome.effects, heat), 0) + pull * questWorth(campaign, rules, event, choice);
-    if (!best || worth > best.worth) best = { choice, worth };
+    const quest = questWorth(campaign, rules, event, choice);
+    const worth = choice.outcomes.reduce((sum, outcome) => sum + (outcome.chance / 100) * effectsWorth(campaign, rules, outcome.effects, heat), 0) + pull * quest;
+    judged.push({ choice, worth, dips: quest <= 0 && dipsReserve(campaign, choice, reserve) });
   }
+  const kept = judged.some((entry) => !entry.dips) ? judged.filter((entry) => !entry.dips) : judged;
+  let best = null;
+  for (const { choice, worth } of kept) if (!best || worth > best.worth) best = { choice, worth };
   return best;
+}
+
+// Whether a choice pays credits out of the reserve (a holdful's price) for
+// anything but supplies.
+function dipsReserve(campaign, choice, reserve) {
+  return choice.outcomes.some(({ effects }) => (effects.credits ?? 0) < 0 && !(effects.supplies > 0) && campaign.credits + effects.credits < reserve);
 }
 
 // The share of a quest's worth a node on the way counts (M33b): the
@@ -408,7 +424,10 @@ function chainBefriends(campaign, rules, quest, choice) {
 }
 
 // What an unknown node is worth on average: the mix's kinds by weight, each
-// its events' best choices on average, or a hostile ship's worth.
+// its events' best choices on average, or a hostile ship's worth. Since M36
+// its events are those the campaign's pool still holds (eventPool.js): its
+// background's own among them, and none it has met while the kind has
+// others.
 function unknownWorth(campaign, rules, heat) {
   const mix = Object.entries(rules.sectors.mix);
   const total = mix.reduce((sum, [, weight]) => sum + weight, 0);
@@ -418,7 +437,7 @@ function unknownWorth(campaign, rules, heat) {
       worth += (weight / total) * WORTH.hostile;
       continue;
     }
-    const events = [...rules.events.values()].filter((event) => event.kind === kind && !event.quest);
+    const events = freshest(eventsOf(rules, kind, campaign.background), campaign.eventsMet ?? []).map((id) => rules.events.get(id));
     if (!events.length) continue;
     const each = events.reduce((sum, event) => sum + (bestChoice(campaign, rules, event, heat)?.worth ?? 0), 0) / events.length;
     worth += (weight / total) * each;

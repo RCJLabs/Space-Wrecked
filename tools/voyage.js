@@ -868,7 +868,7 @@ function flyTrip(campaign, defs, index, squad, raids) {
   if (raidDown(now)) now = faceRaid(now, defs, raids);
   const home = flyHome(now, defs);
   if (!home.ok) throw new Error(home.error);
-  return { campaign: onWay(home.campaign, defs, raids), record: { day, name: place.name, kind: place.kind, days: out.plan.days.out + home.plan.days, squad: squad.length, what, quest: place.quest ?? null, wonOn } };
+  return { campaign: onWay(home.campaign, defs, raids), record: { day, name: place.name, kind: place.kind, days: out.plan.days.out + home.plan.days, squad: squad.length, what, event: here.event?.id ?? null, quest: place.quest ?? null, wonOn } };
 }
 
 // A leg a raid stopped (M29): those at home face it, and the ship flies

@@ -1376,7 +1376,7 @@ Rosters, balance runs, difficulty settings, accessibility (a colorblind-safe pal
 
 Detailed at the start of M36, once v0.4 was done. The rosters come first, so the balance runs measure the game with its content in. The Done whens past M36 are drafts, to settle as each milestone starts.
 
-- [ ] **M36 Events.** The run's nodes and the colony's places hold 29 events, 7 of them the quests' steps. Over 30 careful voyages from each start:
+- [x] **M36 Events.** The run's nodes and the colony's places hold 29 events, 7 of them the quests' steps. Over 30 careful voyages from each start:
   - a voyage meets 11 to 13 events on the run at the median, 2 to 3 of them for the second time (up to 6);
   - only 16 to 19 different events ever come up on the run;
   - a colony's 30 days of trips meet 2 to 4 of their place events for the second time (up to 7).
@@ -1432,6 +1432,21 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
     - a wreck and a repair in a result;
     - a hulk's trap and its fight;
     - offline, and no console errors.
+
+  As built (2026-10-17), where it differs from the above or adds to it:
+  - **The content:** 71 new events, the 29 before unchanged. Needed by some choice: all seven jobs, and 10 traits (Old hand, Cool head, Hothead, Careful, Steady hands, Patient, Shift fit, Bruiser, Quick feet, Jumpy). Traps: 6 on the run, the three backgrounds' own among them, and 2 at hulks. Wrecks in 7 events, repairs in 8.
+  - **Who takes a choice:** the first in the crew's order with the job and the trait (at a place, in the squad). A wound that isn't everyone's falls on them while they have more than 1 hit point, else by a roll as before. The card names them under the choice ("Quill Petrov · 80% · 20%"), and the first tap says "Quill Petrov takes it."
+  - **A choice can need wrecks aboard** (`needs.wrecks`), for the repairs that are sold: "Nothing on the ship is wrecked."
+  - **A trap on the run** names the preset, rolled from the campaign's RNG as a hunt's is. Its approach says "A trap · Pirate cutter" over the event's own words. The event settles its node, and once the approach is put away, the event's card says "A trap: a Pirate cutter fired first."
+  - **A trap at a hulk** leaves the place held, its event spent, and the squad still there: board her, or fly home and leave her, as at any held place.
+  - **A wreck** lists each part it hit, and then the one the crew got going again ("Wrecked: the Reactor (open to vacuum). The crew gets the reactor going again."). **A repair** names, in the odds, the dearest wrecks it would mend.
+  - **The pools** (`src/sim/eventPool.js`): a sector's nodes and the places listed together draw from the kind's events not yet met, and not already drawn there. Only when every one has been met do they come again. `campaign.eventsMet` keeps up to 500.
+  - **Tuned after measuring** (PROGRESS.md has the numbers): the chandler sells stores, going dark in a solar flare and threading a minefield shed heat, and five new events pay a little more. The test player now spends credits at an event only beyond a holdful's price, as it already did at stations, but on supplies or a quest's step.
+  - **The voyage tests:**
+    - the run's events count over 100 seeds: on seeds 1 to 30 the tinker's barge never came up;
+    - the step-by-step check also walks the deserter's runs, where station repairs come up (none on the miner's seeds 1 to 30 since M36; one of 210 on main);
+    - a new test holds the repeats and the backgrounds' own events to the Done when.
+  - **The golden sectors** (`tests/golden/sectors.txt`) were regenerated on purpose: the same maps and kinds, with the events, the hostile ships' seeds and the names drawn anew from the new pools.
 - [ ] **M37 Weapons and enemies.** Six weapons against §5's 15, and 15 enemies against 15 to 20. The draft:
   - about nine weapons, each with its held look, its sound and its numbers;
   - a few enemies to carry them;

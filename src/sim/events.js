@@ -289,7 +289,8 @@ export function wreckable(ship, wrecks, rules) {
 // `count` of the ship's working parts a volley could hit, wrecked one at a
 // time by a roll, each with a wreck by a roll, as a volley wrecks them;
 // then the crew gets one reactor and one engine going. Returns { campaign,
-// wrecked [{ uid, type, wreck }] (those that stay wrecked), rigged [uid] }.
+// wrecked [{ uid, type, wreck }] (each part it hit), rigged [uid] (those
+// the crew got going again: a part it hit, or one wrecked before) }.
 function wreckParts(campaign, rules, count) {
   let { rng } = campaign;
   const wrecks = { ...wrecksOn(campaign.ship, campaign.wrecks) };
@@ -305,6 +306,6 @@ function wreckParts(campaign, rules, count) {
     fresh.push(module);
   }
   const kept = juryRig(campaign.ship, wrecks, rules);
-  const wrecked = fresh.filter((module) => module.uid in kept.wrecked).map((module) => ({ uid: module.uid, type: module.type, wreck: kept.wrecked[module.uid] }));
+  const wrecked = fresh.map((module) => ({ uid: module.uid, type: module.type, wreck: wrecks[module.uid] }));
   return { campaign: { ...campaign, rng, wrecks: kept.wrecked }, wrecked, rigged: kept.patched };
 }

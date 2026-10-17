@@ -110,7 +110,7 @@
         {
           "id": "cabins",
           "label": "Strip the cabins",
-          "outcomes": [{ "chance": 100, "text": "Blankets, tins and a jar of coins under a bunk. Nobody needs a reactor for that.", "effects": { "supplies": 5, "credits": 5 } }]
+          "outcomes": [{ "chance": 100, "text": "Blankets, tins and a jar of coins under a bunk. Nobody needs a reactor for that.", "effects": { "supplies": 5, "credits": 10 } }]
         },
         { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Stable is a relative term. You leave it be.", "effects": {} }] }
       ]
@@ -214,8 +214,8 @@
           "id": "take",
           "label": "Take the offerings",
           "outcomes": [
-            { "chance": 70, "text": "Coins, mostly, and a good wrench. Nobody's watching. Probably.", "effects": { "credits": 15 } },
-            { "chance": 30, "text": "Coins and a good wrench. Then a run of bad luck: the airlock bites everyone on the way out.", "effects": { "credits": 15, "wound": { "hp": 2, "all": true } } }
+            { "chance": 70, "text": "Coins, mostly, and a good wrench. Nobody's watching. Probably.", "effects": { "credits": 20 } },
+            { "chance": 30, "text": "Coins and a good wrench. Then a run of bad luck: the airlock bites everyone on the way out.", "effects": { "credits": 20, "wound": { "hp": 2, "all": true } } }
           ]
         },
         {
@@ -260,7 +260,7 @@
         {
           "id": "locker",
           "label": "Crack the locker",
-          "outcomes": [{ "chance": 100, "text": "Spares, the right sizes. The worst of your wrecks is working again before you cast off.", "effects": { "repair": 1, "credits": 5 } }]
+          "outcomes": [{ "chance": 100, "text": "Spares, the right sizes. The worst of your wrecks is working again before you cast off.", "effects": { "repair": 1, "credits": 10 } }]
         },
         {
           "id": "gun",
@@ -387,8 +387,8 @@
           "label": "Send your medic",
           "needs": { "job": "medic" },
           "outcomes": [
-            { "chance": 75, "text": "Your medic doses the lot of them. They pay what they can, and the kids wave from the viewport.", "effects": { "credits": 10, "heat": -3 } },
-            { "chance": 25, "text": "They pay, and your medic brings the fever home. A day in the bunk, maybe two.", "effects": { "credits": 10, "wound": { "hp": 3 } } }
+            { "chance": 75, "text": "Your medic doses the lot of them. They pay what they can, and the kids wave from the viewport.", "effects": { "credits": 20, "heat": -3 } },
+            { "chance": 25, "text": "They pay, and your medic brings the fever home. A day in the bunk, maybe two.", "effects": { "credits": 20, "wound": { "hp": 3 } } }
           ]
         },
         {
@@ -538,7 +538,7 @@
           "id": "guns",
           "label": "Answer, guns out",
           "needs": { "job": "marine" },
-          "outcomes": [{ "chance": 100, "text": "Your marine on the guns. Whoever set the flare thinks better of it, and leaves their flare gun behind.", "effects": { "credits": 10 } }]
+          "outcomes": [{ "chance": 100, "text": "Your marine on the guns. Whoever set the flare thinks better of it, and leaves their flare gun behind.", "effects": { "credits": 15 } }]
         },
         { "id": "fly", "label": "Keep flying", "outcomes": [{ "chance": 100, "text": "The flare burns out behind you.", "effects": {} }] }
       ]
@@ -685,7 +685,7 @@
       "id": "chandler",
       "kind": "trader",
       "title": "Ship's chandler",
-      "text": "A chandler's barge: spares, rope, paint and gossip, all sold by the kilo.",
+      "text": "A chandler's barge: spares, stores, rope and gossip, all sold by the kilo.",
       "choices": [
         {
           "id": "spares",
@@ -700,6 +700,12 @@
             { "chance": 50, "text": "You learn where the hunters were seen last, and where they weren't.", "effects": { "heat": -5 } },
             { "chance": 50, "text": "You learn some things. The chandler learns more. Your name, for one.", "effects": { "heat": 4 } }
           ]
+        },
+        {
+          "id": "stores",
+          "label": "Buy stores",
+          "needs": { "credits": 6 },
+          "outcomes": [{ "chance": 100, "text": "Tins, flour and coffee by the kilo, swung across in a net.", "effects": { "credits": -6, "supplies": 8 } }]
         },
         { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "The chandler waves with a rope in each hand.", "effects": {} }] }
       ]
@@ -867,7 +873,7 @@
           "id": "dark",
           "label": "Go dark and wait",
           "needs": { "supplies": 2 },
-          "outcomes": [{ "chance": 100, "text": "A day cold and dark, eating out of tins. The flare passes and nothing breaks.", "effects": { "supplies": -2 } }]
+          "outcomes": [{ "chance": 100, "text": "A day cold and dark, eating out of tins. The flare passes, nothing breaks, and nobody saw you in the glare.", "effects": { "supplies": -2, "heat": -6 } }]
         },
         {
           "id": "shield",
@@ -972,8 +978,8 @@
           "id": "thread",
           "label": "Thread through",
           "outcomes": [
-            { "chance": 60, "text": "Nothing goes off. Everyone breathes out at once.", "effects": {} },
-            { "chance": 40, "text": "One goes off. Not close, but close enough.", "effects": { "wreck": 1 } }
+            { "chance": 60, "text": "Nothing goes off. Everyone breathes out at once, and nobody follows you through.", "effects": { "heat": -5 } },
+            { "chance": 40, "text": "One goes off. Not close, but close enough. Nobody follows you through.", "effects": { "heat": -5, "wreck": 1 } }
           ]
         },
         {
