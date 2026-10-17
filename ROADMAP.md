@@ -1293,7 +1293,62 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
   - **The busts** (`src/render/portraits/bust.js`): the face (face.js) a fifth smaller on broad shoulders, in clothes and gear whose choices are its drawings (`WEARS`: coverall, dockcoat, surveyjacket, medcoat; `GEAR`: goggles, armband, headset, stethoscope), the side's color on a patch or the gear, and the rim light an SVG filter round the whole figure. Varga in a coverall and goggles, Brandt a dock coat and the union's armband, Osei a survey jacket and headset, Dez a medic's coat and stethoscope.
   - **The event card** sets the bust beside its scrolling words, out of their scroll, `clamp(64px, 26vh, 104px)`: 74 px on the cover screen's short shape, 96 at 905 × 370, 104 unfolded. On the short shape a first tap's odds and the result scroll the words, and the bust stays in sight.
   - **The tag line's words:** "Early build: from the hangar to the colony." Act 3's words ahead: "Three backgrounds are here, each with its own pursuer. Still to come in v0.4: sound."
-- [ ] M35 Audio pass with ZzFX. Draft: sounds made in code with ZzFX (approved for M35): shots and hits, the builder's placing, and the menus; a mute and a volume in the settings; audio starts after the first tap.
+- [ ] **M35 Audio pass with ZzFX.** The game is silent, and the settings have no switch for sound (M18 cut it until there was audio). The draft: sounds made in code with ZzFX (approved for M35): shots and hits, the builder's placing, and the menus; a mute and a volume in the settings; audio starts after the first tap.
+
+  Evan's picks (2026-10-17), from an audition page of three styles (soft, arcade and gritty), each with the same 14 moments, loudness-matched as a phone speaker plays them:
+  - **Where:** all of the draft, plus the campaign's moments: the fights, the builder and the menus; then the jumps, the raid and hunter alarms, the lift-off and the landing.
+  - **The style, a mix:**
+    - **gritty** for the fights and the campaign's moments: hiss, crunch and clank, cracks with a slap of echo, a klaxon for raids;
+    - **soft** for the menus and the builder, which play most often: rounded tones.
+  - **On at 70%,** for a new game and for a save from before.
+  - **One volume and a mute** in the settings.
+
+  **Done when:**
+  - **ZzFX in the repo:**
+    - version 1.3.2 by Frank Force (MIT), as published, in `src/platform/zzfx.js`, with its line in `assets/LICENSES.md`;
+    - loaded with the sounds on the first tap and never before: no AudioContext until then, and none while sound is off;
+    - precached, so sound works offline.
+  - **Sounds as data** (`data/sounds.json`):
+    - each sound is its ZzFX parameters by name, checked by the validator;
+    - each weapon names its shot's sound in `data/weapons.json`, checked too;
+    - a new sound, or a weapon's own, needs no engine edit.
+  - **Heard on the phone, never clipping:**
+    - each moment is as loud as on the audition page, measured through a phone speaker's low end (`tools/sounds.js` reports each sound's length, peak and loudness);
+    - every sound renders in Node: finite, under 2.5 s, and peaking under 0.9 at full volume.
+  - **The menus (soft):**
+    - a tap on any button;
+    - a confirm where something is spent or settled (buying, selling, hiring, taking a job, paying);
+    - a refusal on a button that can't be used now, and wherever the game says no;
+    - one sound per tap: the one that says most.
+  - **The builder (soft):** a part placed, turned, moved or taken off; a refusal where it can't go.
+  - **The fights (gritty):** in step with the playback, on the enemy's turn as on the crew's:
+    - each shot, as its weapon's sound;
+    - a hit or a miss as the shot lands;
+    - a unit going down or dying;
+    - an order, a door, a reload.
+  - **The campaign (gritty):**
+    - a jump;
+    - the alarm as a raid is due at the hangar, as the hunters are found waiting, and as a raid comes at the colony;
+    - the lift-off;
+    - the landing.
+  - **Settings:**
+    - Sound, on or off, and Volume, at 10, 30, 50, 70 or 100%, both saved;
+    - the next sound plays at the new volume;
+    - `SAVE_VERSION` 30, with a migration from 29: a save from before gets sound on at 70%.
+  - **The dev menu** plays each sound, to hear the whole set on the phone.
+  - **Every rule tested:**
+    - the settings and their migration;
+    - the sounds a change of state makes (the builder, the menus, the campaign);
+    - the fight's sounds from the playback;
+    - the validator's checks;
+    - every sound rendered.
+  - **Touch,** at the three sizes:
+    - no AudioContext before the first tap, and none with sound off;
+    - a tap's sound;
+    - the settings' rows;
+    - a fight's shots and the builder's place;
+    - offline after a reload;
+    - no console errors or warnings.
 
 ### Phase 7: Content and balance
 
