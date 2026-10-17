@@ -1597,7 +1597,7 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **The yard is the shop screen** (`shop.js`), in its own words (`yardText.js`), with Map as the way back. At a yard of the pursuer's side, the first tap says the heat the trade adds.
   - **A day's rest at a yard is out of the hunters' reach,** as the yard is safe. A yard has no Patch up, so Regroup stays.
   - **A quest's step never lands on a yard,** as it never lands on a station or a nebula.
-  - **The test player seldom affords a yard's part.** It reaches a yard in 87 of 100 voyages, with a median of 30 credits there, and buys in 9 (16 parts). The refit bar holds main's rate before M37b (59), as M37's two hold main's before M37: on seeds 1 to 100 the yards' new sectors left 50 runs with a refit, and on seeds 101 to 300 they matched main's (122 of 199 against 119).
+  - **The miner's test player seldom affords a yard's part.** It reaches a yard in 87 of 100 voyages, with a median of 30 credits there, and buys in 9 (16 parts). The deserter's buys in 37 (99 parts) and the smuggler's in 17 (38). The refit bar holds main's rate before M37b (59), as M37's two hold main's before M37: on seeds 1 to 100 the yards' new sectors left 50 runs with a refit, and on seeds 101 to 300 they matched main's (122 of 199 against 119).
 - [ ] **M38 Missions and jobs.** Three mission types (clear out, grab, hack) against §5's 8, and 29 jobs against 40 or more. The draft:
   - five mission types, each with its objective, its AI and its words: extract (carrying the crates out, §9), escort, defend, sabotage, rescue;
   - about a dozen new jobs across the three districts.
