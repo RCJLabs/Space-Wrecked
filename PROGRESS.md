@@ -59,14 +59,15 @@ Calls I made, each easy to change:
 - **The tag line and the note restyled** rather than the hangar darkened. The floodlights crossing behind the words gave the dim tag line 3.4 to 1, and the note over the lit hull 2.1 to 1.
 - **The words:** the tag line is now "Early build: from the hangar to the colony." Act 3's words ahead are now "Three backgrounds are here, each with its own pursuer. Still to come in v0.4: sound."
 
-**For Evan to confirm:**
-- **How "a scene adds under 2 ms a frame" reads.** Timed in Chromium on this machine:
-  - **Against what main drew behind the ship** (the space color, a full-screen haze and stars, which the scene takes the place of): the backdrop is cheaper at every size, by 2.1 to 8.2 ms a frame.
-  - **Against a bare frame:**
-    - **cover screen, both shapes:** a moving frame is under 2 ms at the 95th percentile;
-    - **unfolded:** 2.8 to 3.6 ms on average.
+**Evan's call, before the merge (2026-10-17): the first reading** ("Keep the first reading, merge when green"). The question was how "a scene adds under 2 ms a frame" reads. Timed in Chromium on this machine:
+- **Against what main drew behind the ship** (the space color, a full-screen haze and stars, which the scene takes the place of): the backdrop is cheaper at every size, by 2.1 to 8.2 ms a frame. This is the reading kept.
+- **Against a bare frame:**
+  - **cover screen, both shapes:** a moving frame is under 2 ms at the 95th percentile;
+  - **unfolded:** 2.8 to 3.6 ms on average.
 
-  This machine draws the canvas on the processor, where one full-screen copy alone costs 0.9 ms unfolded. On the phone Chrome draws it on the graphics chip, where scaling an image costs next to nothing. I expect that, but it is not measured: please watch for stutter in the lift-off unfolded. I've ticked it on the first reading. If you meant the second, the fix is a bigger change: the backdrop as layers the compositor moves, under a canvas of the ship's own.
+This machine draws the canvas on the processor, where one full-screen copy alone costs 0.9 ms unfolded. On the phone Chrome draws it on the graphics chip, where scaling an image costs next to nothing. I expect that, but it is not measured: please still watch for stutter in the lift-off unfolded. If it stutters, ROADMAP §9 has the fix: the backdrop as layers the compositor moves, under a canvas of the ship's own.
+
+**For Evan to watch on the phone:**
 - **The unsmoothed ground in motion.** At device pixels it looks the same here. On the ice plates' hard edges, two-pixel steps could show while it zooms.
 
 Done when (ROADMAP.md, M34, in full there), and how each is met:
