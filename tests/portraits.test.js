@@ -8,24 +8,10 @@ import { portraitSvg } from '../src/render/portraits/badge.js';
 import { FACE_SHAPES } from '../src/render/portraits/face.js';
 import { FACES, LOOK_KEYS, LOOK_LAYERS, stepLook } from '../src/sim/looks.js';
 import { rules } from './battleKit.js';
+import { idsOf, wellFormed } from './svgKit.js';
 
 const look = { face: 0, skin: 'sand', hair: 'crop', hairColor: 'darkBrown', eyes: 'brown', beard: 'none', mark: 'none' };
 const helmets = Object.entries(SUITS).flatMap(([suit, { helmet }]) => helmet.map((kind) => ({ suit, helmet: kind })));
-
-// Tags open and close in order, every url(#...) names an id in the drawing,
-// and nothing points outside it.
-function wellFormed(svg) {
-  const stack = [];
-  for (const [, close, name, rest] of svg.matchAll(/<(\/?)([a-zA-Z]+)([^>]*)>/g)) {
-    if (close) assert.equal(stack.pop(), name, `</${name}> closes what opened`);
-    else if (!rest.endsWith('/')) stack.push(name);
-  }
-  assert.deepEqual(stack, [], 'everything closed');
-  const ids = new Set([...svg.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
-  for (const [, ref] of svg.matchAll(/url\(#([^)]+)\)/g)) assert.ok(ids.has(ref), `#${ref} is defined`);
-  assert.ok(!/NaN|undefined|null|Infinity/.test(svg), 'no broken numbers');
-  assert.ok(!/https?:|href=/.test(svg), 'nothing from outside');
-}
 
 test('there are as many face shapes as looks have faces', () => {
   assert.equal(FACE_SHAPES.length, FACES);
@@ -36,7 +22,7 @@ test('every helmet a suit has draws a well-formed badge, close up and as a face,
     for (const crop of ['bust', 'face']) {
       const svg = portraitSvg(look, { suit, helmet, trim: '#5fd3e8', crop, id: 'a' });
       assert.match(svg, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 100 100">/);
-      wellFormed(svg.replace('http://www.w3.org/2000/svg', ''));
+      wellFormed(svg);
       assert.equal(portraitSvg(look, { suit, helmet, trim: '#5fd3e8', crop, id: 'a' }), svg, 'pure');
       assert.ok(svg.includes('#5fd3e8'), 'in their trim');
     }
@@ -56,7 +42,7 @@ test('every choice in every layer draws its own way, through glass that shows th
     let at = key === 'hairColor' ? { ...look, hair: 'long', beard: 'full' } : look;
     for (let i = 0; i < count; i++) {
       const svg = portraitSvg(at, { suit: 'eva', helmet: 'bubble', id: 'b' });
-      wellFormed(svg.replace('http://www.w3.org/2000/svg', ''));
+      wellFormed(svg);
       seen.add(svg);
       at = stepLook(at, key);
     }
@@ -67,6 +53,5 @@ test('every choice in every layer draws its own way, through glass that shows th
 test("ids are the drawing's own, so two drawings can share a page", () => {
   const a = portraitSvg(look, { id: 'x1' });
   const b = portraitSvg(look, { id: 'x2' });
-  const idsOf = (svg) => new Set([...svg.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
   for (const id of idsOf(a)) assert.ok(!idsOf(b).has(id), id);
 });

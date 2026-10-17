@@ -88,7 +88,7 @@ test("a new campaign starts in act 1 at the hangar, with its background's start"
     colony: null,
     fight: null,
   });
-  assert.deepEqual(actOf(campaign, rules), { act: 1, name: 'Homeworld', hub: 'hangar', home: 'The hangar', heals: true, liftOff: 1 });
+  assert.deepEqual(actOf(campaign, rules), { act: 1, name: 'Homeworld', hub: 'hangar', home: 'The hangar', heals: true, liftOff: 1, scene: 'homeworld' });
   assert.deepEqual(layoutProblems(campaign.ship, rules), [], 'the half-built ship breaks no layout rule');
   assert.deepEqual(campaignProblems(campaign), []);
   assert.deepEqual(newCampaign(rules, 77), campaign, 'the same seed, the same campaign');

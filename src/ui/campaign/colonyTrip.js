@@ -32,7 +32,7 @@ import { node } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { shortNames } from '../names.js';
-import { portraitImg, portraitUrl } from '../portrait.js';
+import { faceUrl, portraitImg } from '../portrait.js';
 import { awayText, legReport, placesText, planText, squadRows } from './tripText.js';
 
 export function createTrips(ctx) {
@@ -175,7 +175,7 @@ export function createTrips(ctx) {
       who.title = member.name;
       if (member.about) who.append(node('small', null, member.about));
       button.dataset.wounded = String(member.hp < member.max);
-      const face = portraitImg('crew-face', portraitUrl(member.face.look, member.face.job, member.face.trim, 'face'));
+      const face = portraitImg('crew-face', faceUrl(member.face, 'face'));
       button.append(box, face, who, node('span', 'hgr-num', `${member.hp}/${member.max}`));
       button.setAttribute('aria-label', `${member.name}, ${member.hp} of ${member.max} hit points: ${member.going ? 'going' : 'staying home'}`);
       ctx.keep(onTap(button, () => toggle(member.id)));

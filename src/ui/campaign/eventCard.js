@@ -4,8 +4,8 @@
 // second makes it; a choice that can't be paid says what it needs. Once a
 // choice is made, the card shows what happened, the roll against the odds
 // and what it came to, until Carry on. A companion a choice would sign on
-// (M33c) shows under the words with their face, name, side, job and past,
-// and stays there once they have.
+// (M33c) shows with their bust big beside the words (M34) and their name,
+// side, job and past under them, and stays there once they have.
 //
 //   card.show(event, result)   eventText's event, or else resultText's
 //                              result, or neither (the card hides)
@@ -14,7 +14,7 @@
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
-import { portraitImg, portraitUrl } from '../portrait.js';
+import { faceUrl, portraitImg } from '../portrait.js';
 
 const ARM_MS = 3000; // a choice waits this long for its second tap
 
@@ -26,12 +26,17 @@ export function createEventCard({ choose, close }) {
   const title = node('h2');
   const text = node('p', 'sct-event-text');
   const said = node('p', 'sct-event-said');
-  // Who a choice would sign on (M33c).
+  // Who a choice would sign on (M33c): their bust beside the event's words
+  // (M34), and who they are under them.
+  const bust = portraitImg('sct-event-bust', '');
+  bust.hidden = true;
+  const head = node('div', 'sct-event-head');
+  head.append(bust, where, title, text);
   const who = node('div', 'sct-event-who');
   who.hidden = true;
   // The words scroll if they must; the choices under them stay whole.
   const words = node('div', 'sct-event-words');
-  words.append(where, title, text, who, said);
+  words.append(head, who, said);
   const choices = node('div', 'sct-event-choices');
   el.append(words, choices);
   el.hidden = true;
@@ -106,21 +111,24 @@ export function createEventCard({ choose, close }) {
     words.scrollTop = words.scrollHeight;
   }
 
-  // A companion's face, name, what they are and their past, or nothing.
+  // A companion's bust, and their name, what they are and their past; or
+  // nothing.
   function showWho(companion) {
     who.hidden = !companion;
+    bust.hidden = !companion;
     const key = companion ? `${companion.id} ${companion.face.trim}` : null;
     if (key === whoShown) return;
     whoShown = key;
     if (!companion) {
       who.replaceChildren();
       who.removeAttribute('aria-label');
+      bust.removeAttribute('src');
       return;
     }
-    const { face } = companion;
+    bust.src = faceUrl(companion.face, 'bust');
     const named = node('span', 'hgr-name');
     named.append(node('span', null, companion.name), node('small', null, companion.about), node('small', 'crew-past', companion.past));
-    who.replaceChildren(portraitImg('crew-face', portraitUrl(face.look, face.job, face.trim, 'face')), named);
+    who.replaceChildren(named);
     who.setAttribute('role', 'group');
     who.setAttribute('aria-label', companion.line);
   }

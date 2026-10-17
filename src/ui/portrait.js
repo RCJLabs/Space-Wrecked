@@ -1,8 +1,10 @@
 // Crew portraits on the screens (M23c): a crew member's helmet badge
-// (render/portraits/badge.js) as an <img> whose source is its SVG as a
-// data URL, each drawing made once and kept. An image keeps the SVG's ids
-// to itself, so any number of portraits can share a page.
+// (render/portraits/badge.js), or a companion's bust (bust.js, M34), as an
+// <img> whose source is its SVG as a data URL, each drawing made once and
+// kept. An image keeps the SVG's ids to itself, so any number of portraits
+// can share a page.
 import { portraitSvg } from '../render/portraits/badge.js';
+import { bustSvg } from '../render/portraits/bust.js';
 import { icons } from './icons.js';
 
 // Drawings kept, oldest first; stepping through looks at captain creation
@@ -13,12 +15,24 @@ const KEEP = 120;
 // The data URL of `look` in a job's helmet (its look in data/jobs.json:
 // { suit, helmet }) in `trim`, at a crop ('bust' or 'face').
 export function portraitUrl(look, jobLook, trim, crop = 'bust') {
-  const key = JSON.stringify([look, jobLook?.suit, jobLook?.helmet, trim, crop]);
+  return keep(JSON.stringify([look, jobLook?.suit, jobLook?.helmet, trim, crop]), () => portraitSvg(look, { suit: jobLook?.suit, helmet: jobLook?.helmet, trim, crop }));
+}
+
+// The data URL of a crew member's face as the campaign's screens show it
+// (crewText.js faceOf: { look, job, trim, bust, mark }): a companion's bust,
+// anyone else's helmet badge. The fight's buttons keep the badge for all.
+export function faceUrl(face, crop = 'bust') {
+  if (!face.bust) return portraitUrl(face.look, face.job, face.trim, crop);
+  return keep(JSON.stringify([face.look, face.bust, face.trim, face.mark, crop]), () => bustSvg(face.look, face.bust, { trim: face.trim, mark: face.mark, crop }));
+}
+
+// A drawing's data URL, kept by `key`: made by draw() the first time.
+function keep(key, draw) {
   let url = kept.get(key);
   if (url) {
     kept.delete(key);
   } else {
-    url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(portraitSvg(look, { suit: jobLook?.suit, helmet: jobLook?.helmet, trim, crop }))}`;
+    url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(draw())}`;
     if (kept.size >= KEEP) kept.delete(kept.keys().next().value);
   }
   kept.set(key, url);

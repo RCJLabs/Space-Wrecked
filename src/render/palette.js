@@ -346,6 +346,29 @@ export const portraitColors = {
   glare: '#ffffff',
 };
 
+// A companion's bust (M34, portraits/bust.js): the painted ground behind
+// them, its warm key light and cool rim, and each kind of clothes and gear
+// (data/companions.json bust). Their side's patch is in sideColors.
+export const bustColors = {
+  ground: '#0f1830',
+  groundHi: '#22355c',
+  groundLo: '#050914',
+  warm: sceneColors.warm,
+  cool: sceneColors.cool,
+  coverall: { cloth: '#34465f', light: '#556b8e', dark: '#19222f', seam: '#121a26', tape: '#c9c2ad' },
+  dockcoat: { cloth: '#5b4331', light: '#83634a', dark: '#2a1d14', seam: '#21170f', knit: '#3a4140', knitLine: '#262c2b' },
+  surveyjacket: { cloth: '#2d323f', light: '#4b5468', dark: '#13161d', seam: '#0d0f14' },
+  medcoat: { cloth: '#c9d1db', light: '#f1f4f7', dark: '#7f8b9c', seam: '#66727f', scrubs: '#2f6166', scrubsDark: '#1b3b3f' },
+  strap: '#2a1f18',
+  brass: '#c79a4a',
+  brassDark: '#6f5022',
+  lens: '#0e1c2a',
+  band: '#20252f',
+  bandLight: '#566073',
+  tube: '#242932',
+  tubeLight: '#6a7383',
+};
+
 export function applyCssVars(root = document.documentElement) {
   for (const [name, value] of Object.entries(palette)) {
     root.style.setProperty(`--c-${name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`, value);

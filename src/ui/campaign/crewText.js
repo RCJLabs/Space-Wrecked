@@ -14,7 +14,7 @@ import { healRate } from '../../sim/medbay.js';
 import { rankOf } from '../../sim/ranks.js';
 import { dismissPlan, hirePlan, recruitOffer } from '../../sim/recruits.js';
 import { hereOf, onTheRun, supplyCapacity } from '../../sim/travel.js';
-import { companionAbout, loyaltyLine } from './companionText.js';
+import { bustOf, companionAbout, loyaltyLine } from './companionText.js';
 import { jobBrief, memberBrief, rankLine, shownRank } from './crewJobText.js';
 import { dockSaid } from './standingText.js';
 
@@ -125,9 +125,10 @@ export function squadText(campaign, rules, picked = null) {
 
 // What a portrait (src/ui/portrait.js) is drawn from: { look, job, trim }:
 // the crew member's look, their job's helmet and suit (data/jobs.json), and
-// the trim of the place they hold in the crew.
+// the trim of the place they hold in the crew; a companion's with their
+// bust and side's color (M34, companionText.js bustOf).
 export function faceOf(member, rules, index) {
-  return { look: member.look, job: rules.jobs.get(member.job)?.look ?? null, trim: crewColor(index) };
+  return { look: member.look, job: rules.jobs.get(member.job)?.look ?? null, trim: crewColor(index), ...bustOf(member.companion ? companionOf(rules, member.companion) : null, rules) };
 }
 
 // What the med bay does for the crew, as a line.

@@ -713,14 +713,29 @@ textarea {
   color: var(--c-good);
 }
 
-/* A companion a choice would sign on (M33c, eventCard.js): their face, and
-   their name, side and job, and past beside it, the past whole. */
+/* A companion a choice would sign on (M33c, eventCard.js): their bust big
+   beside the event's words (M34), the words running round it, and under
+   them their name, side and job, and past, the past whole. */
+.sct-event-head {
+  flex: none;
+  display: flow-root;
+}
+
+.sct-event-head h2,
+.sct-event-head .sct-event-text {
+  margin-top: 5px;
+}
+
+.sct-event-bust {
+  float: right;
+  width: clamp(64px, 26vh, 104px);
+  height: clamp(64px, 26vh, 104px);
+  margin: 0 0 4px 10px;
+  border-radius: 10px;
+}
+
 .sct-event-who {
   flex: none;
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  align-items: start;
-  gap: 8px;
   padding: 5px 0;
   border-top: 1px solid var(--c-line);
   border-bottom: 1px solid var(--c-line);
@@ -730,6 +745,10 @@ textarea {
 
 .sct-event-who[hidden] {
   display: none;
+}
+
+.sct-event-who .hgr-name {
+  display: block;
 }
 
 .sct-event-who .hgr-name small.crew-past {
@@ -791,6 +810,11 @@ textarea {
 
   .sct-event-words {
     gap: 3px;
+  }
+
+  .sct-event-head h2,
+  .sct-event-head .sct-event-text {
+    margin-top: 3px;
   }
 
   .sct-event-where {

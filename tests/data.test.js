@@ -416,6 +416,10 @@ const cases = [
   ['a companion with one trait', (d) => (companion(d, 'osei').traits = ['quick']), /companions\.json companion osei: traits must be 2 different traits/],
   ['a companion with a face no portrait draws', (d) => (companion(d, 'osei').look.hair = 'wig'), /companions\.json companion osei: look must be a face's every layer/],
   ['a companion with no past', (d) => delete companion(d, 'halloran').past, /companions\.json companion halloran: past must be a non-empty string/],
+  // Their busts (M34).
+  ['a companion in clothes the bust does not draw', (d) => (companion(d, 'varga').bust.wear = 'tuxedo'), /companions\.json companion varga bust: wear must be one the bust draws: coverall, dockcoat, surveyjacket, medcoat/],
+  ['a companion with gear the bust does not draw', (d) => (companion(d, 'osei').bust.gear = 'jetpack'), /companions\.json companion osei bust: gear must be one the bust draws: goggles, armband, headset, stethoscope/],
+  ['a misspelled bust field', (d) => (companion(d, 'brandt').bust.hat = 'cap'), /companions\.json companion brandt bust: unknown field "hat"/],
   ["a companion on another side's chain", (d) => (companion(d, 'varga').chain = 'foodrun'), /companions\.json companion varga: chain: "foodrun" must be a side's chain of fleet/],
   ["a companion signed on by a choice that doesn't do the step", (d) => (quest(d, 'tender').steps[0].done = ['tag']), /companions\.json companion varga: chain: "storespod"'s choice "tagjoin" signs them on, so it must do the step/],
   ['a choice signing a companion on with no berth', (d) => delete event(d, 'storespod').choices[1].needs, /event storespod choice tagjoin outcome 1 effects: signs a companion on, so the choice must need a berth/],
