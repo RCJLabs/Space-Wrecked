@@ -7,13 +7,14 @@
 // draw on. A system's worlds are of different kinds and names, so there are
 // at least as many of each as a system has worlds. The worlds stand on the
 // "world" kind of node (sectors.json).
+import { SCENES } from '../src/render/scenes/scenes.js';
 import { LANES, MAX_RATING, RATINGS } from '../src/sim/gen/system.js';
 import { MAX_PLACE_NAME as MAX_NAME } from '../src/sim/runShape.js';
 import { isIntIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 
 const FILE_KEYS = ['system', 'lanes', 'kinds', 'names'];
 const SYSTEM_KEYS = ['worlds', 'text'];
-const KIND_KEYS = ['id', 'name', 'weight', ...RATINGS, 'text', 'landing'];
+const KIND_KEYS = ['id', 'name', 'weight', ...RATINGS, 'text', 'landing', 'scene'];
 const NAME_LISTS = ['systems', 'worlds'];
 const MAX_WORLDS = 5;
 const MAX_TEXT = 200;
@@ -43,6 +44,9 @@ export function checkWorlds(file, sectors, fail) {
     if (!isText(kind.name) || kind.name.length > MAX_NAME) fail(at, `name must be a non-empty string of up to ${MAX_NAME} letters`);
     for (const key of ['text', 'landing']) if (!isText(kind[key]) || kind[key].length > MAX_TEXT) fail(at, `${key} must be a non-empty string of up to ${MAX_TEXT} letters`);
     if (!isIntIn(kind.weight, 1, 100)) fail(at, 'weight must be a whole number from 1 to 100');
+    // Its scene at the landing (M34), drawn in code: a kind without one
+    // takes barren rock's.
+    if (kind.scene !== undefined && !SCENES.includes(kind.scene)) fail(at, `scene must be one drawn: ${SCENES.join(', ')}`);
     for (const rating of RATINGS) if (!isRange(kind[rating], 0, MAX_RATING)) fail(at, `${rating} must be [least, most], from 0 to ${MAX_RATING}`);
   });
   const worlds = Number.isInteger(system.worlds) ? system.worlds : 0;

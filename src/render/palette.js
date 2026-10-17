@@ -148,6 +148,30 @@ export function groundFor(kind) {
   return grounds[kind] ?? grounds.rock;
 }
 
+// Scenes (M34, src/render/scenes/): the painted backdrops. Every scene is
+// lit the same way, a warm sun from the upper right and a cool bounce from
+// the lower left, darkening to `shade` at its edges. Each has its own
+// colors: the ground seen from above at the lift-off and the landing, which
+// starts from the colony's land for its kind (grounds above), and the world
+// seen whole; the hangar behind the title.
+export const sceneColors = {
+  warm: '#ffb347',
+  warmCore: '#fff1b8',
+  cool: '#8cd7ff',
+  shade: '#04060c',
+  speck: '#f4f1ea',
+  cloud: '#eef3fb',
+  air: '#8cd7ff',
+  night: '#0a0d18',
+  homeworld: { ground: '#34302d', light: '#5a534c', dark: '#191716', dust: '#6e655c', road: '#4f4841', roadLine: '#8a7d6c', pit: '#100e0d', terrace: '#433d38', pad: '#3f444c', padRing: '#596070', hazard: '#e3b341', roof: '#22262e', roofLine: '#3b4250', lamp: '#ffd36b', planet: '#4a4440', planetDark: '#26221f', planetLight: '#8c8178' },
+  rock: { ground: grounds.rock.land, light: '#544d47', dark: '#171514', dust: '#625a53', pit: '#0f0e0d', planet: '#5a524b', planetDark: '#2a2622', planetLight: '#9a8f84' },
+  desert: { ground: grounds.desert.land, light: '#c08a52', mid: '#7d5a34', dark: '#2a1f14', rock: '#5a3d28', rockTop: '#9c7149', salt: '#d9ceb4', saltLine: '#a8987a', planet: '#a9743f', planetDark: '#4d331c', planetLight: '#e2b77a' },
+  ice: { ground: grounds.ice.land, light: '#d5e6f2', mid: '#8eaec6', dark: '#1d2a36', crack: '#7fe0ff', lead: '#0b1a26', planet: '#a9c4d8', planetDark: '#3c5468', planetLight: '#eef6fb' },
+  jungle: { ground: grounds.jungle.land, leaves: ['#1f4a24', '#285a2b', '#163a1b', '#33682f'], light: '#7cbd63', dark: '#0a160b', river: '#163a44', glint: '#4fa3ae', mist: '#d8e8e0', scorch: '#1b130e', ember: '#ff7a2f', planet: '#2e6b3a', planetDark: '#0f2d2a', planetLight: '#7cbd63', sea: '#16485e' },
+  ocean: { ground: grounds.ocean.land, light: '#2b6f8c', dark: '#061524', deep: '#0b2640', sea: '#134468', shallow: '#2f8f98', foam: '#d8f2f5', sand: '#c9b48a', land: '#3b5a37', landDark: '#273f25', planet: '#1d5f8f', planetDark: '#0a223a', planetLight: '#5fb3d6' },
+  hangar: { wall: '#18202f', wallLight: '#2b3650', girder: '#0e131c', girderLight: '#3a4762', floor: '#1f2633', floorLine: '#2f394c', hazard: '#e3b341', hull: '#262e40', hullLight: '#46536f', blueprint: '#8cd7ff', lamp: '#ffd36b', ridge: '#0a0d15', town: '#ffb347' },
+};
+
 // The colony's own buildings (M27, colonyBuilds.js): a farm's soil, crops
 // and water tank; a mine's gravel, pit, timbers, steel and ore, and the
 // lamp on its headframe; and the shed anything else is.

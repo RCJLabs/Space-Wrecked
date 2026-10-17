@@ -159,6 +159,8 @@ const cases = [
   ['an easy setting that makes enemies better', (d) => (d.balance.easyEnemyAim = 10), /easyEnemyAim must be a whole number from -50 to 0/],
   ['act with no words for what is to come', (d) => (d.campaign.acts[2].ahead = ''), /act #3: ahead must be a non-empty string/],
   ['act with its old stub words', (d) => (d.campaign.acts[2].stub = 'Coming soon.'), /act #3: unknown field "stub"/],
+  ['an act lifting off from a scene not drawn', (d) => (d.campaign.acts[0].scene = 'moon'), /act #1: scene must be one drawn: homeworld, rock, desert, ice, jungle, ocean/],
+  ['a world landing on a scene not drawn', (d) => (d.worlds.kinds[0].scene = 'swamp'), /kind ocean: scene must be one drawn: /],
   ['background with no words for lifting off', (d) => delete d.backgrounds.backgrounds[0].launch, /miner launch: must be \{ text, escaped \}/],
   ['launch with nothing for an empty hangar', (d) => (d.backgrounds.backgrounds[0].launch.escaped = ''), /launch: text and escaped must be non-empty strings/],
   ['misspelled launch field', (d) => (d.backgrounds.backgrounds[0].launch.escape = 'Gone.'), /launch: unknown field "escape"/],

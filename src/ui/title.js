@@ -1,4 +1,5 @@
-// The title screen: the title over a seeded starfield, with Continue for a
+// The title screen: the title over the hangar (render/scenes/hangar.js,
+// M34), its bay door open on a seeded starfield, with Continue for a
 // campaign under way, New game and Settings (settings.js). New game opens
 // the backgrounds (campaign/background.js), then the captain's screen, over
 // a campaign only after a second tap, since starting one can't be undone.
@@ -7,6 +8,8 @@
 import { config } from '../config.js';
 import { seedFrom } from '../core/rng.js';
 import { loadContent } from '../platform/content.js';
+import { paintCover } from '../render/scenes/paint.js';
+import { titlePicture } from '../render/scenes/scenes.js';
 import { drawStars, makeStarfield, paintBackdrop } from '../render/starfield.js';
 import { continueText } from './campaign/hubText.js';
 import { newGameDraft } from './campaign/newGame.js';
@@ -25,7 +28,7 @@ export const titleScreen = {
     heading.textContent = config.title;
     const tag = document.createElement('p');
     tag.className = 'tag';
-    tag.textContent = 'Early build: act 1, the hangar and its jobs.';
+    tag.textContent = 'Early build: from the hangar to the colony.';
     const actions = document.createElement('div');
     actions.className = 'title-actions';
     const continueButton = button('btn title-continue');
@@ -90,15 +93,19 @@ export const titleScreen = {
       game.dispatch({ type: 'screen/show', screen: 'background' });
     }
 
-    let backdrop = null;
+    let backdrop = null; // the sky
+    let hangar = null; // the hangar over it, the door's sky cut out
     return {
       resize(view) {
         backdrop = paintBackdrop(field, view);
+        hangar = paintCover(titlePicture(), view.width, view.height, view.dpr);
       },
       draw(ctx, view, timeMs) {
         backdrop ??= paintBackdrop(field, view);
+        hangar ??= paintCover(titlePicture(), view.width, view.height, view.dpr);
         ctx.drawImage(backdrop, 0, 0, view.width, view.height);
         drawStars(ctx, field, view, motionReduced(game.getState().settings) ? 0 : timeMs);
+        ctx.drawImage(hangar, 0, 0, view.width, view.height);
       },
       unmount() {
         alive = false;

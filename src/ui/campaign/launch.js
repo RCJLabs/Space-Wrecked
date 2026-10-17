@@ -1,22 +1,24 @@
 // The launch: the end of act 1 (src/sim/launch.js). The ship's engines
 // light, it climbs off the pad and flies away (render/liftOff.js), while
 // the background's words come up, then the pursuer's if a raid was at the
-// door. Skip goes to the end; at the end, Continue goes on to where the
+// door. Behind it the homeworld's ground falls away, then the grey rock is
+// seen whole (backdrop.js, M34). Skip goes to the end; at the end, Continue goes on to where the
 // campaign is now: act 2's sector map (sector.js). The campaign was saved
 // as it launched, so quitting part way reopens there too. With reduced
 // motion (the motion setting, ../motion.js) nothing moves: the ship stands
-// with its engines lit, and the words are all there.
+// on the pad with its engines lit, and the words are all there.
 import { loadContent } from '../../platform/content.js';
 import { traceHull } from '../../render/hull.js';
 import { CLIMB, END, flameGlows, IGNITE, liftOffAt, liftOffCamera, liftOffScene } from '../../render/liftOff.js';
 import { fitOrbit } from '../../render/orbit.js';
 import { paintSolid } from '../../render/painter.js';
 import { palette, skinFor } from '../../render/palette.js';
-import { BOARD_VIEW, boardBox, drawSpace } from '../../render/shipView.js';
+import { BOARD_VIEW, boardBox } from '../../render/shipView.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { motionReduced } from '../motion.js';
+import { createBackdrop } from './backdrop.js';
 import { launchText } from './launchText.js';
 
 const MARGIN = 10; // pixels around the ship at rest
@@ -47,6 +49,7 @@ export const launchScreen = {
     const still = motionReduced(game.getState().settings);
     let alive = true;
     let scene = null; // the ship lifting off (liftOff.js)
+    let backdrop = null; // the ground below it and its world (backdrop.js)
     let box = null;
     let stage = null; // the ship's place on screen
     let base = null; // the camera on the ship at rest in the middle of it
@@ -82,6 +85,8 @@ export const launchScreen = {
           return;
         }
         const hull = traceHull(ship, defs);
+        // The ground it lifts off from: the act it leaves names its scene.
+        backdrop = createBackdrop(defs.acts.get(campaign.act - 1)?.scene);
         scene = liftOffScene({ ship, defs, hull, skin: skinFor('yard') });
         box = boardBox(frame, hull, NO_MIN);
         layout();
@@ -132,20 +137,20 @@ export const launchScreen = {
       draw(ctx, view, timeMs) {
         if (over && !dirty) return;
         dirty = false;
-        const all = { x: 0, y: 0, w: view.width, h: view.height };
         if (!scene || !base) {
           ctx.fillStyle = palette.space;
           ctx.fillRect(0, 0, view.width, view.height);
           dirty = true;
           return;
         }
+        // The sequence starts once its backdrop is painted.
         if (start === null || skip) {
-          start = timeMs - (skip ? END * 1000 : 0);
+          start = timeMs + backdrop.ready(view) - (skip ? END * 1000 : 0);
           skip = false;
         }
-        const t = (timeMs - start) / 1000;
+        const t = Math.max(0, (timeMs - start) / 1000);
         const moment = still ? STILL : liftOffAt(over ? END : t);
-        drawSpace(ctx, all, scene.skin.space);
+        backdrop.draw(ctx, view, moment, [stage.x + stage.w / 2, stage.y + stage.h / 2]);
         if (!moment.gone) {
           const cam = still ? base : liftOffCamera(base, stage, box, moment, t);
           paintSolid(ctx, scene.faces, [...scene.glows, ...flameGlows(scene, moment, t)], cam);
