@@ -67,10 +67,14 @@ Done when (ROADMAP.md, M35, in full there), and how each is met:
   - a fight by touch: its weapon's sound, then hit or miss, and every order's sounds as its events say (25 sounds, 3 of them enemy shots);
   - the lift-off's roar, the landing's (not before the ship starts down), the alarm as heat brings a raid due, the dev menu's 19 sounds;
   - offline after a reload, ZzFX from the cache; saves at v30; no console errors or warnings.
-- Every earlier milestone's browser check, again at the three sizes: running (M34's and M33c's pass so far).
+- **Every earlier milestone's browser check** passes, one after another at the three sizes (`m35/regress.sh`), M34's to M8's. Three things to know:
+  - **The copies that read a save's version** (M34's, and M31's to M27's) are adapted for M35: saves are v30.
+  - **M18's copy is adapted for M35:** the settings' two new rows make the list scroll unfolded, where it fitted before. Unfolded it is one column, with no space beside it to swipe from, so a swipe from a button is checked there alone: it scrolls the list and changes nothing.
+  - **M32b's first copy** still looks for Suppress · 2 and Sedate · 2, as it has since M33; its fix's copy passes in its place.
 
 **Known issues:**
 - **The first tap is silent.** It starts the audio, which loads as the tap lands; every sound after it plays.
+- **Unfolded, the settings list now scrolls:** with Sound and Volume on top, Show tips again and the save's code sit below the fold at 960 × 825. A swipe brings them up.
 - **The credits screen** that lists `assets/LICENSES.md` comes with the release (Phase 8). ZzFX's own notice is at the top of its file.
 - **The approach screen's two volleys** sound as one round: the guns, then the crew's hit or miss, not each gun.
 
