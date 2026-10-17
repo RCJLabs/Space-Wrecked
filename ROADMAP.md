@@ -1550,6 +1550,46 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **The voyage tests' two bars,** fed with a cargo hold and with bunks, hold main's rates before M37 (81 and 75; Evan's call, 2026-10-17). On seeds 1 to 100 M37's voyages came to 74 and 68, under the old bars; on seeds 101 to 200 they matched main's.
   - **A station's rack sits in its left panel,** under the transponder swap, not in the foot. Beside Buy, Fill up, Repair and Patch up, its buttons left the hint no room and ran off the tab-size screen, as the transponder swap's had before M24 moved it.
   - **A weapon's numbers show beside the button tapped:** under the crew card's swaps, or under the rack's button. The hint says only what the second tap does. With the numbers and rules in it, it ran past its three lines at the tab size and lost "Tap again to buy."
+- [ ] **M37b Shipyards.** Evan played the run and found few parts, about 2 in all.
+  - **Where parts come from today:**
+    - **act 1:** the dealer's 4 a job board, and the jobs' drops;
+    - **the run:** events (a choice that can give one in 9 of the 18 derelicts, 3 of the 15 traders, 2 of the 20 distress calls and 1 of the 11 hazards) and boarding wins (1 part stripped off her);
+    - **the colony:** its places, its trips and the buildings taken down.
+
+    Stations sell none.
+  - **Measured, 100 voyages from each start:** a median of 1 to 2 parts found a run, at events; 0.1 to 0.2 salvaged on average; about 1 fitted.
+  - **Money is the real limit:** the median part costs 120 credits (85 to 170 between the quartiles; engines and reactors 130 to 505), and a player at a station holds a median of 58 to 108.
+
+  Evan's picks (2026-10-17):
+  - **A shipyard in every sector:** a new kind of station, beside the two stations.
+  - **12 parts, every maker:** rolled once a yard, leaning to its side's makers, the same on every visit.
+  - **Yard prices and trade-ins:** 60% of the dealer's price, and the yard buys parts back at half their cost.
+  - **No more finds elsewhere:** events and boarding salvage stay as they are.
+
+  **Done when:**
+  - **A shipyard in every sector of the run** (`shipyard` in `data/sectors.json`), charted and safe as stations are, in a column of its own. Each has a name from a list of its own, and a side or none (`stations` in `data/factions.json`).
+  - **Its stock:** 12 different parts (`yardSize` in `data/balance.json`) from every maker, rolled once for the yard from the campaign's seed, the sector and the node, the same on every visit. One bought is gone.
+    - **A yard leans to its side's makers** (`yard` on each side in `data/factions.json`): the Fleet's to Bastion, the Hallorans' to Kestrel, Con-Reg's to the Yard's own and the union's to Scrapline.
+    - **Nobody's yard** rolls evenly.
+  - **Yard prices:** 60% of the dealer's (`yardPercent`), at the side's share of it (M33).
+  - **Trade-ins:** the yard buys any part on hand at the dealer's price, half its cost, never above what the yard would charge for that part. A part taken off the ship in a refit goes on hand, to sell.
+  - **A refit at a yard,** as at a station.
+  - **Trading docks the ship,** with the docking heat at the pursuer's side's yards as at its stations.
+  - **On screen:**
+    - the yard on the chart, with its mark;
+    - a Yard button at the yard, opening the shop screen with its 12 parts and the parts on hand, two taps to buy or sell;
+    - Refit on the ship's panel.
+  - **The test players** buy parts at a yard that their refit would fit, beyond a holdful's price and a transponder swap's, and refit there.
+  - **`SAVE_VERSION` 33:** the parts bought at each yard. A save from before reads with none bought; its sectors from the next on have yards.
+  - **Measured over 100 voyages from each start:**
+    - parts bought and fitted a run;
+    - every voyage-test rate within its margin of `MAIN`.
+  - **Every rule tested:** the stock, prices with standing, the buy-back's cap, refits at a yard, docking heat, the migration, the validator's checks. The golden sectors change, on purpose.
+  - **Touch,** at the three sizes:
+    - the yard on the chart;
+    - a part bought and one sold;
+    - a refit there;
+    - offline, every button 48 px or more, no console errors.
 - [ ] **M38 Missions and jobs.** Three mission types (clear out, grab, hack) against §5's 8, and 29 jobs against 40 or more. The draft:
   - five mission types, each with its objective, its AI and its words: extract (carrying the crates out, §9), escort, defend, sabotage, rescue;
   - about a dozen new jobs across the three districts.
