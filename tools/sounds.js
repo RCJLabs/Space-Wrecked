@@ -81,7 +81,7 @@ async function main() {
     const fix = volume === null ? '' : `  off: volume ${volume} would meet it`;
     console.log(`${id.padEnd(10)} ${String(ms).padStart(4)} ms  ${peak.toFixed(2)}  ${loudness.toFixed(1).padStart(6)} dB  ${String(target).padStart(4)} dB${fix}`);
   }
-  console.log(`loudest peak: ${Math.max(...rows.map((r) => r.peak)).toFixed(2)} (1 clips)`);
+  console.log(`loudest peak: ${Math.max(...rows.map((r) => r.peak)).toFixed(2)}, where a peak of 1 clips`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) await main();

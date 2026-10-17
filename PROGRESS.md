@@ -2,6 +2,88 @@
 
 Newest entry first.
 
+## M35 Audio pass with ZzFX (2026-10-17)
+
+**Status:** done, and the ROADMAP.md box is ticked. M35 was Phase 6's last milestone: Gate 6 is drafted in ROADMAP.md and is Evan's call.
+- **The game has sound,** made in code with ZzFX from parameters in `data/sounds.json`; there are no sound files.
+- **Gritty** for the fights and the campaign's moments; **soft** for the menus and the builder.
+- **Settings:** Sound (on or off) and Volume (10 to 100%), on at 70% for a new game and for a save from before.
+- **Saves are v30.**
+
+**How it was picked:** an audition page of three styles (soft, arcade and gritty), each with the same 14 moments, loudness-matched as a phone speaker plays them. Then Evan's answers (2026-10-17), each the recommended option:
+- **Where:** all four groups: the fights, the builder, the menus, and the campaign's moments (jumps, the raid and hunter alarms, the lift-off, the landing).
+- **The style:** "Mix: Gritty + Soft". Gritty for the fights and the campaign, soft for the menus and the builder, which play most often.
+- **The default:** on at 70%.
+- **The controls:** one volume and a mute.
+
+**What shipped:**
+- **ZzFX 1.3.2** (MIT, Frank Force) in `src/platform/zzfx.js`, unchanged, with its line in `assets/LICENSES.md`.
+  - It is loaded with the sounds on the first tap: no AudioContext before it, and none at all while sound is off.
+  - It is precached, so sound works offline.
+- **The sounds** (`data/sounds.json`, 19 of them): each is ZzFX's parameters by name, what it is for, and how loud it is meant to be.
+  - The audition's 14 in the picked styles, and five more in the gritty style: the dart gun's shot, a door, a reload, the lift-off's roar and the landing's.
+  - Each weapon names its shot's sound (`data/weapons.json`): the rifles, carbine and pistol `shot`, the shotgun `shotgun`, the dart gun `dart`.
+  - The validator checks every parameter's range, that a sound lasts at most 2.5 s, that no slide takes the pitch through zero, that every moment the game plays has its sound, and every weapon's sound.
+- **`tools/sounds.js`** renders each sound with the game's own ZzFX and reports its length, its peak at full volume, and its loudness through a phone speaker's low end (a 450 Hz high-pass), against what it is meant to be.
+- **The audio** (`src/platform/audio.js`): each sound is built once and played through a gain at the player's volume. 100% is the sound as measured, its peak at most 0.73.
+- **Which moment plays which** (`src/ui/sounds.js`, pure):
+  - **menus:** a tap on any button; a refusal on a button that is off; a confirm where something is spent or settled (buying, selling, hiring, taking a job, paying, an event's choice, the next day);
+  - **builder:** a part placed, moved, turned or taken off; a refusal where it can't go; the look's paint, trim and style confirm;
+  - **fights:** each shot as its weapon's sound, then a hit or a miss as it lands, a unit down or dead, an order, a door, a reload, in step with the playback, the enemy's turn as the crew's; a refusal where a tap did nothing;
+  - **campaign:** a jump (and a trip out, on or home); the alarm as a raid comes due at the hangar, the hunters are found waiting, or a raid is coming at the colony; the lift-off's and the landing's roars; an approach's round, the ships' guns and whether the crew's volley hit.
+  - **One tap, one sound:** what one tap cues plays one after another, its own tap giving way to any other.
+- **Settings:** Sound and Volume are the first rows. `SAVE_VERSION` 30, with a migration from 29: sound on at 70%.
+- **The dev menu:** a Sounds section plays each sound; the status line says how sound stands and what played last.
+
+Calls I made, each easy to change:
+- **The five sounds the audition didn't have** (dart, door, reload, lift-off, landing), designed in the gritty style and loudness-matched. Hear them in the dev menu.
+- **The approach's rounds sound** (the ships' guns, then hit or miss) although the list named only the fights' playback: they are ship fights.
+- **Volume as five steps** (10, 30, 50, 70, 100%), the settings' way, rather than a slider.
+- **The landing's roar starts 2.3 s in,** as the ship starts down, so its 2.5 s die away with the engines. With reduced motion, the lift-off and the landing each still roar once.
+- **Act 3's words ahead,** as at M29's close: "All of v0.4 is here, sound included. Still to come in v1.0: balance, a tutorial, and the release on Google Play." That is §6's v1.0, before Phase 7 is drafted.
+
+**For Evan to hear on the phone, as found while measuring:**
+- **The gritty shot's and shotgun's tails ring.** A ZzFX echo runs back through the sound's filter, whose peak (Q 2) lets it build: their tails are about 8 dB stronger than without the filter. They are as you auditioned them. If they ring too long on the phone, either can drop its filter or its echo; the five new sounds already use one or the other.
+- **I couldn't hear any of this.** Every sound was measured (length, peak, loudness through a phone's low end, spectrograms by eye) and checked in Chromium, but whether they sound good is untested until you play them.
+
+Done when (ROADMAP.md, M35, in full there), and how each is met:
+- **ZzFX in the repo:** byte for byte the published file but for its line endings, which the repo keeps as LF; its LICENSES.md line; loaded on the first tap (by touch, below); precached (`sw.js` lists it; offline by touch).
+- **Sounds as data:** `data/sounds.json`, `data/weapons.json`'s `sound`; `tools/validate-sounds.js`; eleven new cases in `tests/sound.test.js`.
+- **Heard on the phone, never clipping:** `tests/sound.test.js` renders every sound in Node: finite, under 2.5 s, peaking under 0.9, and within 1 dB of the loudness it is meant to have.
+- **The menus, the builder, the fights, the campaign:** `tests/sound.test.js` (9 tests): which sound each change makes, the builder's commands against undo and redo, the screens' own dispatches silent, every alarm, an approach's round, and the playback's cues in order with their timing. By touch, below.
+- **Settings:** the actions, their problems and the migration in `tests/sound.test.js`; the rows by touch.
+- **The dev menu:** by touch.
+- **Every rule tested:** `node --test`, 942 tests (933 before).
+- **Touch:** `m35/verify.mjs`, 24 checks at each of the three sizes. All pass. A fight is played by touch with its copy in Node, and every order's sounds match what its events say, the enemy's turns included.
+
+**Verified:**
+- `node --test`: 942 tests pass. `validate-data`: OK, 19 sounds. No rules or balance changed, and the golden files are unchanged.
+- `m35/verify.mjs` at the three sizes, with Chromium kept as quiet as a phone until touched:
+  - no AudioContext and no ZzFX before the first tap; then one AudioContext, running;
+  - the settings: Sound and Volume first, every choice 48 px or more, a volume saved and heard at, Off silencing the taps after it, On bringing them back;
+  - a save with sound off: taps load nothing;
+  - a tap's sound, and the hangar's Pay, off, refusing;
+  - the builder: a part placed by two taps, taken off by Delete;
+  - a fight by touch: its weapon's sound, then hit or miss, and every order's sounds as its events say (25 sounds, 3 of them enemy shots);
+  - the lift-off's roar, the landing's (not before the ship starts down), the alarm as heat brings a raid due, the dev menu's 19 sounds;
+  - offline after a reload, ZzFX from the cache; saves at v30; no console errors or warnings.
+- Every earlier milestone's browser check, again at the three sizes: running (M34's and M33c's pass so far).
+
+**Known issues:**
+- **The first tap is silent.** It starts the audio, which loads as the tap lands; every sound after it plays.
+- **The credits screen** that lists `assets/LICENSES.md` comes with the release (Phase 8). ZzFX's own notice is at the top of its file.
+- **The approach screen's two volleys** sound as one round: the guns, then the crew's hit or miss, not each gun.
+
+**What Evan should test on the phone:**
+- **The first minutes:** a tap on the title starts sound. Tap through menus: soft taps; spend credits: a confirm.
+- **The builder:** a part placed (two taps), turned, taken off; a part where it can't go.
+- **A fight:** shots, hits and misses, a unit down, an order, the enemy's turn. Listen to the shot's and the shotgun's tails (above).
+- **The voyage:** a jump; the hunters, if they find you; a lift-off and a landing.
+- **Settings:** Off and On, and the volumes, with the phone's speaker and with headphones.
+- **The dev menu** (`?dev=1`): every sound by name, to judge the set.
+
+**Next session's first task:** Gate 6 is Evan's call: v0.4 played on the phone (each background from New game to the colony, with sound) and wanting to keep going. Once it passes, draft Phase 7 (content and balance) in ROADMAP.md and settle its first milestone's Done when with Evan.
+
 ## M34 Scenes and companions, drawn in code (2026-10-17)
 
 **Status:** done, and the ROADMAP.md box is ticked.

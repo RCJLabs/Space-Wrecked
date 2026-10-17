@@ -1293,7 +1293,7 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
   - **The busts** (`src/render/portraits/bust.js`): the face (face.js) a fifth smaller on broad shoulders, in clothes and gear whose choices are its drawings (`WEARS`: coverall, dockcoat, surveyjacket, medcoat; `GEAR`: goggles, armband, headset, stethoscope), the side's color on a patch or the gear, and the rim light an SVG filter round the whole figure. Varga in a coverall and goggles, Brandt a dock coat and the union's armband, Osei a survey jacket and headset, Dez a medic's coat and stethoscope.
   - **The event card** sets the bust beside its scrolling words, out of their scroll, `clamp(64px, 26vh, 104px)`: 74 px on the cover screen's short shape, 96 at 905 × 370, 104 unfolded. On the short shape a first tap's odds and the result scroll the words, and the bust stays in sight.
   - **The tag line's words:** "Early build: from the hangar to the colony." Act 3's words ahead: "Three backgrounds are here, each with its own pursuer. Still to come in v0.4: sound."
-- [ ] **M35 Audio pass with ZzFX.** The game is silent, and the settings have no switch for sound (M18 cut it until there was audio). The draft: sounds made in code with ZzFX (approved for M35): shots and hits, the builder's placing, and the menus; a mute and a volume in the settings; audio starts after the first tap.
+- [x] **M35 Audio pass with ZzFX.** The game is silent, and the settings have no switch for sound (M18 cut it until there was audio). The draft: sounds made in code with ZzFX (approved for M35): shots and hits, the builder's placing, and the menus; a mute and a volume in the settings; audio starts after the first tap.
 
   Evan's picks (2026-10-17), from an audition page of three styles (soft, arcade and gritty), each with the same 14 moments, loudness-matched as a phone speaker plays them:
   - **Where:** all of the draft, plus the campaign's moments: the fights, the builder and the menus; then the jumps, the raid and hunter alarms, the lift-off and the landing.
@@ -1349,6 +1349,26 @@ Detailed at the start of M30, once v0.3 was done. The Done whens past M30 are dr
     - a fight's shots and the builder's place;
     - offline after a reload;
     - no console errors or warnings.
+
+  As built (2026-10-17), where it differs from the above or adds to it:
+  - **ZzFX** is 1.3.2 as published, its line endings LF as the repo keeps every file (`.gitattributes`). ZzFX scales a sound by its own volume (0.3) as it builds it and again as it plays it, about 0.09 in all: too quiet for a phone. The game builds each sound once with ZzFX and plays it through a gain of its own at the player's volume, so 100% is the sound as `tools/sounds.js` measures it; the loudest peaks at 0.73. Each play strays in pitch by the sound's randomness, as ZzFX's own plays do (`Math.random`, outside `src/sim/`).
+  - **19 sounds:** the audition's 14 in the picked styles (soft: tap, confirm, refuse, place, turn, remove; gritty: shot, shotgun, hit, miss, down, order, jump, alarm), and five more in the gritty style that the audition didn't have: the dart gun's shot, a door, a reload, the lift-off's roar and the landing's. Each sound says how loud it is meant to be, and a test holds every one within 1 dB of it.
+  - **Heard on the phone, to judge:** a ZzFX echo runs back through the sound's filter, whose peak (Q 2) lets it build. The gritty shot's and shotgun's tails are about 8 dB stronger than they would be without the filter. They are kept as Evan auditioned them; the five new sounds use an echo or a filter, never both.
+  - **Which moment plays which** (`src/ui/sounds.js`, pure and tested):
+    - the game's store, the builder's session and a fight's session each make the sounds of their changes;
+    - a fight's playback says when each of its events sounds (`cuesBetween`, `src/render/playback.js`);
+    - `onTap` taps, or refuses on a button that is off.
+  - **Beyond the list:**
+    - an approach's round sounds the ships' guns, then whether the crew's volley hit, and a flight that got away jumps;
+    - the colony's building by hand places, moves and takes down;
+    - a trip out, on or home jumps.
+  - **One tap, one sound:** what one tap cues plays one sound after another, its own tap giving way to any other. What the screens dispatch themselves is silent: rolling the board as they open, construction following the builder, a fight saving its every order.
+  - **The lift-off's roar** starts with its sequence. **The landing's** starts 2.3 s in, as the ship starts down over the ground, to die as the engines do. With reduced motion each still plays once; a skipped landing plays none.
+  - **The settings:** Sound and Volume are the first two rows, where a player looks for sound.
+  - **The dev menu** plays each sound, and its status line says how sound stands and what played last.
+  - **Act 3's words ahead,** as at M29's close: "All of v0.4 is here, sound included. Still to come in v1.0: balance, a tutorial, and the release on Google Play." (§6's v1.0.)
+
+**Gate 6:** v0.4 plays on the phone: each of the three backgrounds from New game to the colony, with its own pursuer, the sides, quests and companions, the painted scenes, and sound; and Evan wants to keep going. ROADMAP named no gate for Phase 6; this one was drafted at M35's close.
 
 ### Phase 7: Content and balance
 
@@ -1499,5 +1519,8 @@ These ideas wait until v0.4 or later:
 - the talents' worth: in 1,000 fights against the same at rank 2, Steward's kit wins 75% against 47%, Surveyor's eye 45% against 41%, Family medicine 53% against 51%, and Bosun's weld nothing the AI notices (it welds 0.2 times a fight). Kit's armor is a whole number, so +2 is the least past rank 2's +1. For Phase 7's balance runs (raised in M33c)
 - the companion at their own loyalty place: the squad that flies there needn't have them in it, and nothing changes if it does (raised in M33c)
 - companions on the start ships: a fourth mouth needs 40 supplies for 10 jumps, and the miner's and the deserter's ships carry 30, so their test voyages sign a companion on mostly where it is Teo, whose lockers carry him (raised in M33c)
+
+- more sounds: each order its own (a weld's crackle, a patch's hiss, a mark's ping), a fight won or lost, footsteps, music (raised in M35)
+- the credits screen: ZzFX is the first entry in `assets/LICENSES.md`, and the screen that lists them comes with the release (Phase 8; raised in M35)
 
 Ideas that come up during a session go here, not into code.
