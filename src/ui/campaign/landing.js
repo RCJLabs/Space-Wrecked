@@ -9,6 +9,7 @@
 // reopens there too. With reduced motion (the motion setting, ../motion.js)
 // nothing moves: the ship stands down on the ground, and the words are all
 // there.
+import { cue } from '../../platform/audio.js';
 import { loadContent } from '../../platform/content.js';
 import { traceHull } from '../../render/hull.js';
 import { AWAY, CLIMB, END, flameGlows, landingAt, liftOffCamera, liftOffScene } from '../../render/liftOff.js';
@@ -28,6 +29,11 @@ const NO_MIN = [0, 0]; // the view fits the ship alone
 // The ship at rest takes up to this much of its place across, and of its
 // height, as at the launch.
 const AT_REST = [0.6, 0.85];
+// When the engines' sound (2.5 s, data/sounds.json) begins, in s: as the
+// ship starts down over the ground, so it dies away as the engines do. A
+// sequence this near its end has been skipped.
+const ROAR_AT = END - CLIMB - 0.3;
+const SKIPPED = 0.2;
 
 export const landingScreen = {
   mount(root, { store: game }) {
@@ -53,6 +59,7 @@ export const landingScreen = {
     let base = null; // the camera on the ship at rest in the middle of it
     let start = null; // when the sequence began, in the loop's time
     let skip = false;
+    let roared = false; // the engines' sound has played (M35)
     let over = false;
     let dirty = true; // a frame to draw though nothing moves
     const cleanups = [
@@ -145,6 +152,12 @@ export const landingScreen = {
           skip = false;
         }
         const t = Math.max(0, (timeMs - start) / 1000);
+        // The engines roar as the ship starts down, to die as it settles; with
+        // reduced motion, as the still moment shows. Not after a skip.
+        if (!roared && (still || (t >= ROAR_AT && t < END - SKIPPED))) {
+          roared = true;
+          cue('landing');
+        }
         // Down, and still: the moment reduced motion shows, and the end.
         const moment = landingAt(still || over ? END : t);
         backdrop.draw(ctx, view, moment, [stage.x + stage.w / 2, stage.y + stage.h / 2], still || over);

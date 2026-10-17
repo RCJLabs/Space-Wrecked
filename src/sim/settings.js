@@ -7,17 +7,22 @@
 //   motion      'auto' (as the phone is set), 'reduce' or 'full'
 //   tips        whether the first-run tips show
 //   tipsSeen    the ids of the tips already put away
+//   sound       whether the game plays sound (M35)
+//   volume      how loud, in percent: one of VOLUMES
 
 // 60 is the target; 30 is the battery setting.
 export const FPS_CAPS = [60, 30];
 export const DIFFICULTIES = ['easy', 'normal', 'hard'];
 export const MOTIONS = ['auto', 'reduce', 'full'];
+// The volumes to pick from, in percent; a new game starts at 70 (Evan's
+// pick, M35).
+export const VOLUMES = [10, 30, 50, 70, 100];
 // More tips than the game has: a guard on what a save can hold.
 export const MAX_TIPS = 64;
 const TIP_ID = /^[a-z][a-z0-9-]{0,31}$/;
 
 export function defaultSettings() {
-  return { fpsCap: 60, difficulty: 'normal', forgiving: false, motion: 'auto', tips: true, tipsSeen: [] };
+  return { fpsCap: 60, difficulty: 'normal', forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70 };
 }
 
 // Actions:
@@ -28,6 +33,8 @@ export function defaultSettings() {
 //   settings/tips { value }         tips on or off
 //   settings/tips/reset             tips on, and every tip shows again
 //   settings/tip/seen { id }        a tip put away, not to show again
+//   settings/sound { value }        sound on or off
+//   settings/volume { value }       one of VOLUMES
 export function reduceSettings(settings, action) {
   const set = (key, ok) => (!ok || action.value === settings[key] ? settings : { ...settings, [key]: action.value });
   switch (action.type) {
@@ -41,6 +48,10 @@ export function reduceSettings(settings, action) {
       return set('motion', MOTIONS.includes(action.value));
     case 'settings/tips':
       return set('tips', typeof action.value === 'boolean');
+    case 'settings/sound':
+      return set('sound', typeof action.value === 'boolean');
+    case 'settings/volume':
+      return set('volume', VOLUMES.includes(action.value));
     case 'settings/tips/reset':
       return settings.tips && !settings.tipsSeen.length ? settings : { ...settings, tips: true, tipsSeen: [] };
     case 'settings/tip/seen':
@@ -59,6 +70,8 @@ export function settingsProblems(settings) {
   if (!DIFFICULTIES.includes(settings.difficulty)) problems.push('The difficulty setting is invalid.');
   if (typeof settings.forgiving !== 'boolean') problems.push('The forgiving odds setting is invalid.');
   if (!MOTIONS.includes(settings.motion)) problems.push('The motion setting is invalid.');
+  if (typeof settings.sound !== 'boolean') problems.push('The sound setting is invalid.');
+  if (!VOLUMES.includes(settings.volume)) problems.push('The volume setting is invalid.');
   const { tipsSeen } = settings;
   if (typeof settings.tips !== 'boolean' || !Array.isArray(tipsSeen) || tipsSeen.length > MAX_TIPS || !tipsSeen.every((id) => TIP_ID.test(id)) || new Set(tipsSeen).size !== tipsSeen.length) {
     problems.push('The tips settings are unreadable.');

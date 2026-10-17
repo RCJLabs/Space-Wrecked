@@ -8,6 +8,7 @@
       "crit": 10,
       "critDamage": 2,
       "clip": 4,
+      "sound": "shot",
       "held": { "length": 0.42, "height": 0.075, "bore": 0.011, "hands": 2 }
     },
     {
@@ -18,6 +19,7 @@
       "crit": 20,
       "critDamage": 3,
       "clip": 3,
+      "sound": "shotgun",
       "held": { "length": 0.36, "height": 0.085, "bore": 0.018, "hands": 2 }
     },
     {
@@ -28,6 +30,7 @@
       "crit": 10,
       "critDamage": 1,
       "clip": 6,
+      "sound": "shot",
       "held": { "length": 0.13, "height": 0.055, "bore": 0.009, "hands": 1 }
     },
     {
@@ -38,6 +41,7 @@
       "crit": 5,
       "critDamage": 2,
       "clip": 3,
+      "sound": "shot",
       "held": { "length": 0.32, "height": 0.07, "bore": 0.01, "hands": 2 }
     },
     {
@@ -48,6 +52,7 @@
       "crit": 15,
       "critDamage": 2,
       "clip": 3,
+      "sound": "shot",
       "held": { "length": 0.46, "height": 0.07, "bore": 0.01, "hands": 2 }
     },
     {
@@ -58,6 +63,7 @@
       "crit": 5,
       "critDamage": 1,
       "clip": 4,
+      "sound": "dart",
       "held": { "length": 0.22, "height": 0.06, "bore": 0.014, "hands": 1 }
     }
   ]

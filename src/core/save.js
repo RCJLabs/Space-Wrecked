@@ -79,7 +79,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  29  companions: a crew member may be a companion, and loyal; a battle
 //      unit a loyal companion's talent; and an event's result may say who
 //      signed on (M33c)
-export const SAVE_VERSION = 29;
+//  30  sound: the settings say whether the game plays sound, and how loud
+//      (M35)
+export const SAVE_VERSION = 30;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -413,6 +415,12 @@ export const MIGRATIONS = [
   {
     from: 28,
     up: (data) => data,
+  },
+  // Sound (M35). A save from before had none to switch: it gets sound on
+  // at 70%, as a new game does (Evan's pick).
+  {
+    from: 29,
+    up: (data) => (isObject(data) && isObject(data.settings) ? { ...data, settings: { ...data.settings, sound: true, volume: 70 } } : data),
   },
 ];
 

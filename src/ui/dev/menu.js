@@ -1,8 +1,11 @@
 // The ?dev=1 menu: the frame rate's readout (fps.js), cheats (cheats.js),
-// sandboxes, frame cap, save export and import, and status. reopen() mounts
+// sandboxes, frame cap, every sound (M35), save export and import, and
+// status. reopen() mounts
 // the screen on show anew (main.js). Returns { toggle (the DEV button),
 // readout (the section the frame rate's readout goes in) }.
 import { exportSave, importSave, makeSave } from '../../core/save.js';
+import { playNow } from '../../platform/audio.js';
+import { loadContent } from '../../platform/content.js';
 import { saveData } from '../../sim/root.js';
 import { FPS_CAPS } from '../../sim/settings.js';
 import { copyText } from '../clipboard.js';
@@ -54,6 +57,14 @@ export function createDevMenu(root, { store, getStatus, reopen }) {
   syncCaps();
   store.subscribe(syncCaps);
   panel.append(section('Frame cap', [row(capButtons)]));
+
+  // Sounds (M35): each one in data/sounds.json, to hear the set on the
+  // phone, at the volume set, sound on or off.
+  const soundRow = row([]);
+  panel.append(section('Sounds', [soundRow]));
+  loadContent()
+    .then((content) => soundRow.append(...[...content.sounds.values()].map(({ id, for: what }) => Object.assign(button(id, () => playNow(id)), { title: what }))))
+    .catch((err) => soundRow.append(note(`Couldn't load the sounds: ${err.message}`)));
 
   // Save export
   const exportBox = textArea('Tap Export to make a save code.');

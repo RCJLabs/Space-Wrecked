@@ -11,6 +11,7 @@
 // where it is styled (M23f's Look): the session's layer, rooms or styling.
 // The Hull button and the drawer's Look tab change it.
 import { createStore } from '../../core/store.js';
+import { cue } from '../../platform/audio.js';
 import { loadContent } from '../../platform/content.js';
 import { HULL } from '../../render/exterior.js';
 import { traceHull } from '../../render/hull.js';
@@ -29,6 +30,7 @@ import { createSession, partsLeft, reduceSession, sizeOf, snapPiece, snapPlaceme
 import { hullSite, pieceError } from '../../sim/styling.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { builderSounds } from '../sounds.js';
 import { cardFor, pieceCard } from './card.js';
 import { createDrawer } from './drawer.js';
 import { flightSummary, hintFor } from './hints.js';
@@ -298,6 +300,7 @@ export function mountBuilder(root, source) {
   }
 
   function onSession(session, prev) {
+    builderSounds(session, prev).forEach(cue);
     let becameReady = false;
     if (session.ship !== prev.ship) {
       const wasReady = derived.ready;

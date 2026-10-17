@@ -4,10 +4,10 @@
 // empty tables.
 
 // The content files, by name: data/<name>.json.
-export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'hulls', 'styling', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'worlds', 'colony', 'expeditions', 'events', 'recruits', 'tips', 'factions', 'quests', 'companions'];
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'hulls', 'styling', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'worlds', 'colony', 'expeditions', 'events', 'recruits', 'tips', 'factions', 'quests', 'companions', 'sounds'];
 
 export function indexDefs(files) {
-  const { modules, frames, manufacturers, hulls, styling, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, worlds, colony, expeditions, events, recruits, tips, factions, quests, companions } = files;
+  const { modules, frames, manufacturers, hulls, styling, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, worlds, colony, expeditions, events, recruits, tips, factions, quests, companions, sounds } = files;
   return {
     balance,
     tilesPerCell: modules.tilesPerCell,
@@ -115,6 +115,9 @@ export function indexDefs(files) {
     // their side, job, traits, face, past, chain, loyalty quest and talent.
     companions: byId(companions?.companions),
     companionsText: companions?.text ?? '',
+    // The sounds (M35, src/platform/audio.js): each by id, its ZzFX
+    // parameters by name. The rules never read them; the screens play them.
+    sounds: byId(sounds?.sounds),
   };
 }
 

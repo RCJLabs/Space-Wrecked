@@ -17,6 +17,7 @@
 // fingers' midpoint, spread and twist, { x, y, spread, angle }: angle is the
 // direction from the first finger to the second, in radians, growing
 // clockwise on screen.
+import { cue } from '../platform/audio.js';
 
 export const SLOP = 10;
 export const LONG_PRESS = 450;
@@ -126,11 +127,18 @@ export function createRecognizer(handlers) {
 // Calls handler when a button is tapped. Taps are read from pointer events
 // rather than click, because Chrome drops the click of a tap that comes
 // right after a fast drag (it takes the tap as stopping a fling). Keyboard
-// activation still arrives as a click. Returns a function that detaches.
+// activation still arrives as a click. A tap sounds (M35): its own sound,
+// unless what it did makes another (audio.js cue), and a button that
+// can't be used now refuses. Returns a function that detaches.
 export function onTap(button, handler) {
-  const detach = attachGestures(button, { tap: () => button.disabled || handler() });
+  const press = () => {
+    if (button.disabled) return cue('refuse');
+    cue('tap');
+    handler();
+  };
+  const detach = attachGestures(button, { tap: press });
   const onKeyClick = (event) => {
-    if (event.detail === 0 && !button.disabled) handler();
+    if (event.detail === 0) press();
   };
   button.addEventListener('click', onKeyClick);
   return () => {

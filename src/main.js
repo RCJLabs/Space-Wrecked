@@ -3,6 +3,7 @@
 import { config } from './config.js';
 import { makeSave, parseSave } from './core/save.js';
 import { createStore } from './core/store.js';
+import { audioStatus, cue, startAudio } from './platform/audio.js';
 import { lockLandscape } from './platform/orientation.js';
 import { registerServiceWorker } from './platform/serviceWorker.js';
 import * as storage from './platform/storage.js';
@@ -14,6 +15,7 @@ import { createDevMenu } from './ui/dev/menu.js';
 import { createFpsReadout } from './ui/dev/fps.js';
 import { syncMotion } from './ui/motion.js';
 import { screenFor } from './ui/screens.js';
+import { gameSounds } from './ui/sounds.js';
 import { startTips } from './ui/tips.js';
 import { showUpdatePrompt } from './ui/updatePrompt.js';
 
@@ -38,6 +40,9 @@ store.subscribe((state) => {
 });
 const persistence = storage.requestPersistence();
 syncMotion(store);
+// Sound (M35): from the first tap, at the settings' volume.
+startAudio(store);
+store.subscribe((state, prev, action) => gameSounds(state, prev, action).forEach(cue));
 
 // Screens and the render loop.
 let activeId = null;
@@ -123,6 +128,7 @@ async function getStatus() {
   const persisted = await persistence;
   lines.push(`Persistent storage: ${persisted === null ? 'unsupported' : persisted ? 'granted' : 'not granted'}`);
   lines.push(`Orientation: ${screen.orientation?.type ?? 'unknown'}`);
+  lines.push(audioStatus());
   if (bootNote) lines.push(bootNote);
   return lines;
 }

@@ -4,5 +4,4 @@ Every third-party file (font, sound, library) gets a line here before it is comm
 
 | File | Author | Source | License |
 | --- | --- | --- | --- |
-
-No third-party files yet.
+| `src/platform/zzfx.js` (ZzFX 1.3.2, the sound synth, unchanged) | Frank Force | [github.com/KilledByAPixel/ZzFX](https://github.com/KilledByAPixel/ZzFX), npm `zzfx@1.3.2` | MIT (its notice is at the top of the file) |

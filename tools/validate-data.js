@@ -27,6 +27,7 @@ import { checkCampaignFiles, checkStartShips } from './validate-campaign.js';
 import { checkFactions } from './validate-factions.js';
 import { checkCompanions } from './validate-companions.js';
 import { checkQuests } from './validate-quests.js';
+import { checkSoundOf, checkSounds } from './validate-sounds.js';
 
 const SIDES = ['n', 'e', 's', 'w'];
 const STATS = ['power', 'mass', 'thrust', 'berths', 'lifeSupport', 'cargo', 'hp'];
@@ -207,7 +208,7 @@ const BALANCE = {
 };
 // A weapon's held shape and a fighter's look are how the fight draws them
 // (src/render/figures/looks.js).
-const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', 'clip', 'held'];
+const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', 'clip', 'sound', 'held'];
 const RANGE_BANDS = ['close', 'mid', 'long'];
 // Crew jobs and enemies are both fighters, with the same fields. A job
 // can also have an order in a fight (src/sim/orders.js), a ship effect
@@ -338,9 +339,12 @@ export function validateData(data) {
     if (balance.friendlyPay > balance.trustedPay) fail('balance.json', 'trustedPay must be at least friendlyPay');
   }
 
+  // The sounds (M35), before the weapons that name theirs.
+  const soundIds = checkSounds(data.sounds, fail);
+
   const weapons = listOf(weaponFile, 'weapons', 'weapons.json', fail);
   const weaponIds = uniqueIds(weapons, 'weapons.json', fail);
-  weapons.forEach((weapon, i) => checkWeapon(weapon, `weapons.json ${weapon.id ?? `#${i}`}`, fail));
+  weapons.forEach((weapon, i) => checkWeapon(weapon, `weapons.json ${weapon.id ?? `#${i}`}`, soundIds, fail));
 
   // Jobs and enemies share one set of ids: a battle names a fighter by it.
   const jobs = listOf(jobFile, 'jobs', 'jobs.json', fail);
@@ -707,7 +711,7 @@ function checkTips(file, fail) {
   for (const id of TIP_IDS) if (!ids.has(id)) fail('tips.json', `the tip "${id}" has no words`);
 }
 
-function checkWeapon(weapon, where, fail) {
+function checkWeapon(weapon, where, soundIds, fail) {
   for (const key of Object.keys(weapon)) {
     if (!WEAPON_KEYS.includes(key)) fail(where, `unknown field "${key}"`);
   }
@@ -729,6 +733,7 @@ function checkWeapon(weapon, where, fail) {
   if (!isIntIn(weapon.crit, 0, 100)) fail(where, 'crit must be a whole number from 0 to 100');
   if (!isIntIn(weapon.critDamage, 0, 99)) fail(where, 'critDamage must be a whole number from 0 to 99');
   if (!isIntIn(weapon.clip, 1, 99)) fail(where, 'clip must be a whole number from 1 to 99');
+  checkSoundOf(weapon, soundIds, where, fail);
   for (const problem of heldProblems(weapon.held)) fail(where, problem);
 }
 
@@ -945,6 +950,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       `${count(data.encounters.encounters.length, 'encounter')}, ${count(data.ships.ships.length, 'ship preset')}, ` +
       `${count(data.campaign.acts.length, 'act')}, ${count(data.backgrounds.backgrounds.length, 'background')}, ` +
       `${count(data.districts.districts.length, 'district')}, ${count(data.sites.maps.length, 'site map')}, ` +
-      `${count(data.contracts.jobs.length, 'job template')}, ${count(data.sectors.nodes.length, 'kind')} of sector node, ${count(data.worlds.kinds.length, 'kind')} of world, ${count(data.colony.buildings.length, 'colony building')}, ${count(data.colony.builds.length, 'colony build')}, ${count(data.expeditions.kinds.length, 'kind')} of place, ${count(data.events.events.length, 'event')}, ${count(data.factions.sides.length, 'side')}, ${count(data.quests.quests.length, 'quest')}, ${count(data.companions.companions.length, 'companion')})`,
+      `${count(data.contracts.jobs.length, 'job template')}, ${count(data.sectors.nodes.length, 'kind')} of sector node, ${count(data.worlds.kinds.length, 'kind')} of world, ${count(data.colony.buildings.length, 'colony building')}, ${count(data.colony.builds.length, 'colony build')}, ${count(data.expeditions.kinds.length, 'kind')} of place, ${count(data.events.events.length, 'event')}, ${count(data.factions.sides.length, 'side')}, ${count(data.quests.quests.length, 'quest')}, ${count(data.companions.companions.length, 'companion')}, ${count(data.sounds.sounds.length, 'sound')})`,
   );
 }
