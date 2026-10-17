@@ -7,7 +7,7 @@ import { indexDefs } from '../src/sim/defs.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { readData } from '../tools/data.js';
 import { EXAMPLE_SCRIPT } from '../tools/build-ship.js';
-import { DEFAULTS, parseArgs, reportText, rulesFor, rulesWith, runFights, setupText, share, shipsFor, summarize, talentJobOf } from '../tools/sim.js';
+import { DEFAULTS, parseArgs, reportText, rulesFor, rulesWith, runFights, runSites, runWeapons, setupText, share, shipsFor, summarize, talentJobOf, weaponsText } from '../tools/sim.js';
 
 const data = readData();
 const rules = indexDefs(data);
@@ -32,7 +32,7 @@ test('the command line: defaults, every option, and what is wrong with a bad one
     [['--fights'], /--fights needs a value/],
     [['--set', 'halfCover'], /--set needs name=number/],
     [['--boarders', 'human'], /--boarders is played by ai or scripted/],
-    [['--compare'], /--compare needs a --set, --orders, --rank or --talent/],
+    [['--compare'], /--compare needs a --set, --orders, --rank, --talent or --weapon/],
     [['--rank', 'one'], /--rank needs a whole number, 0 or more/],
     [['--bogus'], /Unknown option "--bogus"/],
   ];
@@ -156,13 +156,15 @@ test('another squad, and the orders the crew gives: all, none or some kinds (M32
   assert.match(text, /The squad \(marine, engineer, medic\), played by the AI with no job orders \(before: every job order\)/);
 });
 
+// 48 fights: with M37's gunner in the boarding party, the pilot's hustle
+// changed none of the first 24.
 test('every order is used by the crew\'s AI, and the same fights without it come out differently (M32)', () => {
   const ships = shipsFor(['example', 'cutter', 'hauler'], rules);
   const kinds = { marine: 'suppress', engineer: 'weld', medic: 'patch', pilot: 'hustle', scout: 'mark', xenobiologist: 'sedate', quartermaster: 'kit' };
   for (const [job, kind] of Object.entries(kinds)) {
     const squad = job === 'medic' ? ['medic', 'marine', 'engineer'] : [job, 'engineer', 'medic'];
     const others = Object.values(kinds).filter((k) => k !== kind).join(',');
-    const fights = (orders) => runFights(rulesFor(rules, { squad, orders }).rules, { ...DEFAULTS, ships, fights: 24 });
+    const fights = (orders) => runFights(rulesFor(rules, { squad, orders }).rules, { ...DEFAULTS, ships, fights: 48 });
     const used = fights('all');
     const unused = fights(others);
     assert.ok(used.some((r) => r.given[kind] > 0), `${kind} is given`);
@@ -213,4 +215,25 @@ test('the harness runs from the command line', () => {
   const bad = spawnSync(process.execPath, [tool, '--set', 'halfCover=500'], { encoding: 'utf8' });
   assert.equal(bad.status, 1);
   assert.match(bad.stderr, /^sim: balance\.json: halfCover must be a whole number/);
+});
+
+test("a weapon for the whole squad (M37), the job sites' fights, and every weapon's table", () => {
+  assert.deepEqual(parseArgs(['--weapon', 'autogun', '--compare']), { ...DEFAULTS, weapon: 'autogun', compare: true });
+  assert.deepEqual(parseArgs(['--sites', '--weapons']), { ...DEFAULTS, sites: true, weapons: true });
+  const ships = shipsFor(['example'], rules);
+  const issued = runFights(rules, { ...DEFAULTS, ships, fights: 6 });
+  assert.notDeepEqual(runFights(rules, { ...DEFAULTS, ships, fights: 6, weapon: 'riotgun' }), issued, 'riot guns all round change the fights');
+  const text = setupText(rules, { ...DEFAULTS, ...parseArgs(['--weapon', 'autogun', '--compare']) }, ships, data.balance);
+  assert.match(text, /The squad \(marine, engineer, medic\), each carrying the autogun \(before: as issued\), played by the AI/);
+  // The job sites: the first jobs on fresh boards, background by background.
+  const sites = runSites(rules, { fights: 7 });
+  assert.equal(sites.length, 7);
+  assert.deepEqual([...new Set(sites.map((r) => r.ship))], [...rules.backgrounds.values()].map((b) => b.name));
+  assert.deepEqual(runSites(rules, { fights: 7 }), sites, 'the same every time');
+  assert.notDeepEqual(runSites(rules, { fights: 7, weapon: 'sawnoff' }), sites);
+  // The table: as issued, then every weapon, in the three settings.
+  const rows = runWeapons(rules, { ...DEFAULTS, ships, fights: 1 });
+  assert.deepEqual(rows.map((row) => row.weapon), [null, ...rules.weapons.keys()]);
+  assert.ok(rows.every((row) => ['aboard', 'sites', 'armor'].every((column) => row[column].rate >= 0 && row[column].rate <= 1)));
+  assert.match(weaponsText(rows, rules, 1), /^The crew's wins, the whole squad/);
 });

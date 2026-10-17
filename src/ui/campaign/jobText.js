@@ -9,6 +9,7 @@ import { jobHeat } from '../../sim/heat.js';
 import { raidLoss } from '../../sim/raid.js';
 import { jobPay } from '../../sim/standing.js';
 import { bonusText, jobSidesText } from './standingText.js';
+import { gearLine } from './armsText.js';
 
 // A job on the board, in words:
 //   title    "Claim jumpers"
@@ -23,6 +24,8 @@ import { bonusText, jobSidesText } from './standingText.js';
 //   pay      "85 credits + Corridor", with what the client's side adds
 //   bonus    "+10%: the union is friendly", or null
 //   heat     "+15 heat, loud": what it adds to heat, done or lost
+//   gear     what a win can leave the crew (M37, armsText.js gearLine),
+//            or null
 // hunters: enemies the pursuer sends along (heat.js huntersFor), counted
 // in against. campaign: the campaign whose board it is, for its standing
 // (M33); without one, no bonus and the sides without their levels. Null
@@ -48,6 +51,7 @@ export function jobText(job, rules, hunters = [], campaign = null) {
     pay: payText(job, rules, campaign),
     bonus: bonusText(job, campaign, rules),
     heat: heatText(job, rules),
+    gear: gearLine(rules),
   };
 }
 

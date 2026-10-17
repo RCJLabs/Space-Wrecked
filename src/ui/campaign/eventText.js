@@ -5,13 +5,14 @@
 // M33c a chain's step can offer a companion a berth: who they are, and who
 // signed on (companionText.js). From M36 a choice that needs a job or a
 // trait names who would take it, or says who it needs; and an outcome can
-// spring a trap, wreck parts aboard or repair them. rules are the content
-// tables (src/sim/defs.js).
+// spring a trap, wreck parts aboard or repair them; from M37, put a weapon
+// on hand. rules are the content tables (src/sim/defs.js).
 import { companionOf } from '../../sim/companions.js';
 import { sellPriceOf } from '../../sim/economy.js';
 import { choiceProblem, takerOf } from '../../sim/events.js';
 import { wrecksToRepair } from '../../sim/repair.js';
 import { openEvent } from '../../sim/travel.js';
+import { aWeapon } from './armsText.js';
 import { berthSaid, companionCard, feedSaid, joinedLines, joinsSaid, offeredBy } from './companionText.js';
 import { choiceQuestSaid, questNoteLines } from './questText.js';
 import { changeLines, sideCalled } from './standingText.js';
@@ -109,6 +110,7 @@ export function effectsText(effects, campaign, rules, taker = null) {
   if (effects.heat) said.push(`heat ${signed(effects.heat)}`);
   if (effects.wound) said.push(`${effects.wound.all ? 'everyone' : taker?.hp > 1 ? taker.name : 'someone'} hurt (${effects.wound.hp} hit points)`);
   if (effects.part) said.push(aPart(effects.part, rules));
+  if (effects.arms) said.push(aWeapon(effects.arms, rules));
   if (effects.drop) said.push('a salvaged part');
   if (effects.sell) {
     const dearest = dearestOnHand(campaign, rules);
@@ -144,7 +146,8 @@ export function changesText(changes, campaign, rules) {
   if (changes.materials) moved.push(`${signed(changes.materials)} materials`);
   if (changes.heat) moved.push(`heat ${signed(changes.heat)}`);
   if (moved.length) said.push(`${capital(moved.join(', '))}.`);
-  if (changes.parts.length) said.push(`Found: ${changes.parts.map((part) => aPart(part, rules)).join(', ')}.`);
+  const found = [...changes.parts.map((part) => aPart(part, rules)), ...(changes.arms ?? []).map((id) => aWeapon(id, rules))];
+  if (found.length) said.push(`Found: ${found.join(', ')}.`);
   for (const sale of changes.sold) said.push(`Sold: the ${partName(sale.part, rules)}, for ${sale.credits} credits.`);
   for (const wound of changes.wounds) {
     const name = campaign.crew.find((member) => member.id === wound.id)?.name ?? 'Someone';

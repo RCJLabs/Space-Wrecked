@@ -6,6 +6,7 @@
 import { colonyBy } from '../../sim/edges.js';
 import { pursuerOf, runLevel } from '../../sim/heat.js';
 import { colonyPursuer, defendersOf, defensesOf, foundOdds, landingPlan, raidDown, raidIn, raidTake } from '../../sim/raids.js';
+import { gearLine } from './armsText.js';
 import { byJob } from './crewJobText.js';
 import { easedSaid } from './questText.js';
 
@@ -67,7 +68,8 @@ export function defendText(campaign, rules) {
     ? `${plan.defenders.length} at home fight whoever lands of ${plan.raiders.length} (${party})`
     : `Nobody is home: whoever lands of ${plan.raiders.length} (${party}) takes what they like`;
   const kit = [...(plan.armor ? [`the shield gives +${plan.armor} armor`] : []), ...(plan.aim ? [`the armory +${plan.aim} aim`] : [])];
-  return { ok: true, ask: `${guns} ${fight}${kit.length && plan.defenders.length ? `; ${kit.join(' and ')}` : ''}. Tap again to defend.`, why: null };
+  const gear = plan.defenders.length ? gearLine(rules) : null;
+  return { ok: true, ask: `${guns} ${fight}${kit.length && plan.defenders.length ? `; ${kit.join(' and ')}` : ''}.${gear ? ` ${gear}` : ''} Tap again to defend.`, why: null };
 }
 
 // What facing the raid came to (raids.js faceRaid's result), for the hint:

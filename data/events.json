@@ -67,6 +67,11 @@
             { "chance": 40, "text": "The pinger was wired to a charge. Company humour. You still get the till.", "effects": { "credits": 15, "wound": { "hp": 3 } } }
           ]
         },
+        {
+          "id": "locker",
+          "label": "Crack the arms locker",
+          "outcomes": [{ "chance": 100, "text": "A breacher's rivet gun, stencilled and signed for. The pinger tells head office who signed for it next.", "effects": { "arms": "rivetgun", "heat": 6 } }]
+        },
         { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Not worth the paperwork.", "effects": {} }] }
       ]
     },
@@ -157,6 +162,14 @@
           "label": "Scout her first",
           "needs": { "job": "scout" },
           "outcomes": [{ "chance": 100, "text": "Your scout spots the second ship tucked in her shadow. You take what you can reach and go quietly.", "effects": { "drop": "salvage" } }]
+        },
+        {
+          "id": "locker",
+          "label": "Raid her arms locker",
+          "outcomes": [
+            { "chance": 60, "text": "Her gunner's autogun, racked and oiled, a drum still on it. Nobody comes back for it.", "effects": { "arms": "autogun" } },
+            { "chance": 40, "text": "They were coming back. Her sister ship comes round the far side with her guns hot.", "effects": { "ambush": "cutter" } }
+          ]
         },
         { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "Some bait is too obvious to take.", "effects": {} }] }
       ]
@@ -269,6 +282,11 @@
             { "chance": 70, "text": "One gun, unbolted and stowed.", "effects": { "part": "weapon" } },
             { "chance": 30, "text": "The gun was wired to go off. It did. You keep the gun.", "effects": { "part": "weapon", "wound": { "hp": 3 } } }
           ]
+        },
+        {
+          "id": "lockers",
+          "label": "Search the crew lockers",
+          "outcomes": [{ "chance": 100, "text": "Under a dead man's laundry, a sawn-off and a box of shells.", "effects": { "arms": "sawnoff" } }]
         },
         { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "Her crew can keep her.", "effects": {} }] }
       ]
@@ -582,6 +600,12 @@
           "needs": { "credits": 5 },
           "outcomes": [{ "chance": 100, "text": "Six crates. He counts the change twice.", "effects": { "credits": -5, "supplies": 6 } }]
         },
+        {
+          "id": "gun",
+          "label": "Buy a machine pistol",
+          "needs": { "credits": 55 },
+          "outcomes": [{ "chance": 100, "text": "A machine pistol from the bottom of a crate of junk. It fires. He shows you.", "effects": { "credits": -55, "arms": "machinepistol" } }]
+        },
         { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "He's already looking at the next ship.", "effects": {} }] }
       ]
     },
@@ -727,6 +751,12 @@
           "label": "Talk guns with him",
           "needs": { "credits": 20, "job": "marine" },
           "outcomes": [{ "chance": 100, "text": "Your marine knows guns, and tells him so at length. He knocks a third off to make it stop.", "effects": { "credits": -20, "part": "weapon" } }]
+        },
+        {
+          "id": "rail",
+          "label": "Buy the rail rifle",
+          "needs": { "credits": 140 },
+          "outcomes": [{ "chance": 100, "text": "A Con-Reg rail rifle, serials and all. He won't say how he came by it, and charges for not saying.", "effects": { "credits": -140, "arms": "railrifle" } }]
         },
         { "id": "move", "label": "Move on", "outcomes": [{ "chance": 100, "text": "He doesn't wave. Dealers don't.", "effects": {} }] }
       ]
@@ -1443,6 +1473,11 @@
           "label": "Cut her plating",
           "outcomes": [{ "chance": 100, "text": "Plating, cut and stacked. Slow work.", "effects": { "materials": 7 } }]
         },
+        {
+          "id": "torch",
+          "label": "Take the cutting gear",
+          "outcomes": [{ "chance": 100, "text": "A cutting torch from her damage-control locker, its tank half full. It cuts plate. It cuts other things.", "effects": { "arms": "torch" } }]
+        },
         { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "Her engine room keeps its spares.", "effects": {} }] }
       ]
     },
@@ -1480,6 +1515,14 @@
           "outcomes": [
             { "chance": 70, "text": "Armour plate by the slab.", "effects": { "materials": 8 } },
             { "chance": 30, "text": "Armour plate by the slab, and a slab on someone's foot.", "effects": { "materials": 8, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "armoury",
+          "label": "Search her armoury",
+          "outcomes": [
+            { "chance": 70, "text": "Most of her racks are bare. The last holds a riot gun, still in its grease.", "effects": { "arms": "riotgun" } },
+            { "chance": 30, "text": "A riot gun in its grease, and a rack that comes down on someone's arm.", "effects": { "arms": "riotgun", "wound": { "hp": 3 } } }
           ]
         },
         { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "Her guns stay aimed at nobody.", "effects": {} }] }

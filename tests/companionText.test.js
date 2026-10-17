@@ -95,7 +95,7 @@ test('the crew card: a companion has their side, past and loyalty; loyal, the th
   // At the colony, loyal.
   const home = loyalOf(joinCompanion(settled(), rules, 'varga').campaign, 'varga');
   const card = crewCardText(home, rules);
-  assert.deepEqual([card.title, card.text, card.hire, card.hint], [`Crew · ${home.crew.length} at the colony`, 'Everyone at the colony, and what each brings to it.', null, { tone: 'info', text: 'Tap Done for the colony.' }]);
+  assert.deepEqual([card.title, card.text, card.hire, card.hint], [`Crew · ${home.crew.length} at the colony`, 'Everyone at the colony, and what each brings to it. No spare weapons on hand.', null, { tone: 'info', text: 'Tap Done for the colony.' }]);
   const loyal = card.members.find((m) => m.name === 'Ines Varga');
   assert.deepEqual(
     [loyal.rank, loyal.rankLine, loyal.loyalty, loyal.brief],

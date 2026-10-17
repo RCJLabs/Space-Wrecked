@@ -46,6 +46,7 @@
 //                             comes out firing (encounter.js openAmbush);
 //                             at a hulk the scavengers were waiting
 //                             (expeditions.js)
+//   arms                      a weapon of that id on hand (M37, loadout.js)
 // The run keeps the nodes whose events are settled and the last one
 // settled, until the next jump (travel.js). The flags count the events
 // settled, and the campaign keeps each one's id (eventsMet, M36), so a
@@ -64,6 +65,7 @@ import { sellPriceOf } from './economy.js';
 import { juryRig, openAmbush, wrecksOn } from './encounter.js';
 import { withHeat } from './heat.js';
 import { tally } from './flags.js';
+import { withArms } from './loadout.js';
 import { WRECKS } from './mapFromShip.js';
 import { hasTag } from './modules.js';
 import { atEvent } from './quests.js';
@@ -71,7 +73,7 @@ import { wrecksToRepair } from './repair.js';
 import { moveStanding } from './standing.js';
 import { openEvent, supplyCapacity } from './travel.js';
 
-export const EFFECTS = ['credits', 'supplies', 'heat', 'materials', 'wound', 'part', 'drop', 'sell', 'standing', 'joins', 'wreck', 'repair', 'ambush'];
+export const EFFECTS = ['credits', 'supplies', 'heat', 'materials', 'wound', 'part', 'drop', 'sell', 'standing', 'joins', 'wreck', 'repair', 'ambush', 'arms'];
 export const NEEDS = ['credits', 'supplies', 'parts', 'berth', 'job', 'trait', 'wrecks'];
 // The tags of the parts an event can wreck: those a volley can hit.
 const WRECKABLE = [...new Set(Object.values(AIM_TAGS).flat())];
@@ -277,6 +279,10 @@ export function applyEffects(campaign, rules, effects, { among = null, taker = n
     changes.repaired = fixed.map(({ uid, type }) => ({ uid, type }));
   }
   if (effects.ambush) changes.ambush = effects.ambush;
+  if (effects.arms) {
+    next.arms = withArms(next.arms ?? {}, effects.arms);
+    changes.arms = [effects.arms];
+  }
   return { campaign: next, changes };
 }
 

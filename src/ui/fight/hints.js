@@ -1,8 +1,13 @@
 // Text for the Fight screen: the status line, the round chip, the odds
-// card, and what a crew member's button says about them.
+// card, and what a crew member's button says about them. Since M37 the odds
+// card and a unit's card say what a weapon's rules do: a burst's shots, the
+// armor it pierces, its reach, a stun and fire.
 import { describeEvent } from '../../sim/battleLog.js';
 import { orderOf } from '../../sim/orders.js';
 import { rankNameFor } from '../../sim/ranks.js';
+import { burningAt } from '../../sim/terrain.js';
+import { armorAgainst } from '../../sim/weapons.js';
+import { rulesLine } from '../campaign/armsText.js';
 import { ORDER_SHORT } from '../campaign/crewJobText.js';
 
 // The status line while an event plays out: the log's words (battleLog.js),
@@ -88,13 +93,16 @@ export function chipFor(battle) {
 }
 
 // A shot's odds for its card: { title, hit, rows: [[label, value]], note,
-// crit, damage }. The rows add up to the hit chance, kept within 0 to 100
-// (note says so when it was).
+// crit, damage, rules }. The rows add up to the hit chance, kept within 0
+// to 100 (note says so when it was); a burst's (M37) is each shot's.
+// damage counts the armor the weapon pierces; rules is what its burst, stun
+// or fire does (null for none).
 export function oddsText(shooter, target, odds, rules) {
   const weapon = rules.weapons.get(shooter.weapon);
   const label = {
     aim: () => `${shooter.name}'s aim`,
     weapon: (part) => `${weapon.name}, ${part.band} range`,
+    burst: (part) => `Burst of ${part.shots}, each shot`,
     cover: (part) => `${part.cover === 'full' ? 'Full' : 'Half'} cover`,
     defense: () => 'Defense',
     overwatch: () => 'Overwatch',
@@ -109,15 +117,29 @@ export function oddsText(shooter, target, odds, rules) {
   const sum = odds.hitParts.reduce((total, part) => total + part.value, 0);
   const crit = odds.critParts.map((part) => (part.why === 'flanked' ? `flanked +${part.value}` : `${part.value}`)).join(', ');
   const [least, most] = weapon.damage;
-  const armor = target.armor ? `, less ${target.armor} armor` : '';
+  const left = armorAgainst(target.armor, weapon);
+  const pierced = target.armor - left;
+  const armor = !target.armor ? '' : pierced ? `, less ${left} armor (${pierced} of ${target.armor} pierced)` : `, less ${target.armor} armor`;
+  const kept = sum === odds.hit ? null : `${sum} in all, kept to ${odds.hit}.`;
+  const burst = weapon.burst && odds.hitParts.some((part) => part.why === 'burst') ? `${weapon.burst.shots} shots, each at ${odds.hit}%, till it drops.` : null;
   return {
     title: `${target.name} ${target.id}`,
     hit: odds.hit,
     rows,
-    note: sum === odds.hit ? null : `${sum} in all, kept to ${odds.hit}.`,
+    note: [kept, burst].filter(Boolean).join(' ') || null,
     crit: `Crit ${odds.crit}% (${crit})`,
     damage: `Damage ${least}–${most}${weapon.critDamage ? `, +${weapon.critDamage} on a crit` : ''}${armor}`,
+    rules: shotRules(weapon),
   };
+}
+
+// What a hit does beyond its damage (M37): a stun, or fire; null for
+// neither.
+function shotRules(weapon) {
+  const said = [];
+  if (weapon.stun) said.push('A hit stuns: it loses its next turn.');
+  if (weapon.burn) said.push(`A hit sets its tile burning for ${weapon.burn} rounds.`);
+  return said.length ? said.join(' ') : null;
 }
 
 // A unit's state in a few words: actions and shots left, or how hurt.
@@ -131,9 +153,10 @@ export function stateText(unit) {
 }
 
 // A unit's card: { title, lines }: its numbers, its rank (M32b), a loyal
-// companion's the third, by their talent's name (M33c), its job's order
-// and the uses left (M32), and what orders left on it.
-export function unitText(unit, rules) {
+// companion's the third, by their talent's name (M33c), its weapon and what
+// its rules do (M37), its job's order and the uses left (M32), what orders
+// left on it, and the fire it stands in.
+export function unitText(unit, rules, battle = null) {
   const weapon = rules.weapons.get(unit.weapon);
   const side = unit.side === 'crew' ? 'Crew' : 'Enemy';
   const order = orderOf(unit, rules);
@@ -143,9 +166,10 @@ export function unitText(unit, rules) {
     lines: [
       `${side}${unit.rank ? ` · rank ${unit.rank}${rank ? `, ${rank}` : ''}` : ''} · ${unit.hp}/${unit.maxHp} hit points · ${stateText(unit)}.`,
       `Aim ${unit.aim} · defense ${unit.defense} · armor ${unit.armor} · moves ${unit.mobility}.`,
-      `${weapon.name}: damage ${weapon.damage[0]}–${weapon.damage[1]}, crit ${weapon.crit}%, ${unit.ammo}/${weapon.clip} shots.`,
+      `${weapon.name}: damage ${weapon.damage[0]}–${weapon.damage[1]}, crit ${weapon.crit}%, ${unit.ammo}/${weapon.clip} shots.${rulesLine(weapon) ? ` ${rulesLine(weapon)}` : ''}`,
       ...(order ? [`${order.name}: ${unit.uses} of ${order.uses} left this fight${unit.talent && ORDER_SHORT[order.type] ? `, ${ORDER_SHORT[order.type](order)} each` : ''}.`] : []),
       ...ordersOn(unit),
+      ...(battle && burningAt(battle, unit.x, unit.y) ? [`Standing in fire: ${rules.balance.fireDamage} at the start of each of its turns, until it burns out.`] : []),
     ],
   };
 }

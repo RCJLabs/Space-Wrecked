@@ -19,8 +19,17 @@
 //   - the overwatch fire it would walk through on the way
 //   - when it won't shoot, a little for every step it ends up from the
 //     nearest enemy, so with no one in sight it pushes in from the airlock
-//     and through the doors (a shot's odds already count the distance)
-// Each spot is judged as it will be: with the doors its path opens.
+//     and through the doors (a shot's odds already count the distance); a
+//     weapon with a reach (M37) closes to it, each step past its reach
+//     counting more, and watches only with an enemy close enough to step
+//     within it
+//   - the fire it would burn in, standing where a weapon set a tile burning
+//     (M37); a wrecked room's fire, which never goes out, it crosses as
+//     before, or it could never reach the far side of one
+// Each spot is judged as it will be: with the doors its path opens. A
+// weapon's rules count (weapons.js, M37): it shoots only within its reach,
+// a burst's shots and the armor it pierces count in the harm, and so do a
+// stunned target's lost turn and the fire a hit leaves under it.
 //
 // A shot worth taking (MIN_SHOT) beats any plan without one, unless it is
 // reckless (scores RECKLESS worse than the best plan without a shot):
@@ -37,7 +46,8 @@ import { edgeKey, wallAt } from './mapFromShip.js';
 import { reachable, sideToward, stepsFrom } from './moves.js';
 import { shotOdds } from './odds.js';
 import { canSee } from './sight.js';
-import { shutDoor } from './terrain.js';
+import { burningAt, hazardAt, shutDoor } from './terrain.js';
+import { armorAgainst, shotsOf, withinReach } from './weapons.js';
 
 export const WEIGHTS = {
   kill: 4, // a kill, on top of the damage, in hit points: one less gun
@@ -45,6 +55,8 @@ export const WEIGHTS = {
   idle: 0.3, // overwatch with no enemy that close
   safety: 0.8, // how much the harm it can be expected to take counts
   near: 0.2, // each step from the nearest enemy, when it won't shoot
+  stun: 2.5, // a stunned enemy's lost turn: about one shot's harm
+  close: 0.5, // each step past its reach from the nearest enemy, for a weapon with one (M37)
 };
 const WATCH_STEPS = 8; // an enemy this many steps off could come into sight
 const FAR = 99; // steps to an enemy it can't walk to
@@ -78,15 +90,18 @@ export function plansFor(battle, unit, rules) {
   const away = stepsFrom(battle, foes.map((f) => [f.x, f.y]), rules);
   const plans = [];
   // What it can do from a spot, in a battle with its doors as given.
+  const weapon = rules.weapons.get(unit.weapon);
+  const reach = weapon?.reach ?? null;
   const consider = (field, spot, ap, open) => {
     const there = { ...unit, x: spot.x, y: spot.y };
     const seenBy = foes.filter((f) => canSee(field, [f.x, f.y], [spot.x, spot.y], rules));
+    const burning = burningAt(field, spot.x, spot.y) ? rules.balance.fireDamage : 0;
     const base = {
       to: [spot.x, spot.y],
       ap,
       open,
       path: spot.path,
-      threat: seenBy.reduce((sum, f) => sum + harm(field, f, there, rules), 0),
+      threat: seenBy.reduce((sum, f) => sum + harm(field, f, there, rules), 0) + burning,
       risk: overwatchRisk(battle, unit, spot.path, foes, rules),
       steps: away.get(`${spot.x},${spot.y}`) ?? FAR,
       exposed: seenBy.filter((f) => coverFrom(field, [spot.x, spot.y], [f.x, f.y], rules).flanked).map((f) => f.id),
@@ -95,12 +110,15 @@ export function plansFor(battle, unit, rules) {
       plans.push({ ...base, then: null, attack: 0 });
       return;
     }
-    // Sight goes both ways: whoever sees it there, it can shoot.
+    // Sight goes both ways: whoever sees it there, it can shoot, within its
+    // weapon's reach.
     for (const foe of seenBy) {
+      if (!withinReach(weapon, [spot.x, spot.y], [foe.x, foe.y])) continue;
       const flanked = coverFrom(field, [foe.x, foe.y], [spot.x, spot.y], rules).flanked;
       plans.push({ ...base, then: { type: 'shoot', target: foe.id, flanked }, attack: harm(field, there, foe, rules) });
     }
-    plans.push({ ...base, then: { type: 'overwatch' }, attack: base.steps <= WATCH_STEPS ? WEIGHTS.overwatch : WEIGHTS.idle });
+    const watching = reach ? base.steps <= reach + 1 : base.steps <= WATCH_STEPS;
+    plans.push({ ...base, then: { type: 'overwatch' }, attack: watching ? WEIGHTS.overwatch : WEIGHTS.idle });
   };
   for (const spot of reachable(battle, unit, unit.mobility * Math.min(unit.ap, 2), rules).values()) {
     consider(withDoorsOpened(battle, spot.path), spot, spot.cost === 0 ? 0 : spot.cost <= unit.mobility ? 1 : 2, null);
@@ -113,7 +131,8 @@ export function plansFor(battle, unit, rules) {
       consider({ ...battle, doors: [...battle.doors, edgeKey(unit.x, unit.y, side)] }, here, 1, side);
     }
   }
-  for (const plan of plans) plan.score = plan.attack - WEIGHTS.safety * (plan.threat + plan.risk) - (isShot(plan) ? 0 : WEIGHTS.near * plan.steps);
+  const far = (steps) => (reach ? WEIGHTS.close * Math.max(0, steps - reach) : WEIGHTS.near * steps);
+  for (const plan of plans) plan.score = plan.attack - WEIGHTS.safety * (plan.threat + plan.risk) - (isShot(plan) ? 0 : far(plan.steps));
   return plans;
 }
 
@@ -153,24 +172,75 @@ function throughDoor(battle, from, to) {
 
 // The harm `shooter` can be expected to do with one shot at `target` (as
 // placed): the chance to hit times the damage a hit does, kept to the hit
-// points it has, with a kill counted WEIGHTS.kill more. In hit points.
+// points it has, with a kill counted WEIGHTS.kill more. In hit points. None
+// past its weapon's reach. A burst, a stun or fire (weapons.js) is weighed
+// shot by shot (rulesHarm).
 export function harm(battle, shooter, target, rules, options) {
+  const weapon = rules.weapons.get(shooter.weapon);
+  if (!withinReach(weapon, [shooter.x, shooter.y], [target.x, target.y])) return 0;
   const odds = shotOdds(battle, shooter, target, rules, options);
   if (!odds.hit) return 0;
-  const weapon = rules.weapons.get(shooter.weapon);
+  const shots = shotsOf(weapon, options?.overwatch);
+  if (shots > 1 || weapon.stun || weapon.burn) return rulesHarm(battle, weapon, odds, target, shots, rules);
   const [least, most] = weapon.damage;
   const crit = odds.crit / 100;
+  const armor = armorAgainst(target.armor, weapon);
   let damage = 0;
   let kill = 0;
   for (let roll = least; roll <= most; roll++) {
     for (const [p, extra] of [[1 - crit, 0], [crit, weapon.critDamage]]) {
-      const dealt = Math.max(1, roll + extra - target.armor);
+      const dealt = Math.max(1, roll + extra - armor);
       damage += p * Math.min(dealt, target.hp);
       if (dealt >= target.hp) kill += p;
     }
   }
   const rolls = most - least + 1;
   return (odds.hit / 100) * ((damage + WEIGHTS.kill * kill) / rolls);
+}
+
+// The harm of a shot with a weapon's rules: its shots one by one, each at
+// the same odds, stopping once the target drops, worked out over the hit
+// points the target could have left. A kill counts WEIGHTS.kill more; a
+// target still standing after a hit counts WEIGHTS.stun more for a stun,
+// and the fire it then stands in (at most what it has left) for a burn.
+function rulesHarm(battle, weapon, odds, target, shots, rules) {
+  const [least, most] = weapon.damage;
+  const [hit, crit] = [odds.hit / 100, odds.crit / 100];
+  const armor = armorAgainst(target.armor, weapon);
+  const each = 1 / (most - least + 1);
+  // [hit points left, hit yet?] -> chance, starting untouched.
+  let states = new Map([[`${target.hp}|0`, 1]]);
+  for (let n = 0; n < shots; n++) {
+    const next = new Map();
+    const add = (hp, struck, p) => next.set(`${hp}|${struck}`, (next.get(`${hp}|${struck}`) ?? 0) + p);
+    for (const [key, p] of states) {
+      const [hp, struck] = key.split('|').map(Number);
+      if (hp === 0) {
+        add(0, 1, p);
+        continue;
+      }
+      add(hp, struck, p * (1 - hit));
+      for (let roll = least; roll <= most; roll++) {
+        for (const [q, extra] of [[1 - crit, 0], [crit, weapon.critDamage]]) {
+          add(Math.max(0, hp - Math.max(1, roll + extra - armor)), 1, p * hit * q * each);
+        }
+      }
+    }
+    states = next;
+  }
+  let [left, kill, standing, burnt] = [0, 0, 0, 0];
+  const burns = weapon.burn ? rules.balance.fireDamage : 0;
+  for (const [key, p] of states) {
+    const [hp, struck] = key.split('|').map(Number);
+    left += p * hp;
+    if (hp === 0) kill += p;
+    else if (struck) {
+      standing += p;
+      burnt += p * Math.min(burns, hp);
+    }
+  }
+  const stun = weapon.stun ? WEIGHTS.stun * standing : 0;
+  return target.hp - left + WEIGHTS.kill * kill + stun + (hazardAt(battle, target.x, target.y) ? 0 : burnt);
 }
 
 // The fire a walk along `path` would draw: each enemy on overwatch shoots

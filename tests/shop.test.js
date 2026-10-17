@@ -14,6 +14,8 @@ import { rules } from './battleKit.js';
 
 const DISTRICT = 'tailings';
 const shop = rules.districts.get(DISTRICT).shop;
+// A stock holds the shop's parts and, since M37, its weapons.
+const stocked = shop.size + (shop.armsSize ?? 0);
 const fresh = (seed = 5, extra = {}) => ({ ...withBoard(newCampaign(rules, seed), rules), ...extra });
 
 test("a part's price is its cost, and the shop buys it back for half, in steps of 5", () => {
@@ -72,14 +74,14 @@ test("the shop's stock: different parts at their prices, rolled from the campaig
 
 test('a new campaign has a stock, and every job, done or lost, brings a new one', () => {
   const campaign = fresh();
-  assert.equal(campaign.shop.length, shop.size);
+  assert.equal(campaign.shop.length, stocked);
   assert.equal(shopOf(campaign, rules), shop);
   assert.deepEqual(campaignProblems(campaign), []);
   const on = takeJob(campaign, rules, 0).campaign;
   assert.deepEqual(on.shop, campaign.shop, 'a fight leaves it as it was');
   for (const winner of ['crew', 'enemy']) {
     const after = endJob({ ...on, fight: { ...on.fight, battle: { ...on.fight.battle, winner } } }, rules);
-    assert.equal(after.shop.length, shop.size);
+    assert.equal(after.shop.length, stocked);
     assert.notEqual(after.rng, on.rng);
     assert.deepEqual(campaignProblems(after), []);
   }
@@ -124,7 +126,7 @@ test('selling: a part on hand for its sell price', () => {
 test('buying and selling through the game, which changes nothing when it fails', () => {
   const state = { ...initialState(1), screen: 'hub', campaign: fresh(5, { credits: 400 }) };
   const bought = reduce(state, { type: 'campaign/buy', index: 0, rules });
-  assert.equal(bought.campaign.shop.length, shop.size - 1);
+  assert.equal(bought.campaign.shop.length, stocked - 1);
   const part = state.campaign.shop[0].part;
   const sold = reduce(bought, { type: 'campaign/sell', part, rules });
   assert.equal(sold.campaign.credits, 400 - state.campaign.shop[0].price + sellPriceOf(part, rules));
@@ -142,7 +144,7 @@ test('a v6 save gains a shop yet to be rolled, which the hangar rolls, and no jo
   assert.equal(loaded.save.version, SAVE_VERSION);
   assert.deepEqual(loaded.save.data.campaign, { ...campaign, shop: null });
   const opened = reduce({ ...initialState(1), campaign: loaded.save.data.campaign }, { type: 'campaign/board', rules });
-  assert.equal(opened.campaign.shop.length, shop.size);
+  assert.equal(opened.campaign.shop.length, stocked);
   assert.deepEqual(opened.campaign.board, campaign.board, 'the board it had stays');
   // A save with no campaign is left alone.
   assert.equal(parseSave(JSON.stringify({ version: 6, data: saveData(initialState(3)) })).save.data.campaign, null);
@@ -172,7 +174,7 @@ test('the shop in words: what the ship needs first, prices, why not, and what to
   assert.deepEqual(shopText({ ...campaign, credits: 400 }, rules).hint, { tone: 'good', text: 'The ship needs the Engine: buy it, then fit it with Build.' });
   assert.deepEqual(shopText({ ...campaign, parts: {} }, rules).hint, { tone: 'info', text: 'The Engine the ship needs is 200 credits. Jobs pay the rest.' });
   assert.deepEqual(shopText({ ...campaign, parts: {}, shop: [] }, rules).hint, { tone: 'info', text: "Dutch's yard is sold out. The stock turns over after every job." });
-  assert.deepEqual(shopText({ ...campaign, parts: {}, shop: [{ part: 'cargo', price: 60 }] }, rules).hint.text, 'Pick a part to read about it. Buying or selling takes two taps.');
+  assert.deepEqual(shopText({ ...campaign, parts: {}, shop: [{ part: 'cargo', price: 60 }] }, rules).hint.text, 'Pick a part or a weapon to read about it. Buying or selling takes two taps.');
   assert.equal(shopText({ ...campaign, background: 'nobody' }, rules), null);
   assert.equal(offerText(campaign, rules, 'engine'), "200 at Dutch's yard");
   assert.equal(offerText(campaign, rules, 'reactor'), null);

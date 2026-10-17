@@ -3,8 +3,9 @@
 // seam around every tile; walls, the hull, doors and hatches stand on the
 // tile edges; each tile's fitting stands on it (crates for half cover,
 // lockers for full cover, machinery, consoles, the airlock's pad). Wrecked
-// rooms burn, frost over or fill with rubble. An open door has slid down
-// into the deck. A job's site (src/sim/gen/site.js) is drawn the same way
+// rooms burn, frost over or fill with rubble, and since M37 a tile a
+// weapon set burning burns too, until it goes out. An open door has slid
+// down into the deck. A job's site (src/sim/gen/site.js) is drawn the same way
 // in the ground skin, with rock standing in lumps; in a raid, the hangar's
 // deck lies around the ship (hangarMap.js), painted at its doors. Pure: map in, { faces,
 // glows } out (solid.js faces, mesh.js glows), in the manufacturer's skin.
@@ -26,9 +27,9 @@ const SOLID = new Set(['wall', 'hull']); // runs that go straight on without a p
 const STEP = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 const FLOOR_UNDER = { fire: 'scorch', vacuum: 'frost', rubble: 'dust' };
 
-// input: { map, skin, open }: open is a battle's open doors, by edge key
-// (battle.doors).
-export function battleScene({ map, skin, open = [] }) {
+// input: { map, skin, open, fires }: open is a battle's open doors, by edge
+// key (battle.doors); fires the tiles a weapon set burning (battle.fires).
+export function battleScene({ map, skin, open = [], fires = [] }) {
   const faces = [];
   const glows = [];
   const edge = { edge: skin.edge };
@@ -61,6 +62,8 @@ export function battleScene({ map, skin, open = [] }) {
     }
   }
 
+  // A weapon's fire (M37): flames on the tile, whatever floor is under them.
+  for (const { at } of fires) HAZARDS.fire(faces, glows, at[0], at[1], 'floor');
   walls(faces, map, skin, new Set(open));
   for (const { x, y, side } of map.hatches) collar(faces, glows, x, y, side, skin);
   // A room open to space glows cold, once for the whole room.

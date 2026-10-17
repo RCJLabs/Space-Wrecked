@@ -8,6 +8,7 @@ import { launchProblem } from '../../sim/launch.js';
 import { baseOf, countOfAny } from '../../sim/makers.js';
 import { beginRaid } from '../../sim/raid.js';
 import { coldAt } from '../../sim/quests.js';
+import { gearLine } from './armsText.js';
 import { shownRank } from './crewJobText.js';
 import { coldWarning, questsText } from './questText.js';
 import { offerText } from './shopText.js';
@@ -145,7 +146,8 @@ export function heatText(campaign, rules) {
 // The raid at the door: see hangarText.
 function raidText(campaign, rules) {
   const begun = beginRaid(campaign, rules);
-  return { line: pursuerOf(campaign, rules)?.levels.raid ?? '', ok: begun.ok, why: begun.ok ? null : begun.error };
+  const gear = gearLine(rules);
+  return { line: `${pursuerOf(campaign, rules)?.levels.raid ?? ''}${gear ? ` ${gear}` : ''}`, ok: begun.ok, why: begun.ok ? null : begun.error };
 }
 
 // "Engine ×2, Corridor": the parts on hand, not on the ship.

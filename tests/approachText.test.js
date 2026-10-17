@@ -111,8 +111,9 @@ test('how it ended, and the boarding fight it ended in', () => {
   const cutter = rules.ships.get('cutter');
   assert.equal(boarded.outcome.title, 'The cutter is dead in space.');
   assert.equal(boarded.outcome.board, 'them');
-  assert.ok(boarded.outcome.lines.includes('Her crew: Pirate ×3, Pirate brute.'), boarded.outcome.lines.join(' | '));
+  assert.ok(boarded.outcome.lines.includes('Her crew: Pirate ×2, Pirate gunner, Pirate brute.'), boarded.outcome.lines.join(' | '));
   assert.ok(boarded.outcome.lines.includes(`Win aboard her: strip 1 part off her, and her scrap, ${cutter.scrap[0]} to ${cutter.scrap[1]} credits.`));
+  assert.ok(boarded.outcome.lines.includes('Win: 30% to pick up one of their weapons.'), 'M37: what a win can leave');
   assert.ok(boarded.outcome.lines.includes('Lose: the crew is beaten back to your ship, hurt.'));
   assert.deepEqual([boarded.outcome.boarding.begin.label, boarded.outcome.boarding.leave.label, boarded.hint.text], ['Board her', 'Leave her', 'Board her, or leave her.']);
   assert.deepEqual([boarded.orders, boarded.intent, boarded.round], [[], null, 'Over']);

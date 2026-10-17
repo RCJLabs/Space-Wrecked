@@ -84,13 +84,18 @@ const RUNS = 30;
 // player fed without refits; runs with a refit), against main's before
 // M33b (the M33 fix's, carefulFed and refitRuns). M33c's companions did it
 // to three more (fed with a cargo hold, with bunks and with the large
-// hold), against main's before M33c (cargoFed, bunksFed, largeholdFed). The
-// rest fly the first RUNS, as before.
+// hold), against main's before M33c (cargoFed, bunksFed, largeholdFed).
+// M37's weapons and enemies took two of those under their bars on seeds 1
+// to 100, fed with a cargo hold (74) and with bunks (68), where main's had
+// come down to 81 and 75 by M36; on seeds 101 to 200 its voyages matched
+// main's (78 and 75 against 80 and 73). So those two hold main's rates
+// before M37 (Evan's call, 2026-10-17). The rest fly the first RUNS, as
+// before.
 const RATE_RUNS = 100;
 const MARGIN = 15;
 const MARGIN_RARE = 5;
 const MAIN = {
-  miner: { metSectors: 33, ignoringMet: 100, fed: 73, metAny: 42, lost: 29, systemHungry: 14, shortOfAir: 0, surveyed: 68, housed: 41, noScan: 0, medbayFed: 79, surgeryFed: 81, signed: 44, settledSurveyed: 81, carefulFed: 82, refitRuns: 69, cargoFed: 90, bunksFed: 90, largeholdFed: 98 },
+  miner: { metSectors: 33, ignoringMet: 100, fed: 73, metAny: 42, lost: 29, systemHungry: 14, shortOfAir: 0, surveyed: 68, housed: 41, noScan: 0, medbayFed: 79, surgeryFed: 81, signed: 44, settledSurveyed: 81, carefulFed: 82, refitRuns: 69, cargoFed: 81, bunksFed: 75, largeholdFed: 98 },
   deserter: { fed: 80, metAny: 45, lost: 20 },
   smuggler: { fed: 89, metAny: 19, lost: 18 },
 };
@@ -175,7 +180,8 @@ test('supplies and heat move as data/balance.json and data/events.json say, step
   // deserter's runs repair now and then, so theirs are walked too, but for
   // their refits (the refit test's).
   for (const trip of deserters) for (const step of trip.steps) if (step.kind !== 'refit') checkStep(step, step.room, kinds);
-  assert.deepEqual([...kinds].sort(), ['approach', 'boarding', 'buy', 'event', 'hide', 'hire', 'jump', 'long', 'patch', 'repair', 'scan', 'sector', 'settle', 'survey', 'swap', 'system'], 'every kind of step comes up');
+  // A weapon bought from a station's rack (M37) comes up too.
+  assert.deepEqual([...kinds].sort(), ['approach', 'arms', 'boarding', 'buy', 'event', 'hide', 'hire', 'jump', 'long', 'patch', 'repair', 'scan', 'sector', 'settle', 'survey', 'swap', 'system'], 'every kind of step comes up');
 });
 
 // One step of a voyage, as the rules say it moves things.
@@ -283,6 +289,16 @@ function checkStep(step, capacity, kinds) {
     checkDock(step);
     return;
   }
+  if (step.kind === 'arms') {
+    // M37: a weapon from the station's rack, at its price there, with a
+    // holdful's price and a transponder swap's left over; nothing else moved.
+    assert.ok(rules.weapons.has(step.weapon), step.weapon);
+    assert.equal(step.credits[0] - step.credits[1], step.price);
+    assert.ok(step.credits[1] >= step.room * balance.supplyPrice + balance.swapPrice, `${step.credits[1]} credits left`);
+    assert.deepEqual([after, step.hp[1], step.parts[1]], [supplies, step.hp[0], step.parts[0]]);
+    checkDock(step);
+    return;
+  }
   if (step.kind === 'hire') {
     // Their fee, by their traits and rank, at the station's share (M33),
     // and one more aboard at full health; nothing else moved.
@@ -306,6 +322,8 @@ function checkStep(step, capacity, kinds) {
     assert.deepEqual([step.credits[1] - step.credits[0], after - supplies, step.heat[1] - step.heat[0]], [changes.credits, changes.supplies, changes.heat]);
     assert.equal(step.parts[1] - step.parts[0], changes.parts.length - changes.sold.length);
     assert.equal(changes.parts.length, (effects.part ? 1 : 0) + (effects.drop ? 1 : 0));
+    // A weapon on hand (M37), as written.
+    assert.deepEqual(changes.arms ?? [], effects.arms ? [effects.arms] : []);
     // A companion signed on (M33c): one more aboard, at full health, and
     // only by a choice that signs them on.
     const companion = rules.companions.get(changes.joined);
@@ -394,7 +412,7 @@ test('recruits sign on where the holds can feed them, and the run still pays its
   assert.ok(signed >= MAIN.miner.signed - MARGIN, `runs with a recruit: ${signed} of ${RATE_RUNS}`);
   assert.ok(cargo.every((trip) => trip.campaign.crew.length <= 4), 'up to the berths and life support: 4');
   // Fed in 24 or more of 30 until M33c, and since its companions over 100
-  // seeds, as main's within MARGIN.
+  // seeds, as main's within MARGIN (main's before M37 since then).
   const fed = cargoAll.filter((trip) => trip.tally.hungryJumps === 0).length;
   assert.ok(fed >= MAIN.miner.cargoFed - MARGIN, `fed all the way in ${fed} of ${RATE_RUNS} with a cargo hold`);
 });
@@ -418,7 +436,8 @@ test('surgery, bunks and the large hold each change the voyage (Law 1)', () => {
   const fed = (voyages) => voyages.filter((trip) => trip.tally.hungryJumps === 0).length;
   for (const voyages of [surgery, bunks, largehold]) assert.ok(voyages.every((trip) => trip.launched && trip.ended), 'every run settles a world past the charts');
   // Fed in 24 or more of 30 with bunks or the large hold until M33c, and
-  // since its companions over 100 seeds, as main's within MARGIN.
+  // since its companions over 100 seeds, as main's within MARGIN (with
+  // bunks, main's before M37 since then).
   assert.ok(fed(bunksAll) >= MAIN.miner.bunksFed - MARGIN, `fed all the way in ${fed(bunksAll)} of ${RATE_RUNS} with bunks`);
   assert.ok(fed(largeholdAll) >= MAIN.miner.largeholdFed - MARGIN, `fed all the way in ${fed(largeholdAll)} of ${RATE_RUNS} with the large hold`);
   assert.ok(fed(surgeryAll) >= MAIN.miner.surgeryFed - MARGIN, `fed all the way in ${fed(surgeryAll)} of ${RATE_RUNS} with surgery`);

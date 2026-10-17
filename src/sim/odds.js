@@ -18,10 +18,11 @@ export function rangeBand(from, to, balance) {
 // The odds of `shooter` hitting `target` (units: { side, x, y, aim,
 // defense, weapon, suppressed?, mark? }), as { hit, hitParts, crit,
 // critParts, band, cover, flanked }. Each part is { why, value } in
-// percentage points: why is 'aim', 'weapon' (with band), 'cover' (with
-// cover), 'defense', 'overwatch', 'suppressed' (the shooter is, orders.js),
-// 'marked' (the target is), 'forgiving' or 'flanked'. The parts add up to
-// the chance before it is kept within 0 to 100.
+// percentage points: why is 'aim', 'weapon' (with band), 'burst' (with
+// shots: each shot of a burst's, weapons.js, M37; not on overwatch),
+// 'cover' (with cover), 'defense', 'overwatch', 'suppressed' (the shooter
+// is, orders.js), 'marked' (the target is), 'forgiving' or 'flanked'. The
+// parts add up to the chance before it is kept within 0 to 100.
 export function shotOdds(battle, shooter, target, rules, { overwatch = false } = {}) {
   const { balance } = rules;
   const weapon = rules.weapons.get(shooter.weapon);
@@ -29,6 +30,7 @@ export function shotOdds(battle, shooter, target, rules, { overwatch = false } =
   const band = rangeBand(from, at, balance);
   const { cover, flanked } = coverFrom(battle, at, from, rules);
   const hitParts = [{ why: 'aim', value: shooter.aim }, { why: 'weapon', band, value: weapon.accuracy[band] }];
+  if (weapon.burst && !overwatch) hitParts.push({ why: 'burst', shots: weapon.burst.shots, value: weapon.burst.aim });
   if (cover) hitParts.push({ why: 'cover', cover, value: -(cover === 'full' ? balance.fullCover : balance.halfCover) });
   if (target.defense) hitParts.push({ why: 'defense', value: -target.defense });
   if (overwatch) hitParts.push({ why: 'overwatch', value: -balance.overwatchPenalty });

@@ -86,8 +86,9 @@ test('the hangar shows heat by its level, the payment, and a raid at the door', 
   assert.deepEqual([hunted.heat.level, hunted.heat.payment.ok], ['hunters', true]);
   assert.deepEqual(hunted.hint, { tone: 'warn', text: 'A Recovery agent tails the crew to every job. A payment buys some heat off.' });
   const raided = hangarText({ ...campaign, heat: 80 }, rules);
-  assert.deepEqual(raided.raid, { line: 'Con-Reg Recovery is at the hangar door with a court order and a lot of friends.', ok: true, why: null });
-  assert.deepEqual(raided.hint, { tone: 'bad', text: 'Con-Reg Recovery is at the hangar door with a court order and a lot of friends. Defend the ship, or pay heat down under 75.' });
+  // Since M37 the line says what a win can leave the crew (armsText.js gearLine).
+  assert.deepEqual(raided.raid, { line: 'Con-Reg Recovery is at the hangar door with a court order and a lot of friends. Win: 30% to pick up one of their weapons.', ok: true, why: null });
+  assert.deepEqual(raided.hint, { tone: 'bad', text: 'Con-Reg Recovery is at the hangar door with a court order and a lot of friends. Win: 30% to pick up one of their weapons. Defend the ship, or pay heat down under 75.' });
   const airlock = campaign.ship.modules.find((m) => m.type === 'airlock');
   const sealed = hangarText({ ...campaign, heat: 80, ship: { ...campaign.ship, modules: campaign.ship.modules.filter((m) => m !== airlock) } }, rules);
   assert.equal(sealed.raid.ok, false);

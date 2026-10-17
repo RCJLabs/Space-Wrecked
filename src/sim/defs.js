@@ -106,7 +106,7 @@ export function indexDefs(files) {
     // The sides (M33, standing.js): each by id in data order, with its
     // name, words and color, and the stations that belong to one, by the
     // station's name: { sides, stations }.
-    factions: { sides: byId(factions?.sides), stations: factions?.stations ?? {} },
+    factions: { sides: byId(factions?.sides), stations: factions?.stations ?? {}, arms: factions?.arms ?? {} },
     // The quests (M33b, quests.js): each by id in data order, with its steps
     // and pay-off, and the words that say what quests are.
     quests: byId(quests?.quests),

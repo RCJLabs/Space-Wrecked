@@ -20,6 +20,7 @@ import { SITE_CHARS } from '../src/sim/gen/site.js';
 import { ORDER_KINDS } from '../src/sim/orders.js';
 import { jobAtRank, RANK_LAYERS } from '../src/sim/ranks.js';
 import { TRAIT_STATS } from '../src/sim/traits.js';
+import { WEAPON_KINDS } from '../src/sim/weapons.js';
 import { TIP_IDS } from '../src/ui/tipSteps.js';
 import { isId, isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 import { readData } from './data.js';
@@ -205,11 +206,20 @@ const BALANCE = {
   friendlyPay: [0, 100],
   trustedPay: [0, 100],
   dockHeat: [0, 50],
+  // M37: the chance a won fight leaves a weapon, and how many a station's
+  // rack sells.
+  gearChance: [0, 100],
+  rackSize: [0, 6],
 };
 // A weapon's held shape and a fighter's look are how the fight draws them
-// (src/render/figures/looks.js).
-const WEAPON_KEYS = ['id', 'name', 'damage', 'accuracy', 'crit', 'critDamage', 'clip', 'sound', 'held'];
+// (src/render/figures/looks.js). Its kind, for who can carry it, its price,
+// and the rules it brings (M37, src/sim/weapons.js), each optional, with
+// how far their numbers go.
+const WEAPON_KEYS = ['id', 'name', 'kind', 'cost', 'damage', 'accuracy', 'crit', 'critDamage', 'clip', 'burst', 'pierce', 'reach', 'stun', 'burn', 'sound', 'held'];
 const RANGE_BANDS = ['close', 'mid', 'long'];
+const WEAPON_RULES = { pierce: [1, 5], reach: [1, 10], burn: [1, 10] };
+const BURST = { shots: [2, 4], aim: [-50, 0] };
+const MAX_WEAPON_COST = 999;
 // Crew jobs and enemies are both fighters, with the same fields. A job
 // can also have an order in a fight (src/sim/orders.js), a ship effect
 // (station) and a colony effect (colony, src/sim/edges.js) (§4.5, M32), and
@@ -217,7 +227,8 @@ const RANGE_BANDS = ['close', 'mid', 'long'];
 // fights, each { name, text } and the numbers it lays over the job's order,
 // station or colony.
 const FIGHTER_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'weapon', 'look'];
-const JOB_KEYS = ['order', 'station', 'colony', 'ranks'];
+// A job's arms (M37): the kinds of weapon it can carry, its own among them.
+const JOB_KEYS = ['order', 'station', 'colony', 'ranks', 'arms'];
 const RANK_KEYS = ['name', 'text', ...RANK_LAYERS];
 const RANKS = 2;
 const MAX_USES = 9;
@@ -343,8 +354,9 @@ export function validateData(data) {
   const soundIds = checkSounds(data.sounds, fail);
 
   const weapons = listOf(weaponFile, 'weapons', 'weapons.json', fail);
-  const weaponIds = uniqueIds(weapons, 'weapons.json', fail);
+  uniqueIds(weapons, 'weapons.json', fail);
   weapons.forEach((weapon, i) => checkWeapon(weapon, `weapons.json ${weapon.id ?? `#${i}`}`, soundIds, fail));
+  const weaponIds = new Map(weapons.map((weapon) => [weapon.id, weapon]));
 
   // Jobs and enemies share one set of ids: a battle names a fighter by it.
   const jobs = listOf(jobFile, 'jobs', 'jobs.json', fail);
@@ -733,6 +745,19 @@ function checkWeapon(weapon, where, soundIds, fail) {
   if (!isIntIn(weapon.crit, 0, 100)) fail(where, 'crit must be a whole number from 0 to 100');
   if (!isIntIn(weapon.critDamage, 0, 99)) fail(where, 'critDamage must be a whole number from 0 to 99');
   if (!isIntIn(weapon.clip, 1, 99)) fail(where, 'clip must be a whole number from 1 to 99');
+  if (!WEAPON_KINDS.includes(weapon.kind)) fail(where, `kind must be one of ${WEAPON_KINDS.join(', ')}`);
+  if (!isIntIn(weapon.cost, 5, MAX_WEAPON_COST) || weapon.cost % 5) fail(where, `cost must be a whole number of credits from 5 to ${MAX_WEAPON_COST}, in fives`);
+  for (const [key, [min, max]] of Object.entries(WEAPON_RULES)) {
+    if (weapon[key] !== undefined && !isIntIn(weapon[key], min, max)) fail(where, `${key} must be a whole number from ${min} to ${max}`);
+  }
+  if (weapon.stun !== undefined && weapon.stun !== true) fail(where, 'stun must be true, or left out');
+  if (weapon.burst !== undefined) {
+    const { burst } = weapon;
+    if (!isObject(burst) || Object.keys(burst).some((key) => !(key in BURST)) || Object.entries(BURST).some(([key, [min, max]]) => !isIntIn(burst[key], min, max))) {
+      fail(where, `burst must be { shots: ${BURST.shots.join(' to ')}, aim: ${BURST.aim.join(' to ')} }`);
+    }
+    if (weapon.clip < (burst?.shots ?? 0)) fail(where, 'a clip must hold a whole burst');
+  }
   checkSoundOf(weapon, soundIds, where, fail);
   for (const problem of heldProblems(weapon.held)) fail(where, problem);
 }
@@ -754,6 +779,24 @@ function checkFighter(fighter, where, weaponIds, fail, { job = false } = {}) {
   }
   if (!weaponIds.has(fighter.weapon)) fail(where, `unknown weapon "${fighter.weapon}"`);
   for (const problem of lookProblems(fighter.look)) fail(where, problem);
+  if (job) checkArms(fighter, where, weaponIds, fail);
+}
+
+// A job's arms (M37): the kinds it carries, each once, among them its own
+// weapon's and the kind of any weapon its order needs in hand.
+function checkArms(job, where, weapons, fail) {
+  const { arms } = job;
+  if (!Array.isArray(arms) || !arms.length || !arms.every((kind) => WEAPON_KINDS.includes(kind)) || new Set(arms).size !== arms.length) {
+    fail(where, `arms must list kinds of weapon, each once: ${WEAPON_KINDS.join(', ')}`);
+    return;
+  }
+  const own = weapons.get(job.weapon);
+  if (own && !arms.includes(own.kind)) fail(where, `its own ${own.name.toLowerCase()} is a ${own.kind}, which its arms leave out`);
+  const needed = job.order?.weapon;
+  if (needed === undefined) return;
+  const weapon = weapons.get(needed);
+  if (!weapon) fail(where, `order: unknown weapon "${needed}"`);
+  else if (!arms.includes(weapon.kind)) fail(where, `order needs a ${weapon.name.toLowerCase()}, a ${weapon.kind}, which its arms leave out`);
 }
 
 // A job's order: { type, name, uses, ...its kind's numbers }.
@@ -768,8 +811,9 @@ function checkOrder(order, where, fail) {
     return;
   }
   for (const key of Object.keys(order)) {
-    if (!['type', 'name', 'uses', ...Object.keys(kind.fields)].includes(key)) fail(where, `unknown field "${key}" for ${order.type}`);
+    if (!['type', 'name', 'uses', 'weapon', ...Object.keys(kind.fields)].includes(key)) fail(where, `unknown field "${key}" for ${order.type}`);
   }
+  if (order.weapon !== undefined && !isText(order.weapon)) fail(where, 'weapon must be the id of the weapon it needs in hand');
   if (!isText(order.name)) fail(where, 'name must be a non-empty string');
   if (!isIntIn(order.uses, 1, MAX_USES)) fail(where, `uses must be a whole number from 1 to ${MAX_USES}`);
   for (const [key, [min, max]] of Object.entries(kind.fields)) {

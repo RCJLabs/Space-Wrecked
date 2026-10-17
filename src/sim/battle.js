@@ -19,6 +19,9 @@
 //            orders leave (orders.js, M32)
 //   doors    the keys of the doors opened so far (mapFromShip.js edgeKey)
 //   welds    the doors welded shut, [{ key, until }] (orders.js)
+//   fires    absent until a weapon's hit sets a tile burning (weapons.js
+//            burn, M37), then [{ at: [x, y], until }]: each burns as a
+//            wrecked room's fire does through round `until`
 //   side     whose turn it is; first, the side that started
 //   round    from 1; a round is both sides' turns
 //   rng      the RNG state
@@ -43,7 +46,8 @@
 // Actions, each by a unit of the side whose turn it is (act):
 //   { type: 'move', unit, to: [x, y] }   1 action within its mobility, or
 //                                        2 within twice that (a dash)
-//   { type: 'shoot', unit, target }      ends the unit's turn
+//   { type: 'shoot', unit, target }      ends the unit's turn; a burst is
+//                                        several shots (weapons.js)
 //   { type: 'overwatch', unit }          ends the unit's turn; it shoots the
 //                                        first enemy that moves in its sight
 //   { type: 'reload', unit }             1 action
@@ -73,16 +77,20 @@ import { jobAtRank } from './ranks.js';
 import { talentOrder } from './talents.js';
 import { canSee } from './sight.js';
 import { hazardAt, inReach, walkable, weldedAt } from './terrain.js';
+import { armorAgainst, outOfReach, shotsOf, withinReach } from './weapons.js';
 
-// setup: { map, units: [{ kind, x, y, name?, hp?, bonus?, rank?, talent? }],
-// seed, first?, options?, objective? }. kind is a crew job (data/jobs.json),
-// which puts the unit on the crew's side, or an enemy (data/enemies.json).
+// setup: { map, units: [{ kind, x, y, name?, hp?, bonus?, rank?, talent?,
+// weapon? }], seed, first?, options?, objective? }. kind is a crew job
+// (data/jobs.json), which puts the unit on the crew's side, or an enemy
+// (data/enemies.json).
 // bonus adds to its kind's numbers: { hp, aim, defense, mobility, armor },
 // each optional (a captain's traits, the difficulty), with at least 1 hit
 // point and 1 of mobility left. rank is a crew member's job rank (ranks.js,
 // M32b): their order is the rank's, and a unit above rank 0 keeps it as
 // `rank`. talent is a loyal companion's id (M33c, talents.js): their order is
-// their talent, past rank 2, and the unit keeps it as `talent`. A unit starts
+// their talent, past rank 2, and the unit keeps it as `talent`. weapon is
+// the weapon a crew member carries (M37, loadout.js), in place of their
+// kind's. A unit starts
 // with all its hit points, or with hp if given: a wounded crew member's, from
 // 1 up. Units get ids by side in order: c1, c2... and e1,
 // e2... seed is a number or a string. The
@@ -93,7 +101,7 @@ export function createBattle({ map, units, seed, first = 'crew', options = {}, o
   const counts = { crew: 0, enemy: 0 };
   const battle = {
     map,
-    units: units.map(({ kind, x, y, name, hp: wounded, bonus = {}, rank = 0, talent = null }) => {
+    units: units.map(({ kind, x, y, name, hp: wounded, bonus = {}, rank = 0, talent = null, weapon: carried = null }) => {
       const job = rules.jobs.get(kind);
       const template = job ?? rules.enemies.get(kind);
       if (!template) throw new Error(`createBattle: no job or enemy "${kind}"`);
@@ -102,7 +110,8 @@ export function createBattle({ map, units, seed, first = 'crew', options = {}, o
       const add = (key) => template[key] + (bonus[key] ?? 0);
       const hp = Math.max(1, add('hp'));
       const [aim, defense, mobility, armor] = [add('aim'), add('defense'), Math.max(1, add('mobility')), add('armor')];
-      const { weapon } = template;
+      const weapon = carried ?? template.weapon;
+      if (!rules.weapons.has(weapon)) throw new Error(`createBattle: no weapon "${weapon}"`);
       if (wounded !== undefined && !(Number.isInteger(wounded) && wounded >= 1 && wounded <= hp)) {
         throw new RangeError(`createBattle: ${name ?? template.name} can't start with ${wounded} hit points (1 to ${hp})`);
       }
@@ -194,15 +203,19 @@ export function playBattle(setup, actions, rules) {
   return { battle, events, error: null };
 }
 
-// The enemies a unit could shoot now, with the odds: [{ target, odds }].
+// The enemies a unit could shoot now, with the odds: [{ target, odds }]:
+// those it can see, within its weapon's reach.
 export function targetsFor(battle, unit, rules) {
+  const weapon = rules.weapons.get(unit.weapon);
   return battle.units
-    .filter((u) => u.side !== unit.side && u.status === 'active' && canSee(battle, [unit.x, unit.y], [u.x, u.y], rules))
+    .filter((u) => u.side !== unit.side && u.status === 'active' && withinReach(weapon, [unit.x, unit.y], [u.x, u.y]) && canSee(battle, [unit.x, unit.y], [u.x, u.y], rules))
     .map((target) => ({ target, odds: shotOdds(battle, unit, target, rules) }));
 }
 
 function draft(battle) {
-  return { ...battle, units: battle.units.map((u) => ({ ...u })), doors: [...battle.doors], welds: [...(battle.welds ?? [])], misses: { ...battle.misses } };
+  const copy = { ...battle, units: battle.units.map((u) => ({ ...u })), doors: [...battle.doors], welds: [...(battle.welds ?? [])], misses: { ...battle.misses } };
+  if (battle.fires) copy.fires = [...battle.fires];
+  return copy;
 }
 
 function readyToAct(battle, unit, action) {
@@ -224,6 +237,8 @@ function doAction(battle, unit, action, events, rules) {
       if (target.status !== 'active') return `${target.name} is already down.`;
       if (unit.ammo < 1) return `${unit.name} has to reload first.`;
       if (!canSee(battle, [unit.x, unit.y], [target.x, target.y], rules)) return `${unit.name} can't see ${target.name}.`;
+      const weapon = rules.weapons.get(unit.weapon);
+      if (!withinReach(weapon, [unit.x, unit.y], [target.x, target.y])) return outOfReach(unit, target, weapon);
       unit.ap = 0;
       fire(battle, unit, target, false, events, rules);
       return null;
@@ -331,7 +346,7 @@ function walk(battle, unit, path, events, rules) {
     const shared = battle.units.some((u) => u !== unit && u.status !== 'dead' && u.x === to[0] && u.y === to[1]);
     for (const watcher of shared ? [] : battle.units) {
       if (watcher.side === unit.side || watcher.status !== 'active' || !watcher.overwatch) continue;
-      if (!canSee(battle, [watcher.x, watcher.y], to, rules)) continue;
+      if (!withinReach(rules.weapons.get(watcher.weapon), [watcher.x, watcher.y], to) || !canSee(battle, [watcher.x, watcher.y], to, rules)) continue;
       tell();
       watcher.overwatch = false;
       fire(battle, watcher, unit, true, events, rules);
@@ -342,14 +357,25 @@ function walk(battle, unit, path, events, rules) {
   tell();
 }
 
-// One shot, rolled: hit, then crit, then damage, each from the battle's RNG.
+// A shot: a burst's shots (weapons.js), or one. Each is rolled at the same
+// odds, the ones shown, until the target drops or the clip runs dry.
 function fire(battle, shooter, target, overwatch, events, rules) {
   const odds = shotOdds(battle, shooter, target, rules, { overwatch });
   const weapon = rules.weapons.get(shooter.weapon);
+  const shots = shotsOf(weapon, overwatch);
+  for (let n = 1; n <= shots && shooter.ammo > 0 && target.status === 'active'; n++) {
+    fireOnce(battle, shooter, target, overwatch, odds, weapon, shots > 1 ? n : 0, events, rules);
+  }
+}
+
+// One shot, rolled: hit, then crit, then damage, each from the battle's RNG.
+// burst is the shot's place in a burst, from 1, or 0. A hit's stun and fire
+// follow its damage (weapons.js).
+function fireOnce(battle, shooter, target, overwatch, odds, weapon, burst, events, rules) {
   shooter.ammo -= 1;
   const hit = percent(battle.rng, odds.hit);
   battle.rng = hit.state;
-  const shot = { type: 'shot', unit: shooter.id, target: target.id, overwatch, chance: odds.hit, roll: hit.roll, hit: hit.value, band: odds.band, cover: odds.cover };
+  const shot = { type: 'shot', unit: shooter.id, target: target.id, overwatch, chance: odds.hit, roll: hit.roll, hit: hit.value, band: odds.band, cover: odds.cover, ...(burst ? { burst } : {}) };
   if (!hit.value) {
     battle.misses[shooter.side] += 1;
     events.push(shot);
@@ -360,9 +386,35 @@ function fire(battle, shooter, target, overwatch, events, rules) {
   const roll = int(crit.state, weapon.damage[0], weapon.damage[1]);
   battle.rng = roll.state;
   // God mode (god.js) spares the crew: the hit lands and does nothing.
-  const damage = spared(target, rules) ? 0 : Math.max(1, roll.value + (crit.value ? weapon.critDamage : 0) - target.armor);
+  const damage = spared(target, rules) ? 0 : Math.max(1, roll.value + (crit.value ? weapon.critDamage : 0) - armorAgainst(target.armor, weapon));
   events.push({ ...shot, critChance: odds.crit, critRoll: crit.roll, crit: crit.value, damage });
   if (damage > 0) hurt(battle, target, damage, events, rules);
+  if (weapon.stun && target.status === 'active' && !spared(target, rules)) {
+    target.asleep = true;
+    target.overwatch = false;
+    target.ap = 0;
+    events.push({ type: 'stun', unit: target.id });
+  }
+  if (weapon.burn) ignite(battle, [target.x, target.y], weapon.burn, events);
+}
+
+// A weapon's fire (weapons.js burn) sets the tile at `at` burning for
+// `rounds` rounds, this one counted, unless it has a hazard already: a
+// wrecked room's, or a fire burning.
+function ignite(battle, [x, y], rounds, events) {
+  if (hazardAt(battle, x, y)) return;
+  const until = battle.round + rounds - 1;
+  battle.fires = [...(battle.fires ?? []), { at: [x, y], until }];
+  events.push({ type: 'fire', at: [x, y], until });
+}
+
+// A new round begins: the fires past their last round go out.
+function endFires(battle, events) {
+  const fires = battle.fires ?? [];
+  const out = fires.filter((f) => f.until < battle.round);
+  if (!out.length) return;
+  battle.fires = fires.filter((f) => f.until >= battle.round);
+  for (const { at } of out) events.push({ type: 'fire out', at: [...at] });
 }
 
 // True for a crew member while God mode is on (god.js).
@@ -402,6 +454,7 @@ function endTurn(battle, events, rules) {
   if (battle.side === battle.first) {
     battle.round += 1;
     endWelds(battle, events);
+    endFires(battle, events);
   }
   startTurn(battle, events, rules);
 }

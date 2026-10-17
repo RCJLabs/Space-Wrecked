@@ -2,6 +2,202 @@
 
 Newest entry first.
 
+## M37 Weapons and enemies (2026-10-17)
+
+**Status:** done, and the ROADMAP.md box is ticked.
+- **15 weapons,** nine of them new, three of each kind: 5 sidearms, 6 long guns and 4 heavy weapons in all.
+- **Five rules,** each a weapon's data: bursts, armor piercing, reach, a stun and fire.
+- **Loadouts by job:** each crew member carries one weapon, their job's to start, and swaps it for a spare of a kind their job carries. Two taps on the crew card.
+- **Four sources:** act 1's shops, won fights, events, and stations' racks.
+- **Five new enemy types,** one for each side. Saves are v32.
+
+**How it was picked:** Evan's picks (2026-10-17): loadouts by job; all four rules offered (bursts, armor piercing, a stun at arm's reach, fire); five enemies, one a side; all four sources. ROADMAP.md has the Done when in full, and what was built where it differs.
+
+**What shipped:**
+- **The content:**
+  - `data/weapons.json`: the nine new weapons, each with its kind, price, numbers, held look and fitting (a drum, prongs, twin barrels, coils, a scope, a nail box, a fuel tank) and its sound. Five sounds are new: a burst's rattle, a rail's crack, a rivet's thunk, a torch's roar, a baton's snap.
+  - `data/enemies.json`: the pirates' gunner (an autogun), the scavvers' torcher (a cutting torch), Con-Reg's breacher (a rivet gun), the Provost's proctor (a shock baton) and the Hallorans' cutter (a machine pistol), each with its look. Each joins one party: the cutter's boarders, the hulks' squatters, the repo tug's and the recovery jobs' crew, the frigate's squad, and Old Halloran's crew.
+  - What each job carries (`arms` in `data/jobs.json`), each dealer's weapons (`arms` in its shop), each side's rack and the stations' own (`data/factions.json`), and seven event choices that give or sell a weapon.
+- **The rules** (`src/sim/weapons.js`, `odds.js`, `battle.js`, `ai.js`):
+  - **A burst** is that many shots, each rolled at the odds shown, until the target drops. Overwatch fires one, without the burst's penalty.
+  - **Piercing** takes that much armor off the armor that counts.
+  - **Reach** stops a shot, overwatch too, past that many tiles.
+  - **A stun** puts the target to sleep through its next turn.
+  - **Fire** burns the target's tile for that many rounds: 2 a turn to whoever starts one there, then it goes out.
+  - **The AI** weighs each rule in its plans. A unit with a reach closes to it, and standing in a weapon's fire counts its burn.
+- **Loadouts and sources** (`src/sim/loadout.js`, `gear.js`, `racks.js`, `economy.js`):
+  - A crew member's weapon is saved with them, and spares on hand (`campaign.arms`). A recruit or a companion comes with their job's weapon, and someone let go hands theirs in.
+  - Sedate needs a dart gun in hand.
+  - Dealers stock 2 weapons beside their 4 parts, and buy spares at half price. Racks hold 2 weapons, the same on every visit.
+  - A won fight leaves one of the fallen's weapons 30% of the time.
+- **The screens:**
+  - **The crew card** opens at the hangar and at the colony too. Each row says what that person carries, with a button for each spare they could take. The first tap shows the spare's numbers under the buttons and says what the swap does; the second makes it.
+  - **The shop** lists its weapons after its parts, with who could carry each, and spares under On hand to sell.
+  - **A station's rack** is a button a weapon in the left panel, under the transponder swap. The first tap shows the weapon's numbers under its button and says the price and where it goes.
+  - **In a fight:**
+    - The odds card says each shot of a burst, the armor pierced, a stun or a fire.
+    - The unit card says the weapon's rules, and when someone is asleep or standing in fire. The tile card says when a tile is burning.
+    - Tapping an enemy out of reach says so ("Pirate e1 is out of reach: the shock baton reaches 1 tile. Move Fen Lindqvist closer.").
+  - **Every fight's stakes** give the chance of a weapon left (on a job's card, a boarding, a raid), and its end says what was left.
+- **Saves:** `SAVE_VERSION` 32. A save from before gives each crew member their job's weapon, with none spare; a fight under way keeps going. The save checks know weapons on hand, what each carries, the racks bought from, and fires and sleep in a battle.
+- **The validator:**
+  - each weapon's kind and rules, with a clip that holds a whole burst;
+  - each job's arms, which must include its own weapon's kind and an order's weapon's;
+  - the shop and rack tables.
+- **The tools:**
+  - `node tools/sim.js --weapons` prints the weapons' table, `--weapon <id>` arms the whole squad with one weapon, and `--sites` plays act 1's job sites.
+  - `tools/arms.js` holds the test players' weapons.
+
+**Calls I made, each easy to change:**
+- **Two weapons hit harder after the table:** the machine pistol 2–4 in bursts at −10 (was 2–3 at −15), the rivet gun 4–6 (was 3–5). Neither came within 5 points of its kind's best anywhere before (26/54/41 and 45/72/90).
+- **The enemies, tuned until each party was within 5 points of before:**
+  - the gunner: 7 hit points, aim 50;
+  - the torcher: 5 hit points, aim 45, no defense;
+  - the breacher: 6 hit points, no armor;
+  - the proctor: armor 1;
+  - the cutter: 5 hit points.
+
+  The proctor wears an MP's armor, not riot armor's 2: with 2, the crew beat the frigate's squad at home in 16% of 1,000 fights against 31% before. The breacher joined the recovery party, not the raiders, whose raids it moved 8 and 20 points.
+- **The test players' weapons** (`tools/arms.js`). They rank weapons by the table's wins, aboard ships or on the ground as the fight ahead is. A crew member whose order needs a weapon keeps it, and those whose jobs carry fewest kinds pick first.
+  - **First try:** buying any upgrade beyond the parts still needed (act 1) or a holdful's price (the run), and valuing an event's weapon at 1.5 times its price. That cost the voyages badly: in every set but the large hold's, 10 to 22 fewer voyages of 100 crossed fed than main's. Act 1 launched with about half its credits, and the run spent its purse on weapons and lockers instead of transponder swaps. The hunters came two-thirds more often (206 meetings a hundred careful voyages against 124).
+  - **Now:** they buy only a weapon 20 points better than what someone who could carry it has (`GAIN`), beyond a holdful's price and a transponder swap's, and value an event's weapon at a part's worth (a quarter of its price). Over 100 voyages that is as good as buying none: careful-fed 72 either way.
+- **Two fixes to the test harness** (`tools/boarding.js`), each found by a stalled voyage:
+  - a side moving to get an enemy in sight now looks any distance and walks the way there;
+  - once a fight drags past 40 rounds, a move must close in. A crew member with a torch out of reach and the raiders facing them stepped out and back every turn.
+- **Spares are listed in the order of `data/weapons.json`,** as the swap buttons are, not the order they came on hand.
+- **Three screen fixes, found by the browser checks:**
+  - **The rack moved into a station's left panel,** under the transponder swap. In the foot, beside Buy, Fill up, Repair and Patch up, its two buttons pushed the last ones off the tab-size screen and left the hint no room at all (M22's check found it). M24 moved the transponder swap there for the same reason.
+  - **A weapon's numbers show beside the button tapped,** not in the hint. At a crowded station the hint is three lines of about 35 letters at the tab size. The rack's numbers and rules ran to 190 and lost "Tap again to buy." The crew card's swaps had the same trouble, so their numbers now show under the swap buttons.
+  - **The crew card keeps the button tapped in sight** for the second tap. At the tab size, a first tap's longer words ("Sign on for 30?") pushed it out of the card's 112 px list, so the second tap missed (M23c's check found it).
+- **The voyage tests' two bars** (Evan's call, below).
+
+**Measured:**
+
+The weapons' table, the whole squad (marine, engineer, medic) carrying each, 600 fights in each column (`node tools/sim.js --weapons --fights 600`). Aboard ships is against the cutter's boarders, job sites are act 1's, and against armor is the Provost's patrol. ★ marks the best of its kind:
+
+| Weapon | Kind | Aboard ships | Job sites | Against armor |
+| --- | --- | --- | --- | --- |
+| As issued |  | 46% | 66% | 74% |
+| Rifle | long gun | 31% | 65% | 54% |
+| Shotgun | heavy | 78% | 80% | 94% |
+| Pistol | sidearm | 11% | 53% | 26% |
+| Carbine | long gun | 20% | 58% | 46% |
+| Long rifle | long gun | 22% | 63% | 45% |
+| Dart gun | sidearm | 4% | 38% | 7% |
+| Machine pistol (new) | sidearm | 50% ★ | 66% ★ | 74% |
+| Shock baton (new) | sidearm | 38% | 61% | 89% ★ |
+| Sawn-off (new) | sidearm | 50% | 65% | 81% |
+| Autogun (new) | long gun | 57% ★ | 72% | 76% |
+| Rail rifle (new) | long gun | 38% | 73% ★ | 78% ★ |
+| Marksman's rifle (new) | long gun | 36% | 72% | 56% |
+| Rivet gun (new) | heavy | 61% | 78% | 95% |
+| Cutting torch (new) | heavy | 69% | 82% | 97% ★ |
+| Riot gun (new) | heavy | 87% ★ | 83% ★ | 95% |
+
+- **Each new weapon** is within 5 points of its kind's best in at least one column. The least slack is the rivet gun's: 2.3 under the torch against armor, 4.5 under the riot gun on job sites.
+- **None is 5 points better than every other of its kind in all three.** The riot gun leads its kind aboard by 8.5, but on job sites by 1.0 and against armor it trails the torch.
+- **The shotgun still leads** where it did, as the Done when leaves for M40 (§9).
+
+Each party a new enemy joined, the crew's wins over 1,000 fights (`tools/boarding.js` rows; the recovery jobs over every such job on the first board, seeds 1 to 3,000). Before is main's party on today's rules:
+
+| Party (new enemy) | Before | After |
+| --- | --- | --- |
+| Boarded by a pirate cutter (gunner) | 60.4% | 59.0% |
+| Boarding a pirate cutter | 54.4% | 50.4% |
+| Boarded by a repo tug (breacher) | 56.7% | 55.5% |
+| Boarding a repo tug | 54.5% | 53.2% |
+| Act 1's recovery jobs (breacher) | 82.1% | 83.4% |
+| Boarded by a fleet frigate (proctor) | 30.6% | 32.1% |
+| Boarding a fleet frigate | 24.2% | 26.6% |
+| Boarded by a Halloran yacht (cutter) | 16.4% | 12.8% |
+| Boarding a Halloran yacht | 27.8% | 27.4% |
+| Boarding the hulk (torcher) | 69.7% | 66.7% |
+
+The raids are unchanged: the crew wins 57% and 42% of Con-Reg's (at the hangar, at the colony), 64% and 40% of the Provost's, 50% and 42% of the Hallorans', each within M30's 10 points of Con-Reg's (`tools/raids.js`, 300 fights each).
+
+Act 1's test runs, 100 from each start (`node tools/run.js --runs 100`): the median launch is after 6 jobs from each, as on main. Credits at launch, the median: miner 75 (main 85), deserter 195 (205), smuggler 120 (120). The act 1 player bought a weapon in 7 runs of the smuggler's, a heavy weapon for the quartermaster, whose carbine trails each by 20 points or more on the ground. It bought none in the others': no other start's crew carries a weapon 20 points short there.
+
+The voyage tests' rates over 100 voyages from each start, main today beside M37. Every rate is within its margin of `MAIN`:
+
+| Rate, in 100 voyages | `MAIN` | Bar | Main today | M37 |
+| --- | --- | --- | --- | --- |
+| Miner refitting: fed all the way | 73 | 58 or more | 72 | 68 |
+| met the hunters in the sectors | 33 | 48 or fewer | 35 | 39 |
+| met the hunters at all | 42 | 57 or fewer | 47 | 57 |
+| lost a raid at the colony | 29 | 44 or fewer | 18 | 21 |
+| hungry in the system | 14 | 29 or fewer | 8 | 12 |
+| two worlds or more surveyed | 68 | 53 or more | 65 | 60 |
+| settled a surveyed world | 81 | 66 or more | 79 | 71 |
+| everyone housed at the colony | 41 | 26 or more | 39 | 35 |
+| short of air at the colony | 0 | 5 or fewer | 2 | 2 |
+| a refit on the way | 69 | 54 or more | 63 | 59 |
+| Miner ignoring heat: met the hunters | 100 | 85 or more | 99 | 99 |
+| Miner, no refits: fed | 82 | 67 or more | 77 | 72 |
+| never scanned | 0 | 5 or fewer | 2 | 2 |
+| fed with a med bay | 79 | 64 or more | 78 | 75 |
+| fed with surgery | 81 | 66 or more | 81 | 73 |
+| signed a recruit (cargo hold) | 44 | 29 or more | 44 | 41 |
+| fed with a cargo hold | 81 (was 90) | 66 or more | 81 | 74 |
+| fed with bunks | 75 (was 90) | 60 or more | 75 | 68 |
+| fed with the large hold | 98 | 83 or more | 90 | 91 |
+| Deserter: fed | 80 | 65 or more | 83 | 82 |
+| met the hunters | 45 | 60 or fewer | 34 | 38 |
+| lost a raid | 20 | 35 or fewer | 19 | 17 |
+| Smuggler: fed | 89 | 74 or more | 90 | 89 |
+| met the hunters | 19 | 34 or fewer | 25 | 29 |
+| lost a raid | 18 | 33 or fewer | 7 | 9 |
+
+- **The two bars moved:** fed with a cargo hold and fed with bunks came to 74 and 68 on seeds 1 to 100, under their bars (75, from `MAIN` before M33c). Main's own rates had come down to 81 and 75, bunks exactly on its bar, as M36 warned.
+  - On seeds 101 to 200, M37's voyages matched main's: bunks 75 to 73, cargo 78 to 80, careful 72 to 70. Over the 200, M37 costs these sets 2 to 4 points, within chance.
+  - Most of it is the breacher in the repo tug's crew, the miner's hunters. Without it the three came to 72, 79 and 77 on seeds 1 to 100.
+  - Evan's call: those two bars hold main's rates before M37 (81 and 75).
+- **Weapons bought on the run:** the voyage player bought from a rack in 16 careful voyages of 100 (18 weapons), 47 of the deserter's (71) and 12 of the smuggler's (16), and in 2 to 33 of the other sets'. It never took a weapon at an event: valued at a part's worth, the other choices were worth more every time.
+
+**Done when** (ROADMAP.md, M37, in full there), and how each is met:
+- **15 weapons, kinds, prices, held looks with fittings, five new sounds:** `validate-data`, `tests/weaponRules.test.js`, the figure and sound tests.
+- **The rules, each a weapon's data, on the cards:** `tests/weaponRules.test.js`, the words in `tests/armsText.test.js`.
+- **Loadouts, swaps, recruits, companions, Sedate:** `tests/loadout.test.js`.
+- **The four sources:** `tests/loadout.test.js`, `tests/shop.test.js`, `tests/events.test.js`, and the voyage's step-by-step check, which now checks each weapon bought and given.
+- **Five enemies, their parties within 5 points, the raids within 10:** measured above.
+- **The AI and the test players weigh each rule:** `tests/weaponRules.test.js` (the AI's reach) and `tests/arms.test.js` (the test players' picks and buys).
+- **Every weapon measured:** above.
+- **Save v32:** `tests/loadout.test.js` (the migration) and the save tests.
+- **Measured over 100 voyages, act 1's launch median within 1:** above.
+- **The golden battle logs don't change:** none did.
+- **Touch:** `m37/verify.mjs`, 56 checks at each of the three sizes, all passing:
+  - a swap on the crew card, offering only the kinds the job carries, at the hangar and at the colony;
+  - a weapon bought at the shop and at a station's rack, at a crowded station too;
+  - each first tap's numbers beside the button tapped, both in sight, the hint whole and the foot a button high;
+  - a burst's shots, the armor pierced, a baton out of reach, a stun, and a fire on the board;
+  - a weapon left by a won fight, on hand after;
+  - offline after a reload; every button 48 px or more; no console errors.
+
+**Verified:**
+- `node --test`: 989 tests pass (956 before). New: `tests/weaponRules.test.js`, `tests/loadout.test.js`, `tests/armsText.test.js` and `tests/arms.test.js`, and the voyage's step check for weapons. `validate-data`: OK, 15 weapons and 20 enemies.
+- `m37/verify.mjs` at the three sizes, as above.
+- **Every earlier milestone's browser check,** at the three sizes, each the latest adapted copy. The first pass found the three screen fixes above. It also called for new copies adapted for M37's words: M21's, M22's and M23's, for the pirates' gunner among the cutter's crew, what a win can leave, and the spares on hand. The rerun on the final code is under way; this line is updated when it ends.
+
+**Known issues:**
+- **The miner meets the hunters** in 57 voyages of 100, exactly its bar. The next content to move the voyage may tip it.
+- **The test players buy few weapons:** act 1's only for the smuggler's quartermaster, and the run's at racks in 12 to 47 voyages of 100 by start. Weapons bought freely cost more voyages than they saved (§9).
+- **The AI can step out and back** in some layouts, turn after turn (§9). Seen only in a test raid, where the harness now makes both sides close in.
+- **Act 1's test run on seed 115** stops short: a medic and a heavy, both at 2 hit points in full cover, trade 20% and 0% shots for 60 rounds, the heavy with no nearer tile. Seeds 1 to 100, which the tests fly, all launch.
+- **The table's wins are the whole squad's,** so what one crew member gains by a weapon is a guess.
+
+**What Evan should test on the phone:**
+- **The crew card** in the hangar: give the marine a spare, and check the medic is offered sidearms only. The first tap shows the spare's numbers under the buttons. Then at a station, and at the colony.
+- **The shop:** its two weapons after the parts; buy one, then sell a spare back at half.
+- **A station's rack,** in the left panel: buy a weapon; it is gone the next time you call. Try it at a station with something wrecked and someone hurt, on the cover screen in Chrome: the foot's hint should show whole.
+- **A fight:**
+  - the odds card for a burst (each shot at the odds shown), and for a rail rifle against an armored enemy;
+  - tap an enemy past the baton's reach;
+  - a stun, then the target's card;
+  - the torch's fire on the board, and the tile's card.
+- **Win a fight:** its end may say what was left. The weapon is on hand on the crew card.
+- **An old save** (v31) opens, each crew member with their job's weapon.
+
+**Next session's first task:** settle M38's Done when with Evan (Missions and jobs, drafted in ROADMAP.md).
+
 ## M36 Events (2026-10-17)
 
 **Status:** done, and the ROADMAP.md box is ticked.

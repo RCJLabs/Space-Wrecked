@@ -9,7 +9,8 @@
 // where the ship arrives opens its card (eventCard.js) over the chart, and
 // nothing moves until a choice is made; a hostile ship there opens the
 // approach screen (approach.js). At a station Buy sells supplies, Repair
-// fixes what an approach wrecked and Patch up heals the crew; Scan shows
+// fixes what an approach wrecked, Patch up heals the crew and, since M37,
+// its weapons rack sells a weapon or two, put on hand; Scan shows
 // what nodes within reach hold, and at the jump point Jump on leads into
 // the next sector, each two taps, the first saying what it costs; from the
 // act's last, into the system past the charts (M25), whose worlds stand on
@@ -79,12 +80,15 @@ export const sectorScreen = {
     const infoKind = node('p', 'sct-kind');
     const infoLines = node('ul', 'sct-lines');
     const infoText = node('p', 'sct-text');
-    // At a station, the transponder swap sits here, under its kind, with
-    // what the station offers: in the foot, beside Buy, Repair and Patch
-    // up, it would leave the hint no room at 821 × 283.
+    // At a station, the transponder swap and the weapons rack (M37) sit
+    // here, under its kind, with what the station offers: in the foot,
+    // beside Buy, Repair and Patch up, they would leave the hint no room at
+    // 821 × 283.
     const swapButton = toolButton('sct-swap', icons.transponder, 'Transponder');
     swapButton.hidden = true;
-    info.append(infoTitle, infoName, infoKind, swapButton, infoLines, infoText);
+    const rackList = node('div', 'sct-rack-list');
+    rackList.hidden = true;
+    info.append(infoTitle, infoName, infoKind, swapButton, rackList, infoLines, infoText);
     const map = node('div', 'sct-map');
     const links = document.createElementNS(SVG, 'svg');
     links.setAttribute('class', 'sct-links');
@@ -154,7 +158,7 @@ export const sectorScreen = {
     let defs = null;
     let alive = true;
     let picked = null; // the node picked on the map: its jump shows
-    let armed = null; // 'on', 'scan', 'rest', 'swap', 'repair', 'patch', 'survey', 'settle', the supplies a Buy is for, or a crew card button's key, after its first tap
+    let armed = null; // 'on', 'scan', 'rest', 'swap', 'repair', 'patch', 'survey', 'settle', the supplies a Buy is for, a rack's weapon ('rack:<slot>'), or a crew card button's key, after its first tap
     let crewOpen = false; // the crew card is up
     let closed = null; // the result put away with Carry on (resultKey)
     let armTimer = 0;
@@ -230,7 +234,7 @@ export const sectorScreen = {
       if (carded) crewOpen = false;
       const crew = crewOpen ? crewCardText(campaign, defs) : null;
       const crewAsk = crewSaid(crew, armed);
-      if (typeof armed === 'string' && armed.includes(':') && !crewAsk) disarm();
+      if (typeof armed === 'string' && /^(hire|let|arm):/.test(armed) && !crewAsk) disarm();
       crewCard.show(crew, armed);
       el.dataset.crew = String(crewOpen);
       const heading = crewHeading(campaign, defs);
@@ -316,6 +320,8 @@ export const sectorScreen = {
       if (armed === 'repair' && !text.repair?.ok) disarm();
       if (armed === 'patch' && !text.patch?.ok) disarm();
       if (armed === 'swap' && !text.swap?.ok) disarm();
+      const racked = typeof armed === 'string' && armed.startsWith('rack:') ? text.rack?.items.find((item) => item.key === armed && item.ok) : null;
+      if (typeof armed === 'string' && armed.startsWith('rack:') && !racked) disarm();
       const said = crew ? (crewAsk ?? crew.hint)
         : armed === 'on' ? { tone: leave.tone === 'bad' ? 'bad' : 'warn', text: `${leave.lines.join(' ')} Tap Jump on again.` }
         : armed === 'scan' ? { tone: 'warn', text: scan.text }
@@ -326,6 +332,7 @@ export const sectorScreen = {
         : armed === 'repair' ? { tone: 'warn', text: text.repair.text }
         : armed === 'patch' ? { tone: 'warn', text: text.patch.text }
         : buy ? { tone: 'warn', text: buy.text }
+        : racked ? { tone: 'warn', text: racked.text }
         : plan ? planHint(plan)
         : result ? { tone: 'info', text: 'Carry on to the chart.' }
         : text.hint;
@@ -451,6 +458,8 @@ export const sectorScreen = {
         buys.replaceChildren();
         buys.hidden = true;
         swapButton.hidden = true;
+        rackList.replaceChildren();
+        rackList.hidden = true;
         setText(infoText, plan.node.text);
         return;
       }
@@ -458,7 +467,7 @@ export const sectorScreen = {
       setText(infoTitle, 'Here');
       setText(infoName, here.name);
       setText(infoKind, here.kind);
-      const said = leave ? [leave.title, ...leave.lines].map((line, i) => lineItem(line, i ? leave.tone : 'head')) : offer ? [offer.line, offer.why].filter(Boolean).map((line) => lineItem(line, 'info')) : [];
+      const said = leave ? [leave.title, ...leave.lines].map((line, i) => lineItem(line, i ? leave.tone : 'head')) : offer ? [offer.line, offer.why, text.rack?.line].filter(Boolean).map((line) => lineItem(line, 'info')) : [];
       // A side's station (M33): whose it is, and what it charges the crew;
       // at one of the pursuer's side, what trading there adds (M33's fix).
       if (text.station?.dock) said.unshift(lineItem(text.station.dock.line, text.station.dock.tone));
@@ -507,8 +516,28 @@ export const sectorScreen = {
         buyButtons.push({ button, detach: onTap(button, () => twoTaps('patch', () => game.dispatch({ type: 'campaign/patch', rules: defs }))) });
         if (!patch.ok) infoLines.append(lineItem(patch.why, 'bad'));
       }
+      // The weapons rack (M37): each weapon on it, put on hand. In this
+      // panel, under the transponder swap; once one has had its first tap,
+      // its facts under it, so the foot's hint need only say what buying
+      // does.
+      const rackButtons = (text.rack?.items ?? []).map((item) => {
+        const button = toolButton('sct-rack', icons.shoot, armed === item.key ? item.ask : item.label);
+        button.dataset.armed = String(armed === item.key);
+        button.disabled = !item.ok;
+        button.setAttribute('aria-label', item.ok ? `Buy the ${item.name.toLowerCase()}: ${item.label.split(' · ').at(-1)} credits` : item.why);
+        const facts = armed === item.key ? node('ul', 'sct-lines sct-rack-facts') : null;
+        facts?.append(...item.facts.map((fact) => node('li', null, fact)));
+        return { button, facts, detach: onTap(button, () => twoTaps(item.key, () => game.dispatch({ type: 'campaign/arms/rack', slot: item.slot, rules: defs }))) };
+      });
       buys.replaceChildren(...buyButtons.map((entry) => entry.button));
       buys.hidden = !buyButtons.length;
+      rackList.replaceChildren(...rackButtons.flatMap((entry) => (entry.facts ? [entry.button, entry.facts] : [entry.button])));
+      rackList.hidden = !rackButtons.length;
+      buyButtons.push(...rackButtons);
+      // The button tapped stays in sight for the second tap, with its facts
+      // as far as they fit.
+      rackList.querySelector('.sct-rack-facts')?.scrollIntoView({ block: 'nearest' });
+      rackList.querySelector('button[data-armed="true"]')?.scrollIntoView({ block: 'nearest' });
       setText(infoText, here.text);
     }
 
@@ -568,11 +597,13 @@ export const sectorScreen = {
     }
 
     // A crew card button's second tap: 'hire:<slot>' signs a recruit on,
-    // 'let:<id>' lets a crew member go.
+    // 'let:<id>' lets a crew member go, 'arm:<id>:<weapon>' gives them a
+    // spare weapon (M37).
     function crewOrder(key) {
-      const [kind, n] = key.split(':');
+      const [kind, n, weapon] = key.split(':');
       if (kind === 'hire') game.dispatch({ type: 'campaign/hire', slot: Number(n), rules: defs });
       if (kind === 'let') game.dispatch({ type: 'campaign/dismiss', id: Number(n), rules: defs });
+      if (kind === 'arm') game.dispatch({ type: 'campaign/arms/swap', id: Number(n), weapon, rules: defs });
     }
 
     // Jump on, Buy and the crew card's buttons: the first tap says what it

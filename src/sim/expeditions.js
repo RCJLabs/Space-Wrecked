@@ -70,7 +70,7 @@ const MAX_SEED = 0xffffffff;
 // flies out (M29). From M36 one can need someone in the squad, repair the
 // ship's wrecks, or spring a trap at a kind of place the scavengers can
 // hold: they were waiting, and the place is held.
-export const PLACE_EFFECTS = ['supplies', 'materials', 'wound', 'part', 'drop', 'repair', 'ambush'];
+export const PLACE_EFFECTS = ['supplies', 'materials', 'wound', 'part', 'drop', 'repair', 'ambush', 'arms'];
 export const PLACE_NEEDS = ['supplies', 'parts', 'job', 'trait', 'wrecks'];
 
 // A place's kind (data/expeditions.json), or null.

@@ -23,7 +23,10 @@
 //                       round.
 //   kit      { armor }  itself or an ally beside, once each: a full clip
 //                       and `armor` more armor for the rest of the fight.
-// The others take one action. What orders leave on a unit: `uses` (the
+// The others take one action. Any order can name a weapon it needs in hand
+// (`weapon`, M37: Sedate the dart gun), and the two that fire a round,
+// Suppress and Sedate, reach only as far as the weapon does (weapons.js).
+// What orders leave on a unit: `uses` (the
 // uses left), `mark` (null, or { aim, turns }: the crew's turn ends left),
 // `suppressed` (null, or { aim }), `asleep` and `kitted`; on the battle,
 // `welds` ([{ key, until }]: the door's edge key, mapFromShip.js edgeKey,
@@ -36,6 +39,7 @@ import { jobAtRank } from './ranks.js';
 import { talentOrder } from './talents.js';
 import { canSee } from './sight.js';
 import { weldedAt } from './terrain.js';
+import { outOfReach, withinReach } from './weapons.js';
 
 // Each kind's numbers, with how far they go, and whom it reaches: 'enemy'
 // (in sight), 'ally' (beside), 'self', 'kit' (itself or an ally beside) or
@@ -72,12 +76,15 @@ export function freshOrders(order) {
 // reach. Ready or not to act is the caller's (battle.js readyToAct).
 export function orderTargets(battle, unit, rules) {
   const order = orderOf(unit, rules);
-  if (!order || unit.uses < 1) return [];
+  if (!order || unit.uses < 1 || !inHand(unit, order)) return [];
   const others = battle.units.filter((u) => u.id !== unit.id);
   switch (ORDER_KINDS[order.type]?.reaches) {
-    case 'enemy':
-      if ((order.type === 'suppress' || order.type === 'sedate') && unit.ammo < 1) return [];
-      return others.filter((u) => u.side !== unit.side && u.status === 'active' && canSee(battle, [unit.x, unit.y], [u.x, u.y], rules)).map((u) => u.id);
+    case 'enemy': {
+      const fires = firesRound(order);
+      if (fires && unit.ammo < 1) return [];
+      const weapon = rules.weapons.get(unit.weapon);
+      return others.filter((u) => u.side !== unit.side && u.status === 'active' && (!fires || withinReach(weapon, [unit.x, unit.y], [u.x, u.y])) && canSee(battle, [unit.x, unit.y], [u.x, u.y], rules)).map((u) => u.id);
+    }
     case 'ally':
       return others.filter((u) => u.side === unit.side && beside(unit, u) && patchable(u)).map((u) => u.id);
     case 'kit':
@@ -183,14 +190,28 @@ function weld(battle, unit, order, side, events) {
   return null;
 }
 
+// True if the order's weapon, if it names one, is the one in the unit's
+// hand.
+function inHand(unit, order) {
+  return !order.weapon || unit.weapon === order.weapon;
+}
+
+// True for the orders that fire a round: Suppress and Sedate.
+export function firesRound(order) {
+  return order.type === 'suppress' || order.type === 'sedate';
+}
+
 // Why an order can't reach its target, in words.
 function whyNot(battle, unit, order, target, rules) {
   const reaches = ORDER_KINDS[order.type]?.reaches;
-  if ((order.type === 'suppress' || order.type === 'sedate') && unit.ammo < 1) return `${unit.name} has to reload first.`;
+  if (!inHand(unit, order)) return `${order.name} needs a ${rules.weapons.get(order.weapon)?.name.toLowerCase() ?? order.weapon} in hand.`;
+  if (firesRound(order) && unit.ammo < 1) return `${unit.name} has to reload first.`;
   if (!target) return `${order.name} needs someone to reach.`;
   if (reaches === 'enemy') {
     if (target.side === unit.side) return `${order.name} is for the enemy.`;
     if (target.status !== 'active') return `${target.name} is already down.`;
+    const weapon = rules.weapons.get(unit.weapon);
+    if (firesRound(order) && !withinReach(weapon, [unit.x, unit.y], [target.x, target.y])) return outOfReach(unit, target, weapon);
     return `${unit.name} can't see ${target.name}.`;
   }
   if (target.side !== unit.side) return `${order.name} is for the crew.`;

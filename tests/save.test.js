@@ -340,7 +340,8 @@ test('an M12 or M13 save (v4) gains the miner background, an empty job board, an
     // The hub rolls the board it has no jobs on, and the shop's stock.
     const opened = reduce({ ...initialState(1), campaign: result.save.data.campaign }, { type: 'campaign/board', rules });
     assert.equal(opened.campaign.board.length, state.campaign.fight ? 0 : rules.contracts.boardSize, 'not during a fight');
-    assert.equal(opened.campaign.shop?.length ?? null, state.campaign.fight ? null : rules.districts.get('tailings').shop.size);
+    const { size, armsSize = 0 } = rules.districts.get('tailings').shop;
+    assert.equal(opened.campaign.shop?.length ?? null, state.campaign.fight ? null : size + armsSize, 'its parts and, since M37, its weapons');
   }
   const none = { version: 4, data: saveData(initialState(3)) };
   assert.equal(parseSave(JSON.stringify(none)).save.data.campaign, null, 'no campaign yet: still none');

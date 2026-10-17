@@ -49,9 +49,10 @@ const WHO_NEEDS = { job: 'jobs', trait: 'traits' };
 // sides: the sides' ids (validate-factions.js). companions: the
 // companions' ids (M33c). more (M36): { jobs, traits, backgrounds (ids),
 // presets (id -> ship preset), held (the kinds of place the scavengers can
-// hold) }. Returns the kinds the events cover, as a Set.
+// hold), weapons (ids, M37) }. Returns the kinds the events cover, as a
+// Set.
 export function checkEvents(file, kinds, moduleIds, fail, places = new Set(), sides = new Set(), companions = new Set(), more = {}) {
-  const { jobs = new Set(), traits = new Set(), backgrounds = new Set(), presets = new Map(), held = new Set() } = more;
+  const { jobs = new Set(), traits = new Set(), backgrounds = new Set(), presets = new Map(), held = new Set(), weapons = new Set() } = more;
   const where = 'events.json';
   const covered = new Set();
   if (!isObject(file)) {
@@ -89,7 +90,7 @@ export function checkEvents(file, kinds, moduleIds, fail, places = new Set(), si
       return;
     }
     uniqueIds(event.choices, at, fail);
-    event.choices.forEach((choice, c) => checkChoice(choice, `${at} choice ${choice?.id ?? `#${c}`}`, { drops, moduleIds, sides, companions, jobs, traits, presets, held, kind: event.kind }, fail, atPlace));
+    event.choices.forEach((choice, c) => checkChoice(choice, `${at} choice ${choice?.id ?? `#${c}`}`, { drops, moduleIds, sides, companions, jobs, traits, presets, held, weapons, kind: event.kind }, fail, atPlace));
     // An open event holds every jump: one choice must always be there to make.
     if (!event.choices.some((choice) => isObject(choice) && (choice.needs === undefined || (isObject(choice.needs) && !Object.keys(choice.needs).length)))) {
       fail(at, 'needs a choice that needs nothing, so the ship is never stuck at it');
@@ -135,7 +136,7 @@ function checkChoice(choice, at, known, fail, atPlace) {
   if (needs.berth && !choice.outcomes.every((outcome) => isObject(outcome?.effects) && outcome.effects.joins !== undefined)) fail(at, 'needs a berth, so every outcome must sign someone on (joins)');
 }
 
-function checkEffects(effects, needs, at, { drops, moduleIds, sides, companions, presets, held, kind }, fail, atPlace) {
+function checkEffects(effects, needs, at, { drops, moduleIds, sides, companions, presets, held, weapons, kind }, fail, atPlace) {
   knownKeys(effects, atPlace ? PLACE_EFFECTS : EFFECTS.filter((key) => key !== 'materials'), at, fail);
   for (const key of ['credits', 'supplies', 'heat', 'materials']) {
     if (effects[key] !== undefined && (!isIntIn(effects[key], -MAX_AMOUNT, MAX_AMOUNT) || effects[key] === 0)) fail(at, `${key} must be a whole number other than 0, from ${-MAX_AMOUNT} to ${MAX_AMOUNT}`);
@@ -151,6 +152,7 @@ function checkEffects(effects, needs, at, { drops, moduleIds, sides, companions,
     } else knownKeys(wound, ['hp', 'all'], `${at} wound`, fail);
   }
   if (effects.part !== undefined && !moduleIds.has(effects.part)) fail(at, `part "${effects.part}" is not a part`);
+  if (effects.arms !== undefined && !weapons.has(effects.arms)) fail(at, `arms "${effects.arms}" is not a weapon`);
   if (effects.drop !== undefined && !(effects.drop in drops)) fail(at, `drop "${effects.drop}" is not a drop table in drops`);
   if (effects.sell !== undefined) {
     if (!isIntIn(effects.sell, 1, MAX_SELL)) fail(at, `sell must be a whole number from 1 to ${MAX_SELL}`);

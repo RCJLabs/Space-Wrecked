@@ -4,8 +4,9 @@
 // the crew panel's heading; what a first tap on the card says; and the
 // squad a boarding takes, for the approach screen's picker (approach.js).
 // From M33c the crew card opens at the colony too, and a companion's row
-// has their side, past and loyalty. rules are the content tables
-// (src/sim/defs.js).
+// has their side, past and loyalty; from M37 at the hangar too, and every
+// row says what they carry and offers the spares they could take. rules
+// are the content tables (src/sim/defs.js).
 import { crewColor } from '../../render/units.js';
 import { maxHp } from '../../sim/campaign.js';
 import { companionOf } from '../../sim/companions.js';
@@ -14,6 +15,7 @@ import { healRate } from '../../sim/medbay.js';
 import { rankOf } from '../../sim/ranks.js';
 import { dismissPlan, hirePlan, recruitOffer } from '../../sim/recruits.js';
 import { hereOf, onTheRun, supplyCapacity } from '../../sim/travel.js';
+import { carriedText, sparesLine } from './armsText.js';
 import { bustOf, companionAbout, loyaltyLine } from './companionText.js';
 import { jobBrief, memberBrief, rankLine, shownRank } from './crewJobText.js';
 import { dockSaid } from './standingText.js';
@@ -23,10 +25,11 @@ const STAT_NAMES = { hp: 'hit points', aim: 'aim', defense: 'defense', mobility:
 
 // The crew card:
 //   title    "Crew · 3 aboard, room for 4", at the colony "Crew · 3 at the
-//            colony"
-//   text     the room, what the med bay heals, where crew come and go
+//            colony", in act 1 "Crew · 3 in the hangar"
+//   text     the room, what the med bay heals, where crew come and go, and
+//            the spare weapons on hand (M37)
 //   members  [{ id, name, about, past, rank, rankLine, loyalty, traits,
-//            brief, hp, max, face, dismiss }]: about is "Captain · Marine",
+//            brief, weapon, hp, max, face, dismiss }]: about is "Captain · Marine",
 //            or the job unless it is the name, and a recruit's background
 //            (M32b), or a companion's side (M33c: "Engineer · The Fleet");
 //            past a companion's, none for anyone else; rank their rank, 0
@@ -34,22 +37,28 @@ const STAT_NAMES = { hp: 'hit points', aim: 'aim', defense: 'defense', mobility:
 //            shownRank), and rankLine it with their fights (rankLine);
 //            loyalty a companion's (companionText.js loyaltyLine), or null;
 //            brief what the job brings at their rank (memberBrief, M32);
-//            face is what their portrait is drawn from (faceOf); dismiss {
+//            weapon what they carry and the spares they could take (M37,
+//            armsText.js carriedText); face is what their portrait is
+//            drawn from (faceOf); dismiss {
 //            key, ok, label, ask, text, why } at a station, null elsewhere
 //            and for the captain
 //   hire     null away from a station, else { title, line, recruits: [{
 //            key, slot, name, about, past, rank, rankLine, traits, brief,
-//            hp, max, face, ok, label, ask, text, why }] }: past is the
+//            weapon, hp, max, face, ok, label, ask, text, why }] }: past is the
 //            line about their background, the label their fee; line says
 //            why no one can sign on, or that no one is left, or is null
 //   hint     { tone, text } for the foot while nothing has had a first tap
 export function crewCardText(campaign, rules) {
   const room = crewRoom(campaign.ship, rules);
   const atStation = onTheRun(campaign, rules) && hereOf(campaign)?.type === 'station';
-  // At the colony (M33c) the card is the crew's, with no berths to fill.
+  // At the colony (M33c) the card is the crew's, with no berths to fill; in
+  // the hangar (M37) too, before the run.
   const home = Boolean(campaign.colony);
-  const lines = home ? ['Everyone at the colony, and what each brings to it.'] : [`The berths and life support carry ${room}.`, medbayLine(campaign, rules)];
-  if (!atStation && !home) lines.push('Crew sign on and are let go at stations.');
+  const hangar = campaign.act === 1;
+  const where = home ? 'colony' : hangar ? 'hangar' : 'chart';
+  const lines = home ? ['Everyone at the colony, and what each brings to it.'] : hangar ? ['Everyone in the hangar, and what each carries.'] : [`The berths and life support carry ${room}.`, medbayLine(campaign, rules)];
+  if (!atStation && where === 'chart') lines.push('Crew sign on and are let go at stations.');
+  if (!campaign.fight) lines.push(sparesLine(campaign, rules));
   const members = campaign.crew.map((member, i) => {
     const job = jobName(member.job, rules);
     const captain = member.id === campaign.captain;
@@ -64,6 +73,7 @@ export function crewCardText(campaign, rules) {
       loyalty: loyaltyLine(member, campaign, rules),
       traits: traitsText(member.traits, rules),
       brief: memberBrief(member, rules),
+      weapon: carriedText(campaign, rules, member),
       hp: member.hp,
       max: maxHp(member, rules),
       face: faceOf(member, rules, i),
@@ -73,11 +83,11 @@ export function crewCardText(campaign, rules) {
   const recruits = atStation ? recruitOffer(campaign, rules).map((recruit, i) => recruitText(campaign, rules, recruit, campaign.crew.length + i)) : [];
   const line = !recruits.length ? 'No one else is for hire here.' : (recruits.find((recruit) => !recruit.ok)?.why ?? null);
   return {
-    title: home ? `Crew · ${campaign.crew.length} at the colony` : `Crew · ${campaign.crew.length} aboard, room for ${room}`,
+    title: home ? `Crew · ${campaign.crew.length} at the colony` : hangar ? `Crew · ${campaign.crew.length} in the hangar` : `Crew · ${campaign.crew.length} aboard, room for ${room}`,
     text: lines.join(' '),
     members,
     hire: atStation ? { title: `For hire at ${hereOf(campaign).name}`, line, recruits } : null,
-    hint: home ? { tone: 'info', text: 'Tap Done for the colony.' } : cardHint(atStation, recruits, members),
+    hint: cardHint(atStation, recruits, members, where),
   };
 }
 
@@ -90,11 +100,12 @@ export function crewHeading(campaign, rules) {
 }
 
 // What the foot says after a first tap on the card's button keyed `armed`
-// ('hire:<slot>' or 'let:<id>'): { tone, text }, or null for any other key
-// or a button that can't be pressed.
+// ('hire:<slot>', 'let:<id>' or, M37, 'arm:<id>:<weapon>'): { tone, text },
+// or null for any other key or a button that can't be pressed.
 export function crewSaid(card, armed) {
   if (!card || typeof armed !== 'string') return null;
-  const entry = [...(card.hire?.recruits ?? []), ...card.members.map((member) => member.dismiss).filter(Boolean)].find((each) => each.key === armed);
+  const swaps = card.members.flatMap((member) => member.weapon?.swaps ?? []);
+  const entry = [...(card.hire?.recruits ?? []), ...card.members.map((member) => member.dismiss).filter(Boolean), ...swaps].find((each) => each.key === armed);
   return entry?.ok ? { tone: 'warn', text: entry.text } : null;
 }
 
@@ -160,6 +171,7 @@ function recruitText(campaign, rules, recruit, place) {
     rankLine: rankLine(recruit, rules, true),
     traits: traitsText(recruit.traits, rules),
     brief: jobBrief(recruit.job, rules, rankOf(recruit, rules)),
+    weapon: carriedText(campaign, rules, recruit, { swaps: false }),
     hp: recruit.hp,
     max: recruit.hp,
     face: faceOf(recruit, rules, place),
@@ -184,11 +196,18 @@ function dismissText(campaign, rules, member) {
   };
 }
 
-// What the foot says while the card is open and nothing has had a tap.
-function cardHint(atStation, recruits, members) {
+// What the foot says while the card is open and nothing has had a tap
+// (where: 'chart', 'colony' or 'hangar'): away from a station, a spare
+// weapon someone could take (M37) first.
+function cardHint(atStation, recruits, members, where) {
+  const swap = members.some((member) => member.weapon?.swaps.some((entry) => entry.ok));
+  const done = `Tap Done for the ${where}.`;
+  if (swap && !atStation) return { tone: 'good', text: `Tap a spare weapon under someone to see what it does, and again to swap. ${done}` };
+  if (where !== 'chart') return { tone: 'info', text: done };
   if (!atStation) return { tone: 'info', text: 'Crew sign on and are let go at stations. Tap Done for the chart.' };
   if (recruits.some((recruit) => recruit.ok)) return { tone: 'good', text: 'Tap Sign on to see what a recruit takes, and again to sign them on.' };
   if (members.some((member) => member.dismiss?.ok)) return { tone: 'info', text: 'Tap Let go to see what it leaves, and again to let them go.' };
+  if (swap) return { tone: 'good', text: 'Tap a spare weapon under someone to see what it does, and again to swap.' };
   return { tone: 'info', text: 'Tap Done for the chart.' };
 }
 

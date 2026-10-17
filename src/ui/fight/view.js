@@ -131,6 +131,7 @@ export function mountFight(root, source) {
   let playing = null; // { timeline, start, frame, done } while what an order set off plays out
   let labels = {}; // what paintFightLabels draws over the board
   let doorsShown = null; // the open doors the map was last drawn with
+  let firesShown = null; // and the tiles a weapon set burning (M37)
   let actorsKey = null; // what the figures and marks on the board were made from
   let flash = null; // a notice shown for NOTICE_MS
   let flashTimer = 0;
@@ -164,9 +165,9 @@ export function mountFight(root, source) {
       longPress(x, y) {
         if (!store || busy()) return;
         const unit = unitUnder(x, y);
-        if (unit) return openCard('unit', unitText(unit, defs), x);
+        if (unit) return openCard('unit', unitText(unit, defs, store.getState().battle), x);
         const at = tileAt(x, y);
-        if (at) openCard('tile', tileText(map, at[0], at[1], defs, store.getState().battle.doors), x);
+        if (at) openCard('tile', tileText(map, at[0], at[1], defs, store.getState().battle.doors, store.getState().battle.fires), x);
       },
       dragStart(x0, y0) {
         if (!camera) return false;
@@ -250,6 +251,7 @@ export function mountFight(root, source) {
     });
     playing = null;
     doorsShown = null;
+    firesShown = null;
     disarmEnd();
     closeCard();
     if (store) {
@@ -432,9 +434,10 @@ export function mountFight(root, source) {
   // orders, and what goes over them.
   function showBoard(fight, orders, frame) {
     const battle = frame ? frame.view : fight.battle;
-    if (battle.doors !== doorsShown) {
-      mapView.setMap({ map, skin: skinOf(map), open: battle.doors });
+    if (battle.doors !== doorsShown || battle.fires !== firesShown) {
+      mapView.setMap({ map, skin: skinOf(map), open: battle.doors, fires: battle.fires ?? [] });
       doorsShown = battle.doors;
+      firesShown = battle.fires;
     }
     const figures = battle.units.map((u) => figure(u, battle, frame));
     const { preview } = fight;
@@ -564,7 +567,7 @@ export function mountFight(root, source) {
       row.append(node('dt', null, label), node('dd', null, value));
       rows.append(row);
     }
-    const lines = [text.note, text.crit, text.damage].filter(Boolean).map((line) => node('p', null, line));
+    const lines = [text.note, text.crit, text.damage, text.rules].filter(Boolean).map((line) => node('p', null, line));
     const job = dart ? ordersFor(fight, defs).order : null;
     const fire = job ? toolButton('fgt-fire', icons[job.kind] ?? icons.shoot, job.name) : toolButton('fgt-fire', icons.shoot, 'Fire');
     const buttons = node('div', 'fgt-card-row');

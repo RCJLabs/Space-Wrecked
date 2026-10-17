@@ -147,6 +147,7 @@ export const jobsScreen = {
       if (words.sides) fact('Sides', words.sides);
       fact('Pays', words.bonus ? `${words.pay} (${words.bonus})` : words.pay);
       fact('Heat', words.heat);
+      fact('Gear', words.gear?.replace(/^Win: /, ''));
       detail.replaceChildren(node('h2', null, words.title), node('p', 'jobs-who', `${words.who} · ${words.where}`), node('p', 'jobs-pitch', words.pitch), facts);
       detail.scrollTop = 0;
     }

@@ -130,14 +130,16 @@ test('a choice needing credits, supplies or a part can only be made with them', 
 // member takes its job and trait, and the ship has the wrecks it would
 // repair.
 function withNeeds(campaign, choice) {
-  const { job, trait, wrecks } = choice.needs ?? {};
+  const { job, trait, wrecks, credits } = choice.needs ?? {};
   const crew = campaign.crew.map((member, i) => {
     if (i !== 1 || (!job && !trait)) return member;
     const next = { ...member, job: job ?? member.job, traits: trait ? [trait] : member.traits };
     return { ...next, hp: Math.min(next.hp, maxHp(next, rules)) };
   });
   const hit = campaign.ship.modules.filter((module) => ['weapon', 'engine', 'reactor', 'shield'].some((tag) => hasTag(rules.modules.get(module.type), tag))).slice(0, wrecks ?? 0);
-  return { ...campaign, crew, wrecks: Object.fromEntries(hit.map((module) => [module.uid, 'fire'])) };
+  // A choice that costs more than the test's purse (M37: the rail rifle)
+  // gets what it needs.
+  return { ...campaign, crew, credits: Math.max(campaign.credits, credits ?? 0), wrecks: Object.fromEntries(hit.map((module) => [module.uid, 'fire'])) };
 }
 
 test('every choice of every event plays, and leaves a campaign that saves', () => {
