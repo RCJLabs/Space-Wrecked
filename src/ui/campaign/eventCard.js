@@ -26,19 +26,20 @@ export function createEventCard({ choose, close }) {
   const title = node('h2');
   const text = node('p', 'sct-event-text');
   const said = node('p', 'sct-event-said');
-  // Who a choice would sign on (M33c): their bust beside the event's words
-  // (M34), and who they are under them.
-  const bust = portraitImg('sct-event-bust', '');
-  bust.hidden = true;
-  const head = node('div', 'sct-event-head');
-  head.append(bust, where, title, text);
+  // Who a choice would sign on (M33c): who they are under the event's
+  // words, and their bust beside them (M34), out of the words' scroll so it
+  // stays in sight.
   const who = node('div', 'sct-event-who');
   who.hidden = true;
+  const bust = portraitImg('sct-event-bust', '');
+  bust.hidden = true;
   // The words scroll if they must; the choices under them stay whole.
   const words = node('div', 'sct-event-words');
-  words.append(head, who, said);
+  words.append(where, title, text, who, said);
+  const top = node('div', 'sct-event-top');
+  top.append(words, bust);
   const choices = node('div', 'sct-event-choices');
-  el.append(words, choices);
+  el.append(top, choices);
   el.hidden = true;
 
   let buttons = [];
