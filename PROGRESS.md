@@ -111,7 +111,12 @@ Before the backdrop drew only what shows, a moving frame cost 3.8 to 4.4 ms at 9
   - Teo's offer with his bust beside the words in all three states, every choice in sight;
   - his face crop on the crew card and the colony trip's squad picker, everyone else in helmets, and his fight button the badge;
   - saves at v29, offline, and no console errors.
-- Every earlier milestone's browser check, the latest adapted copy of each, at the three sizes: running at this commit (M33c's adapted for M34: its offer's face is now the bust).
+- **Every earlier milestone's browser check** passes, one after another at the three sizes (`m34/regress.sh`), M33c's to M8's. Three things to know:
+  - **M33c's copy is adapted for M34:** the offer's face is now the bust.
+  - **M14's copy is adapted too:** a new game's seed is random, so a crew member can reach rank 1 before the third job, and since M32b a ranked unit's button says its rank.
+  - **M32b's first copy** still looks for Suppress · 2 and Sedate · 2, as it has since M33; its fix's copy passes in its place.
+
+  The checks that build a save as main made it (M31's to M23g's) ran again once their copies of main's code, missing from the scratchpad, were restored at the commits they stood at.
 
 **Known issues:**
 - **A scene paints once a size, taking 15 to 130 ms here.** The lift-off and the landing wait for it before they start. Folding or unfolding during one repaints, with a pause.
