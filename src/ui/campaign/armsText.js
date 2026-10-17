@@ -51,20 +51,22 @@ export function rulesLine(weapon) {
   return said.join(' ');
 }
 
-// The spares on hand, in a line: "On hand: a riot gun and 2 autoguns.", or
-// "No spare weapons on hand."
+// The spares on hand, in a line, in the order of data/weapons.json: "On
+// hand: 2 autoguns and a riot gun.", or "No spare weapons on hand."
 export function sparesLine(campaign, rules) {
-  const held = Object.entries(campaign.arms ?? {}).filter(([, count]) => count > 0);
+  const held = [...rules.weapons.keys()].map((id) => [id, campaign.arms?.[id] ?? 0]).filter(([, count]) => count > 0);
   if (!held.length) return 'No spare weapons on hand.';
   const each = held.map(([id, count]) => (count === 1 ? aWeapon(id, rules) : `${count} ${weaponWord(id, rules)}s`));
   return `On hand: ${listed(each)}.`;
 }
 
 // What a crew member carries, and the spares they could take, for the crew
-// card: { name, line, swaps: [{ key, label, ask, ok, text, why }] }: name
-// "Rifle", line what it is ("Rifle · long gun · damage 3–5 · 4 shots"), and
-// a swap for each spare of a kind their job carries, keyed
-// 'arm:<id>:<weapon>'; a recruit (swaps false) has none.
+// card: { name, line, swaps: [{ key, label, ask, ok, text, facts, why }] }:
+// name "Rifle", line what it is ("Rifle · long gun · damage 3–5 · 4
+// shots"), and a swap for each spare of a kind their job carries, keyed
+// 'arm:<id>:<weapon>', its facts (weaponFacts) for the card to show under
+// it once tapped, so the hint, text, says only what the swap does; a
+// recruit (swaps false) has none.
 export function carriedText(campaign, rules, member, { swaps: offer = true } = {}) {
   const id = weaponOf(member, rules);
   const now = rules.weapons.get(id);
@@ -75,7 +77,8 @@ export function carriedText(campaign, rules, member, { swaps: offer = true } = {
       label: weapon.name,
       ask: 'Swap?',
       ok: !why,
-      text: `Give ${member.name} the ${weaponWord(spare, rules)}: ${lowered(weaponFacts(spare, rules)[0])}. ${rulesLine(weapon)}${rulesLine(weapon) ? ' ' : ''}The ${weaponWord(id, rules)} goes on hand. Tap again to swap.`,
+      text: `Give ${member.name} the ${weaponWord(spare, rules)}. The ${weaponWord(id, rules)} goes on hand. Tap again to swap.`,
+      facts: weaponFacts(spare, rules),
       why,
     };
   });

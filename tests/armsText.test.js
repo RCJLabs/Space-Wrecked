@@ -48,11 +48,11 @@ test("a weapon in words: its name in a sentence, its kind, numbers and aim, and 
   assert.equal(gearLine({ ...rules, balance: { ...rules.balance, gearChance: 0 } }), null);
 });
 
-test('the crew card: what each carries, the spares on hand, a swap only of the kinds their job carries, and what the first tap says', () => {
+test('the crew card: what each carries, the spares on hand, a swap only of the kinds their job carries, what the first tap says and the facts it shows', () => {
   const campaign = fresh({ arms: { riotgun: 1, machinepistol: 2 } });
   const card = crewCardText(campaign, rules);
   assert.equal(card.title, `Crew · ${campaign.crew.length} in the hangar`);
-  assert.match(card.text, /On hand: a riot gun and 2 machine pistols\.$/);
+  assert.match(card.text, /On hand: 2 machine pistols and a riot gun\.$/, 'in the order of data/weapons.json');
   const marine = card.members.find((m) => m.id === memberOf(campaign, 'marine').id);
   const medic = card.members.find((m) => m.id === memberOf(campaign, 'medic').id);
   assert.equal(marine.weapon.line, 'Rifle · long gun · damage 3–5, +2 on a crit · 4 shots');
@@ -61,7 +61,8 @@ test('the crew card: what each carries, the spares on hand, a swap only of the k
   const key = `arm:${marine.id}:riotgun`;
   const said = crewSaid(card, key);
   assert.equal(said.tone, 'warn');
-  assert.match(said.text, /^Give .+ the riot gun: heavy weapon · damage 5–7, \+2 on a crit · 2 shots\. The rifle goes on hand\. Tap again to swap\.$/);
+  assert.match(said.text, /^Give .+ the riot gun\. The rifle goes on hand\. Tap again to swap\.$/);
+  assert.deepEqual(marine.weapon.swaps.find((s) => s.key === key).facts, weaponFacts('riotgun', rules), 'its facts, for the card to show under it once tapped');
   assert.equal(crewSaid(card, 'arm:99:riotgun'), null);
   assert.match(card.hint.text, /^Tap a spare weapon under someone to see what it does, and again to swap\. Tap Done for the hangar\.$/);
   // Nothing spare: no swaps, and the card says so.
@@ -88,7 +89,7 @@ test("the shop's weapons, after its parts, with who could carry them; spares on 
   assert.equal(spare.action, 'Sell · 20');
 });
 
-test("a station's rack: its weapons, two taps each, what the first says, and gone once bought", () => {
+test("a station's rack: its weapons, two taps each, what the first says and the facts it shows, and gone once bought", () => {
   const campaign = atStation({ credits: 500 });
   const rack = rackAt(campaign, rules, campaign.run.at);
   const text = sectorText(campaign, rules).rack;
@@ -98,7 +99,8 @@ test("a station's rack: its weapons, two taps each, what the first says, and gon
   assert.equal(first.key, `rack:${rack[0].slot}`);
   assert.equal(first.label, `${rules.weapons.get(rack[0].weapon).name} · ${rack[0].price}`);
   assert.equal(first.ask, `Buy for ${rack[0].price}?`);
-  assert.match(first.text, /It goes on hand, to swap in on the crew card\..* Tap again to buy\.$/);
+  assert.match(first.text, /^The .+ for \d+ credits\. It goes on hand, to swap in on the crew card\..* Tap again to buy\.$/);
+  assert.deepEqual(first.facts, weaponFacts(rack[0].weapon, rules), 'its facts, for the panel to show under it once tapped');
   const broke = sectorText({ ...campaign, credits: 0 }, rules).rack.items[0];
   assert.equal(broke.ok, false);
   assert.match(broke.why, /credits\.$/);

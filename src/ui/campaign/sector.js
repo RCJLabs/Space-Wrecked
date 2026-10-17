@@ -80,12 +80,15 @@ export const sectorScreen = {
     const infoKind = node('p', 'sct-kind');
     const infoLines = node('ul', 'sct-lines');
     const infoText = node('p', 'sct-text');
-    // At a station, the transponder swap sits here, under its kind, with
-    // what the station offers: in the foot, beside Buy, Repair and Patch
-    // up, it would leave the hint no room at 821 × 283.
+    // At a station, the transponder swap and the weapons rack (M37) sit
+    // here, under its kind, with what the station offers: in the foot,
+    // beside Buy, Repair and Patch up, they would leave the hint no room at
+    // 821 × 283.
     const swapButton = toolButton('sct-swap', icons.transponder, 'Transponder');
     swapButton.hidden = true;
-    info.append(infoTitle, infoName, infoKind, swapButton, infoLines, infoText);
+    const rackList = node('div', 'sct-rack-list');
+    rackList.hidden = true;
+    info.append(infoTitle, infoName, infoKind, swapButton, rackList, infoLines, infoText);
     const map = node('div', 'sct-map');
     const links = document.createElementNS(SVG, 'svg');
     links.setAttribute('class', 'sct-links');
@@ -455,6 +458,8 @@ export const sectorScreen = {
         buys.replaceChildren();
         buys.hidden = true;
         swapButton.hidden = true;
+        rackList.replaceChildren();
+        rackList.hidden = true;
         setText(infoText, plan.node.text);
         return;
       }
@@ -511,16 +516,28 @@ export const sectorScreen = {
         buyButtons.push({ button, detach: onTap(button, () => twoTaps('patch', () => game.dispatch({ type: 'campaign/patch', rules: defs }))) });
         if (!patch.ok) infoLines.append(lineItem(patch.why, 'bad'));
       }
-      // The weapons rack (M37): each weapon on it, put on hand.
-      for (const item of text.rack?.items ?? []) {
-        const button = toolButton('sct-buy sct-rack', icons.shoot, armed === item.key ? item.ask : item.label);
+      // The weapons rack (M37): each weapon on it, put on hand. In this
+      // panel, under the transponder swap; once one has had its first tap,
+      // its facts under it, so the foot's hint need only say what buying
+      // does.
+      const rackButtons = (text.rack?.items ?? []).map((item) => {
+        const button = toolButton('sct-rack', icons.shoot, armed === item.key ? item.ask : item.label);
         button.dataset.armed = String(armed === item.key);
         button.disabled = !item.ok;
         button.setAttribute('aria-label', item.ok ? `Buy the ${item.name.toLowerCase()}: ${item.label.split(' · ').at(-1)} credits` : item.why);
-        buyButtons.push({ button, detach: onTap(button, () => twoTaps(item.key, () => game.dispatch({ type: 'campaign/arms/rack', slot: item.slot, rules: defs }))) });
-      }
+        const facts = armed === item.key ? node('ul', 'sct-lines sct-rack-facts') : null;
+        facts?.append(...item.facts.map((fact) => node('li', null, fact)));
+        return { button, facts, detach: onTap(button, () => twoTaps(item.key, () => game.dispatch({ type: 'campaign/arms/rack', slot: item.slot, rules: defs }))) };
+      });
       buys.replaceChildren(...buyButtons.map((entry) => entry.button));
       buys.hidden = !buyButtons.length;
+      rackList.replaceChildren(...rackButtons.flatMap((entry) => (entry.facts ? [entry.button, entry.facts] : [entry.button])));
+      rackList.hidden = !rackButtons.length;
+      buyButtons.push(...rackButtons);
+      // The button tapped stays in sight for the second tap, with its facts
+      // as far as they fit.
+      rackList.querySelector('.sct-rack-facts')?.scrollIntoView({ block: 'nearest' });
+      rackList.querySelector('button[data-armed="true"]')?.scrollIntoView({ block: 'nearest' });
       setText(infoText, here.text);
     }
 

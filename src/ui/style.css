@@ -1139,6 +1139,7 @@ textarea {
 #ui .sct-scan,
 #ui .sct-rest,
 #ui .sct-swap,
+#ui .sct-rack,
 #ui .sct-survey,
 #ui .sct-settle,
 #ui .sct-jump,
@@ -1160,15 +1161,25 @@ textarea {
   color: var(--c-space);
 }
 
-/* The transponder swap, in the left panel at a station (sector.js): the
-   panel's width, its words allowed a second line. */
-#ui .sct-swap {
+/* The transponder swap and each weapon on the rack (M37), in the left panel
+   at a station (sector.js): the panel's width, their words allowed a second
+   line. */
+#ui .sct-swap,
+#ui .sct-rack {
   justify-content: center;
   width: 100%;
   margin: 6px 0 2px;
   padding: 4px 10px;
   white-space: normal;
   text-align: center;
+}
+
+/* The facts of the weapon on the rack whose button has had its first tap
+   (sector.js), under it. */
+.sct-rack-facts {
+  margin-bottom: 4px;
+  color: var(--c-ink-dim);
+  font-size: 12px;
 }
 
 /* A station selling three things or more (sector.js): the foot's buttons
@@ -1189,13 +1200,14 @@ textarea {
   -webkit-line-clamp: 3;
 }
 
-/* The first tap of Jump on, Buy, Repair, Patch up, the transponder swap,
-   Scan, Regroup or Hide, Survey or Settle here: what it costs, waiting for a
-   second. */
+/* The first tap of Jump on, Buy, Repair, Patch up, the transponder swap, a
+   weapon on the rack, Scan, Regroup or Hide, Survey or Settle here: what it
+   costs, waiting for a second. */
 #ui .sct-on[data-armed='true'],
 #ui .sct-scan[data-armed='true'],
 #ui .sct-rest[data-armed='true'],
 #ui .sct-swap[data-armed='true'],
+#ui .sct-rack[data-armed='true'],
 #ui .sct-survey[data-armed='true'],
 #ui .sct-settle[data-armed='true'],
 #ui .sct-buy[data-armed='true'] {
@@ -1603,6 +1615,18 @@ textarea {
   border-color: var(--c-accent);
   background: var(--c-accent);
   color: var(--c-space);
+}
+
+/* The facts of the spare whose button has had its first tap (crewCard.js),
+   under the buttons. */
+.crew-swap-facts {
+  grid-column: 2 / -1;
+  color: var(--c-ink-dim);
+  font-size: 12px;
+}
+
+.crew-swap-facts p {
+  margin: 0;
 }
 
 /* A crew member's rank (M32b, portrait.js rankMark): a chevron for each,

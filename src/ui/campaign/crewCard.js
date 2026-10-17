@@ -4,8 +4,8 @@
 // two taps, as the map's other orders do: sector.js keeps which button has
 // had its first tap and says in the foot what the second does. Since M37
 // each row says what they carry, with a button for each spare weapon on
-// hand they could take, two taps to swap; the card opens at the hangar and
-// the colony too.
+// hand they could take, two taps to swap, the first showing the spare's
+// facts under the buttons; the card opens at the hangar and the colony too.
 //
 //   card.show(text, armed)   crewCardText's card, or null (the card hides);
 //                            armed is the key of the button that has had
@@ -61,6 +61,11 @@ export function createCrewCard({ tap, done }) {
         hireLine.hidden = !shown.hire.line;
         hireRows.replaceChildren(...shown.hire.recruits.map((recruit) => row(recruit, recruit, armed)));
       }
+      // A button that has had its first tap stays in sight for the second,
+      // with a spare's facts under it as far as they fit: its longer words
+      // can push it out of a short card's list (M37).
+      el.querySelector('.crew-swap-facts')?.scrollIntoView({ block: 'nearest' });
+      el.querySelector('button[data-armed="true"]')?.scrollIntoView({ block: 'nearest' });
     },
     detach() {
       offDone();
@@ -74,7 +79,8 @@ export function createCrewCard({ tap, done }) {
   // companion's loyalty (M33c), their traits and what their job brings
   // (M32), what they carry (M37), hit points, and a button for what can be
   // done with them here, if anything; under it, a button for each spare
-  // weapon they could take.
+  // weapon they could take, and once one has had its first tap, its facts,
+  // so the foot's hint need only say what the swap does.
   function row({ name, about, past, rank, rankLine, loyalty, traits, brief, weapon, hp, max, face }, action, armed) {
     const item = node('li');
     item.dataset.wounded = String(hp < max);
@@ -120,6 +126,13 @@ export function createCrewCard({ tap, done }) {
         swaps.append(button);
       }
       item.append(swaps);
+      // Lines, not a list: the card's list items are its rows.
+      const shown = weapon.swaps.find((swap) => armed === swap.key);
+      if (shown) {
+        const facts = node('div', 'crew-swap-facts');
+        facts.append(...shown.facts.map((fact) => node('p', null, fact)));
+        item.append(facts);
+      }
     }
     return item;
   }

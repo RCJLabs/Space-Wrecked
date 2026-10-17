@@ -84,13 +84,18 @@ const RUNS = 30;
 // player fed without refits; runs with a refit), against main's before
 // M33b (the M33 fix's, carefulFed and refitRuns). M33c's companions did it
 // to three more (fed with a cargo hold, with bunks and with the large
-// hold), against main's before M33c (cargoFed, bunksFed, largeholdFed). The
-// rest fly the first RUNS, as before.
+// hold), against main's before M33c (cargoFed, bunksFed, largeholdFed).
+// M37's weapons and enemies took two of those under their bars on seeds 1
+// to 100, fed with a cargo hold (74) and with bunks (68), where main's had
+// come down to 81 and 75 by M36; on seeds 101 to 200 its voyages matched
+// main's (78 and 75 against 80 and 73). So those two hold main's rates
+// before M37 (Evan's call, 2026-10-17). The rest fly the first RUNS, as
+// before.
 const RATE_RUNS = 100;
 const MARGIN = 15;
 const MARGIN_RARE = 5;
 const MAIN = {
-  miner: { metSectors: 33, ignoringMet: 100, fed: 73, metAny: 42, lost: 29, systemHungry: 14, shortOfAir: 0, surveyed: 68, housed: 41, noScan: 0, medbayFed: 79, surgeryFed: 81, signed: 44, settledSurveyed: 81, carefulFed: 82, refitRuns: 69, cargoFed: 90, bunksFed: 90, largeholdFed: 98 },
+  miner: { metSectors: 33, ignoringMet: 100, fed: 73, metAny: 42, lost: 29, systemHungry: 14, shortOfAir: 0, surveyed: 68, housed: 41, noScan: 0, medbayFed: 79, surgeryFed: 81, signed: 44, settledSurveyed: 81, carefulFed: 82, refitRuns: 69, cargoFed: 81, bunksFed: 75, largeholdFed: 98 },
   deserter: { fed: 80, metAny: 45, lost: 20 },
   smuggler: { fed: 89, metAny: 19, lost: 18 },
 };
@@ -407,7 +412,7 @@ test('recruits sign on where the holds can feed them, and the run still pays its
   assert.ok(signed >= MAIN.miner.signed - MARGIN, `runs with a recruit: ${signed} of ${RATE_RUNS}`);
   assert.ok(cargo.every((trip) => trip.campaign.crew.length <= 4), 'up to the berths and life support: 4');
   // Fed in 24 or more of 30 until M33c, and since its companions over 100
-  // seeds, as main's within MARGIN.
+  // seeds, as main's within MARGIN (main's before M37 since then).
   const fed = cargoAll.filter((trip) => trip.tally.hungryJumps === 0).length;
   assert.ok(fed >= MAIN.miner.cargoFed - MARGIN, `fed all the way in ${fed} of ${RATE_RUNS} with a cargo hold`);
 });
@@ -431,7 +436,8 @@ test('surgery, bunks and the large hold each change the voyage (Law 1)', () => {
   const fed = (voyages) => voyages.filter((trip) => trip.tally.hungryJumps === 0).length;
   for (const voyages of [surgery, bunks, largehold]) assert.ok(voyages.every((trip) => trip.launched && trip.ended), 'every run settles a world past the charts');
   // Fed in 24 or more of 30 with bunks or the large hold until M33c, and
-  // since its companions over 100 seeds, as main's within MARGIN.
+  // since its companions over 100 seeds, as main's within MARGIN (with
+  // bunks, main's before M37 since then).
   assert.ok(fed(bunksAll) >= MAIN.miner.bunksFed - MARGIN, `fed all the way in ${fed(bunksAll)} of ${RATE_RUNS} with bunks`);
   assert.ok(fed(largeholdAll) >= MAIN.miner.largeholdFed - MARGIN, `fed all the way in ${fed(largeholdAll)} of ${RATE_RUNS} with the large hold`);
   assert.ok(fed(surgeryAll) >= MAIN.miner.surgeryFed - MARGIN, `fed all the way in ${fed(surgeryAll)} of ${RATE_RUNS} with surgery`);

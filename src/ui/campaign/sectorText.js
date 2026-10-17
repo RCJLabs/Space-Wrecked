@@ -30,7 +30,7 @@ import { swapPlan } from '../../sim/transponder.js';
 import { dockHeat, patrolWelcome, pursuerSide, stationSide } from '../../sim/standing.js';
 import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesCost, suppliesOver, supplyCapacity, supplyOffer } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
-import { aWeapon, rulesLine, weaponFacts, weaponWord } from './armsText.js';
+import { aWeapon, weaponFacts, weaponWord } from './armsText.js';
 import { byJob } from './crewJobText.js';
 import { questOf } from '../../sim/quests.js';
 import { coldWarning, questNodeText, questsText } from './questText.js';
@@ -73,7 +73,9 @@ import { dockSaid, sideColor, sideIs, sideName, sidesText, stationText } from '.
 //                with nothing wrecked: { ok, label, ask, text, why }
 //   rack         the station's weapons rack (M37), or null away from one or
 //                with nothing left on it: { line, items: [{ slot, key,
-//                name, ok, label, ask, text, why }] }, key 'rack:<slot>'
+//                name, ok, label, ask, text, facts, why }] }, key
+//                'rack:<slot>', facts the weapon's (weaponFacts), shown
+//                under its button once tapped
 //   leave        null away from the jump point; there { ok, label, ask,
 //                title, lines, tone }: on into the next sector, or from the
 //                act's last into the system past the charts
@@ -304,8 +306,6 @@ function rackText(campaign, rules) {
     items: items.map((item) => {
       const plan = rackPlan(campaign, rules, item.slot);
       const weapon = rules.weapons.get(item.weapon);
-      const said = rulesLine(weapon);
-      const [what] = weaponFacts(item.weapon, rules);
       return {
         slot: item.slot,
         key: `rack:${item.slot}`,
@@ -313,7 +313,8 @@ function rackText(campaign, rules) {
         ok: plan.ok,
         label: `${weapon?.name ?? item.weapon} · ${item.price}`,
         ask: `Buy for ${item.price}?`,
-        text: `The ${weaponWord(item.weapon, rules)} for ${item.price} credits: ${what.charAt(0).toLowerCase()}${what.slice(1)}.${said ? ` ${said}` : ''} It goes on hand, to swap in on the crew card.${dockSaid(campaign, rules, plan.dock)} Tap again to buy.`,
+        text: `The ${weaponWord(item.weapon, rules)} for ${item.price} credits. It goes on hand, to swap in on the crew card.${dockSaid(campaign, rules, plan.dock)} Tap again to buy.`,
+        facts: weaponFacts(item.weapon, rules),
         why: plan.ok ? null : plan.error,
       };
     }),
