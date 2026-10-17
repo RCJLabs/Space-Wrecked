@@ -2,22 +2,25 @@
 // (launch.js) played backwards: the ship comes in stern first, braking on
 // its engines, sets down on the world settled and its engines die away
 // (render/liftOff.js landingAt), while the world's name and its kind's words
-// for the landing come up. Skip goes to the end; at the end, Continue goes
+// for the landing come up. Behind it the world is seen whole, then its
+// ground rises to meet the ship (backdrop.js, M34). Skip goes to the end; at the end, Continue goes
 // on to where the campaign is now: act 3's home, the colony (colony.js).
 // The campaign was saved as it settled, so quitting part way
 // reopens there too. With reduced motion (the motion setting, ../motion.js)
-// nothing moves: the ship stands down, and the words are all there.
+// nothing moves: the ship stands down on the ground, and the words are all
+// there.
 import { loadContent } from '../../platform/content.js';
 import { traceHull } from '../../render/hull.js';
 import { AWAY, CLIMB, END, flameGlows, landingAt, liftOffCamera, liftOffScene } from '../../render/liftOff.js';
 import { fitOrbit } from '../../render/orbit.js';
 import { paintSolid } from '../../render/painter.js';
 import { palette, skinFor } from '../../render/palette.js';
-import { BOARD_VIEW, boardBox, drawSpace } from '../../render/shipView.js';
+import { BOARD_VIEW, boardBox } from '../../render/shipView.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { motionReduced } from '../motion.js';
+import { createBackdrop } from './backdrop.js';
 import { landingText } from './launchText.js';
 
 const MARGIN = 10; // pixels around the ship at rest
@@ -44,6 +47,7 @@ export const landingScreen = {
     const still = motionReduced(game.getState().settings);
     let alive = true;
     let scene = null; // the ship coming down (liftOff.js)
+    let backdrop = null; // the world it comes down on (backdrop.js)
     let box = null;
     let stage = null; // the ship's place on screen
     let base = null; // the camera on the ship at rest in the middle of it
@@ -77,6 +81,8 @@ export const landingScreen = {
           return;
         }
         const hull = traceHull(ship, defs);
+        // The world it comes down on: its kind names its scene.
+        backdrop = createBackdrop(defs.worlds?.kinds.get(campaign.colony?.world?.kind)?.scene);
         scene = liftOffScene({ ship, defs, hull, skin: skinFor('yard') });
         box = boardBox(frame, hull, NO_MIN);
         layout();
@@ -127,21 +133,21 @@ export const landingScreen = {
       draw(ctx, view, timeMs) {
         if (over && !dirty) return;
         dirty = false;
-        const all = { x: 0, y: 0, w: view.width, h: view.height };
         if (!scene || !base) {
           ctx.fillStyle = palette.space;
           ctx.fillRect(0, 0, view.width, view.height);
           dirty = true;
           return;
         }
+        // The sequence starts once its backdrop is painted.
         if (start === null || skip) {
-          start = timeMs - (skip ? END * 1000 : 0);
+          start = timeMs + backdrop.ready(view) - (skip ? END * 1000 : 0);
           skip = false;
         }
-        const t = (timeMs - start) / 1000;
+        const t = Math.max(0, (timeMs - start) / 1000);
         // Down, and still: the moment reduced motion shows, and the end.
         const moment = landingAt(still || over ? END : t);
-        drawSpace(ctx, all, scene.skin.space);
+        backdrop.draw(ctx, view, moment, [stage.x + stage.w / 2, stage.y + stage.h / 2], still || over);
         if (!moment.gone) {
           const cam = still || over ? base : liftOffCamera(base, stage, box, moment, t);
           paintSolid(ctx, scene.faces, [...scene.glows, ...flameGlows(scene, moment, t)], cam);

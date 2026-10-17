@@ -7,6 +7,7 @@
 // map templates (sites.json) and the jobs (contracts.json); and from M28 the
 // places within reach of the colony (expeditions.json,
 // validate-expeditions.js), whose events are events.json's.
+import { SCENES } from '../src/render/scenes/scenes.js';
 import { buildShip, layoutProblems } from '../src/sim/builder.js';
 import { ACTS, CAPTAIN_TRAITS, MAX_NAME } from '../src/sim/campaign.js';
 import { MISSIONS } from '../src/sim/contracts.js';
@@ -21,7 +22,7 @@ import { checkSectors } from './validate-sectors.js';
 import { checkWorlds } from './validate-worlds.js';
 
 const CAMPAIGN_KEYS = ['acts'];
-const ACT_KEYS = ['act', 'name', 'hub', 'home', 'heals', 'liftOff', 'sectors', 'ahead'];
+const ACT_KEYS = ['act', 'name', 'hub', 'home', 'heals', 'liftOff', 'scene', 'sectors', 'ahead'];
 // A run (act 2) crosses up to this many sectors.
 const MAX_SECTORS = 20;
 // Lifting off takes thrust for each unit of mass: up to this many.
@@ -208,6 +209,8 @@ function checkActs(file, fail) {
     if (act.liftOff !== undefined && !(typeof act.liftOff === 'number' && act.liftOff > 0 && act.liftOff <= MAX_LIFT_OFF)) {
       fail(at, `liftOff must be a number above 0, up to ${MAX_LIFT_OFF}`);
     }
+    // The scene the ship lifts off from (M34), drawn in code.
+    if (act.scene !== undefined && !SCENES.includes(act.scene)) fail(at, `scene must be one drawn: ${SCENES.join(', ')}`);
     if (act.sectors !== undefined && !isIntIn(act.sectors, 1, MAX_SECTORS)) fail(at, `sectors must be a whole number from 1 to ${MAX_SECTORS}`);
     // What is still to come in an act not finished yet (act 3's, M26).
     if (act.ahead !== undefined && !(isText(act.ahead) && act.ahead.length <= MAX_AHEAD)) fail(at, `ahead must be a non-empty string of up to ${MAX_AHEAD} letters`);

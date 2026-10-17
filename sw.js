@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "1476897d7d7e";
+const VERSION = "d12970750c4e";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -86,11 +86,18 @@ const FILES = [
   "src/render/pieces.js",
   "src/render/playback.js",
   "src/render/portraits/badge.js",
+  "src/render/portraits/bust.js",
   "src/render/portraits/face.js",
   "src/render/portraits/hair.js",
   "src/render/portraits/marks.js",
   "src/render/portraits/paths.js",
   "src/render/props.js",
+  "src/render/scenes/ground.js",
+  "src/render/scenes/hangar.js",
+  "src/render/scenes/paint.js",
+  "src/render/scenes/scenes.js",
+  "src/render/scenes/shapes.js",
+  "src/render/scenes/world.js",
   "src/render/shipScene.js",
   "src/render/shipView.js",
   "src/render/solid.js",
@@ -194,6 +201,7 @@ const FILES = [
   "src/ui/builder/view.js",
   "src/ui/campaign/approach.js",
   "src/ui/campaign/approachText.js",
+  "src/ui/campaign/backdrop.js",
   "src/ui/campaign/background.js",
   "src/ui/campaign/backgroundText.js",
   "src/ui/campaign/boardingText.js",

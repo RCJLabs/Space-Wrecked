@@ -7,12 +7,12 @@ import { aboard, companionOf, freeBerths } from '../../sim/companions.js';
 import { talentOrder, TALENT_RANK } from '../../sim/talents.js';
 import { supplyCapacity } from '../../sim/travel.js';
 import { jobName, talentGives, talentOf } from './crewJobText.js';
-import { sideName } from './standingText.js';
+import { sideColor, sideName } from './standingText.js';
 
 // A companion as the event card shows them: { id, name, about ("Engineer ·
 // The Fleet"), past, face (what their portrait is drawn from, in the trim
-// of the place they take in the crew), line (all of it, for a screen
-// reader) }.
+// of the place they take in the crew, their bust with it), line (all of
+// it, for a screen reader) }.
 export function companionCard(companion, campaign, rules) {
   const member = aboard(campaign, companion.id);
   const place = member ? campaign.crew.indexOf(member) : campaign.crew.length;
@@ -22,9 +22,16 @@ export function companionCard(companion, campaign, rules) {
     name: companion.name,
     about,
     past: companion.past,
-    face: { look: companion.look, job: rules.jobs.get(companion.job)?.look ?? null, trim: crewColor(place) },
+    face: { look: companion.look, job: rules.jobs.get(companion.job)?.look ?? null, trim: crewColor(place), ...bustOf(companion, rules) },
     line: `${companion.name}, ${about}. ${companion.past}`,
   };
+}
+
+// What a companion's bust (M34, render/portraits/bust.js) is drawn in:
+// { bust (their clothes and gear, data/companions.json), mark (their
+// side's color) }, or nothing for one without a bust.
+export function bustOf(companion, rules) {
+  return companion?.bust ? { bust: companion.bust, mark: sideColor(companion.side, rules) } : {};
 }
 
 // "Engineer · The Fleet": a companion's job and side.

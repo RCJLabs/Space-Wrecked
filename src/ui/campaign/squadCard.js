@@ -11,7 +11,7 @@ import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { shortNames } from '../names.js';
-import { portraitImg, portraitUrl, withRank } from '../portrait.js';
+import { faceUrl, portraitImg, withRank } from '../portrait.js';
 
 // toggle(id): take crew member id, or leave them aboard; done(): Done.
 export function createSquadCard({ toggle, done }) {
@@ -58,7 +58,7 @@ export function createSquadCard({ toggle, done }) {
         button.dataset.wounded = String(member.hp < member.max);
         // A chevron for each rank over the portrait's corner (M32b): the
         // card is too narrow on the cover screen for it in words.
-        const face = withRank(portraitImg('crew-face', portraitUrl(member.face.look, member.face.job, member.face.trim, 'face')), member.rank);
+        const face = withRank(portraitImg('crew-face', faceUrl(member.face, 'face')), member.rank);
         button.append(box, face, who, node('span', 'hgr-num', `${member.hp}/${member.max}`));
         const rank = member.rank ? `, rank ${member.rank}` : '';
         button.setAttribute('aria-label', `${member.name}${rank}, ${member.hp} of ${member.max} hit points: ${member.going ? 'going' : 'staying aboard'}`);

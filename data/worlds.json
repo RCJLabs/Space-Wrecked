@@ -18,7 +18,8 @@
       "ore": [0, 1],
       "danger": [1, 2],
       "text": "Water from pole to pole, with island chains where a colony could stand. Fish and storms, and little rock.",
-      "landing": "The ship sets down on an island's back, spray across the viewports. The sea runs on to the edge of the world."
+      "landing": "The ship sets down on an island's back, spray across the viewports. The sea runs on to the edge of the world.",
+      "scene": "ocean"
     },
     {
       "id": "desert",
@@ -29,7 +30,8 @@
       "ore": [2, 3],
       "danger": [1, 2],
       "text": "Sand seas and salt flats over deep seams of ore. Water will be the dear thing, and the storms the dangerous one.",
-      "landing": "The ship sets down on a salt flat in a storm of its own dust. When the dust clears, the heat comes in."
+      "landing": "The ship sets down on a salt flat in a storm of its own dust. When the dust clears, the heat comes in.",
+      "scene": "desert"
     },
     {
       "id": "ice",
@@ -40,7 +42,8 @@
       "ore": [1, 2],
       "danger": [0, 1],
       "text": "A frozen crust over old seas. Cold and quiet, and hard to farm.",
-      "landing": "The ship settles onto the ice with a long crack, then nothing: wind, and the engines ticking as they cool."
+      "landing": "The ship settles onto the ice with a long crack, then nothing: wind, and the engines ticking as they cool.",
+      "scene": "ice"
     },
     {
       "id": "jungle",
@@ -51,7 +54,8 @@
       "ore": [0, 1],
       "danger": [2, 3],
       "text": "Green to the horizon on rich soil, and most of what lives in it bites.",
-      "landing": "The ship burns a clearing to set down in. By morning the green is creeping back."
+      "landing": "The ship burns a clearing to set down in. By morning the green is creeping back.",
+      "scene": "jungle"
     },
     {
       "id": "rock",
@@ -62,7 +66,8 @@
       "ore": [2, 3],
       "danger": [0, 1],
       "text": "Airless stone, rich and empty. Whatever the colony needs, it brings or digs.",
-      "landing": "The ship sets down on bare stone under a black sky. No air and no weather: the ground, and what is in it."
+      "landing": "The ship sets down on bare stone under a black sky. No air and no weather: the ground, and what is in it.",
+      "scene": "rock"
     }
   ],
   "names": {

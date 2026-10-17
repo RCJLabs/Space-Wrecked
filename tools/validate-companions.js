@@ -4,16 +4,19 @@
 // their chain, a side's chain of their own side (data/quests.json) whose
 // step on the run has a choice that does the step and signs them on, and
 // no other event signing them on; their loyalty quest, a quest of their
-// own; and their talent: words for it, and their job's order numbers,
-// each as sharp as rank 2's or sharper and one of them sharper.
+// own; their talent: words for it, and their job's order numbers, each as
+// sharp as rank 2's or sharper and one of them sharper; and their bust's
+// clothes and gear (M34), each one the portrait draws.
+import { GEAR, WEARS } from '../src/render/portraits/bust.js';
 import { isLook } from '../src/sim/looks.js';
 import { ORDER_KINDS } from '../src/sim/orders.js';
 import { jobAtRank } from '../src/sim/ranks.js';
 import { isIntIn, isObject, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 
 const FILE_KEYS = ['text', 'companions'];
-const COMPANION_KEYS = ['id', 'name', 'side', 'job', 'traits', 'fights', 'look', 'past', 'chain', 'loyalty', 'talent'];
+const COMPANION_KEYS = ['id', 'name', 'side', 'job', 'traits', 'fights', 'look', 'bust', 'past', 'chain', 'loyalty', 'talent'];
 const TALENT_KEYS = ['name', 'order'];
+const BUST_KEYS = ['wear', 'gear'];
 const TRAITS = 2;
 const MAX_NAME = 24;
 const MAX_TALENT_NAME = 24;
@@ -55,6 +58,7 @@ export function checkCompanions(data, { sides, jobIds, traitIds }, fail) {
     else for (const trait of companion.traits) if (!traitIds.has(trait)) fail(at, `traits: unknown trait "${trait}" (traits.json)`);
     if (!isIntIn(companion.fights, 0, MAX_FIGHTS)) fail(at, `fights must be a whole number from 0 to ${MAX_FIGHTS}`);
     if (!isLook(companion.look)) fail(at, "look must be a face's every layer, each a choice looks.js draws");
+    if (companion.bust !== undefined) checkBust(companion.bust, `${at} bust`, fail);
     if (!isText(companion.past) || companion.past.length > MAX_TEXT) fail(at, `past must be a non-empty string of up to ${MAX_TEXT} letters`);
     checkChain(companion, at, { quests, events }, fail);
     const loyalty = quests.get(companion.loyalty);
@@ -76,6 +80,17 @@ export function checkCompanions(data, { sides, jobIds, traitIds }, fail) {
       }
     }
   }
+}
+
+// Their bust (M34, src/render/portraits/bust.js): clothes and gear it draws.
+function checkBust(bust, at, fail) {
+  if (!isObject(bust)) {
+    fail(at, `must be { ${BUST_KEYS.join(', ')} }`);
+    return;
+  }
+  knownKeys(bust, BUST_KEYS, at, fail);
+  if (!Object.hasOwn(WEARS, bust.wear)) fail(at, `wear must be one the bust draws: ${Object.keys(WEARS).join(', ')}`);
+  if (!Object.hasOwn(GEAR, bust.gear)) fail(at, `gear must be one the bust draws: ${Object.keys(GEAR).join(', ')}`);
 }
 
 // Their chain: a side's chain of their side, whose step on the run has a

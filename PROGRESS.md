@@ -2,6 +2,137 @@
 
 Newest entry first.
 
+## M34 Scenes and companions, drawn in code (2026-10-17)
+
+**Status:** done, and the ROADMAP.md box is ticked.
+- **Title:** stands over a painted hangar.
+- **Lift-off:** the homeworld's ground falls away under the ship, and the grey rock is then seen whole.
+- **Landing:** comes down out of the sky onto each kind of world's own ground.
+- **Companions:** the four each have a bust of their own, drawn in code. It is big where they offer to come aboard, and cropped to the face on the cards.
+
+Saves are unchanged at v29.
+
+**How it was picked:** Evan's answers at the start (2026-10-17):
+- **How:** "Scenes drawn in code". There is no Base44 in M34; painted art waits, store art first.
+- **Which:** "Companions and scenes". That is seven scenes (the hangar, the grey rock, and the five kinds of world) and the four companions. The clients wait for Phase 7.
+- **Portraits:** "Big on the offer". About 100 px on the event card, the face at 40 px on the cards, and the helmet badge kept in fights.
+- **The look:** "Painted, my call". A dark navy ground, with amber and cyan rim light.
+- **Asked again**, since the first answers pulled two ways: "Redrawn richer in code".
+
+**What shipped:**
+- **Scenes as data and drawings** (`src/render/scenes/`):
+  - each scene is a pure function from its id and a seed to plain shapes (rects, ellipses, smooth polygons, clipped groups, gradients, soft edges);
+  - a painter draws them;
+  - soft shapes are painted on a smaller layer and laid back, because canvas blur cost seconds a scene. A scene now paints in 15 to 130 ms here, once a size.
+  - The seven scenes:
+    - **the hangar:** the title's, its bay door open on the night with the stars cut through, a half-built hull on the pad, half of it still blueprint;
+    - **the homeworld's ground:** the pad by its hangar, the Tailings' roads and pits;
+    - **the five kinds' grounds**, each from the colony's land for its kind (M26):
+      - an ocean island, beach and reef;
+      - desert dunes round a salt flat;
+      - ice plates and a lead;
+      - a jungle clearing by a river;
+      - barren rock's craters;
+    - **each world seen whole.**
+  - Act 1 names its lift-off's scene (`data/campaign.json`), and each kind of world its landing's (`data/worlds.json`). The validator checks both; a kind not drawn takes barren rock's.
+- **The title:** the hangar over the title's sky, its moving stars through the door. The tag line is now in full ink and shadowed. The note New game's first tap shows sits on a ground of its own, like the buttons.
+- **The lift-off and the landing** (`src/ui/campaign/backdrop.js`):
+  - the ground and the world are painted once a size;
+  - each frame draws the ground scaled to the moment and faded into the world seen whole, then the ship;
+  - only what shows is drawn: no world under ground that covers the screen, no ground once it has faded;
+  - a ground in motion is scaled without smoothing, and is smoothed at rest.
+- **The busts** (`src/render/portraits/bust.js`): each companion's face (face.js) bareheaded, a fifth smaller, on broad shoulders.
+  - The clothes and gear are named in `data/companions.json` (`bust`), their choices drawings the validator checks:
+    - Varga: a coverall and goggles;
+    - Brandt: a dock coat and the union's armband;
+    - Osei: a survey jacket and headset;
+    - Dez: a medic's coat and stethoscope.
+  - Their side's color is on a patch or the gear.
+  - The rim light is an SVG filter round the whole figure: warm from the left, cool from the right.
+  - Where it shows:
+    - **event card:** beside the words, out of their scroll;
+    - **crew card, squad pickers and colony trip:** the face crop;
+    - **fight buttons:** the helmet badge, as before.
+
+Calls I made, each easy to change:
+- **The busts' clothes and gear.** I picked them for the companions' jobs and pasts. Each is one word in data, and any drawing goes with any companion.
+- **The tag line and the note restyled** rather than the hangar darkened. The floodlights crossing behind the words gave the dim tag line 3.4 to 1, and the note over the lit hull 2.1 to 1.
+- **The words:** the tag line is now "Early build: from the hangar to the colony." Act 3's words ahead are now "Three backgrounds are here, each with its own pursuer. Still to come in v0.4: sound."
+
+**Evan's call, before the merge (2026-10-17): the first reading** ("Keep the first reading, merge when green"). The question was how "a scene adds under 2 ms a frame" reads. Timed in Chromium on this machine:
+- **Against what main drew behind the ship** (the space color, a full-screen haze and stars, which the scene takes the place of): the backdrop is cheaper at every size, by 2.1 to 8.2 ms a frame. This is the reading kept.
+- **Against a bare frame:**
+  - **cover screen, both shapes:** a moving frame is under 2 ms at the 95th percentile;
+  - **unfolded:** 2.8 to 3.6 ms on average.
+
+This machine draws the canvas on the processor, where one full-screen copy alone costs 0.9 ms unfolded. On the phone Chrome draws it on the graphics chip, where scaling an image costs next to nothing. I expect that, but it is not measured: please still watch for stutter in the lift-off unfolded. If it stutters, ROADMAP §9 has the fix: the backdrop as layers the compositor moves, under a canvas of the ship's own.
+
+**For Evan to watch on the phone:**
+- **The unsmoothed ground in motion.** At device pixels it looks the same here. On the ice plates' hard edges, two-pixel steps could show while it zooms.
+
+Done when (ROADMAP.md, M34, in full there), and how each is met:
+- **Scenes as data and drawings:**
+  - `tests/scenes.test.js` (9 tests): every scene is the same from the same seed and moves with another; it lies in its frame with sound numbers, takes its colors from the palette, and every kind of world has its own; the hangar's door is cut out with clear sky behind the title; the painter draws every scene and restores what it saves; the backdrop falls away at the lift-off and rises at the landing; a frame draws only what shows.
+  - Two new cases in `tests/data.test.js`: a scene not drawn.
+- **The title,** measured on the canvas in the browser:
+  - the title 7.1 to 7.7 to 1;
+  - the tag line 8.4 to 9.2;
+  - the note on its ground 12.8.
+
+  All but the brightest 1% of the pixels behind the words count; the rest are stars drifting by.
+- **The lift-off and the landing:** by touch, below; the backdrop's moments in `tests/scenes.test.js`.
+- **Reduced motion:** the still moment, the same frame 0.7 s later, by touch.
+- **Frame budget:** above, and the table under Measured.
+- **The companions:**
+  - `tests/bust.test.js` (5 tests): each companion's bust is well formed at both crops, the same each time, in their trim and their side's color, and more drawn than their badge; every clothes and gear draws its own way, each with each; the patch shows unless the gear carries the side's color; every choice in every layer of a face draws in a bust; ids are the drawing's own; unknown choices fall back.
+  - `tests/companionText.test.js` gains one: their face is the bust on the crew card, the squad pickers and the trip's, and anyone else's the helmet.
+  - Three new cases in `tests/data.test.js`.
+- **Saves:** unchanged at v29. The scenes come from the act and the world's kind, the busts from the companion's id.
+- **Offline:** nothing new to fetch; `sw.js` lists the new files. Checked by reloading offline.
+- **Touch:** `m34/verify.mjs`, 39 checks at each of the three sizes. All pass.
+
+**Measured** (scratchpad `m34/budget.mjs`): what a scene adds to a frame, in ms. Each frame is finished with a one-pixel read, so the time is the drawing's and not just its recording. Means first, 95th percentile in brackets.
+
+| Size | Title's hangar | Lift-off and landings, over a bare frame | Over main's space | The still frame (once) |
+| --- | --- | --- | --- | --- |
+| 905 × 370 | 0.56 | 1.6 to 2.4 (1.7 to 1.9) | −3.0 to −3.4 | 3.8 to 4.1 |
+| 821 × 283 | 0.44 | 1.3 to 1.9 (1.2 to 1.6) | −2.1 to −2.4 | 2.6 to 3.0 |
+| 960 × 825 | 1.44 | 2.8 to 3.6 (3.6 to 5.8) | −7.2 to −8.2 | 8.9 to 9.7 |
+
+Before the backdrop drew only what shows, a moving frame cost 3.8 to 4.4 ms at 905 × 370 and 8 to 11.5 unfolded. The scaled ground's smoothing was nearly all of it.
+
+**Verified:**
+- `node --test`: 933 tests pass.
+- `m34/verify.mjs` at the three sizes:
+  - the title over the hangar, its words' contrast, its buttons;
+  - the lift-off: ground under the ship on the pad, the rock seen whole at the end, 60 frames a second;
+  - a landing on each of the five kinds, each ground its own;
+  - reduced motion, both ways;
+  - Teo's offer with his bust beside the words in all three states, every choice in sight;
+  - his face crop on the crew card and the colony trip's squad picker, everyone else in helmets, and his fight button the badge;
+  - saves at v29, offline, and no console errors.
+- **Every earlier milestone's browser check** passes, one after another at the three sizes (`m34/regress.sh`), M33c's to M8's. Three things to know:
+  - **M33c's copy is adapted for M34:** the offer's face is now the bust.
+  - **M14's copy is adapted too:** a new game's seed is random, so a crew member can reach rank 1 before the third job, and since M32b a ranked unit's button says its rank.
+  - **M32b's first copy** still looks for Suppress · 2 and Sedate · 2, as it has since M33; its fix's copy passes in its place.
+
+  The checks that build a save as main made it (M31's to M23g's) ran again once their copies of main's code, missing from the scratchpad, were restored at the commits they stood at.
+
+**Known issues:**
+- **A scene paints once a size, taking 15 to 130 ms here.** The lift-off and the landing wait for it before they start. Folding or unfolding during one repaints, with a pause.
+- **The bust's rim light is an SVG filter** in an image. Chrome draws it; a browser that skipped it would show the bust without its rim.
+- **Only Teo's offer was walked by touch.** The four busts are each drawn and checked in `tests/bust.test.js`, and previewed together (scratchpad `m34/shots/busts.png`).
+
+**What Evan should test on the phone:**
+- **The title** on both screens: the hangar, the stars through its door, the words easy to read.
+- **A lift-off** (end act 1): the pad close under the ship, the ground falling away as it climbs, the grey rock seen whole. Watch for stutter, unfolded most of all.
+- **A landing** on a world: the world seen whole as the ship comes in, then its ground. If you can, try two kinds.
+- **A companion's offer:** the bust beside the words. Tap a choice, then sign them on; the bust should stay in sight on the cover screen.
+- **The face crops:** the crew card, and the squad picker at the colony.
+- **Reduced motion** (Settings): both sequences still.
+
+**Next session's first task:** M35 Audio pass with ZzFX, the last of Phase 6's drafts. Settle its Done when with Evan first: which sounds, a mute and a volume in the settings, and audio starting after the first tap. ZzFX is approved for M35, and needs its line in `assets/LICENSES.md` before it is committed.
+
 ## M33c Companions (2026-10-16)
 
 **Status:** done, and the ROADMAP.md box is ticked. Four companions, one for each side, each met at the end of their side's chain on the run and brought aboard in a free berth. Joining opens their loyalty quest: a ship within reach of the colony, held by someone from their past. Won, they are loyal, and their job's order is at a third rank, their talent, in every fight after.
@@ -19,7 +150,7 @@ Newest entry first.
 - **What loyalty earns:** their talent past rank 2, a third rank of their job's order with numbers of their own.
 - **Where the loyalty quest is done:** a place at the colony, a ship held by someone from their past, as a thread's act 3 step.
 
-**For Evan to confirm:** the test players' rule for companions, which is stricter than the Done when's words. Signing a companion on wherever a berth was free, and starting every chain whose price left the buffer, 100 voyages from each start ended fed in 47, 53 and 81 against M33b's 73, 90 and 98, and met the hunters in 61, 37 and 34 against 37, 21 and 14: all six of those bars broken, by 16 to 37. A fourth mouth empties the miner's and the deserter's 30 supplies in 7 jumps (the smuggler's ship carries 60 or 70), and the chains' steps cost detours. So the test players now:
+**Evan's call, after the merge (2026-10-16): keep it** ("Keep stricter rule"). The test players' rule for companions is stricter than the Done when's words. Signing a companion on wherever a berth was free, and starting every chain whose price left the buffer, 100 voyages from each start ended fed in 47, 53 and 81 against M33b's 73, 90 and 98, and met the hunters in 61, 37 and 34 against 37, 21 and 14: all six of those bars broken, by 16 to 37. A fourth mouth empties the miner's and the deserter's 30 supplies in 7 jumps (the smuggler's ship carries 60 or 70), and the chains' steps cost detours. So the test players now:
 - sign a companion on only where the holds would feed them for 10 jumps, their lockers counted, the rule they already had for recruits;
 - start a side's chain only for that, or (as M33b had it for the Fleet) where it would make friends with a side whose patrols then wave the ship through;
 - start one side's chain at a time. With bunks aboard, a berth for each, it chased three at once, and the crew it signed on went hungry.
