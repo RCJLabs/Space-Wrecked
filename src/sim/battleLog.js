@@ -21,7 +21,9 @@ export function describeEvent(event, battle) {
     case 'door':
       return `${who} opens the door on the ${SIDE_NAME[event.side]} side of (${event.at[0]}, ${event.at[1]}).`;
     case 'shot': {
-      const shot = `${who} ${event.overwatch ? 'fires on overwatch at' : 'shoots'} ${name(event.target)}: ${event.chance}%, rolled ${event.roll}`;
+      // A burst's shots say their place in it (weapons.js, M37).
+      const burst = event.burst ? ` (burst, shot ${event.burst})` : '';
+      const shot = `${who} ${event.overwatch ? 'fires on overwatch at' : 'shoots'} ${name(event.target)}${burst}: ${event.chance}%, rolled ${event.roll}`;
       if (!event.hit) return `${shot}, missed.`;
       const crit = event.crit ? `, crit (${event.critChance}%, rolled ${event.critRoll})` : '';
       return `${shot}, hit${crit} for ${event.damage}.`;
@@ -54,6 +56,12 @@ export function describeEvent(event, battle) {
       return `${who} is asleep and does nothing.`;
     case 'awake':
       return `${who} wakes up.`;
+    case 'stun':
+      return `${who} is stunned.`;
+    case 'fire':
+      return `(${event.at[0]}, ${event.at[1]}) catches fire, to round ${event.until}.`;
+    case 'fire out':
+      return `The fire at (${event.at[0]}, ${event.at[1]}) burns out.`;
     case 'unweld': {
       const [x, y, side] = event.key.split(',');
       return `The weld on the door on the ${SIDE_NAME[side]} side of (${x}, ${y}) gives way: the door is shut.`;

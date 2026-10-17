@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "25a3e927bff7";
+const VERSION = "12b02f3afe6a";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -140,6 +140,7 @@ const FILES = [
   "src/sim/fight.js",
   "src/sim/flags.js",
   "src/sim/frame.js",
+  "src/sim/gear.js",
   "src/sim/gen/layout.js",
   "src/sim/gen/look.js",
   "src/sim/gen/sector.js",
@@ -153,6 +154,7 @@ const FILES = [
   "src/sim/hunt.js",
   "src/sim/jobAi.js",
   "src/sim/launch.js",
+  "src/sim/loadout.js",
   "src/sim/looks.js",
   "src/sim/makers.js",
   "src/sim/mapFromShip.js",
@@ -167,6 +169,7 @@ const FILES = [
   "src/sim/press.js",
   "src/sim/questShape.js",
   "src/sim/quests.js",
+  "src/sim/racks.js",
   "src/sim/raid.js",
   "src/sim/raids.js",
   "src/sim/ranks.js",
@@ -191,6 +194,7 @@ const FILES = [
   "src/sim/transponder.js",
   "src/sim/travel.js",
   "src/sim/tripShape.js",
+  "src/sim/weapons.js",
   "src/ui/battle/screen.js",
   "src/ui/battle/tileText.js",
   "src/ui/battle/wrecks.js",

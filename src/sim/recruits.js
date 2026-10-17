@@ -22,6 +22,7 @@ import { companionOf } from './companions.js';
 import { crewRoom } from './crew.js';
 import { tally } from './flags.js';
 import { rollLook } from './looks.js';
+import { handedIn } from './loadout.js';
 import { endCold } from './quests.js';
 import { rankOf } from './ranks.js';
 import { costAt, priceShare } from './standing.js';
@@ -133,12 +134,12 @@ export function dismissPlan(campaign, rules, id) {
   return { ok: true, member };
 }
 
-// Lets crew member `id` go. Returns { ok: true, campaign, plan } or { ok:
-// false, error }.
+// Lets crew member `id` go: they hand in the weapon they carry (M37,
+// loadout.js). Returns { ok: true, campaign, plan } or { ok: false, error }.
 export function dismissCrew(campaign, rules, id) {
   const plan = dismissPlan(campaign, rules, id);
   if (!plan.ok) return plan;
-  const left = { ...campaign, crew: campaign.crew.filter((member) => member.id !== id), flags: tally(campaign.flags, { crewDismissed: 1 }) };
+  const left = { ...campaign, crew: campaign.crew.filter((member) => member.id !== id), arms: handedIn(campaign, plan.member, rules), flags: tally(campaign.flags, { crewDismissed: 1 }) };
   // A companion let go ends their loyalty quest, if it is open (M33c).
   const loyalty = plan.member.companion ? companionOf(rules, plan.member.companion)?.loyalty : null;
   return { ok: true, plan, campaign: loyalty ? endCold(left, loyalty).campaign : left };

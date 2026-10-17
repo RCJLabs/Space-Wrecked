@@ -32,7 +32,7 @@ const ID = /^[a-z][a-z0-9-]*$/;
 // null if it reads.
 export function runProblem(run) {
   if (!isRecord(run)) return 'is unreadable';
-  const { sector, at, seen, past, done, scans, result, approach, hired, swapped, surveyed, docked } = run;
+  const { sector, at, seen, past, done, scans, result, approach, hired, racked, swapped, surveyed, docked } = run;
   if (!isRecord(sector) || !isInt(sector.index, 1, 99) || !isName(sector.name) || !(sector.system === undefined || sector.system === true)) return 'has an unreadable sector';
   const { nodes, links } = sector;
   if (!Array.isArray(nodes) || nodes.length < 2 || nodes.length > MAX_NODES) return 'has an unreadable map';
@@ -75,6 +75,8 @@ export function runProblem(run) {
   // each slot once.
   const isHire = (h) => isRecord(h) && isNode(h.node) && seen.includes(h.node) && isInt(h.slot, 0, MAX_SLOT);
   if (!Array.isArray(hired) || !hired.every(isHire) || new Set(hired.map((h) => `${h.node}:${h.slot}`)).size !== hired.length) return 'has unreadable recruits';
+  // The weapons bought off the stations' racks (M37, racks.js), as hires.
+  if (!Array.isArray(racked) || !racked.every(isHire) || new Set(racked.map((r) => `${r.node}:${r.slot}`)).size !== racked.length) return 'has unreadable racks';
   if (typeof swapped !== 'boolean') return 'has an unreadable transponder';
   // The worlds surveyed in the system (survey.js): worlds the ship has been
   // to, each once.
@@ -169,10 +171,12 @@ function isResult(result, nodes, done) {
 
 // What an event did to the ship (M36, events.js applyEffects), where it
 // did anything: parts wrecked, got going again and repaired, and a trap
-// sprung. A trip's result (tripShape.js) has them too.
+// sprung; and a weapon found (M37). A trip's result (tripShape.js) has
+// them too.
 export function isShipChanges(changes) {
   const isUid = (uid) => isInt(uid, 0, MAX_CHANGE);
   return (
+    (changes.arms === undefined || (Array.isArray(changes.arms) && changes.arms.length <= 1 && changes.arms.every(isId))) &&
     (changes.wrecked === undefined || (Array.isArray(changes.wrecked) && changes.wrecked.every((part) => isRecord(part) && isUid(part.uid) && isId(part.type) && WRECKS.includes(part.wreck)))) &&
     (changes.rigged === undefined || (Array.isArray(changes.rigged) && changes.rigged.every(isUid))) &&
     (changes.repaired === undefined || (Array.isArray(changes.repaired) && changes.repaired.every((part) => isRecord(part) && isUid(part.uid) && isId(part.type)))) &&

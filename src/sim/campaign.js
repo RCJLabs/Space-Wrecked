@@ -19,7 +19,7 @@
 //            (construction mode, at the hangar or a station) takes parts
 //            from here and puts back what comes off.
 //   crew     [{ id, name, job, hp, traits, look, fights, background?,
-//            companion?, loyal? }]:
+//            companion?, loyal?, weapon? }]:
 //            everyone aboard. hp is what they have now: wounds carry from
 //            fight to fight, up to the most they can have (maxHp). traits
 //            are ids in data/traits.json (traits.js). look is what their
@@ -27,7 +27,11 @@
 //            have stood in, which set their job's rank (ranks.js, M32b), and
 //            a recruit's background is one of data/recruits.json's. A
 //            companion (M33c, companions.js) has their id as companion, and
-//            loyal: true once their loyalty quest is done.
+//            loyal: true once their loyalty quest is done. weapon is the
+//            weapon they carry (M37, loadout.js), once they have swapped:
+//            with none, their job's own.
+//   arms     { [weapon id]: count }: the spare weapons on hand (M37,
+//            loadout.js), on the ship or at the hangar
 //   captain  the id of the crew member who is the player's captain: named,
 //            with a job and CAPTAIN_TRAITS traits, when the campaign
 //            starts
@@ -82,6 +86,8 @@ import { enemyBonus } from './settings.js';
 import { rankOf } from './ranks.js';
 import { isQuests, startingQuests } from './questShape.js';
 import { isStanding, startStanding } from './standing.js';
+import { gearWon } from './gear.js';
+import { weaponOf, withArms } from './loadout.js';
 import { talentOrder, TALENT_RANK } from './talents.js';
 import { traitBonus } from './traits.js';
 
@@ -98,6 +104,9 @@ export const MAX_NAME = 24;
 export const CAPTAIN_TRAITS = 2;
 // More traits than anyone has: a guard on what a save can hold.
 const MAX_TRAITS = 4;
+// More spares of a weapon than anyone collects: a guard on what a save can
+// hold.
+const MAX_ARMS = 999;
 // More fights than anyone stands in: a guard on what a save can hold.
 const MAX_FIGHTS = 9999;
 export const MAX_FLAG_TEXT = 64;
@@ -157,6 +166,8 @@ export function newCampaign(rules, seed, { background = firstBackground(rules), 
     place: 'hub',
     credits: start.credits,
     parts: { ...start.parts },
+    // Spare weapons (M37, loadout.js): everyone starts with their job's.
+    arms: {},
     crew,
     captain: crew[at].id,
     heat: 0,
@@ -294,11 +305,11 @@ export function maxHp(member, rules) {
 }
 
 // A crew member as a battle unit starts (battle.js createBattle), less
-// where they stand: their job, name, hit points now, what their traits add
-// and their job's rank (ranks.js); a loyal companion, their talent, past
-// rank 2 (M33c, talents.js).
+// where they stand: their job, name, hit points now, what their traits add,
+// the weapon they carry (M37, loadout.js) and their job's rank (ranks.js);
+// a loyal companion, their talent, past rank 2 (M33c, talents.js).
 export function crewUnit(member, rules) {
-  const unit = { kind: member.job, name: member.name, hp: Math.min(member.hp, maxHp(member, rules)), bonus: traitBonus(member.traits, rules) };
+  const unit = { kind: member.job, name: member.name, hp: Math.min(member.hp, maxHp(member, rules)), bonus: traitBonus(member.traits, rules), weapon: weaponOf(member, rules) };
   if (member.loyal && talentOrder(rules, member.companion)) return { ...unit, rank: TALENT_RANK, talent: member.companion };
   const rank = rankOf(member, rules);
   return rank > 0 ? { ...unit, rank } : unit;
@@ -397,7 +408,9 @@ export function saveFight(campaign, battle, log) {
 // - in an act whose home heals (act 1's hangar), everyone heals fully;
 // - anyone killed (only where death is permanent) leaves the crew;
 // - everyone who stood in it counts it (rankUps says who reaches a rank);
-// - the flags count the fights won and lost.
+// - the flags count the fights won and lost;
+// - a won fight can leave one of the fallen enemies' weapons on hand (M37,
+//   gear.js gearWon), counted in the flags as gearWon.
 // A fight still going is left as it is. A job's pay is contracts.js's.
 export function endFight(campaign, rules) {
   const { fight } = campaign;
@@ -414,8 +427,10 @@ export function endFight(campaign, rules) {
     return [{ ...counted, hp: Math.max(1, unit.hp) }];
   });
   const flag = fight.battle.winner === 'crew' ? 'fightsWon' : 'fightsLost';
-  const flags = { ...campaign.flags, [flag]: (campaign.flags[flag] ?? 0) + 1 };
-  return { ...campaign, place: 'hub', fight: null, crew, flags };
+  const gear = gearWon(fight, fight.battle, rules);
+  const flags = { ...campaign.flags, [flag]: (campaign.flags[flag] ?? 0) + 1, ...(gear ? { gearWon: (campaign.flags.gearWon ?? 0) + 1 } : {}) };
+  const arms = gear ? withArms(campaign.arms, gear) : campaign.arms;
+  return { ...campaign, place: 'hub', fight: null, crew, flags, arms };
 }
 
 // Who reaches a new rank as the fight under way ends (ranks.js, M32b), by
@@ -457,6 +472,7 @@ export function campaignProblems(value) {
   if (!isRecord(value.parts) || !Object.entries(value.parts).every(([type, count]) => ID.test(type) && isInt(count, 1, Number.MAX_SAFE_INTEGER))) {
     wrong('parts are unreadable');
   }
+  if (!isRecord(value.arms) || !Object.entries(value.arms).every(([id, count]) => ID.test(id) && isInt(count, 1, MAX_ARMS))) wrong('spare weapons are unreadable');
   if (!isCrew(value.crew)) wrong('crew is unreadable');
   else if (!value.crew.some((member) => member.id === value.captain)) wrong("captain isn't aboard");
   if (!isInt(value.heat, 0, HEAT_MAX)) wrong('heat is invalid');
@@ -567,8 +583,9 @@ function isJob(job) {
 }
 
 // A part for sale (economy.js): its type and price.
+// A part for sale, or a weapon (M37).
 function isStockItem(item) {
-  return isRecord(item) && isId(item.part) && isInt(item.price, 0, Number.MAX_SAFE_INTEGER);
+  return isRecord(item) && (isId(item.part) || isId(item.weapon)) && !(item.part !== undefined && item.weapon !== undefined) && isInt(item.price, 0, Number.MAX_SAFE_INTEGER);
 }
 
 function isId(value) {
@@ -585,7 +602,8 @@ function isCrew(crew) {
       isName(member.name) && typeof member.job === 'string' && ID.test(member.job) && isInt(member.hp, 1, 999) &&
       Array.isArray(member.traits) && member.traits.length <= MAX_TRAITS && member.traits.every(isId) && new Set(member.traits).size === member.traits.length &&
       isLook(member.look) && isInt(member.fights, 0, MAX_FIGHTS) && (member.background === undefined || isId(member.background)) &&
-      (member.companion === undefined || isId(member.companion)) && (member.loyal === undefined || (member.loyal === true && member.companion !== undefined))
+      (member.companion === undefined || isId(member.companion)) && (member.loyal === undefined || (member.loyal === true && member.companion !== undefined)) &&
+      (member.weapon === undefined || isId(member.weapon))
     );
   });
 }

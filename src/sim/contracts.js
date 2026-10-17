@@ -30,7 +30,7 @@ import { atHangar } from './acts.js';
 import { createBattle } from './battle.js';
 import { crewUnit, endFight } from './campaign.js';
 import { rollDrop } from './drops.js';
-import { PAY_STEP, rollStock } from './economy.js';
+import { PAY_STEP, rollArms, rollStock } from './economy.js';
 import { generateSite } from './gen/site.js';
 import { huntersFor, jobHeat, raidDue, withHeat } from './heat.js';
 import { enemyBonus } from './settings.js';
@@ -102,7 +102,7 @@ export function withBoard(campaign, rules) {
   }
   if (next.shop === null) {
     const { stock, rng } = rollStock(rules, next.rng, district);
-    next = { ...next, shop: stock, rng };
+    next = { ...next, shop: [...stock, ...rollArms(rules, next, district)], rng };
   }
   return next;
 }
@@ -219,14 +219,15 @@ export function endJob(campaign, rules) {
   const rolled = district ? rollBoard(rules, after.rng, district, skip) : { board: [], rng: after.rng };
   const restocked = district ? rollStock(rules, rolled.rng, district) : { stock: after.shop, rng: rolled.rng };
   const { campaign: moved } = moveStanding(after, rules, jobMoves(job, rules, won));
+  const flags = { ...after.flags, [flag]: (after.flags[flag] ?? 0) + 1 };
   const ended = {
     ...moved,
     credits: after.credits + (won ? jobPay(campaign, rules, job) : 0),
     heat: withHeat(after.heat, jobHeat(job, rules).heat),
     parts,
-    flags: { ...after.flags, [flag]: (after.flags[flag] ?? 0) + 1 },
+    flags,
     board: rolled.board,
-    shop: restocked.stock,
+    shop: district ? [...restocked.stock, ...rollArms(rules, { ...after, flags }, district)] : restocked.stock,
     spent,
     rng: restocked.rng,
   };

@@ -18,6 +18,7 @@ import { isId, isIntIn, isListIn, isObject, isRange, isText, knownKeys, listOf, 
 import { checkColony } from './validate-colony.js';
 import { checkEvents } from './validate-events.js';
 import { checkExpeditions } from './validate-expeditions.js';
+import { checkArms } from './validate-factions.js';
 import { checkSectors } from './validate-sectors.js';
 import { checkWorlds } from './validate-worlds.js';
 
@@ -71,7 +72,7 @@ const START_KEYS = ['credits', 'parts', 'crew', 'ship'];
 const SCRIPT_KEYS = ['frame', 'placements'];
 const PLACEMENT_KEYS = ['type', 'x', 'y', 'rot'];
 const DISTRICT_KEYS = ['id', 'name', 'blurb', 'clients', 'sites', 'shop'];
-const SHOP_KEYS = ['name', 'dealer', 'pitch', 'size', 'parts'];
+const SHOP_KEYS = ['name', 'dealer', 'pitch', 'size', 'parts', 'armsSize', 'arms'];
 const CLIENT_KEYS = ['id', 'name', 'title', 'blurb', 'side'];
 const SITE_KEYS = ['id', 'name', 'map', 'blurb'];
 const MAP_KEYS = ['id', 'name', 'rows'];
@@ -113,7 +114,8 @@ export function checkCampaignFiles(data, ids, fail) {
   const sides = ids.sides ?? new Set();
   const backgrounds = new Set((data.backgrounds?.backgrounds ?? []).map((background) => background?.id));
   const held = new Set((data.expeditions?.kinds ?? []).filter((kind) => kind?.held).map((kind) => kind.id));
-  const more = { jobs: ids.jobIds ?? new Set(), traits: ids.traitIds ?? new Set(), backgrounds, presets: ids.presets ?? new Map(), held };
+  const weapons = new Set((data.weapons?.weapons ?? []).map((weapon) => weapon?.id));
+  const more = { jobs: ids.jobIds ?? new Set(), traits: ids.traitIds ?? new Set(), backgrounds, presets: ids.presets ?? new Map(), held, weapons };
   const covered = checkEvents(data.events, holding, ids.moduleIds, fail, places, sides, ids.companions ?? new Set(), more);
   for (const kind of holding) if (!covered.has(kind)) fail(`sectors.json node ${kind}`, 'holds events, but events.json has none of its kind');
   for (const kind of data.expeditions?.kinds ?? []) {
@@ -121,7 +123,8 @@ export function checkCampaignFiles(data, ids, fail) {
   }
   checkRecruits(data.recruits, ids, fail);
   const maps = checkSiteMaps(data.sites, fail);
-  const districts = checkDistricts(data.districts, maps, { ...ids, sides }, fail);
+  const weaponIds = new Set((data.weapons?.weapons ?? []).map((weapon) => weapon.id));
+  const districts = checkDistricts(data.districts, maps, { ...ids, sides, weaponIds }, fail);
   const scripts = checkBackgrounds(data.backgrounds, districts, { ...ids, sides }, fail);
   // Hunters join every job's fight once heat is high enough.
   const hunters = Math.max(0, ...(data.backgrounds?.backgrounds ?? []).map((b) => (Array.isArray(b?.pursuer?.hunters) ? b.pursuer.hunters.length : 0)));
@@ -246,7 +249,7 @@ function checkSiteMaps(file, fail) {
 // template, and the shop if there is one. Client and site ids are unique
 // across districts, so a job can name them alone. Returns { districts:
 // id -> { clients, sites }, sites: id -> { district, map } }.
-function checkDistricts(file, maps, { moduleIds, sides }, fail) {
+function checkDistricts(file, maps, { moduleIds, sides, weaponIds }, fail) {
   const districts = listOf(file, 'districts', 'districts.json', fail);
   uniqueIds(districts, 'districts.json', fail);
   const byId = new Map();
@@ -292,7 +295,7 @@ function checkDistricts(file, maps, { moduleIds, sides }, fail) {
       if (!maps.has(site.map)) fail(at, `unknown or broken map "${site.map}" (sites.json)`);
     }
     if (!own.clients.size || !own.sites.size) fail(where, 'needs at least one client and one site');
-    if (district.shop !== undefined) checkShop(district.shop, `${where} shop`, own.clients, moduleIds, fail);
+    if (district.shop !== undefined) checkShop(district.shop, `${where} shop`, own.clients, moduleIds, weaponIds, fail);
     if (isId(district.id)) byId.set(district.id, own);
   });
   return { districts: byId, sites, clientSides };
@@ -302,7 +305,7 @@ function checkDistricts(file, maps, { moduleIds, sides }, fail) {
 // it, the words on its screen, how many parts it has for sale at a time,
 // and the table they are picked from, with enough parts in it to fill a
 // stock.
-function checkShop(shop, where, clients, moduleIds, fail) {
+function checkShop(shop, where, clients, moduleIds, weaponIds, fail) {
   if (!isObject(shop)) {
     fail(where, 'must be { name, dealer, pitch, size, parts }');
     return;
@@ -313,6 +316,12 @@ function checkShop(shop, where, clients, moduleIds, fail) {
   checkTable(shop.parts, `${where} parts`, moduleIds, fail);
   if (!isIntIn(shop.size, 1, MAX_STOCK)) fail(where, `size must be a whole number from 1 to ${MAX_STOCK}`);
   else if (isObject(shop.parts) && shop.size > Object.keys(shop.parts).length) fail(where, `a stock of ${shop.size} needs as many different parts in its table`);
+  // Weapons (M37): armsSize of them with each stock, from its own table.
+  if ((shop.arms === undefined) !== (shop.armsSize === undefined)) fail(where, 'armsSize and arms come together');
+  if (shop.armsSize !== undefined) {
+    if (!isIntIn(shop.armsSize, 1, MAX_STOCK - (shop.size ?? 0))) fail(where, `armsSize must be a whole number from 1 to ${MAX_STOCK - (shop.size ?? 0)}, with its parts no more than ${MAX_STOCK}`);
+    checkArms(shop.arms, `${where} arms`, weaponIds, shop.armsSize, fail);
+  }
 }
 
 // The backgrounds: who the player was, the pursuer after them, the words

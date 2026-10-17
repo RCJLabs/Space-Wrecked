@@ -1,7 +1,7 @@
 {
   "jobs": [
     {
-      "id": "marine", "name": "Marine", "hp": 10, "aim": 70, "defense": 0, "mobility": 4, "armor": 1, "weapon": "rifle",
+      "id": "marine", "name": "Marine", "hp": 10, "aim": 70, "defense": 0, "mobility": 4, "armor": 1, "weapon": "rifle", "arms": ["sidearm", "long", "heavy"],
       "order": { "type": "suppress", "name": "Suppress", "uses": 2, "aim": -30 },
       "station": { "gunnery": 10 },
       "colony": { "landing": 10 },
@@ -12,7 +12,7 @@
       "look": { "suit": "skinsuit", "build": "standard", "helmet": "fin", "back": "spine", "marks": "plates" }
     },
     {
-      "id": "engineer", "name": "Engineer", "hp": 8, "aim": 65, "defense": 5, "mobility": 4, "armor": 0, "weapon": "shotgun",
+      "id": "engineer", "name": "Engineer", "hp": 8, "aim": 65, "defense": 5, "mobility": 4, "armor": 0, "weapon": "shotgun", "arms": ["sidearm", "heavy"],
       "order": { "type": "weld", "name": "Weld", "uses": 2, "rounds": 3 },
       "station": { "repair": 1 },
       "colony": { "mines": 1 },
@@ -23,7 +23,7 @@
       "look": { "suit": "eva", "build": "standard", "helmet": "lamps", "back": "tools", "marks": "stripes" }
     },
     {
-      "id": "medic", "name": "Medic", "hp": 8, "aim": 60, "defense": 10, "mobility": 5, "armor": 0, "weapon": "pistol",
+      "id": "medic", "name": "Medic", "hp": 8, "aim": 60, "defense": 10, "mobility": 5, "armor": 0, "weapon": "pistol", "arms": ["sidearm"],
       "order": { "type": "patch", "name": "Patch", "uses": 2, "hp": 3 },
       "station": { "heal": 1 },
       "colony": { "heal": 1 },
@@ -34,7 +34,7 @@
       "look": { "suit": "eva", "build": "light", "helmet": "bubble", "back": "med", "marks": "stripes" }
     },
     {
-      "id": "pilot", "name": "Pilot", "hp": 8, "aim": 65, "defense": 10, "mobility": 5, "armor": 0, "weapon": "pistol",
+      "id": "pilot", "name": "Pilot", "hp": 8, "aim": 65, "defense": 10, "mobility": 5, "armor": 0, "weapon": "pistol", "arms": ["sidearm", "long"],
       "order": { "type": "hustle", "name": "Hustle", "uses": 1, "ap": 1 },
       "station": { "evasion": 10 },
       "colony": { "tripDays": 1 },
@@ -45,7 +45,7 @@
       "look": { "suit": "skinsuit", "build": "light", "helmet": "egg", "back": "jump", "marks": "seams" }
     },
     {
-      "id": "scout", "name": "Scout", "hp": 8, "aim": 75, "defense": 5, "mobility": 5, "armor": 0, "weapon": "longrifle",
+      "id": "scout", "name": "Scout", "hp": 8, "aim": 75, "defense": 5, "mobility": 5, "armor": 0, "weapon": "longrifle", "arms": ["sidearm", "long"],
       "order": { "type": "mark", "name": "Mark", "uses": 2, "aim": 15 },
       "station": { "scan": 1 },
       "colony": { "places": 1 },
@@ -56,8 +56,8 @@
       "look": { "suit": "skinsuit", "build": "light", "helmet": "mirror", "back": "spine", "marks": "seams" }
     },
     {
-      "id": "xenobiologist", "name": "Xenobiologist", "hp": 7, "aim": 60, "defense": 5, "mobility": 4, "armor": 0, "weapon": "dartgun",
-      "order": { "type": "sedate", "name": "Sedate", "uses": 2, "aim": 0 },
+      "id": "xenobiologist", "name": "Xenobiologist", "hp": 7, "aim": 60, "defense": 5, "mobility": 4, "armor": 0, "weapon": "dartgun", "arms": ["sidearm"],
+      "order": { "type": "sedate", "name": "Sedate", "uses": 2, "aim": 0, "weapon": "dartgun" },
       "station": { "freeSurvey": 1 },
       "colony": { "farms": 1 },
       "ranks": [
@@ -67,7 +67,7 @@
       "look": { "suit": "eva", "build": "standard", "helmet": "bar", "back": "tanks", "marks": "plain" }
     },
     {
-      "id": "quartermaster", "name": "Quartermaster", "hp": 10, "aim": 60, "defense": 0, "mobility": 4, "armor": 1, "weapon": "carbine",
+      "id": "quartermaster", "name": "Quartermaster", "hp": 10, "aim": 60, "defense": 0, "mobility": 4, "armor": 1, "weapon": "carbine", "arms": ["sidearm", "long", "heavy"],
       "order": { "type": "kit", "name": "Kit out", "uses": 2, "armor": 1 },
       "station": { "lockers": 10 },
       "colony": { "stores": 20 },

@@ -94,5 +94,7 @@
   "trustedPrice": 75,
   "friendlyPay": 10,
   "trustedPay": 20,
-  "dockHeat": 10
+  "dockHeat": 10,
+  "gearChance": 30,
+  "rackSize": 2
 }

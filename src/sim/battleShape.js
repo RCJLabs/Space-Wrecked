@@ -27,6 +27,9 @@ export function battleProblem(value) {
   }
   if (!Array.isArray(value.doors) || !value.doors.every((key) => typeof key === 'string')) return 'has unreadable doors';
   if (!Array.isArray(value.welds) || !value.welds.every((weld) => isRecord(weld) && typeof weld.key === 'string' && isInt(weld.until, 1, MAX))) return 'has unreadable welds';
+  // Fires a weapon set (M37): absent until the first.
+  const onMap = (at) => Array.isArray(at) && at.length === 2 && isInt(at[0], 0, map.width - 1) && isInt(at[1], 0, map.height - 1);
+  if (value.fires !== undefined && !(Array.isArray(value.fires) && value.fires.every((fire) => isRecord(fire) && onMap(fire.at) && isInt(fire.until, 1, MAX)))) return 'has unreadable fires';
   if (!TEAMS.includes(value.side) || !TEAMS.includes(value.first) || !isInt(value.round, 1, MAX) || !isState(value.rng)) {
     return 'has an unreadable turn';
   }
