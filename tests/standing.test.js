@@ -339,7 +339,7 @@ test("at a station of the pursuer's side the first trade adds 10 heat, once a vi
 test('saves: v26 for standing; a v25 campaign stands where its background starts a new one, and an approach under way meets no patrol', () => {
   // 27 since M33's fix (docking on trade), 28 since M33b's quests, 29 since
   // M33c's companions.
-  assert.equal(SAVE_VERSION, 32);
+  assert.equal(SAVE_VERSION, 33);
   const step = MIGRATIONS.find((m) => m.from === 25);
   for (const background of ['miner', 'deserter', 'smuggler']) {
     const campaign = newCampaign(rules, 4, { background });
@@ -371,7 +371,7 @@ test('saves: v26 for standing; a v25 campaign stands where its background starts
 
 test("saves: v27 for docking on trade; a v26 ship at its pursuer's station has docked there, anywhere else not", () => {
   // 28 since M33b's quests, 29 since M33c's companions.
-  assert.equal(SAVE_VERSION, 32);
+  assert.equal(SAVE_VERSION, 33);
   const step = MIGRATIONS.find((m) => m.from === 26);
   const v26 = (campaign) => {
     const { docked, ...run } = campaign.run;

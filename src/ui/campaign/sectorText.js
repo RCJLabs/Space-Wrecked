@@ -9,9 +9,11 @@
 // standing with each side, a station's side and what it charges, and the
 // heat of trading at a station of the pursuer's side (standingText.js;
 // M33's fix, where it was docking there); since M37, a station's weapons
-// rack (racks.js). The event
+// rack (racks.js); since M37b, the shipyards (yards.js), their side and
+// prices as a station's, refits there, and the Yard button. The event
 // card's words are eventText.js's, and the approach screen's
 // approachText.js's. rules are the content tables (src/sim/defs.js).
+import { atYard } from '../../sim/acts.js';
 import { actOf, canRefit } from '../../sim/campaign.js';
 import { MAX_RATING, RATINGS } from '../../sim/gen/system.js';
 import { withHeat } from '../../sim/heat.js';
@@ -28,7 +30,8 @@ import { settlePlan } from '../../sim/settle.js';
 import { surveyPlan } from '../../sim/survey.js';
 import { swapPlan } from '../../sim/transponder.js';
 import { dockHeat, patrolWelcome, pursuerSide, stationSide } from '../../sim/standing.js';
-import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesCost, suppliesOver, supplyCapacity, supplyOffer } from '../../sim/travel.js';
+import { yardHere } from '../../sim/yards.js';
+import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesCost, suppliesOver, supplyCapacity, supplyOffer, tradeHeat } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
 import { aWeapon, weaponFacts, weaponWord } from './armsText.js';
 import { byJob } from './crewJobText.js';
@@ -48,25 +51,29 @@ import { dockSaid, sideColor, sideIs, sideName, sidesText, stationText } from '.
 //                event is settled, hunt the chance the hunters wait there
 //                for a jump that reaches it (0 out of reach); world a world's
 //                kind by name ("Ice world"), or null, and surveyed whether it
-//                has been; side, a station's side (M33): { name, color }, or
-//                null for nobody's
+//                has been; side, a station's or a shipyard's side (M33):
+//                { name, color }, or null for nobody's
 //   links        [{ a, b, near }]: near when it joins the node the ship is at
 //   here         the node the ship is at, as nodeText says it
 //   world        the world the ship is at, as worldSaid says it, or null
 //   crew         as the hangar's
 //   sides        each side and the crew's standing with it (M33), as the
 //                hangar's
-//   station      the station the ship is at, if it is a side's (M33):
-//                standingText.js stationText (with what trading there
-//                adds, at one of the pursuer's side), else null
+//   station      the station or shipyard the ship is at, if it is a side's
+//                (M33): standingText.js stationText (with what trading
+//                there adds, at one of the pursuer's side), else null
 //   hold         [[label, value]]: supplies and credits, what the med bay
 //                heals, if there is one working, and the parts wrecked
 //                aboard, if any
 //   offer        what the station sells, or null away from one: { line,
 //                why, buys: [{ count, label, ask, text }] }
-//   refit        the station's refits, or null away from one: { label,
-//                parts (how many on hand), line, broken (the words for a
-//                flight check that keeps the ship here, or null) }
+//   refit        the station's or shipyard's refits, or null away from
+//                both: { label, parts (how many on hand), line, broken (the
+//                words for a flight check that keeps the ship here, or
+//                null) }
+//   yard         the shipyard the ship is at (M37b), or null away from one:
+//                { label, line, parts (how many it has left for sale) };
+//                Yard opens the shop screen on its stock
 //   patch        what the station's medic would patch up, or null away
 //                from one or with no one hurt: { ok, label, ask, text, why }
 //   repair       what the station would repair, or null away from one or
@@ -105,6 +112,7 @@ export function sectorText(campaign, rules) {
   const leave = at === sector.exit ? leaveText(campaign, rules) : null;
   const hunt = (id) => (far.get(id) ? (jumpPlan(campaign, rules, id).hunt?.chance ?? 0) : 0);
   const surveyed = campaign.run.surveyed ?? [];
+  const yard = shipyardText(campaign, rules);
   return {
     act: actTitle(campaign.act, rules),
     where: sector.system ? `The system · ${sector.name}` : `Sector ${sector.index} of ${act?.sectors ?? sector.index} · ${sector.name}`,
@@ -136,7 +144,7 @@ export function sectorText(campaign, rules) {
     crew: crewText(campaign, rules),
     sides: sidesText(campaign, rules),
     quests: questsText(campaign, rules),
-    station: offer.ok ? stationText(hereOf(campaign), campaign, rules) : null,
+    station: offer.ok || yard ? stationText(hereOf(campaign), campaign, rules) : null,
     hold: [
       ['Supplies', suppliesRow(campaign, rules)],
       ['Credits', campaign.credits.toLocaleString('en')],
@@ -145,6 +153,7 @@ export function sectorText(campaign, rules) {
     ],
     offer: offer.ok ? offerText(campaign, rules, offer) : null,
     refit: refitText(campaign, rules),
+    yard,
     repair: offer.ok ? repairText(campaign, rules) : null,
     rack: offer.ok ? rackText(campaign, rules) : null,
     patch: offer.ok ? patchText(campaign, rules) : null,
@@ -155,12 +164,12 @@ export function sectorText(campaign, rules) {
     survey: surveyText(campaign, rules),
     settle: settleText(campaign, rules),
     deciding: Boolean(openEvent(campaign, rules) || campaign.run.approach),
-    hint: sectorHint(campaign, rules, { each, offer, leave, known }),
+    hint: sectorHint(campaign, rules, { each, offer, leave, known, yard }),
   };
 }
 
-// A station's side, for the chart (M33): { name, color }, or null for
-// nobody's and for a node that isn't a station.
+// A station's or a shipyard's side, for the chart (M33): { name, color },
+// or null for nobody's and for a node that is neither.
 function sideOf(node, rules) {
   const side = stationSide(node, rules);
   return side ? { name: sideName(side, rules), color: sideColor(side, rules) } : null;
@@ -169,7 +178,8 @@ function sideOf(node, rules) {
 // A node: { name, kind, text }. kind is its kind's name, unless that is its
 // name, with its event's title until the event is settled ("Derelict: Dead
 // hauler"), or its hostile ship's until it is met ("Hostile ship: Pirate
-// cutter"), or a station's side (M33: "Station · The union"); text is its
+// cutter"), or a station's or shipyard's side (M33: "Station · The
+// union"); text is its
 // kind's words, or at a quest's node (M33b) the quest's line until its
 // event is settled. Unknown, it says so. A world (M25) says its own kind
 // ("Ice world") and its words.
@@ -256,14 +266,24 @@ function suppliesRow(campaign, rules) {
   return `${campaign.supplies} of ${supplyCapacity(campaign.ship, rules, campaign.crew)}${over ? `, ${over} won't fit` : ''}`;
 }
 
-// The station's refits: Refit opens construction mode on the ship, with the
-// parts on hand, for nothing. null away from a station.
+// The station's or shipyard's refits: Refit opens construction mode on the
+// ship, with the parts on hand, for nothing. null away from both.
 function refitText(campaign, rules) {
   if (!campaign.run || !canRefit(campaign, rules)) return null;
   const parts = Object.values(campaign.parts).reduce((sum, count) => sum + count, 0);
   const check = failingCheck(campaign, rules);
   const line = parts ? `${parts === 1 ? 'A part' : `${parts} parts`} on hand: Refit fits ${parts === 1 ? 'it' : 'them'}, free.` : 'Refit moves and turns the ship\'s parts, free.';
   return { label: 'Refit', parts, line, broken: check ? brokenWhy(check) : null };
+}
+
+// The shipyard the ship is at (M37b): what it has left for sale and that it
+// buys parts too; Yard opens the shop screen on them. null away from one.
+function shipyardText(campaign, rules) {
+  if (!atYard(campaign, rules)) return null;
+  const prices = yardHere(campaign, rules).map((item) => item.price);
+  const [least, most] = [Math.min(...prices), Math.max(...prices)];
+  const forSale = !prices.length ? 'Sold out' : `${prices.length === 1 ? 'One part' : `${prices.length} parts`} for sale, ${least === most ? `${least}` : `${least} to ${most}`} credits`;
+  return { label: 'Yard', parts: prices.length, line: `${forSale}. The yard buys parts on hand too.` };
 }
 
 // What a working med bay heals each of the wounded a jump, as a holdings
@@ -367,7 +387,7 @@ export function jumpText(campaign, rules, id) {
   const long = plan.kind === 'long';
   const label = long ? 'Long jump' : 'Jump';
   const known = knownNodes(campaign.run, rules).has(id) && !campaign.run.done.includes(id);
-  const lines = [...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...dockLine(campaign, rules, target), ...patrolLine(campaign, rules, known ? target : null), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)];
+  const lines = [...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...dockLine(campaign, rules, target), ...patrolLine(campaign, rules, known ? target : null), ...huntLine(campaign, rules, plan, target), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)];
   if (long) lines.push('A long jump passes the node between, and the pursuer loses the trail.');
   const between = long ? linked(sector, at).find((next) => linked(sector, next).includes(id)) : null;
   const way = long ? [at, between, id] : [at, id];
@@ -391,19 +411,26 @@ function patrolLine(campaign, rules, node) {
   return [welcome === 'waved' ? `${side} friendly with you: the ${ship.name.toLowerCase()} will wave you through.` : `${side} hostile to you: the ${ship.name.toLowerCase()} will open fire before you can act.`];
 }
 
-// A station of the pursuer's side ahead (M33): what trading there adds, as
-// a line, or none. Since M33's fix the jump there adds nothing for it.
+// A station or shipyard of the pursuer's side ahead (M33): what trading
+// there adds, as a line, or none. Since M33's fix the jump there adds
+// nothing for it.
 function dockLine(campaign, rules, node) {
   const heat = dockHeat(campaign, rules, node);
-  return heat ? [`${capital(sideIs(stationSide(node, rules), rules))} after you, and this is their station: trading there adds ${heat} heat. Passing through costs nothing.`] : [];
+  return heat ? [`${capital(sideIs(stationSide(node, rules), rules))} after you, and this is their ${portWord(node)}: trading there adds ${heat} heat. Passing through costs nothing.`] : [];
+}
+
+// What the crew calls a node it can trade at: "station", or "yard" for a
+// shipyard (M37b).
+function portWord(node) {
+  return node?.type === 'shipyard' ? 'yard' : 'station';
 }
 
 // The hunters where a jump comes out (hunt.js), once heat there is at
-// their level: a line, or none.
-function huntLine(campaign, rules, plan) {
+// their level: a line, or none. node: where it comes out.
+function huntLine(campaign, rules, plan, node = null) {
   const { hunt } = plan;
   if (!hunt || withHeat(campaign.heat, plan.heat) < rules.balance.huntHeat) return [];
-  if (hunt.why === 'safe') return ['The hunters keep clear of stations.'];
+  if (hunt.why === 'safe') return [`The hunters keep clear of ${portWord(node)}s.`];
   if (hunt.why === 'hidden') return ['The nebula hides the ship: the hunters can\'t see in.'];
   const ship = rules.ships.get(hunt.ship)?.name ?? hunt.ship;
   return [hunt.chance >= 100 ? `The ${ship} will be waiting there.` : `Hunters: ${hunt.chance}% the ${ship} waits there.`];
@@ -411,7 +438,9 @@ function huntLine(campaign, rules, plan) {
 
 // A day's rest where the ship is (regroup.js), two taps: Regroup, or Hide
 // in a nebula. null where none can be taken: at a station (Patch up there),
-// with no one hurt and nothing to hide from, or short of supplies.
+// with no one hurt and nothing to hide from, or short of supplies. At a
+// shipyard (M37b), safe as a station is, the hunters can't find the ship
+// resting.
 function restText(campaign, rules) {
   const plan = regroupPlan(campaign, rules);
   if (!plan.ok) return null;
@@ -524,12 +553,12 @@ function onTo(campaign, rules) {
 }
 
 // What to do next on the map, the most pressing first.
-function sectorHint(campaign, rules, { each, offer, leave, known }) {
+function sectorHint(campaign, rules, { each, offer, leave, known, yard }) {
   const held = holdOf(campaign, rules);
   if (held) return { tone: 'warn', text: held };
   const check = failingCheck(campaign, rules);
   if (check) return { tone: 'bad', text: brokenWhy(check) };
-  const over = offer.ok ? suppliesOver(campaign, rules) : 0;
+  const over = offer.ok || yard ? suppliesOver(campaign, rules) : 0;
   if (over) return { tone: 'warn', text: `The holds take ${supplyCapacity(campaign.ship, rules, campaign.crew)} now: ${over} supplies stay behind at the next jump. Refit a hold back on to keep them.` };
   // The hunters out: what sheds heat here, or anywhere.
   const hunted = campaign.heat >= rules.balance.huntHeat;
@@ -537,8 +566,12 @@ function sectorHint(campaign, rules, { each, offer, leave, known }) {
   if (hunted && swap?.ok) return { tone: 'warn', text: `Heat ${campaign.heat}: the hunters are out. A clean transponder here sheds ${-swap.heat}${swap.dock ? `, after the ${swap.dock} trading here adds` : ''}, for ${swap.price}.` };
   const rest = regroupPlan(campaign, rules);
   if (hunted && rest.ok && rest.kind === 'hide') return { tone: 'warn', text: `Heat ${campaign.heat}: the hunters are out. Hide here a day to shed ${-rest.heat}.` };
-  // A station of the pursuer's side, nothing traded yet (M33's fix).
-  if (offer.ok && offer.dock) return { tone: 'warn', text: `${capital(sideIs(pursuerSide(campaign, rules), rules))} after you, and this is their station: your first trade here adds ${offer.dock} heat. Passing through costs nothing.` };
+  // A station or shipyard of the pursuer's side, nothing traded yet (M33's
+  // fix).
+  const dock = offer.ok ? offer.dock : yard ? tradeHeat(campaign, rules) : 0;
+  if (dock) return { tone: 'warn', text: `${capital(sideIs(pursuerSide(campaign, rules), rules))} after you, and this is their ${portWord(hereOf(campaign))}: your first trade here adds ${dock} heat. Passing through costs nothing.` };
+  // A shipyard (M37b): its parts, and the Refit that fits them.
+  if (yard) return { tone: 'good', text: yardHint(campaign, yard) };
   const wrecked = Object.keys(campaign.wrecks).length;
   const hurt = campaign.crew.some((member) => member.hp < maxHp(member, rules));
   const parts = wrecked === 1 ? 'A part is' : `${wrecked} parts are`;
@@ -575,6 +608,13 @@ function systemHint(campaign, rules) {
   const survey = surveyPlan(campaign, rules);
   if (survey.ok) return { tone: 'good', text: `Survey shows what ${here.name} is worth, for ${survey.free ? 'nothing' : "a day's supplies"}. Or Settle here as it is.` };
   return { tone: 'warn', text: `Too few supplies for a survey: settle here, or jump to another world.` };
+}
+
+// What to do at a shipyard: fit the parts on hand, buy more, or sell.
+function yardHint(campaign, yard) {
+  const onHand = Object.values(campaign.parts).reduce((sum, count) => sum + count, 0);
+  const fit = onHand ? `${onHand === 1 ? 'A part' : `${onHand} parts`} on hand: Refit, on the ship's panel, fits ${onHand === 1 ? 'it' : 'them'}, free. ` : '';
+  return `${fit}${yard.parts ? 'Tap Yard to buy parts, or sell what you have.' : 'The yard is sold out, but buys parts: tap Yard.'}`;
 }
 
 function capital(text) {

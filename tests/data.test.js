@@ -138,7 +138,7 @@ const cases = [
   ['trait far past its range', (d) => (d.traits.traits[0].effects = { aim: 50 }), /effects\.aim must be a whole number from -30 to 30/],
   ['misspelled trait field', (d) => (d.traits.traits[0].effect = {}), /traits\.json steady: unknown field "effect"/],
   ['sector with no jump point', (d) => (d.sectors.nodes = d.sectors.nodes.filter((n) => n.id !== 'exit')), /the "exit" node kind is missing/],
-  ['more stations than columns between', (d) => (d.sectors.counts.station = [1, 9]), /counts take up to 10 columns, but only 5 lie between/],
+  ['more stations than columns between', (d) => (d.sectors.counts.station = [1, 9]), /counts take up to 11 columns, but only 5 lie between/],
   ['too few places for a full sector', (d) => (d.sectors.names.places = d.sectors.names.places.slice(0, 4)), /mix\.empty: needs 15 names in its list, has 4/],
   ['a mix kind that is not a node kind', (d) => (d.sectors.mix.wreck = 2), /mix\.wreck: must be a node kind other than start, exit and the counted kinds/],
   ['a kind holding events with none of its kind', (d) => (d.events.events = d.events.events.filter((e) => e.kind !== 'derelict')), /node derelict: holds events, but events\.json has none of its kind/],
@@ -376,8 +376,14 @@ const cases = [
   ['a side in a color the palette lacks', (d) => (d.factions.sides[0].color = 'plaid'), /factions\.json side conreg: color must be one of src\/render\/palette\.js sideColors/],
   ['a side met at the nodes with no patrol words', (d) => delete d.factions.sides[1].patrol, /factions\.json side fleet: its ships are met at the sectors' nodes/],
   ['patrol words missing a line', (d) => delete d.factions.sides[1].patrol.fired, /factions\.json side fleet patrol: fired must be a non-empty string/],
-  ['a station no sector names', (d) => (d.factions.stations['Fort Nowhere'] = 'union'), /factions\.json stations: "Fort Nowhere" isn't a station's name in sectors\.json/],
+  ['a station no sector names', (d) => (d.factions.stations['Fort Nowhere'] = 'union'), /factions\.json stations: "Fort Nowhere" isn't a station's or a shipyard's name in sectors\.json/],
   ['a station of an unknown side', (d) => (d.factions.stations['Dock Seven'] = 'guild'), /factions\.json stations: Dock Seven: unknown side "guild"/],
+  ['a shipyard leaning to a maker nobody knows', (d) => (d.factions.sides[0].yard = { orrery: 3 }), /factions\.json side conreg yard: "orrery" is not a maker \(manufacturers\.json\)/],
+  ['a shipyard leaning by nothing', (d) => (d.factions.sides[1].yard = { bastion: 0 }), /factions\.json side fleet yard: bastion's weight must be a whole number from 1 to 100/],
+  ['a shipyard leaning to nobody', (d) => (d.factions.sides[1].yard = {}), /factions\.json side fleet yard: must be an object of makers/],
+  ['a shipyard of a side nobody knows', (d) => (d.factions.stations['Slipway Four'] = 'guild'), /factions\.json stations: Slipway Four: unknown side "guild"/],
+  ['a shipyard giving parts away', (d) => (d.balance.yardPercent = 0), /yardPercent must be a whole number from 1 to 100/],
+  ['a shipyard too big for its slots', (d) => (d.balance.yardSize = 30), /yardSize must be a whole number from 0 to 20/],
   ['a client of an unknown side', (d) => (district(d).clients[0].side = 'guild'), /districts\.json tailings client marta: side: unknown side "guild"/],
   ['a job against an unknown side', (d) => (job(d, 'payroll').against = 'guild'), /contracts\.json job payroll: against: unknown side "guild"/],
   ["a job against its own client's side", (d) => (job(d, 'payroll').against = 'union'), /contracts\.json job payroll: is against union, the side one of its clients works for/],
@@ -478,5 +484,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 15 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 20 enemies, 24 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 29 job templates, 11 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 100 events, 4 sides, 11 quests, 4 companions, 24 sounds\)/);
+  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 15 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 20 enemies, 24 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 29 job templates, 12 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 100 events, 4 sides, 11 quests, 4 companions, 24 sounds\)/);
 });

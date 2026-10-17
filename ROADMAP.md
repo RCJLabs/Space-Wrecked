@@ -1550,7 +1550,7 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **The voyage tests' two bars,** fed with a cargo hold and with bunks, hold main's rates before M37 (81 and 75; Evan's call, 2026-10-17). On seeds 1 to 100 M37's voyages came to 74 and 68, under the old bars; on seeds 101 to 200 they matched main's.
   - **A station's rack sits in its left panel,** under the transponder swap, not in the foot. Beside Buy, Fill up, Repair and Patch up, its buttons left the hint no room and ran off the tab-size screen, as the transponder swap's had before M24 moved it.
   - **A weapon's numbers show beside the button tapped:** under the crew card's swaps, or under the rack's button. The hint says only what the second tap does. With the numbers and rules in it, it ran past its three lines at the tab size and lost "Tap again to buy."
-- [ ] **M37b Shipyards.** Evan played the run and found few parts, about 2 in all.
+- [x] **M37b Shipyards.** Evan played the run and found few parts, about 2 in all.
   - **Where parts come from today:**
     - **act 1:** the dealer's 4 a job board, and the jobs' drops;
     - **the run:** events (a choice that can give one in 9 of the 18 derelicts, 3 of the 15 traders, 2 of the 20 distress calls and 1 of the 11 hazards) and boarding wins (1 part stripped off her);
@@ -1590,6 +1590,14 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
     - a part bought and one sold;
     - a refit there;
     - offline, every button 48 px or more, no console errors.
+
+  As built (2026-10-17), where it differs from the above or adds to it:
+  - **Empty space weighs 1 in a sector's mix, not 2** (`data/sectors.json`). The yard's column took one of the mixed nodes, and with it events: 9.8 a careful voyage on seeds 101 to 300, against main's 10.8. At 1 they came back to 10.6.
+  - **A yard's mark is pink** (`shipyard` in `src/render/palette.js`): a crane over a hull on its slipway. Orange was taken by the rings round what a jump reaches, and by the jump point.
+  - **The yard is the shop screen** (`shop.js`), in its own words (`yardText.js`), with Map as the way back. At a yard of the pursuer's side, the first tap says the heat the trade adds.
+  - **A day's rest at a yard is out of the hunters' reach,** as the yard is safe. A yard has no Patch up, so Regroup stays.
+  - **A quest's step never lands on a yard,** as it never lands on a station or a nebula.
+  - **The test player seldom affords a yard's part.** It reaches a yard in 87 of 100 voyages, with a median of 30 credits there, and buys in 9 (16 parts). The refit bar holds main's rate before M37b (59), as M37's two hold main's before M37: on seeds 1 to 100 the yards' new sectors left 50 runs with a refit, and on seeds 101 to 300 they matched main's (122 of 199 against 119).
 - [ ] **M38 Missions and jobs.** Three mission types (clear out, grab, hack) against §5's 8, and 29 jobs against 40 or more. The draft:
   - five mission types, each with its objective, its AI and its words: extract (carrying the crates out, §9), escort, defend, sabotage, rescue;
   - about a dozen new jobs across the three districts.

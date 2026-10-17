@@ -71,7 +71,7 @@
 // for any node the ship has been at or next to; a scan shows every node within scanRange links
 // of the ship (and a scout's more), for scanHeat.
 import { int } from '../core/rng.js';
-import { actOf, atStation } from './acts.js';
+import { actOf, atPort } from './acts.js';
 import { flightChecklist, shipStats } from './constraints.js';
 import { openApproach } from './encounter.js';
 import { tally } from './flags.js';
@@ -127,7 +127,7 @@ export function beginRun(campaign, rules) {
 
 // A run entering `sector`, with the sectors behind it.
 function freshRun(sector, past) {
-  return { sector, at: sector.start, seen: [sector.start], past, done: [], scans: [], result: null, approach: null, hired: [], racked: [], swapped: false, surveyed: [], docked: false };
+  return { sector, at: sector.start, seen: [sector.start], past, done: [], scans: [], result: null, approach: null, hired: [], racked: [], yarded: [], swapped: false, surveyed: [], docked: false };
 }
 
 // The event open at the ship's node: { node, event } (the event from
@@ -227,12 +227,13 @@ export function reach(sector, id) {
   return far;
 }
 
-// The flight check that keeps the ship at a station, or null: the first
-// line of its checklist (constraints.js) that doesn't pass, for the crew
-// aboard, once a refit has left one failing. Only a refit changes the ship,
-// and only at a station, so away from one nothing holds it.
+// The flight check that keeps the ship at a station or a shipyard (M37b),
+// or null: the first line of its checklist (constraints.js) that doesn't
+// pass, for the crew aboard, once a refit has left one failing. Only a
+// refit changes the ship, and only at one of those, so away from them
+// nothing holds it.
 export function failingCheck(campaign, rules) {
-  if (!atStation(campaign, rules)) return null;
+  if (!atPort(campaign, rules)) return null;
   const liftOff = actOf(campaign, rules)?.liftOff ?? null;
   return flightChecklist(campaign.ship, rules, campaign.crew.length, { liftOff }).find((line) => line.ok !== true) ?? null;
 }

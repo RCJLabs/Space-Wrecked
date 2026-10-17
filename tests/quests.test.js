@@ -103,7 +103,7 @@ test("the run: the step's event is put on a node of each sector entered, seeded,
   assert.deepEqual(run.run.sector.nodes.map((n) => (n.id === node.id ? null : n)), plain.run.sector.nodes.map((n) => (n.id === node.id ? null : n)));
   assert.ok(!plain.run.sector.nodes.some((n) => n.quest));
   // Over many sectors: never the way in, the jump point, a station, a
-  // nebula or a hostile ship's node; one of the event's kind where there is
+  // shipyard (M37b), a nebula or a hostile ship's node; one of the event's kind where there is
   // one; always the same node for the same seed.
   const campaign = at(readyToLaunch(), 1);
   for (let seed = 1; seed <= 300; seed++) {
@@ -113,7 +113,7 @@ test("the run: the step's event is put on a node of each sector entered, seeded,
     assert.equal(changed.length, 1, `seed ${seed}`);
     const [quest] = changed;
     const before = sector.nodes[quest.id];
-    assert.ok(quest.id !== sector.start && quest.id !== sector.exit && !['station', 'nebula'].includes(before.type) && !before.hostile, `seed ${seed}: ${before.type}`);
+    assert.ok(quest.id !== sector.start && quest.id !== sector.exit && !['station', 'shipyard', 'nebula'].includes(before.type) && !before.hostile, `seed ${seed}: ${before.type}`);
     if (sector.nodes.some((n) => n.type === 'distress')) assert.equal(before.type, 'distress', `seed ${seed}`);
     assert.deepEqual(placeQuests(sector, campaign, rules), placed);
   }

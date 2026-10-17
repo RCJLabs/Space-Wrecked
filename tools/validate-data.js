@@ -210,6 +210,10 @@ const BALANCE = {
   // rack sells.
   gearChance: [0, 100],
   rackSize: [0, 6],
+  // M37b: how many parts a shipyard sells, and its price, as a share of the
+  // dealer's.
+  yardSize: [0, 20],
+  yardPercent: [1, 100],
 };
 // A weapon's held shape and a fighter's look are how the fight draws them
 // (src/render/figures/looks.js). Its kind, for who can carry it, its price,

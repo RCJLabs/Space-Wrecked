@@ -21,10 +21,11 @@ const pursuer = rules.backgrounds.get('miner').pursuer;
 const tug = rules.ships.get(pursuer.run.hunters).name;
 const gunship = rules.ships.get(pursuer.run.taskForce).name;
 // The ship at the first node of kind `type`, made one where the sector has
-// none: for the tests, no jump.
+// none (the first of the mix's kinds: a sector need hold no empty space,
+// M37b): for the tests, no jump.
 function atKind(campaign, type) {
   const { sector } = campaign.run;
-  const found = sector.nodes.find((node) => node.type === type) ?? sector.nodes.find((node) => node.type === 'empty');
+  const found = sector.nodes.find((node) => node.type === type) ?? sector.nodes.find((node) => Object.hasOwn(rules.sectors.mix, node.type));
   const nodes = sector.nodes.map((node) => (node.id === found.id ? { ...node, type, event: undefined, hostile: undefined } : node));
   return { ...campaign, run: { ...campaign.run, sector: { ...sector, nodes }, at: found.id, seen: [...new Set([...campaign.run.seen, found.id])] } };
 }

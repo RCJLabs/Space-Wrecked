@@ -164,6 +164,7 @@ import { regroupPlan } from '../src/sim/regroup.js';
 import { dockHeat, levelOf, moveStanding, patrolWelcome, priceShare, standingWith, stationSide } from '../src/sim/standing.js';
 import { swapPlan } from '../src/sim/transponder.js';
 import { failingCheck, jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity, tradeHeat, within } from '../src/sim/travel.js';
+import { yardHere } from '../src/sim/yards.js';
 import { upgradeOf } from './arms.js';
 import { fitPart } from './run.js';
 
@@ -214,12 +215,37 @@ export const FIT_ORDER = ['cargo', 'crew', 'defense', 'weapons', 'engines'];
 // The parts on hand the test player would fit, in order: by FIT_ORDER, the
 // dearest first in each, one entry for each part.
 export function refitPicks(campaign, rules) {
-  const healer = Math.max(0, ...campaign.ship.modules.map((module) => rules.modules.get(module.type)?.heal ?? 0));
   return Object.entries(campaign.parts)
-    .filter(([type]) => FIT_ORDER.includes(rules.modules.get(type)?.category))
-    .filter(([type]) => !rules.modules.get(type).heal || rules.modules.get(type).heal > healer)
-    .sort(([a], [b]) => FIT_ORDER.indexOf(rules.modules.get(a).category) - FIT_ORDER.indexOf(rules.modules.get(b).category) || rules.modules.get(b).cost - rules.modules.get(a).cost || a.localeCompare(b))
+    .filter(([type]) => wouldFit(campaign, rules, type))
+    .sort(([a], [b]) => fitOrder(rules, a, b))
     .flatMap(([type, count]) => Array(count).fill(type));
+}
+
+// Whether the test player fits a part of `type` at all: one of FIT_ORDER's
+// kinds, and a healing part only when it heals better than the ship's best.
+function wouldFit(campaign, rules, type) {
+  const def = rules.modules.get(type);
+  if (!FIT_ORDER.includes(def?.category)) return false;
+  const healer = Math.max(0, ...campaign.ship.modules.map((module) => rules.modules.get(module.type)?.heal ?? 0));
+  return !def.heal || def.heal > healer;
+}
+
+// refitPicks' order: by FIT_ORDER, the dearest first in each, then by type.
+function fitOrder(rules, a, b) {
+  return FIT_ORDER.indexOf(rules.modules.get(a).category) - FIT_ORDER.indexOf(rules.modules.get(b).category) || rules.modules.get(b).cost - rules.modules.get(a).cost || a.localeCompare(b);
+}
+
+// What the careful player buys first at the shipyard the ship is at
+// (M37b): the part of the yard's it would fit first, in refitPicks' order,
+// that goes on with every flight check passing, and leaves a holdful's
+// price and a transponder swap's, as a weapon off a rack does (M37): { slot,
+// part, price } or null.
+export function yardBuy(campaign, rules) {
+  const reserve = supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice + rules.balance.swapPrice;
+  const items = yardHere(campaign, rules)
+    .filter((item) => campaign.credits - item.price >= reserve && wouldFit(campaign, rules, item.part))
+    .sort((a, b) => fitOrder(rules, a.part, b.part) || a.slot - b.slot);
+  return items.find((item) => fitted({ ...campaign, parts: { ...campaign.parts, [item.part]: (campaign.parts[item.part] ?? 0) + 1 } }, rules, item.part)) ?? null;
 }
 
 // The careful player's refit where the ship is: { campaign, parts (the

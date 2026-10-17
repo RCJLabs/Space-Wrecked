@@ -30,8 +30,13 @@
 // crew's standing with each side shows under the ship's panel, a station of
 // a side wears its color on the chart and says its prices, and at a station
 // of the pursuer's side the panel and each service's first tap say the heat
-// the first trade there adds (M33's fix; a jump's plan says so ahead). The
-// run begins, its first sector rolled, the first time the map opens.
+// the first trade there adds (M33's fix; a jump's plan says so ahead).
+// Since M37b each sector has a shipyard, charted as stations are, in its
+// own pink: there Yard opens the shop screen (shop.js) on the parts it
+// sells and buys, one tap, as the hangar's Shop does, and the ship's panel
+// is Refit, as at a station; it wears its side's color as a station does,
+// and says its prices. The run begins, its first sector rolled, the first
+// time the map opens.
 //
 // Each node's button is its share of its column, so no two overlap and
 // each stays 48 px or more on the screens the game is for; its mark sits
@@ -55,6 +60,7 @@ const MARKS = {
   start: icons.wayIn,
   exit: icons.jumpPoint,
   station: icons.station,
+  shipyard: icons.shipyard,
   derelict: icons.derelict,
   distress: icons.distress,
   trader: icons.tag,
@@ -111,8 +117,8 @@ export const sectorScreen = {
     const crewPanel = node('section', 'hgr-panel sct-crew-panel');
     crewPanel.append(crewTitle, crewList, crewOpener);
     const hold = node('dl', 'hgr-hold');
-    // The ship's panel: at a station a button over the whole of it is
-    // Refit, as the crew's opens the crew card.
+    // The ship's panel: at a station or a shipyard a button over the whole
+    // of it is Refit, as the crew's opens the crew card.
     const shipHead = node('span', null, 'Ship');
     const shipChevron = node('b', null, '›');
     const shipTitle = node('h2');
@@ -250,7 +256,8 @@ export const sectorScreen = {
       map.inert = covered;
       if (carded) disarm();
 
-      // Refit, at a station: the ship's panel opens construction mode.
+      // Refit, at a station or a shipyard: the ship's panel opens
+      // construction mode.
       const { refit: station } = text;
       const refitting = Boolean(station) && !covered;
       shipOpener.hidden = !refitting;
@@ -463,11 +470,11 @@ export const sectorScreen = {
         setText(infoText, plan.node.text);
         return;
       }
-      const { here, offer, leave, refit: station } = text;
+      const { here, offer, leave, refit: station, yard } = text;
       setText(infoTitle, 'Here');
       setText(infoName, here.name);
       setText(infoKind, here.kind);
-      const said = leave ? [leave.title, ...leave.lines].map((line, i) => lineItem(line, i ? leave.tone : 'head')) : offer ? [offer.line, offer.why, text.rack?.line].filter(Boolean).map((line) => lineItem(line, 'info')) : [];
+      const said = leave ? [leave.title, ...leave.lines].map((line, i) => lineItem(line, i ? leave.tone : 'head')) : offer ? [offer.line, offer.why, text.rack?.line].filter(Boolean).map((line) => lineItem(line, 'info')) : yard ? [lineItem(yard.line, 'info')] : [];
       // A side's station (M33): whose it is, and what it charges the crew;
       // at one of the pursuer's side, what trading there adds (M33's fix).
       if (text.station?.dock) said.unshift(lineItem(text.station.dock.line, text.station.dock.tone));
@@ -476,8 +483,8 @@ export const sectorScreen = {
       // why a survey can't be made.
       for (const line of text.world ?? []) said.push(lineItem(line, 'info'));
       if (text.survey && !text.survey.ok) said.push(lineItem(text.survey.why, 'bad'));
-      // The station's refits: what Refit, on the ship's panel, would fit, or
-      // the flight check that keeps the ship here.
+      // The station's or yard's refits: what Refit, on the ship's panel,
+      // would fit, or the flight check that keeps the ship here.
       if (station) said.push(lineItem(station.broken ?? station.line, station.broken ? 'bad' : station.parts ? 'good' : 'info'));
       infoLines.replaceChildren(...said);
       buyButtons = (offer?.buys ?? []).map((entry) => {
@@ -486,6 +493,13 @@ export const sectorScreen = {
         button.setAttribute('aria-label', `Buy ${entry.count} supplies`);
         return { button, detach: onTap(button, () => twoTaps(entry.count, () => game.dispatch({ type: 'campaign/supplies', count: entry.count, rules: defs }))) };
       });
+      // A shipyard's Yard (M37b): the shop screen on its parts. Opening it
+      // changes nothing, so it takes one tap.
+      if (yard) {
+        const button = toolButton('sct-buy sct-yard', icons.shipyard, yard.label);
+        button.setAttribute('aria-label', `${yard.label}: ${yard.line}`);
+        buyButtons.push({ button, detach: onTap(button, openYard) });
+      }
       // Repairs, for what an approach wrecked.
       const { repair } = text;
       if (repair) {
@@ -577,13 +591,21 @@ export const sectorScreen = {
       render(true);
     }
 
-    // Refit: construction mode on the ship, at a station. Opening it changes
-    // nothing, so it takes one tap.
+    // Refit: construction mode on the ship, at a station or a shipyard.
+    // Opening it changes nothing, so it takes one tap.
     function refit() {
       const { campaign } = game.getState();
       if (!defs || !campaign || !sectorText(campaign, defs).refit) return;
       disarm();
       game.dispatch({ type: 'screen/show', screen: 'construction' });
+    }
+
+    // Yard: the shop screen on the shipyard's parts (M37b), one tap.
+    function openYard() {
+      const { campaign } = game.getState();
+      if (!defs || !campaign || !sectorText(campaign, defs).yard) return;
+      disarm();
+      game.dispatch({ type: 'screen/show', screen: 'shop' });
     }
 
     // The crew card up or down: what was picked or had a first tap is put

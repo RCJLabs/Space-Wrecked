@@ -20,6 +20,7 @@ import { beginRaid, endRaid } from './raid.js';
 import { endColonyRaid, faceRaid } from './raids.js';
 import { patchCrew } from './patch.js';
 import { buyFromRack } from './racks.js';
+import { buyFromYard, sellToYard } from './yards.js';
 import { dismissCrew, hireRecruit } from './recruits.js';
 import { regroup } from './regroup.js';
 import { repairShip } from './repair.js';
@@ -92,6 +93,11 @@ export function initialState(seed) {
 //   campaign/arms/rack { slot, rules }   the weapon in the rack's slot at
 //                                  the station the ship is at, bought
 //                                  (racks.js)
+//   campaign/yard/buy { slot, rules }   the part in the slot at the
+//                                  shipyard the ship is at, bought (M37b,
+//                                  yards.js)
+//   campaign/yard/sell { part, rules }   a part on hand, sold to the
+//                                  shipyard the ship is at (M37b)
 //   campaign/job/take { index, rules }   the crew takes the board's job at
 //                                  index: its fight begins. Every fight
 //                                  takes forgiving odds and the difficulty
@@ -276,6 +282,8 @@ export function reduce(state, action) {
     case 'campaign/hire':
     case 'campaign/dismiss':
     case 'campaign/arms/rack':
+    case 'campaign/yard/buy':
+    case 'campaign/yard/sell':
     case 'campaign/donate':
     case 'campaign/build':
     case 'campaign/move':
@@ -302,6 +310,8 @@ export function reduce(state, action) {
         'campaign/hire': (c) => hireRecruit(c, action.rules, action.slot),
         'campaign/dismiss': (c) => dismissCrew(c, action.rules, action.id),
         'campaign/arms/rack': (c) => buyFromRack(c, action.rules, action.slot),
+        'campaign/yard/buy': (c) => buyFromYard(c, action.rules, action.slot),
+        'campaign/yard/sell': (c) => sellToYard(c, action.rules, action.part),
         'campaign/donate': (c) => donate(c, action.rules, action.uid),
         'campaign/build': (c) => build(c, action.rules, action.what, action.placement ?? null),
         'campaign/move': (c) => moveBuilding(c, action.rules, action.uid, action.placement),

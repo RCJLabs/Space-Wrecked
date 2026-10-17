@@ -1274,6 +1274,7 @@ textarea {
 .sct-node[data-type='start'] .sct-dot,
 .sct-node[data-type='exit'] .sct-dot,
 .sct-node[data-type='station'] .sct-dot,
+.sct-node[data-type='shipyard'] .sct-dot,
 .sct-node[data-type='nebula'] .sct-dot {
   width: 32px;
   height: 32px;
@@ -1349,6 +1350,13 @@ textarea {
 .sct-node[data-type='exit'] .sct-dot {
   border-color: var(--c-accent);
   color: var(--c-accent);
+}
+
+/* A shipyard (M37b): parts for sale, in its own pink (orange rings are
+   what a jump reaches). */
+.sct-node[data-type='shipyard'] .sct-dot {
+  border-color: var(--c-shipyard);
+  color: var(--c-shipyard);
 }
 
 /* A nebula (M24): the hunters can't see in. */

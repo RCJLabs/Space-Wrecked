@@ -17,10 +17,11 @@ import { readyToLaunch } from './launchKit.js';
 const { balance } = rules;
 const onRun = (extra = {}) => beginRun(launch(readyToLaunch(extra), rules).campaign, rules).campaign;
 // The ship at a node of kind `type` (the first in its sector), for the tests:
-// no jump. A node of a kind the sector lacks is made one.
+// no jump. A node of a kind the sector lacks is made one, the first of
+// the mix's kinds (a sector need hold no empty space, M37b).
 function atKind(campaign, type) {
   const { sector } = campaign.run;
-  const found = sector.nodes.find((node) => node.type === type) ?? sector.nodes.find((node) => node.type === 'empty');
+  const found = sector.nodes.find((node) => node.type === type) ?? sector.nodes.find((node) => Object.hasOwn(rules.sectors.mix, node.type));
   const nodes = sector.nodes.map((node) => (node.id === found.id ? { ...node, type, event: undefined, hostile: undefined } : node));
   return { ...campaign, run: { ...campaign.run, sector: { ...sector, nodes }, at: found.id, seen: [...new Set([...campaign.run.seen, found.id])] } };
 }
