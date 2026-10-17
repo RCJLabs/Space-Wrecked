@@ -92,6 +92,21 @@ export function frameAt(timeline, t) {
   return frame;
 }
 
+// The moments of a playback in (from, to] ms that a sound belongs to, in
+// order (M35, ui/sounds.js cueSound): { event, lands }, each event as it
+// starts, and a shot again as it lands, FLIGHT of the way through.
+export function cuesBetween(timeline, from, to) {
+  const cues = [];
+  for (const beat of timeline.beats) {
+    if (beat.at > to) break;
+    if (beat.snap) continue;
+    if (beat.at > from) cues.push({ event: beat.event, lands: false });
+    const lands = beat.at + FLIGHT * beat.ms;
+    if (beat.event.type === 'shot' && lands > from && lands <= to) cues.push({ event: beat.event, lands: true });
+  }
+  return cues;
+}
+
 // How a unit stands at a frame: { aim, stride, fall } (figures/figure.js).
 // It aims while it shoots, and from the moment it goes on overwatch until
 // its watch ends; strides through a walk, a stride to every two tiles; and

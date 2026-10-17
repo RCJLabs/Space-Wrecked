@@ -1,12 +1,24 @@
 // Text for the settings screen (settings.js): each setting's choices, and
 // what the one picked does, its numbers from data/balance.json. Pure.
-import { DIFFICULTIES, enemyBonus, FPS_CAPS, MOTIONS } from '../sim/settings.js';
+import { DIFFICULTIES, enemyBonus, FPS_CAPS, MOTIONS, VOLUMES } from '../sim/settings.js';
 
 // The rows, in order: [{ key, title, choices: [{ value, label }], line }].
 // key is the setting (sim/settings.js); line says what the value picked
 // does.
 export function settingsText(settings, balance) {
   return [
+    {
+      key: 'sound',
+      title: 'Sound',
+      choices: [{ value: false, label: 'Off' }, { value: true, label: 'On' }],
+      line: settings.sound ? 'Taps, the builder, fights and the voyage all sound, from your first tap.' : 'No sound.',
+    },
+    {
+      key: 'volume',
+      title: 'Volume',
+      choices: VOLUMES.map((value) => ({ value, label: `${value}%` })),
+      line: settings.sound ? `Every sound at ${settings.volume}%.` : `Every sound at ${settings.volume}%, once sound is on.`,
+    },
     {
       key: 'difficulty',
       title: 'Difficulty',

@@ -12,6 +12,7 @@
 // What an order set off is shown happening (src/render/playback.js) before
 // the board takes the next; Skip goes to the end at once.
 import { createStore } from '../../core/store.js';
+import { cue } from '../../platform/audio.js';
 import { loadContent } from '../../platform/content.js';
 import { battleBoxes } from '../../render/battleScene.js';
 import { createBattleBoard, FIGHT_VIEW } from '../../render/battleView.js';
@@ -21,7 +22,7 @@ import { clampOrbit, fitOrbit, panOrbit, pinchOrbit, project, turnOrbit, unproje
 import { palette, skinFor } from '../../render/palette.js';
 import { objectiveDone } from '../../sim/battle.js';
 import { convexHull, inside } from '../../render/pick.js';
-import { frameAt, makeTimeline, poseAt } from '../../render/playback.js';
+import { cuesBetween, frameAt, makeTimeline, poseAt } from '../../render/playback.js';
 import { crewColor, LYING_TOP, ordersScene, UNIT_TOP, unitsScene } from '../../render/units.js';
 import { describeEvent } from '../../sim/battleLog.js';
 import { canAct, createFight, ordersFor, reduceFight, selectedUnit } from '../../sim/fight.js';
@@ -29,6 +30,7 @@ import { crewLook } from '../../sim/looks.js';
 import { tileText } from '../battle/tileText.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { cueSound, fightSounds } from '../sounds.js';
 import { portraitUrl } from '../portrait.js';
 import { chipFor, endingFor, eventText, hintFor, oddsText, unitText } from './hints.js';
 import { createActionBar, createCrewBar, node, setText, toolButton } from './panels.js';
@@ -45,6 +47,7 @@ const NOTICE_MS = 2600;
 const OPENING_MS = 8000; // a fight's opening words stay this long, or until a tap
 const ARM_MS = 3000; // End turn waits this long for its second tap
 const LOG_LINES = 16;
+const SOUND_CATCH_UP = 250; // ms of a playback's sounds played after a gap
 
 // Mounts a fight in root and returns the screen's handle (resize, draw,
 // unmount, frameStats). source:
@@ -287,10 +290,12 @@ export function mountFight(root, source) {
     dirty = true;
   }
 
-  function onFight(fight, prev) {
+  function onFight(fight, prev, action) {
     source.onChange?.(fight, prev);
+    fightSounds(fight, prev, action).forEach(cue);
     if (fight.played !== prev.played && fight.played.length) {
-      playing = { timeline: makeTimeline(prev.battle, fight.played), start: performance.now(), frame: null, done: false };
+      // heard: how far into the playback its sounds have played, in ms.
+      playing = { timeline: makeTimeline(prev.battle, fight.played), start: performance.now(), frame: null, done: false, heard: -1 };
       closeCard();
     }
     if (fight.notice && fight.notice !== prev.notice) {
@@ -386,9 +391,13 @@ export function mountFight(root, source) {
     if (objective) setLine(goal, { tone: objective.done ? 'good' : 'info', text: [objective.title, objective.progress, objective.deadline].filter(Boolean).join(' · ') });
   }
 
-  // Moves a playback on to `now`.
+  // Moves a playback on to `now`, and plays the sounds of what it passed
+  // (M35). After a long gap (the game away), only the last moment's.
   function advance(now) {
     const t = Math.max(0, now - playing.start);
+    const heard = Math.max(playing.heard, t - SOUND_CATCH_UP);
+    for (const moment of cuesBetween(playing.timeline, heard, t)) cue(cueSound(moment, store.getState().battle, defs));
+    playing.heard = t;
     const frame = frameAt(playing.timeline, t);
     const before = playing.frame;
     playing.frame = frame;

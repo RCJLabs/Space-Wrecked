@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "d12970750c4e";
+const VERSION = "5d5c0a8e5e7d";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -29,6 +29,7 @@ const FILES = [
   "data/sectors.json",
   "data/ships.json",
   "data/sites.json",
+  "data/sounds.json",
   "data/styling.json",
   "data/tiles.json",
   "data/tips.json",
@@ -46,12 +47,15 @@ const FILES = [
   "src/core/codec.js",
   "src/core/rng.js",
   "src/core/save.js",
+  "src/core/soundParams.js",
   "src/core/store.js",
   "src/main.js",
+  "src/platform/audio.js",
   "src/platform/content.js",
   "src/platform/orientation.js",
   "src/platform/serviceWorker.js",
   "src/platform/storage.js",
+  "src/platform/zzfx.js",
   "src/render/battleScene.js",
   "src/render/battleView.js",
   "src/render/blueprintStyles.js",
@@ -256,6 +260,7 @@ const FILES = [
   "src/ui/settings.js",
   "src/ui/settingsText.js",
   "src/ui/ships/screen.js",
+  "src/ui/sounds.js",
   "src/ui/style.css",
   "src/ui/tipSteps.js",
   "src/ui/tips.js",

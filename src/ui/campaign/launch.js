@@ -7,6 +7,7 @@
 // as it launched, so quitting part way reopens there too. With reduced
 // motion (the motion setting, ../motion.js) nothing moves: the ship stands
 // on the pad with its engines lit, and the words are all there.
+import { cue } from '../../platform/audio.js';
 import { loadContent } from '../../platform/content.js';
 import { traceHull } from '../../render/hull.js';
 import { CLIMB, END, flameGlows, IGNITE, liftOffAt, liftOffCamera, liftOffScene } from '../../render/liftOff.js';
@@ -55,6 +56,7 @@ export const launchScreen = {
     let base = null; // the camera on the ship at rest in the middle of it
     let start = null; // when the sequence began, in the loop's time
     let skip = false;
+    let roared = false; // the engines' sound has played (M35)
     let over = false;
     let dirty = true; // a frame to draw though nothing moves
     const cleanups = [
@@ -149,6 +151,11 @@ export const launchScreen = {
           skip = false;
         }
         const t = Math.max(0, (timeMs - start) / 1000);
+        // The engines light as the sequence begins, still or not.
+        if (!roared && timeMs >= start) {
+          roared = true;
+          cue('liftoff');
+        }
         const moment = still ? STILL : liftOffAt(over ? END : t);
         backdrop.draw(ctx, view, moment, [stage.x + stage.w / 2, stage.y + stage.h / 2], still || over);
         if (!moment.gone) {

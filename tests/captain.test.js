@@ -122,7 +122,7 @@ test('forgiving odds and difficulty come from the settings as a fight starts, an
 
 test('settings take only what they can hold', () => {
   const settings = defaultSettings();
-  assert.deepEqual(settings, { fpsCap: 60, difficulty: 'normal', forgiving: false, motion: 'auto', tips: true, tipsSeen: [] });
+  assert.deepEqual(settings, { fpsCap: 60, difficulty: 'normal', forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70 });
   const apply = (action) => reduceSettings(settings, action);
   assert.equal(apply({ type: 'settings/difficulty', value: 'easy' }).difficulty, 'easy');
   assert.equal(apply({ type: 'settings/difficulty', value: 'brutal' }), settings);
