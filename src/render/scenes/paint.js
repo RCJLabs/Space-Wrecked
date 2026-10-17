@@ -195,13 +195,34 @@ export function backdropAt(moment) {
 
 // Draws the backdrop ({ world, ground }, painted canvases) for a moment:
 // the world seen whole over the screen, the ground over it centred on
-// `at`, the ship's place.
-export function drawBackdrop(ctx, backdrop, moment, view, at) {
-  ctx.drawImage(backdrop.world, 0, 0, view.width, view.height);
+// `at`, the ship's place. Only what shows is drawn: not the world under
+// ground that covers the screen, nor ground that has faded away; and while
+// covering ground fades, it is drawn whole with the world over it at the
+// rest, the same picture for less (M34's frame budget). `smooth` false
+// scales the ground without smoothing, five times cheaper where the browser
+// draws on the processor and hardly told apart on ground this soft: for a
+// ground in motion; at rest it is smoothed.
+export function drawBackdrop(ctx, backdrop, moment, view, at, smooth = true) {
   const { zoom, ground } = backdropAt(moment);
-  if (ground <= 0) return;
   const side = GROUND_COVER * Math.max(view.width, view.height) * zoom;
-  ctx.globalAlpha = ground;
-  ctx.drawImage(backdrop.ground, at[0] - side / 2, at[1] - side / 2, side, side);
+  const [x, y] = [at[0] - side / 2, at[1] - side / 2];
+  const covers = x <= 0 && y <= 0 && x + side >= view.width && y + side >= view.height;
+  const world = (alpha) => {
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(backdrop.world, 0, 0, view.width, view.height);
+  };
+  const groundAt = (alpha) => {
+    ctx.globalAlpha = alpha;
+    ctx.imageSmoothingEnabled = smooth;
+    ctx.drawImage(backdrop.ground, x, y, side, side);
+    ctx.imageSmoothingEnabled = true;
+  };
+  if (ground > 0 && covers) {
+    groundAt(1);
+    if (ground < 1) world(1 - ground);
+  } else {
+    world(1);
+    if (ground > 0) groundAt(ground);
+  }
   ctx.globalAlpha = 1;
 }

@@ -9,7 +9,7 @@ import { END, landingAt, liftOffAt } from '../src/render/liftOff.js';
 import * as palette from '../src/render/palette.js';
 import { groundScene, TILE } from '../src/render/scenes/ground.js';
 import { DOOR, hangarScene } from '../src/render/scenes/hangar.js';
-import { backdropAt, FAR, MOST_TILE, NEAR, paintCover, paintTile, tileSide } from '../src/render/scenes/paint.js';
+import { backdropAt, drawBackdrop, FAR, MOST_TILE, NEAR, paintCover, paintTile, tileSide } from '../src/render/scenes/paint.js';
 import { SCENES, sceneId, titlePicture, worldPictures } from '../src/render/scenes/scenes.js';
 import { boxOf, colorsOf } from '../src/render/scenes/shapes.js';
 import { FRAME, worldScene } from '../src/render/scenes/world.js';
@@ -169,4 +169,38 @@ test('the landing: the world seen whole as the ship comes in, its ground rising 
   assert.deepEqual(backdropAt(landingAt(END)), { zoom: NEAR, ground: 1 }, 'down: the ground close under it');
   const times = Array.from({ length: Math.round(END * 20) + 1 }, (_, i) => i / 20);
   for (let i = 1; i < times.length; i++) assert.ok(backdropAt(landingAt(times[i])).ground >= backdropAt(landingAt(times[i - 1])).ground - 1e-9, `the ground only comes in, at ${times[i]} s`);
+});
+
+test('a frame of the backdrop draws only what shows: the ground alone while it covers, the world alone once it has gone, and a fade the cheaper way round', () => {
+  const view = { width: 905, height: 370 };
+  const backdrop = { world: 'world', ground: 'ground' };
+  const frame = (moment, at, smooth) => {
+    const drawn = [];
+    const ctx = {
+      globalAlpha: 1,
+      imageSmoothingEnabled: true,
+      drawImage(image) {
+        drawn.push([image, Math.round(this.globalAlpha * 100) / 100, this.imageSmoothingEnabled]);
+      },
+    };
+    drawBackdrop(ctx, backdrop, moment, view, at, smooth);
+    assert.deepEqual([ctx.globalAlpha, ctx.imageSmoothingEnabled], [1, true], 'left as found');
+    return drawn;
+  };
+  const middle = [view.width / 2, view.height / 2];
+  // On the pad: the ground covers the screen; in motion, unsmoothed.
+  assert.deepEqual(frame(liftOffAt(0), middle, true), [['ground', 1, true]]);
+  assert.deepEqual(frame(liftOffAt(1.5), middle, false), [['ground', 1, false]]);
+  // Fading: the ground whole, the world over it at what the ground has lost.
+  const fading = liftOffAt(2.8);
+  const { ground } = backdropAt(fading);
+  assert.ok(ground > 0 && ground < 1, 'part way through the fade');
+  // (Only the ground goes unsmoothed: the world is copied 1:1.)
+  assert.deepEqual(frame(fading, middle, false), [['ground', 1, false], ['world', Math.round((1 - ground) * 100) / 100, true]]);
+  // Gone: the world alone.
+  assert.deepEqual(frame(liftOffAt(END), middle, false), [['world', 1, true]]);
+  // Ground that leaves part of the screen bare: the world under it, the
+  // ground over it at its own strength.
+  assert.deepEqual(frame(fading, [0, 0], true), [['world', 1, true], ['ground', Math.round(ground * 100) / 100, true]]);
+  assert.deepEqual(frame(liftOffAt(0), [0, 0], true), [['world', 1, true], ['ground', 1, true]]);
 });

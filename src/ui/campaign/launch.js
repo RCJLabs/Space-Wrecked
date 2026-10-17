@@ -150,7 +150,7 @@ export const launchScreen = {
         }
         const t = Math.max(0, (timeMs - start) / 1000);
         const moment = still ? STILL : liftOffAt(over ? END : t);
-        backdrop.draw(ctx, view, moment, [stage.x + stage.w / 2, stage.y + stage.h / 2]);
+        backdrop.draw(ctx, view, moment, [stage.x + stage.w / 2, stage.y + stage.h / 2], still || over);
         if (!moment.gone) {
           const cam = still ? base : liftOffCamera(base, stage, box, moment, t);
           paintSolid(ctx, scene.faces, [...scene.glows, ...flameGlows(scene, moment, t)], cam);

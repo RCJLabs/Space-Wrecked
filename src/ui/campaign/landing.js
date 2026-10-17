@@ -147,7 +147,7 @@ export const landingScreen = {
         const t = Math.max(0, (timeMs - start) / 1000);
         // Down, and still: the moment reduced motion shows, and the end.
         const moment = landingAt(still || over ? END : t);
-        backdrop.draw(ctx, view, moment, [stage.x + stage.w / 2, stage.y + stage.h / 2]);
+        backdrop.draw(ctx, view, moment, [stage.x + stage.w / 2, stage.y + stage.h / 2], still || over);
         if (!moment.gone) {
           const cam = still || over ? base : liftOffCamera(base, stage, box, moment, t);
           paintSolid(ctx, scene.faces, [...scene.glows, ...flameGlows(scene, moment, t)], cam);
