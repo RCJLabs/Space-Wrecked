@@ -1752,6 +1752,7 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **A boarding closes the gap between the two noses** to 26 px, wherever the ships stand on the screen, and grapples them with a dashed line from nose to nose. The boarded ship's half is outlined, as her map was.
   - **A patrol's or a trap's opening volley isn't played out:** it comes before the screen opens, and shows as scars on the hull and its lines in the column.
   - **The round's sounds moved to the screen** (`roundCues`), each as its shot fires and lands. With reduced motion, `roundSounds` plays them all at once, as M35 did.
+  - **Frames:** deep space is painted once a size and copied in; each ship's layer covers only her and a cell round her; her hull is painted once and her marks drawn over a copy of it, so a hit doesn't paint her whole hull again. Drawn whole every frame, deep space alone took longer than all the rest.
 - [ ] **M38c Station jobs.** Act 1's job board stays in the hangar: on the run, stations repair, refit, sell and hire, but give no work. Evan asked (2026-10-18) for jobs at stations. The draft:
   - each station posts a board of jobs from its side's clients, using the eight missions (M38), fought on site maps of its docks and the rocks nearby;
   - pay in credits, and standing with the station's side; heat as act 1's jobs give it;
