@@ -6,11 +6,13 @@
 // Units are figures in their suits (figures/figure.js), facing where they
 // look: the crew pale, each trimmed in a color of their own, and boarders in
 // rust. Down or stable they lie on the deck in their colors; out or dead,
-// in grey. Each is drawn once and kept (figures/sprites.js), so the scene
-// gives them as figures, not faces. Orders are marks on the deck: the tiles
-// the selected unit can move to (in one action or a dash), the path of the
-// move being shown and the cover where it would stop, a ring under the
-// selected unit, and rings under the enemies it can shoot.
+// in grey; a captive held (M38) stands. Each is drawn once and kept
+// (figures/sprites.js), so the scene gives them as figures, not faces.
+// Orders are marks on the deck: the tiles the selected unit can move to (in
+// one action or a dash), the path of the move being shown and the cover
+// where it would stop, a ring under the selected unit, and rings under the
+// enemies it can shoot. A job's ways out and the way in it holds (M38) are
+// outlined on the deck under them (zonesScene).
 import { coverOnSide } from '../sim/cover.js';
 import { SIDES } from '../sim/grid.js';
 import { palette, rgba } from './palette.js';
@@ -37,7 +39,7 @@ export function crewColor(index) {
 export function unitsScene(units) {
   const figures = units.map(({ id, side, status, at, facing, trim, flash, look, held, pose = {} }) => {
     const colors = colorsOf(side, status, trim, flash);
-    const lying = status !== 'active';
+    const lying = status !== 'active' && status !== 'held';
     return {
       id,
       at,
@@ -110,6 +112,18 @@ export function ordersScene({ reach = null, preview = null, battle = null, rules
     }
   }
   return { faces, glows: [] };
+}
+
+// A job's tiles on the deck (M38): each tile of each zone outlined in its
+// color, under the orders' marks. zones: [{ tiles: [[x, y]], tone }], tone
+// 'out' (a way out, the far gate) or 'hold' (the way in a defense holds).
+export function zonesScene(zones) {
+  const faces = [];
+  for (const { tiles, tone } of zones) {
+    const color = tone === 'hold' ? palette.target : palette.accent;
+    for (const [x, y] of tiles) plate(faces, [x + 0.12, y + 0.12], [x + 0.88, y + 0.88], DECK, color, { emissive: true, alpha: 0.14, edge: rgba(color, 0.85), bias: -0.02 });
+  }
+  return faces;
 }
 
 // A ring on the deck round the middle of tile [x, y].

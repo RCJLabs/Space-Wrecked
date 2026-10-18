@@ -88,7 +88,8 @@ export function orderTargets(battle, unit, rules) {
     case 'ally':
       return others.filter((u) => u.side === unit.side && beside(unit, u) && patchable(u)).map((u) => u.id);
     case 'kit':
-      return [unit, ...others.filter((u) => u.side === unit.side && beside(unit, u))].filter((u) => u.status === 'active' && !u.kitted).map((u) => u.id);
+      // A ward (objectives.js, M38) has no gun to load.
+      return [unit, ...others.filter((u) => u.side === unit.side && !u.ward && beside(unit, u))].filter((u) => u.status === 'active' && !u.kitted).map((u) => u.id);
     case 'self':
       return [unit.id];
     case 'door':

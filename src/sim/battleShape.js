@@ -69,7 +69,7 @@ function isObjective(objective, map) {
       return isWard(objective.ward) && tiles(objective.exits) && typeof objective.freed === 'boolean' && typeof objective.out === 'boolean';
     case 'sabotage':
       return (
-        tiles(objective.targets) && within(objective.blown, objective.targets) && Array.isArray(objective.charges) &&
+        tiles(objective.targets) && within(objective.blown, objective.targets) && isInt(objective.left, 0, MAX) && Array.isArray(objective.charges) &&
         objective.charges.every((charge) => isRecord(charge) && within([charge.at], objective.targets) && isInt(charge.blows, 1, MAX))
       );
     case 'defend':

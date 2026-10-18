@@ -12,8 +12,14 @@ import { rules } from './battleKit.js';
 // what the cutter rolls; its seed 1 now has three guns and two reactors.
 export const CUTTER_SEED = 3;
 
+// The campaign's RNG once seed 5's board and shop are rolled, as it was
+// before M38's jobs: the launch, run and colony tests were written against
+// the sectors and worlds it rolls, and act 1's content shouldn't move them.
+// A board's shuffle takes a roll for every job in the district.
+export const LAUNCH_RNG = 3975261316;
+
 export function readyToLaunch(extra = {}) {
-  let campaign = { ...withBoard(newCampaign(rules, 5), rules), parts: { quarters: 1, lifesupport: 1, engine: 3, corridor: 2 }, credits: 140, heat: 30 };
+  let campaign = { ...withBoard(newCampaign(rules, 5), rules), parts: { quarters: 1, lifesupport: 1, engine: 3, corridor: 2 }, credits: 140, heat: 30, rng: LAUNCH_RNG };
   let { ship } = campaign;
   const commands = [
     { op: 'place', type: 'quarters', x: 9, y: 5, rot: 0 },

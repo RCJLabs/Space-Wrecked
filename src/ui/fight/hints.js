@@ -1,7 +1,9 @@
 // Text for the Fight screen: the status line, the round chip, the odds
 // card, and what a crew member's button says about them. Since M37 the odds
 // card and a unit's card say what a weapon's rules do: a burst's shots, the
-// armor it pierces, its reach, a stun and fire.
+// armor it pierces, its reach, a stun and fire. Since M38, what a job's
+// objective asks of the unit giving orders (Free, Plant, a crate in hand),
+// and the person the crew brings out, who has no gun.
 import { describeEvent } from '../../sim/battleLog.js';
 import { orderOf } from '../../sim/orders.js';
 import { rankNameFor } from '../../sim/ranks.js';
@@ -17,8 +19,28 @@ export function eventText(event, battle) {
     const unit = battle.units.find((u) => u.id === event.unit);
     return { tone: 'info', text: `${unit.name} ${unit.id} moves.` };
   }
-  const tone = event.type === 'shot' ? (event.hit ? 'good' : 'info') : event.type === 'down' || event.type === 'bled out' ? 'bad' : 'info';
-  return { tone, text: describeEvent(event, battle) };
+  return { tone: eventTone(event, battle), text: describeEvent(event, battle) };
+}
+
+// How an event reads for the crew: good, bad or neither. A blast (M38) is
+// bad when it catches one of the crew.
+function eventTone(event, battle) {
+  switch (event.type) {
+    case 'shot':
+      return event.hit ? 'good' : 'info';
+    case 'down':
+    case 'bled out':
+    case 'pull':
+    case 'through':
+      return 'bad';
+    case 'out':
+    case 'free':
+      return 'good';
+    case 'blast':
+      return event.units.some((id) => battle.units.find((u) => u.id === id)?.side === 'crew') ? 'bad' : 'good';
+    default:
+      return 'info';
+  }
 }
 
 // How a boarding fight ended, for the end panel: { tone, title, text }.
@@ -48,10 +70,19 @@ export function hintFor(fight, orders, ending = null) {
     return { tone: 'good', text: `${preview.odds.hit}% to hit ${target.name} ${target.id}. Tap Fire, or the target again.` };
   }
   if (preview?.type === 'order' && orders.order) return { tone: 'good', text: orderHint(battle, unit, orders.order, preview) };
+  if (orders.free) return { tone: 'good', text: `${unit.name} can reach ${wardName(battle)}: tap Free to cut them loose, or a tile to move.` };
+  if (orders.plant) return { tone: 'good', text: `${unit.name} can reach the target: tap Plant to set a charge. It blows as your next turn starts.` };
   if (orders.grab) return { tone: 'good', text: `${unit.name} can reach a crate: tap Grab, or a tile to move.` };
   if (orders.hack) return { tone: 'good', text: `${unit.name} can reach the terminal: tap Hack to work it. It takes the rest of the turn.` };
   const shoot = orders.targets.length ? ', or an enemy to shoot' : '';
+  if (unit.ward) return { tone: 'info', text: `${unit.name} has no gun: tap a tile to move them ${battle.objective?.type === 'escort' ? 'toward the far gate' : 'out the way you came in'}.` };
+  if (unit.carrying) return { tone: 'info', text: `${unit.name} has the crate: one move a turn, no dash. Walk it out the way you came in${shoot}.` };
   return { tone: 'info', text: `${unit.name}: tap a tile to move${shoot}.` };
+}
+
+// The name of the person the crew brings out (M38), or 'them'.
+function wardName(battle) {
+  return battle.units.find((u) => u.id === battle.objective?.ward)?.name ?? 'them';
 }
 
 // What an order shown will do, and how to give it (M32): short enough for
@@ -142,21 +173,30 @@ function shotRules(weapon) {
   return said.length ? said.join(' ') : null;
 }
 
-// A unit's state in a few words: actions and shots left, or how hurt.
+// A unit's state in a few words: actions and shots left, or how hurt. The
+// person the crew brings out (M38) has no shots, and is held until freed; a
+// carrier says so.
 export function stateText(unit) {
+  if (unit.status === 'held') return 'Held';
   if (unit.status === 'down') return `Down · ${unit.bleed} turn${unit.bleed === 1 ? '' : 's'}`;
   if (unit.status === 'stable') return 'Stable';
   if (unit.status === 'out') return 'Out of the fight';
   if (unit.status === 'dead') return 'Dead';
   if (unit.overwatch) return 'Overwatch';
-  return `${unit.ap} AP · ${unit.ammo} shot${unit.ammo === 1 ? '' : 's'}`;
+  if (unit.ward) return `${unit.ap} AP · no gun`;
+  const shots = `${unit.ap} AP · ${unit.ammo} shot${unit.ammo === 1 ? '' : 's'}`;
+  return unit.carrying ? `${shots} · crate` : shots;
 }
 
 // A unit's card: { title, lines }: its numbers, its rank (M32b), a loyal
 // companion's the third, by their talent's name (M33c), its weapon and what
 // its rules do (M37), its job's order and the uses left (M32), what orders
-// left on it, and the fire it stands in.
+// left on it, a crate in hand (M38), and the fire it stands in. The person
+// the crew brings out (M38) has no gun: their card says what they are and
+// what the job needs of them.
 export function unitText(unit, rules, battle = null) {
+  const fire = battle && burningAt(battle, unit.x, unit.y) ? [`Standing in fire: ${rules.balance.fireDamage} at the start of each of its turns, until it burns out.`] : [];
+  if (unit.ward) return wardText(unit, rules, fire);
   const weapon = rules.weapons.get(unit.weapon);
   const side = unit.side === 'crew' ? 'Crew' : 'Enemy';
   const order = orderOf(unit, rules);
@@ -169,8 +209,22 @@ export function unitText(unit, rules, battle = null) {
       `${weapon.name}: damage ${weapon.damage[0]}–${weapon.damage[1]}, crit ${weapon.crit}%, ${unit.ammo}/${weapon.clip} shots.${rulesLine(weapon) ? ` ${rulesLine(weapon)}` : ''}`,
       ...(order ? [`${order.name}: ${unit.uses} of ${order.uses} left this fight${unit.talent && ORDER_SHORT[order.type] ? `, ${ORDER_SHORT[order.type](order)} each` : ''}.`] : []),
       ...ordersOn(unit),
-      ...(battle && burningAt(battle, unit.x, unit.y) ? [`Standing in fire: ${rules.balance.fireDamage} at the start of each of its turns, until it burns out.`] : []),
+      ...(unit.carrying ? [unit.status === 'active' ? 'Carrying a crate: one move a turn, no dash, until it is out.' : 'Down with a crate in hand: anyone of the crew beside them can take it with Grab.'] : []),
+      ...fire,
     ],
+  };
+}
+
+// The card of the person the crew brings out (M38): the client or the
+// captive, their numbers, and held or free.
+function wardText(unit, rules, fire) {
+  const kind = rules.people?.get(unit.kind)?.name ?? 'Brought out';
+  const how = unit.status === 'held'
+    ? 'Held: they can\'t move, and no one shoots them, till one of the crew beside them taps Free.'
+    : 'No gun: they only move, as the crew do. If they bleed out, the job is lost.';
+  return {
+    title: `${unit.name} ${unit.id}`,
+    lines: [`${kind} · ${unit.hp}/${unit.maxHp} hit points · ${stateText(unit)}.`, `Defense ${unit.defense} · armor ${unit.armor} · moves ${unit.mobility}.`, how, ...fire],
   };
 }
 

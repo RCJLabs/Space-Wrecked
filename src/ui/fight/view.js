@@ -7,7 +7,10 @@
 // open ship from a new seed each time; the campaign (../campaign/fight.js)
 // fights the battle in its save, a job's or one at home, and saves every
 // order. A job's objective shows under the round, its crates and terminal
-// are marked on the board, and Grab and Hack join the orders.
+// are marked on the board, and Grab and Hack join the orders; since M38 its
+// ways out, targets, charges and the way in held are marked too, Free and
+// Plant join them, and the person the crew brings out has a button of
+// their own.
 // Input -> fight action (src/sim/fight.js) -> new fight -> playback -> redraw.
 // What an order set off is shown happening (src/render/playback.js) before
 // the board takes the next; Skip goes to the end at once.
@@ -20,10 +23,9 @@ import { paintFightLabels } from '../../render/fightLabels.js';
 import { steppedPose } from '../../render/figures/sprites.js';
 import { clampOrbit, fitOrbit, panOrbit, pinchOrbit, project, turnOrbit, unproject, zoomOrbit } from '../../render/orbit.js';
 import { palette, skinFor } from '../../render/palette.js';
-import { objectiveDone } from '../../sim/battle.js';
 import { convexHull, inside } from '../../render/pick.js';
 import { cuesBetween, frameAt, makeTimeline, poseAt } from '../../render/playback.js';
-import { crewColor, LYING_TOP, ordersScene, UNIT_TOP, unitsScene } from '../../render/units.js';
+import { crewColor, LYING_TOP, ordersScene, UNIT_TOP, unitsScene, zonesScene } from '../../render/units.js';
 import { describeEvent } from '../../sim/battleLog.js';
 import { canAct, createFight, ordersFor, reduceFight, selectedUnit } from '../../sim/fight.js';
 import { crewLook } from '../../sim/looks.js';
@@ -33,6 +35,7 @@ import { icons } from '../icons.js';
 import { cueSound, fightSounds } from '../sounds.js';
 import { portraitUrl } from '../portrait.js';
 import { chipFor, endingFor, eventText, hintFor, oddsText, unitText } from './hints.js';
+import { objectiveMarks, objectiveZones } from './marks.js';
 import { createActionBar, createCrewBar, node, setText, toolButton } from './panels.js';
 
 // A ship's insides in the yard's skin; a job's site on the ground.
@@ -106,6 +109,8 @@ export function mountFight(root, source) {
       job: () => order({ type: 'fight/order' }),
       grab: () => order({ type: 'fight/grab' }),
       hack: () => order({ type: 'fight/hack' }),
+      free: () => order({ type: 'fight/free' }),
+      plant: () => order({ type: 'fight/plant' }),
       skip,
     },
     [...extraTools.map((tool) => tool.button), logButton, fitButton],
@@ -244,10 +249,12 @@ export function mountFight(root, source) {
     battle.units.filter((u) => u.side === 'crew').forEach((u, i) => {
       colors.set(u.id, crewColor(i));
       // The crew member's look, or one rolled for a fight with no campaign
-      // behind it (the Fight sandbox), the same every time.
-      const look = source.lookOf?.(u, i) ?? crewLook('sandbox', i + 1, looks);
+      // behind it (the Fight sandbox), the same every time; the person the
+      // crew brings out (M38), one rolled from their name, in their kind's
+      // suit.
+      const look = u.ward ? crewLook(`ward ${u.name}`, u.id, looks) : source.lookOf?.(u, i) ?? crewLook('sandbox', i + 1, looks);
       looks.push(look);
-      faces.set(u.id, portraitUrl(look, defs.jobs.get(u.kind)?.look, colors.get(u.id), 'face'));
+      faces.set(u.id, portraitUrl(look, (defs.jobs.get(u.kind) ?? defs.people?.get(u.kind))?.look, colors.get(u.id), 'face'));
     });
     playing = null;
     doorsShown = null;
@@ -464,18 +471,19 @@ export function mountFight(root, source) {
           welding,
         })
         : { faces: [] };
-      mapView.setActors({ faces: marks.faces, glows: [], figures: unitsScene(figures).figures });
+      mapView.setActors({ faces: [...zonesScene(objectiveZones(battle.objective)), ...marks.faces], glows: [], figures: unitsScene(figures).figures });
     }
     labels = {
-      units: battle.units.map((u, i) => ({ at: figures[i].at, status: u.status, hp: u.hp, maxHp: u.maxHp, color: colors.get(u.id) ?? palette.enemyTrim, overwatch: u.overwatch, bleed: u.bleed, selected: u.id === orders?.unit.id, marked: Boolean(u.mark), suppressed: Boolean(u.suppressed), asleep: u.asleep })),
+      units: battle.units.map((u, i) => ({ at: figures[i].at, status: u.status, hp: u.hp, maxHp: u.maxHp, color: colors.get(u.id) ?? palette.enemyTrim, overwatch: u.overwatch, bleed: u.bleed, selected: u.id === orders?.unit.id, marked: Boolean(u.mark), suppressed: Boolean(u.suppressed), asleep: u.asleep, carrying: Boolean(u.carrying) })),
       badges: [
         ...(orders?.targets ?? []).filter(({ target }) => target.id !== ordered?.id).map(({ target, odds }) => ({ at: [target.x, target.y], text: `${odds.hit}%`, strong: target.id === aimed?.id })),
         ...orderBadge(preview, orders, ordered),
       ],
-      marks: objectiveMarks(battle.objective),
+      marks: objectiveMarks(battle),
       welds: weldLabels(battle),
       floats: frame?.floats ?? [],
       shot: frame?.done ? null : frame?.shot ?? null,
+      blast: frame?.done ? null : frame?.blast ?? null,
       banner: frame?.event?.type === 'turn' ? { text: frame.event.side === 'crew' ? 'YOUR TURN' : 'ENEMY TURN', progress: frame.progress } : null,
     };
     dirty = true;
@@ -493,8 +501,9 @@ export function mountFight(root, source) {
     let facing = walking ? walking.facing : shooting ? [shooting.to[0] - shooting.from[0], shooting.to[1] - shooting.from[1]] : lookOf(u, battle);
     if (pose.fall > 0) facing = turned(facing, lookOf({ ...u, status: 'down' }, battle), pose.fall);
     const length = Math.hypot(...facing) || 1;
-    const kind = defs.jobs.get(u.kind) ?? defs.enemies.get(u.kind);
-    return { id: u.id, side: u.side, status: u.status, at, facing: [facing[0] / length, facing[1] / length], trim: colors.get(u.id) ?? palette.enemyTrim, flash: frame?.hit === u.id, look: kind?.look, held: defs.weapons.get(u.weapon)?.held, pose };
+    // A ward (M38), the person the crew brings out, carries no weapon.
+    const kind = defs.jobs.get(u.kind) ?? defs.enemies.get(u.kind) ?? defs.people?.get(u.kind);
+    return { id: u.id, side: u.side, status: u.status, at, facing: [facing[0] / length, facing[1] / length], trim: colors.get(u.id) ?? palette.enemyTrim, flash: frame?.hit === u.id, look: kind?.look, held: u.ward ? false : defs.weapons.get(u.weapon)?.held, pose };
   }
 
   // A way t of the turn from `from` to `to`, the short way round.
@@ -538,7 +547,8 @@ export function mountFight(root, source) {
     for (const u of store.getState().battle.units) {
       if (u.status === 'dead') continue;
       const corners = [];
-      for (const x of [u.x + 0.22, u.x + 0.78]) for (const y of [u.y + 0.22, u.y + 0.78]) for (const z of [0, u.status === 'active' ? UNIT_TOP : LYING_TOP]) corners.push(project(camera, x, y, z));
+      const top = u.status === 'active' || u.status === 'held' ? UNIT_TOP : LYING_TOP;
+      for (const x of [u.x + 0.22, u.x + 0.78]) for (const y of [u.y + 0.22, u.y + 0.78]) for (const z of [0, top]) corners.push(project(camera, x, y, z));
       if (!inside(convexHull(corners), sx, sy)) continue;
       const depth = Math.min(...corners.map((c) => c[2]));
       if (depth < nearest) {
@@ -686,19 +696,6 @@ export function mountFight(root, source) {
       el.remove();
     },
   };
-}
-
-// The objective on the board: a tag over each crate to grab, and over the
-// terminal, saying how far along it is.
-function objectiveMarks(objective) {
-  if (objective?.type === 'grab') {
-    return objective.crates.map(([x, y]) => {
-      const done = objective.taken.some(([tx, ty]) => tx === x && ty === y);
-      return { at: [x, y], text: done ? 'GOT IT' : 'GRAB', done };
-    });
-  }
-  if (objective?.type === 'hack') return [{ at: objective.at, text: `HACK ${Math.min(objective.progress, objective.turns)}/${objective.turns}`, done: objectiveDone(objective) }];
-  return [];
 }
 
 // Each welded door (M32): the middle of its edge, and the rounds it still

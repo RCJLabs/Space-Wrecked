@@ -74,16 +74,20 @@ export const PACE = {
   pay: [3, 6], // a payment on the debt
 };
 // How often the test crew wins each job at heat 0, and how a twist moves
-// that: its record over 750 jobs in M16 (every job on the first board of
-// campaign seeds 1 to 250), and the same for the Strand's and the Narrows'
-// jobs in M30, each with its background's start crew. A careful player
-// learns which jobs go badly. A job not here counts at its mission's rate.
+// that. The jobs' odds were measured anew in M38, when the enemies came to
+// play to the objective: each of the 44 jobs 200 times from its
+// background's start crew, at heat 0 with no twist (tools/jobs.js's crew
+// and enemy). The twists' are M16's, over 750 jobs. A careful player learns
+// which jobs go badly. A job not here counts at its mission's rate.
 const JOB_ODDS = {
-  payroll: 0.86, repo: 0.89, ledger: 0.78, manifest: 0.66, supplies: 0.61, jumpers: 0.56, scrap: 0.54, debts: 0.48, rent: 0.42, picket: 0.03,
-  impounded: 0.98, signedfor: 0.8, coal: 0.76, hotcargo: 0.76, breaking: 0.62, pressgang: 0.59, pawn: 0.48, dockwar: 0.2,
-  luggage: 0.92, seized: 0.86, housecall: 0.78, papertrail: 0.73, lastorders: 0.66, turf: 0.66, insurance: 0.51, divers: 0.49,
+  jumpers: 0.66, scrap: 0.61, payroll: 0.78, repo: 0.88, debts: 0.51, picket: 0.06, manifest: 0.72, supplies: 0.81, ledger: 0.83, rent: 0.45,
+  strikefund: 0.57, backdoor: 0.69, yardwatch: 0.82, pumps: 0.64, nephew: 0.46,
+  hotcargo: 0.76, dockwar: 0.13, signedfor: 0.64, breaking: 0.52, pressgang: 0.48, coal: 0.7, impounded: 0.97, pawn: 0.32,
+  rumration: 0.66, auditors: 0.82, dockstrike: 0.45, presstender: 0.57, lodger: 0.6,
+  insurance: 0.61, seized: 0.74, papertrail: 0.69, turf: 0.66, housecall: 0.82, divers: 0.65, luggage: 0.9, lastorders: 0.72,
+  ledgers: 0.68, housecallacross: 0.81, closingtime: 0.85, still: 0.57, collateral: 0.74,
 };
-const MISSION_ODDS = { clear: 0.39, grab: 0.69, hack: 0.76 };
+const MISSION_ODDS = { clear: 0.46, grab: 0.75, hack: 0.73, extract: 0.64, escort: 0.77, defend: 0.7, sabotage: 0.59, rescue: 0.6 };
 const TWIST_ODDS = { overtime: 0.6, cavein: 0.75, hazard: 0.75, rush: 0.75, lights: 1, skeleton: 1.4 };
 const HEAT_POLICIES = ['raids', 'hunters', 'never'];
 const MAX_ROUNDS = 60; // a fight still going after this many stops the run

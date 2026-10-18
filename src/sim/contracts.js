@@ -12,7 +12,8 @@
 //   escort    walk the client (a ward, people in data/contracts.json) from
 //             the way in to the far gate (the site's exit tiles)
 //   defend    hold the way in for `rounds` rounds
-//   sabotage  set a charge by `targets` of the site's crates
+//   sabotage  set a charge by `targets` of the site's crates, with
+//             balance.spareCharges charges more than that
 //   rescue    free `captive` (a ward), held on one of the site's captive
 //             tiles, and walk them out the way the crew came in
 // A contract with once: true (a story job) never comes back once it is
@@ -171,7 +172,7 @@ export function jobSetup(job, rules, crew, { hunters = [], forgiving = false, di
       objective = { type: 'extract', crates: tagged(contract.crates), exits: site.zones.entry };
       break;
     case 'sabotage':
-      objective = { type: 'sabotage', targets: tagged(contract.targets) };
+      objective = { type: 'sabotage', targets: tagged(contract.targets), left: contract.targets + rules.balance.spareCharges };
       break;
     case 'defend':
       objective = { type: 'defend', rounds: contract.rounds, line: site.zones.entry };

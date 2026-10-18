@@ -51,7 +51,7 @@ test('each new objective starts with nothing done, and reads back from a save', 
     [{ type: 'extract', crates: [[2, 1]], exits: WEST }, { type: 'extract', crates: [[2, 1]], taken: [], out: [], exits: WEST }],
     [{ type: 'escort', ward: 'w1', exits: [[7, 0]] }, { type: 'escort', ward: 'w1', exits: [[7, 0]], out: false }],
     [{ type: 'rescue', ward: 'w1', exits: WEST }, { type: 'rescue', ward: 'w1', exits: WEST, freed: false, out: false }],
-    [{ type: 'sabotage', targets: [[2, 1], [5, 1]] }, { type: 'sabotage', targets: [[2, 1], [5, 1]], charges: [], blown: [] }],
+    [{ type: 'sabotage', targets: [[2, 1], [5, 1]], left: 3 }, { type: 'sabotage', targets: [[2, 1], [5, 1]], charges: [], blown: [], left: 3 }],
     [{ type: 'defend', rounds: 4, line: WEST }, { type: 'defend', rounds: 4, line: WEST, held: false, through: null }],
   ];
   for (const [given, fresh] of cases) {
@@ -167,20 +167,18 @@ test('a ward doesn\'t count as crew: with the crew all down the job is lost, and
   assert.deepEqual(lastOver(result.events), { type: 'over', winner: 'crew' });
 });
 
-test('rescue: the captive is freed from beside them, acts from the next turn, and walks out the way in', () => {
+test('rescue: the captive is freed from beside them, moves at once, and walks out the way in', () => {
   const objective = { type: 'rescue', ward: 'w1', exits: WEST };
   let battle = start(objective, [{ kind: 'marine', x: 3, y: 0 }, { kind: 'pirate', x: 7, y: 3 }, { kind: 'captive', x: 6, y: 0, name: 'Nell Prewitt', held: true }]);
   refuse(battle, { type: 'free', unit: 'c1' }, /has to be next to Nell Prewitt/);
   battle = play(battle, { type: 'move', unit: 'c1', to: [5, 0] }).battle;
   const result = play(battle, { type: 'free', unit: 'c1' });
   battle = result.battle;
-  assert.deepEqual(result.events[0], { type: 'free', unit: 'c1', target: 'w1' });
+  assert.deepEqual(result.events, [{ type: 'free', unit: 'c1', target: 'w1' }]);
   assert.equal(unit(battle, 'w1').status, 'active');
   assert.equal(battle.objective.freed, true);
-  assert.equal(battle.side, 'enemy', 'freed, the captive has no actions this turn, so the crew\'s ended');
-  battle = play(battle, { type: 'end' }).battle;
-  // Freed, a captive can be shot.
-  assert.equal(unit(battle, 'w1').ap, rules.balance.actionPoints);
+  assert.equal(unit(battle, 'w1').ap, rules.balance.actionPoints, 'freed, they move at once');
+  assert.equal(battle.side, 'crew', 'the crew\'s turn goes on: the captive has actions');
   const ended = play(battle, { type: 'move', unit: 'w1', to: [0, 0] });
   assert.deepEqual(lastOver(ended.events), { type: 'over', winner: 'crew', reason: 'objective' });
 });
@@ -216,6 +214,18 @@ test('sabotage: a charge blows as the crew\'s next turn starts, hurting everyone
   assert.deepEqual(battle.objective.charges, []);
   refuse(battle, { type: 'plant', unit: 'c1', at: [2, 1] }, /blown already|has to be next/);
   assert.ok(!objectiveDone(battle.objective), 'one target still to blow');
+});
+
+test('sabotage: the crew has so many charges, and one pulled is gone', () => {
+  let battle = start({ type: 'sabotage', targets: [[2, 1]], left: 1 }, [{ kind: 'marine', x: 1, y: 1 }, { kind: 'pirate', x: 3, y: 1 }]);
+  battle = play(battle, { type: 'plant', unit: 'c1', at: [2, 1] }).battle;
+  assert.equal(battle.objective.left, 0);
+  battle = play(battle, { type: 'end' }).battle;
+  battle = play(battle, { type: 'pull', unit: 'e1', at: [2, 1] }).battle;
+  battle = nextRound(battle);
+  refuse(battle, { type: 'plant', unit: 'c1', at: [2, 1] }, /no charges left/);
+  assert.equal(ordersFor(createFight(battle, rules), rules).plant, null, 'no Plant with none left');
+  assert.equal(battle.winner, null, 'the job goes on: down everyone, and the crew still wins');
 });
 
 test('sabotage: the blast hurts the crew too, and the last target blown wins the job', () => {

@@ -8,6 +8,8 @@
 //   pose.stride  the walk's phase (0 to 1, a stride of two steps), or null
 //   pose.fall    0 standing to 1 lying on its back: it tips over backward,
 //                its hands let go and the weapon drops beside it
+// held false is no weapon at all: the person a job's crew brings out (M38)
+// stands with empty hands.
 // colors: { suit, trim, dark, under, visor, glass, lamp, gun }. detail (0
 // to 1) thins the round parts out for figures drawn small.
 import { bodyOf, bones } from './bones.js';
@@ -25,7 +27,8 @@ const DRESS = { eva: dressEva, skinsuit: dressSkinsuit };
 
 export function figureFaces(out, { at: [cx, cy], facing: [fx, fy] }, look, held, colors, pose = {}, detail = 1) {
   const suit = DRESS[look?.suit] ? look : PLAIN_LOOK;
-  const hand = held ?? PLAIN_HELD;
+  const unarmed = held === false;
+  const hand = unarmed ? PLAIN_HELD : held ?? PLAIN_HELD;
   const fall = Math.min(1, Math.max(0, pose.fall ?? 0));
   const limp = Math.min(1, fall * 1.6);
   const body = bodyOf(suit.suit, suit.build);
@@ -36,13 +39,13 @@ export function figureFaces(out, { at: [cx, cy], facing: [fx, fy] }, look, held,
   const tip = ([u, v, w]) => [SLIDE * fall + u * c - w * sn, v, u * sn + w * c];
   const kit = makeKit({ place: (p) => world(tip(p)), colors, detail, girth: body.girth });
   DRESS[suit.suit](kit, s, suit);
-  if (limp < 0.5) weapon(kit, s, hand);
+  if (limp < 0.5 && !unarmed) weapon(kit, s, hand);
   // Nothing goes through the deck: a figure on its back rests on its pack.
   let low = 0;
   for (const face of kit.faces) for (const p of face.pts) low = Math.min(low, p[2]);
   if (low < 0) for (const face of kit.faces) face.pts = face.pts.map(([x, y, z]) => [x, y, z - low]);
   out.push(...kit.faces);
-  if (limp >= 0.5) {
+  if (limp >= 0.5 && !unarmed) {
     // On the deck beside it, resting on its magazine or its grip.
     const deck = makeKit({ place: world, colors, detail, girth: body.girth });
     weapon(deck, { grip: [0.2, -0.26, hand.hands === 1 ? 0.06 : 0.072], dir: norm([0.85, 0.45, 0]) }, hand);

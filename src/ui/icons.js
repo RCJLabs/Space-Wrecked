@@ -25,6 +25,10 @@ export const icons = {
   door: icon('<path d="M3 21h18"/><path d="M6 21V3h12v18"/><path d="M14 12h.01"/>'),
   grab: icon('<path d="m4 8.5 8-4 8 4v8l-8 4-8-4z"/><path d="m4 8.5 8 4 8-4M12 12.5v8"/>'),
   hack: icon('<rect x="3" y="4" width="18" height="13" rx="1.5"/><path d="m7 8.5 3 2.5-3 2.5M12 13.5h5"/><path d="M8 21h8M12 17v4"/>'),
+  // A job's objective since M38: a padlock sprung open, to free a captive;
+  // a charge with its fuse lit, to plant by a target.
+  free: icon('<rect x="5" y="11" width="14" height="10" rx="1.5"/><path d="M8.5 11V7.5a3.5 3.5 0 0 1 6.8-1.2"/><path d="M12 15v2"/>'),
+  plant: icon('<rect x="3.5" y="10" width="13" height="10" rx="1.5"/><path d="M7.5 10v10M12.5 10v10"/><path d="M14.5 10V7.5a2.5 2.5 0 0 1 2.5-2.5h.5"/><path d="M20 3.5l-.8 1.2M21.5 6h-1.4M19.6 7.4l-.6-.6"/>'),
   // A crew job's order (M32), one for each kind (src/sim/orders.js).
   suppress: icon('<path d="M3 7h9M3 12h12M3 17h9"/><path d="m14 5 3 2-3 2M17 10l3 2-3 2M14 15l3 2-3 2"/>'),
   weld: icon('<path d="M4 20 13 11"/><path d="m13 11 2.5-2.5 3 3L16 14z"/><path d="M19 3.5v3M17.5 5h3M15.5 2.8l1 1"/>'),

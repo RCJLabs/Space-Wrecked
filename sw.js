@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "ba6a30e2da96";
+const VERSION = "b579fd5f7bac";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -162,6 +162,7 @@ const FILES = [
   "src/sim/medbay.js",
   "src/sim/modules.js",
   "src/sim/moves.js",
+  "src/sim/objectiveAi.js",
   "src/sim/objectives.js",
   "src/sim/odds.js",
   "src/sim/orderAi.js",
@@ -257,6 +258,7 @@ const FILES = [
   "src/ui/dev/menu.js",
   "src/ui/dev/sandboxes.js",
   "src/ui/fight/hints.js",
+  "src/ui/fight/marks.js",
   "src/ui/fight/panels.js",
   "src/ui/fight/screen.js",
   "src/ui/fight/view.js",

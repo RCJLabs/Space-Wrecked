@@ -47,7 +47,23 @@ export function describeEvent(event, battle) {
     case 'hazard':
       return event.hazard === 'fire' ? `${who} burns for ${event.damage}.` : `${who} has no air left and takes ${event.damage}.`;
     case 'grab':
+      // On an extract (M38) a crate is picked up to carry, or taken from a
+      // fallen carrier.
+      if (event.from) return `${who} takes the crate from ${name(event.from)}.`;
+      if (battle.objective?.type === 'extract') return `${who} picks up the crate at (${event.at[0]}, ${event.at[1]}) to carry out.`;
       return `${who} grabs the crate at (${event.at[0]}, ${event.at[1]}): ${event.left ? `${event.left} to go` : 'that was the last one'}.`;
+    case 'out':
+      return event.crate ? `${who} carries the crate out: ${event.left ? `${event.left} to go` : 'that was the last one'}.` : `${who} gets out at (${event.at[0]}, ${event.at[1]}).`;
+    case 'free':
+      return `${who} frees ${name(event.target)}.`;
+    case 'plant':
+      return `${who} sets a charge by (${event.at[0]}, ${event.at[1]}): it blows as round ${event.blows} begins.`;
+    case 'pull':
+      return `${who} pulls the charge by (${event.at[0]}, ${event.at[1]}).`;
+    case 'blast':
+      return `The charge by (${event.at[0]}, ${event.at[1]}) blows${event.units.length ? `: ${event.units.map(name).join(', ')} take${event.units.length === 1 ? 's' : ''} ${event.damage}` : ''}.`;
+    case 'through':
+      return `${who} breaks through at (${event.at[0]}, ${event.at[1]}).`;
     case 'hack':
       return `${who} works the terminal: ${event.progress} of ${turns(event.turns)}.`;
     case 'order':
@@ -66,8 +82,10 @@ export function describeEvent(event, battle) {
       const [x, y, side] = event.key.split(',');
       return `The weld on the door on the ${SIDE_NAME[side]} side of (${x}, ${y}) gives way: the door is shut.`;
     }
-    case 'over':
-      return `${event.winner === 'crew' ? 'The crew wins' : 'The enemy wins'}${REASON[event.reason] ?? ''}.`;
+    case 'over': {
+      const reason = event.reason === 'ward' ? `: ${name(battle.objective?.ward)} is lost` : REASON[event.reason] ?? '';
+      return `${event.winner === 'crew' ? 'The crew wins' : 'The enemy wins'}${reason}.`;
+    }
     default:
       return JSON.stringify(event);
   }
@@ -99,4 +117,4 @@ function orderLine(event, who, name) {
 }
 
 const SIDE_NAME = { n: 'north', e: 'east', s: 'south', w: 'west' };
-const REASON = { objective: ': the job is done', deadline: ': the deadline has passed' };
+const REASON = { objective: ': the job is done', deadline: ': the deadline has passed', held: ': the line held', through: ': they broke through' };

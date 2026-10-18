@@ -20,11 +20,14 @@
 //   { type: 'rescue', ward, exits, freed, out }   free the ward, held deep in
 //                                         the site, and walk them out the way
 //                                         the crew came in (exits)
-//   { type: 'sabotage', targets, charges, blown }  a charge by every target:
-//                                         charges [{ at, blows }] are those
-//                                         set, each with the round it blows
-//                                         in, at the start of the crew's
-//                                         turn; blown the targets that have
+//   { type: 'sabotage', targets, charges, blown, left }  a charge by every
+//                                         target: charges [{ at, blows }] are
+//                                         those set, each with the round it
+//                                         blows in, at the start of the
+//                                         crew's turn; blown the targets that
+//                                         have; left the charges the crew
+//                                         still has to set (one a target and
+//                                         a spare or so: one pulled is gone)
 //   { type: 'defend', rounds, line, held, through }  hold the way in (line)
 //                                         to the end of round `rounds`: held
 //                                         once it has, through the id of the
@@ -58,7 +61,7 @@ export function startObjective(objective) {
     case 'rescue':
       return { type: 'rescue', ward: objective.ward, exits: tiles(objective.exits), freed: false, out: false };
     case 'sabotage':
-      return { type: 'sabotage', targets: tiles(objective.targets), charges: [], blown: [] };
+      return { type: 'sabotage', targets: tiles(objective.targets), charges: [], blown: [], left: objective.left ?? objective.targets.length };
     case 'defend':
       return { type: 'defend', rounds: objective.rounds, line: tiles(objective.line), held: false, through: null };
     default:
@@ -110,7 +113,7 @@ export function wardLost(battle) {
 //   { type: 'plant', unit, at }  set a charge by a target in reach
 //   { type: 'pull', unit, at }   an enemy pulls the charge set there
 // Returns an error, or null.
-export function objectiveAction(battle, unit, action, events) {
+export function objectiveAction(battle, unit, action, events, rules) {
   const { objective } = battle;
   switch (action.type) {
     case 'grab':
@@ -118,7 +121,7 @@ export function objectiveAction(battle, unit, action, events) {
     case 'hack':
       return hack(battle, unit, events);
     case 'free':
-      return free(battle, unit, events);
+      return free(battle, unit, events, rules);
     case 'plant':
       return plant(battle, unit, action.at, events);
     case 'pull':
@@ -186,15 +189,15 @@ function cratesLeft(objective) {
   return objective.crates.length - objective.taken.length;
 }
 
-function free(battle, unit, events) {
+function free(battle, unit, events, rules) {
   const { objective } = battle;
   const ward = wardOf(battle);
   if (unit.side !== 'crew' || objective?.type !== 'rescue' || !ward || ward.status !== 'held') return 'There is no one to free.';
   if (!inReach(battle, [unit.x, unit.y], [ward.x, ward.y])) return `${unit.name} has to be next to ${ward.name}.`;
   unit.ap -= 1;
-  // Freed, they act from the crew's next turn.
+  // Freed, they can move at once: the crew's turn is theirs too.
   ward.status = 'active';
-  ward.ap = 0;
+  ward.ap = rules.balance.actionPoints;
   battle.objective = { ...objective, freed: true };
   events.push({ type: 'free', unit: unit.id, target: ward.id });
   return null;
@@ -206,10 +209,11 @@ function plant(battle, unit, at, events) {
   if (unit.side !== 'crew' || objective?.type !== 'sabotage' || !tile || !has(objective.targets, tile)) return 'There is no target there.';
   if (has(objective.blown, tile)) return 'That target has blown already.';
   if (objective.charges.some((charge) => same(charge.at, tile))) return 'A charge is set there already.';
+  if (objective.left < 1) return 'There are no charges left to set.';
   if (!inReach(battle, [unit.x, unit.y], tile)) return `${unit.name} has to be next to the target.`;
   unit.ap -= 1;
   const charge = { at: tile, blows: battle.round + 1 };
-  battle.objective = { ...objective, charges: [...objective.charges, charge] };
+  battle.objective = { ...objective, charges: [...objective.charges, charge], left: objective.left - 1 };
   events.push({ type: 'plant', unit: unit.id, at: tile, blows: charge.blows });
   return null;
 }

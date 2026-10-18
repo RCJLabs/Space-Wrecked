@@ -44,9 +44,17 @@ export function jobText(job, rules, hunters = [], campaign = null) {
     where: capitalize(site.name),
     pitch: fill(contract.pitch, { client: client.name, site: site.name }),
     mission: mission.name,
-    brief: fill(mission.brief, { turns: counted(contract.turns, 'turn'), crates: counted(contract.crates, 'tagged crate') }),
+    brief: fill(mission.brief, {
+      turns: counted(contract.turns, 'turn'),
+      crates: counted(contract.crates, 'tagged crate'),
+      rounds: counted(contract.rounds, 'round'),
+      targets: counted(contract.targets, 'tagged target'),
+      client: client.name,
+      captive: contract.captive,
+    }),
     twist: twist ? { name: twist.name, text: fill(twist.text, twist) } : null,
-    against: countedNames(units.map((unit) => rules.enemies.get(unit.kind)?.name ?? unit.kind)),
+    // The enemies only: the person the crew brings out (M38) isn't against it.
+    against: countedNames(units.filter((unit) => !rules.people?.has(unit.kind)).map((unit) => rules.enemies.get(unit.kind)?.name ?? unit.kind)),
     sides: jobSidesText(job, campaign, rules),
     pay: payText(job, rules, campaign),
     bonus: bonusText(job, campaign, rules),
@@ -71,34 +79,66 @@ export function payText(job, rules, campaign = null) {
 // The fight's objective as it stands, for the chip over the board:
 //   { title, progress, deadline }
 // title is the mission's name; progress what is done or left ("Crates: 1
-// of 3", "Terminal: 1 of 2 turns", "3 left standing"); deadline null or
+// of 3", "Terminal: 1 of 2 turns", "3 left standing"; since M38 "Crates
+// out: 0 of 1", "Jory Rook: to the far gate", "Held: round 2 of 6",
+// "Blown: 0 of 1 · 2 charges", "Danny Prewitt: held"); deadline null or
 // "Round 2 of 6". Null for a fight that isn't a job.
 export function objectiveText(battle, job, rules) {
   if (!job) return null;
   const contract = rules.contracts.jobs.get(job.contract);
   const mission = rules.contracts.missions.get(contract?.mission);
-  const { objective } = battle;
-  let progress;
-  if (objective?.type === 'grab') progress = `Crates: ${objective.taken.length} of ${objective.crates.length}`;
-  else if (objective?.type === 'hack') progress = `Terminal: ${Math.min(objective.progress, objective.turns)} of ${objective.turns} turns`;
-  else progress = `${battle.units.filter((unit) => unit.side === 'enemy' && unit.status === 'active').length} left standing`;
   const { deadline } = battle.options;
   return {
     title: mission?.name ?? 'The job',
-    progress,
-    done: objectiveDone(objective),
+    progress: progressText(battle),
+    done: objectiveDone(battle.objective),
     deadline: deadline ? `Round ${Math.min(battle.round, deadline)} of ${deadline}` : null,
   };
 }
 
+// What is done or left of a job's objective, in a few words.
+function progressText(battle) {
+  const { objective } = battle;
+  const ward = battle.units.find((unit) => unit.id === objective?.ward);
+  switch (objective?.type) {
+    case 'grab':
+      return `Crates: ${objective.taken.length} of ${objective.crates.length}`;
+    case 'hack':
+      return `Terminal: ${Math.min(objective.progress, objective.turns)} of ${objective.turns} turns`;
+    case 'extract':
+      return `Crates out: ${objective.out.length} of ${objective.crates.length}`;
+    case 'escort':
+      return `${ward?.name ?? 'The client'}: ${objective.out ? 'through the far gate' : wardState(ward) ?? 'to the far gate'}`;
+    case 'rescue':
+      return `${ward?.name ?? 'The captive'}: ${objective.out ? 'out' : ward?.status === 'held' ? 'held' : wardState(ward) ?? 'freed, walk them out'}`;
+    case 'sabotage':
+      return `Blown: ${objective.blown.length} of ${objective.targets.length} · ${counted(objective.left, 'charge')} left`;
+    case 'defend':
+      return `Held: round ${Math.min(battle.round, objective.rounds)} of ${objective.rounds}`;
+    default:
+      return `${battle.units.filter((unit) => unit.side === 'enemy' && unit.status === 'active').length} left standing`;
+  }
+}
+
+// The person brought out (M38) when they are down: how long they have.
+function wardState(ward) {
+  if (ward?.status === 'down') return `down, ${counted(ward.bleed, 'turn')} to live`;
+  if (ward?.status === 'stable') return 'down, stable';
+  return null;
+}
+
 // How a job's fight ended, for the end panel: { tone, title, text }. log is
-// the fight's events, whose last says why it ended. campaign: as it stands
-// before the crew goes home, for what the client's side adds to the pay.
+// the fight's events, whose last says why it ended: out of time, and since
+// M38 the line held, broken through, or the person brought out lost.
+// campaign: as it stands before the crew goes home, for what the client's
+// side adds to the pay.
 export function jobOutcome(battle, job, rules, log = [], campaign = null) {
   const heat = ` Heat +${jobHeat(job, rules).heat}.`;
   const bonus = bonusText(job, campaign, rules);
-  if (battle.winner === 'crew') return { tone: 'good', title: 'Job done', text: `Paid ${payText(job, rules, campaign)}${bonus ? ` (${bonus})` : ''}.${heat}` };
-  const why = log.findLast((event) => event.type === 'over')?.reason === 'deadline' ? 'Out of time' : 'The crew is down';
+  const reason = log.findLast((event) => event.type === 'over')?.reason;
+  if (battle.winner === 'crew') return { tone: 'good', title: 'Job done', text: `${reason === 'held' ? 'The line held. ' : ''}Paid ${payText(job, rules, campaign)}${bonus ? ` (${bonus})` : ''}.${heat}` };
+  const ward = battle.units.find((unit) => unit.id === battle.objective?.ward);
+  const why = { deadline: 'Out of time', through: 'They broke through', ward: `${ward?.name ?? 'The one you came for'} is lost` }[reason] ?? 'The crew is down';
   return { tone: 'bad', title: 'Job lost', text: `${why}: no pay.${heat}` };
 }
 

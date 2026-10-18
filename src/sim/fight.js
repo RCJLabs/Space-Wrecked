@@ -396,7 +396,7 @@ function captiveInReach(battle, unit) {
 // sabotage), or null.
 function targetInReach(battle, unit) {
   const { objective } = battle;
-  if (objective?.type !== 'sabotage') return null;
+  if (objective?.type !== 'sabotage' || objective.left < 1) return null;
   const same = (a) => (b) => a[0] === b[0] && a[1] === b[1];
   return objective.targets.find((at) => !objective.blown.some(same(at)) && !objective.charges.some((charge) => same(at)(charge.at)) && inReach(battle, [unit.x, unit.y], at)) ?? null;
 }

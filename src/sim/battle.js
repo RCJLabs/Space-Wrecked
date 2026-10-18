@@ -241,7 +241,7 @@ function readyToAct(battle, unit, action) {
 function doAction(battle, unit, action, events, rules) {
   if (unit.ward && action.type !== 'move') return `${unit.name} has no gun: they can only move.`;
   if (OBJECTIVE_ACTIONS.includes(action.type)) {
-    const error = objectiveAction(battle, unit, action, events);
+    const error = objectiveAction(battle, unit, action, events, rules);
     if (!error) decide(battle, events);
     return error;
   }

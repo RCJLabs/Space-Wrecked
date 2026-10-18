@@ -7,7 +7,9 @@
 // Reload always in the same place, and the orders that come and go over
 // them. On a screen too short for it all, the orders stay in sight and the
 // tools scroll away; too short for the orders alone, what scrolls away is
-// Reload, not a job's Grab or Hack.
+// Reload, not a job's Grab, Hack, Free or Plant. The person the crew brings
+// out (M38) has a button among the crew's, and no gun: Shoot, Overwatch and
+// Reload stay where they are, off.
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { shortNames } from '../names.js';
@@ -82,9 +84,10 @@ export function createCrewBar({ onSelect, onEnd }) {
 }
 
 // handlers: { shoot, overwatch, reload, job, stabilize, open, grab, hack,
-// skip }. Stabilize, Open door, Grab and Hack show only when there is
-// someone, a door, a crate or the terminal to do it to; the job's order
-// (M32) only when the unit can give it, with its name and the uses left.
+// free, plant, skip }. Stabilize, Open door, Grab, Hack, Free and Plant
+// show only when there is someone, a door, a crate, the terminal, a
+// captive or a target to do it to; the job's order (M32) only when the unit
+// can give it, with its name and the uses left.
 // tools: the buttons for the top of the column, made and wired by the
 // caller.
 export function createActionBar(handlers, tools = []) {
@@ -94,6 +97,8 @@ export function createActionBar(handlers, tools = []) {
   const buttons = {
     grab: toolButton('fgt-act fgt-job', icons.grab, 'Grab'),
     hack: toolButton('fgt-act fgt-job', icons.hack, 'Hack'),
+    free: toolButton('fgt-act fgt-job', icons.free, 'Free'),
+    plant: toolButton('fgt-act fgt-job', icons.plant, 'Plant'),
     stabilize: toolButton('fgt-act', icons.stabilize, 'Stabilize'),
     open: toolButton('fgt-act', icons.door, 'Open door'),
     job: toolButton('fgt-act fgt-order', icons.shoot, 'Order'),
@@ -126,6 +131,8 @@ export function createActionBar(handlers, tools = []) {
       buttons.open.hidden = playing || !orders?.door;
       buttons.grab.hidden = playing || !orders?.grab;
       buttons.hack.hidden = playing || !orders?.hack;
+      buttons.free.hidden = playing || !orders?.free;
+      buttons.plant.hidden = playing || !orders?.plant;
       buttons.job.hidden = playing || !orders?.order;
       if (orders?.order) jobButton(buttons.job, orders.order);
       const now = Object.values(buttons).map((button) => (button.hidden ? '-' : '+')).join('');
