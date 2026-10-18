@@ -186,7 +186,7 @@ The voyage tests' rates over 100 voyages from each start, main today beside M38.
   - offline after a reload; every button 48 px or more as each fight opens and with Grab, Free or Plant shown; no console errors.
 
 **Tests:**
-- `node --test`: pending, filled in when the run finishes.
+- `node --test`: 1032 tests pass (1003 before). New: `tests/missions.test.js` (14), `tests/missionText.test.js` (8), `tests/objectiveAi.test.js` (6) and `tests/voyageSurgery.test.js` (1), and 10 cases in `tests/data.test.js`'s validator test. `validate-data`: OK, 44 job templates.
 - `tests/contracts.test.js` plays 150 jobs (was 60), so every kind of mission gets done at least once, within 60 rounds as the tools allow (was 30). Lights out, the sight twist, can take 40.
 - `tests/run.test.js` no longer pins a thread's tries to one; it reads "in n (least to most) tries".
 - `m38/verify.mjs` at the three sizes, as above.
