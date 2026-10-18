@@ -242,11 +242,20 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
   - **grab:** grab every tagged crate (the site's loot tiles), each from beside it;
   - **hack:** work the terminal for a number of rounds.
 
+  M38 adds five more (`src/sim/objectives.js`):
+  - **extract:** carry every tagged crate out the way the crew came in. A crate in hand means one move a turn, no dash; a carrier who goes down keeps it, for anyone beside them to take;
+  - **escort:** walk the client to the far gate, the site's way-out tiles;
+  - **rescue:** free the captive, held deep in the site, from beside them, then walk them out the way in;
+  - **sabotage:** set a charge beside each tagged target. It blows at the start of the crew's next turn, hurting everyone beside it, either side (`blastDamage`), and an enemy beside one pulls it. The crew carries a charge for each target and a spare;
+  - **defend:** hold the way in for a number of rounds. An enemy who steps onto it breaks through, and the job is lost.
+
+  The client and the captive are the person brought out: on the crew's side, moved as the crew are, with no gun. If they bleed out, the job is lost; they are not crew, so the crew wins or loses by its own. Since M38 the enemies play to the objective in every mission but a clear-out (`src/sim/objectiveAi.js`): a guard with no shot worth taking keeps by what it guards, a shot at a carrier or the person brought out counts more, and on a defense every plan counts the steps to the way in.
+
   Once the objective is done the crew has won, whoever is still standing. A deadline (a job's twist) ends the battle at the end of the crew's turn in its round: if the crew hasn't won by then, it has lost.
 - **Forgiving odds:** an optional setting (M18, in Settings, off unless turned on) adds 10 to the crew's next shot for each miss in a row, up to 30. The bonus is included in the number shown, so Law 4 still holds.
 - **Difficulty** (M18, in Settings): Easy, Normal or Hard, from the next fight. Easy enemies aim 10 worse and have 1 hit point fewer; Hard enemies aim 5 better and have 1 more (`data/balance.json`). Normal leaves them as the data has them. Permanent death waits for recruits and a game over (§9).
 - **The log:** every action returns the events it caused, and the same setup, seed and actions always give the same events (`src/sim/battle.js`; the example battle in `tests/golden/` is replayed by the tests).
-- **Giving orders** (M8, `src/sim/fight.js`): a tap never spends an action. A tap on a tile shows the move (its path, one action or a dash, and the cover where it stops), and a second tap on it makes it. A tap on an enemy, or Shoot, shows the shot with its odds part by part, and Fire or a second tap takes it. Overwatch, Reload, Stabilize and Open door are buttons, and on a job Grab and Hack, shown only when there is a crate or the terminal in reach; End turn takes a second tap while anyone can still act. A job's objective shows under the round, and its crates and terminal are tagged on the board. The board opens square to the ship, where tiles are biggest, and every enemy is shown (no fog of war); those the selected unit can see show the hit chance. No button sits over the board (M18): Title, Log and Fit head the orders' column on the right, since Chrome takes a tap on a tile beside a button for the button.
+- **Giving orders** (M8, `src/sim/fight.js`): a tap never spends an action. A tap on a tile shows the move (its path, one action or a dash, and the cover where it stops), and a second tap on it makes it. A tap on an enemy, or Shoot, shows the shot with its odds part by part, and Fire or a second tap takes it. Overwatch, Reload, Stabilize and Open door are buttons, and on a job Grab and Hack, and since M38 Free and Plant, shown only when there is a crate, the terminal, a captive or a target in reach; End turn takes a second tap while anyone can still act. A job's objective shows under the round, and its crates and terminal are tagged on the board; since M38 its targets and charges too, and its ways out and the way in held are outlined on the deck. The board opens square to the ship, where tiles are biggest, and every enemy is shown (no fog of war); those the selected unit can see show the hit chance. No button sits over the board (M18): Title, Log and Fit head the orders' column on the right, since Chrome takes a tap on a tile beside a button for the button.
 - **The enemy's turn** is worked out at once by the rules and then played out on the board, event by event: walks, shots that land or fly wide with the damage over the unit hit, doors opening, whose turn it is. Skip goes to the end.
 - **Figures** (M23b, `src/render/figures/`): units are people in spacesuits, drawn by our renderer.
   - **Two suits**, Evan's pick from five mockups: the classic EVA (puffy, ringed joints, a pack and a bubble helmet) and the skinsuit (close-fitting, lines of light, plates and an egg of a helmet). Both sides wear both.
@@ -1598,7 +1607,7 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **A day's rest at a yard is out of the hunters' reach,** as the yard is safe. A yard has no Patch up, so Regroup stays.
   - **A quest's step never lands on a yard,** as it never lands on a station or a nebula.
   - **The miner's test player seldom affords a yard's part.** It reaches a yard in 87 of 100 voyages, with a median of 30 credits there, and buys in 9 (16 parts). The deserter's buys in 37 (99 parts) and the smuggler's in 17 (38). The refit bar holds main's rate before M37b (59), as M37's two hold main's before M37: on seeds 1 to 100 the yards' new sectors left 50 runs with a refit, and on seeds 101 to 300 they matched main's (122 of 199 against 119).
-- [ ] **M38 Missions and jobs.** Three mission types (clear out, grab, hack) against §5's 8, and 29 jobs against 40 or more.
+- [x] **M38 Missions and jobs.** Three mission types (clear out, grab, hack) against §5's 8, and 29 jobs against 40 or more.
   - **Measured,** each job from its background's start crew at heat 0 with no twist, 200 seeds each, the test crew (`src/sim/jobAi.js`) against the AI:
 
     | Mission | Jobs | Won | Rounds | Crew hit points lost (of 26) |
@@ -1687,6 +1696,23 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
     - a charge planted, and its blast;
     - the captive freed and walked out;
     - offline, every button 48 px or more, no console errors.
+
+  As built (2026-10-18), where it differs from the above or adds to it:
+  - **Extract jobs carry one crate, and sabotages have one target** (the still has two). Two crates won 29 to 37% of the time, and the strongest encounters 4 to 7%. Sabotage and rescue jobs got lighter encounters than first drafted.
+  - **A sabotage's charges run out:** one a target and `spareCharges` (1) more, in `data/balance.json`; a charge pulled is gone. With charges to spare, a guard beside a target pulled every one set, and the fight never ended.
+  - **A freed captive moves at once,** in the turn they are freed.
+  - **Closing time holds 8 rounds;** the other two defenses hold 6.
+  - **The test player steps clear of its own charge,** to the best plan that leaves it clear. The ward weighs a hit point it might lose as 3 steps (`WARD_FEAR`).
+  - **On the board:**
+    - the way out, the far gate and the way in held are outlined on the deck, the way in red;
+    - a zone's tag sits on its free tile nearest the middle;
+    - a crate in hand reads CARRYING over its carrier, and "Crate" first in the crew bar;
+    - a held captive stands, HELD over them.
+  - **The person brought out** has a face in the crew bar rolled from their name, in their kind's suit (`people` in `data/contracts.json`).
+  - **The blast has a sound of its own** (`blast` in `data/sounds.json`). Free and Plant sound as an order does.
+  - **The tests' act 1 is pinned:** the board's shuffle takes a roll for each job, so 15 more jobs moved every roll after it. `tests/launchKit.js` holds main's RNG after the board (`LAUNCH_RNG`), and the campaigns the tests launch stay as they were.
+  - **Surgery's Law 1 check flies 300 seeds** (`tests/voyageSurgery.test.js`). On seeds 1 to 100 the new act 1 left surgery patching 132 hit points against a med bay's 122: four runs patched 6 to 12 with surgery and none with a med bay. On seeds 101 to 300 the numbers were 139 and 193, and over all 300, 271 and 315.
+  - **Act 1's money moved,** credits at launch over 100 runs from each start: the miner's up 44% (14,390 against 10,005), the deserter's down 9% and the smuggler's down 12%. At half the new jobs' pay the miner's were still up 29%: the old jobs' odds, measured again under the guards, move it too.
 - [ ] **M39 Parts and hull frames.** 21 module types against §5's 40 to 60, and one hull frame against 6. The draft:
   - the types §9 asks for, a scanner first;
   - frames for bigger ships, and an enemy frame (§9).
@@ -1755,8 +1781,6 @@ These ideas wait until v0.4 or later:
 - an enemy hull frame: §5 counts one for v0.1, but every preset builds on the starter yard for now. One comes when enemy ships need a bigger yard or a higher cap (raised in M10)
 - the campaign ship's timelapse: the campaign keeps no build log, so construction mode has no replay. A log would need a save version bump (raised in M13)
 - the hangar's goal lines as shortcuts: a fix whose part is on hand could open construction mode with that part picked, one tap fewer (raised in M13)
-- enemies that guard the objective: the AI fights as it does on a boarding and pays the crates and terminal no mind (raised in M14)
-- carrying crates out: a grab is done once the last crate is grabbed, with no walk back to the way in (raised in M14; it would be the extract objective in §4.3)
 - a job board that remembers further back than the last board, so a job comes back less often (raised in M14)
 - a site that looks like the ground around it: a job's map sits on the starfield, like a ship's (raised in M14)
 - the hangar drawn as a hangar: walls, and doors that open for the raiders. A raid's deck is a plate on the starfield with a hazard stripe where the doors would be (raised in M15)
@@ -1857,6 +1881,7 @@ These ideas wait until v0.4 or later:
 - the weapons' balance: the shotgun is the best weapon both aboard ships and on the ground (the whole squad carrying it wins 78% both ways, against 51% and 66% as issued), and the rifle beats the carbine both ways (33% against 23% aboard, 64% against 55% on the ground). Seven enemy types carry the carbine, so changing it moves every fight they're in. For M40's balance runs (raised in M37)
 - the AI's out-and-back steps: in some layouts a unit steps out with one action and back with the next, turn after turn. In a raid on the colony, the raiders and a crew member with a torch out of reach did it for 20 rounds. In play the player moves the crew; the test harness makes both sides close in once a fight drags (raised in M37)
 - the worth of a weapon on the run: bought freely, the test players' weapons spent the purse that keeps the hunters off, and as many as 22 fewer voyages of 100 crossed fed. They buy only big steps up now, beyond a holdful's price and a swap's. Weapons may want to be cheaper, or the run's fights to matter more; and the table's wins are the whole squad carrying each, so what one member gains is a guess (raised in M37)
+- the new missions' balance: the still (a sabotage of two targets) wins 57% of the time, but only 10% by its objective, the rest as a clear-out; closing time (a defense of 8 rounds) wins 85%, 27% by holding. Act 1's credits at launch moved with the new jobs and the guards: the miner's up 44%, the deserter's down 9% and the smuggler's down 12%. For M40's balance runs (raised in M38)
 - the credits screen: ZzFX is the first entry in `assets/LICENSES.md`, and the screen that lists them comes with the release (Phase 8; raised in M35)
 
 Ideas that come up during a session go here, not into code.
