@@ -18,7 +18,7 @@
 // (M33c, companions.js). Pure.
 import { int, pick, seedFrom, shuffle } from '../core/rng.js';
 import { nextCrewId, wholeCrew } from './away.js';
-import { maxHp } from './campaign.js';
+import { maxHp, MAX_CREW } from './campaign.js';
 import { companionOf } from './companions.js';
 import { crewRoom } from './crew.js';
 import { tally } from './flags.js';
@@ -96,6 +96,8 @@ export function hirePlan(campaign, rules, slot) {
   if (!recruit) return { ok: false, error: 'No one is for hire there.' };
   const room = crewRoom(campaign.ship, rules);
   if (campaign.crew.length >= room) return { ok: false, error: `No room aboard: the berths and life support carry ${room}.` };
+  // Everyone counts, aboard, at home and at the other colonies (M38e).
+  if (wholeCrew(campaign).length >= MAX_CREW) return { ok: false, error: `The crew is ${MAX_CREW} strong, at every colony and aboard: as many as it can be.` };
   const { fee } = recruit;
   if (campaign.credits < fee) return { ok: false, error: `Signing on costs ${fee} credits.` };
   return { ok: true, recruit, fee, room, dock: tradeHeat(campaign, rules) };

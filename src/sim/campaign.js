@@ -75,6 +75,7 @@
 import { int, isState, pick, seedFrom } from '../core/rng.js';
 import { actOf, atColony, atHangar, atPort } from './acts.js';
 import { aboardOf, MAX_OUT } from './away.js';
+import { MAX_AT, MAX_COLONIES } from './colonies.js';
 import { battleProblem } from './battleShape.js';
 import { createBattle } from './battle.js';
 import { buildShip, isShipData } from './builder.js';
@@ -188,8 +189,11 @@ export function newCampaign(rules, seed, { background = firstBackground(rules), 
     supplies: 0,
     run: null,
     // The colony (act 3): the world settled at the end of the run (M25,
-    // settle.js), and the buildings on it (M26, colony.js).
+    // settle.js), and the buildings on it (M26, colony.js). From M38e the
+    // one the ship is landed at or flew from, the others in colonies
+    // (colonies.js).
     colony: null,
+    colonies: [],
     fight: null,
   };
 }
@@ -501,12 +505,18 @@ export function campaignProblems(value) {
   if (value.colony !== null && !isColony(value.colony)) wrong('colony is unreadable');
   else if ((value.colony !== null) !== (value.act >= COLONY_ACT)) wrong("colony doesn't match the act");
   else if (value.colony?.trip) {
-    const why = tripProblem(value.colony.trip, Array.isArray(value.crew) ? value.crew : []);
+    const why = tripProblem(value.colony.trip, shipSide(value));
     if (why) wrong(`trip ${why}`);
     else if (value.colony.voyage) wrong('trip and voyage are both under way');
   } else if (value.colony?.voyage) {
     const why = voyageProblem(value);
     if (why) wrong(`voyage ${why}`);
+  }
+  // The other colonies (M38e, colonies.js), none before act 3.
+  if (!Array.isArray(value.colonies) || value.colonies.length >= MAX_COLONIES || (value.colonies.length > 0 && !isRecord(value.colony))) wrong('colonies are unreadable');
+  else if (value.colonies.length) {
+    const why = othersProblem(value);
+    if (why) wrong(`colonies ${why}`);
   }
   if ((value.place === 'fight') !== isRecord(value.fight) || (value.place !== 'fight' && value.fight !== null)) {
     wrong("fight doesn't match where the player is");
@@ -515,8 +525,10 @@ export function campaignProblems(value) {
     if (why) wrong(`fight ${why}`);
     else if (value.fight.boarding && !runWhy && value.run?.approach?.outcome?.boarding !== 'due' && !heldPlace(value.colony)) {
       wrong(value.colony?.trip ? 'boarding fight has no held derelict where the squad is' : 'boarding fight has no approach that ended in it');
-    } else if (value.fight.raid && value.colony && !(value.colony.raid && value.colony.day >= value.colony.raid.lands)) {
-      wrong('raid fight has no lander down at the colony');
+    } else if (value.fight.raid && value.colony) {
+      // At the colony the ship is at or flew from, or from M38e another.
+      const at = value.fight.colony === undefined ? value.colony : (Array.isArray(value.colonies) ? value.colonies : []).find((other) => other?.id === value.fight.colony);
+      if (!(at?.raid && at.day >= at.raid.lands)) wrong('raid fight has no lander down at the colony');
     }
   }
   return problems;
@@ -545,7 +557,8 @@ function fightProblem(fight, crew) {
 // its places within reach and the trip under way, or null (M28,
 // expeditions.js; the trip's squad is checked against the crew apart); its
 // system's other worlds, and the voyage under way, or null (M38d,
-// voyage.js; checked apart).
+// voyage.js; checked apart); its number, where it lies along the line of
+// systems and its own heat (M38e, colonies.js).
 function isColony(colony) {
   const world = colony?.world;
   if (!isRecord(colony) || !isWorld(world) || typeof world.name !== 'string' || world.name.trim() === '' || world.name.length > MAX_NAME || typeof world.surveyed !== 'boolean') return false;
@@ -555,36 +568,80 @@ function isColony(colony) {
   if (colony.raid !== null && !isRaid(colony.raid)) return false;
   if (!Array.isArray(colony.worlds) || colony.worlds.length > MAX_NODES || !colony.worlds.every((other) => isRecord(other) && isName(other.name) && isWorld(other.world))) return false;
   if (colony.voyage !== null && !isRecord(colony.voyage)) return false;
+  // Its number, where it lies and its own heat (M38e, colonies.js).
+  if (!isInt(colony.id, 1, MAX_COLONIES) || !isInt(colony.at, 0, MAX_AT) || !isInt(colony.heat, 0, HEAT_MAX)) return false;
   return Array.isArray(colony.buildings) && colony.buildings.length <= MAX_BUILDINGS && isShipData({ frame: 'colony', modules: colony.buildings, nextUid: colony.nextUid });
 }
 
-// The crew a saved voyage keeps out of play (M38d, away.js), as far as it
-// reads, for the save's checks: [] with none.
+// The crew a saved voyage keeps out of play (M38d, away.js), and from M38e
+// those at the other colonies (colonies.js), as far as they read, for the
+// save's checks: [] with none.
 function waitingCrew(value) {
   const voyage = isRecord(value.colony) && isRecord(value.colony.voyage) ? value.colony.voyage : null;
   const side = voyage?.home ?? voyage?.aboard;
-  return isRecord(side) && Array.isArray(side.crew) ? side.crew : [];
+  const others = Array.isArray(value.colonies) ? value.colonies.filter(isRecord) : [];
+  const crews = [side, ...others.map((other) => other.keep), ...others.map((other) => other.parked)].filter((one) => isRecord(one) && Array.isArray(one.crew));
+  return crews.flatMap((one) => one.crew);
 }
 
 // Why the voyage under way (M38d, voyage.js; away.js) is unreadable, as
 // words to follow "The campaign's voyage ", or null if it reads: how many
-// systems out it is, the days a flight home a lander stopped still has to
-// fly, and the side not in play. That is those at home and the colony's
-// food, or while those at home fight a raid, those aboard and the ship's
-// supplies; never anyone twice, and someone always aboard. A voyage is on
-// the run.
+// systems out it is, the days a flight a lander stopped still has to fly
+// (one for each system between the ship and the colony it flies to, M38e),
+// where the ship is along the line and that colony, and the side not in
+// play. That is those at home and the colony's food, or while those at home
+// fight a raid, those aboard and the ship's supplies; never anyone twice,
+// and someone always aboard. A voyage is on the run.
 function voyageProblem(value) {
   const { voyage } = value.colony;
-  if (!isInt(voyage.out, 1, MAX_OUT) || !(voyage.homing === null || isInt(voyage.homing, 1, voyage.out))) return 'is unreadable';
+  if (!isInt(voyage.out, 1, MAX_OUT) || !(voyage.homing === null || isInt(voyage.homing, 1, MAX_AT))) return 'is unreadable';
+  // Where the ship is along the line, and the colony a flight is for (M38e):
+  // null for the one it flew from, else another's number.
+  if (!isInt(voyage.at, 0, MAX_AT)) return 'is unreadable';
+  const bound = voyage.to === null ? value.colony : (Array.isArray(value.colonies) ? value.colonies : []).find((other) => other?.id === voyage.to);
+  if (!bound) return 'flies to no colony';
+  // A stopped flight has a day still to fly for each system between.
+  if (voyage.homing !== null && voyage.homing !== Math.abs(voyage.at - bound.at)) return 'is unreadable';
   if ((voyage.home === undefined) === (voyage.aboard === undefined)) return 'is unreadable';
   const side = voyage.home ?? voyage.aboard;
   if (!isRecord(side) || !isCrew(side.crew) || !isInt(voyage.home ? side.food : side.supplies, 0, MAX_SUPPLIES)) return 'is unreadable';
-  const crew = Array.isArray(value.crew) ? value.crew : [];
+  const crew = shipSide(value);
   const ids = new Set(crew.map((member) => member?.id));
   if (side.crew.some((member) => ids.has(member.id)) || crew.length + side.crew.length > MAX_CREW) return 'names crew twice';
   if (!(voyage.home ? crew : side.crew).length) return 'has nobody aboard';
-  if (voyage.aboard && !(value.place === 'fight' && value.fight?.raid)) return 'has those at home in play with no raid to fight';
+  if (voyage.aboard && !(value.place === 'fight' && value.fight?.raid && value.fight.colony === undefined)) return 'has those at home in play with no raid to fight';
   if (value.run === null) return 'is on no run';
+  return null;
+}
+
+// The crew of the colony the ship is at or flew from, as far as it reads:
+// the campaign's, or while those at another colony fight a raid there
+// (M38e, colonies.js frontAt), the side parked there.
+function shipSide(value) {
+  const parked = Array.isArray(value.colonies) ? value.colonies.find((other) => isRecord(other) && isRecord(other.parked)) : null;
+  const crew = parked ? parked.parked.crew : value.crew;
+  return Array.isArray(crew) ? crew : [];
+}
+
+// Why the other colonies (M38e, colonies.js) are unreadable, as words to
+// follow "The campaign's colonies ", or null if they read: each a colony
+// with no trip or voyage of its own, numbered apart from every other, with
+// whoever is there and its food; or, while they fight a raid there, the
+// side they stand in for, the fight being that colony's. Nobody anywhere
+// twice.
+function othersProblem(value) {
+  const others = value.colonies;
+  if (!others.every((other) => isColony(other) && other.trip === null && other.voyage === null)) return 'are unreadable';
+  const ids = [value.colony.id, ...others.map((other) => other.id)];
+  if (new Set(ids).size !== ids.length) return 'are numbered twice';
+  for (const other of others) {
+    if ((other.keep === undefined) === (other.parked === undefined)) return 'are unreadable';
+    const side = other.keep ?? other.parked;
+    if (!isRecord(side) || !isCrew(side.crew) || !isInt(other.keep ? side.food : side.supplies, 0, MAX_SUPPLIES)) return 'are unreadable';
+    if (other.parked && !(value.place === 'fight' && value.fight?.raid && value.fight.colony === other.id)) return 'stand in for a side with no raid to fight';
+  }
+  const everyone = [...(Array.isArray(value.crew) ? value.crew : []), ...waitingCrew(value)].map((member) => member?.id);
+  if (new Set(everyone).size !== everyone.length || everyone.length > MAX_CREW) return 'name crew twice';
   return null;
 }
 

@@ -99,7 +99,11 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  36  voyages: the colony keeps its system's other worlds and the voyage
 //      under way, or none; the run can cross systems past the colony's,
 //      with worlds among their nodes (M38d)
-export const SAVE_VERSION = 36;
+//  37  more colonies: the campaign keeps its other colonies, each with
+//      whoever is there and its food; every colony its number, where it
+//      lies along the line of systems and its own heat; a voyage where the
+//      ship is along that line and the colony it flies to (M38e)
+export const SAVE_VERSION = 37;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -492,6 +496,21 @@ export const MIGRATIONS = [
       const name = isObject(colony.world) ? colony.world.name : null;
       const worlds = sector ? sector.nodes.filter((node) => isObject(node) && isObject(node.world) && node.name !== name).map((node) => ({ name: node.name, world: node.world })) : [];
       return { ...data, campaign: { ...data.campaign, colony: { ...colony, worlds, voyage: null } } };
+    },
+  },
+  // More colonies (M38e): a campaign from before has no others. Its one
+  // colony becomes the first, at the head of the line of systems, with the
+  // ship's heat as its own; a voyage under way is as many systems along
+  // the line as a flight home has left, and flies to no other colony.
+  {
+    from: 36,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign)) return data;
+      const { colony } = data.campaign;
+      if (!isObject(colony)) return { ...data, campaign: { ...data.campaign, colonies: [] } };
+      const { voyage } = colony;
+      const flying = isObject(voyage) ? { ...voyage, at: voyage.homing ?? voyage.out, to: null } : voyage;
+      return { ...data, campaign: { ...data.campaign, colonies: [], colony: { ...colony, id: 1, at: 0, heat: data.campaign.heat, voyage: flying } } };
     },
   },
 ];

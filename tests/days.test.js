@@ -178,7 +178,8 @@ test('a v20 save in act 3 opens on day 1 with 20 materials, its buildings standi
   assert.deepEqual(campaign.colony, given.colony);
   assert.equal(nextDay(campaign, rules).campaign.colony.day, 2);
   // A new colony starts the same way, with no places yet and the ship home
-  // (M28), no raid coming (M29), and from M38d the other worlds it is given
-  // and no voyage.
-  assert.deepEqual(newColony(now.colony.world, 20), { world: now.colony.world, buildings: [], nextUid: 1, day: 1, materials: 20, places: [], trip: null, raid: null, worlds: [], voyage: null });
+  // (M28), no raid coming (M29), from M38d the other worlds it is given
+  // and no voyage, and from M38e the first colony's number and place, at
+  // no heat of its own unless given.
+  assert.deepEqual(newColony(now.colony.world, 20), { world: now.colony.world, buildings: [], nextUid: 1, day: 1, materials: 20, places: [], trip: null, raid: null, worlds: [], voyage: null, id: 1, at: 0, heat: 0 });
 });

@@ -210,14 +210,16 @@ test("a raid found while the ship is away comes down no sooner than the flight h
     }
     return null;
   };
+  // The colony's own heat sets its odds (M38e): left hot.
+  const hot = { ...away, colony: { ...away.colony, heat: HEAT_MAX } };
   // One system out: the warning's days, as at home.
-  const near = found({ ...away, heat: HEAT_MAX });
+  const near = found(hot);
   assert.ok(near, 'some seed finds the colony');
   assert.deepEqual(near.campaign.colony.raid, { found: away.colony.day, lands: away.colony.day + 1 + raidWarning });
   assert.equal(flightHome(near.campaign), 1);
   // Five out: five days, the flight home's.
   const out = 5;
-  const far = { ...away, heat: HEAT_MAX, colony: { ...away.colony, voyage: { ...away.colony.voyage, out } } };
+  const far = { ...hot, colony: { ...hot.colony, voyage: { ...hot.colony.voyage, out, at: out } } };
   const farFound = found(far);
   assert.ok(farFound);
   assert.deepEqual(farFound.campaign.colony.raid, { found: far.colony.day, lands: far.colony.day + 1 + Math.max(raidWarning, out) });
@@ -230,7 +232,7 @@ test("a raid found while the ship is away comes down no sooner than the flight h
   assert.equal(raidDown(flown.campaign), true);
   assert.deepEqual(landingPlan(flown.campaign, rules).defenders, ids);
   // Found on the way home, the same: the lander comes once the ship is in.
-  const homing = { ...far, colony: { ...far.colony, voyage: { ...far.colony.voyage, homing: 2 } } };
+  const homing = { ...far, colony: { ...far.colony, voyage: { ...far.colony.voyage, homing: 2, at: 2 } } };
   assert.equal(found(homing).campaign.colony.raid.lands, homing.colony.day + 1 + raidWarning);
 });
 
@@ -297,14 +299,14 @@ test('on the run in act 3, everything is for those aboard, and each jump, survey
   assert.ok(rested.ok, rested.error);
   assert.equal(rested.campaign.colony.day, away.colony.day + 1);
   assert.ok(rested.day);
-  // So does a survey of a world the voyage passes; it is surveyed, not
-  // settled.
+  // So does a survey of a world the voyage passes; from M38e it can be
+  // settled too (colonies.test.js).
   const world = at(away, nodeOf(away, 'world').id);
   assert.ok(surveyPlan(world, rules).ok);
   const surveyed = survey(world, rules);
   assert.equal(surveyed.campaign.colony.day, world.colony.day + 1);
   assert.ok(surveyed.campaign.run.surveyed.includes(world.run.at));
-  assert.match(settlePlan(world, rules).error, /colony is on/);
+  assert.ok(settlePlan(world, rules).ok);
   // The colony's day leaves heat alone while the ship is away; at home it
   // falls.
   const hot = { ...away, heat: 40 };
@@ -506,8 +508,8 @@ test("the colony keeps its system's other worlds, which its trips reach, as the 
 });
 
 test('saves at v36 keep a voyage, and those at home in play in a raid fight; a v35 colony migrates home with its worlds; voyages that do not read are caught', () => {
-  assert.equal(SAVE_VERSION, 36);
-  assert.equal(MIGRATIONS.at(-1).from, 35);
+  assert.equal(SAVE_VERSION, 37);
+  assert.equal(MIGRATIONS.at(-1).from, SAVE_VERSION - 1);
   const fighting = faceRaid(landing(away), rules).campaign;
   for (const campaign of [away, fighting]) {
     const loaded = parseSave(JSON.stringify(makeSave(saveData({ ...initialState(7), campaign }))));
@@ -519,7 +521,8 @@ test('saves at v36 keep a voyage, and those at home in play in a raid fight; a v
   assert.equal(opened.screen, 'sector');
   // A colony saved at v35 has the ship home and keeps the worlds of the
   // system its run ended in.
-  const { worlds, voyage, ...colony } = home.colony;
+  // (It has no number, place or heat of its own either: M38e's.)
+  const { worlds, voyage, id: _id, at: _at, heat: _heat, ...colony } = home.colony;
   assert.equal(voyage, null);
   const v35 = { ...makeSave(saveData({ ...initialState(7), campaign: { ...home, colony } })), version: 35 };
   const migrated = parseSave(JSON.stringify(v35));

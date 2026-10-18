@@ -30,7 +30,7 @@ import { survey } from './survey.js';
 import { takeStationJob } from './stationJobs.js';
 import { swapTransponder } from './transponder.js';
 import { beginRun, buySupplies, jump, leaveSector, scan } from './travel.js';
-import { voyageHome, voyageOut } from './voyage.js';
+import { flyFrom, flyTo, voyageHome, voyageOut } from './voyage.js';
 
 // The screen each place in a campaign is played on in act 1, and every
 // screen that shows the campaign: construction mode, the job board and the
@@ -43,8 +43,8 @@ export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction'
 // The moves on the run that can open an approach (a hostile ship, the
 // pursuer's hunters, or a trap an event sprang, M36) or put one away, and
 // so change the screen; and from M38d a voyage's Fly out and Fly home,
-// between the colony and the run.
-const SCREEN_CHANGES = ['campaign/jump', 'campaign/sector/leave', 'campaign/regroup', 'campaign/survey', 'campaign/event/choose', 'campaign/approach/close', 'campaign/voyage/out', 'campaign/voyage/home'];
+// between the colony and the run, and from M38e Fly to a colony.
+const SCREEN_CHANGES = ['campaign/jump', 'campaign/sector/leave', 'campaign/regroup', 'campaign/survey', 'campaign/event/choose', 'campaign/approach/close', 'campaign/voyage/out', 'campaign/voyage/home', 'campaign/voyage/to', 'campaign/colony/fly'];
 
 // The screen a campaign is played on where it is now: its fight, or its
 // act's home: the hangar in act 1, the sector map on the run (act 2, and a
@@ -161,12 +161,19 @@ export function initialState(seed) {
 //                                  next system (voyage.js, M38d)
 //   campaign/voyage/home { rules } the ship flies home from the run, or on
 //                                  home once a lander that stopped it is
-//                                  faced (M38d)
+//                                  faced (M38d), or on to the colony a
+//                                  stopped flight is for (M38e)
+//   campaign/voyage/to { id, rules }   the ship flies from the run straight
+//                                  to the colony numbered id (voyage.js
+//                                  flyTo, M38e)
+//   campaign/colony/fly { id, crew, rules }   the ship flies from the colony
+//                                  to the colony numbered id with the crew
+//                                  picked (voyage.js flyFrom, M38e)
 //   campaign/raid/face { rules }   Defend: the colony faces the raid that
 //                                  is down, the guns first (raids.js, M29):
 //                                  the fight, or what came of it without one;
 //                                  from the run too, while the ship is away
-//                                  on a voyage (M38d)
+//                                  on a voyage (M38d); at any colony (M38e)
 //   campaign/approach/order { order, rules }   the player's order for a
 //                                  round of the approach (encounter.js)
 //   campaign/approach/close        Carry on, once the approach is over, or
@@ -308,7 +315,9 @@ export function reduce(state, action) {
     case 'campaign/trip/home':
     case 'campaign/trip/on':
     case 'campaign/voyage/out':
-    case 'campaign/voyage/home': {
+    case 'campaign/voyage/home':
+    case 'campaign/voyage/to':
+    case 'campaign/colony/fly': {
       const move = {
         'campaign/run/begin': (c) => beginRun(c, action.rules),
         'campaign/jump': (c) => jump(c, action.rules, action.to),
@@ -339,6 +348,8 @@ export function reduce(state, action) {
         'campaign/trip/on': (c) => flyOn(c, action.rules),
         'campaign/voyage/out': (c) => voyageOut(c, action.rules, action.crew),
         'campaign/voyage/home': (c) => voyageHome(c, action.rules),
+        'campaign/voyage/to': (c) => flyTo(c, action.rules, action.id),
+        'campaign/colony/fly': (c) => flyFrom(c, action.rules, action.id, action.crew),
       }[action.type];
       const done = state.campaign && move(state.campaign);
       if (!done?.ok) return state;

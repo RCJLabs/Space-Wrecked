@@ -144,7 +144,7 @@ test("the chart out in the systems past the colony's: where it is, the colony, F
   assert.deepEqual(sectorText(coming, rules).hint, landerComing(coming, rules));
   // Too far out to meet it (M38d's fix: the player jumped on after the
   // warning): the hint says so.
-  const farOut = { ...coming, colony: { ...coming.colony, voyage: { ...coming.colony.voyage, out: 4 } } };
+  const farOut = { ...coming, colony: { ...coming.colony, voyage: { ...coming.colony.voyage, out: 4, at: 4 } } };
   assert.equal(landerComing(farOut, rules).text, 'Con-Reg Recovery found Copperhill: their lander comes down in 2 days. Flying home takes 4 days, too long to meet it: those at home fight it.');
   const down = landing(away, away.colony.day);
   const held = sectorText(down, rules);
