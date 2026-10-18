@@ -1,7 +1,8 @@
 // The worlds past the charts (data/worlds.json, M25), for
 // validate-campaign.js: how many worlds a system has and its words, how
 // many stand among the nodes of each system a voyage crosses (M38d,
-// gen/system.js beyondSystem) and its words, the words for how far a world
+// gen/system.js beyondSystem) and its words, for its way in and its jump
+// point (M38d's fix), the words for how far a world
 // lies from the lanes (one line for each of 1 to LANES, nearest first), the
 // kinds of world, each with the ranges its act 3 numbers roll in
 // (gen/system.js), its words and the words for the landing on it, and the
@@ -18,6 +19,7 @@ import { isIntIn, isObject, isRange, isText, knownKeys, listOf, uniqueIds } from
 
 const FILE_KEYS = ['system', 'voyage', 'lanes', 'kinds', 'names'];
 const SYSTEM_KEYS = ['worlds', 'text'];
+const VOYAGE_KEYS = [...SYSTEM_KEYS, 'exit'];
 const KIND_KEYS = ['id', 'name', 'weight', ...RATINGS, 'text', 'landing', 'scene'];
 const NAME_LISTS = ['systems', 'worlds'];
 const MAX_WORLDS = 5;
@@ -38,9 +40,10 @@ export function checkWorlds(file, sectors, fail) {
   if (!isText(system.text) || system.text.length > MAX_TEXT) fail(`${where} system`, `text must be a non-empty string of up to ${MAX_TEXT} letters`);
   const voyage = isObject(file.voyage) ? file.voyage : {};
   if (!isObject(file.voyage)) fail(where, 'voyage must be an object');
-  else knownKeys(voyage, SYSTEM_KEYS, `${where} voyage`, fail);
+  else knownKeys(voyage, VOYAGE_KEYS, `${where} voyage`, fail);
   if (!isIntIn(voyage.worlds, 1, MAX_WORLDS)) fail(`${where} voyage`, `worlds must be a whole number from 1 to ${MAX_WORLDS}`);
   if (!isText(voyage.text) || voyage.text.length > MAX_TEXT) fail(`${where} voyage`, `text must be a non-empty string of up to ${MAX_TEXT} letters`);
+  if (!isText(voyage.exit) || voyage.exit.length > MAX_TEXT) fail(`${where} voyage`, `exit must be a non-empty string of up to ${MAX_TEXT} letters`);
   if (!Array.isArray(file.lanes) || file.lanes.length !== LANES || !file.lanes.every((line) => isText(line) && line.length <= MAX_TEXT)) {
     fail(where, `lanes must be ${LANES} lines of up to ${MAX_TEXT} letters, the nearest first`);
   }

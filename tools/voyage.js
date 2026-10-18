@@ -123,7 +123,7 @@ import { buyFromRack, rackHere } from '../src/sim/racks.js';
 import { buyFromYard } from '../src/sim/yards.js';
 import { eased, questOf, threadOf } from '../src/sim/quests.js';
 import { raidLoss } from '../src/sim/raid.js';
-import { landingPlan, raidDown } from '../src/sim/raids.js';
+import { landingPlan, raidDown, raidIn } from '../src/sim/raids.js';
 import { huntersOf } from '../src/sim/hunt.js';
 import { hireRecruit } from '../src/sim/recruits.js';
 import { regroup } from '../src/sim/regroup.js';
@@ -142,7 +142,7 @@ import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
 import { withPart } from './startShip.js';
-import { bestChoice, boardIt, HEAT_POLICIES, hireWho, homeBuild, homeNow, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, stationJobPick, swapNow, systemMove, tradeHere, tripSquad, voyageCrew, worldScore, yardBuy } from './voyagePlan.js';
+import { bestChoice, boardIt, HEAT_POLICIES, hireWho, homeBuild, homeNow, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, STOCK_DAYS, STOCK_SHARE, stationJobPick, stockFor, swapNow, systemMove, tradeHere, tripSquad, voyageCrew, worldScore, yardBuy } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
@@ -710,8 +710,10 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       lines.push(`   Bought the ${defs.weapons.get(item.weapon).name.toLowerCase()} for ${item.price} credits${logged(step)}: ${hold()}.`);
     }
     // Home from a voyage (M38d), once the node's business is done: at the
-    // last system's jump point, or once the holds come down to the way
-    // home's supplies and a buffer (voyagePlan.js homeNow).
+    // last system's jump point, once the holds come down to the way home's
+    // supplies and a buffer, or with the pursuer's lander coming down at
+    // the colony after the flight home would land (M38d's fix; voyagePlan.js
+    // homeNow).
     if (away && homeNow(campaign, defs, VOYAGE_SYSTEMS)) {
       const before = campaign;
       // Those aboard as the flight home sets out, for the voyage's tally.
@@ -719,9 +721,17 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       const plan = voyageHomePlan(campaign, defs);
       const back = flyHomeFrom(campaign, defs, away.raids);
       campaign = back.campaign;
-      record('home', before, { out: before.colony.voyage.out, atExit: before.run.at === before.run.sector.exit, eats: plan.eats, each: jumpSupplies(before, defs), days: back.days, stops: back.stops, hungry: back.hungry });
-      away.back = back;
+      const coming = raidIn(before);
+      record('home', before, { out: before.colony.voyage.out, atExit: before.run.at === before.run.sector.exit, eats: plan.eats, each: jumpSupplies(before, defs), flight: plan.days, coming, days: back.days, stops: back.stops, hungry: back.hungry });
+      // Called home by a raid coming (M38d's fix), or not; a raid coming at
+      // the landing is met at home, with everyone.
+      away.back = { ...back, called: coming !== null, landed: campaign.crew.map((member) => member.id), dugLost: (campaign.flags.materialsLost ?? 0) - (away.before.flags.materialsLost ?? 0) };
       lines.push(`   ${homeLine(back, before)}`);
+      if (campaign.colony.raid) {
+        const met = waitForRaid(campaign, defs, away.raids);
+        campaign = met.campaign;
+        lines.push(`   At home for the raid: ${met.days} day${met.days === 1 ? '' : 's'}; ${raidLine(defs, away.raids.faced.at(-1))}`);
+      }
       break;
     }
     // A day hidden in a nebula, or regrouping: the hunters may find a ship
@@ -762,7 +772,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     tally.heat[1] = campaign.heat;
     tally.hp[1] ??= hpOf(campaign);
     tally.healed = since('hpHealed');
-    out = { ...away, tally, steps, campaign, colony: { days: since('voyageDays'), hungry: since('voyageHungryDays'), found: since('raidsFound') }, credits: [away.before.credits, campaign.credits] };
+    out = { ...away, tally, steps, campaign, colony: { days: since('voyageDays'), hungry: since('voyageHungryDays'), found: since('raidsFound'), dugLost: away.back?.dugLost ?? since('materialsLost') }, credits: [away.before.credits, campaign.credits] };
     ({ tally, steps } = act);
     campaign = foundedAt;
   }
@@ -892,6 +902,23 @@ function readyForRaid(campaign, defs, raids) {
     campaign = done.campaign;
   }
   return raidDown(campaign) ? faceRaid(campaign, defs, raids) : campaign;
+}
+
+// A raid coming, waited for at home and faced once it is down (M38d's fix:
+// a voyage's flight home that a raid called): { campaign, days (the days
+// waited) }.
+function waitForRaid(campaign, defs, raids) {
+  let now = campaign;
+  let days = 0;
+  for (;;) {
+    now = readyForRaid(now, defs, raids);
+    if (!now.colony.raid) return { campaign: now, days };
+    logOdds(now, defs, raids);
+    const day = nextDay(now, defs);
+    if (!day.ok) throw new Error(day.error);
+    now = day.campaign;
+    days += 1;
+  }
 }
 
 // The raid that is down, faced: the guns fire at the lander, and those at
@@ -1069,43 +1096,64 @@ function onWay(campaign, defs, raids) {
 }
 
 // The voyage out from the colony as the careful player begins it (M38d),
-// once its days are played: while a raid is coming it stays home and faces
-// it first, as on its days (readyForRaid); then the ship is refitted with
-// berths and air for all but one (voyagePlan.js refitForSquad), the
-// healthiest who fit aboard go (voyageCrew), a shelter goes up for whoever
-// stays home (homeBuild), and the ship flies out. { before (the colony as
-// the ship left it), flown (voyage.js voyageOut's result, or null with
-// nobody able to fly, why saying so), why, crew and home (the ids aboard
-// and at home), waited (days at home waiting for a raid), moved (the parts
+// once its days are played. It stocks the holds first (M38d's fix): farms
+// that grow STOCK_SHARE times what the crew eats (voyagePlan.js
+// nextBuild), and days at home until the food is what the holds take
+// (stockFor), at most STOCK_DAYS, and none once the farms can grow no more
+// than the crew eats and no mine digs toward another. While a raid is
+// coming it stays home and faces it first, as on its days (readyForRaid),
+// the days it waits not counted against stocking. Then the ship is
+// refitted with berths and air
+// for all but one (refitForSquad), the healthiest who fit aboard go
+// (voyageCrew), a shelter goes up for whoever stays home (homeBuild), and
+// the ship flies out. { before (the colony as the ship left it), flown
+// (voyage.js voyageOut's result, or null with nobody able to fly, why
+// saying so), why, crew and home (the ids aboard and at home), waited
+// (days at home waiting for a raid), stocked (days at home stocking the
+// holds), full (whether the food filled the holds' stock), moved (the parts
 // refitted aboard), built ([{ day, type, name }]), raids (raidsLog's: any
-// faced before it flew, then those on the voyage), systems (each system as
-// the ship entered it), back (flyHomeFrom's once home, else null) }.
+// faced before it flew, then those on the voyage and any met at home after
+// it), prior (how many were faced before it flew), systems (each system as
+// the ship entered it), back (flyHomeFrom's once home, with called: whether
+// a raid coming called it home, landed: the crew's ids as it landed, and
+// dugLost: the mines' digging the storehouses couldn't keep while it was
+// away; else null) }.
 export function voyageOutOf(campaign, defs) {
   const raids = raidsLog();
+  const built = [];
   let now = campaign;
   let waited = 0;
-  while (now.colony.raid) {
-    now = readyForRaid(now, defs, raids);
-    if (!now.colony.raid) break;
-    logOdds(now, defs, raids);
-    const day = nextDay(now, defs);
-    if (!day.ok) throw new Error(day.error);
-    now = day.campaign;
-    waited += 1;
-  }
-  const refit = refitForSquad(now, defs, Math.max(1, now.crew.length - 1));
-  now = refit.campaign;
-  const crew = voyageCrew(now, defs);
-  const homeIds = now.crew.filter((member) => !crew.includes(member.id)).map((member) => member.id);
-  const built = [];
-  const base = { why: null, crew, home: homeIds, waited, moved: refit.moved, built, raids, systems: [], back: null };
-  if (!crew.length) return { ...base, before: now, flown: null, why: `the ship can't fly even one. ${voyagePlan(now, defs, now.crew.slice(0, 1).map((member) => member.id)).error}` };
-  for (let what = homeBuild(now, defs, crew); what; what = homeBuild(now, defs, crew)) {
+  let stocked = 0;
+  const put = (what) => {
     const done = build(now, defs, what);
     if (!done.ok) throw new Error(done.error);
     built.push({ day: now.colony.day, type: done.plan.type, name: done.plan.name });
     now = done.campaign;
+  };
+  for (;;) {
+    for (let what = nextBuild(now, defs, STOCK_SHARE); what; what = nextBuild(now, defs, STOCK_SHARE)) put(what);
+    if (now.colony.raid) now = readyForRaid(now, defs, raids);
+    const coming = Boolean(now.colony.raid);
+    // Nothing more to come: the farms grow no more than the crew eats, and
+    // no mine digs toward another.
+    const { made } = colonyStats(now, defs);
+    const stuck = made.food <= jumpSupplies(now, defs) && made.materials === 0;
+    if (!coming && (now.supplies >= stockFor(now, defs) || stocked >= STOCK_DAYS || stuck)) break;
+    logOdds(now, defs, raids);
+    const day = nextDay(now, defs);
+    if (!day.ok) throw new Error(day.error);
+    now = day.campaign;
+    if (coming) waited += 1;
+    else stocked += 1;
   }
+  const full = now.supplies >= stockFor(now, defs);
+  const refit = refitForSquad(now, defs, Math.max(1, now.crew.length - 1));
+  now = refit.campaign;
+  const crew = voyageCrew(now, defs);
+  const homeIds = now.crew.filter((member) => !crew.includes(member.id)).map((member) => member.id);
+  const base = { why: null, crew, home: homeIds, waited, stocked, full, moved: refit.moved, built, raids, prior: raids.faced.length, systems: [], back: null };
+  if (!crew.length) return { ...base, before: now, flown: null, why: `the ship can't fly even one. ${voyagePlan(now, defs, now.crew.slice(0, 1).map((member) => member.id)).error}` };
+  for (let what = homeBuild(now, defs, crew); what; what = homeBuild(now, defs, crew)) put(what);
   const flown = voyageOut(now, defs, crew);
   if (!flown.ok) throw new Error(flown.error);
   return { ...base, before: now, flown };
@@ -1179,13 +1227,15 @@ function raidLine(defs, raid) {
 function outLine(defs, leaving) {
   const { before, flown } = leaving;
   const name = (id) => before.crew.find((member) => member.id === id)?.name ?? String(id);
-  const { food, materials } = flown.plan;
+  const { food } = flown.plan;
   const said = [
-    `the holds took ${food.ship} food, the colony kept ${food.colony} of ${food.room}${food.spoils ? `, ${food.spoils} spoiled` : ''}${materials.lost ? `, ${materials.lost} materials lost` : ''}`,
+    `the holds took ${food.ship} food, the colony kept ${food.colony} of ${food.room}${food.spoils ? `, ${food.spoils} spoiled` : ''}`,
     ...(leaving.moved.length ? [`refitted ${leaving.moved.map((type) => defs.modules.get(type)?.name ?? type).join(', ')} aboard`] : []),
     ...(leaving.built.length ? [`built ${leaving.built.map((b) => b.name).join(', ')}`] : []),
   ];
-  const waited = leaving.waited ? `, after ${leaving.waited} day${leaving.waited === 1 ? '' : 's'} at home for a raid,` : '';
+  const days = (n, why) => (n ? [`${n} day${n === 1 ? '' : 's'} ${why}`] : []);
+  const stayed = [...days(leaving.stocked, 'stocking the holds'), ...days(leaving.waited, 'at home for a raid')];
+  const waited = stayed.length ? `, after ${listed(stayed)},` : '';
   const home = leaving.home.length ? `${listed(leaving.home.map(name))} at home` : 'nobody at home';
   return `Flew out from ${before.colony.world.name} on day ${before.colony.day}${waited} with ${listed(leaving.crew.map(name))}, ${home}: ${said.join('; ')}.`;
 }
@@ -1207,7 +1257,7 @@ function voyageLine(out) {
   const { tally } = out;
   const faced = out.raids.faced.filter((raid) => raid.away);
   const lost = faced.filter((raid) => !raid.won).length;
-  const where = out.back ? `home after ${out.colony.days} days away` : 'still out';
+  const where = out.back ? `home after ${out.colony.days} days away${out.back.called ? ', called home by a raid' : ''}` : 'still out';
   return (
     `The voyage out: ${tally.crossed} of ${VOYAGE_SYSTEMS} systems crossed, ${where}; ${tally.jumps} jumps (${tally.hungryJumps} hungry); ${tally.stationJobs} station jobs (${tally.stationJobsWon} done) for ${tally.jobCredits} credits; ` +
     `spent ${spentOf(tally)} credits, ${tally.yardBought} parts bought, ${tally.fitted} fitted; credits ${out.credits[0]} to ${out.credits[1]}. ` +
@@ -1552,6 +1602,8 @@ export function outSummary(done) {
   const sum = (get) => flown.reduce((total, out) => total + get(out), 0);
   const faced = flown.flatMap((out) => out.raids.faced.filter((raid) => raid.away));
   const lost = faced.filter((raid) => !raid.won);
+  // The raids met at home once the ship was back (M38d's fix).
+  const met = flown.flatMap((out) => out.raids.faced.slice(out.prior).filter((raid) => !raid.away));
   const defences = (out, won) => out.steps.filter((step) => step.kind === 'boarding' && step.dir === 'you' && (won === undefined || step.won === won)).length;
   return (
     `The voyage out (M38d): flown in ${flown.length} of ${done.length}, home in ${runs((out) => out.back)}; ${of((out) => out.crew.length)} aboard, ${of((out) => out.home.length)} at home; ` +
@@ -1560,8 +1612,8 @@ export function outSummary(done) {
     `hostile ships ${of((out) => out.tally.approaches)}, boarding us ${sum((out) => out.tally.approachesLost)} times, fought off ${sum((out) => defences(out, true))} of ${sum((out) => defences(out))}; the hunters met in ${runs((out) => out.tally.hunts > 0)} (${sum((out) => out.tally.hunts)} times); heat at the end ${of((out) => out.tally.heat[1])}, at most ${of((out) => out.tally.peak)}. ` +
     `Station jobs ${of((out) => out.tally.stationJobs)}, in ${runs((out) => out.tally.stationJobs > 0)} runs, ${sum((out) => out.tally.stationJobsWon)} of ${sum((out) => out.tally.stationJobs)} done, paying ${of((out) => out.tally.jobCredits)}; ` +
     `credits spent ${of((out) => spentOf(out.tally))}; parts bought ${of((out) => out.tally.yardBought)}, in ${runs((out) => out.tally.yardBought > 0)} runs; fitted ${of((out) => out.tally.fitted)}; signed on ${sum((out) => out.tally.hired)}; credits ${of((out) => out.credits[0])} out, ${of((out) => out.credits[1])} home. ` +
-    `At home: found in ${runs((out) => out.colony.found > 0)} runs; raids faced while away ${faced.length}, lost ${lost.length} (in ${runs((out) => out.raids.faced.some((raid) => raid.away && !raid.won))} runs), ${faced.filter((raid) => !raid.home).length} with nobody home; fed all the while in ${runs((out) => out.colony.hungry === 0)} of ${flown.length}. ` +
-    `Flying out, food spoiled in ${runs((out) => out.flown.plan.food.spoils > 0)} runs (${sum((out) => out.flown.plan.food.spoils)} in all), materials lost in ${runs((out) => out.flown.plan.materials.lost > 0)} (${sum((out) => out.flown.plan.materials.lost)} in all).`
+    `At home: found in ${runs((out) => out.colony.found > 0)} runs, calling the ship home in ${runs((out) => out.back?.called)}; raids faced while away ${faced.length}, lost ${lost.length} (in ${runs((out) => out.raids.faced.some((raid) => raid.away && !raid.won))} runs), ${faced.filter((raid) => !raid.home).length} with nobody home; met at home once back ${met.length}, won ${met.filter((raid) => raid.won).length}; fed all the while in ${runs((out) => out.colony.hungry === 0)} of ${flown.length}; the mines' digging past the storehouses lost in ${runs((out) => out.colony.dugLost > 0)} runs (${sum((out) => out.colony.dugLost)} in all). ` +
+    `Before flying out, ${of((out) => out.stocked)} days stocking the holds, full in ${runs((out) => out.full)} runs; flying out, food spoiled in ${runs((out) => out.flown.plan.food.spoils > 0)} runs (${sum((out) => out.flown.plan.food.spoils)} in all).`
   );
 }
 

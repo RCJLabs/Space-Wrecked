@@ -9,7 +9,7 @@ import { crewRoom } from '../src/sim/crew.js';
 import { leaveSector } from '../src/sim/travel.js';
 import { voyageHome, voyageOut, voyagePlan } from '../src/sim/voyage.js';
 import { continueText, heatText } from '../src/ui/campaign/hubText.js';
-import { sectorText } from '../src/ui/campaign/sectorText.js';
+import { jumpText, sectorText } from '../src/ui/campaign/sectorText.js';
 import { colonyPanelText, firstVoyagers, homeText, landerComing, outText, voyageReport } from '../src/ui/campaign/voyageText.js';
 import { rules } from './battleKit.js';
 import { settled } from './colonyKit.js';
@@ -36,7 +36,7 @@ test("Fly out's plan: who goes and who stays, the food split, the jump, the chec
     title: 'Voyage from Copperhill',
     lines: [
       'Aboard: Fen Lindqvist and Quill Petrov · Lark Ibarra stays at Copperhill',
-      'Food 50: the holds take 30, the storehouses keep 20 of 20',
+      'Food 50: the holds take 30, enough for 15 jumps; the storehouses keep 20 of 20',
       'Into a system nobody has charted: 2 supplies, heat +2 to 14',
       // The kit's crew sleeps aboard the landed ship: whoever stays has no
       // bed or air without it.
@@ -45,7 +45,7 @@ test("Fly out's plan: who goes and who stays, the food split, the jump, the chec
     ],
     bad: 0,
     ok: true,
-    ask: 'Fly out with Fen Lindqvist and Quill Petrov, Lark Ibarra at home: the holds take 30 food and the colony keeps 20. Tap again to fly.',
+    ask: "Fly out with Fen Lindqvist and Quill Petrov, Lark Ibarra at home: the holds take 30 food, 15 jumps' worth, and the colony keeps 20. Tap again to fly.",
     why: null,
   });
   // With a shelter standing for them, no such line.
@@ -61,14 +61,22 @@ test("Fly out's plan: who goes and who stays, the food split, the jump, the chec
   assert.equal(crowded.ok, false);
   assert.ok(crowded.bad >= 1);
   assert.ok(crowded.lines.slice(-crowded.bad).every((line) => !/^(Aboard|Food|Into)/.test(line)), crowded.lines.join(' / '));
-  assert.ok(crowded.lines.slice(0, -crowded.bad).every((line) => /^(Aboard|Food|Into)|materials won't keep|no bed and air/.test(line)), crowded.lines.join(' / '));
-  // Without a storehouse, the first tap says what spoils and what is lost.
+  assert.ok(crowded.lines.slice(0, -crowded.bad).every((line) => /^(Aboard|Food|Into|The mines'|No storehouse)|no bed and air/.test(line)), crowded.lines.join(' / '));
+  // Without a storehouse, the first tap says what spoils; the materials
+  // stay, and nothing says they are lost (M38d's fix).
   const bare = { ...home, colony: { ...home.colony, buildings: [], nextUid: 1 } };
   const lost = outText(voyagePlan(bare, rules, [1, 2, 3]), bare, rules);
   assert.equal(lost.lines[0], 'Aboard: Fen Lindqvist, Quill Petrov and Lark Ibarra · Nobody stays at Copperhill');
-  assert.equal(lost.lines[1], 'Food 50: the holds take 30, the storehouses keep 0 of 0, 20 spoil');
-  assert.equal(lost.lines[2], "20 materials won't keep: the storehouses hold 0");
-  assert.match(lost.ask, /; 20 food spoils and 20 materials are lost\. Tap again to fly\.$/);
+  assert.equal(lost.lines[1], 'Food 50: the holds take 30, enough for 10 jumps; the storehouses keep 0 of 0, 20 spoil');
+  assert.match(lost.lines[2], /^Into a system nobody has charted: /);
+  assert.ok(!lost.lines.some((line) => /materials/.test(line)));
+  assert.match(lost.ask, /: the holds take 30 food, 10 jumps' worth, and the colony keeps 0; 20 food spoils\. Tap again to fly\.$/);
+  // A mine at home: what it digs while the ship is away keeps up to the
+  // storehouse's room, and with none it is lost.
+  const mine = (campaign) => ({ ...campaign, colony: { ...campaign.colony, buildings: [...campaign.colony.buildings, { uid: 9, type: 'mine', x: 4, y: 8, rot: 0 }], nextUid: 10 } });
+  const dug = voyagePlan(mine(home), rules, [1, 2]).materials.dug;
+  assert.equal(outText(voyagePlan(mine(home), rules, [1, 2]), mine(home), rules).lines[2], `The mines' ${dug} a day keeps up to the storehouses' 20 while the ship is away`);
+  assert.equal(outText(voyagePlan(mine(bare), rules, [1, 2]), mine(bare), rules).lines[2], `No storehouse: the mines' ${dug} a day is lost while the ship is away`);
   // An empty larder: the first jump goes hungry, and both taps say so.
   const empty = { ...home, supplies: 0 };
   const starved = outText(voyagePlan(empty, rules, [1, 2]), empty, rules);
@@ -117,14 +125,27 @@ test("the chart out in the systems past the colony's: where it is, the colony, F
   assert.equal(text.home.label, 'Fly home');
   assert.equal(text.defend, null);
   assert.equal(text.settle, null, 'a voyage passes worlds; settling another is to come');
+  // The way in and the jump point say a system's words, not a sector's
+  // (M38d's fix).
+  assert.equal(away.run.at, away.run.sector.start);
+  assert.equal(text.here.text, rules.worlds.voyage.text);
+  assert.equal(jumpText(away, rules, away.run.sector.exit).node.text, rules.worlds.voyage.exit);
+  assert.doesNotMatch(`${text.here.text} ${rules.worlds.voyage.exit}`, /sector/);
+  // So does the transponder swap at a station out there.
+  const station = { ...away, credits: 500, heat: 30, run: { ...away.run, at: away.run.sector.nodes.find((node) => node.type === 'station').id } };
+  assert.match(sectorText(station, rules).swap.text, /clean transponder, once a system:/);
   // The hunters' words for heat, not the colony's.
   assert.equal(heatText(away, rules).line, heatText({ ...away, act: 2, colony: null }, rules).line);
   assert.notEqual(heatText(home, rules).line, heatText(away, rules).line);
   assert.equal(continueText(away, rules), `Act 3 · ${away.run.sector.name}, out from Copperhill`);
   // A lander coming, then down.
   const coming = landing(away, away.colony.day + 2);
-  assert.deepEqual(landerComing(coming, rules), { text: 'Con-Reg Recovery found Copperhill: their lander comes down in 2 days. Fly home to meet it, or those at home fight it.', tone: 'warn' });
+  assert.deepEqual(landerComing(coming, rules), { text: 'Con-Reg Recovery found Copperhill: their lander comes down in 2 days. Fly home now (1 day) to meet it, or those at home fight it.', tone: 'warn' });
   assert.deepEqual(sectorText(coming, rules).hint, landerComing(coming, rules));
+  // Too far out to meet it (M38d's fix: the player jumped on after the
+  // warning): the hint says so.
+  const farOut = { ...coming, colony: { ...coming.colony, voyage: { ...coming.colony.voyage, out: 4 } } };
+  assert.equal(landerComing(farOut, rules).text, 'Con-Reg Recovery found Copperhill: their lander comes down in 2 days. Flying home takes 4 days, too long to meet it: those at home fight it.');
   const down = landing(away, away.colony.day);
   const held = sectorText(down, rules);
   assert.ok(held.defend.ok);

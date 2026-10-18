@@ -1,6 +1,7 @@
-// The transponder swap (ROADMAP §4.4, M24): at a station, once a sector,
-// the ship's transponder is swapped for one with a clean registration, and
-// the pursuer loses the trail: heat falls swapHeat, for swapPrice credits.
+// The transponder swap (ROADMAP §4.4, M24): at a station, once a sector (on
+// a voyage, M38d, once a system), the ship's transponder is swapped for one
+// with a clean registration, and the pursuer loses the trail: heat falls
+// swapHeat, for swapPrice credits.
 // A swap docks the ship at the station first (travel.js dockShip), so at
 // one of the pursuer's side the docking heat comes before the swap's fall.
 // The run keeps whether it has been swapped in this sector (run.swapped,
@@ -14,7 +15,7 @@ import { dockShip, hereOf, onTheRun, tradeHeat } from './travel.js';
 // after it) }, or { ok: false, error }.
 export function swapPlan(campaign, rules) {
   if (!campaign.run || !onTheRun(campaign, rules) || hereOf(campaign)?.type !== 'station') return { ok: false, error: 'Transponders are swapped at stations.' };
-  if (campaign.run.swapped) return { ok: false, error: 'The transponder has been swapped in this sector already.' };
+  if (campaign.run.swapped) return { ok: false, error: `The transponder has been swapped in this ${campaign.colony?.voyage ? 'system' : 'sector'} already.` };
   if (campaign.heat <= 0) return { ok: false, error: 'There is no heat to lose.' };
   const price = rules.balance.swapPrice;
   if (campaign.credits < price) return { ok: false, error: `A swap is ${price} credits.` };

@@ -5,8 +5,10 @@
 // The stores split (away.js): the ship's holds take their fill of the food
 // (travel.js supplyCapacity, for those aboard), the colony keeps the rest
 // up to its storehouses' room (colony.js storesOf, the ship away), and what
-// neither holds spoils; the materials stay, kept up to the storehouses too.
-// Credits, the parts on hand and the spare weapons go with the ship. Then
+// neither holds spoils. The materials stay where they lie, all of them
+// (M38d's fix), though while the ship is away the mines add to them only
+// up to the storehouses' room (days.js). Credits, the parts on hand and the
+// spare weapons go with the ship. Then
 // the ship jumps into a system never charted (travel.js enterBeyond): a
 // jump's supplies and heat, and the hunters may wait at its way in, as
 // leaving a sector. Out there everything of act 2's run works for those
@@ -30,7 +32,8 @@
 //   aboard   { crew, supplies }: in home's place while those at home fight
 //            a raid (away.js homeFront)
 // The flags count the voyages, the systems entered past the colony's
-// (travel.js), the landings home, and what the split and the landing lose.
+// (travel.js), the landings home, and the food the split and the landing
+// spoil.
 import { atColony } from './acts.js';
 import { voyageOf } from './away.js';
 import { shipChecklist } from './campaign.js';
@@ -38,7 +41,7 @@ import { colonyStats, storesOf } from './colony.js';
 import { withPlaces } from './expeditions.js';
 import { tally } from './flags.js';
 import { withHeat } from './heat.js';
-import { downText, raidDown } from './raids.js';
+import { downText, flightHome, raidDown } from './raids.js';
 import { enterBeyond, holdOf, homewardDay, jumpSupplies, onTheRun, onwardCosts, supplyCapacity } from './travel.js';
 
 // What flying out with crew (ids) would come to: { ok, error (why the ship
@@ -47,8 +50,10 @@ import { enterBeyond, holdOf, homewardDay, jumpSupplies, onTheRun, onwardCosts, 
 // colony, who won't rest while the ship is away: colony.js colonyStats),
 // checks (the flight checklist with them aboard), food ({ now, ship (what
 // the holds take), colony (what the colony keeps), room (its
-// storehouses'), spoils }), materials ({ now, kept, lost }), jump (the jump
-// into the next system: travel.js onwardCosts, kind 'beyond') }. With
+// storehouses'), spoils }), materials ({ now, dug (what the mines dig a
+// day on the colony's own power), room (the most the mines fill them to
+// while the ship is away: the storehouses') }), jump (the jump into the
+// next system: travel.js onwardCosts, kind 'beyond') }. With
 // nothing to plan (away from the colony, the ship away, a lander down, no
 // crew picked): { ok: false, error } alone.
 export function voyagePlan(campaign, rules, crew) {
@@ -64,20 +69,20 @@ export function voyagePlan(campaign, rules, crew) {
   const failing = checks.find((line) => line.ok !== true);
   const food = campaign.supplies;
   const ship = Math.min(food, supplyCapacity(campaign.ship, rules, aboard));
-  const split = (kept, materials) => ({ ...campaign, crew: aboard, supplies: ship, colony: { ...campaign.colony, materials, voyage: { out: 0, homing: null, home: { crew: home, food: kept } } } });
-  const room = storesOf(split(0, 0), rules).colony;
+  const split = (kept) => ({ ...campaign, crew: aboard, supplies: ship, colony: { ...campaign.colony, voyage: { out: 0, homing: null, home: { crew: home, food: kept } } } });
+  const room = storesOf(split(0), rules).colony;
   const kept = Math.min(food - ship, room);
-  const materials = Math.min(campaign.colony.materials, room);
+  const stats = colonyStats(split(kept), rules);
   return {
     ok: !failing,
     error: failing ? `The ship can't fly with ${aboard.length} aboard: ${lowerFirst(failing.text)}.` : null,
     crew: aboard.map((member) => member.id),
     home: home.map((member) => member.id),
-    rough: colonyStats(split(kept, materials), rules).rough,
+    rough: stats.rough,
     checks,
     food: { now: food, ship, colony: kept, room, spoils: food - ship - kept },
-    materials: { now: campaign.colony.materials, kept: materials, lost: campaign.colony.materials - materials },
-    jump: { kind: 'beyond', ...onwardCosts(split(kept, materials), rules) },
+    materials: { now: campaign.colony.materials, dug: stats.made.materials, room },
+    jump: { kind: 'beyond', ...onwardCosts(split(kept), rules) },
   };
 }
 
@@ -90,13 +95,13 @@ export function voyageOut(campaign, rules, crew) {
   if (!plan.ok) return { ok: false, error: plan.error };
   const picked = new Set(plan.crew);
   const home = { crew: campaign.crew.filter((member) => !picked.has(member.id)), food: plan.food.colony };
-  const flags = tally(campaign.flags, { voyages: 1, foodLost: plan.food.spoils, materialsLost: plan.materials.lost });
+  const flags = tally(campaign.flags, { voyages: 1, foodLost: plan.food.spoils });
   const split = {
     ...campaign,
     crew: campaign.crew.filter((member) => picked.has(member.id)),
     supplies: plan.food.ship,
     flags,
-    colony: { ...campaign.colony, materials: plan.materials.kept, voyage: { out: 0, homing: null, home } },
+    colony: { ...campaign.colony, voyage: { out: 0, homing: null, home } },
   };
   const on = enterBeyond(split, rules, plan.jump, 1);
   return { ok: true, plan, campaign: on.campaign, hunt: on.hunt, day: on.day };
@@ -119,7 +124,7 @@ export function voyageHomePlan(campaign, rules) {
     const held = holdOf(campaign, rules);
     if (held) return { ok: false, error: held };
   }
-  const days = voyage.homing ?? voyage.out;
+  const days = flightHome(campaign);
   const heat = voyage.homing ? 0 : withHeat(campaign.heat, rules.balance.jumpHeat) - campaign.heat;
   const ahead = flyHome({ ...campaign, heat: campaign.heat + heat }, rules, days, { stop: false });
   const landed = land(ahead.campaign, rules);

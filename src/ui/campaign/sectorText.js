@@ -156,7 +156,7 @@ export function sectorText(campaign, rules) {
       quest: node.quest && !done.includes(node.id) ? questNodeText(node, rules)?.name ?? null : null,
     })),
     links: sector.links.map(([a, b]) => ({ a, b, near: a === at || b === at })),
-    here: placeText(sector, at, rules, { done: done.includes(at) }),
+    here: placeText(campaign, at, rules, { done: done.includes(at) }),
     world: sector.nodes[at].world ? worldSaid(sector.nodes[at].world, rules, surveyed.includes(at)) : null,
     crew: crewText(campaign, rules),
     sides: sidesText(campaign, rules),
@@ -220,11 +220,17 @@ export function nodeText(node, rules, { known = true, done = false } = {}) {
   return { name: node.name, kind: event ? `${what}: ${event.title}` : done && node.event ? `${what}, been and done` : what, text: quest?.line ?? kind?.text ?? '' };
 }
 
-// A node of the sector as nodeText says it; the way into the system past
-// the charts (M25) says the system's words.
-function placeText(sector, id, rules, options) {
+// A node of the ship's map as nodeText says it; the way into the system
+// past the charts (M25) says the system's words, and on a voyage (M38d's
+// fix) the way in and the jump point say a voyage's system's.
+function placeText(campaign, id, rules, options) {
+  const { sector } = campaign.run;
   const said = nodeText(sector.nodes[id], rules, options);
-  return sector.system && id === sector.start ? { ...said, text: rules.worlds?.system.text ?? said.text } : said;
+  if (sector.system && id === sector.start) return { ...said, text: rules.worlds?.system.text ?? said.text };
+  const voyage = campaign.colony?.voyage ? rules.worlds?.voyage : null;
+  if (voyage && id === sector.start) return { ...said, text: voyage.text ?? said.text };
+  if (voyage && id === sector.exit && options.known !== false) return { ...said, text: voyage.exit ?? said.text };
+  return said;
 }
 
 // A world's kind by name: "Ice world".
@@ -412,7 +418,7 @@ function scanText(campaign, rules) {
 export function jumpText(campaign, rules, id) {
   const { sector, at } = campaign.run;
   const target = sector.nodes[id];
-  const node = placeText(sector, id, rules, { known: knownNodes(campaign.run, rules).has(id), done: campaign.run.done.includes(id) });
+  const node = placeText(campaign, id, rules, { known: knownNodes(campaign.run, rules).has(id), done: campaign.run.done.includes(id) });
   const plan = jumpPlan(campaign, rules, id);
   const world = target.world ? worldSaid(target.world, rules, campaign.run.surveyed.includes(id)) : null;
   if (!plan.ok) return { ok: false, long: false, label: 'Jump', head: plan.check ? "Can't leave" : 'Out of reach', title: target.name, node, lines: [plan.error], tone: plan.check ? 'bad' : 'info', way: [], left: 0, hungry: false, hunt: 0, world };
@@ -507,7 +513,7 @@ function swapText(campaign, rules) {
     ok: true,
     label,
     ask: `Swap for ${price}?`,
-    text: `${logged ? `${logged} Then a` : 'A'} clean transponder, once a sector: heat −${-plan.heat} to ${docked + plan.heat}, for ${price} credits. Tap again to swap.`,
+    text: `${logged ? `${logged} Then a` : 'A'} clean transponder, once a ${campaign.colony?.voyage ? 'system' : 'sector'}: heat −${-plan.heat} to ${docked + plan.heat}, for ${price} credits. Tap again to swap.`,
     why: null,
   };
 }

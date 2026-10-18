@@ -12,17 +12,18 @@
 // one store. Saves are at v36.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { seedFrom } from '../src/core/rng.js';
 import { makeSave, MIGRATIONS, parseSave, SAVE_VERSION } from '../src/core/save.js';
 import { atColony, atStation } from '../src/sim/acts.js';
 import { MAX_OUT, nextCrewId, wholeCrew } from '../src/sim/away.js';
 import { campaignProblems, crewAboard, HEAT_MAX } from '../src/sim/campaign.js';
 import { colonyStats, storesOf } from '../src/sim/colony.js';
 import { crewRoom } from '../src/sim/crew.js';
-import { dayPlan, nextDay } from '../src/sim/days.js';
+import { dayPlan, nextDay, voyageDay } from '../src/sim/days.js';
 import { otherWorlds } from '../src/sim/expeditions.js';
 import { generateSector } from '../src/sim/gen/sector.js';
 import { beyondSystem } from '../src/sim/gen/system.js';
-import { endColonyRaid, faceRaid, landingPlan } from '../src/sim/raids.js';
+import { endColonyRaid, faceRaid, flightHome, landingPlan, raidDown } from '../src/sim/raids.js';
 import { dismissPlan, hireRecruit, recruitsAt } from '../src/sim/recruits.js';
 import { regroup } from '../src/sim/regroup.js';
 import { campaignScreen, initialState, reduce, saveData } from '../src/sim/root.js';
@@ -85,18 +86,20 @@ test('Fly out plans who goes and who stays, the flight checks for those aboard, 
   // spoils.
   const holds = supplyCapacity(home.ship, rules, home.crew.slice(0, 2));
   assert.deepEqual(plan.food, { now: 50, ship: holds, colony: 50 - holds, room: 20, spoils: 0 });
-  assert.deepEqual(plan.materials, { now: home.colony.materials, kept: home.colony.materials, lost: 0 });
+  // The materials stay, all of them (M38d's fix): the kit's colony has no
+  // mine digging while the ship is away, and its storehouse keeps 20.
+  assert.deepEqual(plan.materials, { now: home.colony.materials, dug: 0, room: 20 });
   // The jump into the next system: a jump's supplies for those aboard and a
   // jump's heat.
   assert.equal(plan.jump.kind, 'beyond');
   assert.equal(plan.jump.supplies, 2 * rules.balance.jumpSupplies);
   assert.equal(plan.jump.heat, jumpHeat);
 
-  // Without a storehouse, what the holds can't take spoils, and the
-  // materials past the colony's room are lost, as the first tap says.
+  // Without a storehouse, what the holds can't take spoils, as the first tap
+  // says; the materials stay all the same.
   const bare = voyagePlan({ ...settled(1), supplies: 50 }, rules, ids);
   assert.deepEqual(bare.food, { now: 50, ship: holds, colony: 0, room: 0, spoils: 50 - holds });
-  assert.deepEqual(bare.materials, { now: home.colony.materials, kept: 0, lost: home.colony.materials });
+  assert.deepEqual(bare.materials, { now: home.colony.materials, dug: 0, room: 0 });
 
   // The flight checks count those aboard: more than the ship beds and
   // breathes for can't go.
@@ -134,7 +137,7 @@ test('flying out splits the crew and the stores, takes the credits and parts, an
   const holds = supplyCapacity(home.ship, rules, home.crew.slice(0, 2));
   assert.equal(campaign.supplies, holds - 2 * rules.balance.jumpSupplies);
   assert.equal(voyage.home.food, 50 - holds - rules.balance.jumpSupplies);
-  assert.equal(campaign.colony.materials, home.colony.materials, 'the materials stay, as far as the storehouse keeps them');
+  assert.equal(campaign.colony.materials, home.colony.materials, 'the materials stay');
   // Credits, parts on hand and spare weapons go with the ship.
   assert.equal(campaign.credits, home.credits);
   assert.deepEqual(campaign.parts, home.parts);
@@ -167,6 +170,68 @@ test('flying out splits the crew and the stores, takes the credits and parts, an
   assert.equal(next.screen, 'sector');
   assert.deepEqual(next.campaign, campaign);
   assert.equal(reduce(state, { type: 'campaign/voyage/out', crew: [], rules }), state, 'turned down: nothing changes');
+});
+
+test("the materials keep while the ship is away, past the storehouses' room too, and the mines fill them only up to it (M38d's fix)", () => {
+  // A mine, which digs the world's ore a day and needs no power.
+  const mined = { ...home, colony: { ...home.colony, buildings: [...home.colony.buildings, { uid: home.colony.nextUid, type: 'mine', x: 4, y: 4, rot: 0 }], nextUid: home.colony.nextUid + 1 } };
+  const { dug } = voyagePlan(mined, rules, ids.slice(0, 2)).materials;
+  assert.ok(dug > 0);
+  assert.equal(dug, colonyStats(voyageOut(mined, rules, ids.slice(0, 2)).campaign, rules).made.materials);
+  const lostOf = (campaign) => campaign.flags.materialsLost ?? 0;
+  // Past the storehouse's 20: none lost flying out, and the jump's day at
+  // home keeps them, the mine's digging lost.
+  const heaped = { ...mined, colony: { ...mined.colony, materials: 45 } };
+  const out = voyageOut(heaped, rules, ids.slice(0, 2)).campaign;
+  assert.equal(out.colony.materials, 45);
+  assert.equal(lostOf(out) - lostOf(heaped), dug);
+  // Short of the room, the mine fills them up to it, and no further.
+  const low = voyageOut({ ...mined, colony: { ...mined.colony, materials: 20 - 1 } }, rules, ids.slice(0, 2)).campaign;
+  assert.equal(low.colony.materials, 20);
+  // Home, the room the landed ship's holds give is the colony's again, and
+  // the mine digs into it (with the whole crew home, what they add too).
+  const back = voyageHome(out, rules).campaign;
+  assert.equal(back.colony.materials, 45);
+  const room = storesOf(back, rules).total;
+  const digs = colonyStats(back, rules).made.materials;
+  assert.ok(room > 45 + digs);
+  assert.equal(nextDay(back, rules).campaign.colony.materials, 45 + digs);
+  // At home the stores' room is all they keep, as since M27.
+  const crammed = { ...mined, colony: { ...mined.colony, materials: room } };
+  assert.equal(nextDay(crammed, rules).campaign.colony.materials, storesOf(crammed, rules).total);
+});
+
+test("a raid found while the ship is away comes down no sooner than the flight home would land (M38d's fix)", () => {
+  // The first seed that finds the colony on the day a jump passes at home.
+  const found = (campaign) => {
+    for (let n = 1; n <= 500; n++) {
+      const passed = voyageDay({ ...campaign, rng: seedFrom(`raid ${n}`) }, rules);
+      if (passed.day?.found) return passed;
+    }
+    return null;
+  };
+  // One system out: the warning's days, as at home.
+  const near = found({ ...away, heat: HEAT_MAX });
+  assert.ok(near, 'some seed finds the colony');
+  assert.deepEqual(near.campaign.colony.raid, { found: away.colony.day, lands: away.colony.day + 1 + raidWarning });
+  assert.equal(flightHome(near.campaign), 1);
+  // Five out: five days, the flight home's.
+  const out = 5;
+  const far = { ...away, heat: HEAT_MAX, colony: { ...away.colony, voyage: { ...away.colony.voyage, out } } };
+  const farFound = found(far);
+  assert.ok(farFound);
+  assert.deepEqual(farFound.campaign.colony.raid, { found: far.colony.day, lands: far.colony.day + 1 + Math.max(raidWarning, out) });
+  // Flying home at once lands the day it comes down: no lander stops it,
+  // and everyone is home to face it.
+  const flown = voyageHome(farFound.campaign, rules);
+  assert.ok(flown.ok, flown.error);
+  assert.equal(flown.landed, true);
+  assert.equal(flown.days.length, out);
+  assert.equal(raidDown(flown.campaign), true);
+  assert.deepEqual(landingPlan(flown.campaign, rules).defenders, ids);
+  // Found on the way home, the same: the lander comes once the ship is in.
+  const homing = { ...far, colony: { ...far.colony, voyage: { ...far.colony.voyage, homing: 2 } } };
+  assert.equal(found(homing).campaign.colony.raid.lands, homing.colony.day + 1 + raidWarning);
 });
 
 test("a voyage's systems are charts as act 2's sectors are, with worlds among their nodes, named past the run's names", () => {
