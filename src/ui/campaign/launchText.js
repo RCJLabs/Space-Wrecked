@@ -2,6 +2,7 @@
 // M25) and how the run went, which the colony keeps (colonyText.js). rules
 // are the content tables (src/sim/defs.js).
 import { runLevel } from '../../sim/heat.js';
+import { ordinal } from './colonyListText.js';
 import { actTitle, partsText, RUN_LEVEL_NAMES } from './hubText.js';
 
 // What the launch shows, for a campaign that has just launched:
@@ -21,14 +22,16 @@ export function launchText(campaign, rules) {
 
 // What the landing shows, for a campaign that has just settled a world:
 //   world    "Greenhaven · Ice world": where the ship comes down
-//   to       "Act 3 · The colony": the act it is in now
+//   to       "Act 3 · The colony": the act it is in now; for a colony
+//            settled on a voyage (M38e), "A new colony · The crew's second"
 //   line     its kind's words for the landing (data/worlds.json)
 export function landingText(campaign, rules) {
   const world = campaign.colony?.world;
   const kind = world && rules.worlds?.kinds.get(world.kind);
+  const id = campaign.colony?.id ?? 1;
   return {
     world: world ? `${world.name} · ${kind?.name ?? world.kind}` : '',
-    to: actTitle(campaign.act, rules),
+    to: id > 1 ? `A new colony · The crew's ${ordinal(id)}` : actTitle(campaign.act, rules),
     line: kind?.landing ?? '',
   };
 }

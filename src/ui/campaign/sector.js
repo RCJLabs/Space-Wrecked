@@ -53,7 +53,7 @@ import { loadContent } from '../../platform/content.js';
 import { palette } from '../../render/palette.js';
 import { faceRaid } from '../../sim/raids.js';
 import { fightSettings } from '../../sim/settings.js';
-import { voyageHome } from '../../sim/voyage.js';
+import { flyTo, voyageHome } from '../../sim/voyage.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
@@ -62,6 +62,7 @@ import { crewCardText, crewHeading, crewSaid } from './crewText.js';
 import { createEventCard } from './eventCard.js';
 import { eventText, resultText } from './eventText.js';
 import { crewRows, heatChip, listRows, panel, questRows, sideRows } from './hubParts.js';
+import { flightReport } from './colonyListText.js';
 import { landingReport } from './raidText.js';
 import { jumpText, sectorText } from './sectorText.js';
 import { voyageReport } from './voyageText.js';
@@ -156,11 +157,13 @@ export const sectorScreen = {
     const colonyPanel = node('section', 'hgr-panel sct-colony-panel');
     colonyPanel.append(colonyTitle, colonyRows, colonyLine);
     colonyPanel.hidden = true;
+    // The other colonies (M38e), a panel each with Fly to, under it.
+    const othersBox = node('div', 'sct-others');
     // The crew's standing with each side (M33), and the quests (M33b).
     const sideList = node('ul', 'hgr-sides');
     const questList = node('ul', 'hgr-quests');
     const side = node('div', 'hgr-side');
-    side.append(crewPanel, shipPanel, colonyPanel, panel('Sides', sideList), panel('Quests', questList));
+    side.append(crewPanel, shipPanel, colonyPanel, othersBox, panel('Sides', sideList), panel('Quests', questList));
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const hint = node('p', 'hgr-hint', 'Loading…');
@@ -193,7 +196,9 @@ export const sectorScreen = {
     let defs = null;
     let alive = true;
     let picked = null; // the node picked on the map: its jump shows
-    let armed = null; // 'on', 'scan', 'rest', 'swap', 'repair', 'patch', 'survey', 'settle', 'home', 'defend', the supplies a Buy is for, a rack's weapon ('rack:<slot>'), or a crew card button's key, after its first tap
+    let armed = null; // 'on', 'scan', 'rest', 'swap', 'repair', 'patch', 'survey', 'settle', 'home', 'defend', the supplies a Buy is for, a rack's weapon ('rack:<slot>'), a colony's Fly to ('fly:<id>', M38e), or a crew card button's key, after its first tap
+    let others = new Map(); // the other colonies' panels (M38e), by number: { panel, title, rows, line, button, detach }
+    let othersShown = null; // the numbers of those drawn
     let report = null; // { campaign, words }: what Defend or Fly home came to, shown until the campaign moves on
     let crewOpen = false; // the crew card is up
     let closed = null; // the result put away with Carry on (resultKey)
@@ -221,6 +226,7 @@ export const sectorScreen = {
       () => crewCard.detach(),
       () => nodeButtons.forEach((entry) => entry.detach()),
       () => buyButtons.forEach((entry) => entry.detach()),
+      () => others.forEach((entry) => entry.detach()),
       game.subscribe(() => alive && render()),
     ];
 
@@ -373,6 +379,7 @@ export const sectorScreen = {
         homeButton.setAttribute('aria-label', home.ok ? home.ask.replace(' Tap again to fly.', '') : `${home.label}. ${home.why}`);
       }
       homeButton.dataset.armed = String(armed === 'home');
+      showOthers(text.colonies, covered || Boolean(plan));
       if (!defend?.ok && armed === 'defend') disarm();
       defendButton.hidden = !defend || covered;
       defendButton.disabled = !defend?.ok;
@@ -387,6 +394,8 @@ export const sectorScreen = {
       if (armed === 'swap' && !text.swap?.ok) disarm();
       const racked = typeof armed === 'string' && armed.startsWith('rack:') ? text.rack?.items.find((item) => item.key === armed && item.ok) : null;
       if (typeof armed === 'string' && armed.startsWith('rack:') && !racked) disarm();
+      const flying = typeof armed === 'string' && armed.startsWith('fly:') ? text.colonies.find((colony) => `fly:${colony.id}` === armed && colony.fly.ok) : null;
+      if (typeof armed === 'string' && armed.startsWith('fly:') && !flying) disarm();
       const said = crew ? (crewAsk ?? crew.hint)
         : armed === 'on' ? { tone: leave.tone === 'bad' ? 'bad' : 'warn', text: `${leave.lines.join(' ')} Tap Jump on again.` }
         : armed === 'scan' ? { tone: 'warn', text: scan.text }
@@ -397,6 +406,7 @@ export const sectorScreen = {
         : armed === 'repair' ? { tone: 'warn', text: text.repair.text }
         : armed === 'patch' ? { tone: 'warn', text: text.patch.text }
         : armed === 'home' ? { tone: 'warn', text: home.ask }
+        : flying ? { tone: 'warn', text: flying.fly.ask }
         : armed === 'defend' ? { tone: 'warn', text: defend.ask }
         : buy ? { tone: 'warn', text: buy.text }
         : racked ? { tone: 'warn', text: racked.text }
@@ -696,6 +706,52 @@ export const sectorScreen = {
       const result = voyageHome(campaign, defs);
       game.dispatch({ type: 'campaign/voyage/home', rules: defs });
       report = { campaign: game.getState().campaign, words: result.ok ? voyageReport(result, campaign, defs) : { tone: 'bad', text: result.error } };
+    }
+
+    // The other colonies' panels (M38e): made again when which colonies
+    // there are changes, else their words brought up to date; each with Fly
+    // to in two taps, hidden while hidden is.
+    function showOthers(list, hidden) {
+      const ids = list.map((colony) => colony.id).join();
+      if (ids !== othersShown) {
+        others.forEach((entry) => entry.detach());
+        others = new Map(list.map((colony) => {
+          const title = node('h2');
+          const rows = node('dl', 'hgr-hold');
+          const line = node('p', 'sct-colony-line');
+          const button = toolButton('sct-fly', icons.home, 'Fly to');
+          const box = node('section', 'hgr-panel sct-colony-panel sct-other');
+          box.dataset.colony = String(colony.id);
+          box.append(title, rows, line, button);
+          return [colony.id, { panel: box, title, rows, line, button, detach: onTap(button, () => twoTaps(`fly:${colony.id}`, () => flyThere(colony.id))) }];
+        }));
+        othersBox.replaceChildren(...[...others.values()].map((entry) => entry.panel));
+        othersShown = ids;
+      }
+      for (const colony of list) {
+        const entry = others.get(colony.id);
+        const key = `fly:${colony.id}`;
+        setText(entry.title, colony.title);
+        entry.rows.replaceChildren(...listRows(colony.rows));
+        setText(entry.line, colony.line);
+        entry.panel.dataset.tone = colony.tone;
+        entry.button.hidden = hidden;
+        entry.button.disabled = !colony.fly.ok;
+        setText(entry.button.querySelector('span'), armed === key ? 'Fly to?' : 'Fly to');
+        entry.button.dataset.armed = String(armed === key);
+        entry.button.setAttribute('aria-label', colony.fly.ok ? colony.fly.ask.replace(' Tap again to fly.', '') : `Fly to ${colony.name}. ${colony.fly.why}`);
+      }
+    }
+
+    // Fly to's second tap (M38e): the flight's days pass, and the ship
+    // lands at that colony, whose screen opens, or a lander stops it and the
+    // hint says so.
+    function flyThere(id) {
+      const { campaign } = game.getState();
+      if (!defs || !campaign) return;
+      const result = flyTo(campaign, defs, id);
+      game.dispatch({ type: 'campaign/voyage/to', id, rules: defs });
+      report = { campaign: game.getState().campaign, words: result.ok ? flightReport(result, campaign, defs) : { tone: 'bad', text: result.error } };
     }
 
     // Defend's second tap (M38d): the colony's guns fire at the lander, and

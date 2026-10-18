@@ -173,7 +173,8 @@ export function jobsText(flags, none = 'None yet') {
 // loading (null): then the act goes without its home, and a job without
 // its name. On the run, the sector says where, or the system past the
 // charts; once a world is settled (M25), the world; out on a voyage from it
-// (M38d), the system the ship is in.
+// (M38d), the system the ship is in; on a stopped flight to another colony
+// (M38e), where it was going.
 export function continueText(campaign, rules) {
   const { fight, run, colony } = campaign;
   const approach = run?.approach;
@@ -183,6 +184,15 @@ export function continueText(campaign, rules) {
   const facing = approach && (approach.outcome ? `${approach.enemy.name}, over` : `${approach.enemy.name}, round ${approach.round}`);
   const at = fight
     ? fight.battle.winner ? `${kind} just ended` : `${what}, round ${fight.battle.round}`
-    : facing ?? (colony?.voyage ? `${run.sector.name}, out from ${colony.world.name}` : colony ? colony.world.name : run ? `${run.sector.system ? 'The system' : `Sector ${run.sector.index}`} · ${run.sector.name}` : rules && actOf(campaign, rules)?.home);
+    : facing ?? (colony?.voyage ? `${run.sector.name}, ${voyageWhere(campaign)}` : colony ? colony.world.name : run ? `${run.sector.system ? 'The system' : `Sector ${run.sector.index}`} · ${run.sector.name}` : rules && actOf(campaign, rules)?.home);
   return at ? `Act ${campaign.act} · ${at}` : `Act ${campaign.act}`;
+}
+
+// Where a voyage has the ship, for Continue: "out from Copperhill", or on
+// a stopped flight to another colony (M38e) "on the way to Saltmarch".
+function voyageWhere(campaign) {
+  const { colony } = campaign;
+  const { voyage } = colony;
+  if (voyage.homing && voyage.to !== null) return `on the way to ${(campaign.colonies ?? []).find((other) => other.id === voyage.to)?.world.name ?? 'a colony'}`;
+  return `out from ${colony.world.name}`;
 }

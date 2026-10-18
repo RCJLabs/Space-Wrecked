@@ -215,10 +215,11 @@ export function landingPlan(campaign, rules) {
 // voyage (M38d) the fight is those at home's, in play until it is over
 // (away.js homeFront); at another colony (M38e) it is theirs, on its grid,
 // the fight naming it (fight.colony), and they are in play until it is
-// over (colonies.js frontAt). Returns { ok: true, campaign, landing: {
-// shots ([{ uid, name, roll, hit }]), hits, landed (the raiders left) },
-// fight (true with the fight on), taken (what a raid lost without a fight
-// took, else null) }, or { ok: false, error }.
+// over (colonies.js frontAt). Returns { ok: true, campaign, colony (the
+// number of the colony faced, M38e), landing: { shots ([{ uid, name,
+// roll, hit }]), hits, landed (the raiders left) }, fight (true with the
+// fight on), taken (what a raid lost without a fight took, else null) },
+// or { ok: false, error }.
 export function faceRaid(campaign, rules, { forgiving = false, difficulty = 'normal' } = {}) {
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
   const plan = landingPlan(campaign, rules);
@@ -240,7 +241,7 @@ export function faceRaid(campaign, rules, { forgiving = false, difficulty = 'nor
   if (!landed.length || !plan.defenders.length) {
     const won = !landed.length;
     const settled = settleRaid(other ? thereAt(rolled, other) : rolled, rules, won);
-    return { ok: true, campaign: other ? thereFrom(rolled, settled.campaign) : settled.campaign, landing, fight: false, won, taken: settled.taken };
+    return { ok: true, campaign: other ? thereFrom(rolled, settled.campaign) : settled.campaign, colony: plan.colony, landing, fight: false, won, taken: settled.taken };
   }
   const there = other ? thereAt(campaign, other) : campaign;
   const map = colonyMap(there.colony, rules);
@@ -262,7 +263,15 @@ export function faceRaid(campaign, rules, { forgiving = false, difficulty = 'nor
   const { battle, events } = createBattle({ map, units, seed: seedRoll.value, options: { forgiving, press: true } }, rules);
   const fight = { encounter: colonyPursuer(campaign, rules).raiders, seed: seedRoll.value, crew: members.map((member) => member.id), battle, log: events, job: null, raid: true, boarding: null, ...(other ? { colony: other } : {}) };
   const front = other ? frontAt(rolled, other) : homeFront(rolled);
-  return { ok: true, campaign: { ...front, rng: seedRoll.state, place: 'fight', fight }, landing, fight: true, won: null, taken: null };
+  return { ok: true, campaign: { ...front, rng: seedRoll.state, place: 'fight', fight }, colony: plan.colony, landing, fight: true, won: null, taken: null };
+}
+
+// The campaign as the colony whose raid fight is on lives it (M38e): at
+// another colony, as thereAt has it, with those who fight there; else the
+// campaign as it is. For what the fight's words say of that colony.
+export function raidCampaign(campaign) {
+  const id = campaign.fight?.colony;
+  return id === undefined ? campaign : thereAt(backFrom(campaign, id), id);
 }
 
 // What a lost raid takes: { food, materials } (half of each, rounded

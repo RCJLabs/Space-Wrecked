@@ -1,11 +1,13 @@
 // Text for raids on the colony (src/sim/raids.js, M29): the day's odds of
 // the pursuer finding it, the lander coming and down, the colony's
 // defenses, Defend's first tap, the landing's report, the raid fight's
-// line under the round, and how a raid ended. rules are the content tables
-// (src/sim/defs.js).
+// line under the round, and how a raid ended. From M38e at any colony: a
+// lander down at another names it, and its own heat is what a raid there
+// sets. rules are the content tables (src/sim/defs.js).
+import { heatAt, thereAt } from '../../sim/colonies.js';
 import { colonyBy } from '../../sim/edges.js';
 import { pursuerOf, runLevel } from '../../sim/heat.js';
-import { colonyPursuer, defendersOf, defensesOf, foundOdds, landingPlan, raidDown, raidIn, raidTake } from '../../sim/raids.js';
+import { colonyPursuer, defendersOf, defensesOf, downAt, foundOdds, landingPlan, raidCampaign, raidIn, raidTake } from '../../sim/raids.js';
 import { gearLine } from './armsText.js';
 import { byJob } from './crewJobText.js';
 import { easedSaid } from './questText.js';
@@ -15,15 +17,17 @@ const LANES = ['near the lanes', 'off the lanes', 'far from the lanes'];
 // The raids' line for the colony screen's needs: { label, value, ok,
 // state, line }. state: 'down' (the lander is down), 'coming' (found, the
 // lander on its way), 'odds' (it may find the colony today) or 'quiet'
-// (it can't, heat under rumorHeat); line: the pursuer's words for it.
+// (it can't, heat under rumorHeat); line: the pursuer's words for it. Of
+// the campaign's colony (another's through colonies.js thereAt), by its
+// own heat (M38e).
 export function raidStatus(campaign, rules) {
   const words = colonyPursuer(campaign, rules);
-  if (raidDown(campaign)) return { label: 'Raid', value: 'Lander down: defend', ok: false, state: 'down', line: words?.landing ?? '' };
   const days = raidIn(campaign);
+  if (days === 0) return { label: 'Raid', value: 'Lander down: defend', ok: false, state: 'down', line: words?.landing ?? '' };
   if (days !== null) return { label: 'Raid', value: `Lander in ${days} day${days === 1 ? '' : 's'}`, ok: false, state: 'coming', line: words?.found ?? '' };
   const odds = foundOdds(campaign, rules);
   const where = LANES[(campaign.colony.world.lanes ?? 2) - 1] ?? '';
-  const line = words?.levels[runLevel(campaign.heat, rules)] ?? '';
+  const line = words?.levels[runLevel(heatAt(campaign, campaign.colony), rules)] ?? '';
   if (!odds) return { label: 'Found', value: `No odds under heat ${rules.balance.rumorHeat}`, ok: true, state: 'quiet', line };
   // Once the background's thread is done (M33b), the odds are halved, and
   // the line says why.
@@ -43,7 +47,14 @@ export function defenseRow(campaign, rules) {
 }
 
 // What the hint says of a raid, while one is coming or down, or null.
+// A lander down at another colony (M38e) comes first, and says where.
 export function raidHint(campaign, rules) {
+  const at = downAt(campaign);
+  if (at && at !== campaign.colony) {
+    const there = thereAt(campaign, at.id);
+    const fight = there.crew.length ? `then whoever is at ${at.world.name} fights the rest` : `nobody is at ${at.world.name} to fight the rest`;
+    return { text: `${pursuerName(campaign, rules)}'s lander is down at ${at.world.name}: nothing passes until it is faced. Tap Defend: its guns fire as it comes down, ${fight}.`, tone: 'bad' };
+  }
   const status = raidStatus(campaign, rules);
   if (status.state === 'down') {
     const fight = defendersOf(campaign).length ? 'then whoever is home fights the rest' : 'nobody is home to fight the rest';
@@ -55,31 +66,39 @@ export function raidHint(campaign, rules) {
   return { text: `${status.line} It lands in ${days} day${days === 1 ? '' : 's'}: set down guns, a shield and an armory from the hold.${away}`, tone: 'warn' };
 }
 
-// Defend, for the button: { ok, ask (what its first tap says), why }.
+// Defend, for the button: { ok, ask (what its first tap says), why }. At
+// another colony (M38e) its guns and whoever is there, by name.
 export function defendText(campaign, rules) {
   const plan = landingPlan(campaign, rules);
   if (!plan.ok) return { ok: false, ask: null, why: plan.error };
-  const spotter = plan.hit > rules.balance.landingHit ? colonyBy(defendersOf(campaign), rules, 'landing') : null;
+  const other = plan.colony !== campaign.colony.id ? thereAt(campaign, plan.colony) : null;
+  const there = other ?? campaign;
+  const spotter = plan.hit > rules.balance.landingHit ? colonyBy(defendersOf(there), rules, 'landing') : null;
+  const place = other ? other.colony.world.name : null;
   const guns = plan.guns.length
-    ? `${capital(listed(plan.guns.map((gun) => `the ${lowerFirst(gun.name)}${gun.shots > 1 ? ` (${gun.shots} shots)` : ''}`)))} fire${plan.guns.length === 1 ? 's' : ''} at the lander as it comes down, ${plan.hit}% a shot${spotter ? ` with ${byJob(spotter, rules)} calling them` : ''}, each hit a raider fewer.`
-    : 'Nothing at the colony fires at the lander.';
+    ? `${capital(listed(plan.guns.map((gun) => `the ${lowerFirst(gun.name)}${gun.shots > 1 ? ` (${gun.shots} shots)` : ''}`)))}${place ? ` at ${place}` : ''} fire${plan.guns.length === 1 ? 's' : ''} at the lander as it comes down, ${plan.hit}% a shot${spotter ? ` with ${byJob(spotter, rules)} calling them` : ''}, each hit a raider fewer.`
+    : `Nothing at ${place ?? 'the colony'} fires at the lander.`;
   const party = countedNames(plan.raiders.map((id) => rules.enemies.get(id)?.name ?? id));
   const fight = plan.defenders.length
-    ? `${plan.defenders.length} at home fight whoever lands of ${plan.raiders.length} (${party})`
-    : `Nobody is home: whoever lands of ${plan.raiders.length} (${party}) takes what they like`;
+    ? `${plan.defenders.length} at ${place ?? 'home'} fight whoever lands of ${plan.raiders.length} (${party})`
+    : `Nobody is ${place ? `at ${place}` : 'home'}: whoever lands of ${plan.raiders.length} (${party}) takes what they like`;
   const kit = [...(plan.armor ? [`the shield gives +${plan.armor} armor`] : []), ...(plan.aim ? [`the armory +${plan.aim} aim`] : [])];
   const gear = plan.defenders.length ? gearLine(rules) : null;
   return { ok: true, ask: `${guns} ${fight}${kit.length && plan.defenders.length ? `; ${kit.join(' and ')}` : ''}.${gear ? ` ${gear}` : ''} Tap again to defend.`, why: null };
 }
 
 // What facing the raid came to (raids.js faceRaid's result), for the hint:
-// { text, tone }. before: the campaign as it faced the raid.
+// { text, tone }. before: the campaign as it faced the raid. The heat is
+// the colony's faced (M38e).
 export function landingReport(result, before, rules) {
   const { shots, hits, landed } = result.landing;
+  const other = result.colony !== undefined && result.colony !== before.colony.id ? thereAt(before, result.colony) : null;
+  const there = other ?? before;
+  const heat = heatAfter(heatAt(there, there.colony), rules);
   const fired = shots.length ? `${shots.length} shot${shots.length === 1 ? '' : 's'} at the lander, ${hits} hit${hits === 1 ? '' : 's'}.` : 'Nothing fired at the lander.';
-  if (result.fight) return { text: `${fired} ${landed.length} raider${landed.length === 1 ? '' : 's'} land${landed.length === 1 ? 's' : ''}: hold them off.`, tone: 'warn' };
-  if (result.won) return { text: `${fired} Every raider stopped before they landed: the raid is beaten. ${heatAfter(before.heat, rules)}`, tone: 'good' };
-  return { text: `${fired} Nobody home to stop ${landed.length}: they took ${takenText(result.taken, rules)}. ${heatAfter(before.heat, rules)}`, tone: 'bad' };
+  if (result.fight) return { text: `${fired} ${landed.length} raider${landed.length === 1 ? '' : 's'} land${landed.length === 1 ? 's' : ''}${other ? ` at ${other.colony.world.name}` : ''}: hold them off.`, tone: 'warn' };
+  if (result.won) return { text: `${fired} Every raider stopped before they landed${other ? ` at ${other.colony.world.name}` : ''}: the raid is beaten. ${heat}`, tone: 'good' };
+  return { text: `${fired} Nobody ${other ? `at ${other.colony.world.name}` : 'home'} to stop ${landed.length}: they took ${takenText(result.taken, rules)}. ${heat}`, tone: 'bad' };
 }
 
 // The raid fight's line under the round: { title, progress, done,
@@ -97,7 +116,7 @@ export function colonyRaidObjective(battle, fight, rules) {
 export function landingNotice(battle, fight, campaign, rules) {
   const landed = battle.units.filter((unit) => unit.side === 'enemy').length;
   const hits = stoppedOf(battle, fight, rules);
-  const shots = Math.max(hits, defensesOf(campaign, rules).shots);
+  const shots = Math.max(hits, defensesOf(raidCampaign(campaign), rules).shots);
   const fired = shots ? `${shots} shot${shots === 1 ? '' : 's'} at the lander, ${hits} hit${hits === 1 ? '' : 's'}.` : 'Nothing fired at the lander.';
   return { tone: 'warn', text: `${fired} ${landed} raider${landed === 1 ? '' : 's'} landed: hold them off.` };
 }
@@ -111,11 +130,12 @@ function stoppedOf(battle, fight, rules) {
 
 // How a raid on the colony ended, for the fight's end panel: { tone,
 // title, text }. campaign is as it stands before the crew goes home
-// (raids.js endColonyRaid).
+// (raids.js endColonyRaid). At another colony (M38e) its stores and heat.
 export function colonyRaidOutcome(battle, campaign, rules) {
-  const heat = heatAfter(campaign.heat, rules);
+  const there = raidCampaign(campaign);
+  const heat = heatAfter(heatAt(there, there.colony), rules);
   if (battle.winner === 'crew') return { tone: 'good', title: 'Raid beaten', text: `${colonyPursuer(campaign, rules)?.faced ?? 'They pull back to their lander.'} ${heat}` };
-  return { tone: 'bad', title: 'Raid lost', text: `They took ${takenText(raidTake(campaign, rules), rules)}. ${heat}` };
+  return { tone: 'bad', title: 'Raid lost', text: `They took ${takenText(raidTake(there, rules), rules)}. ${heat}` };
 }
 
 // What a lost raid took, in words: "12 food, 15 materials and the Shield

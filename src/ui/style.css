@@ -992,6 +992,31 @@ textarea {
   color: var(--c-accent);
 }
 
+/* The other colonies (M38e): a panel each in the side column, as the one
+   flown from, with Fly to the panel's width, as Fly home is. */
+.sct-others {
+  display: contents;
+}
+
+#ui .sct-fly {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 48px;
+  margin: 8px 0 2px;
+  padding: 4px 10px;
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
+#ui .sct-fly[data-armed='true'] {
+  background: var(--c-panel);
+  color: var(--c-accent);
+}
+
 /* The crew card (crewCard.js) and the squad card (squadCard.js): the event
    card's frame, as tall as what they hold and no taller than the room
    under the head. Their head and Done stay put; the lists, side by side
