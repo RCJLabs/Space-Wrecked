@@ -130,7 +130,7 @@ test("the crew bar's words and the unit card: held, no gun, a crate in hand", ()
   assert.match(unitText({ ...ward, status: 'active' }, rules).lines.join(' '), /No gun: they only move, as the crew do\. If they bleed out, the job is lost\./);
   const extract = start({ type: 'extract', crates: [[2, 1]], exits: WEST }, [{ kind: 'marine', x: 1, y: 1 }, { kind: 'pirate', x: 7, y: 3 }]);
   const carrier = unit(play(extract, { type: 'grab', unit: 'c1', at: [2, 1] }).battle, 'c1');
-  assert.match(stateText(carrier), / · crate$/);
+  assert.match(stateText(carrier), /^Crate · \d AP · \d+ shots?$/, 'the crate first, where a narrow crew bar cuts the end short');
   assert.ok(unitText(carrier, rules).lines.includes('Carrying a crate: one move a turn, no dash, until it is out.'));
   assert.ok(unitText({ ...carrier, status: 'down', bleed: 2 }, rules).lines.includes('Down with a crate in hand: anyone of the crew beside them can take it with Grab.'));
 });
@@ -160,6 +160,12 @@ test('the board tags the crates, the way out, the far gate, the targets and thei
   assert.deepEqual(objectiveZones(sabotage.objective), [], 'targets are tagged, not outlined');
   const defend = start({ type: 'defend', rounds: 6, line: WEST }, crew);
   assert.deepEqual(objectiveMarks(defend), [{ at: [0, 1], text: 'HOLD 1/6', done: false }]);
+  // A zone's tag goes on the free tile nearest its middle: over one of the
+  // crew it would sit under their hit points.
+  const manned = start({ type: 'defend', rounds: 6, line: WEST }, [{ kind: 'marine', x: 0, y: 1 }, { kind: 'pirate', x: 7, y: 3 }]);
+  assert.deepEqual(objectiveMarks(manned)[0].at, [0, 2]);
+  const full = start({ type: 'defend', rounds: 6, line: [[0, 1], [0, 2]] }, [{ kind: 'marine', x: 0, y: 1 }, { kind: 'medic', x: 0, y: 2 }, { kind: 'pirate', x: 7, y: 3 }]);
+  assert.deepEqual(objectiveMarks(full)[0].at, [0, 1], 'everyone on it: the middle tile');
   assert.deepEqual(objectiveZones(defend.objective), [{ tiles: WEST, tone: 'hold' }]);
   // Each tile of each zone, outlined on the deck under the orders' marks.
   const faces = zonesScene(objectiveZones(defend.objective));

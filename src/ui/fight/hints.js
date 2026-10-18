@@ -175,7 +175,7 @@ function shotRules(weapon) {
 
 // A unit's state in a few words: actions and shots left, or how hurt. The
 // person the crew brings out (M38) has no shots, and is held until freed; a
-// carrier says so.
+// carrier says so first, where a narrow crew bar cuts the end short.
 export function stateText(unit) {
   if (unit.status === 'held') return 'Held';
   if (unit.status === 'down') return `Down · ${unit.bleed} turn${unit.bleed === 1 ? '' : 's'}`;
@@ -185,7 +185,7 @@ export function stateText(unit) {
   if (unit.overwatch) return 'Overwatch';
   if (unit.ward) return `${unit.ap} AP · no gun`;
   const shots = `${unit.ap} AP · ${unit.ammo} shot${unit.ammo === 1 ? '' : 's'}`;
-  return unit.carrying ? `${shots} · crate` : shots;
+  return unit.carrying ? `Crate · ${shots}` : shots;
 }
 
 // A unit's card: { title, lines }: its numbers, its rank (M32b), a loyal

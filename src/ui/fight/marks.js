@@ -20,12 +20,12 @@ export function objectiveMarks(battle) {
     case 'extract':
       return [
         ...objective.crates.filter((at) => !has(objective.taken, at)).map((at) => ({ at, text: 'CRATE', done: false })),
-        { at: middleTile(objective.exits), text: `WAY OUT ${objective.out.length}/${objective.crates.length}`, done },
+        { at: tagTile(objective.exits, battle), text: `WAY OUT ${objective.out.length}/${objective.crates.length}`, done },
       ];
     case 'escort':
-      return [{ at: middleTile(objective.exits), text: 'FAR GATE', done }];
+      return [{ at: tagTile(objective.exits, battle), text: 'FAR GATE', done }];
     case 'rescue':
-      return [{ at: middleTile(objective.exits), text: 'WAY OUT', done }];
+      return [{ at: tagTile(objective.exits, battle), text: 'WAY OUT', done }];
     case 'sabotage':
       return objective.targets.map((at) => {
         if (has(objective.blown, at)) return { at, text: 'BLOWN', done: true };
@@ -33,7 +33,7 @@ export function objectiveMarks(battle) {
         return { at, text: 'TARGET', done: false };
       });
     case 'defend':
-      return [{ at: middleTile(objective.line), text: `HOLD ${Math.min(battle.round, objective.rounds)}/${objective.rounds}`, done }];
+      return [{ at: tagTile(objective.line, battle), text: `HOLD ${Math.min(battle.round, objective.rounds)}/${objective.rounds}`, done }];
     default:
       return [];
   }
@@ -54,8 +54,18 @@ export function objectiveZones(objective) {
   }
 }
 
-// Of a zone's tiles, the one nearest their middle: where its tag goes.
-export function middleTile(tiles) {
+// Where a zone's tag goes: the tile nearest the zone's middle with no one
+// on it, as a tag over a unit would sit under its hit points; the middle
+// one if there is someone on every tile.
+export function tagTile(tiles, battle) {
+  const taken = (at) => battle.units.some((u) => u.status !== 'dead' && u.x === at[0] && u.y === at[1]);
+  const free = tiles.filter((at) => !taken(at));
+  return middleTile(tiles, free.length ? free : tiles);
+}
+
+// Of `among` (a zone's tiles, or some of them), the one nearest the middle
+// of `tiles`.
+export function middleTile(tiles, among = tiles) {
   const [mx, my] = [tiles.reduce((sum, [x]) => sum + x, 0) / tiles.length, tiles.reduce((sum, [, y]) => sum + y, 0) / tiles.length];
-  return tiles.reduce((best, at) => (Math.hypot(at[0] - mx, at[1] - my) < Math.hypot(best[0] - mx, best[1] - my) ? at : best));
+  return among.reduce((best, at) => (Math.hypot(at[0] - mx, at[1] - my) < Math.hypot(best[0] - mx, best[1] - my) ? at : best));
 }
