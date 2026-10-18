@@ -2,6 +2,163 @@
 
 Newest entry first.
 
+## M38c Station jobs (2026-10-18)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every station on the run posts a board of work, fresh at each visit. A job sends a squad to the station's docks or the rocks nearby, pays as act 1's do, and costs heat and wounds. Saves are at v35.
+
+**How it was picked:** Evan asked (2026-10-18) for the jobs from the beginning to be work a crew can get at stations. Measured first (the miner, 30 voyages from launch, medians): launched with 105 credits, 65 from events, 87 spent on supplies and 40 on transponder swaps; heat 35 at launch and 65 at most; the hunters met in 17 of 30. His picks:
+- jobs written for the stations, fought at their docks and on the rocks nearby, not act 1's again;
+- a fresh board at each visit;
+- act 1's pay;
+- the cost is heat and wounds, and the station stays safe.
+
+ROADMAP.md has the Done when in full, and what was built where it differs.
+
+**What shipped:**
+- **The content** (data only):
+  - `data/docks.json` (new): a board of 3; the stations' ten clients, two of each side and two of nobody's; and their four sites, the cargo ring and the fuel dock, the Tumble and a worked-out claim.
+  - `data/sites.json`: four maps, 14 × 8, with the ways in, spawns and marks each mission held there needs. The Cargo ring and the Fuel dock name the dock's look, the Asteroid field and the Mined-out claim the rock's.
+  - `data/contracts.json`: 15 station jobs using all eight missions, paying 40 to 140 credits, each with drops and a pitch that can name its station.
+- **The board** (`src/sim/stationJobs.js`, new): up to 3 of the station's side's clients' jobs, or at one of nobody's the clients of no side. Rolled as act 1's are (`rollOffers`, now shared with act 1's board in the same order), from a seed of the campaign, the sector, the station and the jumps made: fresh at each visit, the same however often it is opened, and the campaign's RNG never moves for it. A job taken stays off it till the ship jumps (`run.jobbed`).
+- **Taking one** (`takeStationJob`): while no event or approach holds the ship, a squad of up to 3 goes, the healthiest by default; the rest stay aboard. The fight is set up as act 1's (`beginJob`, shared), with no hunters. At a station of the pursuer's side it is a trade, so they log the ship once a visit.
+- **After it** (`endJob`): done, act 1's pay with what the client's side adds, and the part; done or lost, act 1's heat and standing. Wounds stay, as after a boarding; fights count for ranks and gear can be won. The flags count `stationJobsDone` and `stationJobsFailed`, apart from act 1's. Act 1's board, shop and quests are untouched.
+- **Saves at v35:** the run keeps the jobs taken at the station this visit; a v34 run takes none (`run.jobbed = []`). `isJob` takes a station job's name.
+- **The screens:**
+  - the chart's Here panel at a station has Jobs · 3 (one tap opens the board; it spends nothing), or says no work is left this visit;
+  - the board in station mode: the station and its side on top, the jobs as act 1's board shows them, Squad with the squad card (as a boarding's), the hint that wounds stay on the run and, at the pursuer's side's, that they log the ship; Take the job (two taps) and Chart back;
+  - the fight in the dock's look (grey deck plating) or the rock's (brown stone under the stars), new skins in the palette;
+  - Continue at the fight's end goes back to the chart.
+- **Validated** (`tools/validate-campaign.js`): the stations' clients and sites are checked as a district's; a job's sites and clients are all one district's or all the stations'; `{station}` only in a station job's pitch; no station job is a quest's, done once, or counted with hunters; each side's stations and nobody's have at least twice a board's jobs.
+- **Tools:**
+  - `node tools/jobs.js --stations` lists them: whose stations post each, the mission, the sites, the enemies and the pay. With `--odds 200`, how often the start crews win each and the hit points they lose.
+  - The test voyage's player takes them (`tools/voyagePlan.js` stationJobPick; `tools/voyage.js`, `--jobs no` for none). Of the board, it takes the job worth most, if any is worth something, with a full squad of those healed to 75%. A job is worth its pay, part and standing at the measured odds (`tools/run.js` jobOdds, beside act 1's), less its wounds at 2 credits a hit point, and less its heat and docking heat priced as an event's. Managing heat, it takes one only where the heat and the next jump's keep the ship under 50. It works before the refit, so a part paid goes on at once.
+  - `tools/boarding.js` fightStationJob fights one out as act 1's jobs are played.
+
+**Done when** (ROADMAP.md, M38c), and how each is met:
+- **A board at every station:** `tests/stationJobs.test.js` (11 tests).
+- **Taking one:** the same tests, and by touch.
+- **After it:** the same tests, and by touch.
+- **The content, as data:** `tests/data.test.js` (9 new cases for the validator) and `tests/stationJobs.test.js`.
+- **The fight's look:** by touch (below), and `tests/golden/sites.txt` holds the four maps.
+- **Saves:** `tests/stationJobs.test.js` (v35, and a v34 run migrated).
+- **The screens:** by touch.
+- **The test player:** `tests/voyagePlan.test.js` (2 new) and `tests/voyage.test.js` (its job steps checked, and a new test). `tools/jobs.js --stations`: `tests/stationJobs.test.js`.
+- **Measured over 100 voyages:** below.
+- **Every rule tested:** as above.
+- **Touch, at the three sizes:** below.
+
+**Measured:**
+- **Each station job,** 200 fights from the three starts' crews, heat 0, no twist (`node tools/jobs.js --stations --odds 200`):
+
+  | Job | Mission | Won | Hit points lost (of 26) |
+  | --- | --- | --- | --- |
+  | Safe passage | escort | 89% | 6 |
+  | Hold the berth | hold the line | 89% | 12 |
+  | The courier | rescue | 85% | 9 |
+  | Repo men | hold the line | 77% | 15 |
+  | The family's books | work the terminal | 73% | 16 |
+  | Pay by the litre | work the terminal | 64% | 17 |
+  | The steward | rescue | 64% | 10 |
+  | Claim rights | clear out | 62% | 17 |
+  | Undeclared | grab and go | 59% | 18 |
+  | Fleet stores | walk it out | 57% | 18 |
+  | Back dues | walk it out | 57% | 18 |
+  | Cut the rig | sabotage | 56% | 18 |
+  | Salvage rights | grab and go | 56% | 18 |
+  | Pirates at the pumps | clear out | 48% | 19 |
+  | Bad paper | clear out | 46% | 19 |
+
+  Four won 7 to 40% at first and were eased: Pay by the litre (7%: the Pike crew now, two turns at the terminal, and the cargo ring as a second site), Pirates at the pumps (22%: the lighter pirate crew), Cut the rig (40%: one target) and Fleet stores (40%: one crate).
+- **100 voyages from launch, with station jobs and without** (seeds 1 to 100, the miner, refitting and managing heat, as `tools/voyage.js` plays by default; medians unless said):
+
+  | | Without | With |
+  | --- | --- | --- |
+  | Station jobs taken | — | 276 in 75 runs, 231 done; 2 a run |
+  | What they paid, heat, hit points | — | 160 credits, +18 heat, 23 hit points a run |
+  | Credits at the landing | 22 | 49 |
+  | The most credits held | 129 | 229 |
+  | Heat at most | 59 | 53 |
+  | Heat at the landing | 52 | 46 |
+  | Transponder swaps | 1 | 3 |
+  | The hunters met crossing the sectors | 35 runs | 22 runs |
+  | The hunters met, all told | 96 | 66 |
+  | Crew lost | none | none |
+  | Hit points at the landing | 19 | 23 |
+  | Patched at stations | 0 | 20 hit points for 38 credits |
+  | Parts bought at shipyards | 45, in 20 runs | 85, in 41 runs |
+  | Runs with a recruit | 1 | 18 |
+
+  No crew is lost either way: no campaign fight kills (bled-out crew come back at 1 hit point).
+- **The voyage test's rates against main's** (`MAIN` in `tests/voyage.test.js`, 100 seeds; the test holds each within 15, or 5 for the rare ones):
+
+  | Rate | Main | Without jobs | With jobs |
+  | --- | --- | --- | --- |
+  | Careful, fed all the way | 82 | 71 | 78 |
+  | Fed with a cargo hold | 81 | 84 | 87 |
+  | A recruit, with a cargo hold | 44 | 52 | 84 |
+  | Fed with a med bay | 79 | 72 | 90 |
+  | Fed with surgery | 81 | 74 | 89 |
+  | Fed with bunks | 75 | 82 | 86 |
+  | Fed with the large hold | 98 | 95 | 99 |
+  | Refitting, fed | 73 | 69 | 77 |
+  | Runs with a refit | 59 | 64 | 80 |
+  | The hunters met crossing, managing heat | 33 | 35 | 22 |
+  | The hunters met, ignoring heat | 100 | 100 | 100 |
+  | Two worlds or more surveyed | 68 | 59 | 76 |
+  | Hungry in the system | 14 | 19 | 12 |
+  | A surveyed world settled | 81 | 72 | 81 |
+  | Short of air | 0 | 0 | 1 |
+  | Everyone housed | 41 | 42 | 62 |
+  | Never scanned | 0 | 0 | 0 |
+  | The miner: met the hunters, lost a raid | 42, 29 | 44, 20 | 32, 15 |
+  | The deserter: fed, met, lost a raid | 80, 45, 20 | 84, 40, 13 | 87, 37, 1 |
+  | The smuggler: fed, met, lost a raid | 89, 19, 18 | 91, 24, 11 | 94, 15, 5 |
+
+  Every rate stays inside its margin, and every one moves the player's way with station jobs.
+
+**Tests:**
+- `node --test`: 1054 tests pass (1040 before). New: `tests/stationJobs.test.js` (11), 9 validator cases in `tests/data.test.js`, 2 in `tests/voyagePlan.test.js`, 1 in `tests/voyage.test.js`; the voyage's job steps are checked as every other step is.
+- **On purpose:**
+  - `tests/golden/sites.txt` gains the four new maps; the earlier maps are unchanged.
+  - **The voyage tests' fitted voyages fly without station jobs,** as they fly without refits, so each still compares one part's difference; the refitting voyages, the ignoring-heat ones and the other backgrounds' play as `tools/voyage.js` does, jobs and all. With jobs a healer's Law 1 check flipped: its crew, fit more often, works more and patches more (1,147 hit points with a med bay against 958 without on seeds 1 to 30; over `tests/voyageSurgery.test.js`'s 300, 12,475 with surgery against 12,399 with a med bay). Without jobs those voyages fly as main's do.
+  - 11 tests that pinned `SAVE_VERSION` at 34 now pin 35.
+- `m38c/verify.mjs` at the three sizes, 38 checks at each, all passing:
+  - at a station on the chart, Jobs in the Here panel with the board's count; one tap opens the board;
+  - the board: the station's name and side, its jobs (the station named in a pitch that names it), Chart back, the squad that would go, and the hint that wounds stay;
+  - the squad: four aboard, Squad opens the card, a tap leaves one aboard, Done shuts it, and the hint and the label say who goes;
+  - a dock's job taken: the fight on its dock map in steel deck plating, with the squad picked; won with the dev menu's Win the fight, Continue goes back to the chart, paid, heat up, and the board one job shorter;
+  - a rock's job: its rock map, bare rock, darker and browner than the docks';
+  - at a station of the pursuer's side, the warning that they log the ship, and taking a job does;
+  - a station job's fight reloads as it was;
+  - every button 48 px or more and reachable, saves at v35, offline after a reload, and no console errors.
+- **Every earlier milestone's browser check** passes at the three sizes unless named, each the latest adapted copy (`m38c/regress-a.sh` and `regress-b.sh`). The one exception is M32b's first copy, whose 2 known failures since M36 its fix copy covers, as in M36 to M38b.
+  - **Adapted for M38c:** M38b's, M35's, M34's, M31's, M30's, M29's, M28's and M27's, which pinned saves at v34 (`verify38c.mjs` beside each). M34's pinned it twice; the second was found by its first run.
+  - **Run again on their own, and passed:** M23f's at the open size and M23d's at the tab size lost their port to the run beside them; M23's and M21's at the open size ran past their time limit beside it.
+
+**Found while building, and fixed:**
+- **A job's id clashed with act 1's** ("strikefund"): the stations' is Back dues (`dues`) now.
+- **The ring map had office tiles no one could reach:** its terminal moved.
+- **The squad card collapsed to 22 px:** the board's list and detail moved into a new grid row with it. They are placed by column and row now.
+- **Four jobs won 7 to 40% at first:** eased, as above.
+
+**Known issues:**
+- **Station jobs make act 2 easier for the careful player, not harder** (Evan's call): a job's pay buys transponder swaps (40 credits for 30 heat), which shed more than its 8 or 15 heat adds. With them the hunters came in 22 runs of 100 against 35 without, and raids lost at the colony fell (the deserter's from 13 to 1). The wounds cost about 2 credits a hit point to patch. Raising the jobs' heat, or the swap's price, would make the trade bite.
+- **The test player's odds and wounds are a full-health start crew's,** with act 1's factor for a twist. It doesn't weigh the squad going: hurt, ranked or better armed, a job weighs the same.
+- **A board is rolled from the jumps made,** so a day's rest at the station keeps the visit's board; only a jump brings a fresh one.
+- **The ignoring-heat player takes about 5 jobs a run** (509 in 100), heat costing it nothing.
+- **Nothing on the chart says how many jobs a station posts** until the ship is there.
+
+**What Evan should test on the phone:**
+- At a station on the chart: Jobs · 3 in the Here panel; one tap opens the board, with the station's name and side on top.
+- Squad: pick who goes, and see the hint say who stays aboard.
+- Take a dock's job (the cargo ring or the fuel dock): grey deck plating. Take a rock's (the Tumble or the claim): brown rock under the stars.
+- After the fight, Continue: back at the chart, paid, heat up, the job gone from the board, the wounds still there.
+- At a station of your pursuer's side, the board warns they'll log the ship; take a job and see the docking heat.
+- Jump away and come back: a fresh board.
+- Quit mid-fight and reopen: the fight picks up as it was.
+
+**Next session's first task:** M38d The run goes on: study how the ship leaves the colony and jumps on past the charts, measure, ask Evan, settle its Done when.
+
 ## M38b Space fights from outside (2026-10-18)
 
 **Status:** done, and the ROADMAP.md box is ticked. The approach screen shows both ships whole from outside, as the hangar shows a ship, instead of as their boarding maps. Her hull shows what the approach has done to her. A Fire order marks its targets on her hull, and a round given plays out: shots, hits, shields, wrecks, flights and boardings. The inside is for a boarding's fight. Saves stay at v34.
