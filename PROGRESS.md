@@ -2,6 +2,77 @@
 
 Newest entry first.
 
+## M38d fixes: the materials kept, raids that call the ship home, the holds stocked (2026-10-18)
+
+After M38d Evan said "Do recommendations, merge and continue" (2026-10-18). Each call M38d left open had my recommendation or a choice of two; where there were two, I took the one that keeps his M38d picks:
+- **The materials stay at Fly out.** M38d lost whatever was past the storehouses' room (86 of 100 test colonies, 1,884 in all). Now none are lost. While the ship is away they keep past the room, but the mines add to them only up to it, as M27's day keeps no more than the stores. I didn't have the holds carry them: the holds are the ship's food, so that would shorten every voyage.
+- **A raid's warning calls the ship home.** The other choice, raids that wait for the ship, would drop Evan's pick that those left home face any raid. Now a raid found while the ship is away comes down no sooner than the ship could be home if it turned back at once: raidWarning's 3 days, or the flight home's when more. With 3 days' warning, a ship 3 systems out or nearer could already make it. The 7 raids M38d's test player lost were all ones it could have flown home for. The rule matters past 3 systems.
+- **The plan says how far the food goes,** and the test player stocks the holds before it flies. M38d's 13 voyages that crossed no system flew out on near-empty larders.
+- **A system's words, not a sector's,** past the colony.
+
+**What shipped:**
+- **The rules:**
+  - `src/sim/days.js`: while the ship is away, a day keeps the materials past the storehouses' room, and the mines add only up to it;
+  - `src/sim/voyage.js`: Fly out keeps every material (the plan's materials are now `{ now, dug, room }`: what the mines dig a day on the colony's own power, and the room they fill to);
+  - `src/sim/raids.js` (`flightHome`, which `voyage.js` shares): a raid found while away lands no sooner than the flight home would.
+- **The words:**
+  - the plan: "Food 50: the holds take 30, enough for 15 jumps; the storehouses keep 20 of 20", and "The mines' 2 a day keeps up to the storehouses' 20 while the ship is away" (with no storehouse, "No storehouse: the mines' 2 a day is lost while the ship is away");
+  - Fly out's first tap: "… the holds take 30 food, 15 jumps' worth, and the colony keeps 20 …", with nothing lost but spoiled food;
+  - the lander's hint: "… their lander comes down in 2 days. Fly home now (1 day) to meet it, or those at home fight it.", or, too far out, "Flying home takes 4 days, too long to meet it: those at home fight it.";
+  - a voyage's way in and jump point say a system's words (`data/worlds.json` `voyage` `text` and the new `exit`, validated), and the transponder swap is "once a system".
+- **The test player** (`tools/voyage.js` `voyageOutOf`, `tools/voyagePlan.js`):
+  - it stocks the holds before flying: farms for twice what the crew eats (`STOCK_SHARE`, `nextBuild`'s new share), and days at home until the food fills the holds (`stockFor`), at most `STOCK_DAYS` (20), none once the farms can grow no more than the crew eats and no mine digs toward another;
+  - it flies home when a raid is coming that the flight home beats (`homeNow`), and meets it at home with everyone;
+  - the report gives the days stocking, the call home, the raids met at home and the mines' digging lost while away.
+- **No save change:** the rules read what saves already hold, so saves stay at v36.
+
+**Measured** (100 voyages out, seeds 1 to 100, the miner as `tools/voyage.js` plays by default; M38d's in brackets):
+
+| | |
+| --- | --- |
+| Flown out, and home | 100 of 100, 100 of 100 (the same) |
+| Systems crossed | 3 (0 to 3): all 3 in 54 (52), 2 in 17 (14), 1 in 25 (21), none in 4 (13) |
+| The 4 that crossed none | 3 called home by a raid in their first system; 1 a colony whose one farm grows only what its crew eats, with 4 materials and no mine to dig more |
+| Days stocking before flying out | 0 (0 to 16); the holds full in 99 |
+| Days away | 23 (2 to 31) (22) |
+| Hungry | none aboard (1 run), none flying home (1), none at home (none) |
+| Raids | found in 8 runs (9); 7 called the ship home and 1 was found on its way; none faced while away (7, all lost); 8 met at home with everyone, 7 won |
+| Boardings of the ship | 8, fought off 1 (the same) |
+| Station jobs | 2 (0 to 9) a run, in 88 runs (80); 184 of 235 done; paid 120 (95) |
+| Credits | spent 157 → 189; 49 out, 76 home (61) |
+| Signed on | 110 (92) |
+| Heat | 4 (0 to 46) out (6), 29 (6 to 67) home (30), 42 → 43 at most |
+| Materials | none lost flying out (1,884 in 86 runs); the mines' digging past the storehouses lost while away in 13 runs, 1,350 in all (lost the same way before, uncounted) |
+
+**Act 2's and the colony's numbers are as M38d's:** the voyage out keeps its own tally, and the colony's first 60 days play as before. The 30-voyage report (`tools/voyage.js --runs 30`) matches main's line for line, apart from the voyage-out lines.
+
+**Tests:** `node --test`: 1073 pass (1071 before).
+- **New:** `tests/colonyVoyage.test.js`: the materials kept while away (past the room, the mines filling only to it, home's room again after landing), and a raid found while away landing no sooner than the flight home (1 out, 5 out, and found on the way home); a validator case for the voyage's jump-point words.
+- **Changed on purpose:**
+  - `tests/voyage.test.js`: `VOYAGE_OUT` moved to the fixed player's rates (crossed 96 where 87, fed aboard 100 where 99), since the player now stocks the holds and flies home for raids. It checks the stocking, the call home, no raid faced while away, each raid after flying out met with more than those left home, and the summary's new words;
+  - `tests/colonyVoyage.test.js` and `tests/voyageText.test.js`: the plan's materials shape and lines, the food line's jumps, the lander's hint, the way in's and the jump point's words, the swap's.
+
+**Browser checks:**
+- `m38dfix/verify.mjs`, M38d's check adapted for the fix: 43 of 43 at each of the three sizes. It adds:
+  - the way in's words on a voyage's chart;
+  - a lander coming in 2 days, the hint saying Fly home now meets it;
+  - a colony with a mine and 45 materials over a storehouse of 20: the plan's mine line, and all 45 kept after flying out.
+- **Every earlier milestone's browser check** passes at the three sizes unless named, each the latest adapted copy (`m38d/regress-a.sh` and `regress-b.sh`, unchanged). The one exception is M32b's first copy, whose 2 known failures since M36 its fix copy covers. M20's at the tab size and M18's at the cover size lost their port to the run beside them and passed on their own.
+
+**Known issues:**
+- **A split crew still loses its boardings:** 7 of the 8 with 2 aboard, as in M38d. The boarders come as many as with the whole crew aboard (§9).
+- **Mines with no storehouse dig for nothing while the ship is away** (13 colonies, 1,350 materials). The plan says so (§9).
+- **Heat still doesn't fall at home while the ship is away,** and a raid met at home after the call home sets heat to its after-raid level, as any raid does.
+- **Settling a second world** is M38e.
+
+**What Evan should test on the phone:**
+- At the colony, Voyage: the food line says how many jumps the holds' food lasts. With a mine, a line says what it digs while you're away and where that stops.
+- Fly out with more materials than the storehouses hold: they're all still there when you come home.
+- Out there, if the pursuer finds the colony, the hint says whether flying home now beats their lander. Fly home and you land in time to Defend with everyone.
+- The way in and the jump point on a voyage's chart say "system".
+
+**Next session's first task:** M38e More colonies: study a second world settled from a voyage (its own grid, buildings, stores, days and raids), measure, ask Evan, settle its Done when.
+
 ## M38d The run goes on (2026-10-18)
 
 **Status:** done, and the ROADMAP.md box is ticked. From the colony the ship flies out on voyages with a crew picked, the stores split between the holds and the storehouses, into systems nobody has charted: each a chart like act 2's sectors, with two worlds, and each jump point leading to the next, without end. A day passes at home with each jump. A raid's lander that comes down while the ship is away holds it until those at home face it. Fly home works from anywhere on the run. Saves are at v36.
