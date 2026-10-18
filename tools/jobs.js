@@ -17,6 +17,14 @@
 //   node tools/jobs.js --count 20     more jobs, or fewer
 //   node tools/jobs.js --maps         every site's map at the golden seeds
 //   node tools/jobs.js --golden       rewrites tests/golden/sites.txt
+//   node tools/jobs.js --stations     the stations' jobs (M38c): whose
+//                                     stations post each, where, against
+//                                     whom, for what
+//   node tools/jobs.js --stations --odds 200
+//                                     and how often the test crew wins each,
+//                                     and the hit points it loses on
+//                                     average, 200 fights spread over the
+//                                     starts' crews, at heat 0 with no twist
 //
 // The golden file is every site's map at seeds 1 to 3: the first bare,
 // the second on fire and the third caved in. Only rewrite it on purpose,
@@ -26,15 +34,18 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { aiAction } from '../src/sim/ai.js';
 import { playFrom } from '../src/sim/autoplay.js';
 import { newCampaign } from '../src/sim/campaign.js';
-import { endJob, takeJob, withBoard } from '../src/sim/contracts.js';
+import { beginJob, endJob, takeJob, withBoard } from '../src/sim/contracts.js';
+import { seedFrom } from '../src/core/rng.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { generateSite } from '../src/sim/gen/site.js';
 import { heatLevel, huntersFor, jobHeat, makePayment, paymentFor, raidDue } from '../src/sim/heat.js';
 import { jobAction } from '../src/sim/jobAi.js';
 import { pressAction } from '../src/sim/press.js';
 import { beginRaid, endRaid, raidLoss } from '../src/sim/raid.js';
+import { stationClients, stationContracts } from '../src/sim/stationJobs.js';
 import { jobText } from '../src/ui/campaign/jobText.js';
 import { renderMap } from './battle-map.js';
+import { playOn } from './boarding.js';
 import { readData } from './data.js';
 
 export const GOLDEN_SITES = fileURLToPath(new URL('../tests/golden/sites.txt', import.meta.url));
@@ -142,6 +153,53 @@ export function jobsInARow(defs, seed, count = 10, { manage = false } = {}) {
   return { lines, ...run, due: raidDue(campaign, defs) };
 }
 
+// The stations' jobs (M38c, stationJobs.js), each with the sides whose
+// stations post it (nobody's too), its mission, sites, enemies and pay;
+// with odds, how often the test crew wins it: odds fights, spread over
+// each background's start crew (a squad's size), each at one of its sites
+// in turn, heat 0 and no twist, the crew played by src/sim/jobAi.js and the
+// enemy by the AI, as act 1's jobs' odds are measured (tools/run.js
+// JOB_ODDS); and the hit points it loses on average, won or lost, as they
+// stay on the run (campaign.js endFight: anyone down comes back with 1).
+// Returns { lines, rates: { [contract id]: share won }, wounds: { [contract
+// id]: hit points lost } }.
+export function stationJobsText(defs, { odds = 0 } = {}) {
+  const sides = [...defs.factions.sides.keys(), null];
+  const named = (side) => (side ? defs.factions.sides.get(side)?.name ?? side : 'nobody');
+  const whose = (side) => (side ? `${named(side)}${named(side).endsWith('s') ? "'" : "'s"}` : "nobody's");
+  const listed = (words) => (words.length > 1 ? `${words.slice(0, -1).join(', ')} and ${words.at(-1)}` : words.join(''));
+  const contracts = [...new Set(sides.flatMap((side) => stationContracts(defs, side)))];
+  const backgrounds = [...defs.backgrounds.keys()];
+  const rates = {};
+  const wounds = {};
+  const lines = [`${contracts.length} station jobs; a board posts ${defs.docks.board}${odds ? `; won of ${odds} fights each, from the starts' crews, heat 0, no twist, and the hit points lost` : ''}:`];
+  for (const contract of contracts) {
+    const posts = sides.filter((side) => stationClients(contract, defs, side).length);
+    const where = contract.sites.map((id) => `${defs.sites.get(id).name} (${defs.sites.get(id).map})`).join(', ');
+    const enemies = defs.encounters.get(contract.encounter).enemies.length;
+    let won = '';
+    if (odds) {
+      let wins = 0;
+      let hp = 0;
+      for (let n = 0; n < odds; n++) {
+        const campaign = newCampaign(defs, 1 + Math.floor(n / backgrounds.length), { background: backgrounds[n % backgrounds.length] });
+        const job = { contract: contract.id, client: contract.clients[0], site: contract.sites[n % contract.sites.length], twist: null, seed: seedFrom(`odds ${contract.id} ${n}`), credits: contract.credits[0], part: null, station: 'Station' };
+        const begun = beginJob(campaign, defs, job, campaign.crew, { hunters: [] });
+        if (!begun.ok) throw new Error(`${contract.id}: ${begun.error}`);
+        const { battle } = playOn(begun.campaign.fight.battle, defs, { crew: jobAction, enemy: aiAction }, { maxRounds: MAX_ROUNDS });
+        if (battle.winner === 'crew') wins += 1;
+        const after = battle.units.filter((unit) => unit.side === 'crew' && !unit.ward).reduce((sum, unit) => sum + (unit.status === 'dead' ? 0 : Math.max(1, unit.hp)), 0);
+        hp += campaign.crew.reduce((sum, member) => sum + member.hp, 0) - after;
+      }
+      rates[contract.id] = wins / odds;
+      wounds[contract.id] = hp / odds;
+      won = `; won ${Math.round((100 * wins) / odds)}%, ${Math.round(hp / odds)} hit points lost`;
+    }
+    lines.push(`  ${contract.title} (${contract.id}): ${defs.contracts.missions.get(contract.mission).name.toLowerCase()} at ${where}; posted at ${listed(posts.map(whose))} stations; ${defs.encounters.get(contract.encounter).name ?? contract.encounter} (${enemies})${contract.against ? `, against ${named(contract.against)}` : ''}; ${contract.credits.join(' to ')} credits${won}.`);
+  }
+  return { lines, rates, wounds };
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const args = process.argv.slice(2);
   const defs = indexDefs(readData());
@@ -152,6 +210,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   if (args.includes('--golden')) {
     writeFileSync(GOLDEN_SITES, `${goldenText(defs)}\n`);
     console.log(`Wrote ${GOLDEN_SITES}`);
+  } else if (args.includes('--stations')) {
+    console.log(stationJobsText(defs, { odds: value('--odds', 0) }).lines.join('\n'));
   } else if (args.includes('--maps')) {
     console.log(goldenText(defs));
     console.log('Tiles: . floor, h crate, H container, # machinery, c console, % rock; e the way in, s spawn, * crate to tag, k terminal, x the far gate, v a captive.');

@@ -4,6 +4,8 @@
 // gone till the ship leaves; a squad goes, with no hunters; and after it
 // act 1's pay, heat and standing, with the wounds kept and the dead gone,
 // counted apart from act 1's jobs. Saves keep the jobs taken this visit.
+// tools/jobs.js --stations prints them, and the test player's numbers for
+// them come from its --odds.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { makeSave, MIGRATIONS, parseSave, SAVE_VERSION } from '../src/core/save.js';
@@ -16,6 +18,7 @@ import { campaignScreen, initialState, reduce, saveData } from '../src/sim/root.
 import { jobMoves, jobPay, standingWith, stationSide } from '../src/sim/standing.js';
 import { stationBoard, stationClients, stationContracts, stationHere, takeStationJob } from '../src/sim/stationJobs.js';
 import { beginRun, jump, linked } from '../src/sim/travel.js';
+import { stationJobsText } from '../tools/jobs.js';
 import { rules } from './battleKit.js';
 import { readyToLaunch } from './launchKit.js';
 
@@ -225,4 +228,19 @@ test('saves: v35 keeps the jobs taken this visit, and a v34 run takes none', () 
   assert.match(campaignProblems({ ...campaign, run: { ...campaign.run, jobbed: ['undeclared', 'undeclared'] } }).join(), /jobs taken/);
   const elsewhere = fresh.run.sector.nodes.find((node) => node.type !== 'station').id;
   assert.match(campaignProblems({ ...at(fresh, elsewhere), run: { ...at(fresh, elsewhere).run, jobbed: ['undeclared'] } }).join(), /jobs taken/);
+});
+
+test("tools/jobs.js --stations prints every station job, whose stations post it and its pay; with --odds, how often the test crew wins it and the hit points it costs", () => {
+  const plain = stationJobsText(rules);
+  assert.equal(plain.lines.length, 1 + atStations.length);
+  assert.match(plain.lines[0], /^15 station jobs; a board posts 3:$/);
+  for (const job of atStations) assert.ok(plain.lines.some((line) => line.includes(`(${job.id}): `) && line.includes(`${job.credits[0]} to ${job.credits[1]} credits.`)), job.id);
+  assert.match(plain.lines.find((line) => line.includes('(safepassage)')), /posted at the Fleet's, the Hallorans' and nobody's stations/);
+  const measured = stationJobsText(rules, { odds: 2 });
+  assert.deepEqual(Object.keys(measured.rates).sort(), atStations.map((job) => job.id).sort());
+  for (const job of atStations) {
+    assert.ok([0, 0.5, 1].includes(measured.rates[job.id]), `${job.id} won ${measured.rates[job.id]}`);
+    assert.ok(measured.wounds[job.id] >= 0, `${job.id} lost ${measured.wounds[job.id]}`);
+  }
+  assert.match(measured.lines.find((line) => line.includes('(holdberth)')), /; won \d+%, \d+ hit points lost\.$/);
 });

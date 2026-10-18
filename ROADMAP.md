@@ -1753,7 +1753,7 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **A patrol's or a trap's opening volley isn't played out:** it comes before the screen opens, and shows as scars on the hull and its lines in the column.
   - **The round's sounds moved to the screen** (`roundCues`), each as its shot fires and lands. With reduced motion, `roundSounds` plays them all at once, as M35 did.
   - **Frames:** deep space is painted once a size and copied in; each ship's layer covers only her and a cell round her; her hull is painted once and her marks drawn over a copy of it, so a hit doesn't paint her whole hull again. Drawn whole every frame, deep space alone took longer than all the rest.
-- [ ] **M38c Station jobs.** Act 1's job board stays in the hangar: on the run, stations repair, refit, sell and hire, but give no work. Evan asked (2026-10-18) for jobs at stations.
+- [x] **M38c Station jobs.** Act 1's job board stays in the hangar: on the run, stations repair, refit, sell and hire, but give no work. Evan asked (2026-10-18) for jobs at stations.
 
   Measured first (the miner, 30 voyages from launch, medians): launched with 105 credits (5 to 255); 65 from events; 87 spent on supplies and 40 on transponder swaps; parts bought at a shipyard in 2 of 30 runs. Heat 35 at launch, 65 at most; the hunters met in 17 of 30. Two stations a sector, and links run both ways, so a station can be called at again.
 
@@ -1796,6 +1796,21 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
     - back at the chart with its pay and heat;
     - offline, every button 48 px or more, no console errors;
     - every earlier milestone's browser check still passes.
+
+  As built (2026-10-18), where it differs from the above or adds to it:
+  - **Four jobs were eased** after they won 7 to 40% of the time from the start crews:
+    - Pay by the litre: the Pike crew, two turns at the terminal, and the cargo ring as a second site;
+    - Pirates at the pumps: the lighter pirate crew;
+    - Cut the rig: one target;
+    - Fleet stores: one crate.
+
+    All 15 now win 46 to 89% (PROGRESS.md has each).
+  - **Back dues** (`dues`) was drafted as `strikefund`, an id act 1's board already has.
+  - **Jobs sits in the chart's Here panel at a station,** above the transponder swap, with the count posted this visit. One tap opens the board; opening it spends nothing.
+  - **A board is fresh at each jump made,** so a regroup or a day hidden at the station keeps the visit's board.
+  - **The test player weighs a job's wounds** by the hit points the start crews lose in it (`tools/jobs.js --stations --odds` prints them), at 2 credits each. Managing heat, its line counts the next jump's heat too. It takes work before the refit, so a part paid goes on at that station.
+  - **The voyage tests' fitted voyages fly without station jobs,** as they fly without refits. With jobs, a healer's crew is fit more often, takes more work and patches more: 1,147 hit points with a med bay against 958 without, on seeds 1 to 30.
+  - **Station jobs make act 2 easier for the careful player, not harder:** their pay buys transponder swaps, which shed more heat than the jobs add. Over 100 voyages the hunters came in 22 runs against 35 without them. Every rate stays within main's margins (PROGRESS.md). Whether the heat should bite harder is Evan's call (§9).
 - [ ] **M38d The run goes on.** Since M25 settling the first world ends the travel: act 3's trips reach only places 1 to 3 days away. Evan's pick (2026-10-18): the run goes on. The draft:
   - the ship leaves the colony and jumps on into new systems past the charts, each with worlds to settle, stations, a shipyard, wrecks and the pursuer's hunters, generated as act 2's sectors are;
   - the colony is a port to come back to, for refits, rest and its stores;
@@ -1980,5 +1995,9 @@ These ideas wait until v0.4 or later:
 - the worth of a weapon on the run: bought freely, the test players' weapons spent the purse that keeps the hunters off, and as many as 22 fewer voyages of 100 crossed fed. They buy only big steps up now, beyond a holdful's price and a swap's. Weapons may want to be cheaper, or the run's fights to matter more; and the table's wins are the whole squad carrying each, so what one member gains is a guess (raised in M37)
 - the new missions' balance: the still (a sabotage of two targets) wins 57% of the time, but only 10% by its objective, the rest as a clear-out; closing time (a defense of 8 rounds) wins 85%, 27% by holding. Act 1's credits at launch moved with the new jobs and the guards: the miner's up 44%, the deserter's down 9% and the smuggler's down 12%. For M40's balance runs (raised in M38)
 - the credits screen: ZzFX is the first entry in `assets/LICENSES.md`, and the screen that lists them comes with the release (Phase 8; raised in M35)
+- station jobs and heat: a station job's pay buys transponder swaps (40 credits for 30 heat), which shed more than the job's 8 or 15 heat adds, so with them the careful test player meets the hunters in 22 voyages of 100 against 35 without, and the deserter's colonies lose a raid in 1 run against 13. More heat a job, a swap that costs more each time, or a station that logs any job would make the trade bite. For M40's balance runs, or sooner if Evan wants work to feel risky (raised in M38c)
+- the squad's wounds on the run: a station job costs its squad 6 to 19 hit points of 26 on average, and patching them costs 2 credits each, so work feeds the patching bill. A med bay's crew, fit more often, works more and patches more (raised in M38c)
+- a station's work on the chart: nothing says what a station posts until the ship is there. A mark for a station with work, or the count in the jump plan, would let a player plan a route for it (raised in M38c)
+- the test player's view of a job: it weighs a station job at the full-health start crews' odds and wounds (with act 1's factor for a twist), never by the squad going, so a hurt, ranked or better-armed squad weighs the same (raised in M38c)
 
 Ideas that come up during a session go here, not into code.

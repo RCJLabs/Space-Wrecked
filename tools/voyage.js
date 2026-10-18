@@ -18,6 +18,10 @@
 //     beyond a holdful's price, and since M37 buy a weapon from its rack
 //     GAIN points better than anyone who could carry it has (arms.js), with
 //     what is left beyond a holdful's price and a transponder swap's;
+//   - at a station from M38c, before the refit, take the job on its board
+//     worth most with a full squad of the fit, if one is worth taking
+//     (voyagePlan.js stationJobPick), unless --jobs no, and fight it as
+//     act 1's jobs are fought (tools/boarding.js fightStationJob);
 //   - fight a boarding with the healthiest squadSize of the crew (crew.js),
 //     each carrying the best weapon on hand of their job's kinds (M37);
 //   - with --scan yes (the default), scan wherever a scan would show a
@@ -78,6 +82,7 @@
 //   node tools/voyage.js --fit medbay  a part fitted before the voyage (or a
 //                                      list, like --fit cargo,medbay)
 //   node tools/voyage.js --refit no    no refits at stations
+//   node tools/voyage.js --jobs no     no jobs at stations (M38c)
 //   node tools/voyage.js --heat ignore no swaps, hides or long jumps
 //   node tools/voyage.js --background deserter
 //                                      from another background's start
@@ -106,28 +111,30 @@ import { buyFromYard } from '../src/sim/yards.js';
 import { eased, questOf, threadOf } from '../src/sim/quests.js';
 import { raidLoss } from '../src/sim/raid.js';
 import { landingPlan, raidDown } from '../src/sim/raids.js';
+import { jobHeat } from '../src/sim/heat.js';
 import { huntersOf } from '../src/sim/hunt.js';
 import { hireRecruit } from '../src/sim/recruits.js';
 import { regroup } from '../src/sim/regroup.js';
 import { repairShip } from '../src/sim/repair.js';
 import { settle } from '../src/sim/settle.js';
-import { levelOf, shareHere, standingWith, stationSide } from '../src/sim/standing.js';
+import { jobPay, levelOf, shareHere, standingWith, stationSide } from '../src/sim/standing.js';
 import { survey } from '../src/sim/survey.js';
 import { swapTransponder } from '../src/sim/transponder.js';
 import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer, tradeHeat } from '../src/sim/travel.js';
 import { runRecord } from '../src/ui/campaign/launchText.js';
 import { captainOrder } from './approachPlan.js';
 import { upgradeOf } from './arms.js';
-import { fightBoarding, fightPlace, fightRaid, SealedIn } from './boarding.js';
+import { fightBoarding, fightPlace, fightRaid, fightStationJob, SealedIn } from './boarding.js';
 import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
 import { withPart } from './startShip.js';
-import { bestChoice, boardIt, HEAT_POLICIES, hireWho, homeBuild, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, swapNow, systemMove, tradeHere, tripSquad, worldScore, yardBuy } from './voyagePlan.js';
+import { bestChoice, boardIt, HEAT_POLICIES, hireWho, homeBuild, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, stationJobPick, swapNow, systemMove, tradeHere, tripSquad, worldScore, yardBuy } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
 export const REFIT_POLICIES = ['yes', 'no'];
+export const JOB_POLICIES = ['yes', 'no'];
 const MAX_JUMPS = 100; // a voyage still going after this many stops
 // The colony's days the test player plays, and the days from the landing
 // within which its farms are to feed the crew (M27's Done when).
@@ -142,20 +149,22 @@ const QUEST_DID = { started: 'started', done: 'a step done', finished: 'done', c
 // world settled, its colony founded and its first days played: { ended,
 // steps, sectors, system, tally, lines, campaign, landed, home, travelled }.
 // ended: whether it settled a world, ending the act; steps: every jump,
-// purchase, event, approach, boarding, patch, repair, scan and survey, with
-// what it moved, [before, after], and the settling; sectors: each sector as
-// the ship entered it; system: the system past the charts, as it entered
-// it, or null; campaign: as it ended, the colony founded; landed: the
-// campaign as it settled, before the colony was founded, or null; home:
-// the colony after its first COLONY_DAYS days (M27), or null; travelled:
-// after TRIP_DAYS more of trips (M28), or null.
-export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 'yes', refit = 'yes', heat = 'manage', label = '' } = {}) {
+// purchase, event, approach, boarding, station job (M38c), patch, repair,
+// scan and survey, with what it moved, [before, after], and the settling;
+// sectors: each sector as the ship entered it; system: the system past the
+// charts, as it entered it, or null; campaign: as it ended, the colony
+// founded; landed: the campaign as it settled, before the colony was
+// founded, or null; home: the colony after its first COLONY_DAYS days
+// (M27), or null; travelled: after TRIP_DAYS more of trips (M28), or null.
+// jobs: 'no' takes no work at stations (M38c).
+export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 'yes', refit = 'yes', heat = 'manage', jobs = 'yes', label = '' } = {}) {
   if (!LONG_POLICIES.includes(longPolicy)) throw new Error(`--long is one of ${LONG_POLICIES.join(', ')}`);
   if (!HEAT_POLICIES.includes(heat)) throw new Error(`--heat is one of ${HEAT_POLICIES.join(', ')}`);
   // Ignoring heat makes no long jumps either.
   const long = heat === 'ignore' ? 'never' : longPolicy;
   if (!SCAN_POLICIES.includes(scans)) throw new Error(`--scan is one of ${SCAN_POLICIES.join(', ')}`);
   if (!REFIT_POLICIES.includes(refit)) throw new Error(`--refit is one of ${REFIT_POLICIES.join(', ')}`);
+  if (!JOB_POLICIES.includes(jobs)) throw new Error(`--jobs is one of ${JOB_POLICIES.join(', ')}`);
   const begun = beginRun(launched, defs);
   if (!begun.ok) throw new Error(begun.error);
   let campaign = begun.campaign;
@@ -202,6 +211,13 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     // Parts bought at the shipyards (M37b), and what they cost.
     yardBought: 0,
     yardCredits: 0,
+    // Jobs taken at stations (M38c), won, what they paid, the heat they
+    // added (their docking heat with it) and the hit points they cost.
+    stationJobs: 0,
+    stationJobsWon: 0,
+    jobCredits: 0,
+    jobHeat: 0,
+    jobHp: 0,
     hired: 0,
     hireCredits: 0,
     healed: 0,
@@ -487,6 +503,28 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       jumped(before, jump(campaign, defs, move.to));
       continue;
     }
+    // Work at a station (M38c): the job worth most on its board, while one
+    // is worth taking with a full squad of the fit (voyagePlan.js
+    // stationJobPick), before the refit, so a part it pays goes on here.
+    for (let pick = jobs === 'yes' ? stationJobPick(campaign, defs, heat) : null; pick; pick = stationJobPick(campaign, defs, heat)) {
+      const before = campaign;
+      const dock = tradeHeat(campaign, defs);
+      const fought = fightStationJob(campaign, defs, pick.index, pick.squad);
+      campaign = fought.campaign;
+      const step = record('job', before, { contract: pick.job.contract, won: fought.won, rounds: fought.rounds, squad: pick.squad, ids: before.crew.map((member) => member.id), max: before.crew.map((member) => maxHp(member, defs)), part: pick.job.part, pay: fought.won ? jobPay(before, defs, pick.job) : 0, added: jobHeat(pick.job, defs).heat, dock, dragged: fought.dragged });
+      if (step.dock) tally.docked += 1;
+      tally.stationJobs += 1;
+      if (fought.won) tally.stationJobsWon += 1;
+      tally.jobCredits += step.pay;
+      tally.jobHeat += campaign.heat - before.heat;
+      tally.jobHp += step.hp[0].reduce((a, b) => a + b, 0) - step.hp[1].reduce((a, b) => a + b, 0);
+      if (fought.dragged) tally.dragged += 1;
+      tally.peak = Math.max(tally.peak, campaign.heat);
+      const title = defs.contracts.jobs.get(pick.job.contract)?.title ?? pick.job.contract;
+      const part = pick.job.part ? (defs.modules.get(pick.job.part)?.name.toLowerCase() ?? pick.job.part) : null;
+      const paid = `paid ${step.pay} credits${part ? ` and ${/^[aeiou]/.test(part) ? 'an' : 'a'} ${part}` : ''}`;
+      lines.push(`   Took ${title} at ${hereOf(campaign).name}: ${fought.won ? `done in round ${fought.rounds}, ${paid}` : `lost in round ${fought.rounds}`}${dock ? `, docking +${dock} heat` : ''}; crew ${hpOf(campaign)}. ${hold()}.`);
+    }
     // At a shipyard (M37b), refitting: the parts the refit would fit, one
     // at a time while each leaves a holdful's price and a transponder
     // swap's (voyagePlan.js yardBuy); the refit below fits them.
@@ -632,7 +670,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
   const { sector } = campaign.run;
   const where = ended ? `Settled ${tally.settled.name} in ${sector.name}` : sector.system ? `Stopped in ${sector.name}, past the charts` : `Stopped in sector ${sector.index}`;
   lines.push(
-    `${where}, ${tally.crossed} sectors crossed, ${tally.surveys} world${tally.surveys === 1 ? '' : 's'} surveyed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost, ${tally.ambushes} traps, ${tally.eventWrecks} parts wrecked and ${tally.eventRepairs} mended; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits; boarded ${tally.boardings} (won ${tally.boardingsWon}), left ${tally.left}, fought off ${tally.defencesWon} of ${tally.defences}; salvage ${tally.salvaged} parts and ${tally.salvageCredits} credits, lost ${tally.partsLost} parts and ${tally.creditsLost} credits, ${tally.fightHp} hit points; patched ${tally.patchedHp} for ${tally.patchCredits} credits; ${tally.repairs} repairs for ${tally.repairCredits} credits; signed on ${tally.hired}, healed ${tally.healed} in the med bay; refitted ${tally.fitted} parts at ${tally.refits} stations. The hunters: met ${tally.hunts} (${tally.taskForces} the task force), faced ${tally.huntsFaced}; ${tally.hotJumps} jumps where they might wait; ${tally.regroups} regroups and ${tally.hides} days hidden, healing ${tally.rested}; ${tally.swaps} transponder swaps for ${tally.swapCredits} credits. Heat ${tally.heat[0]} to ${tally.heat[1]}, at most ${tally.peak}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
+    `${where}, ${tally.crossed} sectors crossed, ${tally.surveys} world${tally.surveys === 1 ? '' : 's'} surveyed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost, ${tally.ambushes} traps, ${tally.eventWrecks} parts wrecked and ${tally.eventRepairs} mended; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits; boarded ${tally.boardings} (won ${tally.boardingsWon}), left ${tally.left}, fought off ${tally.defencesWon} of ${tally.defences}; salvage ${tally.salvaged} parts and ${tally.salvageCredits} credits, lost ${tally.partsLost} parts and ${tally.creditsLost} credits, ${tally.fightHp} hit points; patched ${tally.patchedHp} for ${tally.patchCredits} credits; ${tally.repairs} repairs for ${tally.repairCredits} credits; signed on ${tally.hired}, healed ${tally.healed} in the med bay; refitted ${tally.fitted} parts at ${tally.refits} stations; ${tally.stationJobs} station jobs taken (${tally.stationJobsWon} done) for ${tally.jobCredits} credits, ${signed(tally.jobHeat)} heat and ${tally.jobHp} hit points. The hunters: met ${tally.hunts} (${tally.taskForces} the task force), faced ${tally.huntsFaced}; ${tally.hotJumps} jumps where they might wait; ${tally.regroups} regroups and ${tally.hides} days hidden, healing ${tally.rested}; ${tally.swaps} transponder swaps for ${tally.swapCredits} credits. Heat ${tally.heat[0]} to ${tally.heat[1]}, at most ${tally.peak}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
   );
   if (ended) lines.push(`The act's record: ${tally.settled.record.map(([label, value]) => `${label} ${value}`).join('; ')}.`);
   return { ended, steps, sectors, system, tally, lines, campaign, landed, home, travelled };
@@ -1185,7 +1223,7 @@ export function manyVoyages(defs, runs, options = {}) {
   const policy = ignoring || options.long === 'never' ? 'never' : `when heat is at ${LONG_FROM} or over`;
   const met = done.filter((r) => r.tally.hunts > 0).length;
   const lines = [
-    `${runs} voyages from launch, campaign seeds 1 to ${runs}${options.background ? `, the ${defs.backgrounds.get(options.background)?.name.toLowerCase()}` : ''}, ${ignoring ? 'ignoring heat' : 'managing heat'}, long jumps ${policy}, ${options.scans === 'no' ? 'no scans' : 'scanning'}, ${options.refit === 'no' ? 'no refits' : 'refitting at stations'}${options.fit?.length ? `, fitted with ${options.fit.join(' and ')}` : ''}. The median, then the least and most:`,
+    `${runs} voyages from launch, campaign seeds 1 to ${runs}${options.background ? `, the ${defs.backgrounds.get(options.background)?.name.toLowerCase()}` : ''}, ${ignoring ? 'ignoring heat' : 'managing heat'}, long jumps ${policy}, ${options.scans === 'no' ? 'no scans' : 'scanning'}, ${options.refit === 'no' ? 'no refits' : 'refitting at stations'}, ${options.jobs === 'no' ? 'no station jobs' : 'taking station jobs'}${options.fit?.length ? `, fitted with ${options.fit.join(' and ')}` : ''}. The median, then the least and most:`,
     `Sectors crossed: ${spread(of('crossed'))}; ${done.filter((r) => r.system).length} of ${done.length} entered the system past the charts, ${done.filter((r) => r.ended).length} settled a world; fed all the way in ${done.filter((r) => r.tally.hungryJumps === 0).length} of ${done.length}.`,
     systemLine(defs, done),
     colonySummary(defs, done),
@@ -1200,6 +1238,7 @@ export function manyVoyages(defs, runs, options = {}) {
     `At stations: patched ${spread(of('patchedHp'))} hit points for ${spread(of('patchCredits'))} credits; ${spread(of('repairs'))} repairs for ${spread(of('repairCredits'))} credits. Crew at the end: ${spread(done.map((r) => r.campaign.crew.reduce((sum, m) => sum + m.hp, 0)))} hit points.`,
     `Crew: signed on ${spread(of('hired'))} for ${spread(of('hireCredits'))} credits, ${done.filter((r) => r.tally.hired > 0).length} of ${done.length} runs; ${spread(done.map((r) => r.campaign.crew.length))} aboard at the end. The med bay healed ${spread(of('healed'))} hit points.`,
     `Refits: ${spread(of('fitted'))} parts fitted at ${spread(of('refits'))} stations and shipyards, in ${done.filter((r) => r.tally.fitted > 0).length} of ${done.length} runs: ${fitsLine(defs, done)}. Bought at shipyards (M37b): ${spread(of('yardBought'))} parts for ${spread(of('yardCredits'))} credits, in ${done.filter((r) => r.tally.yardBought > 0).length} of ${done.length} runs.`,
+    `Station jobs (M38c): ${spread(of('stationJobs'))} taken, in ${done.filter((r) => r.tally.stationJobs > 0).length} of ${done.length} runs, ${spread(of('stationJobsWon'))} done (${done.reduce((sum, r) => sum + r.tally.stationJobsWon, 0)} of ${done.reduce((sum, r) => sum + r.tally.stationJobs, 0)} in all); paid ${spread(of('jobCredits'))} credits; heat ${spread(of('jobHeat'))}; hit points ${spread(of('jobHp'))}.`,
     `In the first three sectors: restocked at ${spread(done.map((r) => early(r, (step) => step.kind === 'buy')))} stations; hungry on ${spread(hungryEarly)} jumps; fed all the way in ${hungryEarly.filter((n) => n === 0).length} of ${done.length}.`,
     `Supplies bought: ${spread(of('bought'))}, for ${spread(of('spent'))} credits. Launch credits: ${spread(done.map((r) => r.steps[0]?.credits[0] ?? 0))}.`,
     `Heat at launch: ${spread(done.map((r) => r.tally.heat[0]))}; at the end: ${spread(done.map((r) => r.tally.heat[1]))}; at most: ${spread(of('peak'))}. Jumps where the hunters might wait: ${spread(of('hotJumps'))}.`,
@@ -1339,7 +1378,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const made = sets.length ? rulesWith(readData(), sets) : { ok: true, rules: indexDefs(readData()) };
   if (!made.ok) throw new Error(made.error);
   const fit = value('--fit', '');
-  const options = { long: value('--long', 'heat'), scans: value('--scan', 'yes'), refit: value('--refit', 'yes'), heat: value('--heat', 'manage'), fit: fit ? fit.split(',') : [], background: value('--background', undefined) };
+  const options = { long: value('--long', 'heat'), scans: value('--scan', 'yes'), refit: value('--refit', 'yes'), heat: value('--heat', 'manage'), jobs: value('--jobs', 'yes'), fit: fit ? fit.split(',') : [], background: value('--background', undefined) };
   const runs = Number(value('--runs', 0));
   if (options.background === 'all') console.log(voyagesByBackground(made.rules, runs || 30, { ...options, background: undefined }).lines.join('\n'));
   else console.log((runs ? manyVoyages(made.rules, runs, options) : voyage(made.rules, Number(value('--seed', 1)), options)).lines.join('\n'));

@@ -645,13 +645,13 @@
       "id": "cutrig",
       "title": "Cut the rig",
       "mission": "sabotage",
-      "targets": 2,
+      "targets": 1,
       "clients": ["venn", "dalca"],
       "sites": ["tumble"],
       "encounter": "scavvers",
       "credits": [100, 130],
       "drops": { "chance": 40, "parts": { "cannon": 1, "shield": 1, "bastion-weapon": 1 } },
-      "pitch": "Scavvers are stripping a wreck out at {site} with a cutting rig they lifted on {station}. {client} doesn't need it back. Blow its charge packs and let the rocks have the rest."
+      "pitch": "Scavvers are stripping a wreck out at {site} with a cutting rig they lifted on {station}. {client} doesn't need it back. Blow its power pack and let the rocks have the rest."
     },
     {
       "id": "dues",
@@ -672,7 +672,7 @@
       "mission": "clear",
       "clients": ["brannigan", "hask"],
       "sites": ["fueldock"],
-      "encounter": "boarders",
+      "encounter": "podthieves",
       "credits": [100, 140],
       "drops": { "chance": 50, "parts": { "weapon": 1, "shield": 1, "pointdefense": 1, "scrapline-shield": 1 } },
       "pitch": "Pirates came in on a dead transponder and took {site} on {station}, and they're filling their tanks for free. {client} wants them gone before the next tanker docks."
@@ -693,13 +693,13 @@
       "id": "pumplocks",
       "title": "Pay by the litre",
       "mission": "hack",
-      "turns": 3,
+      "turns": 2,
       "clients": ["brannigan", "moss"],
-      "sites": ["fueldock"],
-      "encounter": "dockers",
+      "sites": ["fueldock", "cargoring"],
+      "encounter": "pikes",
       "credits": [80, 120],
       "drops": { "chance": 40, "parts": { "reactor": 1, "smallreactor": 1, "scrapline-reactor": 1 } },
-      "pitch": "A dock gang has locked the pumps at {site} and charges every ship on {station} by the litre for the key. {client} wants the pumps' terminal worked till the locks come off."
+      "pitch": "The Pikes have locked the pumps at {site} and charge every ship on {station} by the litre for the key. {client} wants the pumps' terminal worked till the locks come off."
     },
     {
       "id": "badpaper",
@@ -728,13 +728,13 @@
       "id": "fleetstores",
       "title": "Fleet stores",
       "mission": "extract",
-      "crates": 2,
+      "crates": 1,
       "clients": ["hask", "moss"],
       "sites": ["claim", "tumble"],
       "encounter": "scavvers",
       "credits": [70, 100],
       "drops": { "chance": 50, "parts": { "lifesupport": 1, "largehold": 1, "bastion-cargo": 1 } },
-      "pitch": "Scavvers lifted two crates of Fleet stores off a Company freighter at {station} and stashed them out at {site}. {client} would like them back before anybody has to write a report."
+      "pitch": "Scavvers lifted a crate of Fleet stores off a Company freighter at {station} and stashed it out at {site}. {client} would like it back before anybody has to write a report."
     },
     {
       "id": "repomen",
