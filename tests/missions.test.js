@@ -353,9 +353,10 @@ test('a campaign saved at any order of each new mission\'s fight passes the save
 });
 
 test('SAVE_VERSION 34: a save from before reads unchanged', () => {
-  assert.equal(SAVE_VERSION, 36);
+  assert.equal(SAVE_VERSION, 37);
   const data = { campaign: { crew: [], fight: null }, slots: [] };
   const migrated = migrate({ version: 33, data });
-  assert.equal(migrated.version, 36);
-  assert.deepEqual(migrated.data, data);
+  assert.equal(migrated.version, 37);
+  // Unchanged but for M38e's other colonies, none (v37).
+  assert.deepEqual(migrated.data, { ...data, campaign: { ...data.campaign, colonies: [] } });
 });

@@ -76,7 +76,7 @@ import { tripHeatOf } from '../src/sim/raids.js';
 import { feeOf } from '../src/sim/recruits.js';
 import { costAt } from '../src/sim/standing.js';
 import { voyagePlan } from '../src/sim/voyage.js';
-import { COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, outSummary, playColony, playTrips, TRIP_DAYS, voyage, VOYAGE_SYSTEMS, voyagesByBackground } from '../tools/voyage.js';
+import { COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, NEW_DAYS, outSummary, playColony, playTrips, secondSummary, SETTLE_SYSTEM, TRIP_DAYS, voyage, VOYAGE_SYSTEMS, voyagesByBackground } from '../tools/voyage.js';
 import { bestWorld, FIT_ORDER, FIT_SHARE, HOME_JUMPS, nextGift, STOCK_DAYS, systemMove } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 
@@ -1028,21 +1028,27 @@ test("after the colony's 60 days the careful player stocks the holds and flies o
     assert.ok(!names.includes(r.system.name), `seed ${seed}: the colony's system's name again`);
     assert.ok(out.systems.every((sector) => sector.nodes.filter((node) => node.world).length === rules.worlds.voyage.worlds));
     // A day a jump: each jump (out, on into the next system and the long
-    // ones too), each day hidden or rested, and each day of the flight home.
+    // ones too), each day hidden or rested, and each day of the flight home;
+    // from M38e each day at a second colony too.
     assert.ok(out.back, `seed ${seed}: comes home`);
-    assert.equal(out.colony.days, tally.jumps + tally.regroups + tally.hides + out.back.days, `seed ${seed}: the colony's days away`);
+    assert.equal(out.colony.days, tally.jumps + tally.regroups + tally.hides + out.back.days + (out.second?.days ?? 0), `seed ${seed}: the colony's days away`);
     // Home at the last system's jump point, once the holds came down to the
     // way home's supplies and the buffer, or with a raid coming that the
-    // flight home lands before (M38d's fix).
+    // flight home lands before (M38d's fix); or from M38e straight back
+    // from a second colony (its own test, below).
     const step = out.steps.find((s) => s.kind === 'home');
-    assert.ok((step.atExit && step.out === VOYAGE_SYSTEMS) || step.supplies[0] <= step.eats + HOME_JUMPS * step.each || (step.coming !== null && step.flight <= step.coming), `seed ${seed}: home with ${step.supplies[0]} supplies, ${step.out} systems out`);
-    assert.equal(out.back.called, step.coming !== null);
+    if (out.second) assert.equal(step, undefined, `seed ${seed}: flown back from the second colony, not home from the run`);
+    else {
+      assert.ok((step.atExit && step.out === VOYAGE_SYSTEMS) || step.supplies[0] <= step.eats + HOME_JUMPS * step.each || (step.coming !== null && step.flight <= step.coming), `seed ${seed}: home with ${step.supplies[0]} supplies, ${step.out} systems out`);
+      assert.equal(out.back.called, step.coming !== null);
+    }
     // Landed: the ship home and the crew one again in its order, with whoever
-    // signed on aboard.
+    // signed on aboard, and from M38e without whoever stayed at a second.
     assert.equal(out.campaign.colony.voyage, null);
+    assert.equal(out.campaign.colony.id, 1);
     const ids = out.back.landed;
     assert.deepEqual(ids, [...ids].sort((a, b) => a - b));
-    assert.equal(ids.length, before.crew.length + tally.hired + tally.companions.joined.length, `seed ${seed}: the crew landed`);
+    assert.equal(ids.length, before.crew.length + tally.hired + tally.companions.joined.length - (out.second?.left.length ?? 0), `seed ${seed}: the crew landed`);
     // A raid found while the ship is away comes down no sooner than the
     // flight home lands (M38d's fix), and the player flies home for it: each
     // is met at home with everyone, none by those left there alone.
@@ -1063,4 +1069,56 @@ test("after the colony's 60 days the careful player stocks the holds and flies o
   assert.ok(runs((out) => out.back.called) > 0, 'a raid calls the ship home on some voyage out');
   assert.match(outSummary(refittingAll), /^The voyage out \(M38d\): flown in 100 of 100, home in \d+; .+ systems crossed \d+ \(\d+ to \d+\), all 3 in \d+; days away .+ At home: found in \d+ runs, calling the ship home in \d+; raids faced while away \d+, lost \d+ .+ met at home once back \d+, won \d+; fed all the while in \d+ of 100; the mines' digging past the storehouses lost in \d+ runs \(\d+ in all\)\. Before flying out, \d+ \(\d+ to \d+\) days stocking the holds, full in \d+ runs; flying out, food spoiled in \d+ runs \(\d+ in all\)\.$/);
   assert.match(flown.lines.at(-1), /^The voyage out: [0-3] of 3 systems crossed, home after \d+ days away(, called home by a raid)?; /);
+});
+
+// M38e's: on its voyage out the careful player settles the best world of
+// its SETTLE_SYSTEM'th system out, gives the new colony the ship's parts
+// and plays its first NEW_DAYS days building farms and mines (a raid
+// coming there waited for, one coming at the first cutting them short),
+// leaves the least fit there when three or more landed, and flies
+// straight back to the first colony. Measured over the same 100 voyages.
+const SECOND = { founded: 75 };
+test("on its voyage out the careful player settles a world in its second system, plays the new colony's first days building farms and mines, leaves one there when three or more landed, and flies straight back to the first colony (M38e)", () => {
+  for (const [i, r] of refittingAll.entries()) {
+    const seed = i + 1;
+    const second = r.out?.second;
+    if (!second) {
+      // No second colony: the voyage went home from the run first (M38d).
+      assert.ok(r.out.steps.some((step) => step.kind === 'home'), `seed ${seed}: neither settled nor home`);
+      continue;
+    }
+    const { settled, founded, before, crew, left, back } = second;
+    // Settled in the SETTLE_SYSTEM'th system out, the colony a number and a
+    // place of its own, the first kept with those at home.
+    assert.equal(settled.colony.id, 2);
+    assert.equal(settled.colony.at, SETTLE_SYSTEM);
+    assert.ok(r.out.systems.length === SETTLE_SYSTEM, `seed ${seed}: settled in system ${r.out.systems.length}`);
+    assert.deepEqual(settled.colonies.map((colony) => colony.id), [1]);
+    assert.ok(founded.given.length > 0, `seed ${seed}: gave the ship's parts`);
+    // Its first days: NEW_DAYS, or fewer once the first is found, and
+    // more waiting for a raid coming there.
+    assert.ok(second.called ? second.days < NEW_DAYS : second.days >= NEW_DAYS, `seed ${seed}: ${second.days} days there`);
+    // Who stays: the least fit of three or more, else nobody (fewer flying
+    // only where the ship can't carry them all).
+    const landed = before.crew.map((member) => member.id);
+    assert.deepEqual([...crew, ...left].sort((a, b) => a - b), [...landed].sort((a, b) => a - b));
+    if (landed.length >= 3) assert.ok(left.length >= 1, `seed ${seed}: ${landed.length} landed, ${left.length} stayed`);
+    else assert.deepEqual(left, [], `seed ${seed}: nobody stays of ${landed.length}`);
+    // Straight back to the first: a day a system between, no stop but a
+    // lander's; the second keeps those who stayed.
+    assert.ok(back, `seed ${seed}: flies back`);
+    assert.equal(back.flight, SETTLE_SYSTEM);
+    assert.ok(back.days === SETTLE_SYSTEM || back.stops > 0, `seed ${seed}: ${back.days} days back`);
+    const there = r.out.campaign.colonies.find((colony) => colony.id === 2);
+    assert.deepEqual(there.keep.crew.map((member) => member.id), left);
+    assert.ok(there.buildings.length > 0, `seed ${seed}: the second colony stands`);
+    assert.ok(there.buildings.some((b) => rules.colony.builds.get(b.type)?.makes), `seed ${seed}: a farm or a mine built there`);
+  }
+  const founded = refittingAll.filter((r) => r.out?.second).length;
+  assert.ok(founded >= SECOND.founded - MARGIN, `founded on ${founded} of ${RATE_RUNS} voyages out`);
+  assert.match(secondSummary(refittingAll), /^More colonies \(M38e\): founded on \d+ of 100 voyages out, in system 2; days there .+ Raids since flying out: at the first found \d+, faced \d+, lost \d+; at the second found \d+, faced \d+, lost \d+\. Every colony fed all the while in \d+ of 100\.$/);
+  // With --settle no, the voyage out is M38d's.
+  const stayed = voyage(rules, SEEDS[0], { refit: 'yes', jobs: 'yes', settle: 'no' }, lifts[0]);
+  assert.equal(stayed.out.second, undefined);
+  assert.ok(stayed.out.steps.some((step) => step.kind === 'home'));
 });

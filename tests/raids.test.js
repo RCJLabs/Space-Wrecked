@@ -278,7 +278,10 @@ test("the fight on the colony's grid: buildings as cover, the crew by the ship a
 test('while the ship is away: a leg stops on the raid\'s day, those at home face it and the ship flies on; with nobody home it is lost unless every raider is stopped', () => {
   // The lander comes down the day after the ship leaves for a place 3 days
   // out: the leg stops there with 2 days to fly.
-  const base = { ...at(settled(), { places: [far] }), heat: 30 };
+  // From M38e the colony keeps a heat of its own, the ship's as v37 opens
+  // it (unused while the ship is landed there).
+  const placed = at(settled(), { places: [far] });
+  const base = { ...placed, heat: 30, colony: { ...placed.colony, heat: 30 } };
   const coming = { ...base, colony: { ...base.colony, raid: { found: 1, lands: 2 } } };
   const out = flyOut(coming, rules, 0, [1]);
   assert.equal(out.ok, true, out.error);
@@ -336,8 +339,11 @@ test('while the ship is away: a leg stops on the raid\'s day, those at home face
 test('saves: v23 for the raid coming and a leg it stopped; a v22 colony opens with none coming; broken ones are caught', () => {
   // 24 since M32's orders in a fight, 27 since M33's fix, 28 since M33b's
   // quests, 29 since M33c's companions.
-  assert.equal(SAVE_VERSION, 36);
-  const base = { ...at(settled(), { places: [far] }), heat: 30 };
+  assert.equal(SAVE_VERSION, 37);
+  // From M38e the colony keeps a heat of its own, the ship's as v37 opens
+  // it (unused while the ship is landed there).
+  const placed = at(settled(), { places: [far] });
+  const base = { ...placed, heat: 30, colony: { ...placed.colony, heat: 30 } };
   const old = (campaign) => ({ ...saveData(initialState(3)), campaign });
   const step = MIGRATIONS.find((s) => s.from === 22);
   // A v22 colony had no raid; a v22 trip no leg.

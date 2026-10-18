@@ -7,7 +7,11 @@
 // flight checks with them aboard; and Fly out in two taps, the first
 // saying what it will come to or why the ship can't go. Flown, the chart
 // opens on a system past the colony's (sector.js). Its words are
-// voyageText.js's.
+// voyageText.js's. From M38e the crew's other colonies follow it, each
+// with where it lies, its day, food, who is there and its raid: a tap on
+// one plans a flight there, the crew picked as for Fly out, and Fly to in
+// two taps flies straight there (src/sim/voyage.js flyFrom), its words
+// colonyListText.js's.
 //
 // voyages = createVoyages(ctx), with the screen's, as colonyTrip.js has
 // them:
@@ -18,40 +22,52 @@
 //   say(words)                      what the hint says next ({ text, tone })
 //   refresh()                       draws the screen again
 //   cancelTrips()                   back from planning a trip
-// voyages.planning()                true while a voyage is being planned
-// voyages.section(campaign)         Voyage, for browsing
+// voyages.planning()                true while a voyage or a flight is being
+//                                   planned
+// voyages.section(campaign)         Voyage and the other colonies, for
+//                                   browsing
 // voyages.planPanel(campaign)       the panel while planning
 // voyages.hint(campaign)            what the hint says while planning, or
 //                                   null
 // voyages.cancel()                  back from planning
-import { voyageOut, voyagePlan } from '../../sim/voyage.js';
+import { flyFrom, voyageOut, voyagePlan } from '../../sim/voyage.js';
 import { node } from '../fight/panels.js';
 import { icons } from '../icons.js';
+import { flightFromText, flightReport, otherColonies } from './colonyListText.js';
 import { pickList } from './colonyTrip.js';
 import { squadRows } from './tripText.js';
 import { firstVoyagers, outText, voyageReport } from './voyageText.js';
 
 export function createVoyages(ctx) {
   const { game, defs, rowButton, actionRow, list, armed, arm, disarm, say, refresh } = ctx;
-  // The crew picked to go (ids, in the crew's order), or null.
+  // The crew picked to go (ids, in the crew's order), or null; and the
+  // colony a flight is for (M38e), or null for a voyage.
   let crew = null;
+  let to = null;
+
+  // The plan's words: Fly out's, or Fly to's.
+  const wordsOf = (campaign, rules) => (to === null ? outText(voyagePlan(campaign, rules, crew), campaign, rules) : flightFromText(campaign, rules, to, crew));
 
   const voyages = {
     planning: () => crew !== null,
     cancel() {
       crew = null;
+      to = null;
     },
 
     section(campaign) {
       const rules = defs();
       const ready = voyagePlan(campaign, rules, firstVoyagers(campaign, rules));
       const why = ready.crew ? null : ready.error;
-      return [node('h2', null, 'Voyage'), list([rowButton(`Past ${campaign.run.sector.name}`, why ?? 'The run goes on: systems nobody has charted, a day here for each jump', !why, () => plan())])];
+      const sections = [node('h2', null, 'Voyage'), list([rowButton(`Past ${campaign.run.sector.name}`, why ?? 'The run goes on: systems nobody has charted, a day here for each jump', !why, () => plan(null))])];
+      const others = otherColonies(campaign, rules);
+      if (others.length) sections.push(node('h2', null, 'Colonies'), list(others.map((other) => rowButton(other.name, why ?? other.detail, !why, () => plan(other.id)))));
+      return sections;
     },
 
     planPanel(campaign) {
       const rules = defs();
-      const words = outText(voyagePlan(campaign, rules, crew), campaign, rules);
+      const words = wordsOf(campaign, rules);
       const about = node('p', 'cln-placing', words.title);
       about.append(...words.lines.map((line, i) => {
         const small = node('small', null, line);
@@ -61,10 +77,10 @@ export function createVoyages(ctx) {
       // The buttons under the plan, so Fly out is in view on a short
       // screen; the crew below them.
       return [
-        node('h2', null, 'Voyage'),
+        node('h2', null, to === null ? 'Voyage' : 'Flight'),
         about,
         actionRow([
-          ['Fly out', icons.launch, () => tapFly(), armed() === 'voyage' ? 'cln-confirm cln-armed' : 'cln-confirm', words.ok],
+          [to === null ? 'Fly out' : 'Fly to', icons.launch, () => tapFly(), armed() === 'voyage' ? 'cln-confirm cln-armed' : 'cln-confirm', words.ok],
           ['Refit', icons.build, () => game.dispatch({ type: 'screen/show', screen: 'construction' }), null, true],
           ['Back', icons.prev, () => back(), null, true],
         ]),
@@ -76,20 +92,22 @@ export function createVoyages(ctx) {
     hint(campaign) {
       if (!crew) return null;
       const rules = defs();
-      const words = outText(voyagePlan(campaign, rules, crew), campaign, rules);
+      const words = wordsOf(campaign, rules);
       if (armed() === 'voyage') return { text: words.ask ?? words.why ?? '', tone: 'warn' };
-      return words.ok ? { text: 'Pick who goes; the rest stay home. Tap Fly out to see what it comes to.', tone: 'info' } : { text: words.why ?? '', tone: 'warn' };
+      return words.ok ? { text: `Pick who goes; the rest stay here. Tap ${to === null ? 'Fly out' : 'Fly to'} to see what it comes to.`, tone: 'info' } : { text: words.why ?? '', tone: 'warn' };
     },
   };
 
-  // A tap on Voyage: its plan, with the first pick aboard.
-  function plan() {
+  // A tap on Voyage, or on another colony (M38e: id): its plan, with the
+  // first pick aboard.
+  function plan(id) {
     const { campaign } = game.getState();
     if (!campaign) return;
     disarm();
     say(null);
     ctx.cancelTrips();
     crew = firstVoyagers(campaign, defs());
+    to = id;
     refresh();
   }
 
@@ -97,6 +115,7 @@ export function createVoyages(ctx) {
     disarm();
     say(null);
     crew = null;
+    to = null;
     refresh();
   }
 
@@ -110,8 +129,9 @@ export function createVoyages(ctx) {
     refresh();
   }
 
-  // Fly out: the first tap says what the voyage comes to; the second flies,
-  // and the chart opens.
+  // Fly out, or Fly to (M38e): the first tap says what it comes to; the
+  // second flies, and the chart opens, or for a flight the colony it lands
+  // at, or where a lander stopped it.
   function tapFly() {
     if (!crew) return;
     if (armed() !== 'voyage') {
@@ -123,10 +143,18 @@ export function createVoyages(ctx) {
     const { campaign } = game.getState();
     const rules = defs();
     const picked = crew;
-    const result = voyageOut(campaign, rules, picked);
+    const id = to;
     crew = null;
-    say(result.ok ? voyageReport(result, campaign, rules) : { text: result.error, tone: 'bad' });
-    game.dispatch({ type: 'campaign/voyage/out', crew: picked, rules });
+    to = null;
+    if (id === null) {
+      const result = voyageOut(campaign, rules, picked);
+      say(result.ok ? voyageReport(result, campaign, rules) : { text: result.error, tone: 'bad' });
+      game.dispatch({ type: 'campaign/voyage/out', crew: picked, rules });
+    } else {
+      const result = flyFrom(campaign, rules, id, picked);
+      say(result.ok ? flightReport(result, campaign, rules) : { text: result.error, tone: 'bad' });
+      game.dispatch({ type: 'campaign/colony/fly', id, crew: picked, rules });
+    }
     refresh();
   }
 

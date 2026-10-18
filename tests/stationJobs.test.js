@@ -209,7 +209,7 @@ test('the store takes a station job into its fight and brings the crew back to t
 });
 
 test('saves: v35 keeps the jobs taken this visit, and a v34 run takes none', () => {
-  assert.equal(SAVE_VERSION, 36);
+  assert.equal(SAVE_VERSION, 37);
   const campaign = at(fresh, stations[0].id);
   const taken = takeStationJob(campaign, rules, 0).campaign;
   const loaded = parseSave(JSON.stringify(makeSave(saveData({ ...initialState(7), campaign: taken }))));
@@ -223,7 +223,7 @@ test('saves: v35 keeps the jobs taken this visit, and a v34 run takes none', () 
   const migrated = parseSave(JSON.stringify(v34));
   assert.ok(migrated.ok, migrated.error);
   assert.deepEqual(migrated.save.data.campaign.run.jobbed, []);
-  assert.equal(MIGRATIONS.at(-1).from, 35);
+  assert.equal(MIGRATIONS.at(-1).from, SAVE_VERSION - 1);
   // Jobs taken where no station is, or twice, don't read.
   assert.match(campaignProblems({ ...campaign, run: { ...campaign.run, jobbed: ['undeclared', 'undeclared'] } }).join(), /jobs taken/);
   const elsewhere = fresh.run.sector.nodes.find((node) => node.type !== 'station').id;

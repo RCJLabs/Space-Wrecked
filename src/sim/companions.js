@@ -13,7 +13,7 @@
 // A companion aboard is a crew member with `companion` (their id), and
 // `loyal: true` once their loyalty quest is done. Pure.
 import { nextCrewId, voyageOf, wholeCrew } from './away.js';
-import { maxHp } from './campaign.js';
+import { maxHp, MAX_CREW } from './campaign.js';
 import { crewRoom } from './crew.js';
 import { talentOrder } from './talents.js';
 
@@ -31,8 +31,10 @@ export function aboard(campaign, id) {
 }
 
 // The berths free aboard: the crew the ship carries (crew.js crewRoom),
-// less those aboard.
+// less those aboard; none once the whole crew, at every colony and aboard,
+// is as many as it can be (M38e).
 export function freeBerths(campaign, rules) {
+  if (wholeCrew(campaign).length >= MAX_CREW) return 0;
   return Math.max(0, crewRoom(campaign.ship, rules) - campaign.crew.length);
 }
 

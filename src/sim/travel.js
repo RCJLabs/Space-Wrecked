@@ -81,6 +81,7 @@
 import { int } from '../core/rng.js';
 import { actOf, atPort, outOnRun } from './acts.js';
 import { MAX_OUT } from './away.js';
+import { allColonies } from './colonies.js';
 import { flightChecklist, shipStats } from './constraints.js';
 import { voyageDay } from './days.js';
 import { openApproach } from './encounter.js';
@@ -157,7 +158,8 @@ export function openEvent(campaign, rules) {
 // What holds the ship where it is, as the words that say so, or null: an
 // event to decide, or a hostile ship to deal with (or, once that is over,
 // to put away); and on a voyage (M38d), a raid's lander down at the colony,
-// until those at home face it (raids.js faceRaid).
+// until those at home face it (raids.js faceRaid), and from M38e at any
+// colony.
 export function holdOf(campaign, rules) {
   const open = openEvent(campaign, rules);
   if (open) return `Decide first: ${open.event.title}.`;
@@ -431,20 +433,35 @@ export function leaveSector(campaign, rules) {
 // gen/system.js beyondSystem), out systems out from it, paying the jump's
 // cost in plan (onwardCosts). The system is rolled from the campaign's RNG
 // as it is entered, with the quests' events placed on it, and named past
-// the run's names before; its worlds are named past the colony's. A day
+// the run's names before; its worlds are named past the colonies'. A day
 // passes at the colony on the way (days.js voyageDay), and the hunters may
-// be waiting at the way in. Returns { campaign, hunt, day }.
+// be waiting at the way in. The ship is out systems along the line from the
+// colony (M38e). Returns { campaign, hunt, day }.
 export function enterBeyond(campaign, rules, plan, out) {
   const moved = spend(campaign, rules, plan);
   const { value: seed, state: rng } = int(moved.rng, 0, MAX_SEED);
   const past = pastOf(campaign.run);
-  const options = { avoid: past, taken: [campaign.colony.world.name], background: campaign.background, met: moved.eventsMet ?? [] };
+  const options = { avoid: past, taken: allColonies(campaign).map((colony) => colony.world.name), background: campaign.background, met: moved.eventsMet ?? [] };
   const sector = placeQuests(beyondSystem(rules, seed, campaign.run.sector.index + 1, options), moved, rules);
-  const colony = { ...moved.colony, voyage: { ...moved.colony.voyage, out } };
+  const colony = { ...moved.colony, voyage: { ...moved.colony.voyage, out, at: moved.colony.at + out } };
   const entered = { ...moved, rng, colony, run: freshRun(sector, past), flags: tally(moved.flags, { systemsBeyond: 1 }) };
   const dayed = voyageDay(entered, rules);
   const met = rollHunt(dayed.campaign, rules);
   return { campaign: met.campaign, hunt: met.hunt, day: dayed.day };
+}
+
+// The ship stopped on a flight from the colony screen (M38e, voyage.js
+// flyFrom) waits in the system it has reached, as many systems out from
+// the colony as it has flown: rolled as enterBeyond's, with no jump, no day
+// and no hunters, and no quests' events placed (it is only waited in).
+export function waitIn(campaign, rules) {
+  const { value: seed, state: rng } = int(campaign.rng, 0, MAX_SEED);
+  const past = pastOf(campaign.run);
+  const options = { avoid: past, taken: allColonies(campaign).map((colony) => colony.world.name), background: campaign.background, met: campaign.eventsMet ?? [] };
+  const sector = beyondSystem(rules, seed, campaign.run.sector.index + 1, options);
+  const { voyage } = campaign.colony;
+  const out = Math.min(MAX_OUT, Math.max(1, Math.abs(voyage.at - campaign.colony.at)));
+  return { ...campaign, rng, colony: { ...campaign.colony, voyage: { ...voyage, out } }, run: freshRun(sector, past) };
 }
 
 // A day of a voyage's flight home (M38d, voyage.js): a jump's cost for

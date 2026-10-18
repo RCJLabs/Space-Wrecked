@@ -62,9 +62,11 @@ export const BUILD_GIVES = ['power', 'beds', 'air', 'storage'];
 
 // A colony on the world settled, with nothing built yet: day 1, with the
 // materials the landing salvaged, no places rolled, the ship home and no
-// raid coming; worlds, the other worlds of its system.
-export function newColony(world, materials = 0, worlds = []) {
-  return { world, buildings: [], nextUid: 1, day: 1, materials, places: [], trip: null, raid: null, worlds, voyage: null };
+// raid coming; worlds, the other worlds of its system. From M38e its number,
+// where it lies along the line of systems and its own heat (colonies.js):
+// the first is 1, at 0.
+export function newColony(world, materials = 0, worlds = [], { id = 1, at = 0, heat = 0 } = {}) {
+  return { world, buildings: [], nextUid: 1, day: 1, materials, places: [], trip: null, raid: null, worlds, voyage: null, id, at, heat };
 }
 
 // The colony's build of id type (data/colony.json builds: a farm, a mine,

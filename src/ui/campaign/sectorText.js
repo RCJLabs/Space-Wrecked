@@ -14,7 +14,9 @@
 // station's job board (stationJobs.js) and the Jobs button; since M38d, the
 // systems a voyage from the colony crosses (voyage.js), the colony's panel
 // while the ship is away, Fly home, and Defend when a lander is down there
-// (voyageText.js). The event card's words are eventText.js's, and the
+// (voyageText.js); since M38e, every other colony with Fly to each, a
+// lander down at any, and Settle here on a voyage (colonyListText.js). The
+// event card's words are eventText.js's, and the
 // approach screen's approachText.js's. rules are the content tables
 // (src/sim/defs.js).
 import { atYard } from '../../sim/acts.js';
@@ -41,6 +43,8 @@ import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownN
 import { actTitle, crewText, heatText } from './hubText.js';
 import { defendText, raidHint } from './raidText.js';
 import { colonyPanelText, homeText, landerComing } from './voyageText.js';
+import { flyToText, otherColonies, settleOnVoyage } from './colonyListText.js';
+import { colonyById } from '../../sim/colonies.js';
 import { aWeapon, weaponFacts, weaponWord } from './armsText.js';
 import { byJob } from './crewJobText.js';
 import { questOf } from '../../sim/quests.js';
@@ -113,7 +117,10 @@ import { dockSaid, sideColor, sideIs, sideName, sidesText, stationText } from '.
 //   colony       on a voyage (M38d), the colony's panel (voyageText.js
 //                colonyPanelText), else null
 //   home         on a voyage, Fly home (voyageText.js homeText), else null
-//   defend       on a voyage with a lander down at the colony, Defend
+//   colonies     on a voyage, the other colonies (M38e, colonyListText.js
+//                otherColonies), each with fly, Fly to it (flyToText);
+//                else []
+//   defend       on a voyage with a lander down at any colony, Defend
 //                (raidText.js defendText), else null
 //   hint         { tone, text }
 export function sectorText(campaign, rules) {
@@ -184,6 +191,7 @@ export function sectorText(campaign, rules) {
     deciding: Boolean(openEvent(campaign, rules) || campaign.run.approach),
     colony: colonyPanelText(campaign, rules),
     home: voyage ? homeText(campaign, rules) : null,
+    colonies: voyage ? otherColonies(campaign, rules).map((colony) => ({ ...colony, fly: flyToText(campaign, rules, colony.id) })) : [],
     defend: voyage && raidDown(campaign) ? defendText(campaign, rules) : null,
     hint: sectorHint(campaign, rules, { each, offer, leave, known, yard }),
   };
@@ -272,7 +280,8 @@ function surveyText(campaign, rules) {
   };
 }
 
-// Settling the world the ship is at, two taps. null away from a world.
+// Settling the world the ship is at, two taps. null away from a world. On
+// a voyage (M38e) a colony more, the one flown from keeping its own.
 function settleText(campaign, rules) {
   const plan = settlePlan(campaign, rules);
   if (!plan.ok) return null;
@@ -281,7 +290,7 @@ function settleText(campaign, rules) {
   return {
     label: 'Settle here',
     ask: 'Settle here?',
-    text: `Settle ${world.name} for good: the run ends here, and the ship, crew and all come down with you.${unknown} Tap again to settle.`,
+    text: settleOnVoyage(campaign, plan, rules) ?? `Settle ${world.name} for good: the run ends here, and the ship, crew and all come down with you.${unknown} Tap again to settle.`,
     tone: world.surveyed ? 'warn' : 'bad',
   };
 }
@@ -597,7 +606,10 @@ function sectorHint(campaign, rules, { each, offer, leave, known, yard }) {
   // stopped.
   const voyage = campaign.colony?.voyage;
   if (voyage && raidDown(campaign)) return raidHint(campaign, rules);
-  if (voyage?.homing) return { tone: 'warn', text: `On the way home to ${campaign.colony.world.name}, ${voyage.homing} day${voyage.homing === 1 ? '' : 's'} still to fly: tap Fly on.` };
+  if (voyage?.homing) {
+    const bound = colonyById(campaign, voyage.to ?? campaign.colony.id);
+    return { tone: 'warn', text: `On the way ${voyage.to === null ? 'home ' : ''}to ${bound.world.name}, ${voyage.homing} day${voyage.homing === 1 ? '' : 's'} still to fly: tap Fly on.` };
+  }
   const held = holdOf(campaign, rules);
   if (held) return { tone: 'warn', text: held };
   const coming = landerComing(campaign, rules);

@@ -28,13 +28,18 @@
 // While a raid's lander is down (M29) no day passes until it is faced. From
 // M38d, while the ship is away on a voyage (voyage.js), each jump, survey or
 // day's rest on the run passes a day (voyageDay), run as a trip's for those
-// at home and the colony's own food (away.js), its end leaving heat alone.
-// The flags count the days, the hungry ones, the food grown, the materials
-// dug, what the stores couldn't keep, and the hit points the days healed
-// and hunger took; and a voyage's days and its hungry ones. The only roll
-// is the pursuer's, the campaign's. Pure.
+// at home and the colony's own food (away.js). From M38e every day that
+// passes passes at every colony (colonies.js): once the colony the ship is
+// at or flew from has lived it, each other lives it as one the ship is away
+// from, in the order settled, with whoever is there and its own food and
+// heat (othersDay). The flags count the days, the hungry ones, the food
+// grown, the materials dug, what the stores couldn't keep, and the hit
+// points the days healed and hunger took, at every colony; and a voyage's
+// days and its hungry ones, and the others'. The only roll is the
+// pursuer's, the campaign's. Pure.
 import { atColony } from './acts.js';
 import { backAboard, homeFront } from './away.js';
+import { thereAt, thereFrom } from './colonies.js';
 import { colonyStats, storesOf } from './colony.js';
 import { colonyEdge } from './edges.js';
 import { tally } from './flags.js';
@@ -164,5 +169,22 @@ function passPlanned(campaign, rules, plan) {
   const colony = { ...campaign.colony, day: plan.day + 1, materials: plan.materials[1] };
   const changed = hurt || healed ? crew : campaign.crew;
   const ended = raidDayEnd(campaign, { ...campaign, supplies: plan.food[1], crew: changed, colony, flags }, rules);
-  return { ok: true, plan, campaign: ended.campaign, healed, hurt, found: ended.found, roll: ended.roll };
+  return { ok: true, plan, campaign: othersDay(ended.campaign, rules), healed, hurt, found: ended.found, roll: ended.roll };
+}
+
+// The day at each other colony (M38e), in the order settled, once the
+// colony the ship is at or flew from has lived it: as a day there with the
+// ship away (thereAt), its rolls the campaign's. A colony with a day it
+// can't pass (at the most days, or its lander down) waits.
+function othersDay(campaign, rules) {
+  let now = campaign;
+  for (const { id } of campaign.colonies ?? []) {
+    const there = thereAt(now, id);
+    if (raidDown(there)) continue;
+    const plan = planDay(there, rules);
+    if (!plan.ok) continue;
+    const day = passPlanned(there, rules, plan);
+    now = thereFrom(now, { ...day.campaign, flags: tally(day.campaign.flags, { othersDays: 1, othersHungryDays: plan.fed ? 0 : 1, othersRaidsFound: day.found ? 1 : 0 }) });
+  }
+  return now;
 }

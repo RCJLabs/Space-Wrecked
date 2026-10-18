@@ -39,5 +39,7 @@ test('the landing: the world settled, its kind\'s words, and the act it begins',
   const campaign = settled(2);
   const { world } = campaign.colony;
   const kind = rules.worlds.kinds.get(world.kind);
-  assert.deepEqual(landingText(campaign, rules), { world: `${world.name} · ${kind.name}`, to: 'Act 3 · The colony', line: kind.landing });
+  // where: the line under the heading, the world alone for the first
+  // colony (M38e names a later one there).
+  assert.deepEqual(landingText(campaign, rules), { world: `${world.name} · ${kind.name}`, to: 'Act 3 · The colony', where: `${world.name} · ${kind.name}`, line: kind.landing });
 });
