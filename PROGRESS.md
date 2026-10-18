@@ -113,7 +113,7 @@ By mission, board jobs only, main beside M38:
 | Sabotage | 3 | | 59% | | 6.5 | | 19.6 |
 | Rescue | 3 | | 60% | | 5.9 | | 18.0 |
 
-- **The clear-outs are identical to main's,** fight for fight, as a fight with no objective plays as before.
+- **The clear-outs measure exactly as main's** in every column, with the same count of each way their 200 fights ended, as a fight with no objective plays as before.
 - **The guards moved single grabs and hacks** by up to 17 points either way: Paper trail 86% to 69%, Seized 86% to 74%, Redistribution 65% to 81%.
 
 Act 1, `tools/run.js --runs 100` from each start, main beside M38. Every median is within 1 job of main's:
