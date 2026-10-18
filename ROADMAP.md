@@ -81,7 +81,7 @@ Act length targets (proposed, to check in play): act 1 under an hour, act 2 the 
 | Topic | Decision |
 | --- | --- |
 | Spine | Ship-first sandbox captain; squad battles matter too |
-| Structure | Expeditions from a persistent home; the home moves from hangar to ship to colony |
+| Structure | Expeditions from a persistent home; the home moves from hangar to ship to colony. From M38d the run goes on past the first colony: the ship flies on through new systems and founds more colonies, each a port that runs itself with its own citizens (Evan's call, 2026-10-18) |
 | Story | Start on a homeworld set by your background, earn parts for a starter ship, flee, search, settle |
 | Act 1 | Half-built hull in the hangar from the first minute; jobs pay in parts; launching ends the act |
 | Graphics | 3D: a blueprint hologram in the builder and solid ships outside it, drawn by our own renderer on canvas; the rules stay on the 2D grid, and the ship layout is the boarding map (was "2D top-down cutaway" until M4; Evan changed it, 2026-10-11) |
@@ -1713,6 +1713,55 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **The launch tests' campaign is pinned:** the board's shuffle takes a roll for each job, so 15 more jobs moved every roll after it. `tests/launchKit.js` holds main's RNG after the board (`LAUNCH_RNG`), so the campaign the launch, run and colony tests start from rolls the sectors and worlds it did. The voyage tests play act 1 through, and their rates are held to `MAIN`.
   - **Surgery's Law 1 check flies 300 seeds** (`tests/voyageSurgery.test.js`). On seeds 1 to 100 the new act 1 left surgery patching 132 hit points against a med bay's 122: four runs patched 6 to 12 with surgery and none with a med bay. On seeds 101 to 300 the numbers were 139 and 193, and over all 300, 271 and 315.
   - **Act 1's money moved,** credits at launch over 100 runs from each start: the miner's up 44% (14,390 against 10,005), the deserter's down 9% and the smuggler's down 12%. At half the new jobs' pay the miner's were still up 29%: the old jobs' odds, measured again under the guards, move it too.
+- [ ] **M38b Space fights from outside.** The approach screen draws both ships as their boarding maps, from inside, so a wrecked room shows its fire, vacuum or rubble. Evan asked (2026-10-18) to see the ships whole from outside, with the inside kept for a boarding.
+
+  Evan's picks (2026-10-18): new milestones before M39, in this order: M38b space fights from outside, M38c station jobs, then act 3's travel and colonies (M38d to M38f).
+
+  **Done when:**
+  - **Both ships from outside** on the approach screen, as the hangar shows a ship (`src/render/exterior.js`): the solid hull in its paint and trim, its styling pieces and each part's maker's fittings, nozzles lit. The player's is on the left, nose right; the other is turned to face it; deep space behind. The inside shows only in a boarding's fight, as now.
+  - **Damage on the hull:**
+    - a part hit but not wrecked shows scorched plating over its cells;
+    - a wrecked part shows its hazard there: flames for fire, a breach venting for vacuum, smoke over broken plating for rubble;
+    - a repaired part shows clean.
+  - **The target:** a Fire order's first tap marks the parts of its kind on her hull, the one it would hit first brightest (`src/sim/approach.js` targetsOf).
+  - **A round played out** once it is given (a pure timeline: the round's events in, frames out):
+    - each gun's shot flies from its barrel: a hit to the part it hit, a miss wide of the ship;
+    - a shot the shields take stops at a shimmer around the ship;
+    - a part wrecked bursts into its hazard, and a last reactor that blows up bursts the ship;
+    - a flight that gets away flies off, and a ship closing to board comes in.
+
+    The column's words for the round follow the shots as they land. A tap skips to the end; with reduced motion the round shows its end at once. Each sound plays with its shot (M35).
+  - **A boarding:** the boarded ship is marked and the two close; Board her, Leave her and Fight them off work as now.
+  - **Frames:** the screen redraws only while a round plays or the view changes, and a played round's frames hold the frame budget M23d measures, at the cover and open sizes in Chromium.
+  - **Every rule tested:** the damage marks and the target marks (pure scenes), the timeline's frames for each kind of event, and the barrel each shot leaves from.
+  - **Touch, at the three sizes:**
+    - an approach met from the chart, both ships drawn whole from outside;
+    - a Fire order's marks;
+    - a round played, and one skipped;
+    - a wrecked part's hazard on the hull;
+    - a boarding marked and begun;
+    - offline, every button 48 px or more, no console errors;
+    - every earlier milestone's browser check still passes.
+- [ ] **M38c Station jobs.** Act 1's job board stays in the hangar: on the run, stations repair, refit, sell and hire, but give no work. Evan asked (2026-10-18) for jobs at stations. The draft:
+  - each station posts a board of jobs from its side's clients, using the eight missions (M38), fought on site maps of its docks and the rocks nearby;
+  - pay in credits, and standing with the station's side; heat as act 1's jobs give it;
+  - the jobs and their sites as data;
+  - study, measure and settle the Done when with Evan first.
+- [ ] **M38d The run goes on.** Since M25 settling the first world ends the travel: act 3's trips reach only places 1 to 3 days away. Evan's pick (2026-10-18): the run goes on. The draft:
+  - the ship leaves the colony and jumps on into new systems past the charts, each with worlds to settle, stations, a shipyard, wrecks and the pursuer's hunters, generated as act 2's sectors are;
+  - the colony is a port to come back to, for refits, rest and its stores;
+  - while the ship is away the colony runs on as it does during a trip (M28), and a raid on it is met as M29's are with nobody home;
+  - `SAVE_VERSION` bumped, with a migration.
+- [ ] **M38e More colonies.** The draft:
+  - a second world settled, and more: each colony with its own grid, buildings, stores, days and raids;
+  - parts given at each, and refits at any;
+  - the chart marks every colony, and the colony screen opens the one the ship is at;
+  - saves migrate the one colony into a list.
+- [ ] **M38f Citizens.** Evan's picks (2026-10-18): a colony runs itself while the ship is away, and its citizens are grown, the rescued and crew left behind. The draft:
+  - a fed, housed, powered colony gains a citizen every few days, up to its beds;
+  - a rescue job's captive, or an event's survivors, can settle at a colony;
+  - a crew member can stay to run a colony, and be picked up later;
+  - citizens work the farms and mines, eat and fight a raid. A raid while the ship is away is fought out without the player, and a report waits on the return, so a colony can be lost.
 - [ ] **M39 Parts and hull frames.** 21 module types against §5's 40 to 60, and one hull frame against 6. The draft:
   - the types §9 asks for, a scanner first;
   - frames for bigger ships, and an enemy frame (§9).
