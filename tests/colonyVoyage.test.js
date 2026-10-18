@@ -78,6 +78,9 @@ test('Fly out plans who goes and who stays, the flight checks for those aboard, 
   assert.ok(plan.ok, plan.error);
   assert.deepEqual(plan.crew, ids.slice(0, 2));
   assert.deepEqual(plan.home, ids.slice(2));
+  // The kit's crew sleeps aboard the landed ship: whoever stays has no bed
+  // and air without it, and won't rest while it is away (M28's rule).
+  assert.deepEqual(plan.rough, ids.slice(2));
   // The ship's holds take their fill, the storehouse the rest, and nothing
   // spoils.
   const holds = supplyCapacity(home.ship, rules, home.crew.slice(0, 2));

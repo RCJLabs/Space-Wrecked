@@ -34,7 +34,7 @@
 import { atColony } from './acts.js';
 import { voyageOf } from './away.js';
 import { shipChecklist } from './campaign.js';
-import { storesOf } from './colony.js';
+import { colonyStats, storesOf } from './colony.js';
 import { withPlaces } from './expeditions.js';
 import { tally } from './flags.js';
 import { withHeat } from './heat.js';
@@ -43,10 +43,12 @@ import { enterBeyond, holdOf, homewardDay, jumpSupplies, onTheRun, onwardCosts, 
 
 // What flying out with crew (ids) would come to: { ok, error (why the ship
 // can't fly, or null), crew (the ids aboard, in the crew's order), home
-// (the ids staying), checks (the flight checklist with them aboard), food
-// ({ now, ship (what the holds take), colony (what the colony keeps), room
-// (its storehouses'), spoils }), materials ({ now, kept, lost }), jump (the
-// jump into the next system: travel.js onwardCosts, kind 'beyond') }. With
+// (the ids staying), rough (those of them with no bed and air at the
+// colony, who won't rest while the ship is away: colony.js colonyStats),
+// checks (the flight checklist with them aboard), food ({ now, ship (what
+// the holds take), colony (what the colony keeps), room (its
+// storehouses'), spoils }), materials ({ now, kept, lost }), jump (the jump
+// into the next system: travel.js onwardCosts, kind 'beyond') }. With
 // nothing to plan (away from the colony, the ship away, a lander down, no
 // crew picked): { ok: false, error } alone.
 export function voyagePlan(campaign, rules, crew) {
@@ -71,6 +73,7 @@ export function voyagePlan(campaign, rules, crew) {
     error: failing ? `The ship can't fly with ${aboard.length} aboard: ${lowerFirst(failing.text)}.` : null,
     crew: aboard.map((member) => member.id),
     home: home.map((member) => member.id),
+    rough: colonyStats(split(kept, materials), rules).rough,
     checks,
     food: { now: food, ship, colony: kept, room, spoils: food - ship - kept },
     materials: { now: campaign.colony.materials, kept: materials, lost: campaign.colony.materials - materials },

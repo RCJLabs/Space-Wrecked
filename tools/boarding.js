@@ -95,9 +95,10 @@ export function fightStationJob(campaign, rules, index, squad = null) {
 // fought out by the AI and ended (endColonyRaid): { campaign, landing,
 // fought (true with a fight), won, rounds, dragged, taken (what a lost
 // raid took, raids.js raidTake, or null) }. Those at home are armed for a
-// fight on the ground.
+// fight on the ground; while the ship is out on a voyage (M38d) the spare
+// weapons are aboard it, so they fight with what they carry.
 export function fightRaid(campaign, rules) {
-  const faced = faceRaid(armFor(campaign, rules, 'ground'), rules);
+  const faced = faceRaid(campaign.colony?.voyage ? campaign : armFor(campaign, rules, 'ground'), rules);
   if (!faced.ok) throw new Error(faced.error);
   if (!faced.fight) return { campaign: faced.campaign, landing: faced.landing, fought: false, won: faced.won, rounds: 0, dragged: false, taken: faced.taken };
   const done = fightThrough(faced.campaign, rules, endColonyRaid, RAID_PLAYERS);

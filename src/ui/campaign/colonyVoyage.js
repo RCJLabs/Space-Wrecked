@@ -55,7 +55,7 @@ export function createVoyages(ctx) {
       const about = node('p', 'cln-placing', words.title);
       about.append(...words.lines.map((line, i) => {
         const small = node('small', null, line);
-        if (i >= 3 && !words.ok) small.dataset.tone = 'bad';
+        if (i >= words.lines.length - words.bad) small.dataset.tone = 'bad';
         return small;
       }));
       // The buttons under the plan, so Fly out is in view on a short

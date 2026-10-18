@@ -5,6 +5,7 @@
 // a flight home a lander stopped.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { crewRoom } from '../src/sim/crew.js';
 import { leaveSector } from '../src/sim/travel.js';
 import { voyageHome, voyageOut, voyagePlan } from '../src/sim/voyage.js';
 import { continueText, heatText } from '../src/ui/campaign/hubText.js';
@@ -37,12 +38,30 @@ test("Fly out's plan: who goes and who stays, the food split, the jump, the chec
       'Aboard: Fen Lindqvist and Quill Petrov · Lark Ibarra stays at Copperhill',
       'Food 50: the holds take 30, the storehouses keep 20 of 20',
       'Into a system nobody has charted: 2 supplies, heat +2 to 14',
+      // The kit's crew sleeps aboard the landed ship: whoever stays has no
+      // bed or air without it.
+      'Lark Ibarra has no bed and air at Copperhill: no rest while the ship is away',
       'Every flight check passes with 2 aboard.',
     ],
+    bad: 0,
     ok: true,
     ask: 'Fly out with Fen Lindqvist and Quill Petrov, Lark Ibarra at home: the holds take 30 food and the colony keeps 20. Tap again to fly.',
     why: null,
   });
+  // With a shelter standing for them, no such line.
+  const sheltered = { ...home, colony: { ...home.colony, buildings: [...home.colony.buildings, { uid: 2, type: 'shelter', x: 4, y: 4, rot: 0 }, { uid: 3, type: 'solar', x: 4, y: 8, rot: 0 }], nextUid: 4 } };
+  const roofed = voyagePlan(sheltered, rules, [1, 2]);
+  assert.deepEqual(roofed.rough, [], 'a shelter beds and breathes for the one at home');
+  assert.ok(!outText(roofed, sheltered, rules).lines.some((line) => line.includes('no bed and air')));
+  // More aboard than the ship beds and breathes for: the failing checks are
+  // the plan's last lines, counted as bad, and nothing before them is.
+  const room = crewRoom(home.ship, rules);
+  const crowd = { ...home, crew: [...home.crew, ...Array.from({ length: room + 1 - home.crew.length }, (_, i) => ({ ...home.crew[2], id: 10 + i, name: `Spare ${i}` }))] };
+  const crowded = outText(voyagePlan(crowd, rules, crowd.crew.map((member) => member.id)), crowd, rules);
+  assert.equal(crowded.ok, false);
+  assert.ok(crowded.bad >= 1);
+  assert.ok(crowded.lines.slice(-crowded.bad).every((line) => !/^(Aboard|Food|Into)/.test(line)), crowded.lines.join(' / '));
+  assert.ok(crowded.lines.slice(0, -crowded.bad).every((line) => /^(Aboard|Food|Into)|materials won't keep|no bed and air/.test(line)), crowded.lines.join(' / '));
   // Without a storehouse, the first tap says what spoils and what is lost.
   const bare = { ...home, colony: { ...home.colony, buildings: [], nextUid: 1 } };
   const lost = outText(voyagePlan(bare, rules, [1, 2, 3]), bare, rules);
@@ -50,8 +69,13 @@ test("Fly out's plan: who goes and who stays, the food split, the jump, the chec
   assert.equal(lost.lines[1], 'Food 50: the holds take 30, the storehouses keep 0 of 0, 20 spoil');
   assert.equal(lost.lines[2], "20 materials won't keep: the storehouses hold 0");
   assert.match(lost.ask, /; 20 food spoils and 20 materials are lost\. Tap again to fly\.$/);
+  // An empty larder: the first jump goes hungry, and both taps say so.
+  const empty = { ...home, supplies: 0 };
+  const starved = outText(voyagePlan(empty, rules, [1, 2]), empty, rules);
+  assert.match(starved.lines[2], / · the crew goes hungry, \d+ hit points? each$/);
+  assert.match(starved.ask, /; the first jump goes hungry\. Tap again to fly\.$/);
   // Nobody picked: why not.
-  assert.deepEqual(outText(voyagePlan(home, rules, []), home, rules), { title: 'Voyage', lines: [], ok: false, ask: null, why: 'Pick who goes: one or more.' });
+  assert.deepEqual(outText(voyagePlan(home, rules, []), home, rules), { title: 'Voyage', lines: [], bad: 0, ok: false, ask: null, why: 'Pick who goes: one or more.' });
 });
 
 test("the colony's panel on the chart while the ship is away: its day, its food, who is home and the raid", () => {

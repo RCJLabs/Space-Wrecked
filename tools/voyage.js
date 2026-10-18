@@ -72,7 +72,18 @@
 // someone only with them aboard (in the squad, at a place), meets a trap's
 // ship as any hostile ship, the trap's volley first, and fights a place's
 // trap then and there; the report counts the traps and what events
-// wrecked and mended.
+// wrecked and mended. From M38d, once the colony's days are played and no
+// raid is coming (it stays home and faces one first), it flies out on a
+// voyage (unless --out no): the ship refitted with berths and air for all
+// but one, as for a trip (voyagePlan.js refitForSquad), the healthiest who
+// fit aboard going (voyageCrew) and a shelter built for whoever stays home
+// (homeBuild). It plays the systems past the colony's as act 2's sectors,
+// stations, jobs and yards among them, those at home facing any raid that
+// lands meanwhile; and it flies home at the jump point of the
+// VOYAGE_SYSTEMS'th system, or sooner once the holds come down to the way
+// home's supplies and a buffer (homeNow), those at home facing a lander
+// that stops the flight. The voyage keeps its own tally, so act 2's are
+// as they were; the report says what it came to.
 //
 //   node tools/voyage.js               a voyage from campaign seed 1, step by step
 //   node tools/voyage.js --seed 7      another seed
@@ -83,6 +94,7 @@
 //                                      list, like --fit cargo,medbay)
 //   node tools/voyage.js --refit no    no refits at stations
 //   node tools/voyage.js --jobs no     no jobs at stations (M38c)
+//   node tools/voyage.js --out no      no voyage out from the colony (M38d)
 //   node tools/voyage.js --heat ignore no swaps, hides or long jumps
 //   node tools/voyage.js --background deserter
 //                                      from another background's start
@@ -121,6 +133,7 @@ import { jobPay, levelOf, shareHere, standingWith, stationSide } from '../src/si
 import { survey } from '../src/sim/survey.js';
 import { swapTransponder } from '../src/sim/transponder.js';
 import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer, tradeHeat } from '../src/sim/travel.js';
+import { voyageHome, voyageHomePlan, voyageOut, voyagePlan } from '../src/sim/voyage.js';
 import { runRecord } from '../src/ui/campaign/launchText.js';
 import { captainOrder } from './approachPlan.js';
 import { upgradeOf } from './arms.js';
@@ -129,12 +142,16 @@ import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
 import { withPart } from './startShip.js';
-import { bestChoice, boardIt, HEAT_POLICIES, hireWho, homeBuild, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, stationJobPick, swapNow, systemMove, tradeHere, tripSquad, worldScore, yardBuy } from './voyagePlan.js';
+import { bestChoice, boardIt, HEAT_POLICIES, hireWho, homeBuild, homeNow, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, stationJobPick, swapNow, systemMove, tradeHere, tripSquad, voyageCrew, worldScore, yardBuy } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
 export const REFIT_POLICIES = ['yes', 'no'];
 export const JOB_POLICIES = ['yes', 'no'];
+export const OUT_POLICIES = ['yes', 'no'];
+// The most systems past the colony's a voyage out crosses before it flies
+// home (M38d).
+export const VOYAGE_SYSTEMS = 3;
 const MAX_JUMPS = 100; // a voyage still going after this many stops
 // The colony's days the test player plays, and the days from the landing
 // within which its farms are to feed the crew (M27's Done when).
@@ -156,8 +173,10 @@ const QUEST_DID = { started: 'started', done: 'a step done', finished: 'done', c
 // founded; landed: the campaign as it settled, before the colony was
 // founded, or null; home: the colony after its first COLONY_DAYS days
 // (M27), or null; travelled: after TRIP_DAYS more of trips (M28), or null.
-// jobs: 'no' takes no work at stations (M38c).
-export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 'yes', refit = 'yes', heat = 'manage', jobs = 'yes', label = '' } = {}) {
+// jobs: 'no' takes no work at stations (M38c). out (M38d): the voyage out
+// from the colony after its days (voyageOutOf), or null with none flown.
+// With out: 'no' it flies none.
+export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 'yes', refit = 'yes', heat = 'manage', jobs = 'yes', out: outPolicy = 'yes', label = '' } = {}) {
   if (!LONG_POLICIES.includes(longPolicy)) throw new Error(`--long is one of ${LONG_POLICIES.join(', ')}`);
   if (!HEAT_POLICIES.includes(heat)) throw new Error(`--heat is one of ${HEAT_POLICIES.join(', ')}`);
   // Ignoring heat makes no long jumps either.
@@ -165,12 +184,17 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
   if (!SCAN_POLICIES.includes(scans)) throw new Error(`--scan is one of ${SCAN_POLICIES.join(', ')}`);
   if (!REFIT_POLICIES.includes(refit)) throw new Error(`--refit is one of ${REFIT_POLICIES.join(', ')}`);
   if (!JOB_POLICIES.includes(jobs)) throw new Error(`--jobs is one of ${JOB_POLICIES.join(', ')}`);
+  if (!OUT_POLICIES.includes(outPolicy)) throw new Error(`--out is one of ${OUT_POLICIES.join(', ')}`);
   const begun = beginRun(launched, defs);
   if (!begun.ok) throw new Error(begun.error);
   let campaign = begun.campaign;
-  const steps = [];
+  // The steps and the tally: act 2's, and from M38d the voyage out's in
+  // their place while it flies (act keeps act 2's meanwhile).
+  let steps = [];
   const sectors = [campaign.run.sector];
-  const tally = {
+  // A tally from `from` (the launched campaign, or the colony as the voyage
+  // out leaves it), with the crew as `now` has them.
+  const tallyFrom = (from, now) => ({
     crossed: 0,
     jumps: 0,
     longJumps: 0,
@@ -241,15 +265,15 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     settled: null,
     // The colony founded (foundColony), or null.
     colony: null,
-    peak: launched.heat,
-    heat: [launched.heat, null],
-    hp: [hpOf(campaign), null],
+    peak: from.heat,
+    heat: [from.heat, null],
+    hp: [hpOf(now), null],
     // Standing with each side (M33) at the launch and as the world is
     // settled (null short of one); and the side's patrols that waved the
     // ship through or fired first. The trades at stations of the pursuer's
     // side that logged the ship, and those it passed by without trading
     // (M33's fix).
-    standing: { launch: launched.standing, landing: null },
+    standing: { launch: from.standing, landing: null },
     waved: 0,
     fired: 0,
     docked: 0,
@@ -258,7 +282,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     // The quests (M33b) at the launch, the landing and the end (null short
     // of them), and what came of them on the way: [{ quest, did, step,
     // sector }].
-    quests: { launch: launched.quests ?? {}, landing: null, end: null },
+    quests: { launch: from.quests ?? {}, landing: null, end: null },
     questNotes: [],
     // The companions (M33c) met at their chain's step, and those who signed
     // on, by id in the order they did.
@@ -267,7 +291,14 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     ambushes: 0,
     eventWrecks: 0,
     eventRepairs: 0,
-  };
+  });
+  let tally = tallyFrom(launched, campaign);
+  // The voyage out (M38d): act 2's steps and tally while it flies, and the
+  // voyage as it began (voyageOutOf's), or null; and the campaign as the
+  // colony was founded, the one the report and the result keep.
+  let act = null;
+  let away = null;
+  let foundedAt = null;
   const hold = () => `${campaign.supplies} supplies, ${campaign.credits} credits, heat ${campaign.heat}`;
   // The parts a refit couldn't fit, and the ship then (voyagePlan.js refitAt).
   const tried = new Map();
@@ -276,12 +307,19 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
   ];
   const sectorLine = () => {
     const { sector } = campaign.run;
+    const worlds = sector.nodes.filter((node) => node.world).map((node) => `${node.name} (${kindName(defs, node.world)})`);
     if (sector.system) {
-      const worlds = sector.nodes.filter((node) => node.world).map((node) => `${node.name} (${kindName(defs, node.world)})`);
       lines.push(`The system past the charts: ${sector.name}, ${worlds.length} worlds: ${worlds.join(', ')}.`);
       return;
     }
-    lines.push(`Sector ${sector.index}: ${sector.name}, ${sector.nodes.length} nodes, ${sector.nodes.filter((node) => node.type === 'station').length} station(s).`);
+    const stations = `${sector.nodes.length} nodes, ${sector.nodes.filter((node) => node.type === 'station').length} station(s)`;
+    // A system past the colony's (M38d).
+    const out = campaign.colony?.voyage?.out;
+    if (out) {
+      lines.push(`System ${out} out from ${campaign.colony.world.name}: ${sector.name}, ${stations}, worlds ${worlds.join(', ') || 'none'}.`);
+      return;
+    }
+    lines.push(`Sector ${sector.index}: ${sector.name}, ${stations}.`);
   };
   const record = (kind, before, extra = {}) => {
     const step = {
@@ -316,7 +354,9 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     const { plan } = moved;
     // Leaving the last sector, a run's step not done goes cold (M33b).
     for (const id of moved.cold ?? []) questNote({ quest: id, did: 'cold', step: campaign.quests[id]?.step ?? 0 }, before.run.sector.index);
-    const out = plan.kind === 'sector' || plan.kind === 'system';
+    // Out of the map: into the next sector, the system past the charts, or
+    // on a voyage the next system past the colony's (M38d).
+    const out = plan.kind === 'sector' || plan.kind === 'system' || plan.kind === 'beyond';
     record(plan.kind, before, { hungry: plan.hungry, heal: plan.heal, max: before.crew.map((member) => maxHp(member, defs)), to: out ? null : campaign.run.at, hunt: moved.hunt });
     tally.jumps += 1;
     if (moved.hunt.chance > 0) tally.hotJumps += 1;
@@ -330,8 +370,9 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     const hungry = plan.hungry ? `, hungry (${hpOf(campaign)})` : '';
     if (out) {
       if (plan.kind === 'sector') sectors.push(campaign.run.sector);
-      else system = campaign.run.sector;
-      lines.push(`   Jumped on ${plan.kind === 'sector' ? 'out of the sector' : 'past the charts'}${hungry}: ${hold()}.`);
+      else if (plan.kind === 'system') system = campaign.run.sector;
+      else away.systems.push(campaign.run.sector);
+      lines.push(`   Jumped on ${{ sector: 'out of the sector', system: 'past the charts', beyond: 'into the next system' }[plan.kind]}${hungry}: ${hold()}.`);
       sectorLine();
     } else {
       const node = hereOf(campaign);
@@ -443,6 +484,16 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       // A trap (M36): its ship, met before anything else.
       if (campaign.run.approach) continue;
     }
+    // A raid's lander down at the colony while the ship is out on a voyage
+    // (M38d): it holds the ship where it is until those at home face it.
+    if (campaign.colony?.voyage && raidDown(campaign)) {
+      const before = campaign;
+      campaign = faceRaid(campaign, defs, away.raids);
+      const raid = away.raids.faced.at(-1);
+      record('raid', before, { won: raid.won, home: raid.home, landed: raid.landed, stopped: raid.stopped, taken: raid.taken });
+      lines.push(`   A raid at ${campaign.colony.world.name}: ${raidLine(defs, raid)} Aboard: ${hold()}.`);
+      continue;
+    }
     // The system past the charts (M25): a survey, a jump between its
     // worlds, or settling, which ends the voyage. There is nothing else to
     // do there: no station, no events.
@@ -474,6 +525,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
         landed = campaign;
         const founded = foundColony(campaign, defs);
         campaign = founded.campaign;
+        foundedAt = campaign;
         tally.colony = founded.colony;
         lines.push(`   ${colonyLine(defs, founded.colony)}`);
         const played = playColony(campaign, defs);
@@ -498,7 +550,29 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
         };
         lines.push(`   ${raidsLine(defs, tally.raids)}`);
         tally.quests.end = travelled.quests;
-        break;
+        // The voyage out (M38d): from here the run goes on with its own
+        // steps and tally, act 2's kept.
+        const leaving = outPolicy === 'yes' ? voyageOutOf(travelled, defs) : null;
+        if (!leaving?.flown) {
+          if (leaving) lines.push(`   No voyage out: ${leaving.why}`);
+          break;
+        }
+        act = { tally, steps };
+        away = leaving;
+        steps = [];
+        tally = tallyFrom(leaving.before, leaving.flown.campaign);
+        campaign = leaving.flown.campaign;
+        lines.push(`   ${outLine(defs, leaving)}`);
+        // Flying out is the jump into the first system.
+        const { jump: into } = leaving.flown.plan;
+        record('out', leaving.before, { aboard: leaving.crew, stay: leaving.home, food: leaving.flown.plan.food, materials: leaving.flown.plan.materials, hungry: into.hungry, hunt: leaving.flown.hunt });
+        tally.jumps += 1;
+        if (leaving.flown.hunt.chance > 0) tally.hotJumps += 1;
+        if (into.hungry) tally.hungryJumps += 1;
+        tally.peak = Math.max(tally.peak, campaign.heat);
+        away.systems.push(campaign.run.sector);
+        sectorLine();
+        continue;
       }
       jumped(before, jump(campaign, defs, move.to));
       continue;
@@ -635,6 +709,21 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       tally.armsCredits += item.price;
       lines.push(`   Bought the ${defs.weapons.get(item.weapon).name.toLowerCase()} for ${item.price} credits${logged(step)}: ${hold()}.`);
     }
+    // Home from a voyage (M38d), once the node's business is done: at the
+    // last system's jump point, or once the holds come down to the way
+    // home's supplies and a buffer (voyagePlan.js homeNow).
+    if (away && homeNow(campaign, defs, VOYAGE_SYSTEMS)) {
+      const before = campaign;
+      // Those aboard as the flight home sets out, for the voyage's tally.
+      tally.hp[1] = hpOf(before);
+      const plan = voyageHomePlan(campaign, defs);
+      const back = flyHomeFrom(campaign, defs, away.raids);
+      campaign = back.campaign;
+      record('home', before, { out: before.colony.voyage.out, atExit: before.run.at === before.run.sector.exit, eats: plan.eats, each: jumpSupplies(before, defs), days: back.days, stops: back.stops, hungry: back.hungry });
+      away.back = back;
+      lines.push(`   ${homeLine(back, before)}`);
+      break;
+    }
     // A day hidden in a nebula, or regrouping: the hunters may find a ship
     // that regroups, and then their approach comes first.
     const rest = restNow(campaign, defs, heat);
@@ -663,6 +752,18 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     const before = campaign;
     jumped(before, campaign.run.at === campaign.run.sector.exit ? leaveSector(campaign, defs) : jump(campaign, defs, nextJump(campaign, defs, long, { heat })));
   }
+  // The voyage out (M38d): its tally closed, then act 2's back, with the
+  // campaign as the colony was founded.
+  let out = null;
+  if (act) {
+    const since = (flag) => (campaign.flags[flag] ?? 0) - (away.before.flags[flag] ?? 0);
+    tally.heat[1] = campaign.heat;
+    tally.hp[1] ??= hpOf(campaign);
+    tally.healed = since('hpHealed');
+    out = { ...away, tally, steps, campaign, colony: { days: since('voyageDays'), hungry: since('voyageHungryDays'), found: since('raidsFound') }, credits: [away.before.credits, campaign.credits] };
+    ({ tally, steps } = act);
+    campaign = foundedAt;
+  }
   tally.heat[1] = campaign.heat;
   tally.hp[1] = hpOf(campaign);
   tally.healed = campaign.flags.hpHealed ?? 0;
@@ -673,7 +774,8 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     `${where}, ${tally.crossed} sectors crossed, ${tally.surveys} world${tally.surveys === 1 ? '' : 's'} surveyed: ${tally.jumps} jumps (${tally.longJumps} long, ${tally.hungryJumps} hungry), ${tally.bought} supplies bought at ${tally.stations} stations for ${tally.spent} credits. ${tally.events} events: ${signed(tally.eventCredits)} credits, ${signed(tally.eventSupplies)} supplies, ${tally.found} parts found, ${tally.sold} sold, ${tally.wounds} hit points lost, ${tally.ambushes} traps, ${tally.eventWrecks} parts wrecked and ${tally.eventRepairs} mended; ${tally.scans} scans. ${tally.approaches} hostile ships: ${tally.approachesWon} won, ${tally.approachesLost} lost, ${signed(tally.approachCredits)} credits; boarded ${tally.boardings} (won ${tally.boardingsWon}), left ${tally.left}, fought off ${tally.defencesWon} of ${tally.defences}; salvage ${tally.salvaged} parts and ${tally.salvageCredits} credits, lost ${tally.partsLost} parts and ${tally.creditsLost} credits, ${tally.fightHp} hit points; patched ${tally.patchedHp} for ${tally.patchCredits} credits; ${tally.repairs} repairs for ${tally.repairCredits} credits; signed on ${tally.hired}, healed ${tally.healed} in the med bay; refitted ${tally.fitted} parts at ${tally.refits} stations; ${tally.stationJobs} station jobs taken (${tally.stationJobsWon} done) for ${tally.jobCredits} credits, ${signed(tally.jobHeat)} heat and ${tally.jobHp} hit points. The hunters: met ${tally.hunts} (${tally.taskForces} the task force), faced ${tally.huntsFaced}; ${tally.hotJumps} jumps where they might wait; ${tally.regroups} regroups and ${tally.hides} days hidden, healing ${tally.rested}; ${tally.swaps} transponder swaps for ${tally.swapCredits} credits. Heat ${tally.heat[0]} to ${tally.heat[1]}, at most ${tally.peak}; crew ${tally.hp[0]} to ${tally.hp[1]}.`,
   );
   if (ended) lines.push(`The act's record: ${tally.settled.record.map(([label, value]) => `${label} ${value}`).join('; ')}.`);
-  return { ended, steps, sectors, system, tally, lines, campaign, landed, home, travelled };
+  if (out) lines.push(voyageLine(out));
+  return { ended, steps, sectors, system, tally, lines, campaign, landed, home, travelled, out };
 }
 
 // The colony founded as the careful player would (M26): the ship's parts
@@ -803,7 +905,7 @@ function faceRaid(campaign, defs, raids) {
     landed: done.landing.landed.length,
     stopped: plan.raiders.length - done.landing.landed.length,
     home: plan.defenders.length,
-    away: Boolean(campaign.colony.trip),
+    away: Boolean(campaign.colony.trip || campaign.colony.voyage),
     fought: done.fought,
     won: done.won,
     taken: done.taken,
@@ -964,6 +1066,69 @@ function onWay(campaign, defs, raids) {
   return now;
 }
 
+// The voyage out from the colony as the careful player begins it (M38d),
+// once its days are played: while a raid is coming it stays home and faces
+// it first, as on its days (readyForRaid); then the ship is refitted with
+// berths and air for all but one (voyagePlan.js refitForSquad), the
+// healthiest who fit aboard go (voyageCrew), a shelter goes up for whoever
+// stays home (homeBuild), and the ship flies out. { before (the colony as
+// the ship left it), flown (voyage.js voyageOut's result, or null with
+// nobody able to fly, why saying so), why, crew and home (the ids aboard
+// and at home), waited (days at home waiting for a raid), moved (the parts
+// refitted aboard), built ([{ day, type, name }]), raids (raidsLog's: any
+// faced before it flew, then those on the voyage), systems (each system as
+// the ship entered it), back (flyHomeFrom's once home, else null) }.
+export function voyageOutOf(campaign, defs) {
+  const raids = raidsLog();
+  let now = campaign;
+  let waited = 0;
+  while (now.colony.raid) {
+    now = readyForRaid(now, defs, raids);
+    if (!now.colony.raid) break;
+    logOdds(now, defs, raids);
+    const day = nextDay(now, defs);
+    if (!day.ok) throw new Error(day.error);
+    now = day.campaign;
+    waited += 1;
+  }
+  const refit = refitForSquad(now, defs, Math.max(1, now.crew.length - 1));
+  now = refit.campaign;
+  const crew = voyageCrew(now, defs);
+  const homeIds = now.crew.filter((member) => !crew.includes(member.id)).map((member) => member.id);
+  const built = [];
+  const base = { why: null, crew, home: homeIds, waited, moved: refit.moved, built, raids, systems: [], back: null };
+  if (!crew.length) return { ...base, before: now, flown: null, why: `the ship can't fly even one. ${voyagePlan(now, defs, now.crew.slice(0, 1).map((member) => member.id)).error}` };
+  for (let what = homeBuild(now, defs, crew); what; what = homeBuild(now, defs, crew)) {
+    const done = build(now, defs, what);
+    if (!done.ok) throw new Error(done.error);
+    built.push({ day: now.colony.day, type: done.plan.type, name: done.plan.name });
+    now = done.campaign;
+  }
+  const flown = voyageOut(now, defs, crew);
+  if (!flown.ok) throw new Error(flown.error);
+  return { ...base, before: now, flown };
+}
+
+// The flight home from a voyage (M38d), as far as the colony: a lander
+// that comes down on the way stops it, those at home face it (faceRaid),
+// and the ship flies on. { campaign (landed), days (the colony's days the
+// flight took), stops (the landers that stopped it), hungry (the days
+// those aboard went hungry) }.
+function flyHomeFrom(campaign, defs, raids) {
+  let now = campaign;
+  let days = 0;
+  let stops = 0;
+  for (;;) {
+    if (raidDown(now)) now = faceRaid(now, defs, raids);
+    const flown = voyageHome(now, defs);
+    if (!flown.ok) throw new Error(flown.error);
+    days += flown.days.length;
+    if (flown.landed) return { campaign: flown.campaign, days, stops, hungry: (flown.campaign.flags.hungryJumps ?? 0) - (campaign.flags.hungryJumps ?? 0) };
+    now = flown.campaign;
+    stops += 1;
+  }
+}
+
 // What the trips came to, as a line of its report: "30 days of trips: 4
 // trips, 14 days away: The Anvil (day 31, 2 days, 3 aboard: Rich seam: Dig
 // deep), ...; brought 2 parts, 23 materials and 10 food; boardings won 1,
@@ -987,11 +1152,7 @@ function tripsLine(defs, trips) {
 // 15 materials and a Shield generator. Set down Gun emplacement (day 13)."
 function raidsLine(defs, raids) {
   const lanes = ['near the lanes', 'off the lanes', 'far from the lanes'][raids.lanes - 1];
-  const each = raids.faced.map((raid) => {
-    const fight = !raid.home ? 'nobody home' : raid.fought ? `${raid.home} at home` : 'no fight';
-    const outcome = raid.won ? 'won' : `lost: they took ${tookText(defs, raid.taken)}`;
-    return `Day ${raid.day}${raid.away ? ', the ship away' : ''}: the guns stopped ${raid.stopped} of ${raid.stopped + raid.landed}, ${fight}, ${outcome}.`;
-  });
+  const each = raids.faced.map((raid) => raidLine(defs, raid));
   const set = raids.set.map((b) => `${b.name} (day ${b.day})`).join(', ');
   return [
     `Raids over ${COLONY_DAYS + TRIP_DAYS} days (${lanes}; heat ${raids.heat[0]} to ${raids.heat[1]}): found ${raids.found}, faced ${raids.faced.length}.`,
@@ -999,6 +1160,64 @@ function raidsLine(defs, raids) {
     ...(set ? [`Set down ${set}.`] : []),
     ...(raids.coming ? ['A raid still coming at the end.'] : []),
   ].join(' ');
+}
+
+// One raid faced, as the log says it: "Day 41, the ship away: the guns
+// stopped 0 of 4, 2 at home, lost: they took 12 food."
+function raidLine(defs, raid) {
+  const fight = !raid.home ? 'nobody home' : raid.fought ? `${raid.home} at home` : 'no fight';
+  const outcome = raid.won ? 'won' : `lost: they took ${tookText(defs, raid.taken)}`;
+  return `Day ${raid.day}${raid.away ? ', the ship away' : ''}: the guns stopped ${raid.stopped} of ${raid.stopped + raid.landed}, ${fight}, ${outcome}.`;
+}
+
+// The voyage out as the log says it (M38d): "Flew out from Copperhill on
+// day 61 with Fen Lindqvist and Quill Petrov, Lark Ibarra at home: the
+// holds took 30 food, the colony kept 20 of 20; refitted Bunks aboard;
+// built Shelter."
+function outLine(defs, leaving) {
+  const { before, flown } = leaving;
+  const name = (id) => before.crew.find((member) => member.id === id)?.name ?? String(id);
+  const { food, materials } = flown.plan;
+  const said = [
+    `the holds took ${food.ship} food, the colony kept ${food.colony} of ${food.room}${food.spoils ? `, ${food.spoils} spoiled` : ''}${materials.lost ? `, ${materials.lost} materials lost` : ''}`,
+    ...(leaving.moved.length ? [`refitted ${leaving.moved.map((type) => defs.modules.get(type)?.name ?? type).join(', ')} aboard`] : []),
+    ...(leaving.built.length ? [`built ${leaving.built.map((b) => b.name).join(', ')}`] : []),
+  ];
+  const waited = leaving.waited ? `, after ${leaving.waited} day${leaving.waited === 1 ? '' : 's'} at home for a raid,` : '';
+  const home = leaving.home.length ? `${listed(leaving.home.map(name))} at home` : 'nobody at home';
+  return `Flew out from ${before.colony.world.name} on day ${before.colony.day}${waited} with ${listed(leaving.crew.map(name))}, ${home}: ${said.join('; ')}.`;
+}
+
+// The flight home as the log says it (M38d): "Flew home from 3 systems
+// out (Lamplight): 3 days, 0 hungry; landed at Copperhill on day 84, the
+// stores one again: 41 food and 30 materials." before: as it set out.
+function homeLine(back, before) {
+  const { out } = before.colony.voyage;
+  const stops = back.stops ? `, a lander stopping it ${back.stops === 1 ? 'once' : `${back.stops} times`}` : '';
+  const { colony, supplies } = back.campaign;
+  return `Flew home from ${out} system${out === 1 ? '' : 's'} out (${before.run.sector.name}): ${back.days} day${back.days === 1 ? '' : 's'}, ${back.hungry} hungry${stops}; landed at ${colony.world.name} on day ${colony.day}, the stores one again: ${supplies} food and ${colony.materials} materials.`;
+}
+
+// What the voyage out came to (M38d), as the log's last line: the systems
+// crossed, the jumps, the work and trade on the way, the hunters, and the
+// colony while the ship was away.
+function voyageLine(out) {
+  const { tally } = out;
+  const faced = out.raids.faced.filter((raid) => raid.away);
+  const lost = faced.filter((raid) => !raid.won).length;
+  const where = out.back ? `home after ${out.colony.days} days away` : 'still out';
+  return (
+    `The voyage out: ${tally.crossed} of ${VOYAGE_SYSTEMS} systems crossed, ${where}; ${tally.jumps} jumps (${tally.hungryJumps} hungry); ${tally.stationJobs} station jobs (${tally.stationJobsWon} done) for ${tally.jobCredits} credits; ` +
+    `spent ${spentOf(tally)} credits, ${tally.yardBought} parts bought, ${tally.fitted} fitted; credits ${out.credits[0]} to ${out.credits[1]}. ` +
+    `${tally.approaches} hostile ships, the hunters ${tally.hunts}; heat ${tally.heat[0]} to ${tally.heat[1]}, at most ${tally.peak}; crew ${tally.hp[0]} to ${tally.hp[1]}. ` +
+    `At home: found ${out.colony.found} time${out.colony.found === 1 ? '' : 's'}, ${faced.length} raid${faced.length === 1 ? '' : 's'} faced while away, ${lost} lost; ${out.colony.hungry} hungry day${out.colony.hungry === 1 ? '' : 's'}.`
+  );
+}
+
+// The credits a voyage's tally spent: supplies, patching, repairs,
+// recruits, swaps, weapons and parts.
+export function spentOf(tally) {
+  return tally.spent + tally.patchCredits + tally.repairCredits + tally.hireCredits + tally.swapCredits + tally.armsCredits + tally.yardCredits;
 }
 
 // What a lost raid took, in words: "12 food, 15 materials and a Shield
@@ -1230,6 +1449,7 @@ export function manyVoyages(defs, runs, options = {}) {
     daysSummary(done),
     tripsSummary(done),
     raidsSummary(defs, done),
+    outSummary(done),
     `The quests (M33b): ${questsLine(questCounts(defs, done))}`,
     `The companions (M33c): ${companionsLine(companionCounts(defs, done))}.`,
     `Jumps: ${spread(of('jumps'))}, long ${spread(of('longJumps'))}, hungry ${spread(of('hungryJumps'))}.`,
@@ -1314,6 +1534,35 @@ function tripsSummary(done) {
   );
 }
 
+// The voyages out from the colonies (M38d): how many flew and came home,
+// who went, the systems crossed and the days away; the jumps, the hostile
+// ships, the hunters and the boardings; the work, spending and parts on the
+// way; and the colony while the ship was away: found, raids faced and lost,
+// fed or not, and what the split lost.
+export function outSummary(done) {
+  const flown = done.map((r) => r.out).filter(Boolean);
+  const median = (values) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted.length ? `${sorted[Math.floor((sorted.length - 1) / 2)]} (${sorted[0]} to ${sorted.at(-1)})` : '-';
+  };
+  const of = (get) => median(flown.map(get));
+  const runs = (test) => flown.filter(test).length;
+  const sum = (get) => flown.reduce((total, out) => total + get(out), 0);
+  const faced = flown.flatMap((out) => out.raids.faced.filter((raid) => raid.away));
+  const lost = faced.filter((raid) => !raid.won);
+  const defences = (out, won) => out.steps.filter((step) => step.kind === 'boarding' && step.dir === 'you' && (won === undefined || step.won === won)).length;
+  return (
+    `The voyage out (M38d): flown in ${flown.length} of ${done.length}, home in ${runs((out) => out.back)}; ${of((out) => out.crew.length)} aboard, ${of((out) => out.home.length)} at home; ` +
+    `systems crossed ${of((out) => out.tally.crossed)}, all ${VOYAGE_SYSTEMS} in ${runs((out) => out.tally.crossed >= VOYAGE_SYSTEMS)}; days away ${of((out) => out.colony.days)}. ` +
+    `Jumps ${of((out) => out.tally.jumps)}, hungry ${of((out) => out.tally.hungryJumps)} (in ${runs((out) => out.tally.hungryJumps > 0)} runs), flying home hungry in ${runs((out) => out.back?.hungry > 0)}; ` +
+    `hostile ships ${of((out) => out.tally.approaches)}, boarding us ${sum((out) => out.tally.approachesLost)} times, fought off ${sum((out) => defences(out, true))} of ${sum((out) => defences(out))}; the hunters met in ${runs((out) => out.tally.hunts > 0)} (${sum((out) => out.tally.hunts)} times); heat at the end ${of((out) => out.tally.heat[1])}, at most ${of((out) => out.tally.peak)}. ` +
+    `Station jobs ${of((out) => out.tally.stationJobs)}, in ${runs((out) => out.tally.stationJobs > 0)} runs, ${sum((out) => out.tally.stationJobsWon)} of ${sum((out) => out.tally.stationJobs)} done, paying ${of((out) => out.tally.jobCredits)}; ` +
+    `credits spent ${of((out) => spentOf(out.tally))}; parts bought ${of((out) => out.tally.yardBought)}, in ${runs((out) => out.tally.yardBought > 0)} runs; fitted ${of((out) => out.tally.fitted)}; signed on ${sum((out) => out.tally.hired)}; credits ${of((out) => out.credits[0])} out, ${of((out) => out.credits[1])} home. ` +
+    `At home: found in ${runs((out) => out.colony.found > 0)} runs; raids faced while away ${faced.length}, lost ${lost.length} (in ${runs((out) => out.raids.faced.some((raid) => raid.away && !raid.won))} runs), ${faced.filter((raid) => !raid.home).length} with nobody home; fed all the while in ${runs((out) => out.colony.hungry === 0)} of ${flown.length}. ` +
+    `Flying out, food spoiled in ${runs((out) => out.flown.plan.food.spoils > 0)} runs (${sum((out) => out.flown.plan.food.spoils)} in all), materials lost in ${runs((out) => out.flown.plan.materials.lost > 0)} (${sum((out) => out.flown.plan.materials.lost)} in all).`
+  );
+}
+
 // The raids over the colonies' days (M29): how often found, by the lanes,
 // faced, won and lost, what the guns stopped, the raids that came while the
 // ship was away, what lost raids took, and what was set down for them.
@@ -1362,6 +1611,11 @@ function kindName(defs, world) {
 // "soil 0, water 2, ore 1, danger 0, lanes 1"
 function numbersText(world) {
   return ['soil', 'water', 'ore', 'danger', 'lanes'].map((rating) => `${rating} ${world[rating]}`).join(', ');
+}
+
+// "a, b and c".
+function listed(items) {
+  return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
 }
 
 function signed(n) {

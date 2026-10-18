@@ -46,7 +46,15 @@
 // background's own four play from data, a background's only on its runs;
 // over 100 voyages from each start, no event comes twice on the run in 9
 // of 10, nor at the colony's places; and the rates main's voyages held stay
-// within their margins (MAIN).
+// within their margins (MAIN). And M38d's: after the colony's 60 days the
+// careful player flies out on a voyage with the healthiest who fit aboard,
+// leaving one at home, plays the systems past the colony's as act 2's
+// sectors, a day passing at home with each jump, and flies home once the
+// holds come down to the way home's supplies and a buffer, or at the last
+// system's jump point; those at home face any raid meanwhile. The voyage
+// keeps a tally of its own, so act 2's rates are as they were; only the
+// refitting player's runs fly it, the rest flying no voyage out, as the
+// fitted ones fly no refits.
 // Each voyage launches from a test run of act 1 (tools/run.js) and is
 // played by the test player in tools/voyage.js. The voyages before M23h's
 // fly as fitted, with no refits, so each compares one part's difference.
@@ -67,8 +75,9 @@ import { crewRoom } from '../src/sim/crew.js';
 import { tripHeatOf } from '../src/sim/raids.js';
 import { feeOf } from '../src/sim/recruits.js';
 import { costAt } from '../src/sim/standing.js';
-import { COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, playColony, playTrips, TRIP_DAYS, voyage, voyagesByBackground } from '../tools/voyage.js';
-import { bestWorld, FIT_ORDER, FIT_SHARE, nextGift, systemMove } from '../tools/voyagePlan.js';
+import { voyagePlan } from '../src/sim/voyage.js';
+import { COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, outSummary, playColony, playTrips, TRIP_DAYS, voyage, VOYAGE_SYSTEMS, voyagesByBackground } from '../tools/voyage.js';
+import { bestWorld, FIT_ORDER, FIT_SHARE, HOME_JUMPS, nextGift, systemMove } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 
 const { balance } = rules;
@@ -113,7 +122,7 @@ const lifts = Array.from({ length: RATE_RUNS }, (_, i) => launchedAt(rules, i + 
 // has no power to spare for it, as the flight checklist's fix asks: since
 // M31 some act 1 runs buy a Scrapline engine, which draws 1 more.
 const powered = (lifted, fit = []) => (shipStats(lifted.campaign.ship, rules).power + fit.reduce((sum, type) => sum + rules.modules.get(type).stats.power, 0) >= 0 ? fit : ['smallreactor', ...fit]);
-const fly = (options, runs = RUNS) => lifts.slice(0, runs).map((lifted, i) => voyage(rules, i + 1, { refit: 'no', jobs: 'no', ...options, fit: powered(lifted, options.fit) }, lifted));
+const fly = (options, runs = RUNS) => lifts.slice(0, runs).map((lifted, i) => voyage(rules, i + 1, { refit: 'no', jobs: 'no', out: 'no', ...options, fit: powered(lifted, options.fit) }, lifted));
 const carefulAll = fly({}, RATE_RUNS);
 const trips = carefulAll.slice(0, RUNS);
 const careful = trips;
@@ -134,15 +143,16 @@ const bunks = bunksAll.slice(0, RUNS);
 const largeholdAll = fly({ fit: ['largehold'] }, RATE_RUNS);
 const largehold = largeholdAll.slice(0, RUNS);
 // M23h: the careful player refitting at stations, as tools/voyage.js plays
-// by default, and since M38c taking their jobs; and M24: the same, ignoring
-// heat. Over RATE_RUNS seeds, the first RUNS of them as every other set.
-const refittingAll = fly({ refit: 'yes', jobs: 'yes' }, RATE_RUNS);
+// by default, and since M38c taking their jobs, and since M38d flying out
+// from the colony; and M24: the same, ignoring heat. Over RATE_RUNS seeds,
+// the first RUNS of them as every other set.
+const refittingAll = fly({ refit: 'yes', jobs: 'yes', out: 'yes' }, RATE_RUNS);
 const ignoringAll = fly({ refit: 'yes', jobs: 'yes', heat: 'ignore' }, RATE_RUNS);
 const [refitting, ignoring] = [refittingAll, ignoringAll].map((all) => all.slice(0, RUNS));
 // M30: the careful player from the other backgrounds' starts, as it
 // plays from the miner's (refitting).
-const desertersAll = Array.from({ length: RATE_RUNS }, (_, i) => voyage(rules, i + 1, { background: 'deserter' }));
-const smugglersAll = Array.from({ length: RATE_RUNS }, (_, i) => voyage(rules, i + 1, { background: 'smuggler' }));
+const desertersAll = Array.from({ length: RATE_RUNS }, (_, i) => voyage(rules, i + 1, { background: 'deserter', out: 'no' }));
+const smugglersAll = Array.from({ length: RATE_RUNS }, (_, i) => voyage(rules, i + 1, { background: 'smuggler', out: 'no' }));
 const [deserters, smugglers] = [desertersAll, smugglersAll].map((all) => all.slice(0, RUNS));
 const SEEDS = [1, 2, 3];
 const LAST = rules.acts.get(2).sectors;
@@ -619,9 +629,10 @@ test('past the charts: the careful player crosses all five sectors, enters the s
     // the best it knew of in reach.
     assert.deepEqual(systemMove(trip.campaign, rules), { kind: 'settle' }, `seed ${seed}`);
     assert.equal(bestWorld(trip.campaign, rules), node.id);
-    // Its report: the worlds surveyed, the one settled and the act's record.
+    // Its report: the worlds surveyed, the one settled and the act's record,
+    // last but for what the voyage out came to (M38d).
     assert.ok(trip.lines.some((line) => line.startsWith(`   Settled ${node.name} (`)), `seed ${seed} says what it settled`);
-    assert.match(trip.lines.at(-1), /^The act's record: /);
+    assert.match(trip.lines.at(trip.out ? -2 : -1), /^The act's record: /);
   }
   // Surveying while the supplies allow: most runs survey two worlds or
   // more, few go hungry for it, and nearly every run settles a world it
@@ -922,8 +933,9 @@ test("at a station of the pursuer's side the first trade since the ship arrived 
   let passed = 0;
   for (const [i, trip] of [...refittingAll, ...desertersAll, ...smugglersAll].entries()) {
     let traded = false;
-    for (const step of trip.steps) {
-      if (['jump', 'long', 'sector', 'system'].includes(step.kind)) traded = false;
+    // On the run in act 2, and from M38d on the voyage out from the colony.
+    for (const step of [...trip.steps, ...(trip.out?.steps ?? [])]) {
+      if (['jump', 'long', 'sector', 'system', 'out', 'beyond'].includes(step.kind)) traded = false;
       if (!trades.includes(step.kind)) continue;
       if (step.dock) {
         // Seeds 1 to RATE_RUNS from the miner's start, then the deserter's
@@ -975,4 +987,66 @@ test("the careful player takes the quests' steps: the thread's job before the la
   const at = side.lines.indexOf('The quests (M33b):');
   assert.ok(at > 0, side.lines.join('\n'));
   assert.match(side.lines[at + 1], /^Debt-bound miner +The miner's debt: act 1's step done in 1 of 1, the run's in [01] of 1 \([01] gone cold\), its place won in [01] \(\d+ fights? lost there\)\. The Fleet's chain: started in [01], done in [01], gone cold in [01]; waved through in [01] runs? \(\d+ times?\)\. In the [01] runs? with a pay-off, found .+ a day before it \(\d+ days\) and .+ after \(\d+\), raids faced \d+ before and \d+ after\.$/);
+});
+
+// M38d's: the voyage out from the colony once its 60 days are played, over
+// RATE_RUNS of the refitting player's runs (see the top of the file). Over
+// those 100 it flew out in all and came home in all, crossing 3 systems
+// (0 to 3), 2 aboard (2 to 5) and 1 at home; those at home went hungry in
+// none, and those aboard on 1 jump in 1 run. The rates hold within MARGIN
+// of those (VOYAGE_OUT, Evan's call to make on them in M38d's PR).
+const VOYAGE_OUT = { home: 100, crossed: 87, fed: 100, fedAboard: 99 };
+test("after the colony's 60 days the careful player flies out with the healthiest who fit aboard, one left home, plays the systems past the colony's as act 2's sectors, a day passing at home each jump, and flies home at the last system's jump point or once the holds come down to the way home's supplies and a buffer (M38d)", () => {
+  const share = (member) => member.hp / maxHp(member, rules);
+  for (const [i, r] of refittingAll.entries()) {
+    const seed = i + 1;
+    const { out } = r;
+    assert.ok(out?.flown, `seed ${seed}: flies out`);
+    const { before, crew, home, tally } = out;
+    assert.equal(before.colony.day, r.travelled.colony.day + out.waited, `seed ${seed}: once the colony's days are played, and any raid coming faced`);
+    // Who goes: one or more aboard, the healthiest; one left home with two
+    // or more, and more only where the ship could fly no more.
+    assert.deepEqual([...crew, ...home].sort((a, b) => a - b), before.crew.map((member) => member.id).sort((a, b) => a - b));
+    assert.ok(crew.length >= 1 && home.length >= Math.min(1, before.crew.length - 1), `seed ${seed}: ${crew.length} aboard, ${home.length} at home`);
+    const [aboard, stay] = [crew, home].map((ids) => before.crew.filter((member) => ids.includes(member.id)));
+    assert.ok(aboard.every((a) => stay.every((h) => share(a) >= share(h))), `seed ${seed}: the healthiest go`);
+    const next = [...stay].sort((a, b) => share(b) - share(a) || before.crew.indexOf(a) - before.crew.indexOf(b))[0];
+    if (stay.length > 1) assert.equal(voyagePlan(before, rules, [...crew, next.id]).ok, false, `seed ${seed}: no room for one more`);
+    // The systems, in a line from the colony's: each with its two worlds,
+    // none named twice, nor as the colony's own system.
+    assert.ok(tally.crossed <= VOYAGE_SYSTEMS && [tally.crossed, tally.crossed + 1].includes(out.systems.length), `seed ${seed}: ${out.systems.length} systems entered, ${tally.crossed} crossed`);
+    const names = out.systems.map((sector) => sector.name);
+    assert.equal(new Set(names).size, names.length, `seed ${seed}: ${names}`);
+    assert.ok(!names.includes(r.system.name), `seed ${seed}: the colony's system's name again`);
+    assert.ok(out.systems.every((sector) => sector.nodes.filter((node) => node.world).length === rules.worlds.voyage.worlds));
+    // A day a jump: each jump (out, on into the next system and the long
+    // ones too), each day hidden or rested, and each day of the flight home.
+    assert.ok(out.back, `seed ${seed}: comes home`);
+    assert.equal(out.colony.days, tally.jumps + tally.regroups + tally.hides + out.back.days, `seed ${seed}: the colony's days away`);
+    // Home at the last system's jump point, or once the holds came down to
+    // the way home's supplies and the buffer.
+    const step = out.steps.find((s) => s.kind === 'home');
+    assert.ok((step.atExit && step.out === VOYAGE_SYSTEMS) || step.supplies[0] <= step.eats + HOME_JUMPS * step.each, `seed ${seed}: home with ${step.supplies[0]} supplies, ${step.out} systems out`);
+    // Landed: the ship home and the crew one again in its order, with whoever
+    // signed on aboard.
+    assert.equal(out.campaign.colony.voyage, null);
+    const ids = out.campaign.crew.map((member) => member.id);
+    assert.deepEqual(ids, [...ids].sort((a, b) => a - b));
+    assert.equal(ids.length, before.crew.length + tally.hired + tally.companions.joined.length, `seed ${seed}: the crew landed`);
+    // Raids while away are faced by those at home.
+    for (const raid of out.raids.faced.filter((raid) => raid.away)) assert.ok(raid.home <= home.length, `seed ${seed}: ${raid.home} defending`);
+  }
+  // As act 2's sectors: stations, jobs, yards, refits, events and hostile
+  // ships among them.
+  const runs = (test) => refittingAll.filter((r) => test(r.out)).length;
+  for (const kind of ['buy', 'job', 'yard', 'refit', 'event', 'approach', 'hire']) assert.ok(runs((out) => out.steps.some((step) => step.kind === kind)) > 0, `a ${kind} on some voyage out`);
+  const rates = { home: runs((out) => out.back), crossed: runs((out) => out.tally.crossed > 0), fed: runs((out) => out.colony.hungry === 0), fedAboard: runs((out) => out.tally.hungryJumps === 0 && !out.back?.hungry) };
+  for (const key of Object.keys(VOYAGE_OUT)) assert.ok(VOYAGE_OUT[key] - rates[key] <= MARGIN, `${key}: ${rates[key]} of ${RATE_RUNS}, ${VOYAGE_OUT[key]} measured`);
+  // A tally of its own: act 2's and the colony's as without it.
+  const [flown, stayed] = [{}, { out: 'no' }].map((options) => voyage(rules, SEEDS[0], { refit: 'yes', jobs: 'yes', ...options }, lifts[0]));
+  assert.deepEqual(flown.tally, stayed.tally);
+  assert.deepEqual(flown.steps, stayed.steps);
+  assert.equal(stayed.out, null);
+  assert.match(outSummary(refittingAll), /^The voyage out \(M38d\): flown in 100 of 100, home in \d+; .+ systems crossed \d+ \(\d+ to \d+\), all 3 in \d+; days away .+ At home: found in \d+ runs; raids faced while away \d+, lost \d+ .+ fed all the while in \d+ of 100\. Flying out, food spoiled in \d+ runs \(\d+ in all\), materials lost in \d+ \(\d+ in all\)\.$/);
+  assert.match(flown.lines.at(-1), /^The voyage out: [0-3] of 3 systems crossed, home after \d+ days away; /);
 });

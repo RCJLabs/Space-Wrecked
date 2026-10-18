@@ -21,33 +21,38 @@ export function firstVoyagers(campaign, rules) {
   return crew.filter((member) => fit.includes(member.id)).map((member) => member.id);
 }
 
-// Fly out's plan in words (voyage.js voyagePlan's): { title, lines, ok, ask
-// (what Fly out's first tap says), why (why the ship can't fly, or null) }.
-// The lines: who goes and who stays; what the holds take and the colony
-// keeps of the food, and what spoils; the materials the storehouses can't
-// keep; the jump into the next system; and the flight checks with those
-// aboard, each one failing with its fix.
+// Fly out's plan in words (voyage.js voyagePlan's): { title, lines, bad
+// (how many of the last lines are failing checks), ok, ask (what Fly out's
+// first tap says), why (why the ship can't fly, or null) }. The lines: who
+// goes and who stays; what the holds take and the colony keeps of the food,
+// and what spoils; the materials the storehouses can't keep; the jump into
+// the next system; whoever stays with no bed and air; and the flight checks
+// with those aboard, each one failing with its fix.
 export function outText(plan, campaign, rules) {
   const world = campaign.colony.world.name;
-  if (!plan.crew) return { title: 'Voyage', lines: [], ok: false, ask: null, why: plan.error };
+  if (!plan.crew) return { title: 'Voyage', lines: [], bad: 0, ok: false, ask: null, why: plan.error };
   const names = (ids) => listed(ids.map((id) => campaign.crew.find((member) => member.id === id)?.name ?? '?'));
   const { food, materials, jump } = plan;
   const home = plan.home.length ? `${names(plan.home)} stay${plan.home.length === 1 ? 's' : ''} at ${world}` : `Nobody stays at ${world}`;
   const after = Math.min(100, campaign.heat + jump.heat);
   const hunters = jump.hunt?.chance ? ` · hunters ${jump.hunt.chance}%` : '';
+  const { hungerHp } = rules.balance;
+  const hungry = jump.hungry ? ` · the crew goes hungry, ${hungerHp} hit point${hungerHp === 1 ? '' : 's'} each` : '';
   const lines = [
     `Aboard: ${names(plan.crew)} · ${home}`,
     `Food ${food.now}: the holds take ${food.ship}, the storehouses keep ${food.colony} of ${food.room}${food.spoils ? `, ${food.spoils} spoil` : ''}`,
     ...(materials.lost ? [`${materials.lost} materials won't keep: the storehouses hold ${food.room}`] : []),
-    `Into a system nobody has charted: ${jump.supplies} supplies, heat +${jump.heat} to ${after}${hunters}`,
+    `Into a system nobody has charted: ${jump.supplies} supplies, heat +${jump.heat} to ${after}${hunters}${hungry}`,
+    ...(plan.rough.length ? [`${names(plan.rough)} ${plan.rough.length === 1 ? 'has' : 'have'} no bed and air at ${world}: no rest while the ship is away`] : []),
   ];
   const failing = plan.checks.filter((line) => line.ok !== true);
   if (failing.length) lines.push(...failing.map((line) => `${line.text}${line.fix ? `: ${lowerFirst(line.fix)}` : ''}`));
   else lines.push(`Every flight check passes with ${plan.crew.length} aboard.`);
-  const lost = [...(food.spoils ? [`${food.spoils} food spoils`] : []), ...(materials.lost ? [`${materials.lost} materials are lost`] : [])];
+  const lost = [...(food.spoils ? [`${food.spoils} food spoils`] : []), ...(materials.lost ? [`${materials.lost} materials are lost`] : []), ...(jump.hungry ? ['the first jump goes hungry'] : [])];
   return {
     title: `Voyage from ${world}`,
     lines,
+    bad: failing.length,
     ok: plan.ok,
     ask: plan.ok ? `Fly out with ${names(plan.crew)}${plan.home.length ? `, ${names(plan.home)} at home` : ', nobody at home'}: the holds take ${food.ship} food and the colony keeps ${food.colony}${lost.length ? `; ${listed(lost)}` : ''}. Tap again to fly.` : null,
     why: plan.ok ? null : `${plan.error} Refit to put ${failing.some((line) => line.id === 'lifeSupport') ? 'life support' : 'what is short'} aboard, or take fewer.`,
