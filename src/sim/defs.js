@@ -76,10 +76,11 @@ export function indexDefs(files) {
     sectors: sectors ?? null,
     nodeTypes: byId(sectors?.nodes),
     // The worlds past the charts (M25, gen/system.js): how many a system
-    // has and its words, the words for how far a world lies from the lanes
-    // (nearest first), the kinds of world by id, each with the ranges its
-    // numbers roll in, and the names systems and worlds draw on.
-    worlds: worlds ? { system: worlds.system, lanes: worlds.lanes ?? [], kinds: byId(worlds.kinds), names: worlds.names ?? {} } : null,
+    // has and its words, how many stand in each system a voyage crosses
+    // (M38d) and its words, the words for how far a world lies from the
+    // lanes (nearest first), the kinds of world by id, each with the ranges
+    // its numbers roll in, and the names systems and worlds draw on.
+    worlds: worlds ? { system: worlds.system, voyage: worlds.voyage ?? null, lanes: worlds.lanes ?? [], kinds: byId(worlds.kinds), names: worlds.names ?? {} } : null,
     // The colony (M26, colony.js): its grid, the tags of the parts that
     // stay aboard, its words, and the building each useful part becomes,
     // by the part's base id, in data order. From M27 (days.js), the

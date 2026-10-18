@@ -153,6 +153,12 @@
 // it, then a shield and an armory for the defenders, each only where it
 // would stand powered. From M33b it flies to the colony's quest place
 // before any other held derelict, on the same terms.
+// From M38d, once the colony's days are played, it flies out on a voyage
+// into the systems past the colony's with the healthiest who fit aboard,
+// leaving one at home (voyageCrew), and plays them as act 2's sectors. It
+// flies home at the jump point of the last system it means to cross, or
+// sooner, once the holds come down to the way home's supplies and
+// HOME_JUMPS jumps' more (homeNow).
 import { canRefit, maxHp, refitShip, shipChecklist } from '../src/sim/campaign.js';
 import { buildingOf, colonyStats, givesOf, shipParts, storesOf, yieldOf } from '../src/sim/colony.js';
 import { build, buildPlan, takeDown } from '../src/sim/colonyBuild.js';
@@ -173,6 +179,7 @@ import { dockHeat, jobMoves, jobPay, levelOf, moveStanding, patrolWelcome, price
 import { stationBoard } from '../src/sim/stationJobs.js';
 import { swapPlan } from '../src/sim/transponder.js';
 import { failingCheck, holdOf, jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity, tradeHeat, within } from '../src/sim/travel.js';
+import { voyageHomePlan, voyagePlan } from '../src/sim/voyage.js';
 import { yardHere } from '../src/sim/yards.js';
 import { upgradeOf } from './arms.js';
 import { fitPart, jobOdds } from './run.js';
@@ -948,6 +955,40 @@ export function raidPrep(campaign, rules) {
     if (standing?.powered) return { part };
   }
   return null;
+}
+
+// M38d: the jumps' supplies the holds keep beyond the way home's on a
+// voyage; once they come down to that, the player flies home.
+export const HOME_JUMPS = 2;
+
+// Who flies out on a voyage from the colony (M38d): the healthiest, the
+// share of their most hit points they have, the crew's order breaking ties;
+// as many as the ship can fly with every flight check passing, leaving one
+// at home when there are two or more. Their ids, in the crew's order; none
+// when the ship can't fly even one.
+export function voyageCrew(campaign, rules) {
+  const { crew } = campaign;
+  const ranked = crew.map((member, i) => ({ member, i })).sort((a, b) => b.member.hp / maxHp(b.member, rules) - a.member.hp / maxHp(a.member, rules) || a.i - b.i);
+  for (let n = Math.min(crewRoom(campaign.ship, rules), Math.max(1, crew.length - 1)); n > 0; n--) {
+    const going = new Set(ranked.slice(0, n).map(({ member }) => member.id));
+    const ids = crew.filter((member) => going.has(member.id)).map((member) => member.id);
+    if (voyagePlan(campaign, rules, ids).ok) return ids;
+  }
+  return [];
+}
+
+// Whether the player flies home from its voyage now (M38d): flying on once
+// a lander stopped the flight; at the jump point of the `systems`th system
+// out; or once the holds come down to the way home's supplies and
+// HOME_JUMPS jumps' more. Never while something holds the ship.
+export function homeNow(campaign, rules, systems) {
+  const voyage = campaign.colony?.voyage;
+  const plan = voyage ? voyageHomePlan(campaign, rules) : null;
+  if (!plan?.ok) return false;
+  if (voyage.homing) return true;
+  const { run } = campaign;
+  if (voyage.out >= systems && run.at === run.sector.exit) return true;
+  return campaign.supplies <= plan.eats + HOME_JUMPS * jumpSupplies(campaign, rules);
 }
 
 // What a world is worth to the player as a colony: soil, water and ore a

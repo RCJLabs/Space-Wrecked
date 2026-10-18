@@ -6,9 +6,11 @@
 // find the ship while it sits, at a jump's odds (hunt.js). In a kind of
 // node to hide in (a nebula, data/sectors.json), the day hides the ship
 // instead: heat falls hideHeat, and the hunters can't see it to roll. A
-// day the supplies don't cover isn't taken: hunger would undo the rest.
-// The flags count the regroups, the hides and the hit points they healed.
-// Pure.
+// day the supplies don't cover isn't taken: hunger would undo the rest. On
+// a voyage from the colony (M38d) the day passes at the colony too (days.js
+// voyageDay). The flags count the regroups, the hides and the hit points
+// they healed. Pure.
+import { voyageDay } from './days.js';
 import { tally } from './flags.js';
 import { withHeat } from './heat.js';
 import { huntOdds, rollHunt } from './hunt.js';
@@ -38,7 +40,8 @@ export function regroupPlan(campaign, rules) {
 }
 
 // Takes the day. Returns { ok: true, plan, campaign, hunt (hunt.js
-// rollHunt's, or null hiding) } or { ok: false, error }.
+// rollHunt's, or null hiding), day (the colony's, on a voyage, else null) }
+// or { ok: false, error }.
 export function regroup(campaign, rules) {
   const plan = regroupPlan(campaign, rules);
   if (!plan.ok) return plan;
@@ -51,7 +54,8 @@ export function regroup(campaign, rules) {
     crew,
     flags: tally(campaign.flags, { [hiding ? 'hides' : 'regroups']: 1, hpRested: healed }),
   };
-  if (hiding) return { ok: true, plan, campaign: rested, hunt: null };
-  const met = rollHunt(rested, rules);
-  return { ok: true, plan, campaign: met.campaign, hunt: met.hunt };
+  const dayed = voyageDay(rested, rules);
+  if (hiding) return { ok: true, plan, campaign: dayed.campaign, hunt: null, day: dayed.day };
+  const met = rollHunt(dayed.campaign, rules);
+  return { ok: true, plan, campaign: met.campaign, hunt: met.hunt, day: dayed.day };
 }

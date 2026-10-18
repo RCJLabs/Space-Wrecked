@@ -333,6 +333,14 @@ const cases = [
   ['too few world names for a system', (d) => (d.worlds.names.worlds = ['Harrow', 'Tarn']), /worlds.json names.worlds: needs 3 names/],
   ['a line missing from the lanes', (d) => d.worlds.lanes.pop(), /worlds.json: lanes must be 3 lines/],
   ['no node kind for the worlds to stand on', (d) => (d.sectors.nodes = d.sectors.nodes.filter((node) => node.id !== 'world')), /sectors.json: the "world" node kind is missing/],
+  // M38d: the systems a voyage crosses past the colony's.
+  ['no word on the systems a voyage crosses', (d) => delete d.worlds.voyage, /worlds.json: voyage must be an object/],
+  ['a voyage system with no worlds', (d) => (d.worlds.voyage.worlds = 0), /worlds.json voyage: worlds must be a whole number from 1 to 5/],
+  ['a voyage system with no words', (d) => (d.worlds.voyage.text = ' '), /worlds.json voyage: text must be a non-empty string/],
+  ['a voyage system with a stray field', (d) => (d.worlds.voyage.stations = 2), /worlds.json voyage: unknown field "stations"/],
+  ['more worlds in a voyage system than kinds', (d) => Object.assign(d.worlds, { voyage: { ...d.worlds.voyage, worlds: 4 }, kinds: d.worlds.kinds.slice(0, 3) }), /worlds.json: needs 4 kinds of world, one for each world in a system; has 3/],
+  ['no name to spare past the colony for a voyage system', (d) => Object.assign(d.worlds, { system: { ...d.worlds.system, worlds: 2 }, voyage: { ...d.worlds.voyage, worlds: 2 }, names: { ...d.worlds.names, worlds: ['Harrow', 'Tarn'] } }), /worlds.json names.worlds: needs 3 names, one for each world in a voyage's system and the colony's; has 2/],
+  ['one system name, so a voyage would name the next as the last', (d) => (d.worlds.names.systems = ['The Hush']), /worlds.json names.systems: needs 2 names/],
   // M26: the colony.
   ['a colony grid too small', (d) => (d.colony.site.width = 4), /colony.json site: width must be a whole number from 8 to 40/],
   ['a colony with no path between buildings to speak of', (d) => (d.colony.site.gap = 3), /colony.json site: gap must be a whole number from 0 to 2/],

@@ -95,7 +95,9 @@ function addParts(campaign, rules) {
 }
 
 function fill(campaign, rules) {
-  if (campaign.colony) {
+  // At the colony its stores; on the run, and on a voyage from it (M38d),
+  // the ship's holds.
+  if (campaign.colony && !campaign.colony.voyage) {
     const { total } = storesOf(campaign, rules);
     const supplies = Math.min(MAX_SUPPLIES, Math.max(campaign.supplies, total));
     const materials = Math.min(MAX_MATERIALS, Math.max(campaign.colony.materials, total));

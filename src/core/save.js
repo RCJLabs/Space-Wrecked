@@ -96,7 +96,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  35  station jobs: the run keeps the jobs taken at the station the ship
 //      is at, and a job's fight can be a station's, with the station's name
 //      (M38c)
-export const SAVE_VERSION = 35;
+//  36  voyages: the colony keeps its system's other worlds and the voyage
+//      under way, or none; the run can cross systems past the colony's,
+//      with worlds among their nodes (M38d)
+export const SAVE_VERSION = 36;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -475,6 +478,20 @@ export const MIGRATIONS = [
       if (!isObject(data) || !isObject(data.campaign)) return data;
       const { run } = data.campaign;
       return isObject(run) ? { ...data, campaign: { ...data.campaign, run: { ...run, jobbed: [] } } } : data;
+    },
+  },
+  // Voyages (M38d): a colony from before has the ship home, nobody away,
+  // and the other worlds of the system it was settled in, which the run
+  // ended in and still shows.
+  {
+    from: 35,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign) || !isObject(data.campaign.colony)) return data;
+      const { colony, run } = data.campaign;
+      const sector = isObject(run) && isObject(run.sector) && run.sector.system === true && Array.isArray(run.sector.nodes) ? run.sector : null;
+      const name = isObject(colony.world) ? colony.world.name : null;
+      const worlds = sector ? sector.nodes.filter((node) => isObject(node) && isObject(node.world) && node.name !== name).map((node) => ({ name: node.name, world: node.world })) : [];
+      return { ...data, campaign: { ...data.campaign, colony: { ...colony, worlds, voyage: null } } };
     },
   },
 ];

@@ -1,4 +1,4 @@
-System 6: The Outer Hold (seed 1), 4 nodes, 5 links
+System 6: Marrow's Star (seed 1), 4 nodes, 5 links
    .  1w
   0S  2w
    .  3w
@@ -8,7 +8,7 @@ links: 0-1 0-2 0-3 1-2 2-3
   2 Tarn (world: ocean, soil 1 water 3 ore 1 danger 2, lanes 1) at 0.685, 0.522
   3 Cairn (world: ice, soil 0 water 2 ore 1 danger 0, lanes 1) at 0.685, 0.799
 
-System 6: The Last Harbor (seed 2), 4 nodes, 5 links
+System 6: The Drowned Sun (seed 2), 4 nodes, 5 links
    .  1w
   0S  2w
    .  3w
@@ -18,7 +18,7 @@ links: 0-1 0-2 0-3 1-2 2-3
   2 Hollowmere (world: desert, soil 0 water 1 ore 2 danger 1, lanes 3) at 0.685, 0.526
   3 Long Winter (world: ocean, soil 0 water 3 ore 0 danger 2, lanes 2) at 0.685, 0.754
 
-System 6: The Outer Hold (seed 3), 4 nodes, 5 links
+System 6: The Cinder Gate (seed 3), 4 nodes, 5 links
    .  1w
   0S  2w
    .  3w

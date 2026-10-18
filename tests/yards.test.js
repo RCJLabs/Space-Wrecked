@@ -280,7 +280,7 @@ test('through the game: a part bought and one sold at the yard; one that fails c
 });
 
 test('SAVE_VERSION 33: a run from before reads with nothing bought at a yard; a broken record of them, or a dock elsewhere, is caught', () => {
-  assert.equal(SAVE_VERSION, 35);
+  assert.equal(SAVE_VERSION, 36);
   const step = MIGRATIONS.find((m) => m.from === 32);
   const run = atTheYard({ credits: 2000 });
   const { yarded, ...oldRun } = run.run;

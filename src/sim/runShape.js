@@ -13,7 +13,12 @@ import { isStandingChanges } from './standing.js';
 export const MAX_NODES = 40;
 export const MAX_PLACE_NAME = 24;
 const MAX_LINKS = 120;
-const MAX_PAST = 20;
+// The names of the maps crossed before that a run keeps, the oldest dropped
+// first (travel.js): from M38d the run goes on without end.
+export const MAX_PAST = 60;
+// Past any map's place in a run: act 2's sectors, the system past the
+// charts and the systems a voyage crosses after it (M38d).
+const MAX_INDEX = 99999;
 // More than any outcome moves: a guard on what a save can hold.
 const MAX_CHANGE = 9999;
 // More rounds than any approach has, more crew than any ship carries, and
@@ -37,7 +42,7 @@ const ID = /^[a-z][a-z0-9-]*$/;
 export function runProblem(run) {
   if (!isRecord(run)) return 'is unreadable';
   const { sector, at, seen, past, done, scans, result, approach, hired, racked, yarded, swapped, surveyed, docked, jobbed } = run;
-  if (!isRecord(sector) || !isInt(sector.index, 1, 99) || !isName(sector.name) || !(sector.system === undefined || sector.system === true)) return 'has an unreadable sector';
+  if (!isRecord(sector) || !isInt(sector.index, 1, MAX_INDEX) || !isName(sector.name) || !(sector.system === undefined || sector.system === true)) return 'has an unreadable sector';
   const { nodes, links } = sector;
   if (!Array.isArray(nodes) || nodes.length < 2 || nodes.length > MAX_NODES) return 'has an unreadable map';
   const readable = nodes.every(
@@ -53,7 +58,9 @@ export function runProblem(run) {
       (node.event === undefined || isId(node.event)) &&
       (node.quest === undefined || (isId(node.quest) && node.event !== undefined)) &&
       (node.hostile === undefined || (isRecord(node.hostile) && isId(node.hostile.ship) && isInt(node.hostile.seed, 0, MAX_SEED))) &&
-      (node.world === undefined || (sector.system === true && isWorld(node.world))),
+      // Worlds stand in the system past the charts (M25) and, from M38d, in
+      // the systems a voyage crosses.
+      (node.world === undefined || isWorld(node.world)),
   );
   if (!readable) return 'has an unreadable map';
   const isNode = (id) => isInt(id, 0, nodes.length - 1);

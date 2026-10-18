@@ -175,10 +175,12 @@ test('Settle here: act 2 ends, surveyed or not, and the world goes with the camp
   const campaign = at(inSystem({ heat: 30, credits: 120 }), 2);
   const node = campaign.run.sector.nodes[2];
   const plan = settlePlan(campaign, rules);
-  assert.deepEqual(plan, { ok: true, world: { name: node.name, ...node.world, surveyed: false } });
+  // From M38d the colony keeps the system's other worlds, for its trips.
+  const others = campaign.run.sector.nodes.filter((other) => other.world && other.id !== 2).map((other) => ({ name: other.name, world: other.world }));
+  assert.deepEqual(plan, { ok: true, world: { name: node.name, ...node.world, surveyed: false }, worlds: others });
   const { campaign: after } = settle(campaign, rules);
   assert.deepEqual([after.act, after.place], [COLONY_ACT, 'hub']);
-  assert.deepEqual(after.colony, { world: plan.world, buildings: [], nextUid: 1, day: 1, materials: rules.colony.materials, places: [], trip: null, raid: null });
+  assert.deepEqual(after.colony, { world: plan.world, buildings: [], nextUid: 1, day: 1, materials: rules.colony.materials, places: [], trip: null, raid: null, worlds: others, voyage: null });
   assert.equal(after.flags.settled, 1);
   // The ship, crew, credits, parts on hand and heat go with it; the run
   // stays as it ended, for the act's record.
@@ -260,9 +262,10 @@ test('a broken system or survey list is caught', () => {
   const nodes = (change) => run.sector.nodes.map((node) => (node.id === 1 ? { ...node, world: { ...node.world, ...change } } : node));
   assert.deepEqual(problems({ sector: { ...run.sector, nodes: nodes({ ore: 9 }) } }), ["The campaign's run has an unreadable map."]);
   assert.deepEqual(problems({ sector: { ...run.sector, nodes: nodes({ lanes: 4 }) } }), ["The campaign's run has an unreadable map."]);
-  // A world belongs in the system only.
+  // From M38d a world can stand on any chart: the systems a voyage crosses
+  // past the colony's have them (gen/system.js beyondSystem).
   const sector = onRun();
   const world = run.sector.nodes[1].world;
-  const withWorld = sector.run.sector.nodes.map((node) => (node.id === 1 ? { ...node, world } : node));
-  assert.deepEqual(campaignProblems({ ...sector, run: { ...sector.run, sector: { ...sector.run.sector, nodes: withWorld } } }), ["The campaign's run has an unreadable map."]);
+  const withWorld = sector.run.sector.nodes.map((node) => (node.id === 1 ? { ...node, type: 'world', world } : node));
+  assert.deepEqual(campaignProblems({ ...sector, run: { ...sector.run, sector: { ...sector.run.sector, nodes: withWorld } } }), []);
 });

@@ -51,7 +51,7 @@ export function raidHint(campaign, rules) {
   }
   if (status.state !== 'coming') return null;
   const days = raidIn(campaign);
-  const away = campaign.colony.trip ? ' The ship is away: whoever is home will fight.' : '';
+  const away = campaign.colony.trip || campaign.colony.voyage ? ' The ship is away: whoever is home will fight.' : '';
   return { text: `${status.line} It lands in ${days} day${days === 1 ? '' : 's'}: set down guns, a shield and an armory from the hold.${away}`, tone: 'warn' };
 }
 

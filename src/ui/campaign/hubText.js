@@ -122,6 +122,8 @@ function hangarHint({ act, raid, ready, build, buy, heat, held, shop, pursuer },
 export function heatText(campaign, rules) {
   const hub = actOf(campaign, rules)?.hub;
   const run = hub === 'ship' || hub === 'colony';
+  // Out on a voyage (M38d) the run's words, the hunters', not the colony's.
+  const home = hub === 'colony' && !campaign.colony?.voyage;
   const level = run ? runLevel(campaign.heat, rules) : heatLevel(campaign.heat, rules);
   const { payment, ok, why } = paymentFor(campaign, rules);
   const { rumorHeat, huntHeat, raidHeat } = rules.balance;
@@ -131,7 +133,7 @@ export function heatText(campaign, rules) {
     max: HEAT_MAX,
     level,
     name: (run ? RUN_LEVEL_NAMES : LEVEL_NAMES)[level],
-    line: (hub === 'colony' ? pursuer?.colony?.levels[level] : run ? pursuer?.run?.levels[level] : pursuer?.levels[level]) ?? '',
+    line: (home ? pursuer?.colony?.levels[level] : run ? pursuer?.run?.levels[level] : pursuer?.levels[level]) ?? '',
     marks: [rumorHeat, huntHeat, raidHeat],
     payment: payment && {
       label: `Pay ${payment.credits}`,
@@ -170,7 +172,8 @@ export function jobsText(flags, none = 'None yet') {
 // Under the title's Continue: where the campaign is. rules may still be
 // loading (null): then the act goes without its home, and a job without
 // its name. On the run, the sector says where, or the system past the
-// charts; once a world is settled (M25), the world.
+// charts; once a world is settled (M25), the world; out on a voyage from it
+// (M38d), the system the ship is in.
 export function continueText(campaign, rules) {
   const { fight, run, colony } = campaign;
   const approach = run?.approach;
@@ -180,6 +183,6 @@ export function continueText(campaign, rules) {
   const facing = approach && (approach.outcome ? `${approach.enemy.name}, over` : `${approach.enemy.name}, round ${approach.round}`);
   const at = fight
     ? fight.battle.winner ? `${kind} just ended` : `${what}, round ${fight.battle.round}`
-    : facing ?? (colony ? colony.world.name : run ? `${run.sector.system ? 'The system' : `Sector ${run.sector.index}`} · ${run.sector.name}` : rules && actOf(campaign, rules)?.home);
+    : facing ?? (colony?.voyage ? `${run.sector.name}, out from ${colony.world.name}` : colony ? colony.world.name : run ? `${run.sector.system ? 'The system' : `Sector ${run.sector.index}`} · ${run.sector.name}` : rules && actOf(campaign, rules)?.home);
   return at ? `Act ${campaign.act} · ${at}` : `Act ${campaign.act}`;
 }

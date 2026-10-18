@@ -169,9 +169,10 @@ export function changesText(changes, campaign, rules) {
 // says it.
 const WRECK_WORDS = { fire: 'on fire', vacuum: 'open to vacuum', rubble: 'full of rubble' };
 
-// What supplies are called: food at the colony.
+// What supplies are called: food at the colony, and supplies aboard, on
+// the run and on a voyage from it (M38d).
 function suppliesWord(campaign) {
-  return campaign.colony ? 'food' : 'supplies';
+  return campaign.colony && !campaign.colony.voyage ? 'food' : 'supplies';
 }
 
 function dearestOnHand(campaign, rules) {
