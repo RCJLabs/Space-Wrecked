@@ -4,9 +4,10 @@
 // done to her and, on hers, the parts a Fire order aims at (hullMarks.js).
 // While a round plays (approachPlayback.js), its shots fly between them,
 // hits flash, shields shimmer and the ships move as they flee or close.
-// Each ship is drawn once into a layer of her own and kept until she, her
-// marks or her place change, so a round's frames copy two pictures and draw
-// the shots over them. Never changes what it is given.
+// Each ship is painted once into a layer of her own, as big as she is, and
+// her marks drawn over a copy of it when they change; deep space is
+// painted once a size. So a round's frames copy three pictures and draw the
+// shots over them. Never changes what it is given.
 //   view = createApproachView()
 //   view.setShip(side, { ship, defs, hull, skin })   when a ship changes
 //   view.setMarks(side, { damage, wrecked, target })  target: the uids a
@@ -32,13 +33,15 @@ const ARM = 0.3; // a target's bracket, as a share of each side
 const ROOM = 26; // CSS px left between the noses of two ships come together
 
 export function createApproachView() {
-  const sides = Object.fromEntries(SIDES.map((side) => [side, { hull: null, marks: null, cam: null, rect: null, box: null, layer: { canvas: null, key: null }, version: 0 }]));
+  const sides = Object.fromEntries(SIDES.map((side) => [side, { hull: null, marks: null, cam: null, rect: null, box: null, painted: { canvas: null, key: null, crop: null }, layer: { canvas: null, key: null, crop: null }, shipVersion: 0, version: 0 }]));
+  const space = { canvas: null, key: null };
   return {
     setShip(side, input) {
       const { faces, glows } = exteriorScene(input);
       const s = sides[side];
       s.hull = { faces: prepareSolid(faces, shade), glows, ship: input.ship, defs: input.defs };
       s.marks = null;
+      s.shipVersion++;
       s.version++;
     },
     setMarks(side, { damage = {}, wrecked = {}, target = null }) {
@@ -56,8 +59,8 @@ export function createApproachView() {
       Object.assign(sides[side], { cam, rect, box });
     },
     draw(ctx, size, frame) {
-      drawSpace(ctx, { x: 0, y: 0, w: size.width, h: size.height }, palette.space);
       const ratio = ctx.getTransform().a;
+      ctx.drawImage(spaceOf(space, size, ratio), 0, 0, size.width, size.height);
       const placed = (side) => sides[side].cam && sides[side].hull && !frame.gone?.[side];
       // Coming together to board, each closes half the gap between their
       // noses but for ROOM.
@@ -65,9 +68,9 @@ export function createApproachView() {
       const step = noses && frame.close ? (frame.close * Math.max(0, noses.them[0] - noses.you[0] - ROOM)) / 2 : 0;
       const offset = (side) => (frame.moves?.[side] ?? 0) * (sides[side].rect?.w ?? 0) + (side === 'you' ? step : -step);
       for (const side of SIDES) {
-        const s = sides[side];
         if (!placed(side)) continue;
-        ctx.drawImage(layerOf(s, ratio), s.rect.x + offset(side), s.rect.y, s.rect.w, s.rect.h);
+        const { canvas, crop } = layerOf(sides[side], ratio);
+        ctx.drawImage(canvas, crop.x + offset(side), crop.y, crop.w, crop.h);
       }
       // Where a point on a ship is on the screen, as she stands now.
       const at = (side, p) => {
@@ -92,17 +95,65 @@ export function createApproachView() {
   };
 }
 
-// A ship's picture: her hull drawn through her camera onto a clear canvas
-// the size of her part of the screen, her marks over it and her targets
-// bracketed, made again only when she, her marks, her camera or the pixel
-// ratio change.
+// Deep space behind the ships, painted once a size: its haze and stars
+// cost more to draw than all the rest of a frame.
+function spaceOf(space, size, ratio) {
+  const key = `${size.width} ${size.height} ${ratio}`;
+  if (space.key === key) return space.canvas;
+  space.key = key;
+  space.canvas ??= document.createElement('canvas');
+  space.canvas.width = Math.max(1, Math.round(size.width * ratio));
+  space.canvas.height = Math.max(1, Math.round(size.height * ratio));
+  const g = space.canvas.getContext('2d');
+  g.setTransform(ratio, 0, 0, ratio, 0, 0);
+  drawSpace(g, { x: 0, y: 0, w: size.width, h: size.height }, palette.space);
+  return space.canvas;
+}
+
+// A ship's picture: her hull, and over it her marks and her targets
+// bracketed. The hull is painted once (hullOf) and copied in, so a hit
+// makes again only her marks. { canvas, crop }, as hullOf's; made again
+// only when she, her marks, her camera or the pixel ratio change.
 function layerOf(s, ratio) {
-  const { layer, rect, cam } = s;
-  const key = `${s.version} ${ratio} ${rect.x} ${rect.y} ${rect.w} ${rect.h} ${cam.scale} ${cam.x} ${cam.y} ${cam.yaw}`;
-  if (layer.key === key) return layer.canvas;
+  const painted = hullOf(s, ratio);
+  const { layer } = s;
+  const key = `${s.version} ${painted.key}`;
+  if (layer.key === key) return layer;
   layer.key = key;
+  layer.crop = painted.crop;
+  const g = canvasFor(layer, painted.canvas.width, painted.canvas.height);
+  g.drawImage(painted.canvas, 0, 0);
+  if (s.marks) {
+    g.setTransform(ratio, 0, 0, ratio, -layer.crop.x * ratio, -layer.crop.y * ratio);
+    paintOver(g, s.marks.faces, s.marks.glows, s.cam);
+    for (const frame of s.marks.frames) brackets(g, frame.corners.map((p) => project(s.cam, p[0], p[1], p[2])), frame.first);
+  }
+  return layer;
+}
+
+// Her hull drawn through her camera onto a clear canvas that covers only
+// what of her part of the screen she does: her box, and a cell round it
+// for her nozzles' glow and her smoke. { canvas, crop, key }, crop in CSS
+// pixels; made again only when she, her camera or the pixel ratio change.
+function hullOf(s, ratio) {
+  const { painted, rect, cam, box } = s;
+  const key = `${s.shipVersion} ${ratio} ${rect.x} ${rect.y} ${rect.w} ${rect.h} ${cam.scale} ${cam.x} ${cam.y} ${cam.yaw}`;
+  if (painted.key === key) return painted;
+  painted.key = key;
+  const b = screenBounds(cam, box);
+  const pad = cam.scale * 1.2;
+  const [x0, y0] = [Math.max(rect.x, Math.floor(b.x0 - pad)), Math.max(rect.y, Math.floor(b.y0 - pad))];
+  const [x1, y1] = [Math.min(rect.x + rect.w, Math.ceil(b.x1 + pad)), Math.min(rect.y + rect.h, Math.ceil(b.y1 + pad))];
+  painted.crop = { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+  const g = canvasFor(painted, Math.max(1, Math.round(painted.crop.w * ratio)), Math.max(1, Math.round(painted.crop.h * ratio)));
+  g.setTransform(ratio, 0, 0, ratio, -painted.crop.x * ratio, -painted.crop.y * ratio);
+  paintSolid(g, s.hull.faces, s.hull.glows, cam);
+  return painted;
+}
+
+// A layer's canvas at w × h pixels, cleared, ready to draw on.
+function canvasFor(layer, w, h) {
   layer.canvas ??= document.createElement('canvas');
-  const [w, h] = [Math.max(1, Math.round(rect.w * ratio)), Math.max(1, Math.round(rect.h * ratio))];
   if (layer.canvas.width !== w || layer.canvas.height !== h) {
     layer.canvas.width = w;
     layer.canvas.height = h;
@@ -110,13 +161,7 @@ function layerOf(s, ratio) {
   const g = layer.canvas.getContext('2d');
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.clearRect(0, 0, w, h);
-  g.setTransform(ratio, 0, 0, ratio, -rect.x * ratio, -rect.y * ratio);
-  paintSolid(g, s.hull.faces, s.hull.glows, cam);
-  if (s.marks) {
-    paintOver(g, s.marks.faces, s.marks.glows, cam);
-    for (const frame of s.marks.frames) brackets(g, frame.corners.map((p) => project(cam, p[0], p[1], p[2])), frame.first);
-  }
-  return layer.canvas;
+  return g;
 }
 
 // A target's corners picked out on the screen: an arm along each side from
