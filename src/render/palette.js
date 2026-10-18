@@ -146,6 +146,30 @@ skins.ground = {
   wall: '#8b929b',
 };
 
+// The looks a site map can name (data/sites.json, M38c), each a skin here:
+// a station's docks, cold steel plating under bulkheads; and the rocks off
+// it, bare grey stone in lumps, with deep space around them.
+export const SITE_LOOKS = ['dock', 'rock'];
+skins.dock = {
+  ...skins.yard,
+  edge: '#0b0e12',
+  hull: '#4f5864',
+  dark: '#20252c',
+  floors: ['#353b43', '#393f48', '#31373f', '#3c434c'],
+  floorSeam: '#1b1f25',
+  wall: '#8a96a5',
+};
+skins.rock = {
+  ...skins.yard,
+  space: '#03050b',
+  edge: '#0b0a09',
+  hull: '#5c554e',
+  dark: '#26231f',
+  floors: ['#2f2c29', '#33302c', '#2b2826', '#36322e'],
+  floorSeam: '#211e1b',
+  wall: '#9aa1a8',
+};
+
 // The ground of a world settled (M26's colony), by its kind (data/worlds.json):
 // the land round the colony, the ground cleared for its grid, and the slabs
 // its buildings stand on. A kind without its own takes rock's.

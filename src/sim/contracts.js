@@ -1,6 +1,7 @@
-// Jobs: act 1's work (ROADMAP §2, §4.7), from data/contracts.json. In code
-// a job's template is a contract, since data/jobs.json holds the crew's
-// jobs; players only ever read "jobs".
+// Jobs: act 1's work (ROADMAP §2, §4.7), from data/contracts.json, and from
+// M38c the stations' on the run (stationJobs.js, whose boards are rolled
+// here too). In code a job's template is a contract, since data/jobs.json
+// holds the crew's jobs; players only ever read "jobs".
 //
 // A contract is a mission at one of its sites, for one of its clients,
 // against an encounter, for credits and maybe a part from its drop table
@@ -68,8 +69,16 @@ export function twistsFor(contract, rules) {
 // offers new work and no job comes twice in a row). rng is an RNG state.
 // Returns { board, rng }.
 export function rollBoard(rules, rng, district, skip = []) {
-  const { boardSize, twistChance } = rules.contracts;
-  const order = shuffle(rng, contractsIn(rules, district).filter((contract) => !skip.includes(contract.id)));
+  return rollOffers(rules, rng, contractsIn(rules, district).filter((contract) => !skip.includes(contract.id)), rules.contracts.boardSize);
+}
+
+// Up to `size` of `contracts` as offers, in an order shuffled from rng,
+// each with its client (one of clientsOf(contract)), site, twist, pay, part
+// and seed rolled after it: a district's board, or since M38c a station's
+// (stationJobs.js). Returns { board, rng }.
+export function rollOffers(rules, rng, contracts, size, clientsOf = (contract) => contract.clients) {
+  const { twistChance } = rules.contracts;
+  const order = shuffle(rng, contracts);
   let state = order.state;
   const roll = (min, max) => {
     const r = int(state, min, max);
@@ -82,8 +91,8 @@ export function rollBoard(rules, rng, district, skip = []) {
     return r.value;
   };
   const pick = (list) => list[roll(0, list.length - 1)];
-  const board = order.value.slice(0, boardSize).map((contract) => {
-    const client = pick(contract.clients);
+  const board = order.value.slice(0, size).map((contract) => {
+    const client = pick(clientsOf(contract));
     const site = pick(contract.sites);
     const twists = twistsFor(contract, rules);
     const twist = twists.length && chance(twistChance) ? pick(twists) : null;
@@ -218,18 +227,27 @@ function startJob(campaign, rules, job, setup) {
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
   if (!atHangar(campaign, rules)) return { ok: false, error: 'Jobs are taken from the hangar.' };
   if (raidDue(campaign, rules)) return { ok: false, error: 'Not with a raid at the door.' };
+  return beginJob(campaign, rules, job, campaign.crew, { ...setup, hunters: huntersFor(campaign, rules) });
+}
+
+// The job's fight begun, with `crew` (campaign crew members, in order)
+// going: the whole crew at the hangar, a squad at a station (M38c,
+// stationJobs.js). setup is jobSetup's: the hunters along, and what the
+// settings make of the fight. Returns { ok: true, campaign } with the fight
+// on, or { ok: false, error }.
+export function beginJob(campaign, rules, job, crew, setup) {
   if (!job || !rules.contracts.jobs.has(job.contract) || !rules.sites.has(job.site)) return { ok: false, error: 'That job is gone.' };
-  if (!campaign.crew.length) return { ok: false, error: 'There is no one to send.' };
-  const unknown = campaign.crew.find((member) => !rules.jobs.has(member.job));
+  if (!crew.length) return { ok: false, error: 'There is no one to send.' };
+  const unknown = crew.find((member) => !rules.jobs.has(member.job));
   if (unknown) return { ok: false, error: `${unknown.name}'s job "${unknown.job}" is unknown.` };
   let started;
   try {
-    started = createBattle(jobSetup(job, rules, campaign.crew, { ...setup, hunters: huntersFor(campaign, rules) }), rules);
+    started = createBattle(jobSetup(job, rules, crew, setup), rules);
   } catch (err) {
     return { ok: false, error: `That job can't start: ${err.message}.` };
   }
   const { encounter } = rules.contracts.jobs.get(job.contract);
-  const fight = { encounter, seed: job.seed, crew: campaign.crew.map((member) => member.id), battle: started.battle, log: started.events, job, raid: false, boarding: null };
+  const fight = { encounter, seed: job.seed, crew: crew.map((member) => member.id), battle: started.battle, log: started.events, job, raid: false, boarding: null };
   return { ok: true, campaign: { ...campaign, place: 'fight', fight } };
 }
 
@@ -238,31 +256,33 @@ function startJob(campaign, rules, job, setup) {
 // also its pay if it was done (with what its client's side adds,
 // standing.js jobPay), its heat, done or lost (heat.js jobHeat), the
 // standing it moves with the sides it was for and against (standing.js
-// jobMoves, M33), the job counted in the flags (jobsDone or jobsFailed), a
-// new board with none of the old one's jobs, and a new stock at the shop.
-// A quest's job done moves its quest on (quests.js stepDone, M33b). A
-// fight still going is left as it is.
+// jobMoves, M33), and the job counted in the flags (jobsDone or
+// jobsFailed). After one of act 1's, a new board with none of the old
+// one's jobs and a new stock at the shop, and a quest's job done moves its
+// quest on (quests.js stepDone, M33b). A station's job (M38c, with its
+// station's name) is counted apart (stationJobsDone or stationJobsFailed),
+// and leaves act 1's board and shop alone. A fight still going is left as
+// it is.
 export function endJob(campaign, rules) {
   const { fight } = campaign;
   const after = endFight(campaign, rules);
   if (after === campaign || !fight.job) return after;
   const { job } = fight;
   const won = fight.battle.winner === 'crew';
-  const flag = won ? 'jobsDone' : 'jobsFailed';
+  const station = job.station !== undefined;
+  const flag = `${station ? 'stationJobs' : 'jobs'}${won ? 'Done' : 'Failed'}`;
   const parts = won && job.part ? { ...after.parts, [job.part]: (after.parts[job.part] ?? 0) + 1 } : after.parts;
+  const { campaign: moved } = moveStanding(after, rules, jobMoves(job, rules, won));
+  const flags = { ...after.flags, [flag]: (after.flags[flag] ?? 0) + 1 };
+  const paid = { ...moved, credits: after.credits + (won ? jobPay(campaign, rules, job) : 0), heat: withHeat(after.heat, jobHeat(job, rules).heat), parts, flags };
+  if (station) return paid;
   const spent = won && rules.contracts.jobs.get(job.contract)?.once === true && !after.spent.includes(job.contract) ? [...after.spent, job.contract] : after.spent;
   const district = rules.backgrounds.get(after.background)?.district;
   const skip = [job.contract, ...campaign.board.map((offer) => offer.contract), ...spent];
   const rolled = district ? rollBoard(rules, after.rng, district, skip) : { board: [], rng: after.rng };
   const restocked = district ? rollStock(rules, rolled.rng, district) : { stock: after.shop, rng: rolled.rng };
-  const { campaign: moved } = moveStanding(after, rules, jobMoves(job, rules, won));
-  const flags = { ...after.flags, [flag]: (after.flags[flag] ?? 0) + 1 };
   const ended = {
-    ...moved,
-    credits: after.credits + (won ? jobPay(campaign, rules, job) : 0),
-    heat: withHeat(after.heat, jobHeat(job, rules).heat),
-    parts,
-    flags,
+    ...paid,
     board: rolled.board,
     shop: district ? [...restocked.stock, ...rollArms(rules, { ...after, flags }, district)] : restocked.stock,
     spent,

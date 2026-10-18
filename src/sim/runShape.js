@@ -25,6 +25,8 @@ const MAX_HP = 999;
 const MAX_SLOT = 9;
 // More parts than a shipyard sells (yardSize, at most 20): the same.
 const MAX_YARD_SLOT = 19;
+// More jobs than a station's board posts (docks.json board, at most 5).
+const MAX_JOBBED = 9;
 // Farther than any scan reaches (balance.scanRange and a scout's, edges.js).
 const MAX_REACH = 9;
 const MAX_SEED = 0xffffffff;
@@ -34,7 +36,7 @@ const ID = /^[a-z][a-z0-9-]*$/;
 // null if it reads.
 export function runProblem(run) {
   if (!isRecord(run)) return 'is unreadable';
-  const { sector, at, seen, past, done, scans, result, approach, hired, racked, yarded, swapped, surveyed, docked } = run;
+  const { sector, at, seen, past, done, scans, result, approach, hired, racked, yarded, swapped, surveyed, docked, jobbed } = run;
   if (!isRecord(sector) || !isInt(sector.index, 1, 99) || !isName(sector.name) || !(sector.system === undefined || sector.system === true)) return 'has an unreadable sector';
   const { nodes, links } = sector;
   if (!Array.isArray(nodes) || nodes.length < 2 || nodes.length > MAX_NODES) return 'has an unreadable map';
@@ -90,6 +92,9 @@ export function runProblem(run) {
   // Whether the crew has traded where the ship is (travel.js dockShip): only
   // ever at a station or a shipyard (M37b).
   if (typeof docked !== 'boolean' || (docked && nodes[at].type !== 'station' && nodes[at].type !== 'shipyard')) return 'has an unreadable dock';
+  // The jobs taken where the ship is (stationJobs.js, M38c): only ever at a
+  // station, each once.
+  if (!Array.isArray(jobbed) || jobbed.length > MAX_JOBBED || !jobbed.every(isId) || new Set(jobbed).size !== jobbed.length || (jobbed.length && nodes[at].type !== 'station')) return 'has unreadable jobs taken';
   return null;
 }
 

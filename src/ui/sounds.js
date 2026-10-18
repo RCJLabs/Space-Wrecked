@@ -16,7 +16,7 @@ export const MOMENT_SOUNDS = ['tap', 'confirm', 'refuse', 'place', 'turn', 'remo
 // campaign/ship, builds/save). An action the rules turn down changes
 // nothing, so it makes none.
 const SETTLED = new Set([
-  'campaign/new', 'campaign/buy', 'campaign/sell', 'campaign/hire', 'campaign/dismiss', 'campaign/pay', 'campaign/job/take', 'campaign/job/quest',
+  'campaign/new', 'campaign/buy', 'campaign/sell', 'campaign/hire', 'campaign/dismiss', 'campaign/pay', 'campaign/job/take', 'campaign/job/quest', 'campaign/job/station',
   'campaign/patch', 'campaign/repair', 'campaign/supplies', 'campaign/swap', 'campaign/scan', 'campaign/survey', 'campaign/regroup',
   'campaign/event/choose', 'campaign/donate', 'campaign/day', 'campaign/fight/begin', 'campaign/raid/begin', 'campaign/raid/face',
   'campaign/boarding/begin', 'campaign/trip/choose', 'campaign/trip/board',

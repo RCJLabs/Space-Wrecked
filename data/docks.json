@@ -1,0 +1,21 @@
+{
+  "board": 3,
+  "clients": [
+    { "id": "abara", "name": "Tess Abara", "title": "the union's dock steward", "blurb": "Keeps the union's books at every dock on the run, and its grievances. Pays in cash, eventually.", "side": "union" },
+    { "id": "brannigan", "name": "Old Brannigan", "title": "a retired hull rigger", "blurb": "Forty years on a tether, hanging off hulls. Knows every berth on the run and who still owes for it.", "side": "union" },
+    { "id": "hask", "name": "Purser Hask", "title": "a Company purser", "blurb": "Signs for every crate that leaves a Con-Reg dock, and quietly for a few that don't.", "side": "conreg" },
+    { "id": "venn", "name": "Assessor Venn", "title": "the Company's claims assessor", "blurb": "Prices the rocks for Con-Reg, and the people working them. Pays on the Company's paper.", "side": "conreg" },
+    { "id": "dalca", "name": "Lieutenant Dalca", "title": "a Fleet supply officer", "blurb": "Keeps the Fleet's stations stocked and her ledgers tidy, and doesn't ask how you managed either.", "side": "fleet" },
+    { "id": "moss", "name": "Chief Moss", "title": "the berthing chief", "blurb": "Runs a Fleet station's berths like a ship's deck: on time, by the book, and with a little book of his own.", "side": "fleet" },
+    { "id": "orla", "name": "Orla Halloran", "title": "the family's purse on the run", "blurb": "Lends to anyone at any station and collects from everyone. Smiles the whole time.", "side": "hallorans" },
+    { "id": "quill", "name": "Quill", "title": "a Halloran fixer", "blurb": "Finds what the family wants found and loses what it wants lost. Always at the next table.", "side": "hallorans" },
+    { "id": "rourke", "name": "Hollis Rourke", "title": "a freight broker", "blurb": "Finds cargo for empty holds and holds for nervous cargo, at any station that'll let him dock." },
+    { "id": "ostrova", "name": "June Ostrova", "title": "a rock hopper", "blurb": "Works the claims nobody else wants, on rocks nobody charted. Pays in what she digs up, and in credits once it sells." }
+  ],
+  "sites": [
+    { "id": "cargoring", "name": "the cargo ring", "map": "ring", "blurb": "Where the freighters dock and the crates change hands. Somebody always knows which crates." },
+    { "id": "fueldock", "name": "the fuel dock", "map": "fuel", "blurb": "Fuel lines, pumps and a bulkhead between them and everyone else. No smoking, in theory." },
+    { "id": "tumble", "name": "the Tumble", "map": "tumble", "blurb": "The rocks off the station's docks, turning slow. Everybody's claim and nobody's." },
+    { "id": "claim", "name": "a worked-out claim", "map": "claim", "blurb": "A rock somebody mined hollow and left a shack on. Somebody else lives there now." }
+  ]
+}

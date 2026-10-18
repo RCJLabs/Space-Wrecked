@@ -31,6 +31,8 @@
 //   surveyed the worlds surveyed in the system (survey.js, M25)
 //   docked   whether the crew has traded at the station the ship is at
 //            since it arrived (dockShip; M33's fix)
+//   jobbed   the jobs taken at the station the ship is at since it
+//            arrived, by contract id (stationJobs.js, M38c)
 // campaign.supplies: what the ship carries, up to supplyCapacity.
 //
 // A jump goes to a linked node: each crew member eats jumpSupplies, and heat
@@ -127,7 +129,7 @@ export function beginRun(campaign, rules) {
 
 // A run entering `sector`, with the sectors behind it.
 function freshRun(sector, past) {
-  return { sector, at: sector.start, seen: [sector.start], past, done: [], scans: [], result: null, approach: null, hired: [], racked: [], yarded: [], swapped: false, surveyed: [], docked: false };
+  return { sector, at: sector.start, seen: [sector.start], past, done: [], scans: [], result: null, approach: null, hired: [], racked: [], yarded: [], swapped: false, surveyed: [], docked: false, jobbed: [] };
 }
 
 // The event open at the ship's node: { node, event } (the event from
@@ -294,7 +296,7 @@ export function jump(campaign, rules, to) {
   if (!plan.ok) return plan;
   const moved = spend(campaign, rules, plan);
   const { run } = moved;
-  const arrived = { ...moved, run: { ...run, at: to, seen: run.seen.includes(to) ? run.seen : [...run.seen, to], result: null, docked: false } };
+  const arrived = { ...moved, run: { ...run, at: to, seen: run.seen.includes(to) ? run.seen : [...run.seen, to], result: null, docked: false, jobbed: [] } };
   const met = rollHunt(arrived, rules);
   return { ok: true, plan, campaign: openApproach(met.campaign, rules), hunt: met.hunt };
 }

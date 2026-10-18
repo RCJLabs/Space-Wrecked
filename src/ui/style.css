@@ -1139,6 +1139,7 @@ textarea {
 #ui .sct-scan,
 #ui .sct-rest,
 #ui .sct-swap,
+#ui .sct-jobs,
 #ui .sct-rack,
 #ui .sct-survey,
 #ui .sct-settle,
@@ -1161,10 +1162,11 @@ textarea {
   color: var(--c-space);
 }
 
-/* The transponder swap and each weapon on the rack (M37), in the left panel
-   at a station (sector.js): the panel's width, their words allowed a second
-   line. */
+/* The transponder swap, each weapon on the rack (M37) and the job board
+   (M38c), in the left panel at a station (sector.js): the panel's width,
+   their words allowed a second line. */
 #ui .sct-swap,
+#ui .sct-jobs,
 #ui .sct-rack {
   justify-content: center;
   width: 100%;
@@ -2252,6 +2254,22 @@ textarea {
   padding: 8px 12px 10px;
 }
 
+/* Each part of the job board in its place, so the squad card (M38c,
+   squadCard.js) can lie over the list and the job at a station. */
+.jobs .jobs-list {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.jobs .jobs-detail {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.jobs .jobs-foot {
+  grid-row: 3;
+}
+
 .jobs-head,
 .shop-head {
   grid-column: 1 / -1;
@@ -2453,6 +2471,7 @@ textarea {
 
 #ui .jobs-back,
 #ui .shop-back,
+#ui .jobs-squad,
 #ui .jobs-take,
 #ui .shop-take {
   display: flex;

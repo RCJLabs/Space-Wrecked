@@ -409,6 +409,16 @@ const cases = [
   ['prices rising with standing', (d) => (d.balance.trustedPrice = 95), /a station's prices must fall as standing rises/],
   ['a trusted side paying less than a friendly one', (d) => (d.balance.trustedPay = 5), /trustedPay must be at least friendlyPay/],
   ['docking heat past the meter', (d) => (d.balance.dockHeat = 80), /dockHeat must be a whole number from 0 to 50/],
+  // The stations' jobs (M38c).
+  ['a station board of nothing', (d) => (d.docks.board = 0), /docks\.json: board must be a whole number from 1 to 5/],
+  ["a station client with a district client's id", (d) => (d.docks.clients[0].id = 'marta'), /docks\.json client marta: duplicate client id "marta"/],
+  ['a station site on an unknown map', (d) => (d.docks.sites[0].map = 'moon'), /docks\.json site cargoring: unknown or broken map "moon"/],
+  ['a site map of a look with no skin', (d) => (d.sites.maps.find((m) => m.id === 'ring').look = 'moon'), /sites\.json ring: look must be one of dock, rock/],
+  ["a station's job at a district's site too", (d) => job(d, 'undeclared').sites.push('pit9'), /contracts\.json job undeclared: its sites must all be in one district, or all at the stations/],
+  ["a station's job for a district's client", (d) => job(d, 'undeclared').clients.push('marta'), /client "marta" isn't one of the stations' \(docks\.json\)/],
+  ["a station's job done once", (d) => (job(d, 'undeclared').once = true), /job undeclared: a station's job comes back with every board: it can't be a quest's or done once/],
+  ["a district's job naming a station", (d) => (job(d, 'rent').pitch += ' On {station}.'), /job rent pitch: "\{station\}" can't be filled in/],
+  ["too few jobs for a side's stations", (d) => (d.contracts.jobs = d.contracts.jobs.filter((j) => j.id !== 'undeclared')), /docks\.json: the stations of side "hallorans" have 5 jobs to post: a board of 3 needs 6/],
   // The quests (M33b).
   ['a quest that is nobody\'s', (d) => delete quest(d, 'debt').background, /quests\.json quest debt: is a background's thread \(background\), a side's chain \(side\) or a companion's loyalty quest \(companion\), one of the three/],
   ['two threads for a background', (d) => (quest(d, 'pardon').background = 'miner'), /quests\.json quest pardon: miner has a thread already/],
@@ -494,5 +504,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 15 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 20 enemies, 24 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 44 job templates, 12 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 100 events, 4 sides, 11 quests, 4 companions, 25 sounds\)/);
+  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 15 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 20 enemies, 24 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 8 site maps, 59 job templates, 12 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 100 events, 4 sides, 11 quests, 4 companions, 25 sounds\)/);
 });

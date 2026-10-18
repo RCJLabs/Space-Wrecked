@@ -92,9 +92,13 @@ export const sectorScreen = {
     // 821 × 283.
     const swapButton = toolButton('sct-swap', icons.transponder, 'Transponder');
     swapButton.hidden = true;
+    // A station's job board (M38c): opening it changes nothing, so it takes
+    // one tap.
+    const jobsButton = toolButton('sct-jobs', icons.jobs, 'Jobs');
+    jobsButton.hidden = true;
     const rackList = node('div', 'sct-rack-list');
     rackList.hidden = true;
-    info.append(infoTitle, infoName, infoKind, swapButton, rackList, infoLines, infoText);
+    info.append(infoTitle, infoName, infoKind, jobsButton, swapButton, rackList, infoLines, infoText);
     const map = node('div', 'sct-map');
     const links = document.createElementNS(SVG, 'svg');
     links.setAttribute('class', 'sct-links');
@@ -179,6 +183,7 @@ export const sectorScreen = {
       onTap(scanButton, () => twoTaps('scan', () => game.dispatch({ type: 'campaign/scan', rules: defs }))),
       onTap(restButton, () => twoTaps('rest', () => game.dispatch({ type: 'campaign/regroup', rules: defs }))),
       onTap(swapButton, () => twoTaps('swap', () => game.dispatch({ type: 'campaign/swap', rules: defs }))),
+      onTap(jobsButton, openJobs),
       onTap(surveyButton, () => twoTaps('survey', () => game.dispatch({ type: 'campaign/survey', rules: defs }))),
       onTap(settleButton, () => twoTaps('settle', () => game.dispatch({ type: 'campaign/settle', rules: defs }))),
       onTap(crewOpener, () => toggleCrew(!crewOpen)),
@@ -464,6 +469,7 @@ export const sectorScreen = {
         infoLines.replaceChildren(...plan.lines.map((line) => lineItem(line, plan.tone)), ...(plan.world ?? []).map((line) => lineItem(line, 'info')));
         buys.replaceChildren();
         buys.hidden = true;
+        jobsButton.hidden = true;
         swapButton.hidden = true;
         rackList.replaceChildren();
         rackList.hidden = true;
@@ -509,6 +515,13 @@ export const sectorScreen = {
         button.setAttribute('aria-label', repair.ok ? repair.text.replace(' Tap again to repair.', '') : repair.why);
         buyButtons.push({ button, detach: onTap(button, () => twoTaps('repair', () => game.dispatch({ type: 'campaign/repair', rules: defs }))) });
         if (!repair.ok) infoLines.append(lineItem(repair.why, 'bad'));
+      }
+      // The station's job board (M38c): in this panel, over the swap.
+      const { jobs } = text;
+      jobsButton.hidden = !jobs;
+      if (jobs) {
+        setText(jobsButton.querySelector('span'), jobs.label);
+        jobsButton.setAttribute('aria-label', `${jobs.label}: ${jobs.line}`);
       }
       // The transponder swap, once a sector, for heat: in this panel.
       const { swap } = text;
@@ -598,6 +611,14 @@ export const sectorScreen = {
       if (!defs || !campaign || !sectorText(campaign, defs).refit) return;
       disarm();
       game.dispatch({ type: 'screen/show', screen: 'construction' });
+    }
+
+    // Jobs: the station's job board (M38c, jobs.js), one tap.
+    function openJobs() {
+      const { campaign } = game.getState();
+      if (!defs || !campaign || !sectorText(campaign, defs).jobs) return;
+      disarm();
+      game.dispatch({ type: 'screen/show', screen: 'jobs' });
     }
 
     // Yard: the shop screen on the shipyard's parts (M37b), one tap.

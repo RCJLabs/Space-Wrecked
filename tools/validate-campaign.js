@@ -4,10 +4,13 @@
 // recruits draw on (recruits.json), the backgrounds a
 // campaign starts from (backgrounds.json), act 1's
 // districts with their clients and job sites (districts.json), the sites'
-// map templates (sites.json) and the jobs (contracts.json); and from M28 the
+// map templates (sites.json) and the jobs (contracts.json); from M28 the
 // places within reach of the colony (expeditions.json,
-// validate-expeditions.js), whose events are events.json's.
+// validate-expeditions.js), whose events are events.json's; and from M38c
+// the stations' clients and sites, whose jobs are contracts.json's too
+// (docks.json).
 import { lookProblems } from '../src/render/figures/looks.js';
+import { SITE_LOOKS } from '../src/render/palette.js';
 import { SCENES } from '../src/render/scenes/scenes.js';
 import { buildShip, layoutProblems } from '../src/sim/builder.js';
 import { ACTS, CAPTAIN_TRAITS, MAX_NAME } from '../src/sim/campaign.js';
@@ -76,7 +79,15 @@ const DISTRICT_KEYS = ['id', 'name', 'blurb', 'clients', 'sites', 'shop'];
 const SHOP_KEYS = ['name', 'dealer', 'pitch', 'size', 'parts', 'armsSize', 'arms'];
 const CLIENT_KEYS = ['id', 'name', 'title', 'blurb', 'side'];
 const SITE_KEYS = ['id', 'name', 'map', 'blurb'];
-const MAP_KEYS = ['id', 'name', 'rows'];
+// A site map can name its look (M38c): a skin of its own for the fight
+// (src/render/palette.js). Without one, it is the ground's.
+const MAP_KEYS = ['id', 'name', 'look', 'rows'];
+// The stations' work on the run (M38c, stationJobs.js): how many jobs a
+// board posts, the clients there and the sites at their docks and on the
+// rocks nearby. Their jobs are contracts.json's, at these sites, with their
+// home as STATIONS, which no district's id can be.
+const DOCKS_KEYS = ['board', 'clients', 'sites'];
+const STATIONS = 'the stations';
 const CONTRACTS_KEYS = ['boardSize', 'twistChance', 'missions', 'people', 'twists', 'jobs'];
 const MISSION_KEYS = ['id', 'name', 'brief', 'loud'];
 const TWIST_KEYS = ['id', 'name', 'text', 'enemies', 'hazard', 'patches', 'sight', 'deadline', 'pay', 'missions', 'loud'];
@@ -110,6 +121,8 @@ const PERSON_NUMBERS = { hp: [1, 20], defense: [0, 50], mobility: [1, 8], armor:
 // The {words} each text may use, filled in when it is shown.
 const BRIEF_WORDS = { clear: [], grab: ['crates'], hack: ['turns'], extract: ['crates'], escort: ['client'], defend: ['rounds'], sabotage: ['targets'], rescue: ['captive'] };
 const PITCH_WORDS = ['client', 'site'];
+// A station's job can name the station too (M38c).
+const STATION_PITCH_WORDS = ['client', 'site', 'station'];
 // Everyone aboard fights, so a starting crew is a squad's size.
 const MAX_SQUAD = 5;
 const MAX_BOARD = 5;
@@ -142,11 +155,12 @@ export function checkCampaignFiles(data, ids, fail) {
   const weaponIds = new Set((data.weapons?.weapons ?? []).map((weapon) => weapon.id));
   const districts = checkDistricts(data.districts, maps, { ...ids, sides, weaponIds }, fail);
   const scripts = checkBackgrounds(data.backgrounds, districts, { ...ids, sides }, fail);
+  const stationBoard = checkDocks(data.docks, maps, districts, sides, fail);
   // Hunters join every job's fight once heat is high enough.
   const hunters = Math.max(0, ...(data.backgrounds?.backgrounds ?? []).map((b) => (Array.isArray(b?.pursuer?.hunters) ? b.pursuer.hunters.length : 0)));
   // An escort's client comes in beside the crew, the biggest start's.
   const crew = Math.max(0, ...(data.backgrounds?.backgrounds ?? []).map((b) => (Array.isArray(b?.start?.crew) ? b.start.crew.length : 0)));
-  checkContracts(data.contracts, districts, maps, { ...ids, hunters, sides, crew }, fail);
+  checkContracts(data.contracts, districts, maps, { ...ids, hunters, sides, crew, stationBoard }, fail);
   return scripts;
 }
 
@@ -252,6 +266,7 @@ function checkSiteMaps(file, fail) {
     const where = `sites.json ${map.id ?? `#${i}`}`;
     knownKeys(map, MAP_KEYS, where, fail);
     if (!isText(map.name)) fail(where, 'name must be a non-empty string');
+    if (map.look !== undefined && !SITE_LOOKS.includes(map.look)) fail(where, `look must be one of ${SITE_LOOKS.join(', ')}, or left out for the ground's`);
     if (!Array.isArray(map.rows) || !map.rows.every((row) => typeof row === 'string')) {
       fail(where, 'rows must be a list of lines in the battle map text format');
       return;
@@ -265,58 +280,90 @@ function checkSiteMaps(file, fail) {
 
 // The districts: their clients and their sites, each site on a map
 // template, and the shop if there is one. Client and site ids are unique
-// across districts, so a job can name them alone. Returns { districts:
-// id -> { clients, sites }, sites: id -> { district, map } }.
+// across districts and the stations (checkDocks), so a job can name them
+// alone. Returns { districts: id -> { clients, sites }, sites: id -> {
+// district, map }, clientSides: client id -> the side they work for,
+// clients: every client's id }.
 function checkDistricts(file, maps, { moduleIds, sides, weaponIds }, fail) {
   const districts = listOf(file, 'districts', 'districts.json', fail);
   uniqueIds(districts, 'districts.json', fail);
-  const byId = new Map();
-  const sites = new Map();
-  const clients = new Set();
-  // The side each client works for, if any (M33): the jobs they offer are
-  // for it.
-  const clientSides = new Map();
+  const homes = { districts: new Map(), sites: new Map(), clientSides: new Map(), clients: new Set() };
   districts.forEach((district, i) => {
     const where = `districts.json ${district.id ?? `#${i}`}`;
     knownKeys(district, DISTRICT_KEYS, where, fail);
     if (!isText(district.name) || !isText(district.blurb)) fail(where, 'name and blurb must be non-empty strings');
     const own = { clients: new Set(), sites: new Set() };
-    for (const client of listOf(district, 'clients', where, fail)) {
-      const at = `${where} client ${client.id ?? '?'}`;
-      knownKeys(client, CLIENT_KEYS, at, fail);
-      if (!isId(client.id)) {
-        fail(at, 'id must be lowercase letters, digits and dashes');
-      } else if (clients.has(client.id)) {
-        fail(at, `duplicate client id "${client.id}"`);
-      } else {
-        clients.add(client.id);
-        own.clients.add(client.id);
-      }
-      if (!isText(client.name) || !isText(client.title) || !isText(client.blurb)) fail(at, 'name, title and blurb must be non-empty strings');
-      if (client.side !== undefined) {
-        if (!sides.has(client.side)) fail(at, `side: unknown side "${client.side}" (factions.json)`);
-        else if (isId(client.id)) clientSides.set(client.id, client.side);
-      }
-    }
-    for (const site of listOf(district, 'sites', where, fail)) {
-      const at = `${where} site ${site.id ?? '?'}`;
-      knownKeys(site, SITE_KEYS, at, fail);
-      if (!isId(site.id)) {
-        fail(at, 'id must be lowercase letters, digits and dashes');
-      } else if (sites.has(site.id)) {
-        fail(at, `duplicate site id "${site.id}"`);
-      } else {
-        sites.set(site.id, { district: district.id, map: site.map });
-        own.sites.add(site.id);
-      }
-      if (!isText(site.name) || !isText(site.blurb)) fail(at, 'name and blurb must be non-empty strings');
-      if (!maps.has(site.map)) fail(at, `unknown or broken map "${site.map}" (sites.json)`);
-    }
+    checkClients(listOf(district, 'clients', where, fail), where, own, homes, sides, fail);
+    checkSites(listOf(district, 'sites', where, fail), where, district.id, own, homes, maps, fail);
     if (!own.clients.size || !own.sites.size) fail(where, 'needs at least one client and one site');
     if (district.shop !== undefined) checkShop(district.shop, `${where} shop`, own.clients, moduleIds, weaponIds, fail);
-    if (isId(district.id)) byId.set(district.id, own);
+    if (isId(district.id)) homes.districts.set(district.id, own);
   });
-  return { districts: byId, sites, clientSides };
+  return homes;
+}
+
+// The stations' work on the run (M38c): how many jobs a board posts, the
+// clients at the stations (each a side's, or nobody's) and the sites at
+// their docks and on the rocks nearby, each on a map template. They join
+// `homes` (checkDistricts's) as a district's do, under STATIONS. Returns
+// the board's size, or 0 when it isn't one.
+function checkDocks(file, maps, homes, sides, fail) {
+  const where = 'docks.json';
+  if (!isObject(file)) {
+    fail(where, 'must be an object with the board, clients and sites');
+    return 0;
+  }
+  knownKeys(file, DOCKS_KEYS, where, fail);
+  const board = isIntIn(file.board, 1, MAX_BOARD) ? file.board : 0;
+  if (!board) fail(where, `board must be a whole number from 1 to ${MAX_BOARD}`);
+  const own = { clients: new Set(), sites: new Set() };
+  checkClients(listOf(file, 'clients', where, fail), where, own, homes, sides, fail);
+  checkSites(listOf(file, 'sites', where, fail), where, STATIONS, own, homes, maps, fail);
+  if (!own.clients.size || !own.sites.size) fail(where, 'needs at least one client and one site');
+  homes.districts.set(STATIONS, own);
+  return board;
+}
+
+// A home's clients (a district's or the stations'), each id unique across
+// every home, and the side each works for, if any (M33): the jobs they
+// offer are for it.
+function checkClients(clients, where, own, homes, sides, fail) {
+  for (const client of clients) {
+    const at = `${where} client ${client.id ?? '?'}`;
+    knownKeys(client, CLIENT_KEYS, at, fail);
+    if (!isId(client.id)) {
+      fail(at, 'id must be lowercase letters, digits and dashes');
+    } else if (homes.clients.has(client.id)) {
+      fail(at, `duplicate client id "${client.id}"`);
+    } else {
+      homes.clients.add(client.id);
+      own.clients.add(client.id);
+    }
+    if (!isText(client.name) || !isText(client.title) || !isText(client.blurb)) fail(at, 'name, title and blurb must be non-empty strings');
+    if (client.side !== undefined) {
+      if (!sides.has(client.side)) fail(at, `side: unknown side "${client.side}" (factions.json)`);
+      else if (isId(client.id)) homes.clientSides.set(client.id, client.side);
+    }
+  }
+}
+
+// A home's job sites, each id unique across every home, on a map template
+// that checks out.
+function checkSites(sites, where, home, own, homes, maps, fail) {
+  for (const site of sites) {
+    const at = `${where} site ${site.id ?? '?'}`;
+    knownKeys(site, SITE_KEYS, at, fail);
+    if (!isId(site.id)) {
+      fail(at, 'id must be lowercase letters, digits and dashes');
+    } else if (homes.sites.has(site.id)) {
+      fail(at, `duplicate site id "${site.id}"`);
+    } else {
+      homes.sites.set(site.id, { district: home, map: site.map });
+      own.sites.add(site.id);
+    }
+    if (!isText(site.name) || !isText(site.blurb)) fail(at, 'name and blurb must be non-empty strings');
+    if (!maps.has(site.map)) fail(at, `unknown or broken map "${site.map}" (sites.json)`);
+  }
 }
 
 // A district's shop (src/sim/economy.js): its name, the client who runs
@@ -494,10 +541,11 @@ function checkStart(start, where, { jobIds, moduleIds, frameById }, fail) {
 // The jobs (contracts.js): the board's size and how often a job comes with
 // a twist; the missions the rules know, each with a brief; the twists; and
 // the jobs themselves, each a mission at its sites for its clients, all in
-// one district, against an encounter that fits every site's spawn tiles
-// (with any twist's extra enemy), for credits in steps of PAY_STEP and
+// one district or all at the stations (M38c), against an encounter that
+// fits every site's spawn tiles (with any twist's extra enemy, and at a
+// district the pursuer's hunters), for credits in steps of PAY_STEP and
 // maybe a part from its drop table.
-function checkContracts(file, { districts, sites, clientSides }, maps, { moduleIds, encounters, hunters, sides, crew = 0 }, fail) {
+function checkContracts(file, { districts, sites, clientSides }, maps, { moduleIds, encounters, hunters, sides, crew = 0, stationBoard = 0 }, fail) {
   const where = 'contracts.json';
   if (!isObject(file)) {
     fail(where, 'must be an object with the board, missions, twists and jobs');
@@ -583,11 +631,13 @@ function checkContracts(file, { districts, sites, clientSides }, maps, { moduleI
       }
     }
     const [home] = homes;
-    if (homes.size > 1) fail(at, 'its sites must all be in one district');
+    const station = homes.size === 1 && home === STATIONS;
+    if (homes.size > 1) fail(at, 'its sites must all be in one district, or all at the stations');
     if (!isListIn(job.clients, 1, Infinity)) fail(at, 'clients must be a list of clients');
-    else if (home) for (const id of job.clients) if (!districts.get(home)?.clients.has(id)) fail(at, `client "${id}" isn't in its sites' district`);
+    else if (home) for (const id of job.clients) if (!districts.get(home)?.clients.has(id)) fail(at, `client "${id}" isn't ${station ? "one of the stations' (docks.json)" : "in its sites' district"}`);
     if (homes.size === 1 && job.quest === undefined) perDistrict.set(home, (perDistrict.get(home) ?? 0) + 1);
     if (job.quest !== undefined && !isText(job.quest)) fail(at, 'quest must be the id of the quest whose step it is');
+    if (station && (job.quest !== undefined || job.once !== undefined)) fail(at, "a station's job comes back with every board: it can't be a quest's or done once");
     if (new Set(job.sites).size !== job.sites?.length || new Set(job.clients).size !== job.clients?.length) fail(at, 'sites and clients are listed once each');
     // The side its enemies are on (M33): never a side one of its clients
     // works for.
@@ -603,7 +653,8 @@ function checkContracts(file, { districts, sites, clientSides }, maps, { moduleI
       for (const id of job.sites) {
         const marks = maps.get(sites.get(id)?.map);
         if (!marks) continue;
-        const most = enemies.length + extra + hunters;
+        // No hunters join a station's job (M38c).
+        const most = enemies.length + extra + (station ? 0 : hunters);
         if (most > marks.spawn) fail(at, `${most} enemies with a twist and the hunters, but ${id}'s map has ${marks.spawn} spawn tiles`);
         if (MAX_SQUAD > marks.entry) fail(at, `${id}'s map has ${marks.entry} ways in for a squad of up to ${MAX_SQUAD}`);
         if ((job.mission === 'grab' || job.mission === 'extract') && job.crates > marks.loot) fail(at, `${job.crates} crates, but ${id}'s map has ${marks.loot}`);
@@ -628,9 +679,10 @@ function checkContracts(file, { districts, sites, clientSides }, maps, { moduleI
       }
     }
     if (job.once !== undefined && typeof job.once !== 'boolean') fail(at, 'once must be true or false');
-    checkWords(job.pitch, PITCH_WORDS, `${at} pitch`, fail);
+    checkWords(job.pitch, station ? STATION_PITCH_WORDS : PITCH_WORDS, `${at} pitch`, fail);
   });
   for (const id of districts.keys()) {
+    if (id === STATIONS) continue;
     const count = perDistrict.get(id) ?? 0;
     // A new board offers none of the old board's jobs, and a job done once
     // never comes back.
@@ -638,6 +690,16 @@ function checkContracts(file, { districts, sites, clientSides }, maps, { moduleI
     if (isIntIn(file.boardSize, 1, MAX_BOARD) && lasting < 2 * file.boardSize) {
       fail(where, `district "${id}" has ${lasting} jobs that come back${lasting < count ? ` (of ${count})` : ''}: a board of ${file.boardSize} needs ${2 * file.boardSize}, as each board offers none of the last one's`);
     }
+  }
+  // Each side's stations, and nobody's, post the jobs their clients offer
+  // (M38c): at least twice a board's, so that one visit's board needn't be
+  // the last one's.
+  const docks = districts.get(STATIONS);
+  if (!docks || !stationBoard) return;
+  const atStations = jobs.filter((job) => isListIn(job.sites, 1, Infinity) && job.sites.every((site) => docks.sites.has(site)) && Array.isArray(job.clients));
+  for (const side of [...sides, null]) {
+    const count = atStations.filter((job) => job.clients.some((id) => docks.clients.has(id) && (clientSides.get(id) ?? null) === side)).length;
+    if (count < 2 * stationBoard) fail('docks.json', `${side ? `the stations of side "${side}"` : "nobody's stations"} have ${count} jobs to post: a board of ${stationBoard} needs ${2 * stationBoard}`);
   }
 }
 

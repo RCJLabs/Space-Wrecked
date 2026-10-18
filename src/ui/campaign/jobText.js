@@ -15,7 +15,8 @@ import { gearLine } from './armsText.js';
 //   title    "Claim jumpers"
 //   who      "Marta Okafor, the union steward"
 //   where    "Pit Nine"
-//   pitch    the client's ask, their name and the site's filled in
+//   pitch    the client's ask, their name and the site's filled in, and
+//            at a station (M38c) its name
 //   mission  "Clear out"; brief, what it takes
 //   twist    null, or { name, text }
 //   against  "Claim jumper ×4": who is there, the twist's change counted
@@ -42,7 +43,7 @@ export function jobText(job, rules, hunters = [], campaign = null) {
     title: contract.title,
     who: `${client.name}, ${client.title}`,
     where: capitalize(site.name),
-    pitch: fill(contract.pitch, { client: client.name, site: site.name }),
+    pitch: fill(contract.pitch, { client: client.name, site: site.name, station: job.station }),
     mission: mission.name,
     brief: fill(mission.brief, {
       turns: counted(contract.turns, 'turn'),

@@ -4,10 +4,10 @@
 // empty tables.
 
 // The content files, by name: data/<name>.json.
-export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'hulls', 'styling', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'sites', 'contracts', 'sectors', 'worlds', 'colony', 'expeditions', 'events', 'recruits', 'tips', 'factions', 'quests', 'companions', 'sounds'];
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'hulls', 'styling', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'docks', 'sites', 'contracts', 'sectors', 'worlds', 'colony', 'expeditions', 'events', 'recruits', 'tips', 'factions', 'quests', 'companions', 'sounds'];
 
 export function indexDefs(files) {
-  const { modules, frames, manufacturers, hulls, styling, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, sites, contracts, sectors, worlds, colony, expeditions, events, recruits, tips, factions, quests, companions, sounds } = files;
+  const { modules, frames, manufacturers, hulls, styling, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, docks, sites, contracts, sectors, worlds, colony, expeditions, events, recruits, tips, factions, quests, companions, sounds } = files;
   return {
     balance,
     tilesPerCell: modules.tilesPerCell,
@@ -48,14 +48,20 @@ export function indexDefs(files) {
     // The campaign's acts (campaign.js), and act 1's content: the
     // backgrounds a campaign can start from (each with its start and its
     // district), the districts with their clients and job sites (ids are
-    // unique across districts), the sites' map templates (gen/site.js) and
-    // the jobs (contracts.js), with the people a job's crew brings out (M38:
-    // an escort's client, a rescue's captive; battle.js wards).
+    // unique across districts and the stations), the sites' map templates
+    // (gen/site.js) and the jobs (contracts.js), with the people a job's
+    // crew brings out (M38: an escort's client, a rescue's captive;
+    // battle.js wards). From M38c the stations' work on the run
+    // (stationJobs.js): how many jobs a station's board posts, and the ids
+    // of the clients there and of the sites at their docks and on the
+    // rocks nearby, each client and site in clients and sites with the
+    // districts'.
     acts: new Map((campaign?.acts ?? []).map((act) => [act.act, act])),
     backgrounds: byId(backgrounds?.backgrounds),
     districts: byId(districts?.districts),
-    clients: byId((districts?.districts ?? []).flatMap((district) => district.clients ?? [])),
-    sites: byId((districts?.districts ?? []).flatMap((district) => district.sites ?? [])),
+    clients: byId([...(districts?.districts ?? []).flatMap((district) => district.clients ?? []), ...(docks?.clients ?? [])]),
+    sites: byId([...(districts?.districts ?? []).flatMap((district) => district.sites ?? []), ...(docks?.sites ?? [])]),
+    docks: { board: docks?.board ?? 0, clients: (docks?.clients ?? []).map((client) => client.id), sites: (docks?.sites ?? []).map((site) => site.id) },
     siteMaps: byId(sites?.maps),
     contracts: {
       boardSize: contracts?.boardSize ?? 0,
