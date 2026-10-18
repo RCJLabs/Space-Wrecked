@@ -26,6 +26,14 @@
 //   - the fire it would burn in, standing where a weapon set a tile burning
 //     (M37); a wrecked room's fire, which never goes out, it crosses as
 //     before, or it could never reach the far side of one
+//   - on a job, what it plays for in the objective (objectiveAi.js, M38): a
+//     guard that won't shoot keeps by what it guards in place of closing on
+//     the nearest enemy, each step past GUARD_RANGE counting; on a defense
+//     every plan counts the steps left to the way in; a shot at a crate's
+//     carrier or at the person the crew brings out counts more; beside a
+//     charge set, an enemy can pull it (a plan of its own, weighed as a
+//     shot); and every unit counts the blast of a charge beside where it
+//     ends up
 // Each spot is judged as it will be: with the doors its path opens. A
 // weapon's rules count (weapons.js, M37): it shoots only within its reach,
 // a burst's shots and the armor it pierces count in the harm, and so do a
@@ -40,10 +48,11 @@
 // only counts for a shot worth the risk (OPEN_SHOT) and better than any
 // covered tile offers, or when no covered tile is in reach.
 import { coverFrom } from './cover.js';
+import { blastsAt, playFor } from './objectiveAi.js';
 import { orderAction } from './orderAi.js';
 import { SIDES } from './grid.js';
 import { edgeKey, wallAt } from './mapFromShip.js';
-import { reachable, sideToward, stepsFrom } from './moves.js';
+import { moveRange, reachable, sideToward, stepsFrom } from './moves.js';
 import { shotOdds } from './odds.js';
 import { canSee } from './sight.js';
 import { burningAt, hazardAt, shutDoor } from './terrain.js';
@@ -57,8 +66,13 @@ export const WEIGHTS = {
   near: 0.2, // each step from the nearest enemy, when it won't shoot
   stun: 2.5, // a stunned enemy's lost turn: about one shot's harm
   close: 0.5, // each step past its reach from the nearest enemy, for a weapon with one (M37)
+  guard: 0.5, // each step past GUARD_RANGE from what it guards, when it won't shoot (M38)
+  push: 0.6, // each step left to the way in, on a defense (M38)
+  prize: 1.6, // what a shot at a carrier or the crew's ward counts, times its harm (M38)
+  pull: 5, // a charge pulled: a target saved, about a kill's worth (M38)
 };
 const WATCH_STEPS = 8; // an enemy this many steps off could come into sight
+export const GUARD_RANGE = 3; // a guard this many steps from what it guards is at its post
 const FAR = 99; // steps to an enemy it can't walk to
 export const MIN_SHOT = 0.4; // expected harm, in hit points, that makes a shot worth taking
 export const OPEN_SHOT = 1; // and worth standing in the open for
@@ -70,57 +84,81 @@ export function aiAction(battle, rules) {
   const order = orderAction(battle, unit, rules);
   if (order) return order;
   if (unit.ammo < 1) return { type: 'reload', unit: unit.id };
-  const plan = bestPlan(plansFor(battle, unit, rules));
+  return planAction(unit, bestPlan(plansFor(battle, unit, rules)));
+}
+
+// The next action toward a plan of plansFor's: open the door, get there,
+// then what it does there.
+export function planAction(unit, plan) {
   if (plan.open) return { type: 'open', unit: unit.id, side: plan.open };
   if (plan.to[0] !== unit.x || plan.to[1] !== unit.y) return { type: 'move', unit: unit.id, to: plan.to };
+  if (plan.then?.type === 'pull') return { type: 'pull', unit: unit.id, at: plan.then.at };
   return plan.then.type === 'shoot' ? { type: 'shoot', unit: unit.id, target: plan.then.target } : { type: 'overwatch', unit: unit.id };
 }
 
 // Every plan for `unit` this turn, scored:
-//   { to: [x, y], ap, open, path, then, attack, threat, risk, steps, exposed, score }
+//   { to: [x, y], ap, open, path, then, attack, threat, risk, steps, guard,
+//     push, exposed, score }
 // ap is the actions it takes to get set (0 to stay, 1 to move or open a
 // door, 2 to dash); open is the side of the door it opens first, or null;
-// then is { type: 'shoot', target, flanked }, { type: 'overwatch' } or
-// null (no action left); attack, threat and risk are expected harm, in hit
-// points (risk is the overwatch fire on the way); steps run to the nearest
-// enemy; exposed is the ids of the enemies who would see it there with no
+// then is { type: 'shoot', target, flanked }, { type: 'overwatch' },
+// { type: 'pull', at } (a charge, M38) or null (no action left); attack,
+// threat and risk are expected harm, in hit points (risk is the overwatch
+// fire on the way); steps run to the nearest enemy, guard to what it
+// guards and push to the way in it pushes for (objectiveAi.js; 0 with
+// none); exposed is the ids of the enemies who would see it there with no
 // cover between.
 export function plansFor(battle, unit, rules) {
   const foes = battle.units.filter((u) => u.side !== unit.side && u.status === 'active');
   const away = stepsFrom(battle, foes.map((f) => [f.x, f.y]), rules);
+  const play = playFor(battle, unit);
+  const post = play.guard && stepsFrom(battle, play.guard, rules);
+  const line = play.push && stepsFrom(battle, play.push, rules);
+  const blast = rules.balance.blastDamage ?? 0;
   const plans = [];
-  // What it can do from a spot, in a battle with its doors as given.
+  // What it can do from a spot, in a battle with its doors as given. A ward
+  // (objectives.js) has no weapon: it only moves.
   const weapon = rules.weapons.get(unit.weapon);
   const reach = weapon?.reach ?? null;
   const consider = (field, spot, ap, open) => {
     const there = { ...unit, x: spot.x, y: spot.y };
     const seenBy = foes.filter((f) => canSee(field, [f.x, f.y], [spot.x, spot.y], rules));
     const burning = burningAt(field, spot.x, spot.y) ? rules.balance.fireDamage : 0;
+    const blasts = blastsAt(field, spot.x, spot.y, play.charges);
+    const key = `${spot.x},${spot.y}`;
     const base = {
       to: [spot.x, spot.y],
       ap,
       open,
       path: spot.path,
-      threat: seenBy.reduce((sum, f) => sum + harm(field, f, there, rules), 0) + burning,
+      threat: seenBy.reduce((sum, f) => sum + harm(field, f, there, rules), 0) + burning + blast * blasts.length,
       risk: overwatchRisk(battle, unit, spot.path, foes, rules),
-      steps: away.get(`${spot.x},${spot.y}`) ?? FAR,
+      steps: away.get(key) ?? FAR,
+      guard: post ? post.get(key) ?? FAR : 0,
+      push: line ? line.get(key) ?? FAR : 0,
       exposed: seenBy.filter((f) => coverFrom(field, [spot.x, spot.y], [f.x, f.y], rules).flanked).map((f) => f.id),
     };
-    if (unit.ap - ap < 1) {
+    if (unit.ap - ap < 1 || !weapon) {
       plans.push({ ...base, then: null, attack: 0 });
       return;
     }
     // Sight goes both ways: whoever sees it there, it can shoot, within its
-    // weapon's reach.
+    // weapon's reach; a carrier or the crew's ward counts more.
     for (const foe of seenBy) {
       if (!withinReach(weapon, [spot.x, spot.y], [foe.x, foe.y])) continue;
       const flanked = coverFrom(field, [foe.x, foe.y], [spot.x, spot.y], rules).flanked;
-      plans.push({ ...base, then: { type: 'shoot', target: foe.id, flanked }, attack: harm(field, there, foe, rules) });
+      const attack = harm(field, there, foe, rules) * (play.prizes.has(foe.id) ? WEIGHTS.prize : 1);
+      plans.push({ ...base, then: { type: 'shoot', target: foe.id, flanked }, attack });
+    }
+    // Beside a charge the other side set, it can pull it, and that one
+    // won't blow.
+    if (unit.side === 'enemy') {
+      for (const at of blasts) plans.push({ ...base, threat: base.threat - blast, then: { type: 'pull', at }, attack: WEIGHTS.pull });
     }
     const watching = reach ? base.steps <= reach + 1 : base.steps <= WATCH_STEPS;
     plans.push({ ...base, then: { type: 'overwatch' }, attack: watching ? WEIGHTS.overwatch : WEIGHTS.idle });
   };
-  for (const spot of reachable(battle, unit, unit.mobility * Math.min(unit.ap, 2), rules).values()) {
+  for (const spot of reachable(battle, unit, moveRange(unit), rules).values()) {
     consider(withDoorsOpened(battle, spot.path), spot, spot.cost === 0 ? 0 : spot.cost <= unit.mobility ? 1 : 2, null);
   }
   // Breaching: open a closed door beside it, then shoot or watch through.
@@ -131,8 +169,15 @@ export function plansFor(battle, unit, rules) {
       consider({ ...battle, doors: [...battle.doors, edgeKey(unit.x, unit.y, side)] }, here, 1, side);
     }
   }
-  const far = (steps) => (reach ? WEIGHTS.close * Math.max(0, steps - reach) : WEIGHTS.near * steps);
-  for (const plan of plans) plan.score = plan.attack - WEIGHTS.safety * (plan.threat + plan.risk) - (isShot(plan) ? 0 : far(plan.steps));
+  // Off its post a guard counts its steps back; anyone else, its steps from
+  // the nearest enemy. On a defense every plan counts the way in.
+  const far = (plan) => {
+    if (post) return WEIGHTS.guard * Math.max(0, plan.guard - GUARD_RANGE);
+    return reach ? WEIGHTS.close * Math.max(0, plan.steps - reach) : WEIGHTS.near * plan.steps;
+  };
+  for (const plan of plans) {
+    plan.score = plan.attack - WEIGHTS.safety * (plan.threat + plan.risk) - (isShot(plan) ? 0 : far(plan)) - (line ? WEIGHTS.push * plan.push : 0);
+  }
   return plans;
 }
 
@@ -149,8 +194,10 @@ export function bestPlan(plans) {
   return (shots.length ? shots : allowed).reduce((best, plan) => (plan.score > best.score ? plan : best));
 }
 
+// A plan that does something to the other side: a shot, or a charge
+// pulled (M38).
 function isShot(plan) {
-  return plan.then?.type === 'shoot';
+  return plan.then?.type === 'shoot' || plan.then?.type === 'pull';
 }
 
 // The battle as it will be once a walk along `path` has opened the closed
@@ -177,7 +224,8 @@ function throughDoor(battle, from, to) {
 // shot by shot (rulesHarm).
 export function harm(battle, shooter, target, rules, options) {
   const weapon = rules.weapons.get(shooter.weapon);
-  if (!withinReach(weapon, [shooter.x, shooter.y], [target.x, target.y])) return 0;
+  // A ward (objectives.js) has no weapon, and does no harm.
+  if (!weapon || !withinReach(weapon, [shooter.x, shooter.y], [target.x, target.y])) return 0;
   const odds = shotOdds(battle, shooter, target, rules, options);
   if (!odds.hit) return 0;
   const shots = shotsOf(weapon, options?.overwatch);

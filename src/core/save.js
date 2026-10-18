@@ -90,7 +90,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      may say what weapon it found (M37)
 //  33  shipyards: the run keeps the parts it has bought at the sectors'
 //      shipyards, and the crew can dock at one (M37b)
-export const SAVE_VERSION = 33;
+//  34  missions: a job's fight can hold the new objectives (an extract, an
+//      escort, a rescue, a sabotage, a defense), the person the crew
+//      brings out, a crate in hand and the charges set (M38)
+export const SAVE_VERSION = 34;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -458,6 +461,9 @@ export const MIGRATIONS = [
       return isObject(run) ? { ...data, campaign: { ...data.campaign, run: { ...run, yarded: [] } } } : data;
     },
   },
+  // The new missions (M38) join the jobs' fights. A fight from before is a
+  // clear-out, a grab or a hack, which read as they did: nothing to change.
+  { from: 33, up: (data) => data },
 ];
 
 // The save's data with fn applied to every ship in it: the builder's slots,

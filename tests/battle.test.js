@@ -40,7 +40,7 @@ test('a battle starts on the first side, with units made from the data', () => {
 
 test('a battle refuses a bad setup', () => {
   const map = put(openMap(4, 1), 2, 0, 'half cover');
-  assert.throws(() => fight(map, [{ kind: 'wizard', x: 0, y: 0 }]), /no job or enemy "wizard"/);
+  assert.throws(() => fight(map, [{ kind: 'wizard', x: 0, y: 0 }]), /no job, person or enemy "wizard"/);
   assert.throws(() => fight(map, [{ kind: 'marine', x: 2, y: 0 }]), /can't stand at \(2, 0\)/);
   assert.throws(() => fight(map, [{ kind: 'marine', x: 0, y: 0 }, { kind: 'pirate', x: 0, y: 0 }]), /two units at \(0, 0\)/);
   for (const hp of [0, 11, 2.5]) {

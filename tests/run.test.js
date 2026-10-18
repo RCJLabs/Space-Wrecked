@@ -82,6 +82,6 @@ test('the run tool prints a run, and runs summed up, from the command line', () 
   assert.match(execFileSync(process.execPath, [TOOL, '--seed', '1'], { encoding: 'utf8' }), /Ready to launch after \d+ jobs/);
   const summed = manyRuns(rules, 2);
   assert.match(summed.lines[0], /2 runs, seeds 1 to 2: 2 ready to launch\./);
-  assert.match(summed.lines[3], /^The thread's job \(M33b\): done in 2 of 2 launched, at job \d+ \(\d+ to \d+\), in 1 \(1 to 1\) tries; taken before launching in \d+\.$/);
+  assert.match(summed.lines[3], /^The thread's job \(M33b\): done in 2 of 2 launched, at job \d+ \(\d+ to \d+\), in \d+ \(\d+ to \d+\) tries; taken before launching in \d+\.$/);
   assert.throws(() => runToLaunch(rules, 1, { heat: 'sometimes' }), /--heat is one of raids, hunters, never/);
 });

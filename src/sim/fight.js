@@ -46,10 +46,12 @@
 //   fight/confirm            makes the move or takes the shot shown
 //   fight/cancel             drops the move or shot shown
 //   fight/overwatch, fight/reload, fight/stabilize, fight/open,
-//   fight/grab, fight/hack   the selected unit's other orders: stabilize
-//                            the ally down beside it, open the door beside
-//                            it, grab a crate in its reach, work the
-//                            terminal in its reach (a job's objective)
+//   fight/grab, fight/hack, fight/free, fight/plant   the selected unit's
+//                            other orders: stabilize the ally down beside
+//                            it, open the door beside it, and a job's
+//                            objective (objectives.js): grab or pick up a
+//                            crate in its reach, work the terminal, free
+//                            the captive, set a charge by a target
 //   fight/order { at? }      the selected unit's job's order: shows it at
 //                            `at` (a unit's id or a door's side), or at its
 //                            likeliest; a second time at the same, takes it
@@ -62,7 +64,7 @@ import { dartOdds, ORDER_KINDS, orderOf, orderTargets } from './orders.js';
 import { canSee } from './sight.js';
 import { outOfReach, withinReach } from './weapons.js';
 import { SIDES } from './grid.js';
-import { reachable } from './moves.js';
+import { moveRange, reachable } from './moves.js';
 import { pressAction } from './press.js';
 import { inReach, shutDoor, walkable } from './terrain.js';
 
@@ -111,6 +113,12 @@ export function reduceFight(fight, action, rules) {
     }
     case 'fight/hack':
       return unit && terminalInReach(fight.battle, unit) ? play(fight, { type: 'hack', unit: unit.id }, rules) : fight;
+    case 'fight/free':
+      return unit && captiveInReach(fight.battle, unit) ? play(fight, { type: 'free', unit: unit.id }, rules) : fight;
+    case 'fight/plant': {
+      const at = unit && targetInReach(fight.battle, unit);
+      return at ? play(fight, { type: 'plant', unit: unit.id, at }, rules) : fight;
+    }
     case 'fight/end':
       return play(fight, { type: 'end' }, rules);
     default:
@@ -137,20 +145,26 @@ export function canAct(battle, unit) {
 //   reload, overwatch   whether it can
 //   stabilize  the ally down beside it, or null
 //   door       the side of a closed door beside it, or null
-//   grab       the [x, y] of a crate to grab in its reach, or null
+//   grab       the [x, y] of a crate to grab in its reach, or null: on an
+//              extract, one to pick up or a fallen carrier's to take
 //   hack       whether it can work the terminal now: in its reach, and not
 //              worked yet this round
+//   free       whether it can free the captive in its reach (a rescue)
+//   plant      the [x, y] of a target in its reach to set a charge by, or
+//              null (a sabotage)
 //   order      its job's order while it can use it on someone or something
 //              now: { kind, name, uses, reaches }, or null
-// Null when no one is selected.
+// Null when no one is selected. A ward (objectives.js) can only move.
 export function ordersFor(fight, rules) {
   const unit = selectedUnit(fight);
   if (!unit || !canAct(fight.battle, unit)) return null;
   const { battle } = fight;
+  const reach = reachOf(battle, unit, rules);
+  if (unit.ward) return { unit, reach, targets: [], reload: false, overwatch: false, stabilize: null, door: null, grab: null, hack: false, free: false, plant: null, order: null };
   const clip = rules.weapons.get(unit.weapon).clip;
   return {
     unit,
-    reach: reachOf(battle, unit, rules),
+    reach,
     targets: unit.ammo > 0 ? sortedTargets(battle, unit, rules) : [],
     reload: unit.ammo < clip,
     overwatch: unit.ammo > 0,
@@ -158,6 +172,8 @@ export function ordersFor(fight, rules) {
     door: doorBeside(battle, unit),
     grab: crateInReach(battle, unit),
     hack: terminalInReach(battle, unit) && battle.objective.worked !== battle.round,
+    free: captiveInReach(battle, unit),
+    plant: targetInReach(battle, unit),
     order: orderNow(battle, unit, rules),
   };
 }
@@ -170,9 +186,10 @@ function orderNow(battle, unit, rules) {
   return { kind: order.type, name: order.name, uses: unit.uses, reaches: ORDER_KINDS[order.type].reaches, def: order };
 }
 
-// The tiles a unit can move to this turn, with its actions as they are.
+// The tiles a unit can move to this turn, with its actions as they are; a
+// carrier's once a turn, no dash (moves.js moveRange).
 export function reachOf(battle, unit, rules) {
-  const spots = reachable(battle, unit, unit.mobility * Math.min(unit.ap, 2), rules);
+  const spots = reachable(battle, unit, moveRange(unit), rules);
   spots.delete(`${unit.x},${unit.y}`);
   for (const spot of spots.values()) spot.dash = spot.cost > unit.mobility;
   return spots;
@@ -186,7 +203,7 @@ function select(fight, unit) {
   if (!unit || unit.side !== 'crew') return fight;
   if (unit.id === fight.selected) return fight.preview ? { ...fight, preview: null } : fight;
   if (canAct(fight.battle, unit)) return { ...fight, selected: unit.id, preview: null };
-  const why = unit.status === 'active' ? 'has no actions left this turn' : unit.status === 'down' ? 'is down: stand beside them and tap Stabilize' : `is ${unit.status}`;
+  const why = unit.status === 'active' ? 'has no actions left this turn' : unit.status === 'down' ? 'is down: stand beside them and tap Stabilize' : unit.status === 'held' ? 'is held: stand beside them and tap Free' : `is ${unit.status}`;
   return withNotice(fight, 'info', `${unit.name} ${why}.`);
 }
 
@@ -217,6 +234,7 @@ function aim(fight, id, rules) {
   if (fight.preview?.type === 'shoot' && fight.preview.target === id) {
     return play(fight, { type: 'shoot', unit: unit.id, target: id }, rules);
   }
+  if (unit.ward) return withNotice(fight, 'info', `${unit.name} has no gun.`);
   if (unit.ammo < 1) return withNotice(fight, 'bad', `${unit.name} has to reload first.`);
   const shot = targetsFor(fight.battle, unit, rules).find((t) => t.target.id === id);
   const weapon = rules.weapons.get(unit.weapon);
@@ -230,6 +248,7 @@ function aim(fight, id, rules) {
 function nextTarget(fight, rules) {
   const unit = selectedUnit(fight);
   if (!unit) return fight;
+  if (unit.ward) return withNotice(fight, 'info', `${unit.name} has no gun.`);
   if (unit.ammo < 1) return withNotice(fight, 'bad', `${unit.name} has to reload first.`);
   const targets = sortedTargets(fight.battle, unit, rules);
   if (!targets.length) {
@@ -353,12 +372,33 @@ function downBeside(battle, unit) {
   return battle.units.find((u) => u.side === unit.side && u.status === 'down' && Math.max(Math.abs(u.x - unit.x), Math.abs(u.y - unit.y)) <= 1) ?? null;
 }
 
-// The first crate of the objective's still to grab that the unit can reach.
+// The first crate of the objective's still to grab that the unit can reach;
+// on an extract, with its hands free, the first to pick up, or a fallen
+// carrier's to take.
 function crateInReach(battle, unit) {
   const { objective } = battle;
-  if (objective?.type !== 'grab') return null;
-  const left = objective.crates.filter(([x, y]) => !objective.taken.some(([tx, ty]) => tx === x && ty === y));
-  return left.find((at) => inReach(battle, [unit.x, unit.y], at)) ?? null;
+  const near = (at) => inReach(battle, [unit.x, unit.y], at);
+  const left = (list) => list.filter(([x, y]) => !objective.taken.some(([tx, ty]) => tx === x && ty === y));
+  if (objective?.type === 'grab') return left(objective.crates).find(near) ?? null;
+  if (objective?.type !== 'extract' || unit.carrying) return null;
+  const fallen = battle.units.find((u) => u.carrying && u.status !== 'active' && near([u.x, u.y]));
+  return left(objective.crates).find(near) ?? (fallen ? [fallen.x, fallen.y] : null);
+}
+
+// True if the unit can free the held captive (a rescue).
+function captiveInReach(battle, unit) {
+  const { objective } = battle;
+  const ward = objective?.type === 'rescue' ? battle.units.find((u) => u.id === objective.ward) : null;
+  return ward?.status === 'held' && inReach(battle, [unit.x, unit.y], [ward.x, ward.y]);
+}
+
+// The first target in the unit's reach with no charge set and not blown (a
+// sabotage), or null.
+function targetInReach(battle, unit) {
+  const { objective } = battle;
+  if (objective?.type !== 'sabotage' || objective.left < 1) return null;
+  const same = (a) => (b) => a[0] === b[0] && a[1] === b[1];
+  return objective.targets.find((at) => !objective.blown.some(same(at)) && !objective.charges.some((charge) => same(at)(charge.at)) && inReach(battle, [unit.x, unit.y], at)) ?? null;
 }
 
 function terminalInReach(battle, unit) {

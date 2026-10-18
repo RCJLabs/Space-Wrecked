@@ -15,6 +15,7 @@
 //              between tile middles
 //     shot     { shooter, target, from, to, hit, progress } for a shot
 //     hit      the id of a unit a shot has just hit, or null
+//     blast    { at: [x, y], progress } for a charge blowing (M38), or null
 //     floats   [{ at: [x, y], text, tone, age }]: words over tiles; tone is
 //              'hit' (an enemy hit), 'hurt' (one of the crew), 'miss',
 //              'good' or 'info'
@@ -38,6 +39,15 @@ const MS = {
   'bled out': 500,
   air: 400,
   hazard: 500,
+  // A job's objective (M38): a crate picked up or carried out, the captive
+  // freed, a charge set, pulled or blowing, the way in broken through.
+  grab: 400,
+  out: 600,
+  free: 500,
+  plant: 500,
+  pull: 500,
+  blast: 800,
+  through: 600,
   turn: 900,
   end: 0,
   over: 700,
@@ -72,18 +82,20 @@ export function frameAt(timeline, t) {
       view = beat.snap;
       continue;
     }
-    const words = wordsFor(beat.event, view);
-    const shown = t - beat.at - (words?.delay ?? 0) * beat.ms;
-    if (words && shown >= 0 && shown < FLOAT_MS) floats.push({ at: words.at, text: words.text, tone: words.tone, age: shown });
+    for (const words of wordsFor(beat.event, view)) {
+      const shown = t - beat.at - words.delay * beat.ms;
+      if (shown >= 0 && shown < FLOAT_MS) floats.push({ at: words.at, text: words.text, tone: words.tone, age: shown });
+    }
     if (t < beat.at + beat.ms) {
       playing = { event: beat.event, progress: (t - beat.at) / beat.ms };
       break;
     }
     view = applyEvent(view, beat.event);
   }
-  const frame = { view, event: playing?.event ?? null, progress: playing?.progress ?? 1, moving: null, shot: null, hit: null, floats, done: t >= timeline.length };
+  const frame = { view, event: playing?.event ?? null, progress: playing?.progress ?? 1, moving: null, shot: null, hit: null, blast: null, floats, done: t >= timeline.length };
   const event = frame.event;
   if (event?.type === 'move') frame.moving = { id: event.unit, ...along(event.path, frame.progress) };
+  if (event?.type === 'blast') frame.blast = { at: event.at, progress: frame.progress };
   if (event?.type === 'shot') {
     const [shooter, target] = [unitOf(view, event.unit), unitOf(view, event.target)];
     frame.shot = { shooter: shooter.id, target: target.id, from: [shooter.x, shooter.y], to: [target.x, target.y], hit: event.hit, progress: frame.progress };
@@ -135,7 +147,8 @@ function along(path, progress) {
 // A battle with one event applied, near enough to draw until the action's
 // end puts the rules' own battle back.
 export function applyEvent(view, event) {
-  const units = view.units.map((u) => (u.id === event.unit || u.id === event.target ? { ...u } : u));
+  const touched = new Set([event.unit, event.target, event.from, ...(event.units ?? [])]);
+  const units = view.units.map((u) => (touched.has(u.id) ? { ...u } : u));
   const next = { ...view, units };
   const unit = units.find((u) => u.id === event.unit);
   const target = units.find((u) => u.id === event.target);
@@ -178,6 +191,28 @@ export function applyEvent(view, event) {
     case 'hazard':
       unit.hp = Math.max(0, unit.hp - event.damage);
       break;
+    // A job's objective (M38): on an extract, a crate picked up is in hand,
+    // or taken from a fallen carrier's, until it is carried out; a captive
+    // freed stands; a blast hurts everyone beside it.
+    case 'grab':
+      if (view.objective?.type !== 'extract') break;
+      if (event.from) {
+        const fallen = units.find((u) => u.id === event.from);
+        unit.carrying = fallen.carrying;
+        delete fallen.carrying;
+      } else {
+        unit.carrying = event.at;
+      }
+      break;
+    case 'out':
+      if (event.crate) delete unit.carrying;
+      break;
+    case 'free':
+      target.status = 'active';
+      break;
+    case 'blast':
+      for (const u of units) if (event.units.includes(u.id)) u.hp = Math.max(0, u.hp - event.damage);
+      break;
     case 'turn':
       next.side = event.side;
       next.round = event.round;
@@ -190,13 +225,15 @@ export function applyEvent(view, event) {
   return next;
 }
 
-// The words an event puts over a unit: { at, text, tone, delay }, where
-// delay is how far into the event (0 to 1) they appear. Null for none.
+// The words an event puts over units or tiles: [{ at, text, tone, delay }],
+// where delay is how far into the event (0 to 1) they appear. Empty for
+// none.
 function wordsFor(event, view) {
   const over = (id, text, tone, delay = 0) => {
     const unit = unitOf(view, id);
-    return unit && { at: [unit.x, unit.y], text, tone, delay };
+    return unit ? [{ at: [unit.x, unit.y], text, tone, delay }] : [];
   };
+  const on = (at, text, tone) => [{ at, text, tone, delay: 0 }];
   switch (event.type) {
     case 'shot': {
       const target = unitOf(view, event.target);
@@ -221,8 +258,24 @@ function wordsFor(event, view) {
       return over(event.unit, `AIR · ${event.air}`, 'info');
     case 'hazard':
       return over(event.unit, `−${event.damage} ${event.hazard === 'fire' ? 'BURN' : 'NO AIR'}`, 'hurt');
+    // A job's objective (M38).
+    case 'grab':
+      return over(event.unit, event.from ? 'TAKEN' : view.objective?.type === 'extract' ? 'PICKED UP' : 'GRABBED', 'good');
+    case 'out':
+      return over(event.unit, event.crate ? 'CRATE OUT' : 'SAFE', 'good');
+    case 'free':
+      return over(event.target, 'FREED', 'good');
+    case 'plant':
+      return on(event.at, 'CHARGE SET', 'info');
+    case 'pull':
+      return on(event.at, 'PULLED', 'hurt');
+    case 'blast':
+      // On the tile, and the damage over each unit beside it.
+      return [...on(event.at, 'BLAST', 'hit'), ...event.units.flatMap((id) => over(id, `−${event.damage}`, unitOf(view, id)?.side === 'crew' ? 'hurt' : 'hit', 0.2))];
+    case 'through':
+      return over(event.unit, 'THROUGH', 'hurt');
     default:
-      return null;
+      return [];
   }
 }
 

@@ -49,7 +49,8 @@ export function indexDefs(files) {
     // backgrounds a campaign can start from (each with its start and its
     // district), the districts with their clients and job sites (ids are
     // unique across districts), the sites' map templates (gen/site.js) and
-    // the jobs (contracts.js).
+    // the jobs (contracts.js), with the people a job's crew brings out (M38:
+    // an escort's client, a rescue's captive; battle.js wards).
     acts: new Map((campaign?.acts ?? []).map((act) => [act.act, act])),
     backgrounds: byId(backgrounds?.backgrounds),
     districts: byId(districts?.districts),
@@ -63,6 +64,7 @@ export function indexDefs(files) {
       twists: byId(contracts?.twists),
       jobs: byId(contracts?.jobs),
     },
+    people: byId(contracts?.people),
     // Act 2's sectors (gen/sector.js): how one is laid out, its kinds of
     // node by id, and the names it draws on.
     sectors: sectors ?? null,

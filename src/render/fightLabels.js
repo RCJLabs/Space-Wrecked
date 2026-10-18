@@ -1,9 +1,10 @@
 // What a fight shows over the 3D board, drawn flat on top of it: each
 // unit's hit points as pips (and overwatch, or how long until it bleeds
 // out), the hit chance over each enemy the selected unit can shoot, a job's
-// crates and terminal tagged, shots in flight, words rising over the units
-// hit, and the banner for whose turn it is. Draws in CSS pixels through the
-// orbit camera; never changes anything.
+// crates and terminal tagged (since M38 its way out, targets, charges and
+// the way in held too), shots in flight, a charge's blast, words rising
+// over the units hit, and the banner for whose turn it is. Draws in CSS
+// pixels through the orbit camera; never changes anything.
 import { project } from './orbit.js';
 import { palette, rgba } from './palette.js';
 import { FLIGHT, FLOAT_MS } from './playback.js';
@@ -17,22 +18,25 @@ const BAR_W = 34; // a unit's hit point bar, in px, however many it has
 const TONES = { hit: palette.bpGlow, hurt: palette.bad, miss: palette.inkDim, good: palette.good, info: palette.visor };
 
 // input: {
-//   units    [{ at: [x, y], status, hp, maxHp, color, overwatch, bleed, selected }]:
-//            at is the point it stands on, color its pips'; the selected
-//            unit has a marker over it
+//   units    [{ at: [x, y], status, hp, maxHp, color, overwatch, bleed,
+//            selected, carrying }]: at is the point it stands on, color its
+//            pips'; the selected unit has a marker over it
 //   badges   [{ at: [x, y], text, strong }]: over tiles
-//   marks    [{ at: [x, y], text, done }]: a job's objective, on its tiles
+//   marks    [{ at: [x, y], text, done, tone }]: a job's objective, on its
+//            tiles; tone 'charge' for a charge set (M38)
 //   floats   playback.js frame floats
 //   shot     playback.js frame shot, or null
+//   blast    playback.js frame blast, or null
 //   banner   { text, progress } or null
 // }
-export function paintFightLabels(ctx, cam, rect, { units = [], badges = [], marks = [], welds = [], floats = [], shot = null, banner = null }) {
+export function paintFightLabels(ctx, cam, rect, { units = [], badges = [], marks = [], welds = [], floats = [], shot = null, blast = null, banner = null }) {
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   for (const mark of marks) tag(ctx, cam, mark);
   for (const weld of welds) seam(ctx, cam, weld);
   if (shot) tracer(ctx, cam, shot);
+  if (blast) burst(ctx, cam, blast);
   for (const unit of units) if (unit.status !== 'dead') bar(ctx, cam, unit);
   for (const badge of badges) pill(ctx, cam, badge);
   for (const float of floats) rising(ctx, cam, float);
@@ -41,9 +45,9 @@ export function paintFightLabels(ctx, cam, rect, { units = [], badges = [], mark
 }
 
 // Hit points over a standing unit, or over one lying on the deck, and a
-// word for its state.
-function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, overwatch, bleed, selected, marked, suppressed, asleep }) {
-  const standing = status === 'active';
+// word for its state. A captive held (M38) stands.
+function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, overwatch, bleed, selected, marked, suppressed, asleep, carrying }) {
+  const standing = status === 'active' || status === 'held';
   const [sx, sy] = project(cam, x, y, standing ? UNIT_TOP + 0.16 : LYING_TOP + 0.14);
   const seg = (BAR_W - (maxHp - 1)) / maxHp;
   const [x0, y0] = [Math.round(sx - BAR_W / 2), Math.round(sy)];
@@ -53,7 +57,7 @@ function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, overwatch, bleed,
     ctx.fillStyle = i < hp ? color : rgba(palette.ink, 0.16);
     ctx.fillRect(x0 + i * (seg + 1), y0, seg, 5);
   }
-  const word = status === 'down' ? [`DOWN · ${bleed}`, palette.bad] : status === 'stable' ? ['STABLE', palette.good] : status === 'out' ? ['OUT', palette.inkDim] : standing ? orderWord({ overwatch, marked, suppressed, asleep }) : null;
+  const word = status === 'down' ? [`DOWN · ${bleed}${carrying ? ' · CRATE' : ''}`, palette.bad] : status === 'stable' ? ['STABLE', palette.good] : status === 'out' ? ['OUT', palette.inkDim] : status === 'held' ? ['HELD', palette.accent] : standing ? orderWord({ overwatch, marked, suppressed, asleep, carrying }) : null;
   let top = y0 - 2;
   if (word) {
     ctx.font = SMALL;
@@ -80,11 +84,13 @@ function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, overwatch, bleed,
 }
 
 // What a standing unit's word says, the first that holds: asleep,
-// suppressed or marked (M32: what orders left on it), or on overwatch.
-function orderWord({ overwatch, marked, suppressed, asleep }) {
+// suppressed or marked (M32: what orders left on it), a crate in hand (an
+// extract, M38), or on overwatch.
+function orderWord({ overwatch, marked, suppressed, asleep, carrying }) {
   if (asleep) return ['ASLEEP', palette.inkDim];
   if (suppressed) return ['SUPPRESSED', palette.good];
   if (marked) return [overwatch ? 'MARKED · WATCHING' : 'MARKED', palette.target];
+  if (carrying) return ['CARRYING', palette.good];
   return overwatch ? ['OVERWATCH', palette.accent] : null;
 }
 
@@ -122,11 +128,12 @@ function seam(ctx, cam, { at: [x, y], text }) {
 }
 
 // A tag on a pole over a tile of the objective's: a crate to grab, or the
-// terminal. Done, it goes quiet.
-function tag(ctx, cam, { at: [x, y], text, done }) {
+// terminal; since M38 a crate to carry out, the way out, a target and the
+// charge by it, the way in held. Done, it goes quiet.
+function tag(ctx, cam, { at: [x, y], text, done, tone }) {
   const [bx, by] = project(cam, x + 0.5, y + 0.5, 0.36);
   const [sx, sy] = project(cam, x + 0.5, y + 0.5, 0.95);
-  const color = done ? palette.good : palette.accent;
+  const color = done ? palette.good : tone === 'charge' ? palette.fire : palette.accent;
   ctx.strokeStyle = rgba(color, done ? 0.5 : 0.9);
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -200,6 +207,26 @@ function tracer(ctx, cam, { from, to, hit, progress }) {
     ctx.fill();
   }
   ctx.globalAlpha = 1;
+}
+
+// A charge blowing (M38): a flash over its tile and the tiles beside it,
+// swelling, then fading.
+function burst(ctx, cam, { at: [x, y], progress }) {
+  const [cx, cy] = project(cam, x + 0.5, y + 0.5, 0.3);
+  // A tile's width on screen, near enough, for the blast's reach.
+  const [ex] = project(cam, x + 1.5, y + 0.5, 0.3);
+  const tile = Math.max(12, Math.hypot(ex - cx, project(cam, x + 1.5, y + 0.5, 0.3)[1] - cy));
+  const r = tile * (0.6 + 1.1 * Math.min(1, progress / 0.35));
+  const fade = progress < 0.35 ? 1 : Math.max(0, 1 - (progress - 0.35) / 0.65);
+  if (fade <= 0) return;
+  const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  glow.addColorStop(0, rgba(palette.fireCore, 0.95 * fade));
+  glow.addColorStop(0.45, rgba(palette.fire, 0.7 * fade));
+  glow.addColorStop(1, rgba(palette.fire, 0));
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 // Whose turn it is, across the middle of the board: in, held, out.

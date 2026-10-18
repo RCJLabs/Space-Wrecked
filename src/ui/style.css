@@ -3681,10 +3681,17 @@ textarea {
 }
 
 .fgt-state {
+  overflow: hidden;
   color: var(--c-ink-dim);
   font-size: 10.5px;
   font-weight: 500;
   white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* A captive held (M38), till one of the crew beside them taps Free. */
+#ui .fgt-unit[data-state='held'] .fgt-state {
+  color: var(--c-accent);
 }
 
 #ui .fgt-unit[data-state='down'] .fgt-state {

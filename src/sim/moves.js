@@ -10,6 +10,15 @@ import { SIDES, step } from './grid.js';
 import { wallAt } from './mapFromShip.js';
 import { hazardAt, walkable, weldedAt } from './terrain.js';
 
+// How far a unit can walk on the actions it has left: its mobility on one,
+// twice that on both (a dash). A carrier on an extract (objectives.js, M38)
+// walks once a turn and never dashes: its mobility, or nothing once it has
+// moved this turn.
+export function moveRange(unit) {
+  if (unit.carrying) return unit.hauled ? 0 : unit.mobility;
+  return unit.mobility * Math.min(unit.ap, 2);
+}
+
 // Every tile `unit` can get to for at most `budget`, as a Map from "x,y" to
 // { x, y, cost, path }, where path runs [x, y] by [x, y] from the unit's
 // tile (included, at cost 0) to that one.

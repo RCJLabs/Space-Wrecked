@@ -8,7 +8,7 @@ import { raidDue } from '../sim/heat.js';
 // The sounds the game plays at its moments. A shot is its weapon's
 // (data/weapons.json sound). The validator checks every one is in
 // data/sounds.json.
-export const MOMENT_SOUNDS = ['tap', 'confirm', 'refuse', 'place', 'turn', 'remove', 'hit', 'miss', 'down', 'order', 'door', 'reload', 'jump', 'alarm', 'liftoff', 'landing'];
+export const MOMENT_SOUNDS = ['tap', 'confirm', 'refuse', 'place', 'turn', 'remove', 'hit', 'miss', 'down', 'order', 'door', 'reload', 'blast', 'jump', 'alarm', 'liftoff', 'landing'];
 
 // The campaign's actions a player takes that spend or settle something.
 // The rest make no sound of their own: a button's tap is enough, and the
@@ -103,8 +103,9 @@ export function fightSounds(fight, prev, action) {
 
 // The sound a moment of a fight's playback makes (render/playback.js
 // cuesBetween): each shot its weapon's as it fires, then a hit or a miss as
-// it lands; a unit down or dead; an order, a door, a reload. battle names
-// each unit's weapon; rules.weapons each weapon's sound.
+// it lands; a unit down or dead; an order, a door, a reload; a job's
+// captive freed or a charge set (M38), as an order, and a charge blowing.
+// battle names each unit's weapon; rules.weapons each weapon's sound.
 export function cueSound({ event, lands }, battle, rules) {
   switch (event.type) {
     case 'shot': {
@@ -116,7 +117,11 @@ export function cueSound({ event, lands }, battle, rules) {
     case 'dead':
       return 'down';
     case 'order':
+    case 'free':
+    case 'plant':
       return 'order';
+    case 'blast':
+      return 'blast';
     case 'door':
       return 'door';
     case 'reload':

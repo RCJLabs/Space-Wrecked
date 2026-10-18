@@ -13,6 +13,8 @@
   "rubbleMoveCost": 2,
   "suitAir": 3,
   "airlessDamage": 2,
+  "blastDamage": 4,
+  "spareCharges": 1,
   "forgivingStep": 10,
   "forgivingMax": 30,
   "jobHeat": 8,

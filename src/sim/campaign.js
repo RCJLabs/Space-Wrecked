@@ -453,7 +453,7 @@ export function rankUps(campaign, battle, rules) {
 // The crew in a fight, by id: the unit each crew member is in battle
 // (fight.crew lists them in the order of its crew units).
 function standing(fight, battle) {
-  const units = battle.units.filter((unit) => unit.side === 'crew');
+  const units = battle.units.filter((unit) => unit.side === 'crew' && !unit.ward);
   return new Map(fight.crew.map((id, i) => [id, units[i]]).filter(([, unit]) => unit));
 }
 
@@ -524,7 +524,8 @@ function fightProblem(fight, crew) {
   if (fight.boarding !== null && !(isBoarding(fight.boarding) && !fight.raid && fight.job === null)) return 'has an unreadable boarding';
   const battle = battleProblem(fight.battle);
   if (battle) return battle;
-  if (fight.battle.units.filter((unit) => unit.side === 'crew').length !== fight.crew.length) return "doesn't match its crew";
+  // The person a job brings out (M38) is on the crew's side, not of it.
+  if (fight.battle.units.filter((unit) => unit.side === 'crew' && !unit.ward).length !== fight.crew.length) return "doesn't match its crew";
   if (!Array.isArray(fight.log) || !fight.log.every((event) => isRecord(event) && typeof event.type === 'string')) return 'has an unreadable log';
   return null;
 }

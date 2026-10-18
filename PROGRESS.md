@@ -2,6 +2,221 @@
 
 Newest entry first.
 
+## M38 Missions and jobs (2026-10-18)
+
+**Status:** done, and the ROADMAP.md box is ticked.
+- **Five new missions,** eight in all: walk it out (extract), escort, hold the line (defend), sabotage and rescue.
+- **The person brought out,** an escort's client or a rescue's captive: the player moves them, and they carry no gun.
+- **The enemies play to the objective** in every mission but a clear-out. They guard what the job is after, push for the way in, shoot a carrier or the person first, and pull charges.
+- **15 new jobs,** one of each new mission in each district: 44 in all. Saves are v34.
+
+**How it was picked:** there were 3 mission types against §5's 8, and 29 jobs against 40 or more. Measured over 200 seeds a job, clear-outs won 46%, grabs 77% and hacks 77%. The enemies ignored the objective, so a grab or a hack was a race.
+
+Evan's picks (2026-10-18): the draft's five missions; the person brought out moved by the player, unarmed; the enemies playing to the objective in every mission, grab and hack too, with act 1 measured and tuned; one new job for each new mission in each district. ROADMAP.md has the Done when in full, and what was built where it differs.
+
+**What shipped:**
+- **The content:**
+  - `data/contracts.json`: the five missions with their names and briefs (sabotage is loud), and the 15 jobs:
+    - the tailings: Strike fund, The back door, Yard watch, The pumps, Late on the rent;
+    - the strand: The rum ration, Before the auditors, Dock strike, The press tender, The lodger;
+    - the narrows: The ledgers, A patient across the water, Closing time, The still, Collateral.
+  - `data/contracts.json` `people`: the client (6 hit points, 5 moves) and the captive (5 and 4), each with a look.
+  - `data/sites.json`: each of the four maps gains a far gate (`x`, 2 or 3 tiles, across from the way in) and two captive tiles (`v`, deep in).
+  - `data/balance.json`: `blastDamage` 4 and `spareCharges` 1. `data/sounds.json`: `blast`.
+- **The rules** (`src/sim/objectives.js`, with `battle.js`):
+  - **Walk it out:**
+    - Grab picks up a crate (one action), and a crate in hand means one move a turn, no dash.
+    - A carrier who goes down keeps it, and anyone of the crew beside them can take it with Grab.
+    - A crate is out when its carrier steps onto a way-in tile. The job is done when every crate is out.
+  - **Escort:** the client comes in with the crew, and the job is done when they stand on the far gate.
+  - **Hold the line:** lost when an enemy steps onto a way-in tile. Won when the last round ends, or when no enemy is standing.
+  - **Sabotage:**
+    - Plant sets a charge beside a target (one action). It blows as the crew's next turn starts, for `blastDamage` to everyone beside it, on both sides.
+    - An enemy beside a charge can pull it (one action).
+    - The crew has one charge for each target, and `spareCharges` more. A charge pulled is gone.
+    - The job is done when every target has blown.
+  - **Rescue:**
+    - The captive is held on a captive tile and can't be shot.
+    - Free, from beside them (one action), cuts them loose, and they move at once.
+    - The job is done when they stand on a way-in tile.
+  - **The person brought out** is on the crew's side, with no gun: no shot, no overwatch. Down, they bleed out as crew do and can be stabilized. Bled out, the job is lost. They aren't crew: no wounds after, no fights counted, and the crew still wins or loses by its own.
+  - **Twists:** the rush job's deadline comes with every new mission but a defense.
+- **The AI** (`src/sim/objectiveAi.js`, `ai.js`):
+  - **Guards:** with no shot worth taking, a guard keeps within 3 steps (`GUARD_RANGE`) of what it guards. That is the crates, the terminal, the far gate, the targets or the captive.
+  - **The push:** on a defense, every plan counts the steps left to the way in.
+  - **Prizes:** a shot at a carrier or at the person brought out counts 1.6 times its harm.
+  - **Charges:** an enemy beside a charge pulls it, and every plan keeps clear of one about to blow.
+  - Fights with no objective (boardings, raids, clear-outs) play as before, and the golden battle log is unchanged.
+- **The test players** (`src/sim/jobAi.js`):
+  - Carriers walk out.
+  - The client and the captive move cover to cover toward their way. A hit point they might lose weighs as 3 steps (`WARD_FEAR`).
+  - Charges are planted, and the planter steps clear.
+  - The way in is held from cover.
+  - `tools/run.js` weighs each job by the test crew's odds on it (`JOB_ODDS`), measured anew for all 44.
+- **The screens:**
+  - **The board:** each mission's brief, its numbers filled in.
+  - **The fight:**
+    - The objective sits under the round: crates out, the client's way, the rounds held, the charges blown and left, the captive held or freed.
+    - Tags over the board: CRATE, WAY OUT n/m, FAR GATE, TARGET, CHARGE SET, BLOWN, HOLD r/R.
+    - The way out, the far gate and the way in held are outlined on the deck, the way in red.
+  - **Orders:** Grab, Free and Plant, shown when in reach.
+  - **The person brought out** is in the crew bar with a face: "2 AP · no gun", or "Held". Their card says what they can do.
+  - **A carrier:** CARRYING over them, "Crate · …" in the crew bar, and a line on the card.
+  - **A blast:** drawn on the board with the damage over each unit hit, with a sound of its own.
+  - **The end panel** says why: the line held, they broke through, the client or the captive was lost.
+- **Saves:** `SAVE_VERSION` 34. A fight can hold the new objectives, the person brought out, a crate in hand and the charges set. A save from before reads unchanged.
+- **The validator:** each mission's numbers (crates 1 to 3, targets 1 to 3, rounds 3 to 10), a rescue's captive's name, the people and their numbers, and every map's far gate and captive tiles. Each can be walked to from the way in.
+
+**Calls I made, each easy to change:**
+- **One crate on each extract and one target on each sabotage** (the still has two). Two crates won 29 to 37% of the time, and the strongest encounters 4 to 7%. The sabotages and rescues got lighter encounters than first drafted.
+- **Charges run out:** one for each target and one more. With charges to spare, a guard beside a target pulled every one set, and one fight ran 60 rounds with no winner.
+- **A freed captive moves at once,** in the turn they are freed.
+- **Closing time holds 8 rounds,** the other two defenses 6. At 6 it won 92%, over the 90% top; at 8, 85%.
+- **The blast sound sits at 200 Hz,** since the phone's speaker loses the low end: at 90 Hz it measured −35.8 dB, against −14 now.
+- **The launch tests' campaign is pinned.** The board's shuffle takes a roll for each job, so 15 more jobs moved every roll after it. `tests/launchKit.js` holds main's RNG after the board (`LAUNCH_RNG`), so the campaign the launch, run and colony tests start from (`readyToLaunch`) rolls the sectors and worlds it did. The voyage tests play act 1 through, so their campaigns move, and their rates are held to `MAIN` (below).
+- **Surgery's Law 1 check flies 300 seeds** (`tests/voyageSurgery.test.js`, its own file so it runs alongside the rest). On seeds 1 to 100 the new act 1 left surgery patching 132 hit points against a med bay's 122. Four runs patched 6 to 12 with surgery and none with a med bay. On seeds 101 to 300 it was 139 against 193, and over all 300, 271 against 315 (main: 192 against 328). M33b widened this same check from 30 seeds to 100. **Evan's call:** keep it at 300, or find the four runs another way.
+
+**Measured:**
+
+Each new job from its background's start crew at heat 0 with no twist, 200 seeds each, the test crew against the AI. Every one wins 40% to 90% of the time:
+
+| Start | Job | Mission | Won | By its objective | Rounds | Crew hit points lost (of 26) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Miner | Strike fund | extract | 57% | 46% | 5.7 | 19.8 |
+| | The back door | escort | 69% | 66% | 3.7 | 10.3 |
+| | Yard watch | defend | 82% | 45% | 5.6 | 11.8 |
+| | The pumps | sabotage | 64% | 49% | 5.0 | 18.8 |
+| | Late on the rent | rescue | 46% | 26% | 5.5 | 20.5 |
+| Deserter | The rum ration | extract | 66% | 65% | 5.5 | 18.5 |
+| | Before the auditors | escort | 82% | 82% | 2.7 | 7.5 |
+| | Dock strike | defend | 45% | 41% | 5.3 | 19.7 |
+| | The press tender | sabotage | 57% | 33% | 6.5 | 19.9 |
+| | The lodger | rescue | 60% | 45% | 6.3 | 18.1 |
+| Smuggler | The ledgers | extract | 68% | 61% | 6.5 | 18.4 |
+| | A patient across the water | escort | 81% | 79% | 2.8 | 7.2 |
+| | Closing time | defend | 85% | 27% | 6.6 | 10.8 |
+| | The still | sabotage | 57% | 10% | 8.1 | 20.1 |
+| | Collateral | rescue | 74% | 39% | 5.9 | 15.3 |
+
+"By its objective" counts the wins that came from the objective; the rest were won with every enemy down.
+
+By mission, board jobs only, main beside M38:
+
+| Mission | Jobs | Won, main | M38 | Rounds, main | M38 | Hit points lost, main | M38 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Clear out | 10 | 46% | 46% | 7.5 | 7.5 | 21.0 | 21.0 |
+| Grab | 11 | 77% | 75% | 5.1 | 4.9 | 13.5 | 13.5 |
+| Hack | 5 | 77% | 73% | 5.4 | 5.3 | 16.7 | 17.3 |
+| Walk it out | 3 | | 64% | | 5.9 | | 18.9 |
+| Escort | 3 | | 77% | | 3.1 | | 8.3 |
+| Hold the line | 3 | | 70% | | 5.8 | | 14.1 |
+| Sabotage | 3 | | 59% | | 6.5 | | 19.6 |
+| Rescue | 3 | | 60% | | 5.9 | | 18.0 |
+
+- **The clear-outs measure exactly as main's** in every column, with the same count of each way their 200 fights ended, as a fight with no objective plays as before.
+- **The guards moved single grabs and hacks** by up to 17 points either way: Paper trail 86% to 69%, Seized 86% to 74%, Redistribution 65% to 81%.
+
+Act 1, `tools/run.js --runs 100` from each start, main beside M38. Every median is within 1 job of main's:
+
+| Start | Jobs to launch, main | M38 | Jobs done, main | M38 | Minutes (quick), main | M38 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Miner | 6 (4 to 10) | 6 (4 to 16) | 79% | 80% | 25 (15 to 42) | 27 (13 to 70) |
+| Deserter | 6 (3 to 18) | 6 (3 to 29) | 70% | 73% | 26 (11 to 88) | 23 (9 to 137) |
+| Smuggler | 6 (4 to 28) | 7 (3 to 19) | 81% | 78% | 29 (14 to 125) | 31 (10 to 86) |
+
+Credits at launch, summed over the 100 runs from each start: the miner's 14,390 against main's 10,005 (up 44%), the deserter's 22,610 against 24,930 (down 9%), the smuggler's 16,230 against 18,340 (down 12%). At half the new jobs' pay the miner's were still up 29%, and the other two fell 30%. The old jobs' odds, measured again under the guards, move it too, so the pay stays as drafted, for M40.
+
+The voyage tests' rates over 100 voyages from each start, main today beside M38. Every rate is within its margin of `MAIN`:
+
+| Rate, in 100 voyages | `MAIN` | Bar | Main today | M38 |
+| --- | --- | --- | --- | --- |
+| Miner refitting: fed all the way | 73 | 58 or more | 69 | 69 |
+| met the hunters in the sectors | 33 | 48 or fewer | 35 | 35 |
+| met the hunters at all | 42 | 57 or fewer | 57 | 44 |
+| lost a raid at the colony | 29 | 44 or fewer | 24 | 20 |
+| hungry in the system | 14 | 29 or fewer | 12 | 19 |
+| two worlds or more surveyed | 68 | 53 or more | 60 | 59 |
+| settled a surveyed world | 81 | 66 or more | 73 | 72 |
+| everyone housed at the colony | 41 | 26 or more | 33 | 42 |
+| short of air at the colony | 0 | 5 or fewer | 1 | 0 |
+| a refit on the way | 59 | 44 or more | 50 | 64 |
+| Miner ignoring heat: met the hunters | 100 | 85 or more | 100 | 100 |
+| Miner, no refits: fed | 82 | 67 or more | 67 | 71 |
+| never scanned | 0 | 5 or fewer | 0 | 0 |
+| fed with a med bay | 79 | 64 or more | 69 | 72 |
+| fed with surgery | 81 | 66 or more | 70 | 74 |
+| signed a recruit (cargo hold) | 44 | 29 or more | 39 | 52 |
+| fed with a cargo hold | 81 | 66 or more | 83 | 84 |
+| fed with bunks | 75 | 60 or more | 78 | 82 |
+| fed with the large hold | 98 | 83 or more | 95 | 95 |
+| Deserter: fed | 80 | 65 or more | 74 | 84 |
+| met the hunters | 45 | 60 or fewer | 41 | 40 |
+| lost a raid | 20 | 35 or fewer | 12 | 13 |
+| Smuggler: fed | 89 | 74 or more | 89 | 91 |
+| met the hunters | 19 | 34 or fewer | 24 | 24 |
+| lost a raid | 18 | 33 or fewer | 11 | 11 |
+
+- **The miner's rates moved most,** each within its bar: the hunters met at all 57 to 44, a refit on the way 50 to 64, a recruit signed 39 to 52, everyone housed 33 to 42. Hungry in the system went the other way, 12 to 19. My guess, not measured: the miner's 44% more credits at launch buy the refits and the recruits, and more mouths go hungry in the system.
+- **The miner's refitting player bought at a yard in 20 runs** (9 in M37b's measurement), and fitted 0.99 parts a run against main's 0.87.
+- **A careful voyage:** 10.1 events against main's 9.7, and 2.7 approaches against 2.9.
+
+- **`node tools/sim.js`** (run because `data/balance.json` gained `blastDamage` and `spareCharges`; no number a boarding uses changed): identical to main's but for the time taken.
+
+**Done when** (ROADMAP.md, M38, in full there), and how each is met:
+- **Eight mission types, each with its name and brief:** `data/contracts.json`, and the validator.
+- **Each new mission's rules:** `tests/missions.test.js`. That covers the crate carried one move a turn, kept when its carrier goes down and taken from beside, and the client to the far gate. It also covers the line broken or held, the charge blown or pulled, the charges running out, and the captive held, freed and walked out.
+- **The person brought out:** on the crew's side with no gun, held and unshootable, bleeding out, not counted as crew. `tests/missions.test.js`.
+- **The enemies play to the objective:** `tests/objectiveAi.test.js`, with the guard, the push, the prizes, the pull and the blast kept clear of. The golden battle log is unchanged.
+- **The sites:** the far gate and captive tiles in all four maps, each walked to. The golden sites change, on purpose: `tests/golden/sites.txt` rewritten with `node tools/jobs.js --golden`.
+- **Twists:** the validator, and `tests/contracts.test.js`.
+- **15 new jobs, 44 in all:** `data/contracts.json`. `tests/contracts.test.js` sets each one's fight up from its site.
+- **On screen:** `tests/missionText.test.js` (8), and the touch check below.
+- **The test players play each mission:** `tests/contracts.test.js` plays 150 jobs to the end, each kind done at least once, and the measurements above.
+- **Measured:** above.
+- **`SAVE_VERSION` 34:** `tests/missions.test.js`, with a campaign saved at every order of each new mission's fight passing the save's checks.
+- **Every rule tested; the validator's checks:** the files above, and 10 new cases in `tests/data.test.js`'s validator test (3 more brought up to date).
+- **Touch, at the three sizes:** `m38/verify.mjs`, 58 checks at each, all passing:
+  - each new mission's job taken from the board, its brief on the card and its objective under the round;
+  - a crate grabbed, carried and walked out;
+  - the client moved by touch through the far gate;
+  - the rounds held counting up to 6 of 6;
+  - a charge planted and its blast on the board;
+  - the captive freed and walked out;
+  - each job's end panel, and home paid with the crew as it was;
+  - offline after a reload, a job taken, and reloaded again mid-rescue with the captive held: the fight back as it was;
+  - every button 48 px or more as each fight opens and with Grab, Free or Plant shown; no console errors.
+
+**Tests:**
+- `node --test`: 1033 tests pass (1003 before). New: `tests/missions.test.js` (15), `tests/missionText.test.js` (8), `tests/objectiveAi.test.js` (6) and `tests/voyageSurgery.test.js` (1), and 10 cases in `tests/data.test.js`'s validator test. `validate-data`: OK, 44 job templates.
+- `tests/contracts.test.js` plays 150 jobs (was 60), so every kind of mission gets done at least once, within 60 rounds as the tools allow (was 30). Lights out, the sight twist, can take 40.
+- `tests/run.test.js` no longer pins a thread's tries to one; it reads "in n (least to most) tries".
+- `m38/verify.mjs` at the three sizes, as above.
+- **Every earlier milestone's browser check,** at the three sizes unless named, each the latest adapted copy. Every one passes but M32b's first copy, whose 2 known failures (its orders' words since M36) its fix copy covers, as in M36 to M37b. The copies adapted for M38:
+  - **for saves at v34:** M35's, M34's, M31's, M30's, M29's, M28's and M27's;
+  - **for jobs that can be the new missions:** M18's, M16's and M15's, which tap Free and Plant too, and M14's, which plays a job of each of its own three kinds.
+
+  M34's at cover lost its port to the run beside it, and passed when run again. M24's latest copy is M37b's (`m24/verify37b.mjs`); the chain still named an older one, which stops where its first sector has no empty space.
+- **Found by the regressions, and fixed:** M18's check at the tab size reloaded mid-fight on a job that brings someone out, and the save wouldn't load: "The campaign's fight doesn't match its crew." The save's checks (`src/sim/campaign.js`) counted every unit on the crew's side against the crew the fight names, the client or the captive among them. They count the crew alone now. The new test in `tests/missions.test.js` fails on the code before the fix, and so does M38's touch check, which now reloads mid-rescue. M18's check passes at the three sizes since.
+
+**Known issues:**
+- **The still wins 57%, but only 10% by its objective,** with its two targets; most of its wins come with every enemy down. **Closing time** wins 85%, but only 27% by holding all 8 rounds. Both are in §9 for M40.
+- **The lowest new jobs:** Dock strike 45% and Late on the rent 46%.
+- **Act 1's money moved:** the miner launches with 44% more credits, the deserter 9% less and the smuggler 12% less. In §9 for M40's balance runs.
+- **The longest act 1 runs got longer** for the miner (16 jobs, against 10) and the deserter (29, against 18), and shorter for the smuggler (19, against 28).
+- **The tag over a zone** sits on its free tile nearest the middle, so it can move as units step onto the zone.
+
+**What Evan should test on the phone:**
+- On the board, pick a job of each new kind and read its brief.
+- **Walk it out:** grab the crate and walk it back to where you came in. Note the one move a turn. Let the carrier go down, and take the crate from beside them.
+- **Escort:** move the client (two taps) to the far gate, outlined on the deck. They can't shoot.
+- **Hold the line:** watch HOLD count up, and keep them off the red tiles.
+- **Sabotage:** Plant beside the target, step away, and watch it blow as your next turn starts. Note whether the guards go for the charge.
+- **Rescue:** reach the captive (HELD over them), tap Free, and walk them out.
+- **The enemies:** whether guarding feels fair or turtly, in a grab and a hack too.
+- **The blast's sound** on the phone's speaker.
+
+**Next session's first task:** M39 Parts and hull frames: study the parts and frames, measure, ask Evan, settle its Done when.
+
 ## M37b Shipyards (2026-10-17)
 
 **Status:** done, and the ROADMAP.md box is ticked.

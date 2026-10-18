@@ -184,9 +184,9 @@ const cases = [
   ['site map with a pen no one can walk into', (d) => (d.sites.maps[3].rows[14] = ` -${d.sites.maps[3].rows[14].slice(2)}`) && (d.sites.maps[3].rows[15] = ` .|${d.sites.maps[3].rows[15].slice(3)}`), /\(0, 7\) can't be walked to/],
   ['site map with the hull for a wall', (d) => (d.sites.maps[0].rows[0] = ` =${d.sites.maps[0].rows[0].slice(2)}`), /a hull on an edge: a site has only walls and doors/],
   ['tiles with no rule for rock', (d) => delete d.tiles.tiles.rock, /no rules for the tile "rock"/],
-  ['board bigger than the jobs allow', (d) => (d.contracts.boardSize = 5) && (d.contracts.jobs = d.contracts.jobs.filter((job) => job.id !== 'rent')), /district "tailings" has 8 jobs that come back \(of 9\): a board of 5 needs 10/],
+  ['board bigger than the jobs allow', (d) => (d.contracts.boardSize = 5) && (d.contracts.jobs = d.contracts.jobs.filter((job) => !['rent', 'strikefund', 'backdoor', 'yardwatch', 'pumps', 'nephew'].includes(job.id))), /district "tailings" has 8 jobs that come back \(of 9\): a board of 5 needs 10/],
   ['job done once as a word', (d) => (job(d, 'repo').once = 'yes'), /job repo: once must be true or false/],
-  ['mission the rules don\'t know', (d) => d.contracts.missions.push({ id: 'escort', name: 'Escort', brief: 'Walk them home.' }), /unknown mission: the rules know clear, grab, hack/],
+  ['mission the rules don\'t know', (d) => d.contracts.missions.push({ id: 'heist', name: 'Heist', brief: 'Crack the vault.' }), /unknown mission: the rules know clear, grab, hack, extract, escort, defend, sabotage, rescue/],
   ['brief with a word that can\'t be filled in', (d) => (d.contracts.missions[0].brief = 'Clear {site}.'), /"\{site\}" can't be filled in/],
   ['twist that does nothing', (d) => (d.contracts.twists[0] = { id: 'quiet', name: 'Quiet night', text: 'Nothing happens.' }), /does nothing/],
   ['twist with a hazard of its own', (d) => (d.contracts.twists[1].hazard = 'acid'), /hazard must be one of fire, rubble/],
@@ -195,8 +195,18 @@ const cases = [
   ['twist with no missions in its list', (d) => (twist(d, 'rush').missions = []), /missions must be a list of the missions/],
   ['job with an unknown mission', (d) => (job(d, 'repo').mission = 'steal'), /unknown mission "steal"/],
   ['grab job with no crates', (d) => delete job(d, 'repo').crates, /a grab job needs crates/],
-  ['clear job with crates', (d) => (job(d, 'jumpers').crates = 2), /crates is only for grab jobs/],
+  ['clear job with crates', (d) => (job(d, 'jumpers').crates = 2), /crates is only for grab and extract jobs/],
   ['hack job with too many turns', (d) => (job(d, 'payroll').turns = 9), /needs turns, a whole number from 1 to 5/],
+  ['sabotage job with no targets', (d) => delete job(d, 'pumps').targets, /a sabotage job needs targets, a whole number from 1 to 3/],
+  ['defend job holding too long', (d) => (job(d, 'yardwatch').rounds = 12), /a defend job needs rounds, a whole number from 3 to 10/],
+  ['grab job with rounds to hold', (d) => (job(d, 'repo').rounds = 5), /rounds is only for defend jobs/],
+  ['rescue job with no captive', (d) => delete job(d, 'nephew').captive, /a rescue job needs its captive's name, up to 24 letters/],
+  ['captive on a job that rescues no one', (d) => (job(d, 'repo').captive = 'Ann Doe'), /captive is only for rescue jobs/],
+  ['no captive among the people', (d) => (d.contracts.people = d.contracts.people.filter((p) => p.id !== 'captive')), /needs "captive", whom the rules bring out/],
+  ['a person the rules don\'t bring out', (d) => d.contracts.people.push({ ...structuredClone(d.contracts.people[0]), id: 'guide' }), /unknown person: the rules bring out client and captive/],
+  ['a client too tough to need an escort', (d) => (d.contracts.people[0].hp = 40), /hp must be a whole number from 1 to 20/],
+  ['site map with no far gate', (d) => (d.sites.maps[3].rows = d.sites.maps[3].rows.map((row) => row.replaceAll('x', '.'))), /sites.json bar: 0 exit tiles: it needs 2/],
+  ['site map with nowhere to hold a captive', (d) => (d.sites.maps[1].rows = d.sites.maps[1].rows.map((row) => row.replaceAll('v', '.'))), /sites.json depot: 0 captive tiles: it needs 1/],
   ['job at an unknown site', (d) => job(d, 'rent').sites.push('moon'), /unknown site "moon"/],
   ['job for a client from another district', (d) => (job(d, 'rent').clients = ['nobody']), /client "nobody" isn't in its sites' district/],
   ['job against an unknown encounter', (d) => (job(d, 'rent').encounter = 'ghosts'), /unknown encounter "ghosts"/],
@@ -484,5 +494,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 15 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 20 enemies, 24 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 29 job templates, 12 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 100 events, 4 sides, 11 quests, 4 companions, 24 sounds\)/);
+  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 15 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 20 enemies, 24 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 4 site maps, 44 job templates, 12 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 100 events, 4 sides, 11 quests, 4 companions, 25 sounds\)/);
 });

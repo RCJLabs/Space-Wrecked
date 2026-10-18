@@ -6,7 +6,7 @@ import { isState } from '../core/rng.js';
 import { SIDES } from './grid.js';
 import { WRECKS } from './mapFromShip.js';
 
-export const STATUSES = ['active', 'down', 'stable', 'dead', 'out'];
+export const STATUSES = ['active', 'down', 'stable', 'dead', 'out', 'held'];
 const TEAMS = ['crew', 'enemy'];
 const EDGES = [null, 'wall', 'hull', 'door', 'hatch'];
 const STATS = ['aim', 'defense', 'mobility', 'armor'];
@@ -49,19 +49,34 @@ function isOptions(options) {
   );
 }
 
+// The objectives objectives.js knows, each as it gives them.
 function isObjective(objective, map) {
   if (!isRecord(objective)) return false;
   const isTile = (at) => Array.isArray(at) && at.length === 2 && isInt(at[0], 0, map.width - 1) && isInt(at[1], 0, map.height - 1);
-  if (objective.type === 'grab') {
-    const { crates, taken } = objective;
-    if (!Array.isArray(crates) || !crates.length || !crates.every(isTile) || !Array.isArray(taken) || !taken.every(isTile)) return false;
-    const keys = new Set(crates.map(String));
-    return keys.size === crates.length && new Set(taken.map(String)).size === taken.length && taken.every((at) => keys.has(String(at)));
+  const tiles = (list) => Array.isArray(list) && list.length > 0 && list.every(isTile) && new Set(list.map(String)).size === list.length;
+  const within = (list, of) => Array.isArray(list) && list.every(isTile) && new Set(list.map(String)).size === list.length && list.every((at) => of.some((o) => String(o) === String(at)));
+  const isWard = (id) => typeof id === 'string' && id !== '';
+  switch (objective.type) {
+    case 'grab':
+      return tiles(objective.crates) && within(objective.taken, objective.crates);
+    case 'hack':
+      return isTile(objective.at) && isInt(objective.turns, 1, MAX) && isInt(objective.progress, 0, MAX) && isInt(objective.worked, 0, MAX);
+    case 'extract':
+      return tiles(objective.crates) && within(objective.taken, objective.crates) && within(objective.out, objective.taken) && tiles(objective.exits);
+    case 'escort':
+      return isWard(objective.ward) && tiles(objective.exits) && typeof objective.out === 'boolean';
+    case 'rescue':
+      return isWard(objective.ward) && tiles(objective.exits) && typeof objective.freed === 'boolean' && typeof objective.out === 'boolean';
+    case 'sabotage':
+      return (
+        tiles(objective.targets) && within(objective.blown, objective.targets) && isInt(objective.left, 0, MAX) && Array.isArray(objective.charges) &&
+        objective.charges.every((charge) => isRecord(charge) && within([charge.at], objective.targets) && isInt(charge.blows, 1, MAX))
+      );
+    case 'defend':
+      return isInt(objective.rounds, 1, MAX) && tiles(objective.line) && typeof objective.held === 'boolean' && (objective.through === null || isWard(objective.through));
+    default:
+      return false;
   }
-  if (objective.type === 'hack') {
-    return isTile(objective.at) && isInt(objective.turns, 1, MAX) && isInt(objective.progress, 0, MAX) && isInt(objective.worked, 0, MAX);
-  }
-  return false;
 }
 
 function isMap(map) {
@@ -90,14 +105,21 @@ function isMap(map) {
   );
 }
 
+// A unit; a ward (M38) is on the crew's side with no weapon, and a carrier
+// has a crate's tile in hand.
 function isUnit(unit, map) {
+  const onMap = (at) => Array.isArray(at) && at.length === 2 && isInt(at[0], 0, map.width - 1) && isInt(at[1], 0, map.height - 1);
   return (
     isRecord(unit) && typeof unit.id === 'string' && unit.id !== '' && TEAMS.includes(unit.side) &&
     typeof unit.kind === 'string' && typeof unit.name === 'string' &&
     isInt(unit.x, 0, map.width - 1) && isInt(unit.y, 0, map.height - 1) &&
     isInt(unit.maxHp, 1, MAX) && isInt(unit.hp, 0, unit.maxHp) &&
     STATS.every((key) => isInt(unit[key], -MAX, MAX)) &&
-    typeof unit.weapon === 'string' && isInt(unit.ammo, 0, MAX) && isInt(unit.ap, 0, MAX) &&
+    (unit.ward === undefined || (unit.ward === true && unit.side === 'crew')) &&
+    (unit.ward ? unit.weapon === null : typeof unit.weapon === 'string') && isInt(unit.ammo, 0, MAX) && isInt(unit.ap, 0, MAX) &&
+    (unit.status !== 'held' || unit.ward === true) &&
+    (unit.carrying === undefined || (unit.side === 'crew' && onMap(unit.carrying))) &&
+    (unit.hauled === undefined || unit.hauled === true) &&
     typeof unit.overwatch === 'boolean' && STATUSES.includes(unit.status) &&
     isInt(unit.bleed, 0, MAX) && isInt(unit.air, 0, MAX) &&
     isInt(unit.uses, 0, MAX) && (unit.mark === null || (isRecord(unit.mark) && isInt(unit.mark.aim, -MAX, MAX) && isInt(unit.mark.turns, 1, MAX))) &&

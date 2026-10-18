@@ -459,12 +459,11 @@ test('surgery, bunks and the large hold each change the voyage (Law 1)', () => {
   assert.ok(fed(largeholdAll) >= MAIN.miner.largeholdFed - MARGIN, `fed all the way in ${fed(largeholdAll)} of ${RATE_RUNS} with the large hold`);
   assert.ok(fed(surgeryAll) >= MAIN.miner.surgeryFed - MARGIN, `fed all the way in ${fed(surgeryAll)} of ${RATE_RUNS} with surgery`);
   // Surgery heals more a jump than a med bay (each with the medic aboard),
-  // so the crew needs patching less: over RATE_RUNS seeds since M33b (the
-  // quests' steps moved seeds 1 to 30, where surgery patched 43 and a med
-  // bay 36).
+  // so the crew needs patching less: since M38 over 300 seeds, in
+  // voyageSurgery.test.js (M38's jobs moved seeds 1 to 100, as M33b's
+  // quests had moved seeds 1 to 30).
   const heal = (voyages) => Math.max(...voyages.flatMap((trip) => trip.steps.filter((step) => step.kind === 'jump').map((step) => step.heal)));
   assert.equal(heal(surgery) - heal(medbay), rules.modules.get('surgery').heal - rules.modules.get('medbay').heal);
-  assert.ok(sum(surgeryAll, 'patchedHp') < sum(medbayAll, 'patchedHp'), `patched ${sum(surgeryAll, 'patchedHp')} with surgery, ${sum(medbayAll, 'patchedHp')} with a med bay, over ${RATE_RUNS} runs`);
   // Bunks make room for crew: with a hold to feed them, more sign on than
   // with the hold alone, past the start ship's four.
   assert.ok(sum(bunks, 'hired') > sum(cargo, 'hired'), `signed on ${sum(bunks, 'hired')} with bunks, ${sum(cargo, 'hired')} without`);

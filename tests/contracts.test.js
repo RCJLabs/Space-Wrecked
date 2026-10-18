@@ -121,9 +121,13 @@ test("a job's fight: the site, the crew at the way in, the enemies at the spawn 
     assert.deepEqual(jobSetup(job, rules, crew), setup, 'the same job, the same fight');
     const { battle } = createBattle(setup, rules);
     assert.equal(battle.map.site, rules.sites.get(job.site).map);
-    const ours = battle.units.filter((u) => u.side === 'crew');
+    const ours = battle.units.filter((u) => u.side === 'crew' && !u.ward);
     const theirs = battle.units.filter((u) => u.side === 'enemy');
     assert.deepEqual(ours.map((u) => [u.name, u.kind]), crew.map((m) => [m.name, m.job]));
+    // M38: an escort's client or a rescue's captive comes as the ward.
+    const wards = battle.units.filter((u) => u.ward);
+    const person = { escort: 'client', rescue: 'captive' }[contract.mission];
+    assert.deepEqual(wards.map((u) => u.kind), person ? [person] : [], job.contract);
     const size = rules.encounters.get(contract.encounter).enemies.length;
     assert.equal(theirs.length, size + (twist?.enemies ?? 0), `${job.contract} ${job.twist}`);
     assert.ok(theirs.every((u) => rules.encounters.get(contract.encounter).enemies.includes(u.kind)));
@@ -132,6 +136,10 @@ test("a job's fight: the site, the crew at the way in, the enemies at the spawn 
     if (contract.mission === 'clear') assert.equal(objective, null);
     if (contract.mission === 'grab') assert.equal(objective.crates.length, contract.crates);
     if (contract.mission === 'hack') assert.deepEqual([objective.type, objective.turns], ['hack', contract.turns]);
+    if (contract.mission === 'extract') assert.equal(objective.crates.length, contract.crates);
+    if (contract.mission === 'sabotage') assert.deepEqual([objective.targets.length, objective.left], [contract.targets, contract.targets + rules.balance.spareCharges]);
+    if (contract.mission === 'defend') assert.equal(objective.rounds, contract.rounds);
+    if (person) assert.equal(objective.ward, wards[0].id);
     assert.equal(options.sight, twist?.sight);
     assert.equal(options.deadline, twist?.deadline);
     const laid = battle.map.hazards.cells.filter(Boolean);
@@ -193,13 +201,14 @@ test('a job done pays, a job lost doesn\'t, and either way the crew heals and th
 });
 
 // The crew player the tools use can do every kind of job, and its fights
-// end: done, lost, or out of time.
+// end: done, lost, or out of time. 150 of them since M38's eight missions,
+// within 60 rounds as the tools allow (lights out can take 40).
 test('jobs play out to the end, and each kind can be done', () => {
   const done = new Set();
   const crew = newCampaign(rules, 1).crew;
-  for (const job of offers.slice(0, 60)) {
-    const { battle, events } = autoplay(jobSetup(job, rules, crew), rules, { crew: jobAction, enemy: aiAction }, { maxRounds: 30 });
-    assert.ok(battle.winner, `${job.contract} seed ${job.seed}: no winner after 30 rounds`);
+  for (const job of offers.slice(0, 150)) {
+    const { battle, events } = autoplay(jobSetup(job, rules, crew), rules, { crew: jobAction, enemy: aiAction }, { maxRounds: 60 });
+    assert.ok(battle.winner, `${job.contract} seed ${job.seed}: no winner after 60 rounds`);
     const over = events.findLast((event) => event.type === 'over');
     if (battle.winner === 'crew') done.add(contracts.jobs.get(job.contract).mission);
     if (over.reason === 'deadline') assert.ok(job.twist === 'rush');

@@ -52,7 +52,7 @@ test('a campaign starts from the background picked: its crew, credits, parts and
     assert.deepEqual(campaign.parts, start.parts, id);
     assert.deepEqual(campaign.ship.modules.map((module) => module.type), start.ship.placements.map((placement) => placement.type), id);
     const offered = new Set(contractsIn(rules, district).map((contract) => contract.id));
-    assert.equal(offered.size, id === 'miner' ? 10 : 8, `${id}: its district's jobs`);
+    assert.equal(offered.size, id === 'miner' ? 15 : 13, `${id}: its district's jobs (M38: five more each, one of each new mission)`);
     assert.ok(campaign.board.length > 0 && campaign.board.every((job) => offered.has(job.contract)), `${id}: the board is its district's`);
     assert.equal(shopOf(campaign, rules).name, rules.districts.get(district).shop.name, id);
   }
