@@ -31,11 +31,11 @@
 // and say so in PROGRESS.md.
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { seedFrom } from '../src/core/rng.js';
 import { aiAction } from '../src/sim/ai.js';
 import { playFrom } from '../src/sim/autoplay.js';
 import { newCampaign } from '../src/sim/campaign.js';
 import { beginJob, endJob, takeJob, withBoard } from '../src/sim/contracts.js';
-import { seedFrom } from '../src/core/rng.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { generateSite } from '../src/sim/gen/site.js';
 import { heatLevel, huntersFor, jobHeat, makePayment, paymentFor, raidDue } from '../src/sim/heat.js';
