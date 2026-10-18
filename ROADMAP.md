@@ -1753,11 +1753,49 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **A patrol's or a trap's opening volley isn't played out:** it comes before the screen opens, and shows as scars on the hull and its lines in the column.
   - **The round's sounds moved to the screen** (`roundCues`), each as its shot fires and lands. With reduced motion, `roundSounds` plays them all at once, as M35 did.
   - **Frames:** deep space is painted once a size and copied in; each ship's layer covers only her and a cell round her; her hull is painted once and her marks drawn over a copy of it, so a hit doesn't paint her whole hull again. Drawn whole every frame, deep space alone took longer than all the rest.
-- [ ] **M38c Station jobs.** Act 1's job board stays in the hangar: on the run, stations repair, refit, sell and hire, but give no work. Evan asked (2026-10-18) for jobs at stations. The draft:
-  - each station posts a board of jobs from its side's clients, using the eight missions (M38), fought on site maps of its docks and the rocks nearby;
-  - pay in credits, and standing with the station's side; heat as act 1's jobs give it;
-  - the jobs and their sites as data;
-  - study, measure and settle the Done when with Evan first.
+- [ ] **M38c Station jobs.** Act 1's job board stays in the hangar: on the run, stations repair, refit, sell and hire, but give no work. Evan asked (2026-10-18) for jobs at stations.
+
+  Measured first (the miner, 30 voyages from launch, medians): launched with 105 credits (5 to 255); 65 from events; 87 spent on supplies and 40 on transponder swaps; parts bought at a shipyard in 2 of 30 runs. Heat 35 at launch, 65 at most; the hunters met in 17 of 30. Two stations a sector, and links run both ways, so a station can be called at again.
+
+  Evan's picks (2026-10-18):
+  - jobs written for the stations, fought at their docks and on the rocks nearby, not act 1's jobs again;
+  - a fresh board at each visit;
+  - act 1's pay;
+  - the cost is heat and wounds, and the station stays safe.
+
+  **Done when:**
+  - **A board at every station** of act 2's sectors (not the shipyards, nor the system past the charts):
+    - its jobs come from the clients of the station's side, or at one of nobody's from the clients of no side, each with its client, site, twist, pay, part and seed rolled as act 1's are;
+    - it is rolled from a seed of the campaign, the sector, the station and the visit (the jumps made so far), as the recruits and racks are seeded: fresh at each visit, the same however often it is opened during one, and the campaign's RNG never moves for it;
+    - a job taken is gone from it until the ship comes back.
+  - **Taking one,** while nothing holds the ship (an event or an approach): a squad of up to `squadSize` goes, picked as a boarding's is (the healthiest by default), and the rest stay aboard. The fight is on the job's site, with its mission, twist, difficulty and forgiving odds as act 1's. No hunters join it.
+  - **After it,** back to the chart at the station:
+    - done, act 1's pay with what the client's side adds (`jobPay`), and its part;
+    - done or lost, heat as act 1's (`jobHeat`: 8, or 15 when loud) and the standing act 1's moves (`jobMoves`);
+    - the dead are gone and wounds stay, as after a boarding: only the med bay and patching heal on the run;
+    - fights counted for ranks, and gear won, as after any fight;
+    - at a station of the pursuer's side a job counts as a trade, so they log the ship (`dockHeat`) unless a trade there already has this visit;
+    - counted apart from act 1's jobs in the flags. Act 1's board, shop and quests are untouched.
+  - **The content, as data:**
+    - the stations' clients, two of each side and two of nobody's, and the sites at their docks and on the rocks nearby (`data/docks.json`, new);
+    - four new site maps (`data/sites.json`), two of docks and two of rocks, with the ways in, spawns and marks each mission held there needs;
+    - 15 station jobs (`data/contracts.json`) using all eight missions, from the encounters there are, paying in act 1's range, with drops and pitches; each side's stations and nobody's draw on at least twice a board's jobs;
+    - validated: a job's sites and clients all in one district or all at the stations; no district's board offers a station job.
+  - **The fight's look:** a dock's map shows deck plating and a rock's bare rock under the stars, each site map naming its look (new skins in the palette).
+  - **Saves:** `SAVE_VERSION` 35, with a migration: the run keeps the jobs taken at the station this visit, none in a run saved before. A station job's fight is saved and picked up as act 1's.
+  - **The screens:**
+    - at a station, Jobs opens its board: the station and its side, each job as act 1's board shows it, the squad that would go with Squad to change it, Take the job (two taps), and Chart back;
+    - the fight's end, Continue, goes back to the chart.
+  - **The test player** (`tools/voyage.js`) takes a station's job when the job is worth it at act 1's odds and its heat keeps the ship under the hunters' heat, with a fit squad. `tools/jobs.js` prints the station jobs.
+  - **Measured over 100 voyages,** with station jobs and without: credits, heat, hunters met, crew lost, parts bought at shipyards. The voyage's rates stay within the margin of main's (`MAIN`), or go to Evan.
+  - **Every rule tested.**
+  - **Touch, at the three sizes:**
+    - Jobs at a station and its board;
+    - a squad picked;
+    - a job taken and fought on a dock and on a rock;
+    - back at the chart with its pay and heat;
+    - offline, every button 48 px or more, no console errors;
+    - every earlier milestone's browser check still passes.
 - [ ] **M38d The run goes on.** Since M25 settling the first world ends the travel: act 3's trips reach only places 1 to 3 days away. Evan's pick (2026-10-18): the run goes on. The draft:
   - the ship leaves the colony and jumps on into new systems past the charts, each with worlds to settle, stations, a shipyard, wrecks and the pursuer's hunters, generated as act 2's sectors are;
   - the colony is a port to come back to, for refits, rest and its stores;
