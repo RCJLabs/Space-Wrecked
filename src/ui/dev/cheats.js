@@ -108,7 +108,7 @@ function told(kind, before, after, rules) {
     case 'parts':
       return `On hand: ${Object.keys(after.parts).filter((type) => after.parts[type] > (before.parts[type] ?? 0)).map((type) => `${after.parts[type] - (before.parts[type] ?? 0)} ${rules.modules.get(type)?.name ?? type}`).join(', ')}.`;
     case 'fill':
-      return after.colony ? `Food ${before.supplies} → ${after.supplies}, materials ${before.colony.materials} → ${after.colony.materials}.` : `Supplies ${before.supplies} → ${after.supplies}.`;
+      return after.colony && !after.colony.voyage ? `Food ${before.supplies} → ${after.supplies}, materials ${before.colony.materials} → ${after.colony.materials}.` : `Supplies ${before.supplies} → ${after.supplies}.`;
     case 'standing':
       return `Standing: ${[...rules.factions.sides.values()].map((side) => `${side.name} ${before.standing[side.id] ?? 0} → ${after.standing[side.id] ?? 0}`).join(', ')}.`;
     case 'quest':

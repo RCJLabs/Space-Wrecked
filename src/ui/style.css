@@ -955,6 +955,43 @@ textarea {
   background: none;
 }
 
+/* The colony's panel while the ship is away on a voyage (M38d, sector.js):
+   its day, food, who is home and the raid coming, in the bad tone while a
+   lander comes or is down; the pursuer's words under them, and Fly home
+   the panel's width. */
+.sct-colony-panel[data-tone='bad'] {
+  border-color: var(--c-bad);
+}
+
+.sct-colony-line {
+  margin: 4px 0 0;
+  color: var(--c-ink-dim);
+  font-size: 12px;
+}
+
+.sct-colony-panel[data-tone='bad'] .sct-colony-line {
+  color: var(--c-bad);
+}
+
+#ui .sct-home {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 48px;
+  margin: 8px 0 2px;
+  padding: 4px 10px;
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-space);
+}
+
+#ui .sct-home[data-armed='true'] {
+  background: var(--c-panel);
+  color: var(--c-accent);
+}
+
 /* The crew card (crewCard.js) and the squad card (squadCard.js): the event
    card's frame, as tall as what they hold and no taller than the room
    under the head. Their head and Done stay put; the lists, side by side
@@ -1143,6 +1180,7 @@ textarea {
 #ui .sct-rack,
 #ui .sct-survey,
 #ui .sct-settle,
+#ui .sct-defend,
 #ui .sct-jump,
 #ui .sct-on {
   display: flex;
@@ -1160,6 +1198,19 @@ textarea {
   border-color: var(--c-accent);
   background: var(--c-accent);
   color: var(--c-space);
+}
+
+/* Defend (M38d), as the colony's: the bad tone, a lander being down. */
+#ui .sct-defend {
+  padding: 0 18px;
+  border-color: var(--c-bad);
+  background: var(--c-bad);
+  color: var(--c-space);
+}
+
+#ui .sct-defend[data-armed='true'] {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
 }
 
 /* The transponder swap, each weapon on the rack (M37) and the job board

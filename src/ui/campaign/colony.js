@@ -27,8 +27,11 @@
 // landing without one. From M33c a tap on the crew opens the crew card
 // (crewCard.js) over the panel and the ground: each one's face, rank and
 // what they bring, a companion's past and loyalty, and from M37 what they
-// carry, a spare weapon swapped in two taps. The campaign is saved after
-// every change, so Continue on the title comes back here.
+// carry, a spare weapon swapped in two taps. From M38d Voyage heads the
+// right-hand panel: a voyage is planned and flown from there
+// (colonyVoyage.js), and the chart takes over while the ship is away. The
+// campaign is saved after every change, so Continue on the title comes back
+// here.
 import { loadContent } from '../../platform/content.js';
 import { buildPlan, build, movePlan, takeDown, takeDownPlan, turnedSpot } from '../../sim/colonyBuild.js';
 import { buildingName, siteDef } from '../../sim/colony.js';
@@ -42,6 +45,7 @@ import { icons } from '../icons.js';
 import { buildingInfo, builtText, colonyText, dayReport, dayText, givenText, placeText, takeDownText, takenText, whyNotText } from './colonyText.js';
 import { createStand } from './colonyStand.js';
 import { createTrips } from './colonyTrip.js';
+import { createVoyages } from './colonyVoyage.js';
 import { createCrewCard } from './crewCard.js';
 import { crewCardText, crewSaid } from './crewText.js';
 import { crewRows, heatChip, listRows, questRows, sideRows } from './hubParts.js';
@@ -105,7 +109,7 @@ export const colonyScreen = {
     // type, placement, uid } (uid: the building being moved, else null);
     // or { kind: 'look', uid }.
     let mode = { kind: 'browse' };
-    let armed = null; // 'day', 'defend' or 'down', a trip's, or a crew card swap's ('arm:<id>:<weapon>', M37): a first tap waiting for its second
+    let armed = null; // 'day', 'defend' or 'down', a trip's, 'voyage' (M38d), or a crew card swap's ('arm:<id>:<weapon>', M37): a first tap waiting for its second
     let said = null; // { text, tone }: what the last tap came to, until the next
     let marked = null; // the ship's parts a refusal is about
     let armTimer = 0;
@@ -127,6 +131,22 @@ export const colonyScreen = {
         said = words;
       },
       refresh: () => alive && render(true),
+    });
+    const voyages = createVoyages({
+      game,
+      defs: () => defs,
+      rowButton,
+      actionRow,
+      list,
+      keep: (detach) => rowButtons.push(detach),
+      armed: () => armed,
+      arm,
+      disarm,
+      say: (words) => {
+        said = words;
+      },
+      refresh: () => alive && render(true),
+      cancelTrips: () => trips.cancel(),
     });
     const stand = createStand(sceneArea, { onTap: tapScene });
     const cleanups = [
@@ -158,7 +178,8 @@ export const colonyScreen = {
     // force: draw again though the campaign hasn't changed (a tap).
     function render(force = false) {
       const { campaign } = game.getState();
-      if (!defs || !campaign?.colony || (campaign === shown && !force)) return;
+      // While the ship is away on a voyage (M38d) the chart is the screen.
+      if (!defs || !campaign?.colony || campaign.colony.voyage || (campaign === shown && !force)) return;
       // The places within reach, rolled the first time they are wanted.
       if (!campaign.colony.trip && !campaign.colony.places.length && asked !== campaign) {
         asked = campaign;
@@ -170,6 +191,7 @@ export const colonyScreen = {
       const away = Boolean(campaign.colony.trip);
       if (away) {
         trips.cancel();
+        voyages.cancel();
         mode = { kind: 'browse' };
       }
       const text = colonyText(campaign, defs);
@@ -220,14 +242,15 @@ export const colonyScreen = {
       defendButton.dataset.armed = String(armed === 'defend');
       refitButton.disabled = away;
 
-      const tripArmed = armed !== null && !['day', 'defend', 'down'].includes(armed) && !armed.startsWith('arm:');
+      const tripArmed = armed !== null && !['day', 'defend', 'down', 'voyage'].includes(armed) && !armed.startsWith('arm:');
       const defend = armed === 'defend' ? defendText(campaign, defs) : null;
       const words = crewAsk ? crewAsk
         : armed === null && crew ? crew.hint
         : armed === 'day' ? dayText(dayPlan(campaign, defs), easedSaid(campaign, defs))
         : defend ? (defend.ok ? { text: defend.ask, tone: 'warn' } : { text: defend.why, tone: 'bad' })
         : armed === 'down' ? takeDownText(takeDownPlan(campaign, defs, mode.uid))
-        : (tripArmed ? trips.hint(campaign) : null) ?? said ?? (down ? raidHint(campaign, defs) : null) ?? trips.hint(campaign) ?? (plan?.same ? { text: `Tap the grid where the ${lowerFirst(buildingName(mode.type, defs))} should go, or turn it.`, tone: 'info' }
+        : armed === 'voyage' ? voyages.hint(campaign)
+        : (tripArmed ? trips.hint(campaign) : null) ?? said ?? (down ? raidHint(campaign, defs) : null) ?? voyages.hint(campaign) ?? trips.hint(campaign) ?? (plan?.same ? { text: `Tap the grid where the ${lowerFirst(buildingName(mode.type, defs))} should go, or turn it.`, tone: 'info' }
           : plan ? placeText(plan, { moving: mode.uid !== null })
           : mode.kind === 'look' ? buildingInfo(text.buildings.find((b) => b.uid === mode.uid))
           : raidHint(campaign, defs) ?? { text: text.ahead, tone: 'info' });
@@ -238,7 +261,7 @@ export const colonyScreen = {
       const uids = mode.kind === 'place' && mode.what?.uid !== undefined ? [mode.what.uid] : marked ?? [];
       const mark = { uids, ghost, selected: mode.kind === 'look' ? mode.uid : mode.kind === 'place' ? mode.uid : null };
       const whole = mode.kind === 'place';
-      el.dataset.mode = away ? 'away' : trips.planning() ? 'trip' : mode.kind;
+      el.dataset.mode = away ? 'away' : trips.planning() || voyages.planning() ? 'trip' : mode.kind;
       if (!drawn || campaign !== drawn.campaign || whole !== drawn.whole || JSON.stringify(mark) !== JSON.stringify(drawn.mark)) {
         drawn = { campaign, whole, mark };
         stand.show(campaign, defs, mark, whole);
@@ -295,6 +318,10 @@ export const colonyScreen = {
         side.replaceChildren(...trips.planPanel(campaign));
         return;
       }
+      if (voyages.planning()) {
+        side.replaceChildren(...voyages.planPanel(campaign));
+        return;
+      }
       if (mode.kind === 'place') {
         const moving = mode.uid !== null;
         const confirm = moving ? 'Move here' : mode.what.uid !== undefined ? 'Give here' : mode.what.part ? 'Set down here' : 'Build here';
@@ -325,7 +352,7 @@ export const colonyScreen = {
         );
         return;
       }
-      const sections = [...trips.placesSection(campaign), node('h2', null, 'Build'), list(text.builds.map((row) => rowButton(row.name, row.ok ? `${row.cost} materials · ${row.makes}` : row.why, row.ok, () => tapRow(row, 'build'))))];
+      const sections = [...voyages.section(campaign), ...trips.placesSection(campaign), node('h2', null, 'Build'), list(text.builds.map((row) => rowButton(row.name, row.ok ? `${row.cost} materials · ${row.makes}` : row.why, row.ok, () => tapRow(row, 'build'))))];
       if (text.hold.length) sections.push(node('h2', null, 'From the hold'), list(text.hold.map((row) => rowButton(row.name, row.ok ? `${row.building} · ${row.gives}` : row.why, row.ok, () => tapRow(row, 'hold'), row.count))));
       sections.push(node('h2', null, 'From the ship'), list(text.parts.map((row) => rowButton(row.name, row.ok ? `${row.building} · ${row.gives}` : row.why, row.ok, () => tapRow(row, 'ship'), row.count))));
       side.replaceChildren(...sections);
@@ -384,6 +411,7 @@ export const colonyScreen = {
       if (!defs || !campaign) return;
       disarm();
       trips.cancel();
+      voyages.cancel();
       if (!row.ok) {
         said = whyNotText(row, { build: 'built', hold: 'set down', ship: 'given' }[from]);
         marked = from === 'ship' ? row.uids : null;
@@ -409,6 +437,7 @@ export const colonyScreen = {
       said = null;
       marked = null;
       trips.cancel();
+      voyages.cancel();
       if (mode.kind === 'place') {
         if (stand.onGhost(x, y)) return confirmPlace();
         const cell = stand.cellAt(x, y);
@@ -536,6 +565,7 @@ export const colonyScreen = {
       if (armed !== 'defend') {
         said = null;
         trips.cancel();
+        voyages.cancel();
         arm('defend');
         return;
       }

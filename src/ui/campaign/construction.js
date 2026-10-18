@@ -25,9 +25,10 @@ export const constructionScreen = {
     let defs = null;
     // In act 1 the ship refits at the hangar; on the run (act 2) at a
     // station or a shipyard, and goes back to the sector map; in act 3 at
-    // the colony.
+    // the colony, and on a voyage from it (M38d) at a station or a shipyard
+    // again.
     const campaign = game.getState().campaign;
-    const home = campaign?.colony ? 'colony' : campaign?.run ? 'run' : 'hangar';
+    const home = campaign?.colony && !campaign.colony.voyage ? 'colony' : campaign?.run ? 'run' : 'hangar';
     const leave = {
       hangar: { icon: icons.home, label: 'Hangar', screen: 'hub' },
       run: { icon: icons.map, label: 'Map', screen: 'sector' },
@@ -46,7 +47,7 @@ export const constructionScreen = {
       crew: () => {
         const now = game.getState().campaign;
         if (!now) return 0;
-        return now.colony && defs ? fullSquad(now, defs) : crewAboard(now);
+        return now.colony && !now.colony.voyage && defs ? fullSquad(now, defs) : crewAboard(now);
       },
       liftOff: () => {
         const { campaign } = game.getState();

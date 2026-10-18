@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "a4517c1feaf4";
+const VERSION = "fb9e954267f1";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -231,6 +231,7 @@ const FILES = [
   "src/ui/campaign/colonyStand.js",
   "src/ui/campaign/colonyText.js",
   "src/ui/campaign/colonyTrip.js",
+  "src/ui/campaign/colonyVoyage.js",
   "src/ui/campaign/companionText.js",
   "src/ui/campaign/construction.js",
   "src/ui/campaign/crewCard.js",
@@ -257,6 +258,7 @@ const FILES = [
   "src/ui/campaign/squadCard.js",
   "src/ui/campaign/standingText.js",
   "src/ui/campaign/tripText.js",
+  "src/ui/campaign/voyageText.js",
   "src/ui/campaign/yardText.js",
   "src/ui/clipboard.js",
   "src/ui/dev/cheats.js",

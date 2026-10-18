@@ -157,32 +157,9 @@ export function createTrips(ctx) {
     refresh();
   }
 
-  // The crew as buttons, ticked when they go: a tap takes them or leaves
-  // them home.
+  // The crew as buttons, ticked when they go.
   function squadList(campaign, rules, squad) {
-    const rows = squadRows(campaign, rules, squad);
-    const short = shortNames(rows.map((row) => row.name));
-    const ul = node('ul', 'cln-squad');
-    for (const [i, member] of rows.entries()) {
-      const item = node('li');
-      const button = node('button', 'btn apr-pick');
-      button.type = 'button';
-      button.setAttribute('aria-pressed', String(member.going));
-      const box = node('span', 'apr-pick-box', member.going ? '✓' : '');
-      box.setAttribute('aria-hidden', 'true');
-      const who = node('span', 'hgr-name');
-      who.append(node('span', null, short[i]));
-      who.title = member.name;
-      if (member.about) who.append(node('small', null, member.about));
-      button.dataset.wounded = String(member.hp < member.max);
-      const face = portraitImg('crew-face', faceUrl(member.face, 'face'));
-      button.append(box, face, who, node('span', 'hgr-num', `${member.hp}/${member.max}`));
-      button.setAttribute('aria-label', `${member.name}, ${member.hp} of ${member.max} hit points: ${member.going ? 'going' : 'staying home'}`);
-      ctx.keep(onTap(button, () => toggle(member.id)));
-      item.append(button);
-      ul.append(item);
-    }
-    return ul;
+    return pickList(squadRows(campaign, rules, squad), ctx.keep, toggle);
   }
 
   function toggle(id) {
@@ -301,4 +278,33 @@ export function createTrips(ctx) {
   }
 
   return trips;
+}
+
+// The crew as buttons, ticked when they go: a tap takes them or leaves them
+// home (toggle, with their id). rows: tripText.js squadRows's; keep: the
+// screen's, for each button's tap. A voyage's crew is picked the same way
+// (colonyVoyage.js).
+export function pickList(rows, keep, toggle) {
+  const short = shortNames(rows.map((row) => row.name));
+  const ul = node('ul', 'cln-squad');
+  for (const [i, member] of rows.entries()) {
+    const item = node('li');
+    const button = node('button', 'btn apr-pick');
+    button.type = 'button';
+    button.setAttribute('aria-pressed', String(member.going));
+    const box = node('span', 'apr-pick-box', member.going ? '✓' : '');
+    box.setAttribute('aria-hidden', 'true');
+    const who = node('span', 'hgr-name');
+    who.append(node('span', null, short[i]));
+    who.title = member.name;
+    if (member.about) who.append(node('small', null, member.about));
+    button.dataset.wounded = String(member.hp < member.max);
+    const face = portraitImg('crew-face', faceUrl(member.face, 'face'));
+    button.append(box, face, who, node('span', 'hgr-num', `${member.hp}/${member.max}`));
+    button.setAttribute('aria-label', `${member.name}, ${member.hp} of ${member.max} hit points: ${member.going ? 'going' : 'staying home'}`);
+    keep(onTap(button, () => toggle(member.id)));
+    item.append(button);
+    ul.append(item);
+  }
+  return ul;
 }

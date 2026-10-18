@@ -11,9 +11,12 @@
 // M33's fix, where it was docking there); since M37, a station's weapons
 // rack (racks.js); since M37b, the shipyards (yards.js), their side and
 // prices as a station's, refits there, and the Yard button; since M38c, a
-// station's job board (stationJobs.js) and the Jobs button. The event
-// card's words are eventText.js's, and the approach screen's
-// approachText.js's. rules are the content tables (src/sim/defs.js).
+// station's job board (stationJobs.js) and the Jobs button; since M38d, the
+// systems a voyage from the colony crosses (voyage.js), the colony's panel
+// while the ship is away, Fly home, and Defend when a lander is down there
+// (voyageText.js). The event card's words are eventText.js's, and the
+// approach screen's approachText.js's. rules are the content tables
+// (src/sim/defs.js).
 import { atYard } from '../../sim/acts.js';
 import { actOf, canRefit } from '../../sim/campaign.js';
 import { MAX_RATING, RATINGS } from '../../sim/gen/system.js';
@@ -23,6 +26,7 @@ import { crewRoom } from '../../sim/crew.js';
 import { stationBy } from '../../sim/edges.js';
 import { healRate } from '../../sim/medbay.js';
 import { patchPlan } from '../../sim/patch.js';
+import { raidDown } from '../../sim/raids.js';
 import { rackHere, rackPlan } from '../../sim/racks.js';
 import { recruitOffer } from '../../sim/recruits.js';
 import { regroupPlan } from '../../sim/regroup.js';
@@ -35,6 +39,8 @@ import { stationBoard, stationHere } from '../../sim/stationJobs.js';
 import { yardHere } from '../../sim/yards.js';
 import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesCost, suppliesOver, supplyCapacity, supplyOffer, tradeHeat } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
+import { defendText, raidHint } from './raidText.js';
+import { colonyPanelText, homeText, landerComing } from './voyageText.js';
 import { aWeapon, weaponFacts, weaponWord } from './armsText.js';
 import { byJob } from './crewJobText.js';
 import { questOf } from '../../sim/quests.js';
@@ -43,7 +49,8 @@ import { dockSaid, sideColor, sideIs, sideName, sidesText, stationText } from '.
 
 // What the sector map shows, for a campaign on the run:
 //   act, where   "Act 2 · The run", "Sector 1 of 5 · Breaker's Yard" ("The
-//                system · Tallow's Star" past the charts)
+//                system · Tallow's Star" past the charts; on a voyage, M38d,
+//                "System 2 out · The Hush")
 //   heat         the hangar's meter (hubText.js heatText)
 //   nodes        [{ id, col, row, rows, x, y, type, name, here, seen,
 //                links, known, done, hunt, world, surveyed }]: rows is how
@@ -103,6 +110,11 @@ import { dockSaid, sideColor, sideIs, sideName, sidesText, stationText } from '.
 //   settle       settling the world the ship is at, or null away from one:
 //                { label, ask, text, tone }
 //   deciding     true while an event is open where the ship is
+//   colony       on a voyage (M38d), the colony's panel (voyageText.js
+//                colonyPanelText), else null
+//   home         on a voyage, Fly home (voyageText.js homeText), else null
+//   defend       on a voyage with a lander down at the colony, Defend
+//                (raidText.js defendText), else null
 //   hint         { tone, text }
 export function sectorText(campaign, rules) {
   const { sector, at, seen, done } = campaign.run;
@@ -117,9 +129,10 @@ export function sectorText(campaign, rules) {
   const hunt = (id) => (far.get(id) ? (jumpPlan(campaign, rules, id).hunt?.chance ?? 0) : 0);
   const surveyed = campaign.run.surveyed ?? [];
   const yard = shipyardText(campaign, rules);
+  const voyage = campaign.colony?.voyage ?? null;
   return {
     act: actTitle(campaign.act, rules),
-    where: sector.system ? `The system · ${sector.name}` : `Sector ${sector.index} of ${act?.sectors ?? sector.index} · ${sector.name}`,
+    where: voyage ? `System ${voyage.out} out · ${sector.name}` : sector.system ? `The system · ${sector.name}` : `Sector ${sector.index} of ${act?.sectors ?? sector.index} · ${sector.name}`,
     heat: heatText(campaign, rules),
     nodes: sector.nodes.map((node) => ({
       id: node.id,
@@ -169,6 +182,9 @@ export function sectorText(campaign, rules) {
     survey: surveyText(campaign, rules),
     settle: settleText(campaign, rules),
     deciding: Boolean(openEvent(campaign, rules) || campaign.run.approach),
+    colony: colonyPanelText(campaign, rules),
+    home: voyage ? homeText(campaign, rules) : null,
+    defend: voyage && raidDown(campaign) ? defendText(campaign, rules) : null,
     hint: sectorHint(campaign, rules, { each, offer, leave, known, yard }),
   };
 }
@@ -562,16 +578,24 @@ function leaveText(campaign, rules) {
 }
 
 // Where the jump point leads: "sector 3", or past the act's last, "the
-// system past the charts".
+// system past the charts"; on a voyage (M38d), "the next system".
 function onTo(campaign, rules) {
+  if (campaign.colony?.voyage) return 'the next system';
   const { index } = campaign.run.sector;
   return index >= (actOf(campaign, rules)?.sectors ?? 0) ? 'the system past the charts' : `sector ${index + 1}`;
 }
 
 // What to do next on the map, the most pressing first.
 function sectorHint(campaign, rules, { each, offer, leave, known, yard }) {
+  // On a voyage (M38d): a lander down at the colony, then a flight home it
+  // stopped.
+  const voyage = campaign.colony?.voyage;
+  if (voyage && raidDown(campaign)) return raidHint(campaign, rules);
+  if (voyage?.homing) return { tone: 'warn', text: `On the way home to ${campaign.colony.world.name}, ${voyage.homing} day${voyage.homing === 1 ? '' : 's'} still to fly: tap Fly on.` };
   const held = holdOf(campaign, rules);
   if (held) return { tone: 'warn', text: held };
+  const coming = landerComing(campaign, rules);
+  if (coming) return coming;
   const check = failingCheck(campaign, rules);
   if (check) return { tone: 'bad', text: brokenWhy(check) };
   const over = offer.ok || yard ? suppliesOver(campaign, rules) : 0;

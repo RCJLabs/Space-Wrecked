@@ -52,8 +52,9 @@ export function crewCardText(campaign, rules) {
   const room = crewRoom(campaign.ship, rules);
   const atStation = onTheRun(campaign, rules) && hereOf(campaign)?.type === 'station';
   // At the colony (M33c) the card is the crew's, with no berths to fill; in
-  // the hangar (M37) too, before the run.
-  const home = Boolean(campaign.colony);
+  // the hangar (M37) too, before the run. On a voyage from the colony
+  // (M38d) it is the chart's again, for those aboard.
+  const home = Boolean(campaign.colony) && !campaign.colony.voyage;
   const hangar = campaign.act === 1;
   const where = home ? 'colony' : hangar ? 'hangar' : 'chart';
   const lines = home ? ['Everyone at the colony, and what each brings to it.'] : hangar ? ['Everyone in the hangar, and what each carries.'] : [`The berths and life support carry ${room}.`, medbayLine(campaign, rules)];
