@@ -4,11 +4,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { migrate, SAVE_VERSION } from '../src/core/save.js';
+import { aiAction } from '../src/sim/ai.js';
 import { act, createBattle, objectiveDone, targetsFor } from '../src/sim/battle.js';
 import { battleProblem } from '../src/sim/battleShape.js';
-import { jobSetup } from '../src/sim/contracts.js';
+import { campaignProblems, newCampaign, saveFight } from '../src/sim/campaign.js';
+import { jobSetup, takeJob, withBoard } from '../src/sim/contracts.js';
 import { createFight, ordersFor, reduceFight } from '../src/sim/fight.js';
 import { generateSite } from '../src/sim/gen/site.js';
+import { jobAction } from '../src/sim/jobAi.js';
 import { drawn, rules } from './battleKit.js';
 
 // An open yard, 8 × 4, with crates at (2, 1) and (5, 1).
@@ -320,6 +323,31 @@ test('a job sets up each mission from its site: the client at a way in, the capt
     for (const mission of ['extract', 'escort', 'rescue', 'sabotage', 'defend']) {
       const battle = createBattle(setup(mission), withJobs).battle;
       assert.equal(battleProblem(battle), null, `${mission} at seed ${seed} reads back`);
+    }
+  }
+});
+
+// Every order saves the fight, and a save is checked as it loads
+// (campaign.js campaignProblems): the person brought out is on the crew's
+// side, but not one of the crew the fight names.
+test('a campaign saved at any order of each new mission\'s fight passes the save\'s checks', () => {
+  for (const id of ['strikefund', 'backdoor', 'yardwatch', 'pumps', 'nephew']) {
+    const contract = rules.contracts.jobs.get(id);
+    const job = { contract: id, client: contract.clients[0], site: contract.sites[0], twist: null, seed: 7, credits: contract.credits[0], part: null };
+    const taken = takeJob({ ...withBoard(newCampaign(rules, 1), rules), board: [job] }, rules, 0);
+    assert.ok(taken.ok, taken.error);
+    let { campaign } = taken;
+    let { battle, log } = campaign.fight;
+    const ward = { escort: 'client', rescue: 'captive' }[contract.mission];
+    assert.deepEqual(battle.units.filter((u) => u.ward).map((u) => u.kind), ward ? [ward] : [], id);
+    for (let step = 0; !battle.winner; step++) {
+      assert.ok(step < 2000, `${id}: the fight ends`);
+      const result = act(battle, battle.side === 'crew' ? jobAction(battle, rules) : aiAction(battle, rules), rules);
+      assert.ok(result.ok, result.error);
+      ({ battle } = result);
+      log = [...log, ...result.events];
+      campaign = saveFight(campaign, battle, log);
+      assert.deepEqual(campaignProblems(campaign), [], `${id}, round ${battle.round}`);
     }
   }
 });
