@@ -173,9 +173,9 @@ The voyage tests' rates over 100 voyages from each start, main today beside M38.
 - **On screen:** `tests/missionText.test.js` (8), and the touch check below.
 - **The test players play each mission:** `tests/contracts.test.js` plays 150 jobs to the end, each kind done at least once, and the measurements above.
 - **Measured:** above.
-- **`SAVE_VERSION` 34:** `tests/missions.test.js`.
+- **`SAVE_VERSION` 34:** `tests/missions.test.js`, with a campaign saved at every order of each new mission's fight passing the save's checks.
 - **Every rule tested; the validator's checks:** the files above, and 10 new cases in `tests/data.test.js`'s validator test (3 more brought up to date).
-- **Touch, at the three sizes:** `m38/verify.mjs`, 57 checks at each, all passing:
+- **Touch, at the three sizes:** `m38/verify.mjs`, 58 checks at each, all passing:
   - each new mission's job taken from the board, its brief on the card and its objective under the round;
   - a crate grabbed, carried and walked out;
   - the client moved by touch through the far gate;
@@ -183,10 +183,11 @@ The voyage tests' rates over 100 voyages from each start, main today beside M38.
   - a charge planted and its blast on the board;
   - the captive freed and walked out;
   - each job's end panel, and home paid with the crew as it was;
-  - offline after a reload; every button 48 px or more as each fight opens and with Grab, Free or Plant shown; no console errors.
+  - offline after a reload, a job taken, and reloaded again mid-rescue with the captive held: the fight back as it was;
+  - every button 48 px or more as each fight opens and with Grab, Free or Plant shown; no console errors.
 
 **Tests:**
-- `node --test`: 1032 tests pass (1003 before). New: `tests/missions.test.js` (14), `tests/missionText.test.js` (8), `tests/objectiveAi.test.js` (6) and `tests/voyageSurgery.test.js` (1), and 10 cases in `tests/data.test.js`'s validator test. `validate-data`: OK, 44 job templates.
+- `node --test`: 1033 tests pass (1003 before). New: `tests/missions.test.js` (15), `tests/missionText.test.js` (8), `tests/objectiveAi.test.js` (6) and `tests/voyageSurgery.test.js` (1), and 10 cases in `tests/data.test.js`'s validator test. `validate-data`: OK, 44 job templates.
 - `tests/contracts.test.js` plays 150 jobs (was 60), so every kind of mission gets done at least once, within 60 rounds as the tools allow (was 30). Lights out, the sight twist, can take 40.
 - `tests/run.test.js` no longer pins a thread's tries to one; it reads "in n (least to most) tries".
 - `m38/verify.mjs` at the three sizes, as above.
