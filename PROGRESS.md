@@ -2,6 +2,121 @@
 
 Newest entry first.
 
+## M38d The run goes on (2026-10-18)
+
+**Status:** done, and the ROADMAP.md box is ticked. From the colony the ship flies out on voyages with a crew picked, the stores split between the holds and the storehouses, into systems nobody has charted: each a chart like act 2's sectors, with two worlds, and each jump point leading to the next, without end. A day passes at home with each jump. A raid's lander that comes down while the ship is away holds it until those at home face it. Fly home works from anywhere on the run. Saves are at v36.
+
+**How it was picked:** Evan asked (2026-10-18) for act 3 to keep travel going: the systems, the stations and the ship-building, not just the colony's trips. Measured first (the miner, 30 voyages from launch through the colony's 60 days, medians): 31 credits at the landing and nothing to spend them on after it; heat down to 10 by day 60; 9 trips flown, 28 days away; the colony found by the pursuer in 15 runs of 30. His picks:
+- new systems in a line, each a chart like act 2's sectors;
+- fly home from anywhere;
+- a day a jump;
+- pick the crew, and split the stores.
+
+ROADMAP.md has the Done when in full, and what was built where it differs.
+
+**What shipped:**
+- **The voyage** (`src/sim/voyage.js`, new):
+  - Fly out takes the crew picked, as many as the ship's berths and air hold (the flight checks count those aboard), one or more; the rest stay home. Only from the colony, with the ship home, no trip and no lander down.
+  - The stores split: the holds take their fill of the food, the storehouses keep the rest up to their room, and what neither holds spoils; materials past the storehouses' room are lost (below); credits, parts on hand and spare weapons go with the ship.
+  - Fly home: a day at the colony and a jump's supplies for those aboard for each system out, with one jump's heat. A lander that comes down before the last day stops the flight; Fly on finishes it. Landed, the crew is one again in its order and the stores one store, up to their room.
+- **Who is where** (`src/sim/away.js`, new): while the ship is away, the campaign's crew and supplies are those aboard and the holds, and the colony's voyage keeps those at home and its food. For a raid fight at home the two swap places and swap back after it.
+- **The systems** (`src/sim/gen/system.js` `beyondSystem`): a sector's chart, from the act 2 generator with its stations, shipyard, nebula, events and hostile ships, plus two worlds rolled as M25's (`data/worlds.json` `voyage`). Each is named from the systems' list, never one of the run's last 60 maps' names until the list runs out. 12 names were added.
+- **On the run in act 3:** everything act 2's run does works for those aboard: jumps, long jumps, scans, events, approaches, boardings, regroups, hiding, surveys (settling waits for M38e), stations, yards, refits, racks, recruits, jobs and swaps (`src/sim/acts.js` `outOnRun`, `travel.js`). A recruit or a companion signs on aboard. Heat rises and the hunters roll as in act 2; a day at home while away leaves heat alone.
+- **A day a jump** (`src/sim/days.js` `voyageDay`): each jump (the jump out and each one into the next system too), survey, day's rest and day of the flight home passes a day at the colony, run as a trip's: the farms and mines make, those at home eat from the colony's food and rest, the pursuer may find it, and a lander comes down on its day.
+- **A raid while away** (`src/sim/raids.js`): its landing holds the ship, as an event does. Those at home face it with the colony's guns; with nobody home the landing's hits are all the colony has. Lost, it takes from the colony's stores, never the ship's.
+- **Saves at v36** (`src/core/save.js`): the colony keeps its system's other worlds and its voyage (null with the ship home); a v35 act 3 save opens with the ship home. `campaign.js` checks a voyage's shape: its systems out, the flight home's days left, those at home or aboard, no one twice, someone aboard.
+- **The screens:**
+  - the colony: Voyage heads the side panel; its plan picks the healthiest that fit aboard first, one left home, and a tap on someone takes them or leaves them. It says who goes and who stays; what the holds take, what the colony keeps and what spoils; the materials that won't keep; the jump; whoever stays with no bed and air; and the flight checks with those aboard. Fly out takes two taps;
+  - the chart out there: "System N out" at its head; the colony's panel (its day, its food of the storehouses' room, who is home, the raid's odds or its lander); Fly home in the Here panel with its plan (Fly on once a lander stopped it); and, with a lander down, Defend in the foot and the hint;
+  - Continue on the title says where the ship is ("Act 3 · Lamplight, out from Copperhill") and opens there.
+- **Validated** (`tools/validate-worlds.js`): the voyage's worlds a system, enough kinds and names for them, and two systems' names at least.
+- **Tools:** the test voyage's player flies out once the colony's 60 days are played (`tools/voyage.js`, `--out no` for none; `tools/voyagePlan.js` `voyageCrew`, `homeNow`). It waits at home first while a raid is coming, refits berths and air for all but one, builds a shelter for whoever stays, and plays the systems as act 2's sectors. It flies home at the third system's jump point (`VOYAGE_SYSTEMS`), or sooner once the holds are down to the way home's supplies and two jumps more (`HOME_JUMPS`). Its voyage keeps a tally of its own, so act 2's and the colony's numbers are as they were; the report ends with what it came to. `tools/boarding.js` `fightRaid` arms no one while the ship is away: the spare weapons are aboard it.
+
+**Done when** (ROADMAP.md, M38d), and how each is met:
+- **Flying out:** `tests/colonyVoyage.test.js` (11 tests) and `tests/voyageText.test.js` (5); by touch.
+- **The stores split:** the same, and by touch.
+- **The systems:** `tests/colonyVoyage.test.js`, 7 validator cases in `tests/data.test.js`, and `tests/golden/systems.txt`.
+- **On the run in act 3:** `tests/colonyVoyage.test.js` (a station's supplies, a recruit, the last aboard kept, surveys, regroups, the jump point to the next system).
+- **A day a jump:** the same, and over 100 test voyages `tests/voyage.test.js` checks the colony's days away come to the jumps, rests and days flying home.
+- **A raid while away:** `tests/colonyVoyage.test.js` (the hold, Defend, the swap and back, a raid lost, nobody home); by touch.
+- **Fly home:** the same tests, and by touch.
+- **Saves:** `tests/colonyVoyage.test.js` (v36, a v35 save migrated, broken voyages refused).
+- **The screens:** by touch, and `tests/voyageText.test.js`.
+- **The test player:** `tests/voyage.test.js` (a new test over its 100 refitting voyages).
+- **Measured over 100 voyages:** below.
+- **Every rule tested:** as above.
+- **Touch, at the three sizes:** below.
+
+**Measured:** 100 voyages out, seeds 1 to 100, the miner, as `tools/voyage.js` plays by default (refitting, station jobs, managing heat), after the colony's 60 days; medians, then the least and most:
+
+| | |
+| --- | --- |
+| Flown out, and home | 100 of 100, 100 of 100 |
+| Aboard, at home | 2 (2 to 5), 1 (1 to 1) |
+| Systems crossed | 3 (0 to 3): all 3 in 52 runs, 2 in 14, 1 in 21, none in 13 |
+| Days away | 22 (2 to 31) |
+| Jumps | 18 (1 to 21); hungry in 1 run, and flying home hungry in 1 |
+| Hostile ships | 0 (0 to 2) a run; they boarded the ship 8 times, fought off once |
+| The hunters met | in 1 run, once |
+| Heat | 6 (0 to 46) out, 30 (4 to 67) home, 42 (4 to 67) at most |
+| Station jobs | 1 (0 to 12) a run, in 80 runs; 164 of 216 done; paid 95 (0 to 1,355) |
+| Credits spent on the way | 157 (0 to 935) |
+| Parts bought at yards | 0 (0 to 6), in 18 runs; fitted 2 (0 to 11) |
+| Signed on | 92, in 58 runs |
+| Credits | 49 (0 to 561) out, 61 (0 to 589) home |
+| The colony while away | found in 9 runs; 7 raids faced, all 7 lost (in 6 runs), none with nobody home; fed all the while in 100 of 100 |
+| Flying out | food spoiled in 2 runs (20 in all); materials lost in 86 (1,884 in all) |
+
+The 13 that crossed no system flew out with 0 to 24 food in the holds: the careful player builds only the farms its crew eats from, so its larder at day 60 is whatever the landing and the trips left. With the holds that low the buffer turns it home before it reaches a station, even with credits to buy.
+
+**The voyage test's rates against main's** (`MAIN` in `tests/voyage.test.js`): unchanged. The voyage out keeps its own tally, and the 12 new names change only the systems' names, not the rolls. So main's 30-voyage report (`tools/voyage.js --runs 30`, run from main) matches this branch's line for line, apart from the new voyage-out line at the end. Every rate is as M38c left it.
+
+**Tests:**
+- `node --test`: 1071 tests pass (1054 before M38d). New: `tests/colonyVoyage.test.js` (11), `tests/voyageText.test.js` (5) and the voyage out in `tests/voyage.test.js` (1); and 7 cases in `tests/data.test.js`'s validator test.
+- **On purpose:**
+  - `tests/golden/systems.txt`: the 12 new names renamed its three systems; nothing else in them moved.
+  - **The voyage tests' fitted voyages, the ignoring-heat ones and the other backgrounds' fly no voyage out** (`out: 'no'`), as the fitted ones fly no refits: it changes nothing in their tallies but the time. The refitting voyages fly it, and the new test checks it over their 100.
+  - An M25 test read the act's record as the log's last line; with a voyage out it is the second to last.
+  - The tests that pinned `SAVE_VERSION` at 35 now pin 36; the v20 colony and settle tests take the colony's worlds and voyage.
+- `m38d/verify.mjs` at the three sizes, 37 checks at each, all passing:
+  - the colony: Voyage heads the side panel; its plan picks two of three, the healthiest, and says who stays and what the holds take; a tap takes the one at home, another leaves them; Fly out's first tap says what it comes to and flies nowhere, the second flies;
+  - the new system's chart: "System 1 out", the colony's panel (day 2, food 19 of 20, Lark at home), Fly home, no Defend; saved at v36 with the stores split;
+  - a jump passes a day at home, and the panel says so;
+  - a station out there: Buy, Jobs and its board;
+  - a lander down at home: the hint, Defend, Fly home held; Defend's two taps open the raid fight with Lark alone; it reloads as it was; won, back on the chart, the ship still out;
+  - Fly home's two taps: the colony screen, the crew one again in its order, the stores one again;
+  - a quit and reopen out there: Continue says where and opens the chart;
+  - every button 48 px or more and reachable, offline after a reload, and no console errors.
+- **Every earlier milestone's browser check** passes at the three sizes unless named, each the latest adapted copy (`m38d/regress-a.sh` and `regress-b.sh`). The one exception is M32b's first copy, whose 2 known failures since M36 its fix copy covers, as in M36 to M38c.
+  - **Adapted for M38d:** M38c's, M38b's, M35's, M34's, M31's, M30's, M29's, M28's and M27's, which pinned saves at v35 (`verify38d.mjs` beside each). M28's and M27's also took the colony's first list for its places, where Voyage stands now. M32's and M21's read "the" list in the chart's side column, which holds the colony's panel's list too now (hidden with the ship home): they name the Ship panel's. Their first runs stopped at that read, which the chain's summary first hid.
+  - **Run again on their own, and passed:** M36's at the open size, M35's at the tab size and M32's new copy at the open size lost their port to the run beside them.
+
+**Found while building, and fixed:**
+- **The plan marked lines red by place** (from its fourth on), so a materials line moved the jump into the red; it marks the failing checks it lists, and those alone.
+- **The plan didn't say the first jump would go hungry,** or that whoever stays with no bed and air won't rest: it says both now.
+- **Fly home sat in the colony's panel,** below the fold on the cover screen: it is in the Here panel.
+- **Worlds' labels covered nodes** on the systems' charts: the mark alone shows there, and a tap names it.
+- **The test player's voyage left the flight home's heat out of its "at most"** (41, 2 to 65, under a heat at home of up to 67): it counts it now.
+
+**Known issues:**
+- **Materials past the storehouses' room are lost at Fly out** (86 of 100 test colonies, 1,884 in all), since most have no storehouse. The plan says so on the first tap, but it may be harsher than it needs to be. Evan's call (§9).
+- **A split crew is thin:** with 2 aboard, the ship lost 7 of the 8 boardings it met; with 1 at home, all 7 raids while away were lost (§9).
+- **13 of 100 test voyages crossed no system,** their larders near empty (§9).
+- **The way in still says "Where the ship came into the sector",** and a voyage's systems are "sectors" in a few words (§9).
+- **The flight home's days count as jumps** in the flags; the hunters don't roll on them.
+- **Heat doesn't fall at home while the ship is away;** a raid faced while away still sets it to its after-raid level.
+- **Settling a second world** waits for M38e: the worlds out there can be surveyed, not settled.
+
+**What Evan should test on the phone:**
+- At the colony: Voyage at the top of the side panel. Tap it, see who goes and who stays, and tap someone to swap them. Fly out: the first tap says what the holds take and what the colony keeps.
+- On the new chart: "System 1 out" at the top, the colony's panel (day, food, who is home). Jump once and watch the colony's day tick.
+- Call at a station out there: buy, take a job, refit.
+- Quit and reopen out there: Continue says where the ship is.
+- Fly home from anywhere: the first tap says the days and what is eaten; landed, the crew and the stores are together again.
+- If the pursuer finds the colony while you're away: the chart warns, the lander holds the ship, and Defend fights it with whoever is home.
+
+**Next session's first task:** M38e More colonies: study a second world settled from a voyage (its own grid, buildings, stores, days and raids), measure, ask Evan, settle its Done when.
+
 ## M38c Station jobs (2026-10-18)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every station on the run posts a board of work, fresh at each visit. A job sends a squad to the station's docks or the rocks nearby, pays as act 1's do, and costs heat and wounds. Saves are at v35.

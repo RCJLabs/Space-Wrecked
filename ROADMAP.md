@@ -1811,7 +1811,7 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **The test player weighs a job's wounds** by the hit points the start crews lose in it (`tools/jobs.js --stations --odds` prints them), at 2 credits each. Managing heat, its line counts the next jump's heat too. It takes work before the refit, so a part paid goes on at that station.
   - **The voyage tests' fitted voyages fly without station jobs,** as they fly without refits. With jobs, a healer's crew is fit more often, takes more work and patches more: 1,147 hit points with a med bay against 958 without, on seeds 1 to 30.
   - **Station jobs make act 2 easier for the careful player, not harder:** their pay buys transponder swaps, which shed more heat than the jobs add. Over 100 voyages the hunters came in 22 runs against 35 without them. Every rate stays within main's margins (PROGRESS.md). Whether the heat should bite harder is Evan's call (§9).
-- [ ] **M38d The run goes on.** Since M25 settling the first world ends the travel: act 3's trips reach only places 1 to 3 days away. Evan's pick (2026-10-18): the run goes on.
+- [x] **M38d The run goes on.** Since M25 settling the first world ends the travel: act 3's trips reach only places 1 to 3 days away. Evan's pick (2026-10-18): the run goes on.
 
   Measured first (the miner, 30 voyages from launch through the colony's 60 days, medians):
   - **The landing:** 31 credits (0 to 561), idle from then on with no station in act 3; heat 46.
@@ -1881,6 +1881,17 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
     - a quit and reopen on the run in act 3;
     - offline, every button 48 px or more, no console errors;
     - every earlier milestone's browser check still passes.
+
+  As built (2026-10-18), where it differs from the above or adds to it:
+  - **Materials past the storehouses' room are lost at Fly out,** as the first tap says: with the ship's holds gone the stores are the storehouses alone, and a colony's day keeps no more than its stores (M27), so they would go on its first day anyway. Most of the test player's colonies have no storehouse: 86 of 100 lost materials flying out, 1,884 in all. Whether the holds should carry them, or they should stay past the room while the ship is away, is Evan's call (§9).
+  - **Whoever stays with no bed and air at the colony doesn't rest while the ship is away** (M28's rule for a trip); the infirmary still heals them. The plan says so, and says when the first jump would go hungry.
+  - **Heat follows the ship.** A day at the colony while it is away leaves heat alone; the run's jumps raise it as in act 2. A raid faced while away still ends at `heatAfterRaid`.
+  - **The flight home's days count as jumps** in the flags, and the hunters don't roll on them. A lander that comes down before the last day stops the flight; Fly on finishes it with no more heat.
+  - **Who goes:** the captain may stay home; the last aboard can't be let go at a station. Voyage heads the colony's side panel, above the places within reach; the plan picks the healthiest that fit aboard first, one left home.
+  - **On the chart:** "System N out" heads it; Fly home sits in the Here panel (on the cover screen the colony's panel can be below the fold); Defend stands in the foot while a lander is down. Worlds out there are marked but not labelled (their labels covered nodes); a tap names them. The way in still says "the sector".
+  - **Names:** the 12 new systems' names renamed the systems in `tests/golden/systems.txt`; nothing else in them moved. A run avoids the last 60 maps' names (`MAX_PAST`).
+  - **The test player** (`tools/voyage.js`, `--out no` for none) waits at home for a raid that is coming, refits berths and air for all but one (`refitForSquad`), builds a shelter for whoever stays, crosses at most `VOYAGE_SYSTEMS` (3), and flies home once the holds are down to the way home and 2 jumps more (`HOME_JUMPS`). Those at home fight a raid with what they carry: the spare weapons are aboard. The voyage keeps its own tally, so act 2's numbers are as they were (the 30-voyage report is main's to the line).
+  - **Measured over 100 voyages** (PROGRESS.md): flown and home in all, 3 systems crossed (0 to 3), 22 days away; those at home fed in all 100; 7 raids faced while away and all 7 lost, one defender against the 3 or 4 who landed; 8 boardings of the ship, 7 lost with 2 aboard. 13 crossed no system: their colonies held 0 to 24 food at day 60 and the buffer turned them home before a station.
 - [ ] **M38e More colonies.** The draft:
   - a second world settled, and more: each colony with its own grid, buildings, stores, days and raids;
   - parts given at each, and refits at any;
@@ -2064,5 +2075,9 @@ These ideas wait until v0.4 or later:
 - the squad's wounds on the run: a station job costs its squad 6 to 19 hit points of 26 on average, and patching them costs 2 credits each, so work feeds the patching bill. A med bay's crew, fit more often, works more and patches more (raised in M38c)
 - a station's work on the chart: nothing says what a station posts until the ship is there. A mark for a station with work, or the count in the jump plan, would let a player plan a route for it (raised in M38c)
 - the test player's view of a job: it weighs a station job at the full-health start crews' odds and wounds (with act 1's factor for a twist), never by the squad going, so a hurt, ranked or better-armed squad weighs the same (raised in M38c)
+- the colony's materials on a voyage: flying out, whatever is past the storehouses' room is lost, as the plan's first tap says (a colony's day keeps no more than its stores). 86 of the test player's 100 colonies lost some, 1,884 in all, most having no storehouse. The ship's holds could carry them out and back, or they could stay past the room while the ship is away. Evan's call (raised in M38d)
+- a voyage's dangers to a split crew: flying out with 2 of 3, the test player lost 7 of the 8 boardings of the ship, and the one left home lost all 7 raids faced while away. Raids found while away might wait for the ship, or a raid's warning might call it home (raised in M38d)
+- provisioning a voyage: the careful player builds just the farms its crew eats from, so at day 60 its colonies held 0 to 88 food, and 13 of 100 voyages turned home before crossing a system. A larder to fill before flying out, or a test player that waits for one, would tell more (raised in M38d)
+- the words out past the colony: the chart's way in still says "Where the ship came into the sector", and a voyage's systems are "sectors" in a few places (raised in M38d)
 
 Ideas that come up during a session go here, not into code.
