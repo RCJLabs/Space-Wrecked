@@ -1710,7 +1710,7 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
     - a held captive stands, HELD over them.
   - **The person brought out** has a face in the crew bar rolled from their name, in their kind's suit (`people` in `data/contracts.json`).
   - **The blast has a sound of its own** (`blast` in `data/sounds.json`). Free and Plant sound as an order does.
-  - **The tests' act 1 is pinned:** the board's shuffle takes a roll for each job, so 15 more jobs moved every roll after it. `tests/launchKit.js` holds main's RNG after the board (`LAUNCH_RNG`), and the campaigns the tests launch stay as they were.
+  - **The launch tests' campaign is pinned:** the board's shuffle takes a roll for each job, so 15 more jobs moved every roll after it. `tests/launchKit.js` holds main's RNG after the board (`LAUNCH_RNG`), so the campaign the launch, run and colony tests start from rolls the sectors and worlds it did. The voyage tests play act 1 through, and their rates are held to `MAIN`.
   - **Surgery's Law 1 check flies 300 seeds** (`tests/voyageSurgery.test.js`). On seeds 1 to 100 the new act 1 left surgery patching 132 hit points against a med bay's 122: four runs patched 6 to 12 with surgery and none with a med bay. On seeds 101 to 300 the numbers were 139 and 193, and over all 300, 271 and 315.
   - **Act 1's money moved,** credits at launch over 100 runs from each start: the miner's up 44% (14,390 against 10,005), the deserter's down 9% and the smuggler's down 12%. At half the new jobs' pay the miner's were still up 29%: the old jobs' odds, measured again under the guards, move it too.
 - [ ] **M39 Parts and hull frames.** 21 module types against §5's 40 to 60, and one hull frame against 6. The draft:
