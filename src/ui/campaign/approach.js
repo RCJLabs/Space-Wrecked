@@ -1,31 +1,41 @@
 // The approach screen (ROADMAP §4.2): a hostile ship met on the run, played
-// round by round (src/sim/encounter.js). The two ships stand side by side,
-// each drawn as its boarding map, so a wrecked room shows its fire, vacuum
-// or rubble the moment it happens; the player's on the left, the other
-// turned to face it. The right-hand column is words only, so it can scroll
-// on a short screen without hiding a button: what the other ship will do
-// this round, what the order tapped would do, and what the last round came
-// to, roll by roll. The orders run along the bottom, each with its odds:
-// fire at their guns, engines, shields or reactor, evade, flee, or board.
-// A tap shows what an order does and its odds in full, a second gives it;
-// an order that can't be given says why. Once it is over, the column says
-// how it ended and what it came to, and the boarded ship's map is marked.
-// In the orders' place, Carry on goes back to the chart; or, for a boarding
-// (M22), Board her begins the fight and Leave her goes, each two taps, or
-// Fight them off begins it when she is the one boarding. With more aboard
-// than a squad takes (M23), Squad opens the squad card (squadCard.js) over
-// the ships, to pick who goes; the healthiest go unless the player picks.
+// round by round (src/sim/encounter.js). Since M38b the two ships stand side
+// by side seen from outside (render/approachView.js), as the hangar shows a
+// ship: the player's on the left, nose right, the other turned to face it,
+// each scarred where it was hit and showing a wrecked part's fire, vacuum
+// or rubble on its hull. The inside is for a boarding's fight. The
+// right-hand column is words only, so it can scroll on a short screen
+// without hiding a button: what the other ship will do this round, what the
+// order tapped would do, and what the last round came to, roll by roll. The
+// orders run along the bottom, each with its odds: fire at their guns,
+// engines, shields or reactor, evade, flee, or board. A tap shows what an
+// order does and its odds in full (a Fire order marks the parts it aims at
+// on her hull), a second gives it; an order that can't be given says why.
+// A round given is played out (render/approachPlayback.js): the shots fly,
+// the column's lines follow them, and its sounds play with them; a tap on a
+// ship or an order skips to its end, and with reduced motion it ends at
+// once. Once it is over, the column says how it ended and what it came to,
+// and a boarding brings the ships together, the boarded one marked. In the
+// orders' place, Carry on goes back to the chart; or, for a boarding (M22),
+// Board her begins the fight and Leave her goes, each two taps, or Fight
+// them off begins it when she is the one boarding. With more aboard than a
+// squad takes (M23), Squad opens the squad card (squadCard.js) over the
+// ships, to pick who goes; the healthiest go unless the player picks.
 // Every round is saved as it is played.
+import { cue } from '../../platform/audio.js';
 import { loadContent } from '../../platform/content.js';
-import { battleBoxes } from '../../render/battleScene.js';
-import { BATTLE_VIEW, createBattleBoard } from '../../render/battleView.js';
+import { frameAt, restingPose, roundCues, roundTimeline, shipGeometry } from '../../render/approachPlayback.js';
+import { createApproachView } from '../../render/approachView.js';
+import { traceHull } from '../../render/hull.js';
 import { fitOrbit } from '../../render/orbit.js';
-import { palette, skinFor } from '../../render/palette.js';
+import { skinFor } from '../../render/palette.js';
+import { BOARD_VIEW, boardBox } from '../../render/shipView.js';
 import { squadProblem } from '../../sim/crew.js';
-import { mapFromShip } from '../../sim/mapFromShip.js';
 import { node, setText, toolButton } from '../fight/panels.js';
-import { onTap } from '../gestures.js';
+import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { motionReduced } from '../motion.js';
+import { roundSounds } from '../sounds.js';
 import { approachText } from './approachText.js';
 import { squadText } from './crewText.js';
 import { heatChip } from './hubParts.js';
@@ -33,10 +43,11 @@ import { createSquadCard } from './squadCard.js';
 
 const ARM_MS = 3000; // an order waits this long for its second tap
 const MARGIN = 8; // pixels around each ship
-const SETTLE_MS = 150;
 const SIDES = ['you', 'them'];
 // The other ship is seen from the far side, so the two face each other.
-const YAWS = { you: BATTLE_VIEW.yaw, them: BATTLE_VIEW.yaw + Math.PI };
+const YAWS = { you: BOARD_VIEW.yaw, them: BOARD_VIEW.yaw + Math.PI };
+const NO_MIN = [0, 0]; // each view fits its ship alone, however small
+const now = () => performance.now();
 
 export const approachScreen = {
   mount(root, { store: game }) {
@@ -57,9 +68,10 @@ export const approachScreen = {
         const stats = node('p', 'apr-stats');
         const hole = node('div', 'apr-hole');
         area.append(name, stats, hole);
-        return [side, { area, name, stats, hole, board: createBattleBoard(), wrecked: null, map: null, camera: null, rect: null }];
+        return [side, { area, name, stats, hole, ship: null, hull: null, box: null }];
       }),
     );
+    const picture = createApproachView();
 
     // The words: their order, what the order tapped would do, how it ended,
     // and the last round.
@@ -101,17 +113,20 @@ export const approachScreen = {
     let squadOpen = false; // the squad card is up
     let squadWhy = null; // why the last pick changed nothing
     let armTimer = 0;
-    let settleTimer = 0;
     let dirty = true;
     let buttons = [];
+    // The round being played out: { timeline, start, heard (ms played so
+    // far), lines (of the round's shown) }, or null.
+    let playing = null;
+    let resting = restingPose(null); // where the ships stand when nothing plays
     const cleanups = [
       onTap(titleButton, () => game.dispatch({ type: 'screen/show', screen: 'title' })),
       onTap(carryButton, () => game.dispatch({ type: 'campaign/approach/close' })),
       onTap(squadButton, () => openSquad(!squadOpen)),
       onTap(boardButton, () => decide('board', () => game.dispatch({ type: 'campaign/boarding/begin', rules: defs, squad }))),
       onTap(leaveButton, () => decide('leave', () => game.dispatch({ type: 'campaign/approach/close' }))),
+      ...SIDES.map((side) => attachGestures(ships[side].area, { tap: skip })),
       () => clearTimeout(armTimer),
-      () => clearTimeout(settleTimer),
       () => buttons.forEach((entry) => entry.detach()),
       () => squadCard.detach(),
       game.subscribe((state) => alive && render(state.campaign)),
@@ -130,9 +145,11 @@ export const approachScreen = {
         if (alive) setText(hint, `Couldn't load the game data: ${err.message}`);
       });
 
-    // force: draw again though the campaign hasn't changed (a first tap).
+    // force: draw again though the campaign hasn't changed (a first tap, a
+    // line of the round played).
     function render(campaign, force = false) {
       if (!defs || !campaign || (campaign === shown && !force)) return;
+      const before = shown;
       shown = campaign;
       const text = approachText(campaign, defs);
       if (!text) {
@@ -140,23 +157,24 @@ export const approachScreen = {
         game.dispatch({ type: 'screen/show', screen: 'sector' });
         return;
       }
-      setText(actLine, text.act);
-      setText(whereLine, text.where);
-      setText(roundLine, text.round);
-      heat.show(text.heat);
       const approach = campaign.run.approach;
       showShip('you', text.you, campaign.ship);
       showShip('them', text.them, approach.them.ship);
+      if (campaign !== before) played(before?.run?.approach, approach);
+      setText(actLine, text.act);
+      setText(whereLine, text.where);
+      setText(roundLine, playing ? `Round ${playing.round}` : text.round);
+      heat.show(text.heat);
 
       // Their order, and the player's.
       intentHead.hidden = intent.hidden = !text.intent;
       if (text.intent) setText(intent, text.intent.text);
-      stakes = text.outcome?.boarding ?? null;
+      stakes = playing ? null : text.outcome?.boarding ?? null;
       const choosing = armed === 'board' || armed === 'leave';
       if (armed && (choosing ? !stakes || (armed === 'leave' && !stakes.leave) : !text.orders.some((order) => order.key === armed && order.ok))) disarm();
       showOrders(text.orders);
-      fireLabel.hidden = fire.hidden = moves.hidden = Boolean(text.outcome);
-      carryButton.hidden = !text.outcome || Boolean(stakes);
+      fireLabel.hidden = fire.hidden = moves.hidden = Boolean(text.outcome) && !playing;
+      carryButton.hidden = !text.outcome || Boolean(stakes) || Boolean(playing);
       boardButton.hidden = !stakes;
       leaveButton.hidden = !stakes?.leave;
       if (stakes) {
@@ -173,22 +191,57 @@ export const approachScreen = {
       squadButton.setAttribute('aria-label', pick?.show ? `${pick.label}: who goes` : 'Squad');
       squadCard.show(squadOpen ? pick : null, squadWhy);
 
-      // How it ended.
-      out.hidden = !text.outcome;
-      for (const side of SIDES) ships[side].area.dataset.boarded = String(text.outcome?.board === side);
-      if (text.outcome) {
+      // How it ended, once the round that ended it has played.
+      const ended = text.outcome && !playing;
+      out.hidden = !ended;
+      for (const side of SIDES) ships[side].area.dataset.boarded = String(Boolean(ended) && text.outcome.board === side);
+      if (ended) {
         setText(outTitle, text.outcome.title);
         const lines = pick?.show ? [...text.outcome.lines, pick.line] : text.outcome.lines;
         outLines.replaceChildren(...lines.map((line) => node('li', null, line)));
       }
-      logHead.hidden = !text.last.length;
+      const last = playing ? text.last.slice(0, playing.lines) : text.last;
+      logHead.hidden = !last.length;
       setText(logHead, text.lastHead);
-      log.replaceChildren(...text.last.map((line) => node('li', null, line)));
+      log.replaceChildren(...last.map((line) => node('li', null, line)));
 
       const picked = armed === 'board' ? stakes.begin : armed === 'leave' ? stakes.leave : text.orders.find((order) => order.key === armed);
-      setText(hint, picked ? picked.text : text.hint.text);
+      setText(hint, playing ? '' : picked ? picked.text : text.hint.text);
       hint.dataset.tone = picked ? 'warn' : text.hint.tone;
       hint.hidden = !hint.textContent;
+
+      // The ships as they stand, and the parts a Fire order armed aims at.
+      resting = restingPose(approach.outcome);
+      if (!playing) {
+        picture.setMarks('you', approach.you);
+        picture.setMarks('them', { ...approach.them, target: picked?.targets ?? null });
+      }
+      dirty = true;
+    }
+
+    // A round just given, after the one shown: played out from the ships
+    // as they stood, unless motion is reduced, when its sounds play at
+    // once. A patrol's or a trap's opening volley comes before the screen.
+    function played(was, approach) {
+      const last = approach.last;
+      if (!was || !last || last === was.last || last.order === null || was.node !== approach.node) return;
+      if (motionReduced(game.getState().settings ?? {})) {
+        roundSounds(last).forEach(cue);
+        return;
+      }
+      const geometry = Object.fromEntries(SIDES.map((side) => [side, shipGeometry({ ship: ships[side].ship, defs, hull: ships[side].hull, wrecked: was[side].wrecked })]));
+      const timeline = roundTimeline({ events: last.events, before: { you: was.you, them: was.them }, outcome: approach.outcome, geometry });
+      playing = { timeline, start: now(), heard: -1, lines: 0, round: was.round };
+      disarm();
+      squadOpen = false;
+    }
+
+    // A tap while a round plays: on to its end.
+    function skip() {
+      if (!playing) return false;
+      playing = null;
+      render(game.getState().campaign, true);
+      return true;
     }
 
     // The squad card up or down.
@@ -220,7 +273,7 @@ export const approachScreen = {
     // Board her or leave her: the first tap says what it means, the second
     // does it. With no choice (she is boarding), one tap begins the fight.
     function decide(key, act) {
-      if (!defs || !stakes) return;
+      if (!defs || !stakes || skip()) return;
       if (key === 'board' && !stakes.leave) {
         act();
         return;
@@ -239,18 +292,17 @@ export const approachScreen = {
       act();
     }
 
+    // A ship's name and numbers, and her picture when she changes.
     function showShip(side, words, ship) {
       const view = ships[side];
       setText(view.name, words.name);
       setText(view.stats, words.stats.map(([label, value]) => `${label} ${value}`).join(' · '));
-      const key = JSON.stringify(words.wrecked);
-      if (view.wrecked === key && view.ship === ship) return;
-      view.wrecked = key;
+      if (view.ship === ship) return;
       view.ship = ship;
-      view.map = mapFromShip(ship, defs, { wrecked: words.wrecked });
-      view.board.setMap({ map: view.map, skin: skinFor('yard') });
+      view.hull = traceHull(ship, defs);
+      view.box = boardBox(defs.frames.get(ship.frame) ?? { width: 1, height: 1 }, view.hull, NO_MIN);
+      picture.setShip(side, { ship, defs, hull: view.hull, skin: skinFor('yard') });
       fitSide(side);
-      dirty = true;
     }
 
     // The order buttons, made again each time: fire's four, then evade,
@@ -274,9 +326,9 @@ export const approachScreen = {
     }
 
     // The first tap shows what an order does; the second gives it. One that
-    // can't be given says why.
+    // can't be given says why. A tap while a round plays skips it.
     function tap(order) {
-      if (!defs) return;
+      if (!defs || skip()) return;
       if (!order.ok) {
         disarm();
         setText(hint, order.why);
@@ -306,20 +358,21 @@ export const approachScreen = {
     function layout() {
       if (!alive) return;
       for (const side of SIDES) fitSide(side);
-      dirty = true;
     }
 
-    // Fits a ship's map to its hole.
+    // Fits a ship's camera to her hole.
     function fitSide(side) {
       const view = ships[side];
       const r = view.hole.getBoundingClientRect();
-      if (!view.map || r.width < 48 || r.height < 48) {
-        view.camera = null;
+      if (!view.box || r.width < 48 || r.height < 48) {
+        picture.place(side, null, null, null);
         return;
       }
-      view.rect = { x: r.left, y: r.top, w: r.width, h: r.height };
-      const { fit } = battleBoxes(view.map);
-      view.camera = fitOrbit({ ...BATTLE_VIEW, yaw: YAWS[side], pivot: [(fit.x0 + fit.x1) / 2, (fit.y0 + fit.y1) / 2] }, view.rect, fit, MARGIN);
+      const rect = { x: r.left, y: r.top, w: r.width, h: r.height };
+      const { box } = view;
+      const cam = fitOrbit({ ...BOARD_VIEW, yaw: YAWS[side], pivot: [(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2] }, rect, box, MARGIN);
+      picture.place(side, cam, rect, box);
+      dirty = true;
     }
 
     return {
@@ -327,25 +380,26 @@ export const approachScreen = {
         layout();
       },
       draw(ctx, view) {
-        if (!dirty) return;
+        if (!dirty && !playing) return;
         dirty = false;
-        ctx.fillStyle = palette.space;
-        ctx.fillRect(0, 0, view.width, view.height);
-        let rough = false;
-        for (const side of SIDES) {
-          const { board, camera, rect } = ships[side];
-          if (!camera || !rect) continue;
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(rect.x, rect.y, rect.w, rect.h);
-          ctx.clip();
-          rough = board.draw(ctx, camera, rect) || rough;
-          ctx.restore();
+        let frame = resting;
+        if (playing) {
+          const t = now() - playing.start;
+          frame = frameAt(playing.timeline, t);
+          roundCues(playing.timeline, playing.heard, t).forEach(cue);
+          playing.heard = t;
+          picture.setMarks('you', frame.marks.you);
+          picture.setMarks('them', frame.marks.them);
+          if (frame.done) {
+            playing = null;
+            render(game.getState().campaign, true);
+            frame = resting;
+          } else if (frame.lines !== playing.lines) {
+            playing.lines = frame.lines;
+            render(game.getState().campaign, true);
+          }
         }
-        if (rough) {
-          clearTimeout(settleTimer);
-          settleTimer = setTimeout(() => (dirty = true), SETTLE_MS);
-        }
+        picture.draw(ctx, view, frame);
       },
       unmount() {
         alive = false;

@@ -35,6 +35,13 @@ export const palette = {
   frost: '#3d5f80',
   rubble: '#80746a',
   dust: '#3f3b3c',
+  // A breach in a hull seen from outside (M38b), dark as the space it lets
+  // in.
+  breach: '#04060c',
+  // Seen from outside (M38b): the heat round a burn on a hull, and the
+  // smoke over a wrecked part full of rubble.
+  burn: '#8a4526',
+  smoke: '#a39b93',
   // Units on a battle map: the crew in pale suits, each trimmed in a color
   // of their own (the same as on their button), and boarders in rust.
   crewSuit: '#c9d4e6',
@@ -72,6 +79,10 @@ export const palette = {
   cover: '#bff0ff',
   target: '#ff6b6b',
   tracer: '#fff1b8',
+  // An approach played out (M38b): the other ship's shots, and the shimmer
+  // of a shield taking one.
+  enemyTracer: '#ffb08a',
+  shield: '#7fd8ff',
   // The run's sector map: the chart under the nodes, and its grid; a
   // nebula's cloud (M24); a world past the charts (M25); a shipyard (M37b),
   // in the one hue the chart had free (orange is a jump's reach).

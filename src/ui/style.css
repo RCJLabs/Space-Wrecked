@@ -4142,6 +4142,8 @@ textarea {
   flex-direction: column;
   border: 1px solid transparent;
   border-radius: 12px;
+  /* A tap on either ship skips a round playing out. */
+  pointer-events: auto;
 }
 
 .apr-you {
@@ -4152,7 +4154,7 @@ textarea {
   grid-column: 2;
 }
 
-/* The boarded ship's map, once it is over: the map the boarding comes to. */
+/* The boarded ship, once it is over: the one the boarding comes to. */
 .apr-ship[data-boarded='true'] {
   border-color: var(--c-dash);
   box-shadow: 0 0 0 1px var(--c-dash) inset;

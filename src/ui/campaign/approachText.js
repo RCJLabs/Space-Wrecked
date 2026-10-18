@@ -29,8 +29,10 @@ const WRECK_WORDS = { fire: 'on fire', vacuum: 'open to vacuum', rubble: 'full o
 //                       { [uid]: wreck }, for the boards
 //   intent              the other ship's order: { text, short } (null once
 //                       it is over)
-//   orders              [{ key, order, label, small, ok, why, ask, text }]:
-//                       the four kinds to fire at, evade, flee and close
+//   orders              [{ key, order, label, small, ok, why, ask, text,
+//                       targets? }]: the four kinds to fire at, evade, flee
+//                       and close; a fire order's targets are the uids it
+//                       would hit, the first first (M38b)
 //   last                the last round, as lines, or []; before round 1,
 //                       a patrol's opening volley (M33), or a trap's (M36)
 //   lastHead            what last is: "Last round", or "They opened fire"
@@ -143,6 +145,9 @@ function ordersText(state, intent, theirName, rules) {
         why: choice.why,
         ask: `${capital(name)}?`,
         text: `Fire at their ${name}: your ${guns}, ${choice.chance}% each to hit, ${damageText(choice.damages)} damage a hit${shields}.${blow} Tap again to fire.`,
+        // The parts it would hit, the first first: marked on her hull as
+        // it is armed (M38b).
+        targets: choice.targets.map((target) => target.uid),
       });
     } else if (order.kind === 'evade') {
       const against = choice.chance === null ? 'Their guns are quiet this round.' : `Their guns hit ${choice.chance}% instead of ${choice.was}%.`;
