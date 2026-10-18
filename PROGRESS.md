@@ -2,6 +2,139 @@
 
 Newest entry first.
 
+## M37b Shipyards (2026-10-17)
+
+**Status:** done, and the ROADMAP.md box is ticked.
+- **A shipyard in every sector of the run,** beside its two stations, charted as they are.
+- **12 parts a yard,** from every maker, leaning to its side's, at 60% of the dealer's price. The stock is the same on every visit.
+- **Trade-ins:** the yard buys any part on hand at half its cost, never above its own price for that part.
+- **Refits** at a yard, as at a station. Saves are v33.
+
+**How it was picked:** Evan played the run and found about 2 parts. Measured over 100 voyages from each start:
+- **Finds:** a median of 1 to 2 parts a run, all at events; 0.1 to 0.2 salvaged from boardings; about 1 fitted.
+- **Money is the real limit:** the median part costs 120 credits, and a player at a station holds a median of 58 to 108.
+
+Evan's picks (2026-10-17): a yard in every sector; 12 parts, every maker; yard prices and trade-ins; no more finds elsewhere. ROADMAP.md has the Done when in full, and what was built where it differs.
+
+**What shipped:**
+- **The content:**
+  - `data/sectors.json`: the `shipyard` node kind, charted and safe, one a sector in a column of its own, with 12 names of its own. Empty space weighs 1 in a sector's mix (was 2; below).
+  - `data/factions.json`: the maker each side's yards lean to (`yard`, weight 3): Con-Reg's to the Yard's own, the Fleet's to Bastion, the Hallorans' to Kestrel, the union's to Scrapline. Nine of the twelve yards belong to a side; three are nobody's.
+  - `data/balance.json`: `yardSize` 12 and `yardPercent` 60.
+- **The rules** (`src/sim/yards.js`):
+  - **The stock:** 12 different parts, rolled from the campaign's seed, the sector and the node, not the campaign's RNG. It is the same on every visit, and a reload never rerolls it. A part of the side's maker weighs 3, every other part 1.
+  - **Prices:** 60% of the dealer's price, in fives, at the side's share (M33: 75% trusted to 150% hostile). Nobody's yard charges the plain price.
+  - **Trade-ins:** any part on hand, at the dealer's buy-back (half its cost), capped at the yard's own price for that part. At trusted the cap bites, so a part bought and sold straight back never makes money.
+  - **One bought is gone** from that yard for good.
+  - **Trading docks the ship,** with the docking heat at the pursuer's side's yards (M33's fix).
+  - **A refit at a yard,** as at a station, and a failing flight check keeps the ship there.
+  - A quest's step never lands on a yard. A day's rest at one is out of the hunters' reach.
+- **The screens:**
+  - **The chart:** the yard's mark, a crane over a hull on its slipway, in pink, with its side's pip.
+  - **The Here panel** at a yard says whose it is and its prices, and the heat of trading at the pursuer's side's. It says what the yard has left for sale and that it buys parts too. The ship's panel is Refit.
+  - **Yard,** in the foot, opens the shop screen on the yard: its parts, the parts on hand, and Map back. Buy and Sell take two taps. At the pursuer's side's yard the first tap says the heat.
+  - **A jump's plan** says what trading at the pursuer's side's yard adds, and that the hunters keep clear of yards.
+- **Saves:** `SAVE_VERSION` 33. A save from before reads with nothing bought at a yard. Its sector has none; the sectors after it do. The save checks know the parts bought (a seen yard's node and slot, once each) and a ship docked at a yard.
+- **The validator:** each side's `yard` (makers it knows, weights 1 to 100), the yards' names in `stations`, and `yardSize` and `yardPercent`.
+- **The test player** (`tools/voyagePlan.js` `yardBuy`): at a yard it buys the part its refit would fit first, beyond a holdful's price and a transponder swap's, then fits it. `tools/voyage.js` counts the parts bought and what they cost.
+
+**Calls I made, each easy to change:**
+- **Empty space weighs 1, not 2.** The yard's column took a mixed node, and events with it: 9.8 a careful voyage on seeds 101 to 300 against main's 10.8. At 1 they came back to 10.6.
+- **The yard's mark is pink.** I tried orange first, but the rings round what a jump reaches are orange, and so is the jump point.
+- **Regroup at a yard,** safe from the hunters: a yard has no Patch up, and it is safe as a station is. A nebula's day already rests the crew unseen, and sheds heat besides.
+- **The refit bar holds main's rate before M37b (59, was 69).** On seeds 1 to 100 the yards' new sectors left 50 runs with a refit, under the old bar of 54. Main's own rate had come down to 59 by M37 (63 before it). On seeds 101 to 300 the branch matched main: 122 of 199 against 119. It follows Evan's call on M37's two bars. **Evan's call:** keep this, or keep the old bar and have me find the runs another way.
+
+**Measured:**
+
+The voyage tests' rates over 100 voyages from each start, main today beside M37b. Every rate is within its margin of `MAIN`:
+
+| Rate, in 100 voyages | `MAIN` | Bar | Main today | M37b |
+| --- | --- | --- | --- | --- |
+| Miner refitting: fed all the way | 73 | 58 or more | 68 | 69 |
+| met the hunters in the sectors | 33 | 48 or fewer | 39 | 35 |
+| met the hunters at all | 42 | 57 or fewer | 57 | 57 |
+| lost a raid at the colony | 29 | 44 or fewer | 21 | 24 |
+| hungry in the system | 14 | 29 or fewer | 12 | 12 |
+| two worlds or more surveyed | 68 | 53 or more | 60 | 60 |
+| settled a surveyed world | 81 | 66 or more | 71 | 73 |
+| everyone housed at the colony | 41 | 26 or more | 35 | 33 |
+| short of air at the colony | 0 | 5 or fewer | 2 | 1 |
+| a refit on the way | 59 (was 69) | 44 or more | 59 | 50 |
+| Miner ignoring heat: met the hunters | 100 | 85 or more | 100 | 100 |
+| Miner, no refits: fed | 82 | 67 or more | 72 | 67 |
+| never scanned | 0 | 5 or fewer | 2 | 0 |
+| fed with a med bay | 79 | 64 or more | 75 | 69 |
+| fed with surgery | 81 | 66 or more | 73 | 70 |
+| signed a recruit (cargo hold) | 44 | 29 or more | 41 | 39 |
+| fed with a cargo hold | 81 | 66 or more | 74 | 83 |
+| fed with bunks | 75 | 60 or more | 68 | 78 |
+| fed with the large hold | 98 | 83 or more | 91 | 95 |
+| Deserter: fed | 80 | 65 or more | 82 | 74 |
+| met the hunters | 45 | 60 or fewer | 38 | 41 |
+| lost a raid | 20 | 35 or fewer | 17 | 12 |
+| Smuggler: fed | 89 | 74 or more | 89 | 89 |
+| met the hunters | 19 | 34 or fewer | 29 | 24 |
+| lost a raid | 18 | 33 or fewer | 9 | 11 |
+
+- **The bar that moved:** a refit on the way came to 50 on seeds 1 to 100, under its old bar (54). Main's own rate had come down to 59 by M37. On seeds 101 to 300 the branch matched main's: 122 of 199 against 119. Over the 300 seeds that is 57.5% against 59.5%.
+- **The careful player without refits** is on its bar: 67 against main's 72. On seeds 101 to 300 it crossed fed in 130 of 199 against main's 138. Over the 300 seeds that is 66% against 70%, about one standard error.
+
+Parts a run, 100 voyages from each start, the refitting player (`tools/voyage.js`, as the voyage tests fly it):
+
+| Start (100 voyages, refitting) | Parts fitted a run, main | M37b | Runs buying at a yard | Parts bought | Credits spent there |
+| --- | --- | --- | --- | --- | --- |
+| Miner | 0.81 | 0.87 | 9 | 16 | 751 (median 59 a buying run) |
+| Deserter | 1.14 | 1.54 | 37 | 99 | 6860 (median 98 a buying run) |
+| Smuggler | 0.64 | 1.07 | 17 | 38 | 2953 (median 90 a buying run) |
+
+- **The yards help the deserter and the smuggler most:** they carry more credits on the run (a median of 108 and 100 at a station's trade, against the miner's 58). The deserter fitted 35% more parts a run, the smuggler 67% more.
+- **The miner's refitting player reaches a yard in 87 of 100 voyages** (166 visits), but with a median of 30 credits on arriving. A quarter of the time it has 11 or less, and three quarters 59 or less. So it buys in only 9.
+- **Events a careful voyage:** 9.69 against main's 9.96 on seeds 1 to 100. On seeds 101 to 300, 10.64 against 10.75, where empty space at 2 left 9.78.
+- **`node tools/sim.js`** (run because `data/balance.json` gained `yardSize` and `yardPercent`; no number a fight uses changed): identical to main's but for the time taken.
+
+**Done when** (ROADMAP.md, M37b, in full there), and how each is met:
+- **A yard in every sector,** charted and safe, a column of its own, named from its list, a side or none: `tests/yards.test.js` (60 seeds × 5 sectors), and the golden sectors.
+- **Its stock, 12 parts, the same on every visit, one bought gone:** `tests/yards.test.js`.
+- **Leaning to its side's makers; nobody's even:** `tests/yards.test.js`, over 100 campaigns: the leaned maker's share is 40 to 50%, each other maker 13 to 22%; at nobody's every maker is 21 to 28%.
+- **Prices at 60% and the side's share; trade-ins capped:** `tests/yards.test.js`, every part at every level.
+- **A refit at a yard; docking heat:** `tests/yards.test.js`.
+- **On screen:** `tests/yardText.test.js`, and the touch check below.
+- **The test players buy at yards and refit there:** above, and the voyage's step check, which checks every part bought.
+- **`SAVE_VERSION` 33:** `tests/yards.test.js` (the migration and the save checks).
+- **Measured over 100 voyages from each start:** above.
+- **Every rule tested; the validator's checks:** `tests/yards.test.js`, `tests/yardText.test.js`, six new cases in `tests/data.test.js`.
+- **The golden sectors change, on purpose:** `tests/golden/sectors.txt` rewritten with `node tools/sectors.js --golden`. Every first sector has its yard, and the mix rolls differently. `tools/sectors.js` marks a yard `y`.
+- **Touch, at the three sizes:** `m37b/verify.mjs`, 36 checks at each, all passing:
+  - the yard on the chart from the way in: its pink ring and crane, its side's pip;
+  - at the yard: its kind, side and prices, the docking heat, what it sells, Refit, Yard in the foot, the hint whole;
+  - Yard: the shop screen as the yard, a part bought (the first tap says the heat) and the cargo hold sold, two taps each;
+  - a refit there: the part bought goes on in two taps, kept back on the map;
+  - offline after a reload; every button 48 px or more; no console errors.
+
+**Tests:**
+- `node --test`: 1003 tests pass (989 before). New: `tests/yards.test.js` (11) and `tests/yardText.test.js` (3), and six cases in `tests/data.test.js`'s validator test. `validate-data`: OK, 12 kinds of sector node.
+- `m37b/verify.mjs` at the three sizes, as above.
+- **Every earlier milestone's browser check,** at the three sizes unless named, each the latest adapted copy. Every one passes but M32b's first copy, whose 2 known failures (its orders' words since M36) its fix copy covers, as in M36 and M37. The copies adapted for M37b:
+  - **for saves at v33:** M35's, M34's, M31's, M30's, M29's, M28's and M27's;
+  - **for sectors with no empty space:** M24's. Its first sector had none, so the ship now sits on the first mixed node, made empty, as `tests/regroup.test.js` and `tests/huntText.test.js` now do.
+
+  Three checks lost their port to another run beside them (M23g's and M23c's at tab, M17's at cover) and passed when run again.
+
+**Known issues:**
+- **Money still limits the yards, the miner's most.** The miner's test player reaches a yard in 87 of 100 voyages, but holds a median of 30 credits there, so it buys in 9. The deserter's buys in 37 and the smuggler's in 17. A player who spends less on supplies will buy more. If the yards still feel thin, `yardPercent` is the lever, or the credits a run earns (M40).
+- **The careful player without refits** crossed fed in 197 of 299 voyages against main's 210 (66% against 70%), about one standard error. On seeds 1 to 100 it sits on its bar.
+- **The Here panel at a yard** runs four lines and scrolls at the tab size, as a busy station's does.
+
+**What Evan should test on the phone:**
+- On the chart, find the pink crane, one a sector. Tap it from afar: the plan names its side, and with the hunters out it says they keep clear of yards.
+- At the yard: tap **Yard**. Buy a part (two taps). As the miner at Con-Reg's yard, the first tap says the heat. Sell one you don't need. Then **Map**.
+- Tap the ship's panel (**Ship · Refit**) and fit what you bought.
+- Visit the yard again later in the sector: the same parts, less what you bought.
+- A save from before this update, mid-sector: that sector has no yard, and the next one does.
+- **The money:** whether 60% feels cheap enough on a real run.
+
+**Next session's first task:** M38 Missions and jobs: study the mission types and jobs, measure, ask Evan, settle its Done when.
+
 ## M37 Weapons and enemies (2026-10-17)
 
 **Status:** done, and the ROADMAP.md box is ticked.
