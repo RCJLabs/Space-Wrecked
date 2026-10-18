@@ -757,6 +757,8 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
   let out = null;
   if (act) {
     const since = (flag) => (campaign.flags[flag] ?? 0) - (away.before.flags[flag] ?? 0);
+    // The flight home's heat too.
+    tally.peak = Math.max(tally.peak, campaign.heat);
     tally.heat[1] = campaign.heat;
     tally.hp[1] ??= hpOf(campaign);
     tally.healed = since('hpHealed');
