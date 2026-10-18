@@ -191,7 +191,12 @@ The voyage tests' rates over 100 voyages from each start, main today beside M38.
 - `tests/contracts.test.js` plays 150 jobs (was 60), so every kind of mission gets done at least once, within 60 rounds as the tools allow (was 30). Lights out, the sight twist, can take 40.
 - `tests/run.test.js` no longer pins a thread's tries to one; it reads "in n (least to most) tries".
 - `m38/verify.mjs` at the three sizes, as above.
-- **Every earlier milestone's browser check:** pending, filled in when the runs finish.
+- **Every earlier milestone's browser check,** at the three sizes unless named, each the latest adapted copy. Every one passes but M32b's first copy, whose 2 known failures (its orders' words since M36) its fix copy covers, as in M36 to M37b. The copies adapted for M38:
+  - **for saves at v34:** M35's, M34's, M31's, M30's, M29's, M28's and M27's;
+  - **for jobs that can be the new missions:** M18's, M16's and M15's, which tap Free and Plant too, and M14's, which plays a job of each of its own three kinds.
+
+  M34's at cover lost its port to the run beside it, and passed when run again. M24's latest copy is M37b's (`m24/verify37b.mjs`); the chain still named an older one, which stops where its first sector has no empty space.
+- **Found by the regressions, and fixed:** M18's check at the tab size reloaded mid-fight on a job that brings someone out, and the save wouldn't load: "The campaign's fight doesn't match its crew." The save's checks (`src/sim/campaign.js`) counted every unit on the crew's side against the crew the fight names, the client or the captive among them. They count the crew alone now. The new test in `tests/missions.test.js` fails on the code before the fix, and so does M38's touch check, which now reloads mid-rescue. M18's check passes at the three sizes since.
 
 **Known issues:**
 - **The still wins 57%, but only 10% by its objective,** with its two targets; most of its wins come with every enemy down. **Closing time** wins 85%, but only 27% by holding all 8 rounds. Both are in §9 for M40.
