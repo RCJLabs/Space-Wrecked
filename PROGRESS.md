@@ -2,6 +2,117 @@
 
 Newest entry first.
 
+## M38b Space fights from outside (2026-10-18)
+
+**Status:** done, and the ROADMAP.md box is ticked. The approach screen shows both ships whole from outside, as the hangar shows a ship, instead of as their boarding maps. Her hull shows what the approach has done to her. A Fire order marks its targets on her hull, and a round given plays out: shots, hits, shields, wrecks, flights and boardings. The inside is for a boarding's fight. Saves stay at v34.
+
+**How it was picked:** Evan asked (2026-10-18) to see the ships whole from outside when fighting in space, with the inside kept for a boarding. With it he asked for station jobs and for act 3 to keep the travel, with more colonies and their citizens. His picks:
+- the order: this first, then station jobs (M38c), then act 3's travel and colonies (M38d to M38f);
+- act 3: the run goes on past the first colony;
+- citizens: grown, the rescued, and crew left behind;
+- a colony: it runs itself while the ship is away.
+
+ROADMAP.md has the Done when in full, and what was built where it differs. M38c to M38f are drafts there, each to be settled with Evan when its session starts.
+
+**What shipped:**
+- **The two ships** (`src/render/approachView.js`, new): each drawn by `src/render/exterior.js` as the hangar draws a ship, with its paint, trim, styling and makers' fittings and its nozzles lit.
+  - The player's ship is on the left, nose right; the other is seen from the far side, so the two face each other. Deep space is behind them.
+  - Deep space is painted once a size. Each ship's layer covers only her and a cell round her; her hull is painted once, and her marks are drawn over a copy of it when they change. So a frame copies three pictures and draws the shots over them, and a hit paints only her marks.
+- **The marks on a hull** (`src/render/hullMarks.js`, new, pure). They are painted over the finished hull in their own pass (`paintOver`, new in `src/render/painter.js`), so no fitting hides them.
+  - A part hit but not wrecked shows black burns ringed with heat.
+  - A wrecked part is charred all over, with its hazard on top: flames for fire; a hole as dark as space in torn plating, venting, for vacuum; broken plating under smoke for rubble.
+  - Where each burn or shard lies comes from a roll seeded by the part, the same every time.
+  - A Fire order's first tap brackets each part it aims at in the target's red over a dark edge, so it shows on any paint. The first it would hit has the thicker brackets and the stronger tint.
+- **A round played out** (`src/render/approachPlayback.js`, new, pure). The round's events (`approach.last`) become beats in time; `frameAt` says what shows at any moment of them.
+  - Each gun's shot flies from its own barrel, in the order the guns fire. A barrel now carries its gun's uid (`src/render/hull.js`).
+  - A hit flies to the part it struck, and a miss goes wide, above or below in turn. A shot her shields stop flies to her nose and shimmers round her.
+  - Each landed shot adds its damage to her hull. A part wrecked bursts into its hazard, and a last reactor that blows bursts the ship.
+  - A flight that gets away takes the other ship off the screen, so the player's stays in view. A failed flight or closing lurches.
+  - A boarding closes the gap between the two noses to 26 px and grapples them, nose to nose. A ship boarded while disabled, with no closing in the round, is closed on last.
+- **The screen** (`src/ui/campaign/approach.js`):
+  - While a round plays, the head reads "Round n" and the column's lines come one by one as each event ends. How it ended, Carry on, and Board her or Leave her wait for the end.
+  - A tap on either ship or on an order skips to the end.
+  - With reduced motion, the round shows its end at once.
+  - The screen draws only while a round plays or something changes.
+  - The ships' halves take taps now (`.apr-ship`): the UI layer lets touches through to the canvas, so before the fix a tap on a ship reached nothing.
+- **Sounds:** each shot sounds as it fires and each hit as it lands, a miss for the crew's; a flight that gets away jumps, and a ship blowing up blasts (`roundCues`). They moved from `gameSounds` to the screen. With reduced motion, `roundSounds` (`src/ui/sounds.js`) plays them all at once, as M35 did.
+- **Palette:** `breach`, `burn`, `smoke`, `shield` and `enemyTracer`.
+
+**Done when** (ROADMAP.md, M38b, in full there), and how each is met:
+- **Both ships from outside, the inside only in a boarding's fight:** by touch, below.
+- **Damage on the hull, and a repaired part clean:** `tests/approachScene.test.js`: each mark on its part's own roof, the same every time, and an untouched part showing nothing. By touch, a burn and each hazard change her picture where the part is and nowhere else.
+- **The target:** `tests/approachScene.test.js`, and by touch: Engines brackets her three engines, Guns her two guns instead.
+- **A round played out:** `tests/approachScene.test.js`:
+  - the beats from real rounds, each shot from its gun to the part it struck or wide;
+  - the marks landing with their shots, and ending as the approach saved them;
+  - the lines as each event ends;
+  - the shimmer, the burst, the flight, the closing and grapple, the blow-up, and where the ships rest after;
+  - the sounds, each once however the frames fall.
+
+  By touch: shots between the ships, the lines one by one, the round's sounds in order, a skip, and reduced motion.
+- **A boarding:** by touch: the two close, the grapple, her half marked, and Board her begins the fight inside her. Leave her and Fight them off: M22's check, below.
+- **Frames:** under Measured.
+- **Every rule tested:** `tests/approachScene.test.js` (7 tests) and `tests/hull.test.js` (each barrel's gun).
+- **Touch, at the three sizes:** `m38b/verify.mjs`, 31 checks at each, all passing:
+  - the chart's jump to the cutter, both ships drawn across their halves (the start ship in slate on the left, the cutter in rust on the right), no fight board;
+  - Fire marks: a first tap on Engines changes her picture among her engines only, Guns among her guns; nothing given; left alone, it stands down and the marks go;
+  - a round played: the order saved at once; "Round 1" while it plays; no outcome yet; the lines one by one; shot-colored light between the ships; then "Round 2 of 3" with every line; its sounds as the round's cues say, in order;
+  - a round skipped by a tap on her: ended at once, every line shown, no more of its sounds;
+  - reduced motion: the end at once, its sounds all at once;
+  - her engine wrecked by fire, vacuum and rubble, and hit but not wrecked: each changes her picture within about a cell of the engine;
+  - a boarding: the round played, the space between their noses closed to about 29 px, the grapple drawn, her half marked, Board her (two taps) into the fight;
+  - every button 48 px or more and reachable, saves at v34, offline after a reload, and no console errors.
+
+**Measured** (scratchpad `m38b/budget.mjs` and `m38b/fps.mjs`, headless Chromium on this machine, 2.625 device pixels to the CSS pixel):
+- **What a frame of the picture costs,** each finished with a one-pixel read so the time is the drawing's (as M34 measured). In ms, means first, 95th percentile in brackets:
+
+  | Size | At rest | A shot in flight | A hit landing (her marks drawn again) |
+  | --- | --- | --- | --- |
+  | 905 × 370 | 3.8 (4.5) | 3.7 (4.8) | 6.0 (7.9) |
+  | 821 × 283 | 2.0 (3.0) | 1.9 (2.1) | 3.2 (5.4) |
+  | 960 × 825 | 5.4 (7.0) | 4.9 (6.5) | 6.8 (9.0) |
+
+  The first build drew deep space every frame and laid each ship over her whole half, painting her whole hull again on every hit. It cost 11 to 12 ms a frame at 905 × 370 and about 25 at 960 × 825, and a hit landing 17 and 36 (measured with the regression chain running beside it). Deep space alone was 7 and 16.
+- **The frame rate while rounds play,** read off the `?dev=1` overlay every half second as M23d measured, five passes of three rounds:
+  - 905 × 370: 60 fps in every window (37 of them), the longest gap 17 ms.
+  - 960 × 825: 60 fps in the middle window and 56 in the lowest (34 windows), the longest gap 50 ms. Over 15 rounds, 2 frames while a round played took 36 and 42 ms; every other was under 25 ms.
+  - At rest the screen draws nothing: 0.01 ms a frame.
+
+**Tests:**
+- `node --test`: 1040 tests pass (1033 before). New: `tests/approachScene.test.js` (7). `tests/hull.test.js` checks each barrel carries its gun's uid. `tests/sound.test.js` checks a round's sounds through `roundSounds`, and that the store's sounds no longer play them.
+- `m38b/verify.mjs` at the three sizes, as above; again on the final drawing code, all 31 passing at each.
+- **Every earlier milestone's browser check** passes at the three sizes unless named, each the latest adapted copy (`m38b/regress-a.sh` and `regress-b.sh`; `rest-a.sh` and `rest-b.sh` ran what was left after the background time limit stopped the first runs). The one exception is M32b's first copy, whose 2 known failures since M36 its fix copy covers, as in M36 to M38.
+  - **Adapted for M38b:** M21's and M24's. They read the column's lines, or waited for Carry on, straight after an order; their taps now wait for a round playing out to end (`m38b/played.mjs`).
+  - **M31's at the open size** lost its port to the run beside it, and passed run again.
+  - M21's, M22's, M23's and M24's ran before the frame-cost change and passed again after it, at the cover size.
+
+**Found while verifying, and fixed:**
+- **A tap on a ship reached nothing,** so it couldn't skip a round: the UI layer lets touches through to the canvas but for its controls. The ships' halves take taps now. Found by the touch check.
+- **The first marks were too faint on the phone's scale:** they lay on the roof under each part's fittings, and the targets were red on the cutter's rust. The marks are painted over the hull now, and the targets bracketed over a dark edge.
+- **The first boarding pose ran the noses into each other:** each ship came in a fifth of its half. They now close the gap between their drawn noses to 26 px at any size.
+- **The first build's frames were over the budget,** as under Measured.
+
+**Known issues:**
+- **The frame rates are headless Chromium's,** on this machine's CPU. No phone has measured a played round yet.
+- **A patrol's or a trap's opening volley isn't played out:** it lands before the screen opens and shows as scars on the hull and its lines in the column.
+- **A flight that gets away moves the other ship, whoever fled.** When the player runs, it is the cutter that leaves the screen.
+- **A ship that blows up** is a flash and a ring, and she is gone a third of the way through; there are no pieces.
+- **The shimmer is an ellipse round her frame's box,** a little wider than her hull.
+- **On a slate hull the burns read as rust-brown patches** more than black scorch. The heat ring is what shows on a dark hull.
+- **A skip drops the rest of the round's sounds.**
+
+**What Evan should test on the phone:**
+- Meet a ship from the chart: both ships whole, facing each other, each in its own paint.
+- Tap Fire at Engines once: her engines bracketed in red, the first brightest. Tap Guns: her guns instead.
+- Give the order: the shots leave your gun, the lines come as they land, a hit flashes. Watch a wrecked part burn, vent or smoke.
+- Tap a ship while a round plays: it skips to the end.
+- Settings, Motion reduced: a round ends at once.
+- The round's sounds with the shots, on the phone's speaker.
+- A boarding: the two close and grapple, her half outlined. Board her goes inside.
+- The frame rate while a round plays (`?dev=1`), folded and open, and a fold or unfold mid-round.
+
+**Next session's first task:** M38c Station jobs: study where jobs could come from at a station, measure, ask Evan, settle its Done when.
+
 ## M38 Missions and jobs (2026-10-18)
 
 **Status:** done, and the ROADMAP.md box is ticked.
