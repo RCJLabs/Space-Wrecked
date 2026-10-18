@@ -8,7 +8,10 @@
 //   - both go by how far the colony lies from the lanes: off them as they
 //     are, near them lanesNear percent and far from them lanesFar percent;
 //   - found, its lander comes down raidWarning days later. That day the
-//     raid is down: Next day and the trips wait until it is faced.
+//     raid is down: Next day and the trips wait until it is faced. Found
+//     while the ship is away on a voyage (M38d's fix), it comes down no
+//     sooner than the ship could be home if it turned back at once: the
+//     flight home's days (voyage.js), when they are more.
 // Facing it (faceRaid):
 //   - the colony's powered defenses fire at the lander as it comes down,
 //     each building its data/colony.json shots at landingHit percent (and
@@ -115,7 +118,7 @@ export function raidDayEnd(before, campaign, rules) {
     roll = rolled.value;
     rng = rolled.state;
     if (roll < odds) {
-      found = { found: before.colony.day, lands: campaign.colony.day + rules.balance.raidWarning };
+      found = { found: before.colony.day, lands: campaign.colony.day + Math.max(rules.balance.raidWarning, flightHome(campaign)) };
       raid = found;
     }
   }
@@ -123,6 +126,14 @@ export function raidDayEnd(before, campaign, rules) {
   const heat = voyage ? campaign.heat : withHeat(campaign.heat, -rules.balance.colonyHeatFall);
   const flags = tally(campaign.flags, { raidsFound: found ? 1 : 0, ...(found && voyage ? { raidsFoundAway: 1 } : {}) });
   return { campaign: { ...campaign, rng, heat, flags, colony: { ...campaign.colony, raid } }, odds, roll, found };
+}
+
+// The days a flight home from the voyage would take from here: what a
+// stopped flight has left, else a day for each system out (voyage.js); 0
+// with the ship home.
+export function flightHome(campaign) {
+  const voyage = campaign.colony?.voyage;
+  return voyage ? voyage.homing ?? voyage.out : 0;
 }
 
 // Who is home to fight: the crew but the squad away on a trip, or while the

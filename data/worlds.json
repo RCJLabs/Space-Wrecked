@@ -5,7 +5,8 @@
   },
   "voyage": {
     "worlds": 2,
-    "text": "A star past the colony's that nobody has charted: stations, a yard, and worlds to survey on the way through."
+    "text": "A star past the colony's that nobody has charted: stations, a yard, and worlds to survey on the way through.",
+    "exit": "The way on to the next star nobody has charted. Jump from here and this one is behind you."
   },
   "lanes": [
     "Near the shipping lanes: easy to reach, and easy to find.",

@@ -17,7 +17,9 @@
 //     points, never the last, and nobody rests; the infirmary and the med
 //     bay still heal;
 //   - food and materials are each kept up to the colony's stores (colony.js
-//     storesOf): what is past them is lost;
+//     storesOf): what is past them is lost. While the ship is away on a
+//     voyage (M38d's fix), materials past the storehouses' room keep where
+//     they lie, though the mines add to them only up to it;
 //   - the day count rises;
 //   - from M29, with no raid coming, the pursuer may find the colony, at
 //     the day's odds, and heat falls (raids.js raidDayEnd).
@@ -65,7 +67,8 @@ export function dayPlan(campaign, rules) {
 // the stores can't keep), stores (what they keep of each), found (the
 // odds, percent, of the pursuer finding the colony at the day's end, M29)
 // }, or { ok: false, error }. While the ship is away on a voyage (M38d) it
-// is the day of those at home, on the colony's food.
+// is the day of those at home, on the colony's food, and the materials
+// past the stores keep (see the top of the file).
 export function planDay(campaign, rules) {
   if (campaign.colony.voyage?.home) return planDay(homeFront(campaign), rules);
   const { day, materials, trip } = campaign.colony;
@@ -87,6 +90,7 @@ export function planDay(campaign, rules) {
   const heals = Object.fromEntries(campaign.crew.map((member) => [member.id, away.has(member.id) ? aboard : rough.has(member.id) ? infirmary : rest + infirmary]));
   const food = Math.max(0, harvest - eats);
   const dug = materials + made.materials;
+  const keeps = campaign.colony.voyage ? Math.max(stores, materials) : stores;
   return {
     ok: true,
     day,
@@ -97,8 +101,8 @@ export function planDay(campaign, rules) {
     hunger: fed ? 0 : hungerHp,
     rough: stats.rough,
     food: [campaign.supplies, Math.min(food, stores)],
-    materials: [materials, Math.min(dug, stores)],
-    lost: { food: Math.max(0, food - stores), materials: Math.max(0, dug - stores) },
+    materials: [materials, Math.min(dug, keeps)],
+    lost: { food: Math.max(0, food - stores), materials: Math.max(0, dug - keeps) },
     stores,
     found: foundOdds(campaign, rules),
   };

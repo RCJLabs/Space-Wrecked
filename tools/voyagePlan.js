@@ -158,7 +158,11 @@
 // leaving one at home (voyageCrew), and plays them as act 2's sectors. It
 // flies home at the jump point of the last system it means to cross, or
 // sooner, once the holds come down to the way home's supplies and
-// HOME_JUMPS jumps' more (homeNow).
+// HOME_JUMPS jumps' more (homeNow). From M38d's fix it stocks the holds
+// before it flies: farms that grow STOCK_SHARE times what the crew eats
+// (nextBuild), and days at home until the food fills the holds, at most
+// STOCK_DAYS; and it flies home when the pursuer finds the colony while
+// it is away, as long as the flight home lands before their lander.
 import { canRefit, maxHp, refitShip, shipChecklist } from '../src/sim/campaign.js';
 import { buildingOf, colonyStats, givesOf, shipParts, storesOf, yieldOf } from '../src/sim/colony.js';
 import { build, buildPlan, takeDown } from '../src/sim/colonyBuild.js';
@@ -172,6 +176,7 @@ import { LANES } from '../src/sim/gen/system.js';
 import { jobHeat, withHeat } from '../src/sim/heat.js';
 import { huntOdds } from '../src/sim/hunt.js';
 import { openStep } from '../src/sim/quests.js';
+import { raidIn } from '../src/sim/raids.js';
 import { recruitOffer } from '../src/sim/recruits.js';
 import { repairPrice, wrecksToRepair } from '../src/sim/repair.js';
 import { regroupPlan } from '../src/sim/regroup.js';
@@ -793,15 +798,16 @@ export function nextGift(campaign, rules) {
 
 // What the player builds at the colony next, before the day passes (see
 // the top of the file): { build: id }, a farm or a mine in the first spot
-// that fits, or null to let the day pass.
-export function nextBuild(campaign, rules) {
+// that fits, or null to let the day pass. share: the farms grow that many
+// times what the crew eats (STOCK_SHARE stocking for a voyage).
+export function nextBuild(campaign, rules, share = 1) {
   const builds = [...rules.colony.builds.values()];
   const farm = builds.find((build) => build.makes === 'food');
   const mine = builds.find((build) => build.makes === 'materials');
   if (!farm) return null;
   const { world, materials, buildings } = campaign.colony;
   const count = (build) => buildings.filter((building) => building.type === build.id).length;
-  const needed = Math.ceil(jumpSupplies(campaign, rules) / yieldOf(farm, world)) - count(farm);
+  const needed = Math.ceil((share * jumpSupplies(campaign, rules)) / yieldOf(farm, world)) - count(farm);
   if (needed <= 0) return null;
   const can = (build) => buildPlan(campaign, rules, { build: build.id }).ok;
   const short = needed * farm.cost - materials;
@@ -960,6 +966,18 @@ export function raidPrep(campaign, rules) {
 // M38d: the jumps' supplies the holds keep beyond the way home's on a
 // voyage; once they come down to that, the player flies home.
 export const HOME_JUMPS = 2;
+// M38d's fix: stocking the holds before a voyage, the farms grow
+// STOCK_SHARE times what the crew eats, and the player waits at home for
+// the food to fill the holds at most STOCK_DAYS days.
+export const STOCK_SHARE = 2;
+export const STOCK_DAYS = 20;
+
+// The food the player stocks before a voyage: as much as the holds take
+// with the whole crew aboard, or as the colony's stores keep with the ship
+// home, whichever is less.
+export function stockFor(campaign, rules) {
+  return Math.min(supplyCapacity(campaign.ship, rules, campaign.crew), storesOf(campaign, rules).total);
+}
 
 // Who flies out on a voyage from the colony (M38d): the healthiest, the
 // share of their most hit points they have, the crew's order breaking ties;
@@ -978,14 +996,18 @@ export function voyageCrew(campaign, rules) {
 }
 
 // Whether the player flies home from its voyage now (M38d): flying on once
-// a lander stopped the flight; at the jump point of the `systems`th system
-// out; or once the holds come down to the way home's supplies and
-// HOME_JUMPS jumps' more. Never while something holds the ship.
+// a lander stopped the flight; with the pursuer's lander coming down at
+// the colony no sooner than the flight home lands (M38d's fix); at the jump
+// point of the `systems`th system out; or once the holds come down to the
+// way home's supplies and HOME_JUMPS jumps' more. Never while something
+// holds the ship.
 export function homeNow(campaign, rules, systems) {
   const voyage = campaign.colony?.voyage;
   const plan = voyage ? voyageHomePlan(campaign, rules) : null;
   if (!plan?.ok) return false;
   if (voyage.homing) return true;
+  const coming = raidIn(campaign);
+  if (coming !== null && plan.days <= coming) return true;
   const { run } = campaign;
   if (voyage.out >= systems && run.at === run.sector.exit) return true;
   return campaign.supplies <= plan.eats + HOME_JUMPS * jumpSupplies(campaign, rules);

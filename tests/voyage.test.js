@@ -77,7 +77,7 @@ import { feeOf } from '../src/sim/recruits.js';
 import { costAt } from '../src/sim/standing.js';
 import { voyagePlan } from '../src/sim/voyage.js';
 import { COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, outSummary, playColony, playTrips, TRIP_DAYS, voyage, VOYAGE_SYSTEMS, voyagesByBackground } from '../tools/voyage.js';
-import { bestWorld, FIT_ORDER, FIT_SHARE, HOME_JUMPS, nextGift, systemMove } from '../tools/voyagePlan.js';
+import { bestWorld, FIT_ORDER, FIT_SHARE, HOME_JUMPS, nextGift, STOCK_DAYS, systemMove } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 
 const { balance } = rules;
@@ -992,18 +992,26 @@ test("the careful player takes the quests' steps: the thread's job before the la
 // M38d's: the voyage out from the colony once its 60 days are played, over
 // RATE_RUNS of the refitting player's runs (see the top of the file). Over
 // those 100 it flew out in all and came home in all, crossing 3 systems
-// (0 to 3), 2 aboard (2 to 5) and 1 at home; those at home went hungry in
-// none, and those aboard on 1 jump in 1 run. The rates hold within MARGIN
-// of those (VOYAGE_OUT, Evan's call to make on them in M38d's PR).
-const VOYAGE_OUT = { home: 100, crossed: 87, fed: 100, fedAboard: 99 };
-test("after the colony's 60 days the careful player flies out with the healthiest who fit aboard, one left home, plays the systems past the colony's as act 2's sectors, a day passing at home each jump, and flies home at the last system's jump point or once the holds come down to the way home's supplies and a buffer (M38d)", () => {
+// (0 to 3), 2 aboard (2 to 5) and 1 at home; nobody went hungry, at home or
+// aboard. The rates hold within MARGIN of those (VOYAGE_OUT). M38d's fix
+// moved them on purpose: the player stocks the holds before it flies and
+// flies home when a raid is coming, so 96 crossed a system where 87 had,
+// and those aboard went hungry in none where they had in 1.
+const VOYAGE_OUT = { home: 100, crossed: 96, fed: 100, fedAboard: 100 };
+test("after the colony's 60 days the careful player stocks the holds and flies out with the healthiest who fit aboard, one left home, plays the systems past the colony's as act 2's sectors, a day passing at home each jump, and flies home at the last system's jump point, once the holds come down to the way home's supplies and a buffer, or when a raid is coming (M38d and its fix)", () => {
   const share = (member) => member.hp / maxHp(member, rules);
   for (const [i, r] of refittingAll.entries()) {
     const seed = i + 1;
     const { out } = r;
     assert.ok(out?.flown, `seed ${seed}: flies out`);
     const { before, crew, home, tally } = out;
-    assert.equal(before.colony.day, r.travelled.colony.day + out.waited, `seed ${seed}: once the colony's days are played, and any raid coming faced`);
+    assert.equal(before.colony.day, r.travelled.colony.day + out.waited + out.stocked, `seed ${seed}: once the colony's days are played, any raid coming faced and the holds stocked`);
+    // Stocked (M38d's fix): the food fills the holds, or the days to wait
+    // for it ran out, or the farms can grow no more than the crew eats with
+    // no mine digging toward another.
+    const { made } = colonyStats(before, rules);
+    const stuck = made.food <= before.crew.length * balance.jumpSupplies && made.materials === 0;
+    assert.ok(out.full || out.stocked === STOCK_DAYS || stuck, `seed ${seed}: flew out with ${before.supplies} food after ${out.stocked} days stocking`);
     // Who goes: one or more aboard, the healthiest; one left home with two
     // or more, and more only where the ship could fly no more.
     assert.deepEqual([...crew, ...home].sort((a, b) => a - b), before.crew.map((member) => member.id).sort((a, b) => a - b));
@@ -1023,18 +1031,23 @@ test("after the colony's 60 days the careful player flies out with the healthies
     // ones too), each day hidden or rested, and each day of the flight home.
     assert.ok(out.back, `seed ${seed}: comes home`);
     assert.equal(out.colony.days, tally.jumps + tally.regroups + tally.hides + out.back.days, `seed ${seed}: the colony's days away`);
-    // Home at the last system's jump point, or once the holds came down to
-    // the way home's supplies and the buffer.
+    // Home at the last system's jump point, once the holds came down to the
+    // way home's supplies and the buffer, or with a raid coming that the
+    // flight home lands before (M38d's fix).
     const step = out.steps.find((s) => s.kind === 'home');
-    assert.ok((step.atExit && step.out === VOYAGE_SYSTEMS) || step.supplies[0] <= step.eats + HOME_JUMPS * step.each, `seed ${seed}: home with ${step.supplies[0]} supplies, ${step.out} systems out`);
+    assert.ok((step.atExit && step.out === VOYAGE_SYSTEMS) || step.supplies[0] <= step.eats + HOME_JUMPS * step.each || (step.coming !== null && step.flight <= step.coming), `seed ${seed}: home with ${step.supplies[0]} supplies, ${step.out} systems out`);
+    assert.equal(out.back.called, step.coming !== null);
     // Landed: the ship home and the crew one again in its order, with whoever
     // signed on aboard.
     assert.equal(out.campaign.colony.voyage, null);
-    const ids = out.campaign.crew.map((member) => member.id);
+    const ids = out.back.landed;
     assert.deepEqual(ids, [...ids].sort((a, b) => a - b));
     assert.equal(ids.length, before.crew.length + tally.hired + tally.companions.joined.length, `seed ${seed}: the crew landed`);
-    // Raids while away are faced by those at home.
-    for (const raid of out.raids.faced.filter((raid) => raid.away)) assert.ok(raid.home <= home.length, `seed ${seed}: ${raid.home} defending`);
+    // A raid found while the ship is away comes down no sooner than the
+    // flight home lands (M38d's fix), and the player flies home for it: each
+    // is met at home with everyone, none by those left there alone.
+    assert.deepEqual(out.raids.faced.filter((raid) => raid.away), [], `seed ${seed}: a raid faced while away`);
+    for (const raid of out.raids.faced.slice(out.prior)) assert.ok(raid.home > home.length, `seed ${seed}: ${raid.home} defending`);
   }
   // As act 2's sectors: stations, jobs, yards, refits, events and hostile
   // ships among them.
@@ -1047,6 +1060,7 @@ test("after the colony's 60 days the careful player flies out with the healthies
   assert.deepEqual(flown.tally, stayed.tally);
   assert.deepEqual(flown.steps, stayed.steps);
   assert.equal(stayed.out, null);
-  assert.match(outSummary(refittingAll), /^The voyage out \(M38d\): flown in 100 of 100, home in \d+; .+ systems crossed \d+ \(\d+ to \d+\), all 3 in \d+; days away .+ At home: found in \d+ runs; raids faced while away \d+, lost \d+ .+ fed all the while in \d+ of 100\. Flying out, food spoiled in \d+ runs \(\d+ in all\), materials lost in \d+ \(\d+ in all\)\.$/);
-  assert.match(flown.lines.at(-1), /^The voyage out: [0-3] of 3 systems crossed, home after \d+ days away; /);
+  assert.ok(runs((out) => out.back.called) > 0, 'a raid calls the ship home on some voyage out');
+  assert.match(outSummary(refittingAll), /^The voyage out \(M38d\): flown in 100 of 100, home in \d+; .+ systems crossed \d+ \(\d+ to \d+\), all 3 in \d+; days away .+ At home: found in \d+ runs, calling the ship home in \d+; raids faced while away \d+, lost \d+ .+ met at home once back \d+, won \d+; fed all the while in \d+ of 100; the mines' digging past the storehouses lost in \d+ runs \(\d+ in all\)\. Before flying out, \d+ \(\d+ to \d+\) days stocking the holds, full in \d+ runs; flying out, food spoiled in \d+ runs \(\d+ in all\)\.$/);
+  assert.match(flown.lines.at(-1), /^The voyage out: [0-3] of 3 systems crossed, home after \d+ days away(, called home by a raid)?; /);
 });
