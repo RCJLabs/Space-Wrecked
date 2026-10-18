@@ -18,9 +18,9 @@ const OTHER = { you: 'them', them: 'you' };
 // a flight that gets away and a closing that grapples on, a try that fails,
 // and a reactor going.
 export const MS = { pause: 160, gap: 200, travel: 340, land: 300, flight: 950, close: 700, lurch: 450, blow: 1000, holds: 450 };
-// How far each ship comes in to board, and how far one that gets away
-// flies off, in widths of its own part of the screen; a failed try lurches.
-export const CLOSE = 0.2;
+// How far a ship that gets away flies off, in widths of its own part of
+// the screen, and how far a failed try lurches. Ships closing to board come
+// together as far as approachView.js finds room for.
 export const AWAY = 1.4;
 const LURCH = 0.05;
 // A gun's muzzle, out along its barrels from the cell's middle (exterior.js
@@ -104,13 +104,14 @@ export function roundTimeline({ events, before, outcome = null, geometry }) {
 }
 
 // What the screen shows t ms into the round: { done, shots, flashes,
-// shimmers, moves, gone, marks, lines, grapple }.
+// shimmers, moves, close, gone, marks, lines, grapple }.
 //   shots     in flight: [{ side (who fired), target, from, to, progress }]
 //   flashes   [{ side (whose ship), at, kind: 'hit' | 'burst' | 'blowup',
 //             progress }]: a hit, a part wrecked, a ship blowing apart
 //   shimmers  [{ side, progress }]: a shield taking a shot
 //   moves     { you, them }: how far each ship is off its place, in widths
 //             of its part of the screen (to the right is more)
+//   close     how far the two have come together to board, 0 to 1
 //   gone      { you, them }: true for a ship flown off or blown apart
 //   marks     each side's { damage, wrecked } with the shots landed so far
 //   lines     how many of the round's lines have played (approachText.js)
@@ -123,6 +124,7 @@ export function frameAt(timeline, t) {
     flashes: [],
     shimmers: [],
     moves: { you: 0, them: 0 },
+    close: 0,
     gone: { you: false, them: false },
     marks: { you: copyMarks(before.you), them: copyMarks(before.them) },
     lines: timeline.ends.filter((end) => end <= t).length,
@@ -160,8 +162,7 @@ export function frameAt(timeline, t) {
       }
     } else if (beat.kind === 'close') {
       if (beat.ok) {
-        frame.moves.you = CLOSE * ease(p);
-        frame.moves.them = -CLOSE * ease(p);
+        frame.close = ease(p);
       } else {
         frame.moves[beat.side] += (beat.side === 'you' ? LURCH : -LURCH) * lurch(p);
       }
@@ -200,11 +201,11 @@ export function roundCues(timeline, from, to) {
 }
 
 // Where the ships rest once the round is played, by how the approach
-// ended: { moves, gone, grapple }. A ship that got away or ran leaves the
-// other behind, hers flown off; one that blew apart is gone; a boarding
-// brings them together, the boarded one grappled.
+// ended: { moves, gone, grapple, close }. A ship that got away or ran
+// leaves the other behind, hers flown off; one that blew apart is gone; a
+// boarding brings them together, the boarded one grappled.
 export function restingPose(outcome) {
-  const pose = { moves: { you: 0, them: 0 }, gone: { you: false, them: false }, grapple: null };
+  const pose = { moves: { you: 0, them: 0 }, gone: { you: false, them: false }, grapple: null, close: 0 };
   const kind = outcome?.kind;
   if (kind === 'escaped' || kind === 'fled') {
     pose.moves.them = AWAY;
@@ -212,7 +213,7 @@ export function restingPose(outcome) {
   } else if (kind === 'destroyed') {
     pose.gone.them = true;
   } else if (kind === 'boarded' || kind === 'boardedBy') {
-    pose.moves = { you: CLOSE, them: -CLOSE };
+    pose.close = 1;
     pose.grapple = kind === 'boarded' ? 'them' : 'you';
   }
   return pose;

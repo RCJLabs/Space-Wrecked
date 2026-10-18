@@ -15,11 +15,12 @@
 //                               and the box the camera was fitted to
 //   view.draw(ctx, size, frame)  size: { width, height } in CSS pixels;
 //                               frame: approachPlayback.js frameAt's, or
-//                               restingPose's ({ moves, gone, grapple })
+//                               restingPose's ({ moves, gone, grapple,
+//                               close })
 import { exteriorScene } from './exterior.js';
 import { damageMarks, targetMarks } from './hullMarks.js';
 import { project, screenBounds } from './orbit.js';
-import { paintSolid, prepareSolid } from './painter.js';
+import { paintOver, paintSolid, prepareSolid } from './painter.js';
 import { palette, rgba } from './palette.js';
 import { drawSpace } from './shipView.js';
 import { shade } from './solid.js';
@@ -27,6 +28,8 @@ import { shade } from './solid.js';
 const SIDES = ['you', 'them'];
 const TAIL = 0.2; // a shot's streak, as a share of its flight
 const FLASH = { hit: 14, burst: 26 }; // a flash's size in CSS pixels
+const ARM = 0.3; // a target's bracket, as a share of each side
+const ROOM = 26; // CSS px left between the noses of two ships come together
 
 export function createApproachView() {
   const sides = Object.fromEntries(SIDES.map((side) => [side, { hull: null, marks: null, cam: null, rect: null, box: null, layer: { canvas: null, key: null }, version: 0 }]));
@@ -45,8 +48,8 @@ export function createApproachView() {
       if (s.marks?.key === key) return;
       const { ship, defs } = s.hull;
       const scars = damageMarks({ ship, defs, damage, wrecked });
-      const aimed = target ? targetMarks({ ship, defs, uids: target }) : [];
-      s.marks = { key, faces: prepareSolid([...scars.faces, ...aimed], shade), glows: scars.glows };
+      const aimed = targetMarks({ ship, defs, uids: target ?? [] });
+      s.marks = { key, faces: prepareSolid([...scars.faces, ...aimed.faces], shade), glows: scars.glows, frames: aimed.frames };
       s.version++;
     },
     place(side, cam, rect, box) {
@@ -55,10 +58,15 @@ export function createApproachView() {
     draw(ctx, size, frame) {
       drawSpace(ctx, { x: 0, y: 0, w: size.width, h: size.height }, palette.space);
       const ratio = ctx.getTransform().a;
-      const offset = (side) => (frame.moves?.[side] ?? 0) * (sides[side].rect?.w ?? 0);
+      const placed = (side) => sides[side].cam && sides[side].hull && !frame.gone?.[side];
+      // Coming together to board, each closes half the gap between their
+      // noses but for ROOM.
+      const noses = placed('you') && placed('them') ? { you: noseOf(sides.you, 1), them: noseOf(sides.them, -1) } : null;
+      const step = noses && frame.close ? (frame.close * Math.max(0, noses.them[0] - noses.you[0] - ROOM)) / 2 : 0;
+      const offset = (side) => (frame.moves?.[side] ?? 0) * (sides[side].rect?.w ?? 0) + (side === 'you' ? step : -step);
       for (const side of SIDES) {
         const s = sides[side];
-        if (!s.hull || !s.cam || frame.gone?.[side]) continue;
+        if (!placed(side)) continue;
         ctx.drawImage(layerOf(s, ratio), s.rect.x + offset(side), s.rect.y, s.rect.w, s.rect.h);
       }
       // Where a point on a ship is on the screen, as she stands now.
@@ -67,8 +75,7 @@ export function createApproachView() {
         const [x, y] = project(s.cam, p[0], p[1], p[2]);
         return [x + offset(side), y];
       };
-      const placed = (side) => sides[side].cam && sides[side].hull && !frame.gone?.[side];
-      if (frame.grapple && placed('you') && placed('them')) grapple(ctx, at, sides);
+      if (frame.grapple && noses) grapple(ctx, [noses.you[0] + offset('you'), noses.you[1]], [noses.them[0] + offset('them'), noses.them[1]]);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       for (const shimmer of frame.shimmers ?? []) {
@@ -85,9 +92,10 @@ export function createApproachView() {
   };
 }
 
-// A ship's picture: her hull and marks drawn through her camera onto a
-// clear canvas the size of her part of the screen, made again only when
-// she, her marks, her camera or the pixel ratio change.
+// A ship's picture: her hull drawn through her camera onto a clear canvas
+// the size of her part of the screen, her marks over it and her targets
+// bracketed, made again only when she, her marks, her camera or the pixel
+// ratio change.
 function layerOf(s, ratio) {
   const { layer, rect, cam } = s;
   const key = `${s.version} ${ratio} ${rect.x} ${rect.y} ${rect.w} ${rect.h} ${cam.scale} ${cam.x} ${cam.y} ${cam.yaw}`;
@@ -103,10 +111,33 @@ function layerOf(s, ratio) {
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.clearRect(0, 0, w, h);
   g.setTransform(ratio, 0, 0, ratio, -rect.x * ratio, -rect.y * ratio);
-  const faces = s.marks ? [...s.hull.faces, ...s.marks.faces] : s.hull.faces;
-  const glows = s.marks ? [...s.hull.glows, ...s.marks.glows] : s.hull.glows;
-  paintSolid(g, faces, glows, cam);
+  paintSolid(g, s.hull.faces, s.hull.glows, cam);
+  if (s.marks) {
+    paintOver(g, s.marks.faces, s.marks.glows, cam);
+    for (const frame of s.marks.frames) brackets(g, frame.corners.map((p) => project(cam, p[0], p[1], p[2])), frame.first);
+  }
   return layer.canvas;
+}
+
+// A target's corners picked out on the screen: an arm along each side from
+// each corner, over a dark one so it shows on any paint, the first thicker.
+function brackets(ctx, corners, first) {
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const [width, color] of [[first ? 5 : 4, rgba(palette.space, 0.8)], [first ? 2.5 : 1.6, rgba(palette.target, first ? 1 : 0.85)]]) {
+    ctx.lineWidth = width;
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    corners.forEach(([x, y], i) => {
+      const [a, b] = [corners[(i + 3) % 4], corners[(i + 1) % 4]];
+      ctx.moveTo(x + (a[0] - x) * ARM, y + (a[1] - y) * ARM);
+      ctx.lineTo(x, y);
+      ctx.lineTo(x + (b[0] - x) * ARM, y + (b[1] - y) * ARM);
+    });
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 // A shot in flight: a bright head and a streak behind it, from where it
@@ -163,13 +194,24 @@ function shield(ctx, s, dx, progress) {
   ctx.stroke();
 }
 
-// The boarded ship grappled: a line from the other's nose to hers.
-function grapple(ctx, at, sides) {
-  const nose = (side) => {
-    const { box } = sides[side];
-    return at(side, [box.x1, (box.y0 + box.y1) / 2, box.z1 / 2]);
-  };
-  const [a, b] = [nose('you'), nose('them')];
+// Where a ship's nose is on the screen as she stands at rest: the point of
+// her hull furthest toward the other ship (toward: 1 to the right, -1 to
+// the left). Kept until her picture or her camera changes.
+function noseOf(s, toward) {
+  if (s.nose?.hull === s.hull && s.nose.cam === s.cam) return s.nose.at;
+  let at = null;
+  for (const face of s.hull.faces) {
+    for (const p of face.pts) {
+      const q = project(s.cam, p[0], p[1], p[2]);
+      if (!at || q[0] * toward > at[0] * toward) at = [q[0], q[1]];
+    }
+  }
+  s.nose = { hull: s.hull, cam: s.cam, at };
+  return at;
+}
+
+// The boarded ship grappled: a line from one nose to the other.
+function grapple(ctx, a, b) {
   ctx.save();
   ctx.strokeStyle = rgba(palette.dash, 0.9);
   ctx.lineWidth = 2;

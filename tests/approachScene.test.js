@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { seedFrom } from '../src/core/rng.js';
-import { AWAY, CLOSE, frameAt, MS, restingPose, roundCues, roundTimeline, shipGeometry } from '../src/render/approachPlayback.js';
+import { AWAY, frameAt, MS, restingPose, roundCues, roundTimeline, shipGeometry } from '../src/render/approachPlayback.js';
 import { HULL } from '../src/render/exterior.js';
 import { traceHull } from '../src/render/hull.js';
 import { damageMarks, partPoint, roofOf, targetMarks } from '../src/render/hullMarks.js';
@@ -34,34 +34,51 @@ function seedWhere(state, order, test) {
   throw new Error('No seed found');
 }
 
-test('a hull shows what an approach did to her: scorched where hit, and each wrecked part its hazard', () => {
+test('a hull shows what an approach did to her: burnt where hit, and each wrecked part charred with its hazard', () => {
   const [engine] = uidsOf(you, 'engine');
   const roof = roofOf(you, rules, engine);
   const marks = (input) => damageMarks({ ship: you, defs: rules, ...input });
+  const on = (face) => face.pts.every(([x, y, z]) => x >= roof[0] && x <= roof[2] && y >= roof[1] && y <= roof[3] && z > HULL);
   assert.deepEqual(marks({}), { faces: [], glows: [] }, 'untouched: nothing');
   const hit = marks({ damage: { [engine]: 5 } });
-  assert.ok(hit.faces.length && hit.faces.every((face) => face.color === palette.scorch && face.pts.every((p) => p[2] > HULL)), 'hit: scorch on the roof');
+  assert.deepEqual(new Set(hit.faces.map((face) => face.color)), new Set([palette.burn, palette.scorch]), 'hit: burns ringed with heat');
+  assert.ok(hit.faces.every(on), "on the part's own roof");
   assert.deepEqual(hit.glows, [], 'hit: nothing burns');
-  assert.ok(within(hit, roof), "on the part's own roof");
+  // A wrecked part is charred all over first: a ragged plate over her roof.
+  const charred = (m) => m.faces[0].color === palette.scorch && m.faces[0].pts.length > 7 && on(m.faces[0]);
   const fire = marks({ damage: { [engine]: 20 }, wrecked: { [engine]: 'fire' } });
-  assert.ok(fire.glows.some((glow) => glow.color === palette.fire) && within(fire, roof), 'fire: flames over it');
+  assert.ok(charred(fire) && fire.faces.every(on), 'fire: charred, on her roof');
+  assert.ok(fire.glows.some((glow) => glow.color === palette.fire) && fire.glows.some((glow) => glow.color === palette.fireCore), 'fire: flames over it');
   const vacuum = marks({ wrecked: { [engine]: 'vacuum' } });
-  assert.ok(vacuum.faces.some((face) => face.color === palette.breach) && vacuum.glows.every((glow) => glow.color === palette.vacuum), 'vacuum: a breach venting');
+  assert.ok(charred(vacuum) && vacuum.faces.every(on), 'vacuum: charred, on her roof');
+  assert.equal(vacuum.faces.at(-1).color, palette.breach, 'vacuum: a hole as dark as space, over the torn plating');
+  assert.ok(vacuum.faces.some((face) => face.color === palette.rubble) && vacuum.glows.length && vacuum.glows.every((glow) => glow.color === palette.vacuum), 'vacuum: torn plating, venting');
   const rubble = marks({ wrecked: { [engine]: 'rubble' } });
-  assert.ok(rubble.faces.some((face) => face.color === palette.rubble) && rubble.glows.every((glow) => glow.color === palette.rubble), 'rubble: broken plating and dust');
+  const smoke = rubble.faces.filter((face) => face.color === palette.smoke);
+  assert.ok(charred(rubble) && rubble.faces.some((face) => face.color === palette.rubble) && smoke.length, 'rubble: broken plating under smoke');
+  assert.ok(smoke.every((face) => face.pts.every(([, , z]) => z > HULL + 0.2)) && within({ faces: smoke }, roof), 'the smoke hangs over her part');
+  assert.deepEqual(rubble.faces.slice(-smoke.length), smoke, 'the smoke painted last');
+  assert.ok(rubble.faces.filter((face) => face.color !== palette.smoke).every(on) && rubble.glows.length === 0);
   assert.deepEqual(marks({ wrecked: { [engine]: 'fire' } }), marks({ wrecked: { [engine]: 'fire' } }), 'the same every time');
   assert.deepEqual(marks({ damage: { 9999: 5 } }), { faces: [], glows: [] }, "a part she hasn't got");
   assert.deepEqual(partPoint(you, rules, engine), [(roof[0] + roof[2]) / 2, (roof[1] + roof[3]) / 2, HULL]);
 });
 
-test("a Fire order's marks: a plate on each part it aims at, the first it would hit the brightest", () => {
+test("a Fire order's marks: each part it aims at tinted and bracketed, the first it would hit the brightest", () => {
   const guns = uidsOf(cutter, 'weapon');
-  const faces = targetMarks({ ship: cutter, defs: rules, uids: guns });
+  const { faces, frames } = targetMarks({ ship: cutter, defs: rules, uids: guns });
   assert.equal(faces.length, guns.length);
   assert.ok(faces.every((face) => face.color === palette.target && face.emissive));
   assert.ok(faces[0].alpha > faces[1].alpha, 'the first brightest');
-  guns.forEach((uid, i) => assert.ok(within({ faces: [faces[i]] }, roofOf(cutter, rules, uid))));
-  assert.deepEqual(targetMarks({ ship: cutter, defs: rules, uids: [] }), []);
+  assert.deepEqual(frames.map((frame) => [frame.uid, frame.first]), guns.map((uid, i) => [uid, i === 0]));
+  guns.forEach((uid, i) => {
+    const roof = roofOf(cutter, rules, uid);
+    const [a, , c] = frames[i].corners;
+    assert.ok(a[0] > roof[0] && a[1] > roof[1] && c[0] < roof[2] && c[1] < roof[3], 'inside her roof');
+    assert.ok(c[0] - a[0] > roof[2] - roof[0] - 0.2 && c[1] - a[1] > roof[3] - roof[1] - 0.2, 'round all of it');
+    assert.ok(within({ faces: [faces[i]] }, roof));
+  });
+  assert.deepEqual(targetMarks({ ship: cutter, defs: rules, uids: [] }), { faces: [], frames: [] });
 });
 
 test('her guns fire from their own barrels, in the order they were fitted, the wrecked ones left out', () => {
@@ -144,13 +161,16 @@ test('a flight that gets away takes her off the screen, a closing brings them to
 
   const closed = play([{ kind: 'close', side: 'you', ok: true }], { kind: 'boarded', how: 'closed' });
   const together = frameAt(closed, closed.ms);
-  assert.deepEqual([together.moves, together.grapple], [{ you: CLOSE, them: -CLOSE }, 'them']);
+  assert.deepEqual([together.close, together.moves, together.grapple], [1, { you: 0, them: 0 }, 'them']);
+  const coming = frameAt(closed, MS.close / 2).close;
+  assert.ok(coming > 0 && coming < 1, 'coming in');
   assert.equal(frameAt(closed, closed.ms - 1).grapple, null, 'grappled once all is played');
   // Disabled, she is boarded with no closing played: they come in last.
   const disabled = play([{ kind: 'volley', side: 'them', at: 'engines', shots: [] }], { kind: 'boardedBy', how: 'disabled' });
   assert.equal(disabled.beats.at(-1).kind, 'close');
   assert.deepEqual(frameAt(disabled, disabled.ms).grapple, 'you');
-  assert.deepEqual(restingPose({ kind: 'boardedBy' }), { moves: { you: CLOSE, them: -CLOSE }, gone: { you: false, them: false }, grapple: 'you' });
+  assert.deepEqual(restingPose({ kind: 'boardedBy' }), { moves: { you: 0, them: 0 }, gone: { you: false, them: false }, grapple: 'you', close: 1 });
+  assert.equal(restingPose(null).close, 0);
 
   const blown = play([{ kind: 'blow', ok: true }], { kind: 'destroyed' });
   assert.deepEqual(frameAt(blown, 10).flashes.map((f) => f.kind), ['blowup']);

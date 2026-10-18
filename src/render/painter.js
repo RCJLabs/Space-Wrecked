@@ -192,6 +192,25 @@ export function paintSolid(ctx, faces, glows, cam, { edges = true, items = [] } 
   paintGlows(ctx, glows, project, cam);
 }
 
+// Flat faces (prepareSolid's) drawn in the order given over what is already
+// there, then glows: marks that lie on a finished surface (hullMarks.js,
+// M38b), which the depth sort would put under the fittings standing on it.
+export function paintOver(ctx, faces, glows, cam) {
+  const project = projector(cam);
+  for (const face of faces) {
+    ctx.beginPath();
+    for (let i = 0; i < face.pts.length; i++) {
+      const q = project(face.pts[i]);
+      if (i === 0) ctx.moveTo(q[0], q[1]);
+      else ctx.lineTo(q[0], q[1]);
+    }
+    ctx.closePath();
+    ctx.fillStyle = face.fill;
+    ctx.fill();
+  }
+  paintGlows(ctx, glows, project, cam);
+}
+
 // Traces a face's outline on the screen moved out by `by` pixels at every
 // side, its corners mitred (a sharp one no further out than 3 × by). Sides
 // of no length are passed over, and a face seen edge on is traced as it

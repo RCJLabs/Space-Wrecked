@@ -56,7 +56,7 @@ CNAME                       # spacewrecked.rcjlabs.com
 src/
   core/      rng, save, blueprint codes, store, events, sound parameters (soundParams.js)
   sim/       grid, builder rules, styling, makers, constraints, mapFromShip, battle, objectives (a job's, with what the AI plays for in them, objectiveAi.js), ai, approach, heat, standing (the sides), events (with the pools they are drawn from, eventPool.js), quests, companions (with their talents), campaign, colony (with its building by hand, its days and its expeditions), raids (with the colony as a battle map), economy, weapons (their rules), loadout (who carries what, and the spares on hand), gear (what a won fight leaves), racks (the stations'), yards (the shipyards'), dev (the dev menu's cheats; God mode is god), gen/
-  render/    3D camera, scenes and painters, part and styling piece models, figures (figures/), portraits (portraits/, the companions' busts with them), painted backdrops (scenes/), hull tracer and hull shapes, SVG icons, tweens, particles
+  render/    3D camera, scenes and painters, part and styling piece models, figures (figures/), portraits (portraits/, the companions' busts with them), painted backdrops (scenes/), hull tracer and hull shapes, the approach's two ships seen from outside (approachView.js, with the marks on a hull, hullMarks.js, and a round played out, approachPlayback.js), SVG icons, tweens, particles
   ui/        screens, panels, gestures, which moment plays which sound (sounds.js), the ?dev=1 menu (dev/)
   platform/  storage, service worker registration, haptics, orientation, audio (audio.js, playing zzfx.js)
 data/        JSON content, including balance.json

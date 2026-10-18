@@ -38,6 +38,10 @@ export const palette = {
   // A breach in a hull seen from outside (M38b), dark as the space it lets
   // in.
   breach: '#04060c',
+  // Seen from outside (M38b): the heat round a burn on a hull, and the
+  // smoke over a wrecked part full of rubble.
+  burn: '#8a4526',
+  smoke: '#a39b93',
   // Units on a battle map: the crew in pale suits, each trimmed in a color
   // of their own (the same as on their button), and boarders in rust.
   crewSuit: '#c9d4e6',
