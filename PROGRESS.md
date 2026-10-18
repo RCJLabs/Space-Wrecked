@@ -2,6 +2,180 @@
 
 Newest entry first.
 
+## M38e More colonies (2026-10-18)
+
+**Status:** done, and the ROADMAP.md box is ticked. A world a voyage passes can now be settled. The ship lands there with those aboard and founds another colony, and the colony it flew from keeps whoever was at home and its food. Each colony:
+- lives every day, wherever the ship is;
+- is found by its own trail of heat, and can be raided;
+- holds the ship with a lander down until the raid is faced.
+
+The ship flies straight to any colony, from a voyage or from the colony screen. Saves are at v37.
+
+**How it was picked:** Evan asked (2026-10-18) for colonizing multiple worlds, leaving thriving colonies. Measured first (the miner, 100 voyages out after the first colony's 60 days, medians):
+- 2 aboard and 1 at home;
+- 6 worlds passed, none surveyed by the test player;
+- 5 parts in the hold and 49 credits;
+- the one colony runs through about 40 files, and its raid odds used the ship's heat even while the ship was away.
+
+His picks:
+- whoever you leave stays, with that colony's own food;
+- fly straight there;
+- its own trail of heat;
+- a new colony starts with a landing's salvage.
+
+ROADMAP.md has the Done when in full, and what was built where it differs.
+
+**What shipped:**
+- **Settling on a voyage** (`src/sim/settle.js`). At a world in a system past a colony's, Settle here founds another colony:
+  - it starts with a landing's 20 materials, nothing built, and its system's other worlds for its trips;
+  - those aboard land with the ship, the landing plays and names the colony ("The crew's second colony"), and the act stays 3;
+  - the colony flown from keeps whoever was at home and its food. At most 12 colonies.
+- **More colonies** (`src/sim/colonies.js`, new):
+  - `campaign.colony` is the colony the ship is landed at or flew from, so the colony screen, building, trips, Fly out and refits work there as before;
+  - the others wait in `campaign.colonies`, each keeping whoever is there and its food;
+  - each colony has its number, its place along the line of systems (the first at 0, a voyage's at its systems out) and its own heat;
+  - a voyage knows where the ship is along the line (`at`), and the colony a stopped flight is for (`to`).
+- **Every colony lives every day** (`src/sim/days.js` `othersDay`). Next day, a trip's days, and each jump, survey, rest and day of a flight pass at every colony. A colony the ship isn't at runs as a colony with the ship away does:
+  - its own power, and no rest without a bed and air;
+  - its food eaten and its heat falling a day;
+  - the pursuer able to find it.
+
+  The flags count the other colonies' days apart (`othersDays`, `othersHungryDays`, `othersRaidsFound`).
+- **Its own trail** (`src/sim/raids.js`, `colonies.js` `heatAt`):
+  - the ship leaves its heat with the colony it flies from, and that heat falls `colonyHeatFall` a day. The pursuer's odds go by it (M38d let the ship's heat stand for it);
+  - landing, the ship takes the greater of its heat and the colony's;
+  - a raid sets that colony's heat to `heatAfterRaid`, and the ship's only when it is landed there;
+  - the ship's own heat is the hunters', as before.
+- **Raids at every colony:**
+  - found while the ship isn't there, a lander comes down no sooner than the ship could reach it;
+  - a lander down at any colony holds the ship;
+  - Defend, from the chart or the colony screen, faces it on that colony's grid, with whoever is there or the guns alone. The ship's side waits at that colony while the fight is on (`parked`);
+  - lost, it takes from that colony's stores and nothing from the hold.
+- **Fly to a colony** (`src/sim/voyage.js` `flyTo`, `flyFrom`), two taps:
+  - from anywhere on a voyage, or from the colony screen with the crew picked as for Fly out;
+  - each system between costs a day and a jump's supplies for those aboard, one system at least, plus one jump's heat; no hunters roll;
+  - a lander on the way stops it, and Fly on finishes it. Stopped on a flight from the colony screen, the ship waits in a system rolled where it stopped (`travel.js` `waitIn`);
+  - landed, the crews and the stores join, up to the stores' room, and the colony flown from keeps its own.
+- **The screens:**
+  - **the chart:** the colony flown from keeps its panel, now with the flight home's days. Each other colony gets a panel under it (the flight there, its day, food, who is there and its raid) with Fly to;
+  - **the colony screen:** the other colonies are listed under Voyage as Colonies, and a tap plans the flight;
+  - **the hints, Defend's first tap and the landing's report** name the colony a lander is at;
+  - **Continue** says "on the way to …" for a stopped flight.
+
+  The words are `src/ui/campaign/colonyListText.js`'s (new).
+- **The whole crew is at most 20** (`MAX_CREW`), across every colony and aboard, since a save past it wouldn't read. A recruit or a companion signs on only under it.
+- **Saves at v37** (`src/core/save.js`):
+  - the one colony becomes the first, at 0, with the ship's heat;
+  - a voyage is as far along as it is out, or as its flight home has left;
+  - a v36 save opens as it did.
+
+  `campaign.js` checks every colony and each voyage's flight (its colony, and its days left matching where the ship is).
+- **The test player** (`tools/voyage.js`, `tools/voyagePlan.js` `settleMove`, `backCrew`):
+  - on its voyage out it settles the best world of the second system out;
+  - it gives the ship's parts and plays the new colony's first 10 days (`NEW_DAYS`), building farms and mines, and meets a raid coming there before it leaves;
+  - it leaves the least fit there when three or more landed, and flies straight back to the first colony, at once if a raid is coming there.
+
+  `--settle no` keeps M38d's voyage out. `--out` and `--settle` now work from the command line (`--out` was documented in M38d but never read).
+
+**Done when** (ROADMAP.md, M38e), and how each is met:
+- **Settling on a voyage:** `tests/colonies.test.js` and `tests/colonyListText.test.js`; by touch.
+- **Each colony's own grid, buildings, stores, days, raid and heat:** `tests/colonies.test.js`; by touch (the new colony's screen, with a part given).
+- **Where each lies:** `tests/colonies.test.js`.
+- **Fly to a colony:** `tests/colonies.test.js` (from a voyage; from the colony screen, stopped and flown on) and `tests/colonyListText.test.js`; by touch.
+- **Every colony lives its days:** `tests/colonies.test.js`. Over 100 test voyages, `tests/voyage.test.js` checks that the first colony's days away come to the voyage's days.
+- **Its own trail:** `tests/colonies.test.js`.
+- **Raids at every colony:** `tests/colonies.test.js` (the timing, the hold, Defend from either screen, the fight, lost and won); by touch.
+- **The screens:** `tests/colonyListText.test.js`; by touch.
+- **Saves:** `tests/colonies.test.js` (v37, a v36 save migrated, broken colonies refused).
+- **The test player:** `tests/voyage.test.js` (a new test over its 100 refitting voyages).
+- **Measured over 100 voyages:** below.
+- **Every rule tested:** as above.
+- **Touch, at the three sizes:** below.
+
+**Measured:** 100 voyages out, seeds 1 to 100, the miner as `tools/voyage.js` plays by default. Medians, then the least and most:
+
+| | |
+| --- | --- |
+| Second colonies | founded on 75 of 100 voyages out, in the second system. The other 25 flew home first by M38d's rules: 22 with the holds down to the way home (21 of them already in the second system), and 3 called home by a raid |
+| Days there | 10 (10 to 12); none cut short by a raid at the first |
+| Left there | one in 56 (three or more landed), nobody in 19 |
+| The flight back | all 75 in 2 days, none stopped by a lander; hungry aboard in 1 |
+| Raids since flying out | at the first: found 4, faced 4, none lost. At the second: found 6, faced 5, lost 2 |
+| Every colony fed | in 99 of 100 |
+| The voyage out | home in 100; 1 system crossed (0 to 1); the first colony's days away 22 (2 to 28); jumps 10 (1 to 13); no raid faced while away |
+| The voyage's rates (`VOYAGE_OUT`) | home 100, crossed 97, fed 99, fed aboard 99 (main's 100, 96, 100 and 100): within the margin |
+
+**The heat rule alone** (`--settle no`: M38d's voyage out on M38e's rules; main's numbers in brackets):
+- the colony found in 4 runs (8), with 3 calling the ship home (7);
+- 4 raids met at home, all won (8 met, 7 won);
+- systems crossed 3 (0 to 3), all 3 in 55 (54);
+- the ship boarded 15 times, 7 fought off (8, 1); signed on 101 (110).
+
+The colony's odds while away now go by its own heat, which falls a day. M38d's went by the ship's, which rises with each jump. On a day with no odds no roll is drawn (`raids.js` `raidDayEnd`), so once the two heats part, every roll after it on that voyage comes out differently:
+- 60 of the 100 voyages out roll out differently from main's;
+- 52 of those 60 have the same call home.
+
+The boardings moved with that reshuffle; nothing in M38e touches a boarding.
+
+**Act 2's and the colony's first 60 days are as main's:** the 100-voyage report (`tools/voyage.js --runs 100`, run from main and from this branch) matches main's line for line, apart from the voyage-out lines.
+
+**Tests:**
+- `node --test`: 1088 pass (1073 on main).
+- **New:**
+  - `tests/colonies.test.js` (9): settling on a voyage, every colony's days, the trails of heat, a raid's timing at another colony, the hold and Defend, Fly to from a voyage and from the colony screen, the crew limit, and v37 saves with broken colonies refused;
+  - `tests/colonyListText.test.js` (5): the words for each;
+  - `tests/voyage.test.js`: the second colony over 100 voyages (`SECOND`).
+- **Changed on purpose:**
+  - the tests that pinned `SAVE_VERSION` at 36 now pin 37;
+  - the new campaign's shape (`colonies: []`) and the colony's (`id`, `at`, `heat`);
+  - M38d's raid timing test reads the colony's own heat and where the ship is;
+  - M38d's survey test: a voyage's world can now be settled;
+  - the landing's words, which gain the line under its heading (`where`);
+  - the voyage-out test: a second colony's days, and the one left there.
+
+**Browser checks:**
+- **`m38e/verify.mjs`:** 35 of 35 at each of the three sizes. It covers:
+  - settling on a voyage, its two taps and the landing;
+  - the new colony's screen, with a part given;
+  - every colony listed on the colony screen and the chart;
+  - Fly to the first from the chart, and back from the colony screen;
+  - a raid at the colony the ship isn't at: Defend, the fight with whoever is there, and a reload mid-fight;
+  - a quit and reopen at v37;
+  - offline, every button 48 px or more, and no console errors.
+- **Every earlier milestone's browser check** passes at the three sizes unless named, each the latest adapted copy (`m38e/regress-a.sh` and `regress-b.sh`). The one exception is M32b's first copy, whose 2 known failures since M36 its fix copy covers, as in M36 to M38d.
+  - **Adapted for M38e:** M38d's fix's, M38c's, M38b's, M35's, M34's, M31's, M30's, M29's, M28's and M27's pinned saves at v36; their copies (`verify38e.mjs` beside each) pin v37.
+  - **Run again on their own, and passed:**
+    - M33b's at the cover size, which timed out waiting for the colony screen while four runs shared the machine;
+    - M23d's at the tab size, which lost its port to the run beside it.
+  - `regress-a.sh` stopped at its time limit during M32b's first copy, and `regress-a2.sh` ran the rest of it.
+
+**Found while building, and fixed:**
+- **The landing never said which colony it founds:** the line under its heading names it now.
+- **A save whose stopped flight's days left didn't match where the ship is** would still load: the save check refuses it now.
+- **The test player flew back while a raid was coming at its new colony**, so in the first 100-voyage run one raid there was faced with the ship away. It now meets that raid before it leaves.
+
+**Known issues:**
+- **The second colony's raids:** with 2 or 3 there and no guns yet, the test player lost 2 of the 5 it faced there (§9).
+- **"Every colony fed" covers the second colony only until the ship lands back at the first.** The test player's run ends there.
+- **The test player settles only with food enough to fly home.** In 21 voyages its holds were down to the way home by the second system, so it flew home rather than settle.
+- **A flight between colonies meets nothing on the way** (§9).
+- **The act line at every colony** says "Act 3 · The colony" (§9).
+- **A split crew still loses its boardings** (§9, from M38d).
+
+**What Evan should test on the phone:**
+- **Settle a world on a voyage.**
+  - Settle here's first tap says it's the crew's second colony, who lands, and who stays at the first.
+  - The landing names it, and its screen opens at day 1 with 20 materials.
+  - Give it a part, and build.
+- **The colony screen** lists the first colony under Voyage, as Colonies. Tap it, pick who goes, and Fly to.
+- **The chart** shows a panel for every other colony, with Fly to. The colony you flew from shows the flight home.
+- **A raid at a colony you're not at:**
+  - the hint names it, and Defend is there on the chart and the colony screen;
+  - whoever is there fights it, and with nobody there the guns alone face it.
+- **Quit and reopen anywhere:** Continue says where the ship is.
+
+**Next session's first task:** M38f Citizens: study a colony running itself while the ship is away (citizens grown, rescued and left behind; work, food, and raids fought out without the player), measure, ask Evan, settle its Done when.
+
 ## M38d fixes: the materials kept, raids that call the ship home, the holds stocked (2026-10-18)
 
 After M38d Evan said "Do recommendations, merge and continue" (2026-10-18). Each call M38d left open had my recommendation or a choice of two; where there were two, I took the one that keeps his M38d picks:
