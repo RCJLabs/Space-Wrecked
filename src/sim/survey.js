@@ -5,8 +5,11 @@
 // sits, at a jump's odds (hunt.js), as when regrouping. A day the supplies
 // don't cover isn't taken. With a xenobiologist aboard (edges.js, M32) a
 // survey takes no day: it eats nothing, adds no heat, and gives the hunters
-// no time to find the ship. The flags count the surveys, and the free ones.
-// Pure.
+// no time to find the ship. On a voyage from the colony (M38d) the worlds
+// of each system passed can be surveyed too, and the day passes at the
+// colony (days.js voyageDay). The flags count the surveys, and the free
+// ones. Pure.
+import { voyageDay } from './days.js';
 import { stationEdge } from './edges.js';
 import { tally } from './flags.js';
 import { withHeat } from './heat.js';
@@ -33,8 +36,8 @@ export function surveyPlan(campaign, rules) {
 }
 
 // Surveys the world the ship is at. Returns { ok: true, plan, campaign,
-// hunt (hunt.js rollHunt's, or null for a free survey) } or { ok: false,
-// error }.
+// hunt (hunt.js rollHunt's, or null for a free survey), day (the colony's,
+// on a voyage, else null) } or { ok: false, error }.
 export function survey(campaign, rules) {
   const plan = surveyPlan(campaign, rules);
   if (!plan.ok) return plan;
@@ -46,7 +49,8 @@ export function survey(campaign, rules) {
     flags: tally(campaign.flags, { surveys: 1, freeSurveys: plan.free ? 1 : 0 }),
     run: { ...run, surveyed: [...run.surveyed, run.at] },
   };
-  if (plan.free) return { ok: true, plan, campaign: done, hunt: null };
-  const met = rollHunt(done, rules);
-  return { ok: true, plan, campaign: met.campaign, hunt: met.hunt };
+  if (plan.free) return { ok: true, plan, campaign: done, hunt: null, day: null };
+  const dayed = voyageDay(done, rules);
+  const met = rollHunt(dayed.campaign, rules);
+  return { ok: true, plan, campaign: met.campaign, hunt: met.hunt, day: dayed.day };
 }

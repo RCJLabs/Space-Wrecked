@@ -3,6 +3,10 @@
     "worlds": 3,
     "text": "Past the last charted jump point: a star no survey lists, and worlds around it where a colony could take root."
   },
+  "voyage": {
+    "worlds": 2,
+    "text": "A star past the colony's that nobody has charted: stations, a yard, and worlds to survey on the way through."
+  },
   "lanes": [
     "Near the shipping lanes: easy to reach, and easy to find.",
     "Off the lanes: a long way round to find.",
@@ -71,7 +75,7 @@
     }
   ],
   "names": {
-    "systems": ["The Quiet Star", "Unlisted Seven", "The Far Lantern", "Blackwater Reach", "The Cold Shore", "Nobody's Star", "The Outer Hold", "Ember Reach", "The Last Harbor", "Tallow's Star", "The Hush", "Wayback"],
+    "systems": ["The Quiet Star", "Unlisted Seven", "The Far Lantern", "Blackwater Reach", "The Cold Shore", "Nobody's Star", "The Outer Hold", "Ember Reach", "The Last Harbor", "Tallow's Star", "The Hush", "Wayback", "The Cinder Gate", "Marrow's Star", "Hollow Crown", "Saint Nobody", "The Drowned Sun", "Lamplight", "Widow's Reach", "The Slow Fire", "Kettle's Star", "The Far Ledger", "Lowlight", "The Open Hand"],
     "worlds": ["Kestrel's Rest", "New Tailings", "Harrow", "Saltmarch", "Glasswater", "Ninefold", "Copperhill", "Driftmoor", "Whitehold", "Long Winter", "Greenhaven", "Ashfall", "Stillwater", "Ironbark", "Farrow", "Tarn", "Hollowmere", "Brightstone", "Cairn", "Reed's Landing", "Emberfall", "Sable", "Wren", "Second Chance"]
   }
 }

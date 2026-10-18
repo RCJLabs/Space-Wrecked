@@ -17,6 +17,7 @@
 // nothing: no one is paid. A companion let go ends their loyalty quest
 // (M33c, companions.js). Pure.
 import { int, pick, seedFrom, shuffle } from '../core/rng.js';
+import { nextCrewId, wholeCrew } from './away.js';
 import { maxHp } from './campaign.js';
 import { companionOf } from './companions.js';
 import { crewRoom } from './crew.js';
@@ -39,8 +40,9 @@ export function recruitsAt(campaign, rules, nodeId) {
   const { first, last, backgrounds } = rules.recruits;
   const pasts = [...backgrounds.values()];
   if (!first.length || !last.length || !pasts.length) return [];
-  const taken = new Set(campaign.crew.map((member) => member.name));
-  const looks = campaign.crew.map((member) => member.look);
+  // On a voyage (M38d), the crew at home count too (away.js).
+  const taken = new Set(wholeCrew(campaign).map((member) => member.name));
+  const looks = wholeCrew(campaign).map((member) => member.look);
   const share = priceShare(campaign, rules, sector.nodes[nodeId]);
   const recruits = [];
   for (let slot = 0; slot < (rules.balance.recruitOffer ?? 0); slot++) {
@@ -105,7 +107,7 @@ export function hireRecruit(campaign, rules, slot) {
   const plan = hirePlan(campaign, rules, slot);
   if (!plan.ok) return plan;
   const { recruit, fee } = plan;
-  const id = Math.max(0, ...campaign.crew.map((member) => member.id)) + 1;
+  const id = nextCrewId(campaign);
   const member = { id, name: recruit.name, job: recruit.job, hp: recruit.hp, traits: [...recruit.traits], look: { ...recruit.look }, fights: recruit.fights, background: recruit.background };
   const docked = dockShip(campaign, rules);
   const { run } = docked;
@@ -131,6 +133,8 @@ export function dismissPlan(campaign, rules, id) {
   const member = campaign.crew.find((m) => m.id === id);
   if (!member) return { ok: false, error: 'No one aboard goes by that.' };
   if (member.id === campaign.captain) return { ok: false, error: 'The captain stays with the ship.' };
+  // On a voyage the captain may be at home (M38d): someone stays to fly her.
+  if (campaign.crew.length === 1) return { ok: false, error: 'Someone has to stay aboard to fly the ship.' };
   return { ok: true, member };
 }
 

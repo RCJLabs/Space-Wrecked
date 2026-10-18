@@ -2,8 +2,13 @@
 // to node on each sector's map (gen/sector.js) and on into the next sector
 // from its jump point, up to the act's last. Past the last one's jump point
 // lies the system (M25, gen/system.js): its worlds, one of which the crew
-// settles (settle.js), which ends the act. Pure: every roll is the
-// campaign's.
+// settles (settle.js), which ends the act. From M38d the run goes on in act
+// 3: the ship flies out from the colony on a voyage (voyage.js) into
+// systems past it, each a chart as a sector's with worlds among its nodes
+// (gen/system.js beyondSystem), whose jump point leads on to the next
+// without end. Everything here works there for those aboard (away.js), and
+// each jump passes a day at the colony (days.js voyageDay). Pure: every
+// roll is the campaign's.
 //
 // campaign.run, from the act's first visit home (beginRun) on:
 //   sector   the sector the ship is in, saved whole, so an update to the
@@ -63,7 +68,8 @@
 // cheapest wrecked part after each jump, on the way.
 //
 // An event open at the ship's node holds every jump and scan until it is
-// settled, and so does an approach until it is over and put away. Arriving
+// settled, and so does an approach until it is over and put away; on a
+// voyage (M38d), so does a raid's lander down at the colony. Arriving
 // where a hostile ship is opens the approach. From huntHeat, wherever a jump
 // comes out the pursuer's hunters may be waiting (hunt.js): each plan says
 // the chance, by the heat the ship arrives with, and arriving rolls it
@@ -73,18 +79,22 @@
 // for any node the ship has been at or next to; a scan shows every node within scanRange links
 // of the ship (and a scout's more), for scanHeat.
 import { int } from '../core/rng.js';
-import { actOf, atPort } from './acts.js';
+import { actOf, atPort, outOnRun } from './acts.js';
+import { MAX_OUT } from './away.js';
 import { flightChecklist, shipStats } from './constraints.js';
+import { voyageDay } from './days.js';
 import { openApproach } from './encounter.js';
 import { tally } from './flags.js';
 import { stationEdge } from './edges.js';
 import { generateSector } from './gen/sector.js';
-import { generateSystem } from './gen/system.js';
+import { beyondSystem, generateSystem } from './gen/system.js';
 import { withHeat } from './heat.js';
 import { huntOdds, rollHunt } from './hunt.js';
 import { healCrew, healRate } from './medbay.js';
 import { coldAt, goCold, placeQuests } from './quests.js';
+import { downText, raidDown } from './raids.js';
 import { wrecksToRepair } from './repair.js';
+import { MAX_PAST } from './runShape.js';
 import { costAt, dockHeat, mostFor, shareHere } from './standing.js';
 
 const MAX_SEED = 0xffffffff;
@@ -105,10 +115,10 @@ export function jumpSupplies(campaign, rules, long = false) {
   return long ? each * rules.balance.longJumpFactor : each;
 }
 
-// True when the campaign is at home in an act that is a run: one whose home
-// is the ship.
+// True when the campaign is at home on the run: in an act whose home is the
+// ship, or on a voyage from the colony (M38d, acts.js outOnRun).
 export function onTheRun(campaign, rules) {
-  return campaign.place === 'hub' && actOf(campaign, rules)?.hub === 'ship';
+  return campaign.place === 'hub' && outOnRun(campaign, rules);
 }
 
 // The node the ship is at, or null off the run.
@@ -146,12 +156,14 @@ export function openEvent(campaign, rules) {
 
 // What holds the ship where it is, as the words that say so, or null: an
 // event to decide, or a hostile ship to deal with (or, once that is over,
-// to put away).
+// to put away); and on a voyage (M38d), a raid's lander down at the colony,
+// until those at home face it (raids.js faceRaid).
 export function holdOf(campaign, rules) {
   const open = openEvent(campaign, rules);
   if (open) return `Decide first: ${open.event.title}.`;
   const approach = campaign.run?.approach;
   if (approach) return approach.outcome ? 'Carry on first.' : `Deal with the ${approach.enemy.name} first.`;
+  if (campaign.colony?.voyage && raidDown(campaign)) return downText(campaign, rules);
   return null;
 }
 
@@ -289,16 +301,19 @@ export function jumpPlan(campaign, rules, to) {
 }
 
 // Jumps to node `to`, where the hunters may be waiting, or a hostile ship
-// opens the approach. Returns { ok: true, campaign, plan, hunt (hunt.js
-// rollHunt's) } or { ok: false, error }.
+// opens the approach; on a voyage (M38d) a day passes at the colony on the
+// way. Returns { ok: true, campaign, plan, hunt (hunt.js rollHunt's), day
+// (days.js voyageDay's: the colony's day, or null) } or { ok: false, error
+// }.
 export function jump(campaign, rules, to) {
   const plan = jumpPlan(campaign, rules, to);
   if (!plan.ok) return plan;
   const moved = spend(campaign, rules, plan);
   const { run } = moved;
   const arrived = { ...moved, run: { ...run, at: to, seen: run.seen.includes(to) ? run.seen : [...run.seen, to], result: null, docked: false, jobbed: [] } };
-  const met = rollHunt(arrived, rules);
-  return { ok: true, plan, campaign: openApproach(met.campaign, rules), hunt: met.hunt };
+  const dayed = voyageDay(arrived, rules);
+  const met = rollHunt(dayed.campaign, rules);
+  return { ok: true, plan, campaign: openApproach(met.campaign, rules), hunt: met.hunt, day: dayed.day };
 }
 
 // What the station the ship is at sells: { ok: true, price (a supply),
@@ -353,45 +368,97 @@ export function buySupplies(campaign, rules, count) {
 // What leaving the sector from its jump point takes: a jump's supplies,
 // heat and healing, into the next sector's way in, where the hunters may
 // wait; from the act's last sector, into the system past the charts (kind
-// 'system'). { ok: true, kind: 'sector' or 'system', supplies, left, heat,
-// hungry, heal, fixes, hunt } or { ok: false, error, last, check } (last:
-// in the system, past which nothing is charted; check: as for a jump).
+// 'system'); on a voyage (M38d), into the next system past the colony's
+// (kind 'beyond'). { ok: true, kind: 'sector', 'system' or 'beyond',
+// supplies, left, heat, hungry, heal, fixes, hunt, cold } or { ok: false,
+// error, last, check } (last: in the system, past which nothing is charted;
+// check: as for a jump).
 export function leavePlan(campaign, rules) {
   const { run } = campaign;
   if (!run || !onTheRun(campaign, rules)) return { ok: false, error: 'Jumps are made from the ship, on the run.' };
   const held = holdOf(campaign, rules);
   if (held) return { ok: false, error: held };
   if (run.sector.system) return { ok: false, last: true, error: 'Nothing past the system is charted: settle one of its worlds.' };
-  if (run.at !== run.sector.exit) return { ok: false, error: 'The sector is left from its jump point.' };
-  const last = run.sector.index >= (actOf(campaign, rules)?.sectors ?? 0);
+  const voyage = campaign.colony?.voyage ?? null;
+  if (run.at !== run.sector.exit) return { ok: false, error: `The ${voyage ? 'system' : 'sector'} is left from its jump point.` };
+  if (voyage && voyage.out >= MAX_OUT) return { ok: false, error: 'No chart the crew has reaches farther.' };
+  const last = !voyage && run.sector.index >= (actOf(campaign, rules)?.sectors ?? 0);
   const check = failingCheck(campaign, rules);
   if (check) return { ok: false, error: brokenWhy(check), check };
+  // Leaving the last sector, the quests whose step is on the run go cold
+  // (M33b): their ids, for the plan to say so first.
+  const cold = last ? coldAt(campaign, rules, 2).map((quest) => quest.id) : [];
+  return { ok: true, kind: voyage ? 'beyond' : last ? 'system' : 'sector', ...onwardCosts(campaign, rules), cold };
+}
+
+// What a jump into a map's way in takes: a jump's supplies, heat and
+// healing, as leaving a sector does, with the hunters' odds there: {
+// supplies, left, heat, hungry, heal, fixes, hunt }. A voyage's Fly out
+// takes it too (M38d, voyage.js).
+export function onwardCosts(campaign, rules) {
   const supplies = jumpSupplies(campaign, rules);
   const left = suppliesOver(campaign, rules);
   const { jumpHeat } = rules.balance;
   const hunt = huntOdds(campaign, rules, withHeat(campaign.heat, jumpHeat), 'start');
-  // Leaving the last sector, the quests whose step is on the run go cold
-  // (M33b): their ids, for the plan to say so first.
-  const cold = last ? coldAt(campaign, rules, 2).map((quest) => quest.id) : [];
-  return { ok: true, kind: last ? 'system' : 'sector', supplies, left, heat: jumpHeat, hungry: campaign.supplies - left < supplies, heal: healRate(campaign, rules), fixes: jumpFixes(campaign, rules), hunt, cold };
+  return { supplies, left, heat: jumpHeat, hungry: campaign.supplies - left < supplies, heal: healRate(campaign, rules), fixes: jumpFixes(campaign, rules), hunt };
 }
 
 // Leaves the sector into the next one, with the quests' events placed on it
 // (M33b), or from the last into the system past the charts, the quests
-// still open on the run gone cold; the hunters may be waiting at the way
+// still open on the run gone cold; on a voyage (M38d), into the next system
+// past the colony's (enterBeyond). The hunters may be waiting at the way
 // in. Returns { ok: true, campaign, plan, hunt, cold (the quests gone cold,
-// by id) } or { ok: false, error }.
+// by id), day (the colony's, on a voyage, else null) } or { ok: false,
+// error }.
 export function leaveSector(campaign, rules) {
   const plan = leavePlan(campaign, rules);
   if (!plan.ok) return plan;
+  if (plan.kind === 'beyond') {
+    const on = enterBeyond(campaign, rules, plan, campaign.colony.voyage.out + 1);
+    return { ok: true, plan, campaign: on.campaign, hunt: on.hunt, cold: [], day: on.day };
+  }
   const moved = spend(campaign, rules, plan);
   const cooled = plan.kind === 'system' ? goCold(moved, rules, 2) : { campaign: moved, cold: [] };
   const { value: seed, state: rng } = int(cooled.campaign.rng, 0, MAX_SEED);
-  const past = [...campaign.run.past, campaign.run.sector.name];
+  const past = pastOf(campaign.run);
   const index = campaign.run.sector.index + 1;
   const sector = plan.kind === 'system' ? generateSystem(rules, seed, index) : placeQuests(generateSector(rules, seed, index, { avoid: past, background: campaign.background, met: cooled.campaign.eventsMet ?? [] }), cooled.campaign, rules);
   const met = rollHunt({ ...cooled.campaign, rng, run: freshRun(sector, past) }, rules);
-  return { ok: true, plan, campaign: met.campaign, hunt: met.hunt, cold: cooled.cold };
+  return { ok: true, plan, campaign: met.campaign, hunt: met.hunt, cold: cooled.cold, day: null };
+}
+
+// Jumps on into a system past the colony's, never charted before (M38d,
+// gen/system.js beyondSystem), out systems out from it, paying the jump's
+// cost in plan (onwardCosts). The system is rolled from the campaign's RNG
+// as it is entered, with the quests' events placed on it, and named past
+// the run's names before; its worlds are named past the colony's. A day
+// passes at the colony on the way (days.js voyageDay), and the hunters may
+// be waiting at the way in. Returns { campaign, hunt, day }.
+export function enterBeyond(campaign, rules, plan, out) {
+  const moved = spend(campaign, rules, plan);
+  const { value: seed, state: rng } = int(moved.rng, 0, MAX_SEED);
+  const past = pastOf(campaign.run);
+  const options = { avoid: past, taken: [campaign.colony.world.name], background: campaign.background, met: moved.eventsMet ?? [] };
+  const sector = placeQuests(beyondSystem(rules, seed, campaign.run.sector.index + 1, options), moved, rules);
+  const colony = { ...moved.colony, voyage: { ...moved.colony.voyage, out } };
+  const entered = { ...moved, rng, colony, run: freshRun(sector, past), flags: tally(moved.flags, { systemsBeyond: 1 }) };
+  const dayed = voyageDay(entered, rules);
+  const met = rollHunt(dayed.campaign, rules);
+  return { campaign: met.campaign, hunt: met.hunt, day: dayed.day };
+}
+
+// A day of a voyage's flight home (M38d, voyage.js): a jump's cost for
+// those aboard, its heat paid as the flight set out, and a day at the
+// colony. Returns { campaign, day } (days.js voyageDay's).
+export function homewardDay(campaign, rules) {
+  const moved = spend(campaign, rules, { ...onwardCosts(campaign, rules), kind: 'home', heat: 0 });
+  return voyageDay(moved, rules);
+}
+
+// The names of the maps the run has crossed, the one it is leaving last:
+// the most a save keeps (runShape.js), the oldest dropped first.
+function pastOf(run) {
+  return [...run.past, run.sector.name].slice(-MAX_PAST);
 }
 
 // A jump's cost: the supplies the holds can't take, left behind; supplies

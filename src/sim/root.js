@@ -30,26 +30,29 @@ import { survey } from './survey.js';
 import { takeStationJob } from './stationJobs.js';
 import { swapTransponder } from './transponder.js';
 import { beginRun, buySupplies, jump, leaveSector, scan } from './travel.js';
+import { voyageHome, voyageOut } from './voyage.js';
 
 // The screen each place in a campaign is played on in act 1, and every
 // screen that shows the campaign: construction mode, the job board and the
 // shop are the hangar's; the launch plays between act 1 and act 2's sector
 // map, and the approach phase on the run is played on its own screen; the
 // landing plays between act 2 and act 3 (M25), whose home is the colony
-// (M26).
+// (M26), and from which the ship flies out on voyages (M38d).
 export const PLACE_SCREENS = { hub: 'hub', fight: 'campaign-fight' };
 export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'sector', 'approach', 'landing', 'colony'];
 // The moves on the run that can open an approach (a hostile ship, the
 // pursuer's hunters, or a trap an event sprang, M36) or put one away, and
-// so change the screen.
-const SCREEN_CHANGES = ['campaign/jump', 'campaign/sector/leave', 'campaign/regroup', 'campaign/survey', 'campaign/event/choose', 'campaign/approach/close'];
+// so change the screen; and from M38d a voyage's Fly out and Fly home,
+// between the colony and the run.
+const SCREEN_CHANGES = ['campaign/jump', 'campaign/sector/leave', 'campaign/regroup', 'campaign/survey', 'campaign/event/choose', 'campaign/approach/close', 'campaign/voyage/out', 'campaign/voyage/home'];
 
 // The screen a campaign is played on where it is now: its fight, or its
-// act's home: the hangar in act 1, the sector map on the run (act 2), or the
-// approach going on there, and the colony in act 3.
+// act's home: the hangar in act 1, the sector map on the run (act 2, and a
+// voyage from the colony from M38d), or the approach going on there, and
+// the colony in act 3.
 export function campaignScreen(campaign) {
   if (campaign.place === 'fight') return PLACE_SCREENS.fight;
-  if (campaign.act === 2) return campaign.run?.approach ? 'approach' : 'sector';
+  if (campaign.act === 2 || campaign.colony?.voyage) return campaign.run?.approach ? 'approach' : 'sector';
   return campaign.act === 1 ? PLACE_SCREENS.hub : 'colony';
 }
 
@@ -153,9 +156,17 @@ export function initialState(seed) {
 //                                  it lands, and a new list is rolled
 //   campaign/trip/on { rules }     the ship flies on with the leg a raid
 //                                  stopped, once it is faced (M29)
+//   campaign/voyage/out { crew, rules }   the ship flies out from the colony
+//                                  with the crew picked (ids), into the
+//                                  next system (voyage.js, M38d)
+//   campaign/voyage/home { rules } the ship flies home from the run, or on
+//                                  home once a lander that stopped it is
+//                                  faced (M38d)
 //   campaign/raid/face { rules }   Defend: the colony faces the raid that
 //                                  is down, the guns first (raids.js, M29):
-//                                  the fight, or what came of it without one
+//                                  the fight, or what came of it without one;
+//                                  from the run too, while the ship is away
+//                                  on a voyage (M38d)
 //   campaign/approach/order { order, rules }   the player's order for a
 //                                  round of the approach (encounter.js)
 //   campaign/approach/close        Carry on, once the approach is over, or
@@ -295,7 +306,9 @@ export function reduce(state, action) {
     case 'campaign/trip/out':
     case 'campaign/trip/choose':
     case 'campaign/trip/home':
-    case 'campaign/trip/on': {
+    case 'campaign/trip/on':
+    case 'campaign/voyage/out':
+    case 'campaign/voyage/home': {
       const move = {
         'campaign/run/begin': (c) => beginRun(c, action.rules),
         'campaign/jump': (c) => jump(c, action.rules, action.to),
@@ -324,11 +337,13 @@ export function reduce(state, action) {
         'campaign/trip/choose': (c) => chooseAtPlace(c, action.rules, action.choice),
         'campaign/trip/home': (c) => flyHome(c, action.rules),
         'campaign/trip/on': (c) => flyOn(c, action.rules),
+        'campaign/voyage/out': (c) => voyageOut(c, action.rules, action.crew),
+        'campaign/voyage/home': (c) => voyageHome(c, action.rules),
       }[action.type];
       const done = state.campaign && move(state.campaign);
       if (!done?.ok) return state;
-      // Meeting a hostile ship or the hunters, and putting the approach
-      // away, change screen.
+      // Meeting a hostile ship or the hunters, putting the approach away,
+      // and flying out on a voyage and home again change screen.
       const screen = SCREEN_CHANGES.includes(action.type) ? campaignScreen(done.campaign) : state.screen;
       return { ...state, campaign: done.campaign, screen };
     }

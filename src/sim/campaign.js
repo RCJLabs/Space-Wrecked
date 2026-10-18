@@ -20,7 +20,8 @@
 //            from here and puts back what comes off.
 //   crew     [{ id, name, job, hp, traits, look, fights, background?,
 //            companion?, loyal?, weapon? }]:
-//            everyone aboard. hp is what they have now: wounds carry from
+//            everyone aboard (from M38d, while the ship is away on a voyage
+//            from the colony, those in play: away.js). hp is what they have now: wounds carry from
 //            fight to fight, up to the most they can have (maxHp). traits
 //            are ids in data/traits.json (traits.js). look is what their
 //            portrait is drawn from (looks.js). fights counts the fights they
@@ -73,6 +74,7 @@
 //            more.
 import { int, isState, pick, seedFrom } from '../core/rng.js';
 import { actOf, atColony, atHangar, atPort } from './acts.js';
+import { aboardOf, MAX_OUT } from './away.js';
 import { battleProblem } from './battleShape.js';
 import { createBattle } from './battle.js';
 import { buildShip, isShipData } from './builder.js';
@@ -81,7 +83,7 @@ import { deploy } from './deploy.js';
 import { crewLook, isLook } from './looks.js';
 import { MAX_STOCK } from './economy.js';
 import { mapFromShip, WRECKS } from './mapFromShip.js';
-import { isWorld, MAX_PLACE_NAME, runProblem } from './runShape.js';
+import { isWorld, MAX_NODES, MAX_PLACE_NAME, runProblem } from './runShape.js';
 import { isPlace, MAX_PLACES, tripProblem } from './tripShape.js';
 import { enemyBonus } from './settings.js';
 import { rankOf } from './ranks.js';
@@ -268,9 +270,10 @@ export function shipChecklist(campaign, rules, crew = crewAboard(campaign)) {
 
 // How many fly with the ship, for its flight checks: the whole crew, until
 // a world is settled. From then on the crew lives at the colony (M26), and
-// only a trip's squad is aboard (M28).
+// only a trip's squad is aboard (M28), or a voyage's crew (M38d, away.js).
 export function crewAboard(campaign) {
   if (!campaign.colony) return campaign.crew.length;
+  if (campaign.colony.voyage) return aboardOf(campaign).length;
   return campaign.colony.trip?.squad.length ?? 0;
 }
 
@@ -476,7 +479,8 @@ export function campaignProblems(value) {
   }
   if (!isRecord(value.arms) || !Object.entries(value.arms).every(([id, count]) => ID.test(id) && isInt(count, 1, MAX_ARMS))) wrong('spare weapons are unreadable');
   if (!isCrew(value.crew)) wrong('crew is unreadable');
-  else if (!value.crew.some((member) => member.id === value.captain)) wrong("captain isn't aboard");
+  // While the ship is away on a voyage (M38d) the captain can be at home.
+  else if (![...value.crew, ...waitingCrew(value)].some((member) => member?.id === value.captain)) wrong("captain isn't aboard");
   if (!isInt(value.heat, 0, HEAT_MAX)) wrong('heat is invalid');
   if (!isStanding(value.standing, MAX_SIDES)) wrong('standing with the sides is unreadable');
   if (!isQuests(value.quests)) wrong('quests are unreadable');
@@ -499,6 +503,10 @@ export function campaignProblems(value) {
   else if (value.colony?.trip) {
     const why = tripProblem(value.colony.trip, Array.isArray(value.crew) ? value.crew : []);
     if (why) wrong(`trip ${why}`);
+    else if (value.colony.voyage) wrong('trip and voyage are both under way');
+  } else if (value.colony?.voyage) {
+    const why = voyageProblem(value);
+    if (why) wrong(`voyage ${why}`);
   }
   if ((value.place === 'fight') !== isRecord(value.fight) || (value.place !== 'fight' && value.fight !== null)) {
     wrong("fight doesn't match where the player is");
@@ -535,7 +543,9 @@ function fightProblem(fight, crew) {
 // whether it was surveyed, the buildings on it, laid out as a ship's
 // modules are (builder.js), its day and its materials (M27, days.js), and
 // its places within reach and the trip under way, or null (M28,
-// expeditions.js; the trip's squad is checked against the crew apart).
+// expeditions.js; the trip's squad is checked against the crew apart); its
+// system's other worlds, and the voyage under way, or null (M38d,
+// voyage.js; checked apart).
 function isColony(colony) {
   const world = colony?.world;
   if (!isRecord(colony) || !isWorld(world) || typeof world.name !== 'string' || world.name.trim() === '' || world.name.length > MAX_NAME || typeof world.surveyed !== 'boolean') return false;
@@ -543,7 +553,39 @@ function isColony(colony) {
   if (!Array.isArray(colony.places) || colony.places.length > MAX_PLACES || !colony.places.every(isPlace)) return false;
   if (colony.trip !== null && !isRecord(colony.trip)) return false;
   if (colony.raid !== null && !isRaid(colony.raid)) return false;
+  if (!Array.isArray(colony.worlds) || colony.worlds.length > MAX_NODES || !colony.worlds.every((other) => isRecord(other) && isName(other.name) && isWorld(other.world))) return false;
+  if (colony.voyage !== null && !isRecord(colony.voyage)) return false;
   return Array.isArray(colony.buildings) && colony.buildings.length <= MAX_BUILDINGS && isShipData({ frame: 'colony', modules: colony.buildings, nextUid: colony.nextUid });
+}
+
+// The crew a saved voyage keeps out of play (M38d, away.js), as far as it
+// reads, for the save's checks: [] with none.
+function waitingCrew(value) {
+  const voyage = isRecord(value.colony) && isRecord(value.colony.voyage) ? value.colony.voyage : null;
+  const side = voyage?.home ?? voyage?.aboard;
+  return isRecord(side) && Array.isArray(side.crew) ? side.crew : [];
+}
+
+// Why the voyage under way (M38d, voyage.js; away.js) is unreadable, as
+// words to follow "The campaign's voyage ", or null if it reads: how many
+// systems out it is, the days a flight home a lander stopped still has to
+// fly, and the side not in play. That is those at home and the colony's
+// food, or while those at home fight a raid, those aboard and the ship's
+// supplies; never anyone twice, and someone always aboard. A voyage is on
+// the run.
+function voyageProblem(value) {
+  const { voyage } = value.colony;
+  if (!isInt(voyage.out, 1, MAX_OUT) || !(voyage.homing === null || isInt(voyage.homing, 1, voyage.out))) return 'is unreadable';
+  if ((voyage.home === undefined) === (voyage.aboard === undefined)) return 'is unreadable';
+  const side = voyage.home ?? voyage.aboard;
+  if (!isRecord(side) || !isCrew(side.crew) || !isInt(voyage.home ? side.food : side.supplies, 0, MAX_SUPPLIES)) return 'is unreadable';
+  const crew = Array.isArray(value.crew) ? value.crew : [];
+  const ids = new Set(crew.map((member) => member?.id));
+  if (side.crew.some((member) => ids.has(member.id)) || crew.length + side.crew.length > MAX_CREW) return 'names crew twice';
+  if (!(voyage.home ? crew : side.crew).length) return 'has nobody aboard';
+  if (voyage.aboard && !(value.place === 'fight' && value.fight?.raid)) return 'has those at home in play with no raid to fight';
+  if (value.run === null) return 'is on no run';
+  return null;
 }
 
 // A raid coming (M29, raids.js): the day the pursuer found the colony and

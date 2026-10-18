@@ -23,11 +23,16 @@
 //     the day's odds, and heat falls (raids.js raidDayEnd).
 // While the ship is away the colony runs on its own power (colony.js
 // colonyStats). Giving, building, moving and taking down take no time.
-// While a raid's lander is down (M29) no day passes until it is faced. The
-// flags count the days, the hungry ones, the food grown, the materials dug,
-// what the stores couldn't keep, and the hit points the days healed and
-// hunger took. The only roll is the pursuer's, the campaign's. Pure.
+// While a raid's lander is down (M29) no day passes until it is faced. From
+// M38d, while the ship is away on a voyage (voyage.js), each jump, survey or
+// day's rest on the run passes a day (voyageDay), run as a trip's for those
+// at home and the colony's own food (away.js), its end leaving heat alone.
+// The flags count the days, the hungry ones, the food grown, the materials
+// dug, what the stores couldn't keep, and the hit points the days healed
+// and hunger took; and a voyage's days and its hungry ones. The only roll
+// is the pursuer's, the campaign's. Pure.
 import { atColony } from './acts.js';
+import { backAboard, homeFront } from './away.js';
 import { colonyStats, storesOf } from './colony.js';
 import { colonyEdge } from './edges.js';
 import { tally } from './flags.js';
@@ -42,8 +47,10 @@ export const MAX_DAYS = 99999;
 // away from the colony, or while the ship is away and its days pass as it
 // flies.
 export function dayPlan(campaign, rules) {
+  const away = 'The ship is away: the days pass as it flies.';
+  if (campaign.colony?.voyage) return { ok: false, error: away };
   if (!atColony(campaign, rules)) return { ok: false, error: 'Days pass at the colony.' };
-  if (campaign.colony.trip) return { ok: false, error: 'The ship is away: the days pass as it flies.' };
+  if (campaign.colony.trip) return { ok: false, error: away };
   if (raidDown(campaign)) return { ok: false, error: downText(campaign, rules) };
   return planDay(campaign, rules);
 }
@@ -57,8 +64,10 @@ export function dayPlan(campaign, rules) {
 // and materials ([now, after the day]), lost ({ food, materials }: what
 // the stores can't keep), stores (what they keep of each), found (the
 // odds, percent, of the pursuer finding the colony at the day's end, M29)
-// }, or { ok: false, error }.
+// }, or { ok: false, error }. While the ship is away on a voyage (M38d) it
+// is the day of those at home, on the colony's food.
 export function planDay(campaign, rules) {
+  if (campaign.colony.voyage?.home) return planDay(homeFront(campaign), rules);
   const { day, materials, trip } = campaign.colony;
   if (day >= MAX_DAYS) return { ok: false, error: 'The colony has counted all the days it can.' };
   const stats = colonyStats(campaign, rules);
@@ -105,10 +114,27 @@ export function nextDay(campaign, rules) {
 }
 
 // Passes the next day, the ship at home or away (planDay): what a trip's
-// days do (expeditions.js). Returns as nextDay does.
+// days do (expeditions.js), and a voyage's (voyageDay). Returns as nextDay
+// does.
 export function passDay(campaign, rules) {
+  if (campaign.colony.voyage?.home) {
+    const day = passDay(homeFront(campaign), rules);
+    if (!day.ok) return day;
+    const flags = tally(day.campaign.flags, { voyageDays: 1, voyageHungryDays: day.plan.fed ? 0 : 1 });
+    return { ...day, campaign: backAboard({ ...day.campaign, flags }) };
+  }
   const plan = planDay(campaign, rules);
   return plan.ok ? passPlanned(campaign, rules, plan) : plan;
+}
+
+// A day at the colony while the ship is away on a voyage (M38d): each jump,
+// survey or day's rest on the run passes one (travel.js, survey.js,
+// regroup.js), as passDay has it. Returns { campaign, day (passDay's, or
+// null with the ship home or no day to pass) }.
+export function voyageDay(campaign, rules) {
+  if (!campaign.colony?.voyage?.home) return { campaign, day: null };
+  const day = passDay(campaign, rules);
+  return day.ok ? { campaign: day.campaign, day } : { campaign, day: null };
 }
 
 function passPlanned(campaign, rules, plan) {

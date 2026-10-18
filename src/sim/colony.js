@@ -12,11 +12,16 @@
 // materials build what keeps it going alone, a solar array and shelters.
 // From M32 the crew's jobs help (edges.js): a xenobiologist at home makes
 // each farm grow more, an engineer each mine dig more, and a quartermaster
-// anywhere in the crew makes the stores keep more.
+// anywhere in the crew makes the stores keep more. From M38d the ship flies
+// out on voyages too (voyage.js): while it is away those at home are the
+// colony's crew, its quartermaster only one at home, and its stores are its
+// storehouses alone, the ship's holds being with the ship.
 // Pure.
 //
 // The colony (campaign.colony):
 //   world      the world settled (settle.js)
+//   worlds     the other worlds of its system (M38d): [{ name, world }],
+//              which its trips' places can be (expeditions.js otherWorlds)
 //   buildings  [{ uid, type, x, y, rot }]: in the order they were built,
 //              each where it stands on the colony's grid, laid out as a
 //              ship's modules are (builder.js). type is a part's own (a
@@ -30,7 +35,10 @@
 //              they are rolled, and after each trip until the next list
 //   trip       the trip under way (M28), or null while the ship is home
 //   raid       the raid coming (M29, raids.js): { found, lands }, or null
+//   voyage     the voyage under way (M38d, voyage.js), or null while the
+//              ship is home
 import { atColony } from './acts.js';
+import { homeOf } from './away.js';
 import { applyCommand, occupancy, placeModule } from './builder.js';
 import { shipChecklist } from './campaign.js';
 import { shipStats } from './constraints.js';
@@ -54,9 +62,9 @@ export const BUILD_GIVES = ['power', 'beds', 'air', 'storage'];
 
 // A colony on the world settled, with nothing built yet: day 1, with the
 // materials the landing salvaged, no places rolled, the ship home and no
-// raid coming.
-export function newColony(world, materials = 0) {
-  return { world, buildings: [], nextUid: 1, day: 1, materials, places: [], trip: null, raid: null };
+// raid coming; worlds, the other worlds of its system.
+export function newColony(world, materials = 0, worlds = []) {
+  return { world, buildings: [], nextUid: 1, day: 1, materials, places: [], trip: null, raid: null, worlds, voyage: null };
 }
 
 // The colony's build of id type (data/colony.json builds: a farm, a mine,
@@ -96,8 +104,11 @@ export function crewYields(campaign, rules) {
   return { food: colonyEdge(home, rules, 'farms'), materials: colonyEdge(home, rules, 'mines') };
 }
 
-// The crew at home: all but the squad on a trip.
+// The crew at home: all but the squad on a trip, or while the ship is away
+// on a voyage, those at home (away.js).
 export function homeCrew(campaign) {
+  const home = homeOf(campaign);
+  if (home) return home;
   const away = new Set(campaign.colony?.trip?.squad ?? []);
   return campaign.crew.filter((member) => !away.has(member.id));
 }
@@ -166,16 +177,19 @@ export function givesOf(def) {
 //              without (rough: their ids, M28). The squad on a trip is
 //              neither (away: their ids).
 //   storage    what the powered storehouses hold, and what a quartermaster
-//              anywhere in the crew adds (M32)
+//              anywhere in the crew adds (M32): at home, while the ship is
+//              away on a voyage (M38d)
 //   made       { food, materials }: what the farms and mines make a day,
 //              with what the crew at home adds (crewYields)
 //   defense    { damage, shield, intercept, armories } of the powered
 //              defenses (M29)
 //   infirmary  the best powered infirmary's heal, 0 without one
 export function colonyStats(campaign, rules) {
-  const { colony, crew } = campaign;
+  const { colony } = campaign;
   const trip = colony.trip ?? null;
-  const ship = trip ? 0 : Math.max(0, shipStats(campaign.ship, rules).power);
+  // The ship away, on a trip or a voyage (M38d).
+  const gone = Boolean(trip || colony.voyage);
+  const ship = gone ? 0 : Math.max(0, shipStats(campaign.ship, rules).power);
   const more = crewYields(campaign, rules);
   const known = colony.buildings.map((building) => {
     const build = buildOf(building.type, rules);
@@ -205,10 +219,10 @@ export function colonyStats(campaign, rules) {
     beds,
     air,
     housed,
-    aboard: trip ? [] : without,
-    rough: trip ? without : [],
+    aboard: gone ? [] : without,
+    rough: gone ? without : [],
     away: [...away],
-    storage: sum('storage') + colonyEdge(crew, rules, 'stores'),
+    storage: sum('storage') + colonyEdge(colony.voyage ? home : campaign.crew, rules, 'stores'),
     made: { food: made('food'), materials: made('materials') },
     defense: { damage: sum('damage'), shield: sum('shield'), intercept: sum('intercept'), armories: lit.filter((b) => b.gives.armory).length },
     infirmary: Math.max(0, ...lit.map((b) => b.gives.heal)),
@@ -217,9 +231,10 @@ export function colonyStats(campaign, rules) {
 
 // What the colony keeps of food and of materials, each up to its stores:
 // { ship (the landed ship's holds, as on the run: travel.js
-// supplyCapacity), colony (its powered storehouses), total }.
+// supplyCapacity; none while it is away on a voyage, M38d), colony (its
+// powered storehouses), total }.
 export function storesOf(campaign, rules, stats = colonyStats(campaign, rules)) {
-  const ship = supplyCapacity(campaign.ship, rules);
+  const ship = campaign.colony.voyage ? 0 : supplyCapacity(campaign.ship, rules);
   return { ship, colony: stats.storage, total: ship + stats.storage };
 }
 

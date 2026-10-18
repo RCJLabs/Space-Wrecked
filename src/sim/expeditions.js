@@ -80,11 +80,10 @@ export function kindOf(place, rules) {
 
 // The system's other worlds, which a kind of place with worlds names its
 // places for: [{ name, world }], each world of the system the run ended in
-// but the one settled, top down.
+// but the one settled, top down. From M38d the colony keeps them (settle.js),
+// as the run moves on past its system.
 export function otherWorlds(campaign) {
-  const sector = campaign.run?.sector;
-  if (!sector?.system || !campaign.colony) return [];
-  return sector.nodes.filter((node) => node.world && node.name !== campaign.colony.world.name).map((node) => ({ name: node.name, world: node.world }));
+  return campaign.colony?.worlds ?? [];
 }
 
 // The places within reach, rolled from the campaign's RNG: { places, rng }:
