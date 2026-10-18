@@ -23,15 +23,21 @@ export function launchText(campaign, rules) {
 // What the landing shows, for a campaign that has just settled a world:
 //   world    "Greenhaven · Ice world": where the ship comes down
 //   to       "Act 3 · The colony": the act it is in now; for a colony
-//            settled on a voyage (M38e), "A new colony · The crew's second"
+//            settled on a voyage (M38e), "The crew's second colony"
+//   where    the head's line: world, and for a colony settled on a voyage
+//            which it is ("Saltmarch · Desert world · The crew's second
+//            colony")
 //   line     its kind's words for the landing (data/worlds.json)
 export function landingText(campaign, rules) {
   const world = campaign.colony?.world;
   const kind = world && rules.worlds?.kinds.get(world.kind);
   const id = campaign.colony?.id ?? 1;
+  const said = world ? `${world.name} · ${kind?.name ?? world.kind}` : '';
+  const to = id > 1 ? `The crew's ${ordinal(id)} colony` : actTitle(campaign.act, rules);
   return {
-    world: world ? `${world.name} · ${kind?.name ?? world.kind}` : '',
-    to: id > 1 ? `A new colony · The crew's ${ordinal(id)}` : actTitle(campaign.act, rules),
+    world: said,
+    to,
+    where: id > 1 ? `${said} · ${to}` : said,
     line: kind?.landing ?? '',
   };
 }

@@ -78,7 +78,7 @@ export const landingScreen = {
         const { campaign } = game.getState();
         if (!alive || !campaign) return;
         const text = landingText(campaign, defs);
-        setText(where, text.world);
+        setText(where, text.where);
         setText(line, text.line);
         go.setAttribute('aria-label', 'Skip the landing');
         const { ship } = campaign;

@@ -41,8 +41,10 @@ test('Settle here on a voyage says a colony more, who lands and what the colony 
   assert.equal(sectorText(atWorld, rules).settle.text, said);
   assert.equal(settleOnVoyage(home, plan, rules), null, 'not on a voyage');
   assert.deepEqual([ordinal(1), ordinal(2), ordinal(12)], ['first', 'second', 'twelfth']);
-  assert.equal(landingText(two, rules).to, "A new colony · The crew's second");
+  assert.equal(landingText(two, rules).to, "The crew's second colony");
+  assert.equal(landingText(two, rules).where, `${plan.world.name} · Desert world · The crew's second colony`);
   assert.equal(landingText(home, rules).to, 'Act 3 · The colony');
+  assert.equal(landingText(home, rules).where, landingText(home, rules).world);
   assert.equal(continueText(two, rules), `Act 3 · ${plan.world.name}`);
 });
 

@@ -1059,6 +1059,26 @@ export function systemMove(campaign, rules) {
   return best === at ? { kind: 'settle' } : { kind: 'jump', to: stepToward(sector, at, best) };
 }
 
+// The second colony's world (M38e): in a system past the colony's, the
+// best world there (bestWorld): { kind: 'settle' } once the ship is at it,
+// else { kind: 'jump', to } a link on toward it.
+export function settleMove(campaign, rules) {
+  const { sector, at } = campaign.run;
+  const best = bestWorld(campaign, rules);
+  return best === at ? { kind: 'settle' } : { kind: 'jump', to: stepToward(sector, at, best) };
+}
+
+// Who flies back from the second colony (M38e): everyone there, but the
+// least fit of three or more (the last in the crew's order on a tie), who
+// stays. Their ids, in the crew's order.
+export function backCrew(campaign, rules) {
+  const { crew } = campaign;
+  if (crew.length < 3) return crew.map((member) => member.id);
+  const share = (member) => member.hp / maxHp(member, rules);
+  const [{ member: stays }] = crew.map((member, i) => ({ member, i })).sort((a, b) => share(a.member) - share(b.member) || b.i - a.i);
+  return crew.filter((member) => member !== stays).map((member) => member.id);
+}
+
 // The node a link on from `from` toward `to`, by the fewest links; the
 // lowest id on a tie.
 function stepToward(sector, from, to) {

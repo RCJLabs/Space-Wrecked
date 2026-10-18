@@ -24,7 +24,7 @@ import { deploy } from '../src/sim/deploy.js';
 import { beginBoarding, endBoarding } from '../src/sim/encounter.js';
 import { boardPlace, endPlaceFight } from '../src/sim/expeditions.js';
 import { jobAction } from '../src/sim/jobAi.js';
-import { endColonyRaid, faceRaid, raidTake } from '../src/sim/raids.js';
+import { endColonyRaid, faceRaid, raidCampaign, raidTake } from '../src/sim/raids.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { mapFromShip } from '../src/sim/mapFromShip.js';
 import { shotOdds } from '../src/sim/odds.js';
@@ -103,8 +103,8 @@ export function fightRaid(campaign, rules) {
   if (!faced.fight) return { campaign: faced.campaign, landing: faced.landing, fought: false, won: faced.won, rounds: 0, dragged: false, taken: faced.taken };
   const done = fightThrough(faced.campaign, rules, endColonyRaid, RAID_PLAYERS);
   // The fight's end takes from the stores as they stood (raids.js
-  // settleRaid).
-  const taken = done.won ? null : raidTake(faced.campaign, rules);
+  // settleRaid), at the colony fought for (M38e: raidCampaign).
+  const taken = done.won ? null : raidTake(raidCampaign(faced.campaign), rules);
   return { campaign: done.campaign, landing: faced.landing, fought: true, won: done.won, rounds: done.rounds, dragged: done.dragged, taken };
 }
 
