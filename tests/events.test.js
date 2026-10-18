@@ -162,7 +162,7 @@ test('what a node holds is known on the charts, next to where the ship has been,
   const { sector } = campaign.run;
   const known = knownNodes(campaign.run, rules);
   for (const node of sector.nodes) {
-    const charted = ['start', 'exit', 'station', 'nebula'].includes(node.type);
+    const charted = ['start', 'exit', 'station', 'nebula', 'shipyard'].includes(node.type);
     const near = node.id === sector.start || linked(sector, sector.start).includes(node.id);
     assert.equal(known.has(node.id), charted || near, `node ${node.id} (${node.type})`);
   }

@@ -88,7 +88,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      campaign keeps its spare weapons; the shop sells weapons too; the run
 //      keeps what it has bought off the stations' racks; an event's result
 //      may say what weapon it found (M37)
-export const SAVE_VERSION = 32;
+//  33  shipyards: the run keeps the parts it has bought at the sectors'
+//      shipyards, and the crew can dock at one (M37b)
+export const SAVE_VERSION = 33;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -444,6 +446,16 @@ export const MIGRATIONS = [
       if (!isObject(data) || !isObject(data.campaign)) return data;
       const { run } = data.campaign;
       return { ...data, campaign: { ...data.campaign, arms: {}, run: isObject(run) ? { ...run, racked: [] } : run } };
+    },
+  },
+  // Shipyards (M37b) join the run: a run under way has bought nothing at
+  // one. Its sector has none; the sectors after it each have one.
+  {
+    from: 32,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign)) return data;
+      const { run } = data.campaign;
+      return isObject(run) ? { ...data, campaign: { ...data.campaign, run: { ...run, yarded: [] } } } : data;
     },
   },
 ];

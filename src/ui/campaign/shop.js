@@ -6,12 +6,18 @@
 // aboard could carry it; and its price. Buy or Sell takes two taps, as Pay
 // does at the hangar: the first shows the price, the second trades. The
 // stock turns over after every job. The words are shopText.js's.
+//
+// Since M37b the screen is a shipyard's too, opened with Yard from the
+// sector map at one: its parts for sale, never restocked, and the parts on
+// hand it buys, at its prices; Map goes back. The first trade at a yard of
+// the pursuer's side says the heat it adds. Those words are yardText.js's.
 import { loadContent } from '../../platform/content.js';
 import { palette } from '../../render/palette.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { shopText } from './shopText.js';
+import { yardText } from './yardText.js';
 
 const ARM_MS = 3000; // Buy or Sell waits this long for its second tap
 
@@ -21,7 +27,8 @@ export const shopScreen = {
     const head = node('header', 'shop-head');
     const where = node('p', 'shop-where');
     const creditsChip = node('p', 'shop-credits');
-    head.append(node('h1', null, 'Shop'), where, creditsChip);
+    const title = node('h1', null, 'Shop');
+    head.append(title, where, creditsChip);
     const list = node('div', 'shop-list');
     const detail = node('article', 'shop-detail');
     const foot = node('footer', 'shop-foot');
@@ -43,8 +50,10 @@ export const shopScreen = {
     let armed = false; // Buy or Sell has had its first tap
     let armTimer = 0;
     let rows = [];
+    // Where the way back goes: the hangar, or the map from a yard.
+    let backTo = 'hub';
     const cleanups = [
-      onTap(backButton, () => game.dispatch({ type: 'screen/show', screen: 'hub' })),
+      onTap(backButton, () => game.dispatch({ type: 'screen/show', screen: backTo })),
       onTap(tradeButton, trade),
       () => clearTimeout(armTimer),
       game.subscribe((state) => alive && render(state.campaign)),
@@ -56,7 +65,9 @@ export const shopScreen = {
         if (!alive) return;
         defs = content;
         const { campaign } = game.getState();
-        if (campaign && (!campaign.board.length || campaign.shop === null)) game.dispatch({ type: 'campaign/board', rules: defs });
+        // Act 1's board and stock are rolled the first time they are seen;
+        // a yard's stock is its own (yards.js).
+        if (campaign && !campaign.run && (!campaign.board.length || campaign.shop === null)) game.dispatch({ type: 'campaign/board', rules: defs });
         render(game.getState().campaign);
       })
       .catch((err) => {
@@ -65,12 +76,14 @@ export const shopScreen = {
 
     function render(campaign) {
       if (!defs || !campaign) return;
-      const text = shopText(campaign, defs);
+      const text = yardText(campaign, defs) ?? shopText(campaign, defs);
+      showBack(text?.back ?? (campaign.run ? { label: 'Map', screen: 'sector' } : { label: 'Hangar', screen: 'hub' }));
+      setText(title, text?.title ?? 'Shop');
       if (!text) {
         setText(where, '');
         detail.replaceChildren(node('p', 'shop-none', 'There is no shop here.'));
         tradeButton.disabled = true;
-        setText(hint, 'Back to the hangar.');
+        setText(hint, campaign.run ? 'Back to the map.' : 'Back to the hangar.');
         return;
       }
       setText(where, text.name);
@@ -103,7 +116,8 @@ export const shopScreen = {
       setText(tradeButton.querySelector('span'), armed ? item.ask : item.action);
       tradeButton.dataset.armed = String(armed);
       tradeButton.setAttribute('aria-label', `${selling ? 'Sell' : 'Buy'} the ${item.name}`);
-      const confirm = selling && item.warn ? `${item.warn}: tap again to sell it anyway.` : `Tap again to ${selling ? 'sell' : 'buy'} it.`;
+      const again = `Tap again to ${selling ? 'sell' : 'buy'} it.`;
+      const confirm = selling && item.warn ? `${item.warn}: tap again to sell it anyway.` : text.dock ? `${text.dock} ${again}` : again;
       const why = !item.ok ? item.why : armed ? confirm : null;
       setText(hint, why ?? text.hint.text);
       hint.dataset.tone = why ? (item.ok ? 'warn' : 'bad') : text.hint.tone;
@@ -130,7 +144,7 @@ export const shopScreen = {
       const onHand = rows.slice(text.stock.length).map((r) => r.button);
       list.replaceChildren(
         section('For sale'),
-        ...(forSale.length ? forSale : [node('p', 'shop-none', 'Sold out until the next job.')]),
+        ...(forSale.length ? forSale : [node('p', 'shop-none', text.soldOut ?? 'Sold out until the next job.')]),
         ...(onHand.length ? [section('On hand'), ...onHand] : []),
       );
     }
@@ -192,6 +206,19 @@ export const shopScreen = {
       }
       disarm();
       const { campaign } = game.getState();
+      const yard = yardText(campaign, defs);
+      if (yard) {
+        // At a yard: by the part's slot to buy, by its type to sell.
+        if (picked.from === 'stock') {
+          const item = yard.stock.find((entry) => entry.key === picked.key);
+          picked = { from: 'held', key: picked.key };
+          if (item) game.dispatch({ type: 'campaign/yard/buy', slot: item.slot, rules: defs });
+        } else {
+          game.dispatch({ type: 'campaign/yard/sell', part: picked.key, rules: defs });
+        }
+        render(game.getState().campaign);
+        return;
+      }
       if (picked.from === 'stock') {
         const index = campaign.shop.findIndex((item) => (item.weapon ? `w:${item.weapon}` : item.part) === picked.key);
         // Once bought, the part or weapon is on hand: it stays picked
@@ -210,6 +237,14 @@ export const shopScreen = {
     function disarm() {
       armed = false;
       clearTimeout(armTimer);
+    }
+
+    // The way back's button: Hangar, or Map at a yard.
+    function showBack({ label, screen }) {
+      if (backTo === screen) return;
+      backTo = screen;
+      backButton.querySelector('svg').outerHTML = screen === 'sector' ? icons.map : icons.home;
+      setText(backButton.querySelector('span'), label);
     }
 
     let painted = false;

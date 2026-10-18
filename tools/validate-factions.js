@@ -7,12 +7,15 @@
 // the side each ship preset is on (data/ships.json). Since M37, what the
 // racks at each side's stations sell (`arms`), and at stations of nobody's
 // (the file's `arms`): weapons by weight, enough for a rack (rackSize).
+// Since M37b, the makers each side's shipyards lean to (`yard`): each
+// maker's parts weigh that much in a yard's stock, other makers' 1; and the
+// shipyards that belong to a side, by a name the sectors give shipyards.
 // Returns the sides' ids, for the other files that name them.
 import { sideColors } from '../src/render/palette.js';
 import { isObject, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 
 const FILE_KEYS = ['sides', 'stations', 'arms'];
-const SIDE_KEYS = ['id', 'name', 'blurb', 'color', 'patrol', 'arms'];
+const SIDE_KEYS = ['id', 'name', 'blurb', 'color', 'patrol', 'arms', 'yard'];
 const PATROL_KEYS = ['waved', 'fired'];
 const MAX_NAME = 24;
 const MAX_BLURB = 160;
@@ -39,12 +42,15 @@ export function checkFactions(data, presets, fail) {
     }
   }
   const weaponIds = new Set((data.weapons?.weapons ?? []).map((weapon) => weapon.id));
+  const makers = data.manufacturers?.manufacturers;
+  const makerIds = new Set(Array.isArray(makers) ? makers.map((maker) => maker?.id) : []);
   const rack = data.balance?.rackSize ?? 0;
   checkArms(file.arms, `${where} arms`, weaponIds, rack, fail);
   sides.forEach((side, i) => {
     const at = `${where} side ${side.id ?? `#${i}`}`;
     knownKeys(side, SIDE_KEYS, at, fail);
     if (side.arms !== undefined) checkArms(side.arms, `${at} arms`, weaponIds, rack, fail);
+    if (side.yard !== undefined) checkLean(side.yard, `${at} yard`, makerIds, fail);
     if (!isText(side.name) || side.name.length > MAX_NAME) fail(at, `name must be a non-empty string of up to ${MAX_NAME} letters`);
     if (!isText(side.blurb) || side.blurb.length > MAX_BLURB) fail(at, `blurb must be a non-empty string of up to ${MAX_BLURB} letters`);
     if (typeof side.color !== 'string' || !Object.hasOwn(sideColors, side.color)) fail(at, `color must be one of src/render/palette.js sideColors (${Object.keys(sideColors).join(', ')})`);
@@ -60,12 +66,12 @@ export function checkFactions(data, presets, fail) {
       }
     }
   });
-  const names = new Set(data.sectors?.names?.stations ?? []);
+  const names = new Set([...(data.sectors?.names?.stations ?? []), ...(data.sectors?.names?.shipyards ?? [])]);
   if (!isObject(file.stations)) {
-    fail(where, 'stations must be an object of station names, each with its side');
+    fail(where, 'stations must be an object of station and shipyard names, each with its side');
   } else {
     for (const [name, side] of Object.entries(file.stations)) {
-      if (!names.has(name)) fail(`${where} stations`, `"${name}" isn't a station's name in sectors.json`);
+      if (!names.has(name)) fail(`${where} stations`, `"${name}" isn't a station's or a shipyard's name in sectors.json`);
       if (!ids.has(side)) fail(`${where} stations`, `${name}: unknown side "${side}"`);
     }
   }
@@ -73,6 +79,19 @@ export function checkFactions(data, presets, fail) {
     if (ship.side !== undefined && !ids.has(ship.side)) fail(`ships.json ${ship.id}`, `side: unknown side "${ship.side}" (factions.json)`);
   }
   return ids;
+}
+
+// A side's shipyards' lean (M37b): { [maker id]: weight }, weights 1 to
+// 100, at least one maker.
+function checkLean(table, where, makerIds, fail) {
+  if (!isObject(table) || !Object.keys(table).length) {
+    fail(where, 'must be an object of makers, each with its weight');
+    return;
+  }
+  for (const [id, weight] of Object.entries(table)) {
+    if (!makerIds.has(id)) fail(where, `"${id}" is not a maker (manufacturers.json)`);
+    if (!(Number.isInteger(weight) && weight >= 1 && weight <= 100)) fail(where, `${id}'s weight must be a whole number from 1 to 100`);
+  }
 }
 
 // What a rack sells: { [weapon id]: weight }, weights 1 to 100, with at

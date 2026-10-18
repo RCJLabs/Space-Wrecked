@@ -71,7 +71,7 @@
 //            home against boarders (beginFight), which no screen starts any
 //            more.
 import { int, isState, pick, seedFrom } from '../core/rng.js';
-import { actOf, atColony, atHangar, atStation } from './acts.js';
+import { actOf, atColony, atHangar, atPort } from './acts.js';
 import { battleProblem } from './battleShape.js';
 import { createBattle } from './battle.js';
 import { buildShip, isShipData } from './builder.js';
@@ -337,10 +337,11 @@ export function refitShip(campaign, ship, rules) {
   return parts ? { ...campaign, ship, parts } : campaign;
 }
 
-// True where the ship can be refitted: at the hangar, at a station, or at
-// the colony, where it has landed (M27), while it is home (M28).
+// True where the ship can be refitted: at the hangar, at a station or a
+// shipyard (M37b), or at the colony, where it has landed (M27), while it is
+// home (M28).
 export function canRefit(campaign, rules) {
-  return Boolean(rules) && (atHangar(campaign, rules) || atStation(campaign, rules) || (atColony(campaign, rules) && !campaign.colony.trip));
+  return Boolean(rules) && (atHangar(campaign, rules) || atPort(campaign, rules) || (atColony(campaign, rules) && !campaign.colony.trip));
 }
 
 // The uids of the ship's wrecked parts: those a refit can't take off.

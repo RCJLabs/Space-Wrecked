@@ -107,12 +107,12 @@ export function jobEndLines(campaign, rules, job, won) {
   return changeLines(moveStanding(campaign, rules, jobMoves(job, rules, won)).changes, rules);
 }
 
-// A station's side and what it charges the crew: { side, name, color,
-// line ("The union's station: friendly, prices 90%."), tone (good under
-// full prices, warn over them), dock }, or null for nobody's. dock, at a
-// station of the pursuer's side where the ship is (M33's fix), what trading
-// there adds until the crew has, then that it is paid: { line, tone }; null
-// anywhere else.
+// A station's or a shipyard's (M37b) side and what it charges the crew: {
+// side, name, color, line ("The union's station: friendly, prices 90%.",
+// "The union's yard: ..."), tone (good under full prices, warn over them),
+// dock }, or null for nobody's. dock, at one of the pursuer's side where
+// the ship is (M33's fix), what trading there adds until the crew has, then
+// that it is paid: { line, tone }; null anywhere else.
 export function stationText(node, campaign, rules) {
   const side = stationSide(node, rules);
   if (!side) return null;
@@ -126,7 +126,8 @@ export function stationText(node, campaign, rules) {
     : campaign.run.docked
       ? { line: `${capital(sideDoes(side, rules, 'has', 'have'))} logged the ship: trading on here adds no more heat.`, tone: 'info' }
       : { line: `${capital(sideIs(side, rules))} after you: trade here and they log the ship, heat +${heat}. Passing through costs nothing.`, tone: 'warn' };
-  return { side, name: sideName(side, rules), color: sideColor(side, rules), line: `${capital(possessive(sideCalled(side, rules)))} station: ${level}, ${prices}.`, tone, dock };
+  const kind = node.type === 'shipyard' ? 'yard' : 'station';
+  return { side, name: sideName(side, rules), color: sideColor(side, rules), line: `${capital(possessive(sideCalled(side, rules)))} ${kind}: ${level}, ${prices}.`, tone, dock };
 }
 
 // What a trade at the station the ship is at adds (travel.js tradeHeat,

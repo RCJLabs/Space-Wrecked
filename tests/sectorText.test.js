@@ -46,11 +46,11 @@ test('what the map knows: the charted kinds and the nodes next to the route; the
   const text = sectorText(campaign, rules);
   for (const n of text.nodes) {
     const node = sector.nodes[n.id];
-    const known = ['start', 'exit', 'station', 'nebula'].includes(node.type) || n.id === sector.start || linked(sector, sector.start).includes(n.id);
+    const known = ['start', 'exit', 'station', 'nebula', 'shipyard'].includes(node.type) || n.id === sector.start || linked(sector, sector.start).includes(n.id);
     assert.equal(n.known, known, `node ${n.id}`);
     assert.equal(n.type, known ? node.type : 'unknown');
   }
-  assert.match(text.scan.text, /^A scan shows what \d+ nodes? holds? within 2 jumps, for 2 heat\. Tap again to scan\.$/);
+  assert.match(text.scan.text, /^A scan shows what (one node holds|\d+ nodes hold) within 2 jumps, for 2 heat\. Tap again to scan\.$/);
   const scanned = scan(campaign, rules).campaign;
   const after = sectorText(scanned, rules);
   assert.ok(after.nodes.filter((n) => reach(sector, sector.start).has(n.id)).every((n) => n.known), 'a scan shows what lies in reach');
@@ -100,7 +100,7 @@ test('a station sells a jump\'s worth and a fill-up, each with its price', () =>
   const side = rules.factions.stations[station.name];
   assert.ok(side, 'the first station is a side\'s');
   assert.equal(text.here.kind, `Station · ${sideName(side, rules)}`, "a station of a side's says whose (M33)");
-  assert.match(text.here.kind, /^Station · The [A-Z]/);
+  assert.match(text.here.kind, /^Station · The [A-Za-z]/);
   assert.equal(text.hint.tone, 'good');
   const broke = sectorText({ ...docked, credits: 0 }, rules);
   assert.deepEqual([broke.offer.buys, broke.offer.why], [[], 'You have 0 credits.']);

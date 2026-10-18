@@ -11,6 +11,7 @@ import { launch } from '../src/sim/launch.js';
 import { memberJob, rankOf } from '../src/sim/ranks.js';
 import { feeOf, hireRecruit, recruitsAt } from '../src/sim/recruits.js';
 import { initialState, saveData } from '../src/sim/root.js';
+import { shareHere } from '../src/sim/standing.js';
 import { TRAIT_STATS } from '../src/sim/traits.js';
 import { beginRun } from '../src/sim/travel.js';
 import { rules } from './battleKit.js';
@@ -75,8 +76,8 @@ test('the fee rises with traits and rank: recruitFee, recruitTraitFee a trait an
   assert.equal(fee(['quick'], 3), 90, 'rank 1');
   assert.equal(fee(['steady', 'cool-head'], 8), 150, 'rank 2, two traits');
   assert.equal(fee(['steady', 'cool-head'], 40), 150, 'no rank past 2');
-  // Each recruit asks their own.
-  for (const { recruit } of offered(10)) assert.equal(recruit.fee, fee(recruit.traits, recruit.fights, recruit.job), recruit.name);
+  // Each recruit asks their own, at the station's share (M33).
+  for (const { recruit, campaign } of offered(10)) assert.equal(recruit.fee, feeOf(recruit, rules, shareHere(campaign, rules)), recruit.name);
 });
 
 test('a veteran signs on ranked: their fights stood set their rank, and their order and effects follow it from the first fight', () => {

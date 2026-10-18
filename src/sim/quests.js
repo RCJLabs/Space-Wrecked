@@ -37,7 +37,7 @@ import { MAX_PLACES } from './tripShape.js';
 const MAX_SEED = 0xffffffff;
 // The kinds of node a quest's event never goes on, besides the way in, the
 // jump point and a hostile ship's.
-const KEEP = ['station', 'nebula'];
+const KEEP = ['station', 'nebula', 'shipyard'];
 
 // The quest by id, or null.
 export function questOf(rules, id) {

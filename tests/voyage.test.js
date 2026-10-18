@@ -89,13 +89,17 @@ const RUNS = 30;
 // to 100, fed with a cargo hold (74) and with bunks (68), where main's had
 // come down to 81 and 75 by M36; on seeds 101 to 200 its voyages matched
 // main's (78 and 75 against 80 and 73). So those two hold main's rates
-// before M37 (Evan's call, 2026-10-17). The rest fly the first RUNS, as
+// before M37 (Evan's call, 2026-10-17). M37b's shipyards took one more
+// under its bar on seeds 1 to 100: runs with a refit came to 50, where
+// main's had come down to 59 by M37 (63 before it); on seeds 101 to 300 its
+// voyages matched main's (122 of 199 against 119). So that one holds main's
+// rate before M37b, as M37's two do. The rest fly the first RUNS, as
 // before.
 const RATE_RUNS = 100;
 const MARGIN = 15;
 const MARGIN_RARE = 5;
 const MAIN = {
-  miner: { metSectors: 33, ignoringMet: 100, fed: 73, metAny: 42, lost: 29, systemHungry: 14, shortOfAir: 0, surveyed: 68, housed: 41, noScan: 0, medbayFed: 79, surgeryFed: 81, signed: 44, settledSurveyed: 81, carefulFed: 82, refitRuns: 69, cargoFed: 81, bunksFed: 75, largeholdFed: 98 },
+  miner: { metSectors: 33, ignoringMet: 100, fed: 73, metAny: 42, lost: 29, systemHungry: 14, shortOfAir: 0, surveyed: 68, housed: 41, noScan: 0, medbayFed: 79, surgeryFed: 81, signed: 44, settledSurveyed: 81, carefulFed: 82, refitRuns: 59, cargoFed: 81, bunksFed: 75, largeholdFed: 98 },
   deserter: { fed: 80, metAny: 45, lost: 20 },
   smuggler: { fed: 89, metAny: 19, lost: 18 },
 };
@@ -180,8 +184,9 @@ test('supplies and heat move as data/balance.json and data/events.json say, step
   // deserter's runs repair now and then, so theirs are walked too, but for
   // their refits (the refit test's).
   for (const trip of deserters) for (const step of trip.steps) if (step.kind !== 'refit') checkStep(step, step.room, kinds);
-  // A weapon bought from a station's rack (M37) comes up too.
-  assert.deepEqual([...kinds].sort(), ['approach', 'arms', 'boarding', 'buy', 'event', 'hide', 'hire', 'jump', 'long', 'patch', 'repair', 'scan', 'sector', 'settle', 'survey', 'swap', 'system'], 'every kind of step comes up');
+  // A weapon bought from a station's rack (M37) comes up too, and a part
+  // bought at a shipyard (M37b).
+  assert.deepEqual([...kinds].sort(), ['approach', 'arms', 'boarding', 'buy', 'event', 'hide', 'hire', 'jump', 'long', 'patch', 'repair', 'scan', 'sector', 'settle', 'survey', 'swap', 'system', 'yard'], 'every kind of step comes up');
 });
 
 // One step of a voyage, as the rules say it moves things.
@@ -296,6 +301,18 @@ function checkStep(step, capacity, kinds) {
     assert.equal(step.credits[0] - step.credits[1], step.price);
     assert.ok(step.credits[1] >= step.room * balance.supplyPrice + balance.swapPrice, `${step.credits[1]} credits left`);
     assert.deepEqual([after, step.hp[1], step.parts[1]], [supplies, step.hp[0], step.parts[0]]);
+    checkDock(step);
+    return;
+  }
+  if (step.kind === 'yard') {
+    // M37b: a part bought at a shipyard, at its price there, with a
+    // holdful's price and a transponder swap's left over; one more on hand
+    // and nothing else moved.
+    assert.ok(rules.modules.has(step.part), step.part);
+    assert.equal(step.credits[0] - step.credits[1], step.price);
+    assert.ok(step.credits[1] >= step.room * balance.supplyPrice + balance.swapPrice, `${step.credits[1]} credits left`);
+    assert.equal(step.parts[1], step.parts[0] + 1);
+    assert.deepEqual([after, step.hp[1]], [supplies, step.hp[0]]);
     checkDock(step);
     return;
   }

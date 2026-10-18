@@ -1,61 +1,61 @@
-Sector 1: Last Call (seed 1), 15 nodes, 17 links
-   .  1d  4$  7h  9x 12n   .
-  0S  2o  5h   . 10!   . 14E
-   .  3t  6d  8$ 11d 13x   .
+Sector 1: Graveyard Shift (seed 1), 15 nodes, 17 links
+   .  1y  4$  7x  9! 12n   .
+  0S  2x  5d   . 10!   . 14E
+   .  3h  6h  8$ 11x 13h   .
 links: 0-1 0-2 0-3 1-4 2-5 3-6 4-7 5-8 6-8 7-9 8-11 8-10 9-12 10-13 11-13 12-14 13-14
   0 Way in (start) at 0.08, 0.5
-  1 Slag Field (derelict: company-wreck) at 0.192, 0.223
-  2 Nobody's Rock (empty) at 0.247, 0.547
-  3 Cinder Belt (trader: chandler) at 0.208, 0.792
-  4 Dock Seven (station) at 0.356, 0.27
-  5 Scrap Heap (hostile: cutter 1292041795) at 0.357, 0.499
-  6 The Long Dark (derelict: gutted-tug) at 0.34, 0.77
-  7 Quiet Water (hostile: cutter 2797928291) at 0.481, 0.288
-  8 The Truck Stop (station) at 0.476, 0.694
-  9 The Flats (hazard: static-cloud) at 0.628, 0.189
-  10 Dust Bank (distress: fever-ship) at 0.614, 0.492
-  11 Drift Four (derelict: cold-reactor) at 0.645, 0.81
-  12 Ash Drift (nebula) at 0.763, 0.314
-  13 The Hollow (hazard: drive-shudder) at 0.783, 0.749
+  1 Slipway Four (shipyard) at 0.192, 0.223
+  2 Quiet Water (hazard: micrometeors) at 0.247, 0.547
+  3 The Long Dark (hostile: cutter 1245280291) at 0.208, 0.792
+  4 Mac's Pumps (station) at 0.356, 0.27
+  5 Cinder Belt (derelict: company-wreck) at 0.357, 0.499
+  6 The Flats (hostile: cutter 2811384950) at 0.34, 0.77
+  7 Scrap Heap (hazard: loose-rock) at 0.481, 0.288
+  8 Station Okay (station) at 0.476, 0.694
+  9 Dust Bank (distress: burning-barge) at 0.628, 0.189
+  10 Static (distress: lost-courier) at 0.614, 0.492
+  11 Mile Forty (hazard: gravity-well) at 0.645, 0.81
+  12 Fogbank (nebula) at 0.763, 0.314
+  13 Nobody's Rock (hostile: cutter 1394219788) at 0.783, 0.749
   14 Jump point (exit) at 0.92, 0.5
 
-Sector 1: Cold Storage (seed 2), 13 nodes, 16 links
-   .  1x  4$  6n  8! 10o   .
-  0S  2o   .   .   .   . 12E
-   .  3x  5h  7h  9h 11$   .
+Sector 1: Overtime Reach (seed 2), 13 nodes, 16 links
+   .  1x  4$  6n  8y 10x   .
+  0S  2h   .   .   .   . 12E
+   .  3h  5!  7h  9o 11$   .
 links: 0-1 0-2 0-3 1-4 2-5 3-5 4-6 5-7 4-7 6-8 7-9 6-9 8-10 9-11 10-12 11-12
   0 Way in (start) at 0.08, 0.5
-  1 Old Beacon (hazard: micrometeors) at 0.21, 0.198
-  2 Tin Can Alley (empty) at 0.222, 0.538
-  3 Low Orbit (hazard: radiation-belt) at 0.227, 0.78
-  4 Fuel and Grub (station) at 0.376, 0.231
-  5 Static (hostile: cutter 889471012) at 0.376, 0.665
-  6 Fogbank (nebula) at 0.519, 0.302
-  7 Nobody's Rock (hostile: cutter 2680798985) at 0.48, 0.736
-  8 The Hollow (distress: jammed-airlock) at 0.667, 0.22
-  9 The Gap (hostile: cutter 4028786162) at 0.663, 0.643
-  10 Washout (empty) at 0.763, 0.215
-  11 Dock Seven (station) at 0.805, 0.702
+  1 Nobody's Rock (hazard: solar-flare) at 0.21, 0.198
+  2 The Long Dark (hostile: cutter 2775512153) at 0.222, 0.538
+  3 Washout (hostile: cutter 3063206728) at 0.227, 0.78
+  4 Last Chance Supply (station) at 0.376, 0.231
+  5 Dust Bank (distress: bad-beacon) at 0.376, 0.665
+  6 The Shroud (nebula) at 0.519, 0.302
+  7 Low Orbit (hostile: cutter 881068133) at 0.48, 0.736
+  8 Welders' Row (shipyard) at 0.667, 0.22
+  9 Static (empty) at 0.663, 0.643
+  10 Tin Can Alley (hazard: loose-rock) at 0.763, 0.215
+  11 Halfway House (station) at 0.805, 0.702
   12 Jump point (exit) at 0.92, 0.5
 
-Sector 1: The Narrows (seed 3), 16 nodes, 19 links
-   .  1t  4h  6x  9x 12h   .
-  0S  2n   .  7! 10$ 13h 15E
-   .  3x  5$  8x 11! 14x   .
+Sector 1: Breaker's Yard (seed 3), 16 nodes, 19 links
+   .  1h  4!  6x  9h 12x   .
+  0S  2n   .  7x 10$ 13x 15E
+   .  3x  5$  8! 11h 14y   .
 links: 0-1 0-2 0-3 1-4 2-5 3-5 1-5 4-6 5-8 5-7 6-9 7-10 8-11 9-12 10-13 11-14 12-15 13-15 14-15
   0 Way in (start) at 0.08, 0.5
-  1 The Hollow (trader: fence) at 0.194, 0.215
-  2 Blind Spot (nebula) at 0.196, 0.527
-  3 Dust Bank (hazard: static-cloud) at 0.219, 0.778
-  4 Slag Field (hostile: cutter 4081649432) at 0.347, 0.298
-  5 Dock Seven (station) at 0.343, 0.646
-  6 Quiet Water (hazard: ice-field) at 0.499, 0.25
-  7 Low Orbit (distress: burning-barge) at 0.521, 0.482
-  8 Washout (hazard: loose-rock) at 0.511, 0.758
-  9 Nobody's Rock (hazard: comet-tail) at 0.641, 0.254
-  10 Big Rita's (station) at 0.642, 0.451
-  11 Cinder Belt (distress: runaway-tug) at 0.661, 0.761
-  12 Static (hostile: cutter 1357622225) at 0.795, 0.212
-  13 Mile Forty (hostile: cutter 4054228067) at 0.792, 0.465
-  14 Drift Four (hazard: ion-storm) at 0.772, 0.803
+  1 The Gap (hostile: cutter 2966570141) at 0.194, 0.215
+  2 Ash Drift (nebula) at 0.196, 0.527
+  3 Nobody's Rock (hazard: gravity-well) at 0.219, 0.778
+  4 Drift Four (distress: jammed-airlock) at 0.347, 0.298
+  5 The Depot (station) at 0.343, 0.646
+  6 Mile Forty (hazard: ice-field) at 0.499, 0.25
+  7 Low Orbit (hazard: drive-shudder) at 0.521, 0.482
+  8 Tin Can Alley (distress: lost-courier) at 0.511, 0.758
+  9 Cinder Belt (hostile: cutter 2667995169) at 0.641, 0.254
+  10 Rest Stop Nine (station) at 0.642, 0.451
+  11 Dust Bank (hostile: cutter 4253337793) at 0.661, 0.761
+  12 Quiet Water (hazard: micrometeors) at 0.795, 0.212
+  13 Marker Twelve (hazard: loose-rock) at 0.792, 0.465
+  14 Welders' Row (shipyard) at 0.772, 0.803
   15 Jump point (exit) at 0.92, 0.5

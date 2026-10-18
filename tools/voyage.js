@@ -102,6 +102,7 @@ import { chooseEvent, partsOnHand } from '../src/sim/events.js';
 import { launch } from '../src/sim/launch.js';
 import { patchCrew } from '../src/sim/patch.js';
 import { buyFromRack, rackHere } from '../src/sim/racks.js';
+import { buyFromYard } from '../src/sim/yards.js';
 import { eased, questOf, threadOf } from '../src/sim/quests.js';
 import { raidLoss } from '../src/sim/raid.js';
 import { landingPlan, raidDown } from '../src/sim/raids.js';
@@ -122,7 +123,7 @@ import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
 import { withPart } from './startShip.js';
-import { bestChoice, boardIt, HEAT_POLICIES, hireWho, homeBuild, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, swapNow, systemMove, tradeHere, tripSquad, worldScore } from './voyagePlan.js';
+import { bestChoice, boardIt, HEAT_POLICIES, hireWho, homeBuild, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, swapNow, systemMove, tradeHere, tripSquad, worldScore, yardBuy } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
@@ -198,6 +199,9 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     // those won in fights.
     armsBought: 0,
     armsCredits: 0,
+    // Parts bought at the shipyards (M37b), and what they cost.
+    yardBought: 0,
+    yardCredits: 0,
     hired: 0,
     hireCredits: 0,
     healed: 0,
@@ -483,8 +487,22 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       jumped(before, jump(campaign, defs, move.to));
       continue;
     }
-    // A refit at a station, before the holds are filled: a hold fitted
-    // takes more.
+    // At a shipyard (M37b), refitting: the parts the refit would fit, one
+    // at a time while each leaves a holdful's price and a transponder
+    // swap's (voyagePlan.js yardBuy); the refit below fits them.
+    for (let pick = refit === 'yes' ? yardBuy(campaign, defs) : null; pick; pick = yardBuy(campaign, defs)) {
+      const before = campaign;
+      const bought = buyFromYard(campaign, defs, pick.slot);
+      if (!bought.ok) throw new Error(bought.error);
+      campaign = bought.campaign;
+      const step = record('yard', before, { part: pick.part, price: pick.price, dock: bought.plan.dock });
+      if (step.dock) tally.docked += 1;
+      tally.yardBought += 1;
+      tally.yardCredits += pick.price;
+      lines.push(`   Bought the ${defs.modules.get(pick.part)?.name.toLowerCase() ?? pick.part} at ${hereOf(campaign).name} for ${pick.price} credits${step.dock ? `, docking +${step.dock} heat` : ''}: ${hold()}.`);
+    }
+    // A refit at a station or a shipyard, before the holds are filled: a
+    // hold fitted takes more.
     if (refit === 'yes') {
       const before = campaign;
       const done = refitAt(campaign, defs, tried);
@@ -1181,7 +1199,7 @@ export function manyVoyages(defs, runs, options = {}) {
     `Hostile ships: ${spread(of('approaches'))} met, ${spread(of('approachesWon'))} disabled or blown up, ${spread(of('approachesLost'))} boarding us. Boarded her ${spread(of('boardings'))} times (won ${spread(of('boardingsWon'))}), left her ${spread(of('left'))}; fought off ${spread(of('defencesWon'))} of ${spread(of('defences'))} boardings. Salvage: ${spread(of('salvaged'))} parts and ${spread(of('salvageCredits'))} credits. Lost: ${spread(of('partsLost'))} parts and ${spread(of('creditsLost'))} credits; ${spread(of('fightHp'))} hit points in the fights. Lost a boarding at home: ${done.filter((r) => r.steps.some((step) => step.kind === 'boarding' && step.dir === 'you' && !step.won)).length} of ${done.length}; dragged past 40 rounds: ${done.reduce((sum, r) => sum + r.tally.dragged, 0)}.`,
     `At stations: patched ${spread(of('patchedHp'))} hit points for ${spread(of('patchCredits'))} credits; ${spread(of('repairs'))} repairs for ${spread(of('repairCredits'))} credits. Crew at the end: ${spread(done.map((r) => r.campaign.crew.reduce((sum, m) => sum + m.hp, 0)))} hit points.`,
     `Crew: signed on ${spread(of('hired'))} for ${spread(of('hireCredits'))} credits, ${done.filter((r) => r.tally.hired > 0).length} of ${done.length} runs; ${spread(done.map((r) => r.campaign.crew.length))} aboard at the end. The med bay healed ${spread(of('healed'))} hit points.`,
-    `Refits: ${spread(of('fitted'))} parts fitted at ${spread(of('refits'))} stations, in ${done.filter((r) => r.tally.fitted > 0).length} of ${done.length} runs: ${fitsLine(defs, done)}.`,
+    `Refits: ${spread(of('fitted'))} parts fitted at ${spread(of('refits'))} stations and shipyards, in ${done.filter((r) => r.tally.fitted > 0).length} of ${done.length} runs: ${fitsLine(defs, done)}. Bought at shipyards (M37b): ${spread(of('yardBought'))} parts for ${spread(of('yardCredits'))} credits, in ${done.filter((r) => r.tally.yardBought > 0).length} of ${done.length} runs.`,
     `In the first three sectors: restocked at ${spread(done.map((r) => early(r, (step) => step.kind === 'buy')))} stations; hungry on ${spread(hungryEarly)} jumps; fed all the way in ${hungryEarly.filter((n) => n === 0).length} of ${done.length}.`,
     `Supplies bought: ${spread(of('bought'))}, for ${spread(of('spent'))} credits. Launch credits: ${spread(done.map((r) => r.steps[0]?.credits[0] ?? 0))}.`,
     `Heat at launch: ${spread(done.map((r) => r.tally.heat[0]))}; at the end: ${spread(done.map((r) => r.tally.heat[1]))}; at most: ${spread(of('peak'))}. Jumps where the hunters might wait: ${spread(of('hotJumps'))}.`,

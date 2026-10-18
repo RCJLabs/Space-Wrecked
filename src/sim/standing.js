@@ -133,11 +133,11 @@ export function jobPay(campaign, rules, job) {
   return bonus ? PAY_STEP * Math.round((job.credits * (100 + bonus)) / 100 / PAY_STEP) : job.credits;
 }
 
-// The side a station belongs to, by its name, or null: for nobody's, and
-// for a node that isn't a station.
+// The side a station or a shipyard (M37b) belongs to, by its name, or
+// null: for nobody's, and for a node that is neither.
 export function stationSide(node, rules) {
   const { stations } = rules.factions;
-  return node?.type === 'station' && Object.hasOwn(stations, node.name) ? stations[node.name] : null;
+  return (node?.type === 'station' || node?.type === 'shipyard') && Object.hasOwn(stations, node.name) ? stations[node.name] : null;
 }
 
 // The share of the price, in percent, the station `node` charges the crew:

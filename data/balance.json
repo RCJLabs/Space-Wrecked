@@ -96,5 +96,7 @@
   "trustedPay": 20,
   "dockHeat": 10,
   "gearChance": 30,
-  "rackSize": 2
+  "rackSize": 2,
+  "yardSize": 12,
+  "yardPercent": 60
 }

@@ -23,6 +23,8 @@ const MAX_CREW = 99;
 const MAX_HP = 999;
 // More recruits than a station offers (recruitOffer): the same kind of guard.
 const MAX_SLOT = 9;
+// More parts than a shipyard sells (yardSize, at most 20): the same.
+const MAX_YARD_SLOT = 19;
 // Farther than any scan reaches (balance.scanRange and a scout's, edges.js).
 const MAX_REACH = 9;
 const MAX_SEED = 0xffffffff;
@@ -32,7 +34,7 @@ const ID = /^[a-z][a-z0-9-]*$/;
 // null if it reads.
 export function runProblem(run) {
   if (!isRecord(run)) return 'is unreadable';
-  const { sector, at, seen, past, done, scans, result, approach, hired, racked, swapped, surveyed, docked } = run;
+  const { sector, at, seen, past, done, scans, result, approach, hired, racked, yarded, swapped, surveyed, docked } = run;
   if (!isRecord(sector) || !isInt(sector.index, 1, 99) || !isName(sector.name) || !(sector.system === undefined || sector.system === true)) return 'has an unreadable sector';
   const { nodes, links } = sector;
   if (!Array.isArray(nodes) || nodes.length < 2 || nodes.length > MAX_NODES) return 'has an unreadable map';
@@ -77,13 +79,17 @@ export function runProblem(run) {
   if (!Array.isArray(hired) || !hired.every(isHire) || new Set(hired.map((h) => `${h.node}:${h.slot}`)).size !== hired.length) return 'has unreadable recruits';
   // The weapons bought off the stations' racks (M37, racks.js), as hires.
   if (!Array.isArray(racked) || !racked.every(isHire) || new Set(racked.map((r) => `${r.node}:${r.slot}`)).size !== racked.length) return 'has unreadable racks';
+  // The parts bought at the shipyards (M37b, yards.js): at yards the ship
+  // has been to, each slot once.
+  const isBought = (y) => isRecord(y) && isNode(y.node) && seen.includes(y.node) && nodes[y.node].type === 'shipyard' && isInt(y.slot, 0, MAX_YARD_SLOT);
+  if (!Array.isArray(yarded) || !yarded.every(isBought) || new Set(yarded.map((y) => `${y.node}:${y.slot}`)).size !== yarded.length) return 'has unreadable shipyards';
   if (typeof swapped !== 'boolean') return 'has an unreadable transponder';
   // The worlds surveyed in the system (survey.js): worlds the ship has been
   // to, each once.
   if (!isNodeList(surveyed) || !surveyed.every((id) => seen.includes(id) && nodes[id].world)) return 'has unreadable surveys';
   // Whether the crew has traded where the ship is (travel.js dockShip): only
-  // ever at a station.
-  if (typeof docked !== 'boolean' || (docked && nodes[at].type !== 'station')) return 'has an unreadable dock';
+  // ever at a station or a shipyard (M37b).
+  if (typeof docked !== 'boolean' || (docked && nodes[at].type !== 'station' && nodes[at].type !== 'shipyard')) return 'has an unreadable dock';
   return null;
 }
 

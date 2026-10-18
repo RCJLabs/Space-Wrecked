@@ -1,6 +1,6 @@
 // Construction mode: the builder on the campaign's ship, with only the parts
-// the campaign has, at the hangar (act 1), at a station on the run (M23h) or
-// at the colony, where the ship has landed (M27). The palette shows what is
+// the campaign has, at the hangar (act 1), at a station on the run (M23h)
+// or a shipyard (M37b), or at the colony, where the ship has landed (M27). The palette shows what is
 // on hand; a part fitted comes out of the parts on hand and one taken off
 // goes back, for nothing (campaign.js refitShip). Every change is saved
 // through the campaign at once. On the run, the parts an approach wrecked
@@ -24,7 +24,8 @@ export const constructionScreen = {
   mount(root, { store: game }) {
     let defs = null;
     // In act 1 the ship refits at the hangar; on the run (act 2) at a
-    // station, and goes back to the sector map; in act 3 at the colony.
+    // station or a shipyard, and goes back to the sector map; in act 3 at
+    // the colony.
     const campaign = game.getState().campaign;
     const home = campaign?.colony ? 'colony' : campaign?.run ? 'run' : 'hangar';
     const leave = {
