@@ -1900,15 +1900,74 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **A system's words, not a sector's:** a voyage's way in and jump point say `data/worlds.json` `voyage` `text` and `exit` (validated), and the transponder swap is once a system.
   - **The test player** stocks the holds first (farms for twice what the crew eats, `STOCK_SHARE`, and days at home until the food fills the holds, at most `STOCK_DAYS` 20, none once the farms can grow no more than the crew eats and no mine digs toward another). It flies home when a raid is coming that the flight home beats, and meets it at home.
   - **Measured over 100 voyages** (PROGRESS.md): 96 crossed a system (87 before), all 3 in 54; nobody hungry aboard or at home; no raid faced while away (7 before, all lost), 8 met at home with everyone and 7 won; no materials lost flying out (1,884 before), and the mines' digging past the storehouses lost while away in 13 colonies (1,350 in all). Boardings of the ship are as they were: 8, 7 lost with 2 aboard.
-- [ ] **M38e More colonies.** The draft:
-  - a second world settled, and more: each colony with its own grid, buildings, stores, days and raids;
-  - parts given at each, and refits at any;
-  - the chart marks every colony, and the colony screen opens the one the ship is at;
-  - saves migrate the one colony into a list.
+- [ ] **M38e More colonies.** Since M25 there is one colony: a voyage's worlds can be surveyed, not settled. Evan's pick (2026-10-18): colonizing multiple worlds, leaving thriving colonies.
+
+  Measured first (the miner, 100 voyages out after the first colony's 60 days, medians):
+  - **The voyage:** 2 aboard (2 to 5) and 1 at home; 1 recruit signed on aboard (0 to 5); 6 worlds passed (2 to 6), none surveyed by the test player.
+  - **What the ship carries out:** 5 parts in the hold (0 to 12) and 49 credits. The first colony has 6 buildings (3 to 20) and 12 materials (0 to 140) as it leaves.
+  - **The code:**
+    - the one colony runs through about 40 files;
+    - the voyage sits inside it, and home is always that colony;
+    - settling refuses once there is a colony;
+    - a colony's raid odds use the ship's heat, even while the ship is away.
+
+  Evan's picks (2026-10-18):
+  - **who stays:** whoever you leave. Each colony keeps those left there, with its own food;
+  - **between colonies:** fly straight there, from any colony or anywhere on a voyage;
+  - **what finds a colony:** its own trail of heat;
+  - **a new colony:** a landing's salvage.
+
+  **Done when:**
+  - **Settling on a voyage,** at a world in a system past a colony's, with nothing holding the ship:
+    - Settle here founds a new colony there. It starts with a landing's 20 materials (`data/colony.json`), no buildings yet, and its system's other worlds for its trips; the act stays 3;
+    - the ship lands there with those aboard, and the landing scene plays;
+    - the colony it flew from keeps whoever was at home and its food.
+  - **Each colony** keeps its own grid, buildings, materials, day count, places, raid and heat, and whoever is there with its food. The ship is landed at one colony or away.
+    - The colony screen opens the one it is landed at.
+    - Giving parts, building, taking down, trips, Fly out and refits work there.
+  - **Where each lies,** along the line of systems: the first at 0, and one settled on a voyage as many systems past the colony the ship flew from as the voyage had gone.
+  - **Fly to a colony,** two taps:
+    - from anywhere on a voyage while nothing holds the ship, to any colony (the one it flew from is Fly home, as now);
+    - from the colony screen, with the crew picked as for Fly out;
+    - each system between costs a day and a jump's supplies for those aboard, one system at least, plus one jump's heat; no hunters roll;
+    - a lander coming down on the way stops the flight, and Fly on finishes it; from the colony screen, the ship waits in the system it has reached;
+    - landed, the ship's crew and stores join those there, up to the stores' room.
+  - **Every colony lives its days:** each day that passes passes at every colony: Next day, a trip's day, and each jump, survey, rest and day of a flight. Its farms and mines make, those there eat its food and rest, its heat falls, and the pursuer may find it.
+  - **Its own trail:**
+    - a colony keeps the heat the ship left it with, falling `colonyHeatFall` a day, and the pursuer finds it at that heat's odds by its lanes;
+    - landing, the ship's heat is the greater of its own and the colony's;
+    - a raid sets that colony's heat to `heatAfterRaid`;
+    - the ship's own heat is the hunters', as in act 2.
+  - **Raids at every colony:**
+    - found while the ship isn't there, its lander comes down no sooner than the ship could reach it;
+    - a lander down at any colony holds the ship until it is faced: Defend, from the chart or the colony screen, with whoever is there; with nobody there, the guns alone;
+    - lost, it takes from that colony's stores.
+  - **The screens:**
+    - the chart and the colony screen list every colony (where it lies, its day, food, who is there and its raid), with Fly to each;
+    - Continue on the title says where the ship is.
+  - **Saves:** `SAVE_VERSION` 37, with a migration: the one colony becomes the first, at 0, with the ship's heat. A v36 save opens as it did.
+  - **The test player** (`tools/voyage.js`), on its voyage out (M38d):
+    - settles a world in its second system, and plays the new colony's first days: giving parts and building farms and mines;
+    - leaves one there when three or more are aboard, else nobody;
+    - flies straight back to the first colony.
+  - **Measured over 100 voyages:**
+    - the colonies founded, the days at each, and the raids found, faced and lost at each;
+    - every colony fed, and the flights between them;
+    - the voyage's rates stay within the margin of main's (`MAIN`), or go to Evan.
+  - **Every rule tested.**
+  - **Touch, at the three sizes:**
+    - settling on a voyage, and the landing;
+    - the new colony's screen, with a part given;
+    - every colony listed on the chart and the colony screen;
+    - Fly to the first colony from the chart, and back from the colony screen;
+    - a raid at a colony the ship isn't at, and Defend;
+    - a quit and reopen;
+    - offline, every button 48 px or more, no console errors;
+    - every earlier milestone's browser check still passes.
 - [ ] **M38f Citizens.** Evan's picks (2026-10-18): a colony runs itself while the ship is away, and its citizens are grown, the rescued and crew left behind. The draft:
   - a fed, housed, powered colony gains a citizen every few days, up to its beds;
   - a rescue job's captive, or an event's survivors, can settle at a colony;
-  - a crew member can stay to run a colony, and be picked up later;
+  - a crew member can stay to run a colony, and be picked up later (M38e lets crew be left at any colony);
   - citizens work the farms and mines, eat and fight a raid. A raid while the ship is away is fought out without the player, and a report waits on the return, so a colony can be lost.
 - [ ] **M39 Parts and hull frames.** 21 module types against §5's 40 to 60, and one hull frame against 6. The draft:
   - the types §9 asks for, a scanner first;
