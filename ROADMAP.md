@@ -1811,11 +1811,76 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **The test player weighs a job's wounds** by the hit points the start crews lose in it (`tools/jobs.js --stations --odds` prints them), at 2 credits each. Managing heat, its line counts the next jump's heat too. It takes work before the refit, so a part paid goes on at that station.
   - **The voyage tests' fitted voyages fly without station jobs,** as they fly without refits. With jobs, a healer's crew is fit more often, takes more work and patches more: 1,147 hit points with a med bay against 958 without, on seeds 1 to 30.
   - **Station jobs make act 2 easier for the careful player, not harder:** their pay buys transponder swaps, which shed more heat than the jobs add. Over 100 voyages the hunters came in 22 runs against 35 without them. Every rate stays within main's margins (PROGRESS.md). Whether the heat should bite harder is Evan's call (§9).
-- [ ] **M38d The run goes on.** Since M25 settling the first world ends the travel: act 3's trips reach only places 1 to 3 days away. Evan's pick (2026-10-18): the run goes on. The draft:
-  - the ship leaves the colony and jumps on into new systems past the charts, each with worlds to settle, stations, a shipyard, wrecks and the pursuer's hunters, generated as act 2's sectors are;
-  - the colony is a port to come back to, for refits, rest and its stores;
-  - while the ship is away the colony runs on as it does during a trip (M28), and a raid on it is met as M29's are with nobody home;
-  - `SAVE_VERSION` bumped, with a migration.
+- [ ] **M38d The run goes on.** Since M25 settling the first world ends the travel: act 3's trips reach only places 1 to 3 days away. Evan's pick (2026-10-18): the run goes on.
+
+  Measured first (the miner, 30 voyages from launch through the colony's 60 days, medians):
+  - **The landing:** 31 credits (0 to 561), idle from then on with no station in act 3; heat 46.
+  - **The 60 days:** heat falls to 10; 9 trips flown, 28 days away; the colony found by the pursuer in 15 runs of 30.
+  - **The code:**
+    - every move on the run (jumps, trading, refits, jobs, scans, surveys) is act 2's alone;
+    - the system settled has no jump point and holds only worlds;
+    - food is one store, the ship's holds and the colony's storehouses together;
+    - the colony's days pass only on a trip, at most 9 days, and a jump passes none.
+
+  Evan's picks (2026-10-18):
+  - **the journey:** new systems in a line, each a chart like act 2's sectors;
+  - **the way home:** fly home from anywhere;
+  - **time:** a day a jump;
+  - **who goes:** pick the crew, and split the stores.
+
+  **Done when:**
+  - **Flying out,** at the colony with the ship home, no trip and no lander down:
+    - pick who goes, as many as the ship's berths and air hold, at least one; the rest stay home;
+    - the flight checks count those aboard;
+    - two taps on Fly out: the first shows who goes and who stays, and what the holds take.
+  - **The stores split:**
+    - while the ship is home, food is one store, as now;
+    - flying out, the ship's holds take their fill from it, and the colony keeps the rest, up to its storehouses' room; what neither holds spoils, as the first tap says;
+    - credits and the parts on hand go with the ship; the materials stay;
+    - flying home, the two are one store again, up to the stores' room.
+  - **The systems,** in a line from the colony's:
+    - Fly out jumps into the next system, one never charted before: a chart generated as act 2's sectors are, its way in, its jump point to the next, two stations, a shipyard, a nebula, events and hostile ships (corvettes among them, as from act 2's third sector);
+    - two worlds among its nodes, rolled as M25's are, to survey from orbit; settling one is M38e's;
+    - named from the systems' list (`data/worlds.json`), none twice in a run until the list runs out, with 12 names added;
+    - each system's jump point leads to the next, without end.
+  - **On the run in act 3,** everything act 2 has, for those aboard:
+    - jumps, long jumps, scans, events, approaches, boardings, regroups, hiding, surveys;
+    - stations' supplies, repairs, patching, recruits, racks, jobs and transponder swaps; shipyards; refits;
+    - hunger, the med bay, events' wounds, boarding and job squads and crews' talents count only those aboard; a recruit signs on aboard;
+    - heat rises and the hunters roll as in act 2.
+  - **A day a jump:**
+    - each jump (a long one too), survey or day's rest passes a day at the colony;
+    - the day runs as on a trip: the farms and mines make, those at home eat from the colony's store and rest, the pursuer may find it, and a lander comes down on its day.
+  - **A raid while the ship is away:**
+    - its landing holds the ship where it is, as an event does, and the chart shows it;
+    - those at home face it, as on a trip; with nobody home, the landing's hits are all the colony has;
+    - lost, the raiders take what the colony holds, food and materials, and nothing aboard the ship.
+  - **Fly home,** from anywhere on the run, while nothing holds the ship: two taps.
+    - The first says what it takes: a jump's supplies for those aboard for each system out, and a day at the colony for each, with one jump's heat.
+    - The ship lands at the colony, and the stores are one again.
+    - Flying out once more, the ship jumps into a new system, the next in the line.
+  - **Saves:** `SAVE_VERSION` 36, with a migration: the ship home and nobody away, as every act 3 save is now. A save on the run in act 3 opens on the chart, an approach or a fight as act 2's do.
+  - **The screens:**
+    - the colony: Fly out, with who goes;
+    - the chart in act 3: the colony's day, its food and whether a lander is coming; Fly home with its plan; a lander down, and Defend;
+    - Continue on the title comes back to wherever the ship is.
+  - **The test player** (`tools/voyage.js`), after the colony's 60 days:
+    - flies out with the healthiest who fit aboard, leaving one at home;
+    - plays the systems as act 2's, stations and jobs among them;
+    - flies home when the holds come down to the way home's supplies and a buffer, or after `VOYAGE_SYSTEMS` systems.
+  - **Measured over 100 voyages:**
+    - systems crossed, the hunters met, raids found and faced while away and lost;
+    - the colony fed while away, credits spent and parts bought on the way;
+    - the voyage's rates stay within the margin of main's (`MAIN`), or go to Evan.
+  - **Every rule tested.**
+  - **Touch, at the three sizes:**
+    - Fly out with a crew picked;
+    - a new system's chart, a jump passing a colony day, a station there;
+    - a raid landing at home while away, and Defend;
+    - Fly home, landing at the colony, the stores one again;
+    - a quit and reopen on the run in act 3;
+    - offline, every button 48 px or more, no console errors;
+    - every earlier milestone's browser check still passes.
 - [ ] **M38e More colonies.** The draft:
   - a second world settled, and more: each colony with its own grid, buildings, stores, days and raids;
   - parts given at each, and refits at any;
