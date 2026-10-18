@@ -8,13 +8,13 @@ A ship-first sandbox RPG in 3D: build a ship on a grid, run from a pursuer, and 
 
 ## Session protocol
 
-- **One milestone per session.** Do not start the next milestone, even if it's tempting. Meet the current milestone's Done when, then stop.
+- **Milestones run back to back** (Evan's call, 2026-10-18; until then it was one a session). Meet a milestone's Done when and close it out (PROGRESS.md, the ROADMAP.md tick, merge and deploy) before starting the next: never two at once.
 - **Start** by reading ROADMAP.md §7 and PROGRESS.md. Then state the active milestone and its Done when.
-- **End** by updating PROGRESS.md with:
+- **End** each milestone by updating PROGRESS.md with:
   - the milestone and what shipped
   - known issues
   - what Evan should test on the phone
-  - the next session's first task
+  - the next milestone's first task
 
   Then tick the milestone's box in ROADMAP.md.
 - If a milestone won't fit the session, cut scope inside it (fewer modules, smaller maps) rather than deferring its Done when.
@@ -119,7 +119,7 @@ PROGRESS.md
 - The credits screen lists every entry in LICENSES.md.
 - Every Base44 image gets an entry in LOG.md: prompt, date, model, and what was edited by hand.
 
-## Definition of done (every session)
+## Definition of done (every milestone)
 
 - `node --test` passes.
 - The game loads with no console errors, and works offline after a reload with the network off.
@@ -128,7 +128,7 @@ PROGRESS.md
 
 ## Don'ts
 
-- Don't start the next milestone.
+- Don't start the next milestone before the current one is closed out, or a new phase before its gate passes.
 - Don't add a framework, bundler or dependency.
 - Don't use `Math.random()` or `Date.now()` in `src/sim/`.
 - Don't call any network service or generate images from game code.
