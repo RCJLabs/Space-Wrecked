@@ -1598,9 +1598,95 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **A day's rest at a yard is out of the hunters' reach,** as the yard is safe. A yard has no Patch up, so Regroup stays.
   - **A quest's step never lands on a yard,** as it never lands on a station or a nebula.
   - **The miner's test player seldom affords a yard's part.** It reaches a yard in 87 of 100 voyages, with a median of 30 credits there, and buys in 9 (16 parts). The deserter's buys in 37 (99 parts) and the smuggler's in 17 (38). The refit bar holds main's rate before M37b (59), as M37's two hold main's before M37: on seeds 1 to 100 the yards' new sectors left 50 runs with a refit, and on seeds 101 to 300 they matched main's (122 of 199 against 119).
-- [ ] **M38 Missions and jobs.** Three mission types (clear out, grab, hack) against §5's 8, and 29 jobs against 40 or more. The draft:
-  - five mission types, each with its objective, its AI and its words: extract (carrying the crates out, §9), escort, defend, sabotage, rescue;
-  - about a dozen new jobs across the three districts.
+- [ ] **M38 Missions and jobs.** Three mission types (clear out, grab, hack) against §5's 8, and 29 jobs against 40 or more.
+  - **Measured,** each job from its background's start crew at heat 0 with no twist, 200 seeds each, the test crew (`src/sim/jobAi.js`) against the AI:
+
+    | Mission | Jobs | Won | Rounds | Crew hit points lost (of 26) |
+    | --- | --- | --- | --- | --- |
+    | Clear out | 10 | 46% | 7.5 | 21.0 |
+    | Grab | 11, and a quest's | 77% | 5.1 | 13.5 |
+    | Hack | 5, and two quests' | 77% | 5.4 | 16.7 |
+
+    The worst are clear-outs: the picket line wins 6%, the dock war 13%, pawn tickets 32%. They are left for M40.
+  - **The enemies ignore the objective** (§9, raised in M14): a grab or a hack is a race to the crate or the terminal.
+
+  Evan's picks (2026-10-18):
+  - **The draft's five mission types:** extract, escort, defend, sabotage and rescue, 8 in all.
+  - **The person brought out** (escort's client, rescue's captive) **is moved by the player, unarmed.**
+  - **The enemies play to the objective in every mission,** grab and hack too, with act 1 measured and tuned.
+  - **One new job for each new mission in each district:** 15, 44 in all.
+
+  **Done when:**
+  - **Eight mission types** in `data/contracts.json`, each with its name and brief. The five new ones:
+    - **Extract** (`extract`, with `crates`): grab the tagged crates and carry each out the way the crew came in, to a way-in tile.
+      - A crate in hand slows its carrier to one move a turn, no dash.
+      - A carrier who goes down keeps it, and anyone beside them can take it (one action).
+      - Done when every crate is out.
+    - **Escort** (`escort`): the client comes in with the crew and has to reach the far gate, the site's new way-out tiles. Done when they stand on one.
+    - **Defend** (`defend`, with `rounds`): hold the way in for that many rounds.
+      - Lost if an enemy steps onto a way-in tile.
+      - Won when the last round ends, or when no enemy is standing.
+    - **Sabotage** (`sabotage`, with `targets`; loud):
+      - plant a charge beside each tagged target (one action);
+      - it blows at the start of the crew's next turn, hurting everyone beside it, on both sides, by `blastDamage` (`data/balance.json`);
+      - an enemy beside a charge can pull it (one action);
+      - done when every target has blown.
+    - **Rescue** (`rescue`, with `captive`): someone is held deep in the site, on the site's new captive tiles.
+      - A crew member beside them frees them (one action).
+      - Then they have to be walked out the way the crew came in.
+      - Done when they stand on a way-in tile.
+  - **The person brought out,** escort's client or rescue's captive (`people` in `data/contracts.json`: hit points, defense, mobility, look):
+    - a figure on the crew's side, moved with the same two taps, with no gun: no shot, no overwatch;
+    - held, the captive can't be shot;
+    - down, they bleed out as crew do and can be stabilized; bled out, the job is lost;
+    - they aren't crew: no wounds after, no fights counted, and the crew still wins or loses by its own.
+  - **The enemies play to the objective** (`src/sim/ai.js`) in every mission but a clear-out:
+    - with no shot worth taking, a guard keeps by what it guards: the crates, the terminal, the far gate, the targets, the captive;
+    - a shot at a carrier or at the person brought out counts more;
+    - defending, they push for the way in: every plan counts the steps left to it;
+    - an enemy beside a charge pulls it, and keeps clear of one about to blow.
+
+    Fights with no objective (boardings, raids, clear-outs) play as before: the golden battle log doesn't change.
+  - **The sites:** each of the four map templates (`data/sites.json`) gains way-out tiles (`x`, 2 or more, on the far side from the way in) and captive tiles (`v`, 1 or more, deep in). Each is checked as every mark is: it can be walked to from the way in. The golden sites change, on purpose.
+  - **Twists:** the rush job's deadline comes with every new mission but defend, and the other twists with any.
+  - **15 new jobs** in `data/contracts.json`, one of each new mission in each district. Each has its clients, sites, encounter, sides, pay, drops and pitch, written as today's are. 44 in all.
+  - **On screen:**
+    - the job board's brief for each mission;
+    - in the fight, the objective under the round: crates out, the client's way, the rounds held, the charges blown, the captive held or freed;
+    - tags on the board: the crates, the way out, the targets and their charges, the captive, the way in held;
+    - Grab, Free and Plant, shown when in reach;
+    - the person brought out in the crew bar, with a face, and a carrier's crate on the unit card;
+    - a blast on the board;
+    - the fight's end says why it ended: they broke through, the client or the captive was lost, the line held.
+  - **The test players** play each mission (`src/sim/jobAi.js`):
+    - carriers walk out;
+    - the client and the captive move from cover to cover toward their way;
+    - charges are planted and left;
+    - the way in is held from cover.
+
+    `tools/run.js` weighs each job by the test crew's odds on it (`JOB_ODDS`), measured anew for all 44.
+  - **Measured,** each job from its background's start crew at heat 0 with no twist, 200 seeds each:
+    - each new job wins 40% to 90% of the time;
+    - grab and hack, with their guards, are measured and tuned until act 1's test runs launch in about as many jobs as main's from each start (the median within 1, `tools/run.js --runs 100`);
+    - every voyage-test rate is within its margin of `MAIN`, over 100 voyages from each start.
+  - **`SAVE_VERSION` 34:** a fight can hold the new objectives, the person brought out, a crate in hand and the charges set. A save from before reads unchanged.
+  - **Every rule tested:**
+    - each objective's actions, and its end, won and lost;
+    - the carrier's move;
+    - the blast and the pull;
+    - the captive held and freed;
+    - the person brought out not counting as crew;
+    - the AI's guards, its push, its prizes and its pull;
+    - the migration;
+    - the validator's checks.
+  - **Touch,** at the three sizes:
+    - each new mission's job taken from the board, with its objective under the round;
+    - a crate carried out;
+    - the client walked to the far gate;
+    - a round held;
+    - a charge planted, and its blast;
+    - the captive freed and walked out;
+    - offline, every button 48 px or more, no console errors.
 - [ ] **M39 Parts and hull frames.** 21 module types against §5's 40 to 60, and one hull frame against 6. The draft:
   - the types §9 asks for, a scanner first;
   - frames for bigger ships, and an enemy frame (§9).
