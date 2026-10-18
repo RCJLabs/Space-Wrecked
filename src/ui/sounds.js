@@ -27,21 +27,24 @@ const BUILT = { 'campaign/build': 'place', 'campaign/move': 'place', 'campaign/t
 
 // The sounds a change to the game's store makes, in order: (state, prev,
 // action) as its listeners hear them. The lift-off and the landing are their
-// screens' (launch.js, landing.js), in step with what they show.
+// screens' (launch.js, landing.js), in step with what they show, and so is
+// an approach's round since M38b: the approach screen plays its sounds with
+// its shots (render/approachPlayback.js roundCues), or roundSounds at once
+// with reduced motion.
 export function gameSounds(state, prev, action) {
   const sounds = [];
   const { type } = action;
   if (FLOWN.has(type)) sounds.push('jump');
   else if (BUILT[type]) sounds.push(BUILT[type]);
-  else if (type === 'campaign/approach/order') sounds.push(...roundSounds(state.campaign?.run?.approach?.last));
   else if (SETTLED.has(type)) sounds.push('confirm');
   if (alarmed(state.campaign, prev.campaign, action.rules)) sounds.push('alarm');
   return sounds;
 }
 
-// A round of an approach (src/sim/approach.js): the ships' guns, then
-// whether the crew's volley hit; a flight that got away flies off.
-function roundSounds(last) {
+// A round of an approach (src/sim/approach.js) all at once, as the approach
+// screen plays it with reduced motion: the ships' guns, then whether the
+// crew's volley hit; a flight that got away flies off.
+export function roundSounds(last) {
   if (!last) return [];
   const volleys = last.events.filter((e) => e.kind === 'volley' && e.shots.length);
   const ours = volleys.find((e) => e.side === 'you');

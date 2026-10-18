@@ -14,7 +14,7 @@ import { initialState, saveData } from '../src/sim/root.js';
 import { createSession, reduceSession } from '../src/sim/session.js';
 import { defaultSettings, reduceSettings, settingsProblems, VOLUMES } from '../src/sim/settings.js';
 import { settingsText } from '../src/ui/settingsText.js';
-import { builderSounds, cueSound, fightSounds, gameSounds, MOMENT_SOUNDS } from '../src/ui/sounds.js';
+import { builderSounds, cueSound, fightSounds, gameSounds, MOMENT_SOUNDS, roundSounds } from '../src/ui/sounds.js';
 import { readData } from '../tools/data.js';
 import { loadZzfx, measure, renderSound, soundReport } from '../tools/sounds.js';
 import { validateData } from '../tools/validate-data.js';
@@ -141,9 +141,13 @@ test("the campaign's sounds: a purchase confirms, a jump flies, trouble sounds t
   assert.deepEqual(heard('campaign/fight/end', hot, hot, { rules }), []);
 });
 
-test("an approach's round: the ships' guns, then whether the crew's volley hit", () => {
-  const round = (events) => gameSounds({ campaign: { run: { approach: { node: 2, hunt: false, last: { order: 'fire', events } } } } }, { campaign: {} }, { type: 'campaign/approach/order' });
+test("an approach's round all at once, as reduced motion plays it: the ships' guns, then whether the crew's volley hit", () => {
+  const last = (events) => ({ order: 'fire', events });
+  const round = (events) => roundSounds(last(events));
   const volley = (side, ...hits) => ({ kind: 'volley', side, shots: hits.map((hit) => ({ hit })) });
+  // The approach screen plays them, with its shots (M38b): giving the order
+  // makes none of its own.
+  assert.deepEqual(gameSounds({ campaign: { run: { approach: { node: 2, hunt: false, last: last([volley('you', true)]) } } } }, { campaign: {} }, { type: 'campaign/approach/order' }), []);
   assert.deepEqual(round([volley('you', false, true), volley('them', false)]), ['shotgun', 'hit']);
   assert.deepEqual(round([volley('you', false, false), volley('them', true)]), ['shotgun', 'miss']);
   assert.deepEqual(round([volley('them', true)]), ['shotgun'], 'evading: only theirs');
