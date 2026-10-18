@@ -52,6 +52,10 @@
 // fly as fitted, with no refits, so each compares one part's difference.
 // Before M24 the careful player made no long jumps, since heat did nothing
 // in act 2; since M24 it manages heat, long jumps and all (the default).
+// Since M38c it takes jobs at stations by default too; the fitted voyages
+// fly without them, as without refits. With them a healer compares no
+// longer: its crew, fit more often, works more and patches more (on seeds
+// 1 to 30, 1147 hit points patched with a med bay against 958 without).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { FACED } from '../src/sim/approach.js';
@@ -64,7 +68,7 @@ import { tripHeatOf } from '../src/sim/raids.js';
 import { feeOf } from '../src/sim/recruits.js';
 import { costAt } from '../src/sim/standing.js';
 import { COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, playColony, playTrips, TRIP_DAYS, voyage, voyagesByBackground } from '../tools/voyage.js';
-import { bestWorld, FIT_ORDER, nextGift, systemMove } from '../tools/voyagePlan.js';
+import { bestWorld, FIT_ORDER, FIT_SHARE, nextGift, systemMove } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 
 const { balance } = rules;
@@ -109,7 +113,7 @@ const lifts = Array.from({ length: RATE_RUNS }, (_, i) => launchedAt(rules, i + 
 // has no power to spare for it, as the flight checklist's fix asks: since
 // M31 some act 1 runs buy a Scrapline engine, which draws 1 more.
 const powered = (lifted, fit = []) => (shipStats(lifted.campaign.ship, rules).power + fit.reduce((sum, type) => sum + rules.modules.get(type).stats.power, 0) >= 0 ? fit : ['smallreactor', ...fit]);
-const fly = (options, runs = RUNS) => lifts.slice(0, runs).map((lifted, i) => voyage(rules, i + 1, { refit: 'no', ...options, fit: powered(lifted, options.fit) }, lifted));
+const fly = (options, runs = RUNS) => lifts.slice(0, runs).map((lifted, i) => voyage(rules, i + 1, { refit: 'no', jobs: 'no', ...options, fit: powered(lifted, options.fit) }, lifted));
 const carefulAll = fly({}, RATE_RUNS);
 const trips = carefulAll.slice(0, RUNS);
 const careful = trips;
@@ -130,10 +134,10 @@ const bunks = bunksAll.slice(0, RUNS);
 const largeholdAll = fly({ fit: ['largehold'] }, RATE_RUNS);
 const largehold = largeholdAll.slice(0, RUNS);
 // M23h: the careful player refitting at stations, as tools/voyage.js plays
-// by default; and M24: the same, ignoring heat. Over RATE_RUNS seeds, the
-// first RUNS of them as every other set.
-const refittingAll = fly({ refit: 'yes' }, RATE_RUNS);
-const ignoringAll = fly({ refit: 'yes', heat: 'ignore' }, RATE_RUNS);
+// by default, and since M38c taking their jobs; and M24: the same, ignoring
+// heat. Over RATE_RUNS seeds, the first RUNS of them as every other set.
+const refittingAll = fly({ refit: 'yes', jobs: 'yes' }, RATE_RUNS);
+const ignoringAll = fly({ refit: 'yes', jobs: 'yes', heat: 'ignore' }, RATE_RUNS);
 const [refitting, ignoring] = [refittingAll, ignoringAll].map((all) => all.slice(0, RUNS));
 // M30: the careful player from the other backgrounds' starts, as it
 // plays from the miner's (refitting).
@@ -184,9 +188,9 @@ test('supplies and heat move as data/balance.json and data/events.json say, step
   // deserter's runs repair now and then, so theirs are walked too, but for
   // their refits (the refit test's).
   for (const trip of deserters) for (const step of trip.steps) if (step.kind !== 'refit') checkStep(step, step.room, kinds);
-  // A weapon bought from a station's rack (M37) comes up too, and a part
-  // bought at a shipyard (M37b).
-  assert.deepEqual([...kinds].sort(), ['approach', 'arms', 'boarding', 'buy', 'event', 'hide', 'hire', 'jump', 'long', 'patch', 'repair', 'scan', 'sector', 'settle', 'survey', 'swap', 'system', 'yard'], 'every kind of step comes up');
+  // A weapon bought from a station's rack (M37) comes up too, a part
+  // bought at a shipyard (M37b) and a station's job (M38c).
+  assert.deepEqual([...kinds].sort(), ['approach', 'arms', 'boarding', 'buy', 'event', 'hide', 'hire', 'job', 'jump', 'long', 'patch', 'repair', 'scan', 'sector', 'settle', 'survey', 'swap', 'system', 'yard'], 'every kind of step comes up');
 });
 
 // One step of a voyage, as the rules say it moves things.
@@ -314,6 +318,25 @@ function checkStep(step, capacity, kinds) {
     assert.equal(step.parts[1], step.parts[0] + 1);
     assert.deepEqual([after, step.hp[1]], [supplies, step.hp[0]]);
     checkDock(step);
+    return;
+  }
+  if (step.kind === 'job') {
+    // M38c: a station's job, its squad going: done, its pay with what its
+    // client's side adds, and its part; done or lost, its heat after any
+    // docking heat. Wounds fall on the squad alone, each fit as they went,
+    // never to the last hit point; nothing else moves.
+    assert.ok(step.won ? step.pay > 0 : step.pay === 0, `paid ${step.pay}`);
+    assert.equal(step.credits[1] - step.credits[0], step.pay);
+    assert.equal(step.parts[1] - step.parts[0], step.won && step.part ? 1 : 0);
+    assert.ok([balance.jobHeat, balance.loudJobHeat].includes(step.added), `job heat ${step.added}`);
+    checkDock(step, (heat) => clamp(heat + step.added, HEAT_MAX));
+    assert.equal(after, supplies);
+    assert.ok(step.squad.length >= 1 && step.squad.length <= balance.squadSize, `a squad of ${step.squad.length}`);
+    step.ids.forEach((id, i) => {
+      if (step.squad.includes(id)) assert.ok(step.hp[0][i] >= FIT_SHARE * step.max[i], `${id} went with ${step.hp[0][i]} of ${step.max[i]}`);
+      else assert.equal(step.hp[1][i], step.hp[0][i], `${id} stayed aboard`);
+    });
+    assert.ok(step.hp[1].every((hp) => hp >= 1), 'never the last hit point');
     return;
   }
   if (step.kind === 'hire') {
@@ -516,6 +539,34 @@ test('the careful player refits at stations with what it has, every flight check
   const fedHere = refitting.filter((trip) => trip.tally.hungryJumps === 0).length;
   const bare = careful.map((trip) => trip.tally.hungryJumps === 0).filter(Boolean).length;
   assert.ok(fedHere >= bare - 2, `fed in ${fedHere} refitting, ${bare} without`);
+});
+
+// M38c: the careful player's work at stations, over the RATE_RUNS
+// refitting runs: a job in most of them, each with a full squad of the fit
+// and, managing heat, only where its heat and the next jump's keep the ship
+// under the hunters'. With --jobs no it takes none, and the summary says
+// what the jobs came to.
+test("the careful player takes a station's job where it is worth it, with a full squad of the fit, and managing heat stays under the hunters' heat (M38c)", () => {
+  const jobs = refittingAll.flatMap((trip) => trip.steps.filter((step) => step.kind === 'job'));
+  const runs = refittingAll.filter((trip) => trip.tally.stationJobs > 0).length;
+  assert.ok(runs >= RATE_RUNS / 2, `station jobs in ${runs} of ${RATE_RUNS} runs`);
+  assert.ok(jobs.some((step) => step.won) && jobs.some((step) => !step.won), 'done and lost');
+  for (const step of jobs) {
+    checkStep(step, step.room, new Set());
+    assert.equal(step.squad.length, Math.min(balance.squadSize, step.crew), 'a full squad');
+    assert.ok(step.heat[1] + balance.jumpHeat < balance.huntHeat, `heat ${step.heat[1]} after ${step.contract}`);
+    assert.ok(rules.contracts.jobs.get(step.contract).sites.every((site) => rules.docks.sites.includes(site)), `${step.contract} is a station's`);
+  }
+  // The tallies are the steps'.
+  for (const trip of refitting) {
+    const own = trip.steps.filter((step) => step.kind === 'job');
+    assert.deepEqual([trip.tally.stationJobs, trip.tally.stationJobsWon, trip.tally.jobCredits], [own.length, own.filter((step) => step.won).length, own.reduce((sum, step) => sum + step.pay, 0)]);
+  }
+  const none = fly({ refit: 'yes', jobs: 'no' }, 3);
+  assert.ok(none.every((trip) => trip.ended && trip.tally.stationJobs === 0 && !trip.steps.some((step) => step.kind === 'job')), 'none with --jobs no');
+  const summary = manyVoyages(rules, 2).lines.join('\n');
+  assert.match(summary, /, taking station jobs\./);
+  assert.match(summary, /Station jobs \(M38c\): \d+ \(\d+ to \d+\) taken, in \d+ of 2 runs/);
 });
 
 // M24 measured 27 or more of 30 meeting the hunters ignoring heat, 6 or

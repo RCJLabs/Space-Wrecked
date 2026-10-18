@@ -2,7 +2,8 @@
 // --boardings`, and the test player's boarding fights in tools/voyage.js:
 // on the run, and from M28 at the colony's places the scavengers hold.
 // From M29 the test player's raids on the colony too (fightRaid): those at
-// home play the AI, the raiders press on, as at the hangar.
+// home play the AI, the raiders press on, as at the hangar. From M38c its
+// jobs at stations (fightStationJob), played as act 1's jobs are.
 // Both sides are played as the campaign's boardings go (encounter.js): the
 // side aboard the other's ship presses on (press.js), and the side at home
 // plays the AI (ai.js). Seeded: the same options always give the same
@@ -18,9 +19,11 @@
 import { aiAction } from '../src/sim/ai.js';
 import { autoplay, playFrom } from '../src/sim/autoplay.js';
 import { saveFight } from '../src/sim/campaign.js';
+import { endJob } from '../src/sim/contracts.js';
 import { deploy } from '../src/sim/deploy.js';
 import { beginBoarding, endBoarding } from '../src/sim/encounter.js';
 import { boardPlace, endPlaceFight } from '../src/sim/expeditions.js';
+import { jobAction } from '../src/sim/jobAi.js';
 import { endColonyRaid, faceRaid, raidTake } from '../src/sim/raids.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { mapFromShip } from '../src/sim/mapFromShip.js';
@@ -28,6 +31,7 @@ import { shotOdds } from '../src/sim/odds.js';
 import { reachable, stepsFrom } from '../src/sim/moves.js';
 import { advance, pressAction } from '../src/sim/press.js';
 import { canSee } from '../src/sim/sight.js';
+import { takeStationJob } from '../src/sim/stationJobs.js';
 import { armFor } from './arms.js';
 import { launchedShip } from './startShip.js';
 
@@ -50,6 +54,9 @@ const BOTH_PRESS = { crew: charge, enemy: charge };
 // Who plays a raid on the colony (M29): those at home the AI, the raiders
 // pressing on.
 const RAID_PLAYERS = { crew: aiAction, enemy: pressAction };
+// Who plays a job (M38c, as act 1's: tools/run.js): the crew the job
+// player, the enemy the AI.
+const JOB_PLAYERS = { crew: jobAction, enemy: aiAction };
 
 // The boarding fight that is due in a campaign, fought out by the AI and
 // ended (encounter.js beginBoarding, endBoarding): { campaign, won, rounds,
@@ -70,6 +77,17 @@ export function fightPlace(campaign, rules) {
   const begun = boardPlace(armFor(campaign, rules, 'ship'), rules);
   if (!begun.ok) throw new Error(begun.error);
   return fightThrough(begun.campaign, rules, endPlaceFight);
+}
+
+// The job at `index` on the station's board (M38c: stationJobs.js
+// takeStationJob) with the squad `squad` (crew ids; null, the healthiest),
+// the crew armed for a fight on the ground, fought out and ended
+// (contracts.js endJob): { campaign, won, rounds, dragged }.
+export function fightStationJob(campaign, rules, index, squad = null) {
+  const taken = takeStationJob(armFor(campaign, rules, 'ground'), rules, index, squad);
+  if (!taken.ok) throw new Error(taken.error);
+  const { won, rounds, dragged, campaign: ended } = fightThrough(taken.campaign, rules, endJob, JOB_PLAYERS);
+  return { campaign: ended, won, rounds, dragged };
 }
 
 // The raid that is down at the colony, faced (raids.js faceRaid: the guns
@@ -109,7 +127,7 @@ function fightThrough(campaign, rules, end, players = BOARDING_PLAYERS[campaign.
   const played = playOn(fight.battle, rules, players);
   const { dragged } = played;
   if (!played.battle.winner) {
-    const what = fight.raid ? 'raid' : 'boarding';
+    const what = fight.raid ? 'raid' : fight.job ? 'job' : 'boarding';
     if (sealedIn(played.battle, rules)) throw new SealedIn(`A ${what} fight sealed itself in: after ${MAX_ROUNDS} rounds no one standing can reach a tile with an enemy in sight.`);
     throw new Error(`A ${what} fight stalled after ${MAX_ROUNDS} rounds.`);
   }

@@ -93,7 +93,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  34  missions: a job's fight can hold the new objectives (an extract, an
 //      escort, a rescue, a sabotage, a defense), the person the crew
 //      brings out, a crate in hand and the charges set (M38)
-export const SAVE_VERSION = 34;
+//  35  station jobs: the run keeps the jobs taken at the station the ship
+//      is at, and a job's fight can be a station's, with the station's name
+//      (M38c)
+export const SAVE_VERSION = 35;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -464,6 +467,16 @@ export const MIGRATIONS = [
   // The new missions (M38) join the jobs' fights. A fight from before is a
   // clear-out, a grab or a hack, which read as they did: nothing to change.
   { from: 33, up: (data) => data },
+  // Station jobs (M38c): a run from before has taken none at the station
+  // it is at.
+  {
+    from: 34,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign)) return data;
+      const { run } = data.campaign;
+      return isObject(run) ? { ...data, campaign: { ...data.campaign, run: { ...run, jobbed: [] } } } : data;
+    },
+  },
 ];
 
 // The save's data with fn applied to every ship in it: the builder's slots,

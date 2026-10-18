@@ -59,11 +59,12 @@ test('over many boards, every job, client, site, mission and twist turns up', ()
     assert.equal(new Set(own.map((job) => job.client)).size, district.clients.length, district.id);
     assert.equal(new Set(own.map((job) => job.site)).size, district.sites.length, district.id);
   }
-  // Every job but a quest's own (M33b), which is never on the rotation,
-  // belongs to one district's.
+  // Every job but a quest's own (M33b), which is never on the rotation, and
+  // the stations' (M38c, stationJobs.test.js) belongs to one district's.
   const questJobs = [...contracts.jobs.values()].filter((job) => job.quest);
+  const stationJobs = [...contracts.jobs.values()].filter((job) => job.sites.every((site) => rules.docks.sites.includes(site)));
   assert.equal(questJobs.length, 3);
-  assert.equal([...rules.districts.keys()].reduce((sum, id) => sum + contractsIn(rules, id).length, 0), contracts.jobs.size - questJobs.length);
+  assert.equal([...rules.districts.keys()].reduce((sum, id) => sum + contractsIn(rules, id).length, 0), contracts.jobs.size - questJobs.length - stationJobs.length);
   for (const district of rules.districts.keys()) assert.ok(contractsIn(rules, district).every((job) => !job.quest), district);
 });
 

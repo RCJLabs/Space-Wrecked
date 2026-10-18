@@ -65,7 +65,8 @@
 //            stands (battle.js, fight.js), saved after every order: the
 //            start of each of the crew's turns is saved, and so is every
 //            order in between. job is the job it is, off the board
-//            (contracts.js), or null. raid is true for the pursuer's raid
+//            (contracts.js) or since M38c a station's (stationJobs.js, with
+//            the station's name), or null. raid is true for the pursuer's raid
 //            on the hangar (raid.js). boarding is a boarding fight's, from
 //            an approach (encounter.js), or null. None of them is a fight at
 //            home against boarders (beginFight), which no screen starts any
@@ -80,7 +81,7 @@ import { deploy } from './deploy.js';
 import { crewLook, isLook } from './looks.js';
 import { MAX_STOCK } from './economy.js';
 import { mapFromShip, WRECKS } from './mapFromShip.js';
-import { isWorld, runProblem } from './runShape.js';
+import { isWorld, MAX_PLACE_NAME, runProblem } from './runShape.js';
 import { isPlace, MAX_PLACES, tripProblem } from './tripShape.js';
 import { enemyBonus } from './settings.js';
 import { rankOf } from './ranks.js';
@@ -580,7 +581,8 @@ function isBoarding(boarding) {
 function isJob(job) {
   return (
     isRecord(job) && isId(job.contract) && isId(job.client) && isId(job.site) && (job.twist === null || isId(job.twist)) &&
-    isState(job.seed) && isInt(job.credits, 0, Number.MAX_SAFE_INTEGER) && (job.part === null || isId(job.part)) && (job.quest === undefined || isId(job.quest))
+    isState(job.seed) && isInt(job.credits, 0, Number.MAX_SAFE_INTEGER) && (job.part === null || isId(job.part)) && (job.quest === undefined || isId(job.quest)) &&
+    (job.station === undefined || (typeof job.station === 'string' && job.station.length > 0 && job.station.length <= MAX_PLACE_NAME && job.quest === undefined))
   );
 }
 

@@ -78,7 +78,9 @@ export const PACE = {
 // play to the objective: each of the 44 jobs 200 times from its
 // background's start crew, at heat 0 with no twist (tools/jobs.js's crew
 // and enemy). The twists' are M16's, over 750 jobs. A careful player learns
-// which jobs go badly. A job not here counts at its mission's rate.
+// which jobs go badly. A job not here counts at its mission's rate. The
+// stations' 15 (M38c) were measured the same way (tools/jobs.js --stations
+// --odds 200), for the voyage's test player (voyagePlan.js).
 const JOB_ODDS = {
   jumpers: 0.66, scrap: 0.61, payroll: 0.78, repo: 0.88, debts: 0.51, picket: 0.06, manifest: 0.72, supplies: 0.81, ledger: 0.83, rent: 0.45,
   strikefund: 0.57, backdoor: 0.69, yardwatch: 0.82, pumps: 0.64, nephew: 0.46,
@@ -86,6 +88,8 @@ const JOB_ODDS = {
   rumration: 0.66, auditors: 0.82, dockstrike: 0.45, presstender: 0.57, lodger: 0.6,
   insurance: 0.61, seized: 0.74, papertrail: 0.69, turf: 0.66, housecall: 0.82, divers: 0.65, luggage: 0.9, lastorders: 0.72,
   ledgers: 0.68, housecallacross: 0.81, closingtime: 0.85, still: 0.57, collateral: 0.74,
+  undeclared: 0.59, claimrights: 0.62, holdberth: 0.89, familybooks: 0.73, steward: 0.64, safepassage: 0.89, cutrig: 0.56, dues: 0.57,
+  pumppirates: 0.48, salvage: 0.56, pumplocks: 0.64, badpaper: 0.46, courier: 0.85, fleetstores: 0.57, repomen: 0.77,
 };
 const MISSION_ODDS = { clear: 0.46, grab: 0.75, hack: 0.73, extract: 0.64, escort: 0.77, defend: 0.7, sabotage: 0.59, rescue: 0.6 };
 const TWIST_ODDS = { overtime: 0.6, cavein: 0.75, hazard: 0.75, rush: 0.75, lights: 1, skeleton: 1.4 };
@@ -127,10 +131,15 @@ export function fitPart(ship, defs, type) {
 // needs, else what the shop would pay for it) and for a quest's job the
 // heat its step takes off (questWorth), at the test crew's odds on it.
 function jobWorth(job, campaign, defs, needed) {
-  const contract = defs.contracts.jobs.get(job.contract);
   const part = job.part ? (needOf(needed, job.part, defs) ? priceOf(job.part, defs) : sellPriceOf(job.part, defs)) ?? 0 : 0;
-  const odds = (JOB_ODDS[job.contract] ?? MISSION_ODDS[contract.mission] ?? 0.5) * (TWIST_ODDS[job.twist] ?? 1);
-  return Math.min(0.95, odds) * (jobPay(campaign, defs, job) + part + questWorth(job, campaign, defs));
+  return jobOdds(job, defs) * (jobPay(campaign, defs, job) + part + questWorth(job, campaign, defs));
+}
+
+// How often the test crew wins a job: its own odds or its mission's, with
+// its twist's, at most 95%.
+export function jobOdds(job, defs) {
+  const contract = defs.contracts.jobs.get(job.contract);
+  return Math.min(0.95, (JOB_ODDS[job.contract] ?? MISSION_ODDS[contract?.mission] ?? 0.5) * (TWIST_ODDS[job.twist] ?? 1));
 }
 
 // The heat a quest's job's step takes off (M33b), in credits at a

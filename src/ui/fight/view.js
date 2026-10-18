@@ -38,8 +38,10 @@ import { chipFor, endingFor, eventText, hintFor, oddsText, unitText } from './hi
 import { objectiveMarks, objectiveZones } from './marks.js';
 import { createActionBar, createCrewBar, node, setText, toolButton } from './panels.js';
 
-// A ship's insides in the yard's skin; a job's site on the ground.
-const skinOf = (map) => skinFor(map.site ? 'ground' : 'yard');
+// A ship's insides in the yard's skin; a job's site on the ground, or in
+// the look its map names (data/sites.json, M38c: a station's docks, the
+// rocks off it).
+const skinOf = (map, defs) => skinFor(map.site ? (defs?.siteMaps.get(map.site)?.look ?? 'ground') : 'yard');
 const MARGIN = 14; // pixels around the ship when the view is fitted
 const MAX_ZOOM = 3; // times the fitted scale
 const MIN_ZOOM = 0.6; // times the fitted scale, or of the whole map's if that is further out
@@ -442,7 +444,7 @@ export function mountFight(root, source) {
   function showBoard(fight, orders, frame) {
     const battle = frame ? frame.view : fight.battle;
     if (battle.doors !== doorsShown || battle.fires !== firesShown) {
-      mapView.setMap({ map, skin: skinOf(map), open: battle.doors, fires: battle.fires ?? [] });
+      mapView.setMap({ map, skin: skinOf(map, defs), open: battle.doors, fires: battle.fires ?? [] });
       doorsShown = battle.doors;
       firesShown = battle.fires;
     }

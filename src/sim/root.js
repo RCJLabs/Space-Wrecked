@@ -27,6 +27,7 @@ import { repairShip } from './repair.js';
 import { defaultSettings, fightSettings, reduceSettings } from './settings.js';
 import { settle } from './settle.js';
 import { survey } from './survey.js';
+import { takeStationJob } from './stationJobs.js';
 import { swapTransponder } from './transponder.js';
 import { beginRun, buySupplies, jump, leaveSector, scan } from './travel.js';
 
@@ -230,6 +231,7 @@ export function reduce(state, action) {
     }
     case 'campaign/job/take':
     case 'campaign/job/quest':
+    case 'campaign/job/station':
     case 'campaign/raid/begin':
     case 'campaign/boarding/begin':
     case 'campaign/trip/board':
@@ -238,6 +240,7 @@ export function reduce(state, action) {
       const begin = {
         'campaign/job/take': (c) => takeJob(c, action.rules, action.index, setup),
         'campaign/job/quest': (c) => takeQuestJob(c, action.rules, action.quest, setup),
+        'campaign/job/station': (c) => takeStationJob(c, action.rules, action.index, action.squad ?? null, setup),
         'campaign/raid/begin': (c) => beginRaid(c, action.rules, setup),
         'campaign/boarding/begin': (c) => beginBoarding(c, action.rules, { ...setup, squad: action.squad ?? null }),
         'campaign/trip/board': (c) => boardPlace(c, action.rules, setup),

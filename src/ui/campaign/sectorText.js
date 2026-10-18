@@ -10,7 +10,8 @@
 // heat of trading at a station of the pursuer's side (standingText.js;
 // M33's fix, where it was docking there); since M37, a station's weapons
 // rack (racks.js); since M37b, the shipyards (yards.js), their side and
-// prices as a station's, refits there, and the Yard button. The event
+// prices as a station's, refits there, and the Yard button; since M38c, a
+// station's job board (stationJobs.js) and the Jobs button. The event
 // card's words are eventText.js's, and the approach screen's
 // approachText.js's. rules are the content tables (src/sim/defs.js).
 import { atYard } from '../../sim/acts.js';
@@ -29,7 +30,8 @@ import { repairPlan, wrecksToRepair } from '../../sim/repair.js';
 import { settlePlan } from '../../sim/settle.js';
 import { surveyPlan } from '../../sim/survey.js';
 import { swapPlan } from '../../sim/transponder.js';
-import { dockHeat, patrolWelcome, pursuerSide, stationSide } from '../../sim/standing.js';
+import { dockHeat, jobPay, patrolWelcome, pursuerSide, stationSide } from '../../sim/standing.js';
+import { stationBoard, stationHere } from '../../sim/stationJobs.js';
 import { yardHere } from '../../sim/yards.js';
 import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesCost, suppliesOver, supplyCapacity, supplyOffer, tradeHeat } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
@@ -74,6 +76,8 @@ import { dockSaid, sideColor, sideIs, sideName, sidesText, stationText } from '.
 //   yard         the shipyard the ship is at (M37b), or null away from one:
 //                { label, line, parts (how many it has left for sale) };
 //                Yard opens the shop screen on its stock
+//   jobs         the station's job board this visit (M38c), or null away
+//                from one: { label, count, line }; Jobs opens it
 //   patch        what the station's medic would patch up, or null away
 //                from one or with no one hurt: { ok, label, ask, text, why }
 //   repair       what the station would repair, or null away from one or
@@ -154,6 +158,7 @@ export function sectorText(campaign, rules) {
     offer: offer.ok ? offerText(campaign, rules, offer) : null,
     refit: refitText(campaign, rules),
     yard,
+    jobs: jobsText(campaign, rules),
     repair: offer.ok ? repairText(campaign, rules) : null,
     rack: offer.ok ? rackText(campaign, rules) : null,
     patch: offer.ok ? patchText(campaign, rules) : null,
@@ -284,6 +289,17 @@ function shipyardText(campaign, rules) {
   const [least, most] = [Math.min(...prices), Math.max(...prices)];
   const forSale = !prices.length ? 'Sold out' : `${prices.length === 1 ? 'One part' : `${prices.length} parts`} for sale, ${least === most ? `${least}` : `${least} to ${most}`} credits`;
   return { label: 'Yard', parts: prices.length, line: `${forSale}. The yard buys parts on hand too.` };
+}
+
+// The station's job board this visit (M38c): how many jobs it posts and
+// what they pay, with what their clients' sides add; Jobs opens it. null
+// away from a station.
+function jobsText(campaign, rules) {
+  if (!stationHere(campaign, rules)) return null;
+  const pays = stationBoard(campaign, rules).map((job) => jobPay(campaign, rules, job));
+  if (!pays.length) return { label: 'Jobs', count: 0, line: 'No work left here this visit.' };
+  const [least, most] = [Math.min(...pays), Math.max(...pays)];
+  return { label: `Jobs · ${pays.length}`, count: pays.length, line: `${pays.length === 1 ? 'One job' : `${pays.length} jobs`} on the board, paying ${least === most ? least : `${least} to ${most}`} credits.` };
 }
 
 // What a working med bay heals each of the wounded a jump, as a holdings

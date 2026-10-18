@@ -3,15 +3,20 @@
 // the pursuer's side, where the first trade logs the ship, it trades only
 // where it must, to stay fed or to swap the transponder, and otherwise
 // passes by, which costs nothing; so with another way calling at another
-// station it calls there. Each case is a sector of four nodes: the way in,
-// two nodes a jump on, and the jump point past both, the miner's crew
-// aboard (hostile with Con-Reg, its pursuer).
+// station it calls there. And its work at stations (M38c): the job worth
+// most, with a full squad of the fit, and managing heat, only where the
+// job's heat and the next jump's keep the ship under the hunters'. Each
+// case is a sector of four nodes: the way in, two nodes a jump on, and the
+// jump point past both, the miner's crew aboard (hostile with Con-Reg, its
+// pursuer).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { launch } from '../src/sim/launch.js';
 import { dockHeat, stationSide } from '../src/sim/standing.js';
+import { jobHeat } from '../src/sim/heat.js';
+import { stationBoard } from '../src/sim/stationJobs.js';
 import { beginRun, supplyCapacity, tradeHeat } from '../src/sim/travel.js';
-import { LONG_FROM, nextJump, SWAP_FROM, tradeHere } from '../tools/voyagePlan.js';
+import { FIT_SHARE, LONG_FROM, nextJump, stationJobPick, SWAP_FROM, tradeHere, tripSquad } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 import { readyToLaunch } from './launchKit.js';
 
@@ -70,4 +75,55 @@ test("with no other way to stay fed, the test player trades with the pursuer's s
   assert.equal(pick(fork([{ name: 'Empty space', type: 'empty' }, { name: 'The Depot' }], low)), 'The Depot');
   assert.equal(pick(fork([{ name: 'The Depot' }, { name: 'Empty space', type: 'empty' }], low)), 'The Depot');
   assert.equal(tradeHere(atUpper(fork([{ name: 'The Depot' }, { name: 'Empty space', type: 'empty' }], { supplies: 0 })), rules, 'manage'), true);
+});
+
+// M38c: the ship at the upper node on its visit after `jumps` jumps, each
+// visit's board rolled afresh; and those of the first ten visits on which
+// the test player takes a job there at `heat`.
+const onVisit = (campaign, jumps) => ({ ...campaign, flags: { ...campaign.flags, jumps } });
+const worked = (campaign, policy = 'manage') =>
+  [...Array(10).keys()].map((jumps) => onVisit(campaign, jumps)).flatMap((visit) => {
+    const pick = stationJobPick(visit, rules, policy);
+    return pick ? [{ visit, pick }] : [];
+  });
+
+test('at a station the test player takes a job off its board with a full squad of the fit, and none with anyone going short of it, nor anywhere else (M38c)', () => {
+  const pumps = atUpper(fork([{ name: "Mac's Pumps" }, { name: 'The Depot' }], { heat: 20 }));
+  const taken = worked(pumps);
+  assert.ok(taken.length >= 3, `work worth taking on ${taken.length} of 10 visits`);
+  for (const { visit, pick } of taken) {
+    assert.deepEqual(stationBoard(visit, rules)[pick.index], pick.job, 'a job on the board, by its place there');
+    assert.deepEqual(pick.squad, tripSquad(visit, rules));
+    assert.equal(pick.squad.length, Math.min(rules.balance.squadSize, visit.crew.length), 'a full squad');
+    assert.ok(pick.worth > 0);
+  }
+  const [{ visit }] = taken;
+  const hurt = { ...visit, crew: visit.crew.map((member, i) => (i === 0 ? { ...member, hp: Math.ceil(FIT_SHARE * member.hp) - 1 } : member)) };
+  assert.equal(stationJobPick(hurt, rules), null, 'one of three short of FIT_SHARE');
+  assert.equal(stationJobPick({ ...visit, run: { ...visit.run, at: 0 } }, rules), null, 'at the way in');
+  assert.equal(stationJobPick(onVisit(atUpper(fork([{ name: 'Empty space', type: 'empty' }, { name: 'The Depot' }], { heat: 20 })), visit.flags.jumps), rules), null, 'in empty space');
+});
+
+test("managing heat, the test player takes no station job whose heat, its docking heat and the next jump's would bring the hunters; ignoring it, heat costs it nothing (M38c)", () => {
+  const { huntHeat, jumpHeat } = rules.balance;
+  // At nobody's station: a quiet job at the edge brings the ship to
+  // huntHeat with the next jump.
+  const edge = huntHeat - jumpHeat - rules.balance.jobHeat;
+  const [{ visit }] = worked(atUpper(fork([{ name: "Mac's Pumps" }, { name: 'The Depot' }], { heat: 20 })));
+  assert.equal(stationJobPick({ ...visit, heat: edge }, rules), null, `none at heat ${edge}`);
+  assert.ok(stationJobPick({ ...visit, heat: edge }, rules, 'ignore'), 'ignoring heat, the same board has work');
+  for (const heat of [edge - 1, edge - 5]) {
+    const pick = stationJobPick({ ...visit, heat }, rules);
+    if (pick) assert.ok(heat + jobHeat(pick.job, rules).heat + jumpHeat < huntHeat, `at ${heat}: ${pick.job.contract}`);
+  }
+  // At a station of the pursuer's side its docking heat counts, until the
+  // ship has traded there this visit.
+  const depot = atUpper(fork([{ name: 'The Depot' }, { name: "Mac's Pumps" }], { heat: 20 }));
+  assert.equal(tradeHeat(depot, rules), rules.balance.dockHeat);
+  const [{ visit: logged }] = worked(depot);
+  const heat = huntHeat - jumpHeat - rules.balance.jobHeat - rules.balance.dockHeat;
+  assert.equal(stationJobPick({ ...logged, heat }, rules), null, `none at heat ${heat}, not yet docked`);
+  const docked = stationJobPick({ ...logged, heat, run: { ...logged.run, docked: true } }, rules);
+  assert.ok(docked, 'docked there already, the same board has work at that heat');
+  assert.ok(heat + jobHeat(docked.job, rules).heat + jumpHeat < huntHeat);
 });

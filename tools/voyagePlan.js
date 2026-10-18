@@ -83,6 +83,14 @@
 // check still passes; a part the power doesn't stretch to takes a reactor
 // on hand with it. Never corridors, airlocks, armories or a second bridge,
 // and no healer that heals no more than one aboard.
+// From M38c it takes work at a station (stationJobPick): of the jobs on its
+// board, the one worth most, if that is anything, with a full squad of the
+// fit going (tripSquad). A job is worth its pay, its part and the standing
+// it moves, each at the test crew's odds on it (tools/run.js jobOdds, as
+// act 1's are weighed), less its wounds (JOB_WOUNDS, at WORTH.hp) and its
+// heat, with the docking heat at a station of the pursuer's side not yet
+// traded at, as an event's heat. Managing heat, it takes one only where
+// that heat and the next jump's keep the ship under huntHeat.
 // Heat (M24), by its policy. Managing it, the player makes long jumps from
 // LONG_FROM, and in place of any jump that would come out where the
 // hunters may wait; swaps the transponder at a station from SWAP_FROM
@@ -155,18 +163,19 @@ import { eventsOf, freshest } from '../src/sim/eventPool.js';
 import { choiceProblem, wreckable } from '../src/sim/events.js';
 import { tripPlan } from '../src/sim/expeditions.js';
 import { LANES } from '../src/sim/gen/system.js';
-import { withHeat } from '../src/sim/heat.js';
+import { jobHeat, withHeat } from '../src/sim/heat.js';
 import { huntOdds } from '../src/sim/hunt.js';
 import { openStep } from '../src/sim/quests.js';
 import { recruitOffer } from '../src/sim/recruits.js';
 import { repairPrice, wrecksToRepair } from '../src/sim/repair.js';
 import { regroupPlan } from '../src/sim/regroup.js';
-import { dockHeat, levelOf, moveStanding, patrolWelcome, priceShare, standingWith, stationSide } from '../src/sim/standing.js';
+import { dockHeat, jobMoves, jobPay, levelOf, moveStanding, patrolWelcome, priceShare, standingWith, stationSide } from '../src/sim/standing.js';
+import { stationBoard } from '../src/sim/stationJobs.js';
 import { swapPlan } from '../src/sim/transponder.js';
-import { failingCheck, jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity, tradeHeat, within } from '../src/sim/travel.js';
+import { failingCheck, holdOf, jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity, tradeHeat, within } from '../src/sim/travel.js';
 import { yardHere } from '../src/sim/yards.js';
 import { upgradeOf } from './arms.js';
-import { fitPart } from './run.js';
+import { fitPart, jobOdds } from './run.js';
 
 export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30, nebula: 15, hot: 1.5, hunted: -40, volley: -10, standing: 2, friendly: 10, quest: 40, companion: 100, arms: 0.25 };
 const BUFFER_JUMPS = 4;
@@ -206,6 +215,48 @@ export function hireWho(campaign, rules) {
   if (!offer.length) return null;
   const count = (job) => campaign.crew.filter((member) => member.job === job).length;
   return [...offer].sort((a, b) => count(a.job) - count(b.job) || b.hp - a.hp || a.slot - b.slot)[0].slot;
+}
+
+// The hit points a squad loses in each station job (M38c), on average over
+// the fights its odds were measured in, won or lost, of the start crews'
+// 26 (tools/jobs.js --stations --odds 200). One not measured counts at
+// about their mean, WOUNDS_ELSE.
+const JOB_WOUNDS = { claimrights: 17, familybooks: 16, cutrig: 18, pumppirates: 19, badpaper: 19, fleetstores: 18, safepassage: 6, pumplocks: 17, repomen: 15, undeclared: 18, steward: 10, salvage: 18, courier: 9, holdberth: 12, dues: 18 };
+const WOUNDS_ELSE = 15;
+
+// The job the careful player takes at the station the ship is at (M38c,
+// stationJobs.js): of those on its board, the one worth most
+// (stationJobWorth) if that is anything, with a full squad of the fit
+// going (tripSquad), while nothing holds the ship; managing heat, only one
+// whose heat, the docking heat with it and the next jump's keep the ship
+// under huntHeat. { index (on the board), job, squad (crew ids), worth }, or
+// null.
+export function stationJobPick(campaign, rules, heat = 'manage') {
+  const board = stationBoard(campaign, rules);
+  if (!board.length || holdOf(campaign, rules)) return null;
+  const squad = tripSquad(campaign, rules);
+  if (squad.length < Math.min(rules.balance.squadSize, campaign.crew.length)) return null;
+  const dock = tradeHeat(campaign, rules);
+  let best = null;
+  board.forEach((job, index) => {
+    const added = jobHeat(job, rules).heat + dock;
+    if (heat === 'manage' && withHeat(campaign.heat, added + rules.balance.jumpHeat) >= rules.balance.huntHeat) return;
+    const worth = stationJobWorth(campaign, rules, job, added, heat);
+    if (worth > 0 && (!best || worth > best.worth)) best = { index, job, squad, worth };
+  });
+  return best;
+}
+
+// What a station job is worth to the careful player (M38c): done, its pay
+// (with what its client's side adds), its part and the standing it moves;
+// lost, the standing that moves; each at the test crew's odds on it; less
+// its wounds and its heat (`added`, the docking heat with it), as an
+// event's outcome is weighed (effectsWorth).
+function stationJobWorth(campaign, rules, job, added, heat) {
+  const odds = jobOdds(job, rules);
+  const done = effectsWorth(campaign, rules, { credits: jobPay(campaign, rules, job), part: job.part, standing: jobMoves(job, rules, true) }, heat);
+  const lost = effectsWorth(campaign, rules, { standing: jobMoves(job, rules, false) }, heat);
+  return odds * done + (1 - odds) * lost + effectsWorth(campaign, rules, { heat: added }, heat) - WORTH.hp * (JOB_WOUNDS[job.contract] ?? WOUNDS_ELSE);
 }
 
 // The kinds of part the test player fits at a station, in the order it
