@@ -78,6 +78,9 @@ const BALANCE = {
   rubbleMoveCost: [1, 5],
   suitAir: [0, 20],
   airlessDamage: [0, 20],
+  // A sabotage's charge (M38, objectives.js): what its blast does to
+  // everyone beside it.
+  blastDamage: [0, 20],
   forgivingStep: [0, 50],
   forgivingMax: [0, 100],
   // Heat (src/sim/heat.js): what a job adds, and the thresholds.

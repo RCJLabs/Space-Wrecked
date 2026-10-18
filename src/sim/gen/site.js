@@ -7,6 +7,8 @@
 //   ?  maybe a prop: a crate, a container or nothing
 //   !  where a hazard patch can lie (a twist's fire or rubble)
 //   %  rock: ground nobody crosses
+//   x  the far gate: a way out on the far side (an escort's, M38)
+//   v  where a captive can be held, deep in (a rescue's, M38)
 // and walls ('|', '-') and doors ('/') on the edges. A map is its template
 // turned over left to right or top to bottom or neither, its props rolled
 // and its hazard patches laid. Pure and seeded: the same template, seed and
@@ -31,11 +33,13 @@ export const SITE_CHARS = {
   k: { tile: 'console', mark: 'terminal' },
   '?': { tile: 'floor', mark: 'prop' },
   '!': { tile: 'floor', mark: 'hazard' },
+  x: { tile: 'floor', mark: 'exit' },
+  v: { tile: 'floor', mark: 'captive' },
 };
 // What a template needs at the least: room for a squad of five, an
-// encounter grown by a twist, three crates to tag, a terminal and two
-// hazard patches.
-export const SITE_NEEDS = { entry: 5, spawn: 6, loot: 3, terminal: 1, hazard: 2 };
+// encounter grown by a twist, three crates to tag, a terminal, two hazard
+// patches, a far gate of two tiles and a captive's place (M38).
+export const SITE_NEEDS = { entry: 5, spawn: 6, loot: 3, terminal: 1, hazard: 2, exit: 2, captive: 1 };
 export const SITE_SIZE = { width: [8, 24], height: [5, 16] };
 export const HAZARDS = ['fire', 'rubble'];
 // A prop slot rolls out of 100: below the first a crate, below the second
@@ -59,7 +63,7 @@ export function generateSite(template, seed, { hazard = null, patches = 0 } = {}
   const flip = { x: roll(0, 1) === 1, y: roll(0, 1) === 1 };
   const { width, height, chars, walls } = readMapText(flipMapText(template.rows, flip));
   const tiles = createGrid(width, height, 'floor');
-  const zones = { entry: [], spawn: [], loot: [], terminal: [], prop: [], hazard: [] };
+  const zones = { entry: [], spawn: [], loot: [], terminal: [], prop: [], hazard: [], exit: [], captive: [] };
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const kind = SITE_CHARS[cellAt(chars, x, y)];
@@ -97,8 +101,8 @@ export function generateSite(template, seed, { hazard = null, patches = 0 } = {}
     margin: 0,
     site: template.id,
   };
-  const { entry, spawn, loot, terminal } = zones;
-  return { map, zones: { entry, spawn, loot, terminal }, flip, rng };
+  const { entry, spawn, loot, terminal, exit, captive } = zones;
+  return { map, zones: { entry, spawn, loot, terminal, exit, captive }, flip, rng };
 }
 
 // Each tile's area, for the floor's tint: the tiles that walls and doors
@@ -156,7 +160,7 @@ export function siteProblems(template) {
   if (problems.length) return [...new Set(problems)];
 
   // On foot from the entry, with every prop slot a crate.
-  const open = (x, y) => ['.', 'e', 's', '!'].includes(cellAt(chars, x, y));
+  const open = (x, y) => ['.', 'e', 's', '!', 'x', 'v'].includes(cellAt(chars, x, y));
   const seen = new Set();
   const queue = [];
   for (let y = 0; y < height; y++) {
@@ -187,13 +191,13 @@ export function siteProblems(template) {
 }
 
 // How many tiles a template has of each mark: { entry, spawn, loot,
-// terminal, prop, hazard }. Throws on a malformed template.
+// terminal, prop, hazard, exit, captive }. Throws on a malformed template.
 export function siteMarks(template) {
   return countMarks(readMapText(template.rows).chars);
 }
 
 function countMarks(chars) {
-  const counts = { entry: 0, spawn: 0, loot: 0, terminal: 0, prop: 0, hazard: 0 };
+  const counts = { entry: 0, spawn: 0, loot: 0, terminal: 0, prop: 0, hazard: 0, exit: 0, captive: 0 };
   for (const char of chars.cells) if (SITE_CHARS[char]?.mark) counts[SITE_CHARS[char].mark] += 1;
   return counts;
 }

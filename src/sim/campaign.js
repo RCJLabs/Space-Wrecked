@@ -453,7 +453,7 @@ export function rankUps(campaign, battle, rules) {
 // The crew in a fight, by id: the unit each crew member is in battle
 // (fight.crew lists them in the order of its crew units).
 function standing(fight, battle) {
-  const units = battle.units.filter((unit) => unit.side === 'crew');
+  const units = battle.units.filter((unit) => unit.side === 'crew' && !unit.ward);
   return new Map(fight.crew.map((id, i) => [id, units[i]]).filter(([, unit]) => unit));
 }
 

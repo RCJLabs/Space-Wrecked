@@ -7,6 +7,7 @@
 // map templates (sites.json) and the jobs (contracts.json); and from M28 the
 // places within reach of the colony (expeditions.json,
 // validate-expeditions.js), whose events are events.json's.
+import { lookProblems } from '../src/render/figures/looks.js';
 import { SCENES } from '../src/render/scenes/scenes.js';
 import { buildShip, layoutProblems } from '../src/sim/builder.js';
 import { ACTS, CAPTAIN_TRAITS, MAX_NAME } from '../src/sim/campaign.js';
@@ -76,23 +77,38 @@ const SHOP_KEYS = ['name', 'dealer', 'pitch', 'size', 'parts', 'armsSize', 'arms
 const CLIENT_KEYS = ['id', 'name', 'title', 'blurb', 'side'];
 const SITE_KEYS = ['id', 'name', 'map', 'blurb'];
 const MAP_KEYS = ['id', 'name', 'rows'];
-const CONTRACTS_KEYS = ['boardSize', 'twistChance', 'missions', 'twists', 'jobs'];
+const CONTRACTS_KEYS = ['boardSize', 'twistChance', 'missions', 'people', 'twists', 'jobs'];
 const MISSION_KEYS = ['id', 'name', 'brief', 'loud'];
 const TWIST_KEYS = ['id', 'name', 'text', 'enemies', 'hazard', 'patches', 'sight', 'deadline', 'pay', 'missions', 'loud'];
 // A quest's job (M33b, validate-quests.js) names its quest and is never on
 // the board's rotation.
-const JOB_KEYS = ['id', 'title', 'mission', 'crates', 'turns', 'clients', 'sites', 'encounter', 'against', 'credits', 'drops', 'once', 'quest', 'pitch'];
+const JOB_KEYS = ['id', 'title', 'mission', 'crates', 'turns', 'targets', 'rounds', 'captive', 'clients', 'sites', 'encounter', 'against', 'credits', 'drops', 'once', 'quest', 'pitch'];
 const DROPS_KEYS = ['chance', 'parts'];
 // A drop table's weights (drops.js): whole numbers up to this.
 const MAX_WEIGHT = 100;
 // A twist's numbers, each one's allowed range. A twist sets at least one
 // of them, or a hazard.
 const TWIST_NUMBERS = { enemies: [-2, 2], patches: [1, 2], sight: [2, 20], deadline: [3, 30], pay: [-90, 200] };
-// What each mission needs of a job, and its range: grab the crates to
-// grab, hack the turns of work on the terminal.
-const MISSION_NEEDS = { grab: ['crates', 1, 3], hack: ['turns', 1, 5] };
+// What each mission needs of a job, and each number's range: grab and
+// extract the crates, hack the turns of work on the terminal, sabotage the
+// targets and defend the rounds to hold (M38). A rescue names its captive
+// (CAPTIVE_NAME).
+const MISSION_NEEDS = {
+  grab: { crates: [1, 3] },
+  hack: { turns: [1, 5] },
+  extract: { crates: [1, 3] },
+  sabotage: { targets: [1, 3] },
+  defend: { rounds: [3, 10] },
+};
+const MISSION_NUMBERS = ['crates', 'turns', 'targets', 'rounds'];
+const CAPTIVE_NAME = 24;
+// The people a job brings out (M38, battle.js wards): an escort's client
+// and a rescue's captive, each with its numbers and look.
+const PEOPLE = ['client', 'captive'];
+const PERSON_KEYS = ['id', 'name', 'hp', 'defense', 'mobility', 'armor', 'look'];
+const PERSON_NUMBERS = { hp: [1, 20], defense: [0, 50], mobility: [1, 8], armor: [0, 3] };
 // The {words} each text may use, filled in when it is shown.
-const BRIEF_WORDS = { clear: [], grab: ['crates'], hack: ['turns'] };
+const BRIEF_WORDS = { clear: [], grab: ['crates'], hack: ['turns'], extract: ['crates'], escort: ['client'], defend: ['rounds'], sabotage: ['targets'], rescue: ['captive'] };
 const PITCH_WORDS = ['client', 'site'];
 // Everyone aboard fights, so a starting crew is a squad's size.
 const MAX_SQUAD = 5;
@@ -128,7 +144,9 @@ export function checkCampaignFiles(data, ids, fail) {
   const scripts = checkBackgrounds(data.backgrounds, districts, { ...ids, sides }, fail);
   // Hunters join every job's fight once heat is high enough.
   const hunters = Math.max(0, ...(data.backgrounds?.backgrounds ?? []).map((b) => (Array.isArray(b?.pursuer?.hunters) ? b.pursuer.hunters.length : 0)));
-  checkContracts(data.contracts, districts, maps, { ...ids, hunters, sides }, fail);
+  // An escort's client comes in beside the crew, the biggest start's.
+  const crew = Math.max(0, ...(data.backgrounds?.backgrounds ?? []).map((b) => (Array.isArray(b?.start?.crew) ? b.start.crew.length : 0)));
+  checkContracts(data.contracts, districts, maps, { ...ids, hunters, sides, crew }, fail);
   return scripts;
 }
 
@@ -479,7 +497,7 @@ function checkStart(start, where, { jobIds, moduleIds, frameById }, fail) {
 // one district, against an encounter that fits every site's spawn tiles
 // (with any twist's extra enemy), for credits in steps of PAY_STEP and
 // maybe a part from its drop table.
-function checkContracts(file, { districts, sites, clientSides }, maps, { moduleIds, encounters, hunters, sides }, fail) {
+function checkContracts(file, { districts, sites, clientSides }, maps, { moduleIds, encounters, hunters, sides, crew = 0 }, fail) {
   const where = 'contracts.json';
   if (!isObject(file)) {
     fail(where, 'must be an object with the board, missions, twists and jobs');
@@ -498,6 +516,20 @@ function checkContracts(file, { districts, sites, clientSides }, maps, { moduleI
     if (!isText(mission.name)) fail(at, 'name must be a non-empty string');
     if (mission.loud !== undefined && typeof mission.loud !== 'boolean') fail(at, 'loud must be true or false');
     checkWords(mission.brief, BRIEF_WORDS[mission.id] ?? [], `${at} brief`, fail);
+  });
+
+  const people = listOf(file, 'people', where, fail);
+  const personIds = uniqueIds(people, `${where} people`, fail);
+  for (const id of PEOPLE) if (!personIds.has(id)) fail(`${where} people`, `needs "${id}", whom the rules bring out`);
+  people.forEach((person, i) => {
+    const at = `${where} person ${person.id ?? `#${i}`}`;
+    knownKeys(person, PERSON_KEYS, at, fail);
+    if (!PEOPLE.includes(person.id)) fail(at, `unknown person: the rules bring out ${PEOPLE.join(' and ')}`);
+    if (!isText(person.name)) fail(at, 'name must be a non-empty string');
+    for (const [key, [min, max]] of Object.entries(PERSON_NUMBERS)) {
+      if (!isIntIn(person[key], min, max)) fail(at, `${key} must be a whole number from ${min} to ${max}`);
+    }
+    for (const problem of lookProblems(person.look)) fail(at, problem);
   });
 
   const twists = listOf(file, 'twists', where, fail);
@@ -528,10 +560,18 @@ function checkContracts(file, { districts, sites, clientSides }, maps, { moduleI
     knownKeys(job, JOB_KEYS, at, fail);
     if (!isText(job.title)) fail(at, 'title must be a non-empty string');
     if (!missionIds.has(job.mission)) fail(at, `unknown mission "${job.mission}"`);
-    for (const [mission, [key, min, max]] of Object.entries(MISSION_NEEDS)) {
-      if (job.mission === mission && !isIntIn(job[key], min, max)) fail(at, `a ${mission} job needs ${key}, a whole number from ${min} to ${max}`);
-      if (job.mission !== mission && job[key] !== undefined) fail(at, `${key} is only for ${mission} jobs`);
+    const needs = MISSION_NEEDS[job.mission] ?? {};
+    for (const key of MISSION_NUMBERS) {
+      if (needs[key]) {
+        const [min, max] = needs[key];
+        if (!isIntIn(job[key], min, max)) fail(at, `a ${job.mission} job needs ${key}, a whole number from ${min} to ${max}`);
+      } else if (job[key] !== undefined) {
+        const missions = Object.keys(MISSION_NEEDS).filter((id) => MISSION_NEEDS[id][key]);
+        fail(at, `${key} is only for ${missions.join(' and ')} jobs`);
+      }
     }
+    if (job.mission === 'rescue' && !(isText(job.captive) && job.captive.length <= CAPTIVE_NAME)) fail(at, `a rescue job needs its captive's name, up to ${CAPTIVE_NAME} letters`);
+    if (job.mission !== 'rescue' && job.captive !== undefined) fail(at, 'captive is only for rescue jobs');
     // Where: its sites, all in one district with its clients.
     const homes = new Set();
     if (!isListIn(job.sites, 1, Infinity)) {
@@ -566,8 +606,12 @@ function checkContracts(file, { districts, sites, clientSides }, maps, { moduleI
         const most = enemies.length + extra + hunters;
         if (most > marks.spawn) fail(at, `${most} enemies with a twist and the hunters, but ${id}'s map has ${marks.spawn} spawn tiles`);
         if (MAX_SQUAD > marks.entry) fail(at, `${id}'s map has ${marks.entry} ways in for a squad of up to ${MAX_SQUAD}`);
-        if (job.mission === 'grab' && job.crates > marks.loot) fail(at, `${job.crates} crates, but ${id}'s map has ${marks.loot}`);
+        if ((job.mission === 'grab' || job.mission === 'extract') && job.crates > marks.loot) fail(at, `${job.crates} crates, but ${id}'s map has ${marks.loot}`);
+        if (job.mission === 'sabotage' && job.targets > marks.loot) fail(at, `${job.targets} targets, but ${id}'s map has ${marks.loot} tagged crates`);
         if (job.mission === 'hack' && !marks.terminal) fail(at, `${id}'s map has no terminal`);
+        if (job.mission === 'escort' && !marks.exit) fail(at, `${id}'s map has no far gate`);
+        if (job.mission === 'escort' && crew + 1 > marks.entry) fail(at, `${id}'s map has ${marks.entry} ways in for a crew of ${crew} and the client`);
+        if (job.mission === 'rescue' && !marks.captive) fail(at, `${id}'s map has nowhere to hold a captive`);
       }
     }
     // The pay.

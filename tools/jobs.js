@@ -40,14 +40,15 @@ import { readData } from './data.js';
 export const GOLDEN_SITES = fileURLToPath(new URL('../tests/golden/sites.txt', import.meta.url));
 // Each golden seed with the hazard its map is drawn with.
 export const GOLDEN_SEEDS = [[1, null], [2, 'fire'], [3, 'rubble']];
-// Zones marked on a site's text as its template marks them.
-const ZONE_MARKS = { entry: 'e', spawn: 's', loot: '*', terminal: 'k' };
+// Zones marked on a site's text as its template marks them: since M38 the
+// far gate and the captive's places too.
+const ZONE_MARKS = { entry: 'e', spawn: 's', loot: '*', terminal: 'k', exit: 'x', captive: 'v' };
 const MAX_ROUNDS = 60; // a fight still going after this many stops with no winner
 
 // A site's map as text (tools/battle-map.js renderMap, with '%' for rock),
 // with its zones marked the way templates mark them: e the ways in, s the
-// spawn tiles, * crates a job can tag, k the terminal. Hazards, if any,
-// are drawn below it.
+// spawn tiles, * crates a job can tag, k the terminal, x the far gate, v
+// where a captive can be held. Hazards, if any, are drawn below it.
 export function siteText(defs, mapId, seed, hazard = null) {
   const template = defs.siteMaps.get(mapId);
   const { map, zones, flip } = generateSite(template, seed, { hazard, patches: hazard ? 2 : 0 });
@@ -153,7 +154,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.log(`Wrote ${GOLDEN_SITES}`);
   } else if (args.includes('--maps')) {
     console.log(goldenText(defs));
-    console.log('Tiles: . floor, h crate, H container, # machinery, c console, % rock; e the way in, s spawn, * crate to tag, k terminal.');
+    console.log('Tiles: . floor, h crate, H container, # machinery, c console, % rock; e the way in, s spawn, * crate to tag, k terminal, x the far gate, v a captive.');
   } else {
     console.log(jobsInARow(defs, value('--seed', 1), value('--count', 10), { manage: args.includes('--manage') }).lines.join('\n'));
   }

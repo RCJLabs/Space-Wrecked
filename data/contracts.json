@@ -4,14 +4,23 @@
   "missions": [
     { "id": "clear", "name": "Clear out", "brief": "Put down everyone who isn't crew.", "loud": true },
     { "id": "grab", "name": "Grab and go", "brief": "Grab {crates}. You have to stand right beside a crate to grab it, and the job's done when the last one's in hand." },
-    { "id": "hack", "name": "Work the terminal", "brief": "Work the terminal for {turns}. It takes a crew member's whole turn, and it only counts once a round." }
+    { "id": "hack", "name": "Work the terminal", "brief": "Work the terminal for {turns}. It takes a crew member's whole turn, and it only counts once a round." },
+    { "id": "extract", "name": "Walk it out", "brief": "Carry {crates} out the way you came in. A crate in hand means one move a turn, no running. Whoever drops keeps theirs, and anyone beside them can pick it up." },
+    { "id": "escort", "name": "Escort", "brief": "Walk {client} across to the far gate. They take your orders, but they carry no gun and can't take much. If they bleed out, the job's off." },
+    { "id": "defend", "name": "Hold the line", "brief": "Hold the way in for {rounds}. If one of them sets foot on it, it's over." },
+    { "id": "sabotage", "name": "Sabotage", "brief": "Set a charge beside {targets}. Each blows at the start of your next turn and hurts anyone beside it, yours too. They'll pull a charge if they can reach it.", "loud": true },
+    { "id": "rescue", "name": "Rescue", "brief": "{captive} is held at the back of the site. Get beside them to cut them loose, then walk them out the way you came in. They carry no gun and can't take much." }
+  ],
+  "people": [
+    { "id": "client", "name": "Client", "hp": 6, "defense": 0, "mobility": 5, "armor": 0, "look": { "suit": "eva", "build": "light", "helmet": "bubble", "back": "life", "marks": "plain" } },
+    { "id": "captive", "name": "Captive", "hp": 5, "defense": 0, "mobility": 4, "armor": 0, "look": { "suit": "eva", "build": "light", "helmet": "bar", "back": "none", "marks": "plain" } }
   ],
   "twists": [
     { "id": "overtime", "name": "Overtime", "text": "There are more of them than the quote said.", "enemies": 1 },
     { "id": "hazard", "name": "Hazard pay", "text": "Something on site is on fire. The pay's better for it, and so's the noise.", "hazard": "fire", "patches": 2, "pay": 50, "loud": true },
     { "id": "cavein", "name": "Cave-in", "text": "Half the site came down last shift. Watch your step.", "hazard": "rubble", "patches": 2 },
     { "id": "lights", "name": "Lights out", "text": "Somebody cut the floodlights. Nobody sees past {sight} tiles.", "sight": 6 },
-    { "id": "rush", "name": "Rush job", "text": "Done by the end of round {deadline}, or nobody gets paid.", "deadline": 6, "pay": 30, "missions": ["grab", "hack"] },
+    { "id": "rush", "name": "Rush job", "text": "Done by the end of round {deadline}, or nobody gets paid.", "deadline": 6, "pay": 30, "missions": ["grab", "hack", "extract", "escort", "sabotage", "rescue"] },
     { "id": "skeleton", "name": "Skeleton crew", "text": "They're short-staffed tonight. So is the pay.", "enemies": -1, "pay": -20 }
   ],
   "jobs": [

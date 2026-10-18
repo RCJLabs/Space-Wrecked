@@ -4,10 +4,17 @@
 //
 // A contract is a mission at one of its sites, for one of its clients,
 // against an encounter, for credits and maybe a part from its drop table
-// (drops.js):
-//   clear  put down everyone who isn't crew
-//   grab   grab `crates` of the site's crates (battle.js objectives)
-//   hack   work the site's terminal for `turns` turns
+// (drops.js); objectives.js has the rules for each:
+//   clear     put down everyone who isn't crew
+//   grab      grab `crates` of the site's crates
+//   hack      work the site's terminal for `turns` turns
+//   extract   carry `crates` of them out the way the crew came in (M38)
+//   escort    walk the client (a ward, people in data/contracts.json) from
+//             the way in to the far gate (the site's exit tiles)
+//   defend    hold the way in for `rounds` rounds
+//   sabotage  set a charge by `targets` of the site's crates
+//   rescue    free `captive` (a ward), held on one of the site's captive
+//             tiles, and walk them out the way the crew came in
 // A contract with once: true (a story job) never comes back once it is
 // done; the campaign keeps its id in spent. Lost, it can come again.
 // The job board offers boardSize contracts at a time, each with its client,
@@ -37,9 +44,9 @@ import { enemyBonus } from './settings.js';
 import { questJobs, stepDone } from './quests.js';
 import { jobMoves, jobPay, moveStanding } from './standing.js';
 
-// The missions the rules know. A new one means new rules (battle.js), so
-// it is added here on purpose.
-export const MISSIONS = ['clear', 'grab', 'hack'];
+// The missions the rules know. A new one means new rules (objectives.js),
+// so it is added here on purpose.
+export const MISSIONS = ['clear', 'grab', 'hack', 'extract', 'escort', 'defend', 'sabotage', 'rescue'];
 const MAX_SEED = 0xffffffff;
 
 // The contracts the board can offer in a district: those at its sites,
@@ -112,8 +119,10 @@ export function withBoard(campaign, rules) {
 // crew (campaign crew members, in order) at the ways in and the enemies at
 // the spawn tiles, both shuffled by the seed; the encounter's enemies with
 // one more or fewer as the twist says, picked by the seed, and any hunters
-// the pursuer sends along (heat.js huntersFor); the mission's objective;
-// and the twist's sight range and deadline. The crew fight with what their
+// the pursuer sends along (heat.js huntersFor); the mission's objective,
+// with its ward (M38): an escort's client at the next way in, named for
+// the job's client, or a rescue's captive held on a captive tile picked by
+// the seed; and the twist's sight range and deadline. The crew fight with what their
 // traits add, and every enemy with what the difficulty adds (settings.js);
 // forgiving odds are on or off as given. The battle's own seed is where
 // the site's rolls left off. Throws if the site has too few places for
@@ -140,20 +149,47 @@ export function jobSetup(job, rules, crew, { hunters = [], forgiving = false, di
   enemies.push(...hunters);
   const entries = shuffled(site.zones.entry);
   const spawns = shuffled(site.zones.spawn);
-  if (entries.length < crew.length || spawns.length < enemies.length) {
-    throw new Error(`${template.id} has room for ${entries.length} crew and ${spawns.length} enemies, not ${crew.length} and ${enemies.length}`);
+  const comers = crew.length + (contract.mission === 'escort' ? 1 : 0);
+  if (entries.length < comers || spawns.length < enemies.length) {
+    throw new Error(`${template.id} has room for ${entries.length} crew and ${spawns.length} enemies, not ${comers} and ${enemies.length}`);
   }
   const bonus = enemyBonus(difficulty, rules.balance);
   const units = [
     ...crew.map((member, i) => ({ ...crewUnit(member, rules), x: entries[i][0], y: entries[i][1] })),
     ...enemies.map((kind, i) => ({ kind, x: spawns[i][0], y: spawns[i][1], bonus })),
   ];
+  const tagged = (n) => shuffled(site.zones.loot).slice(0, n).sort(([ax, ay], [bx, by]) => ay - by || ax - bx);
   let objective = null;
-  if (contract.mission === 'grab') {
-    const crates = shuffled(site.zones.loot).slice(0, contract.crates).sort(([ax, ay], [bx, by]) => ay - by || ax - bx);
-    objective = { type: 'grab', crates };
-  } else if (contract.mission === 'hack') {
-    objective = { type: 'hack', at: site.zones.terminal[roll(0, site.zones.terminal.length - 1)], turns: contract.turns };
+  switch (contract.mission) {
+    case 'grab':
+      objective = { type: 'grab', crates: tagged(contract.crates) };
+      break;
+    case 'hack':
+      objective = { type: 'hack', at: site.zones.terminal[roll(0, site.zones.terminal.length - 1)], turns: contract.turns };
+      break;
+    case 'extract':
+      objective = { type: 'extract', crates: tagged(contract.crates), exits: site.zones.entry };
+      break;
+    case 'sabotage':
+      objective = { type: 'sabotage', targets: tagged(contract.targets) };
+      break;
+    case 'defend':
+      objective = { type: 'defend', rounds: contract.rounds, line: site.zones.entry };
+      break;
+    case 'escort': {
+      const [x, y] = entries[crew.length];
+      units.push({ kind: 'client', x, y, name: rules.clients.get(job.client)?.name ?? rules.people.get('client').name });
+      objective = { type: 'escort', ward: 'w1', exits: site.zones.exit };
+      break;
+    }
+    case 'rescue': {
+      const [x, y] = site.zones.captive[roll(0, site.zones.captive.length - 1)];
+      units.push({ kind: 'captive', x, y, name: contract.captive, held: true });
+      objective = { type: 'rescue', ward: 'w1', exits: site.zones.entry };
+      break;
+    }
+    default:
+      break;
   }
   const options = { forgiving };
   if (twist?.sight) options.sight = twist.sight;
