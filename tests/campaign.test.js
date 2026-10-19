@@ -74,6 +74,10 @@ test("a new campaign starts in act 1 at the hangar, with its background's start"
     // M37: no spare weapons; everyone carries their job's.
     arms: {},
     captain: 1,
+    // M41: the game's difficulty, Normal, death not permanent, no one fallen.
+    difficulty: 'normal',
+    permadeath: false,
+    fallen: [],
     heat: 0,
     // M33: hostile with the pursuer's side, Con-Reg, and neutral with the rest.
     standing: { conreg: -10, fleet: 0, hallorans: 0, union: 0 },
@@ -216,7 +220,10 @@ test('after a fight: the act 1 hangar heals, elsewhere wounds stay and the falle
   const killed = units.map((u) => (u.id === 'c2' ? { ...u, status: 'dead' } : u));
   const lost = endFight({ ...won, flags: { fightsLost: 2 }, fight: { ...won.fight, battle: { ...won.fight.battle, units: killed, winner: 'enemy' } } }, rules);
   assert.deepEqual(lost.crew.map((m) => m.job), ['marine', 'medic'], 'killed where death is permanent');
-  assert.deepEqual(lost.flags, { fightsLost: 3 });
+  assert.deepEqual(lost.flags, { fightsLost: 3, crewLost: 1 });
+  // M41: named among the fallen, the weapon they carried back to the spares.
+  assert.deepEqual(lost.fallen.map(({ id, job, act }) => ({ id, job, act })), [{ id: 2, job: 'engineer', act: 1 }]);
+  assert.deepEqual(lost.arms, { [rules.jobs.get('engineer').weapon]: 1 });
 
   assert.equal(endFight(campaign, rules), campaign, 'a fight still going is left alone');
   const atHub = newCampaign(rules, 77);

@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "ff18e0951693";
+const VERSION = "6e28b7dd1ff9";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -138,6 +138,7 @@ const FILES = [
   "src/sim/defs.js",
   "src/sim/deploy.js",
   "src/sim/dev.js",
+  "src/sim/difficulty.js",
   "src/sim/drops.js",
   "src/sim/economy.js",
   "src/sim/edges.js",
@@ -190,6 +191,7 @@ const FILES = [
   "src/sim/regroup.js",
   "src/sim/repair.js",
   "src/sim/replay.js",
+  "src/sim/rescueAi.js",
   "src/sim/root.js",
   "src/sim/runShape.js",
   "src/sim/scripted.js",
@@ -257,6 +259,8 @@ const FILES = [
   "src/ui/campaign/launchText.js",
   "src/ui/campaign/newGame.js",
   "src/ui/campaign/newsText.js",
+  "src/ui/campaign/over.js",
+  "src/ui/campaign/overText.js",
   "src/ui/campaign/questText.js",
   "src/ui/campaign/raidText.js",
   "src/ui/campaign/sector.js",
@@ -265,6 +269,8 @@ const FILES = [
   "src/ui/campaign/shopText.js",
   "src/ui/campaign/squadCard.js",
   "src/ui/campaign/standingText.js",
+  "src/ui/campaign/startGame.js",
+  "src/ui/campaign/startText.js",
   "src/ui/campaign/tripText.js",
   "src/ui/campaign/voyageText.js",
   "src/ui/campaign/yardText.js",

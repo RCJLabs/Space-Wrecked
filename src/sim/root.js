@@ -3,11 +3,12 @@
 // content tables (rules) for the actions that need them.
 import { int } from '../core/rng.js';
 import { emptyBuilds, reduceBuilds } from './builds.js';
-import { beginFight, captainProblem, firstBackground, newCampaign, refitShip, saveFight } from './campaign.js';
+import { beginFight, captainProblem, firstBackground, gameOver, newCampaign, refitShip, saveFight } from './campaign.js';
 import { donate } from './colony.js';
 import { build, moveBuilding, takeDown } from './colonyBuild.js';
 import { nextDay } from './days.js';
 import { cheat } from './dev.js';
+import { DIFFICULTIES, setDifficulty } from './difficulty.js';
 import { endJob, takeJob, takeQuestJob, withBoard } from './contracts.js';
 import { buyPart, sellPart, sellWeapon } from './economy.js';
 import { beginBoarding, closeApproach, endBoarding, giveOrder } from './encounter.js';
@@ -39,7 +40,7 @@ import { flyFrom, flyTo, voyageHome, voyageOut } from './voyage.js';
 // landing plays between act 2 and act 3 (M25), whose home is the colony
 // (M26), and from which the ship flies out on voyages (M38d).
 export const PLACE_SCREENS = { hub: 'hub', fight: 'campaign-fight' };
-export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'sector', 'approach', 'landing', 'colony'];
+export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'sector', 'approach', 'landing', 'colony', 'over'];
 // The moves on the run that can open an approach (a hostile ship, the
 // pursuer's hunters, or a trap an event sprang, M36) or put one away, and
 // so change the screen; and from M38d a voyage's Fly out and Fly home,
@@ -49,8 +50,10 @@ const SCREEN_CHANGES = ['campaign/jump', 'campaign/sector/leave', 'campaign/regr
 // The screen a campaign is played on where it is now: its fight, or its
 // act's home: the hangar in act 1, the sector map on the run (act 2, and a
 // voyage from the colony from M38d), or the approach going on there, and
-// the colony in act 3.
+// the colony in act 3. Once the game is over (M41, campaign.js gameOver),
+// its end.
 export function campaignScreen(campaign) {
+  if (gameOver(campaign)) return 'over';
   if (campaign.place === 'fight') return PLACE_SCREENS.fight;
   if (campaign.act === 2 || campaign.colony?.voyage) return campaign.run?.approach ? 'approach' : 'sector';
   return campaign.act === 1 ? PLACE_SCREENS.hub : 'colony';
@@ -70,15 +73,20 @@ export function initialState(seed) {
 }
 
 // Campaign actions:
-//   campaign/new { rules, captain, background }
+//   campaign/new { rules, captain, background, difficulty, permadeath }
 //                                  a new campaign, in place of any other,
 //                                  from the background picked (M30; none:
 //                                  the first), led by the captain made for
 //                                  it (campaign.js captainProblem; none: the
-//                                  first crew member as they are); its seed
-//                                  is the game's next roll, and its first
-//                                  job board is rolled
-//   campaign/continue              back to where the campaign is
+//                                  first crew member as they are), at the
+//                                  difficulty picked, death permanent or
+//                                  not (M41; none: Normal, and not); its
+//                                  seed is the game's next roll, and its
+//                                  first job board is rolled
+//   campaign/continue              back to where the campaign is, or its
+//                                  end once the game is over (M41)
+//   campaign/difficulty { value }  the game's difficulty, from the next
+//                                  fight (M41, difficulty.js)
 //   campaign/board { rules }       a job board and the shop's stock for a
 //                                  hub without them (a campaign saved
 //                                  before there were jobs or a shop)
@@ -107,8 +115,9 @@ export function initialState(seed) {
 //                                  yards.js buyFrame)
 //   campaign/job/take { index, rules }   the crew takes the board's job at
 //                                  index: its fight begins. Every fight
-//                                  takes forgiving odds and the difficulty
-//                                  from the settings as it starts
+//                                  takes forgiving odds from the settings
+//                                  as it starts, and the difficulty and
+//                                  permanent death from the campaign (M41)
 //   campaign/job/quest { quest, rules }   the crew takes the job a quest's
 //                                  step offers at the hangar (M33b)
 //   campaign/raid/begin { rules }  the crew faces the raid that is due
@@ -222,13 +231,20 @@ export function reduce(state, action) {
     case 'campaign/new': {
       const captain = action.captain ?? null;
       const background = action.background ?? firstBackground(action.rules);
+      const difficulty = action.difficulty ?? 'normal';
+      const permadeath = action.permadeath ?? false;
       if (!action.rules.backgrounds.has(background)) return state;
       if (captain && captainProblem(captain, action.rules, background)) return state;
+      if (!DIFFICULTIES.includes(difficulty) || typeof permadeath !== 'boolean') return state;
       const { value: seed, state: rng } = int(state.rng, 0, 0xffffffff);
-      return { ...state, rng, campaign: withBoard(newCampaign(action.rules, seed, { background, captain }), action.rules), screen: PLACE_SCREENS.hub };
+      return { ...state, rng, campaign: withBoard(newCampaign(action.rules, seed, { background, captain, difficulty, permadeath }), action.rules), screen: PLACE_SCREENS.hub };
     }
     case 'campaign/continue':
       return state.campaign ? { ...state, screen: campaignScreen(state.campaign) } : state;
+    case 'campaign/difficulty': {
+      const set = state.campaign && setDifficulty(state.campaign, action.value);
+      return set?.ok ? withCampaign(state, set.campaign) : state;
+    }
     case 'campaign/board':
       return withCampaign(state, state.campaign && withBoard(state.campaign, action.rules));
     case 'campaign/places':

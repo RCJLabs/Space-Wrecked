@@ -21,7 +21,7 @@
 import { aiAction } from '../src/sim/ai.js';
 import { autoplay } from '../src/sim/autoplay.js';
 import { isMachine } from '../src/sim/battle.js';
-import { saveFight } from '../src/sim/campaign.js';
+import { gameOver, saveFight } from '../src/sim/campaign.js';
 import { endJob } from '../src/sim/contracts.js';
 import { deploy, machinesOn } from '../src/sim/deploy.js';
 import { beginBoarding, endBoarding } from '../src/sim/encounter.js';
@@ -104,8 +104,9 @@ export function fightRaid(campaign, rules) {
 
 // A fight begun in campaign, played to its end, and ended: a boarding, its
 // players by which way it goes; or a raid's (players given). Throws
-// SealedIn for a fight that can't end (sealedIn), and an Error for one
-// that stalled otherwise.
+// SealedIn for a fight that can't end (sealedIn), an Error for one that
+// stalled otherwise, and GameOver once no one is left aboard (M41: where
+// death is permanent).
 function fightThrough(campaign, rules, end, players = BOARDING_PLAYERS[campaign.fight.boarding?.dir]) {
   const { fight } = campaign;
   const played = playOn(fight.battle, rules, players);
@@ -115,8 +116,19 @@ function fightThrough(campaign, rules, end, players = BOARDING_PLAYERS[campaign.
     if (sealedIn(played.battle, rules)) throw new SealedIn(`A ${what} fight sealed itself in: after ${MAX_ROUNDS} rounds no one standing can reach a tile with an enemy in sight.`, played.battle);
     throw new Error(`A ${what} fight stalled after ${MAX_ROUNDS} rounds.`);
   }
-  const over = saveFight(campaign, played.battle, [...fight.log, ...played.events]);
-  return { campaign: end(over, rules), won: played.battle.winner === 'crew', rounds: played.battle.round, dir: fight.boarding?.dir ?? null, salvage: fight.boarding?.salvage ?? null, dragged };
+  const saved = saveFight(campaign, played.battle, [...fight.log, ...played.events]);
+  const ended = end(saved, rules);
+  if (gameOver(ended)) throw new GameOver(ended);
+  return { campaign: ended, won: played.battle.winner === 'crew', rounds: played.battle.round, dir: fight.boarding?.dir ?? null, salvage: fight.boarding?.salvage ?? null, dragged };
+}
+
+// The game over (M41): where death is permanent, a fight left no one
+// aboard. campaign: as the fight left it.
+export class GameOver extends Error {
+  constructor(campaign) {
+    super(`No one is left aboard in act ${campaign.act}: the game is over.`);
+    this.campaign = campaign;
+  }
 }
 
 // A fight that can't end (M32): no one standing on either side can get to

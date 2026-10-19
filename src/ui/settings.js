@@ -1,6 +1,7 @@
-// The settings screen, from the title: difficulty, forgiving odds, motion,
-// the frame rate and tips, each a row of choices with what the one picked
-// does (settingsText.js); then the save as a code, the player's backup: a
+// The settings screen, from the title: sound, the game's difficulty (M41:
+// with a campaign under way), forgiving odds, motion, the frame rate and
+// tips, each a row of choices with what the one picked does
+// (settingsText.js); then the save as a code, the player's backup: a
 // TWA keeps the save in Chrome's storage, and clearing Chrome's data
 // clears it. Export makes the code to copy; Import checks a pasted one,
 // and a second tap replaces the save with it.
@@ -51,9 +52,10 @@ export const settingsScreen = {
     buildSave();
 
     function build() {
-      const { settings } = game.getState();
+      const { settings, campaign } = game.getState();
+      shown.clear();
       rows.replaceChildren(
-        ...settingsText(settings, balance).map((row) => {
+        ...settingsText(settings, balance, campaign).map((row) => {
           const item = node('div', 'set-row');
           const choices = node('div', 'set-choices');
           choices.setAttribute('role', 'group');
@@ -61,7 +63,7 @@ export const settingsScreen = {
           const buttons = row.choices.map((choice) => {
             const button = node('button', 'btn set-choice', choice.label);
             button.type = 'button';
-            cleanups.push(onTap(button, () => game.dispatch({ type: `settings/${row.key}`, value: choice.value })));
+            cleanups.push(onTap(button, () => game.dispatch({ type: row.action, value: choice.value })));
             return { button, value: choice.value };
           });
           choices.append(...buttons.map((b) => b.button));
@@ -81,10 +83,14 @@ export const settingsScreen = {
 
     function render() {
       if (!balance) return;
-      const { settings } = game.getState();
-      for (const row of settingsText(settings, balance)) {
+      const { settings, campaign } = game.getState();
+      const text = settingsText(settings, balance, campaign);
+      // A save imported here can bring a campaign, or take one away, and
+      // with it the difficulty's row (M41).
+      if (text.map((row) => row.key).join() !== [...shown.keys()].join()) build();
+      for (const row of text) {
         const { buttons, line } = shown.get(row.key);
-        for (const { button, value } of buttons) button.setAttribute('aria-pressed', String(settings[row.key] === value));
+        for (const { button, value } of buttons) button.setAttribute('aria-pressed', String(row.value === value));
         setText(line, row.line);
       }
       if (resetButton) resetButton.hidden = settings.tips && !settings.tipsSeen.length;

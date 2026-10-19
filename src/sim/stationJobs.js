@@ -21,6 +21,7 @@
 import { seedFrom } from '../core/rng.js';
 import { beginJob, rollOffers } from './contracts.js';
 import { defaultSquad, squadMembers, squadProblem } from './crew.js';
+import { fightSetup } from './difficulty.js';
 import { stationSide } from './standing.js';
 import { dockShip, hereOf, holdOf, onTheRun } from './travel.js';
 
@@ -60,8 +61,9 @@ export function stationBoard(campaign, rules) {
 // Takes the job at `index` on the station's board (stationBoard), with the
 // squad `squad` (crew ids; null: the healthiest, crew.js defaultSquad).
 // setup is what the settings make of the fight (settings.js
-// fightSettings). Returns { ok: true, campaign } with the fight on, or
-// { ok: false, error } saying why it can't.
+// fightSettings), with the campaign's difficulty and permanent death (M41,
+// difficulty.js fightSetup). Returns { ok: true, campaign } with the fight
+// on, or { ok: false, error } saying why it can't.
 export function takeStationJob(campaign, rules, index, squad = null, setup = {}) {
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
   if (!stationHere(campaign, rules)) return { ok: false, error: 'Work on the run is taken at a station.' };
@@ -74,5 +76,5 @@ export function takeStationJob(campaign, rules, index, squad = null, setup = {})
   if (why) return { ok: false, error: why };
   const docked = dockShip(campaign, rules);
   const taken = { ...docked, run: { ...docked.run, jobbed: [...docked.run.jobbed, job.contract] } };
-  return beginJob(taken, rules, job, squadMembers(campaign.crew, ids), { ...setup, hunters: [] });
+  return beginJob(taken, rules, job, squadMembers(campaign.crew, ids), { ...fightSetup(campaign, setup), hunters: [] });
 }

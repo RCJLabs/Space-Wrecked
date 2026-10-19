@@ -53,7 +53,7 @@ export function captainText(rules, draft, background = firstBackground(rules)) {
     ready: !why,
     hint: why
       ? { tone: 'info', text: why === `Pick ${CAPTAIN_TRAITS} traits.` && left > 0 ? `Pick ${CAPTAIN_TRAITS} traits: ${left} to go.` : why }
-      : { tone: 'good', text: `${draft.name.trim()}, ${job.name.toLowerCase()}: ${draft.traits.map((id) => rules.traits.get(id).name).join(' and ')}. Tap Start.` },
+      : { tone: 'good', text: `${draft.name.trim()}, ${job.name.toLowerCase()}: ${draft.traits.map((id) => rules.traits.get(id).name).join(' and ')}. Tap Next.` },
   };
 }
 

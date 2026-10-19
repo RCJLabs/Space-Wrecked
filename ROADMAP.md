@@ -228,7 +228,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 - **Crits:** the weapon's crit chance, plus 30 when flanking (`balance.flankCrit`). A crit adds the weapon's crit damage.
 - **Damage:** the weapon's damage range, plus crit damage, minus armor, with a minimum of 1. The hit, crit and damage are rolled in that order from the battle's seeded RNG.
 - **Overwatch:** the unit fires once, at the first enemy that steps into its sight during the other side's turn, with the overwatch penalty; not while that enemy is passing through an ally's tile, so two units never share one. It ends at the start of the unit's own next turn.
-- **Down, not dead:** crew at 0 HP go down and bleed out over 3 of their own turns (`balance.bleedOutTurns`) unless an ally beside them stabilizes them. Bleeding out puts them out of the fight, badly hurt, or kills them where permanent death is on (harder settings only). Enemies at 0 HP die.
+- **Down, not dead:** crew at 0 HP go down and bleed out over 3 of their own turns (`balance.bleedOutTurns`) unless an ally beside them stabilizes them. Bleeding out puts them out of the fight, badly hurt, or kills them where permanent death is on (picked at New game, M41). Enemies at 0 HP die.
 - **Hazards** (M7): fire burns 2 at the start of each of a unit's turns there. In vacuum, suit air lasts 3 turns, then the unit takes 2 a turn (the oxygen clock).
 - **Weapons** (M37, `data/weapons.json`, `src/sim/weapons.js`): 15, each a sidearm, a long gun or a heavy weapon. Five rules are a weapon's data, and only the nine new weapons have any:
   - a **burst** (`burst`): that many shots at the target, each rolled at the odds shown, the burst's aim penalty part of them, until it drops; overwatch fires one, without the penalty;
@@ -253,7 +253,8 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 
   Once the objective is done the crew has won, whoever is still standing. A deadline (a job's twist) ends the battle at the end of the crew's turn in its round: if the crew hasn't won by then, it has lost.
 - **Forgiving odds:** an optional setting (M18, in Settings, off unless turned on) adds 10 to the crew's next shot for each miss in a row, up to 30. The bonus is included in the number shown, so Law 4 still holds.
-- **Difficulty** (M18, in Settings): Easy, Normal or Hard, from the next fight. Easy enemies aim 10 worse and have 1 hit point fewer; Hard enemies aim 5 better and have 1 more (`data/balance.json`). Normal leaves them as the data has them. Permanent death waits for recruits and a game over (§9).
+- **Difficulty** (M18; the game's since M41, picked at New game and changed in Settings from the next fight): Easy, Normal or Hard. Easy enemies aim 10 worse and have 1 hit point fewer, and their ships' guns aim 10 worse; Hard enemies aim 5 better and have 1 more, and their ships' guns 5 better (`data/balance.json`). Normal leaves them as the data has them. It reaches every fight, a raid fought out where the ship isn't among them.
+- **Permanent death** (M41, picked at New game, kept for the game): someone who bleeds out dies and leaves the crew; a captain's death passes command to whoever has stood in most fights; with no one left aboard the game is over. Act 1's hangar signs on a free green hand while the crew is short. A fight no one plays kills no one.
 - **The log:** every action returns the events it caused, and the same setup, seed and actions always give the same events (`src/sim/battle.js`; the example battle in `tests/golden/` is replayed by the tests).
 - **Giving orders** (M8, `src/sim/fight.js`): a tap never spends an action. A tap on a tile shows the move (its path, one action or a dash, and the cover where it stops), and a second tap on it makes it. A tap on an enemy, or Shoot, shows the shot with its odds part by part, and Fire or a second tap takes it. Overwatch, Reload, Stabilize and Open door are buttons, and on a job Grab and Hack, and since M38 Free and Plant, shown only when there is a crate, the terminal, a captive or a target in reach; End turn takes a second tap while anyone can still act. A job's objective shows under the round, and its crates and terminal are tagged on the board; since M38 its targets and charges too, and its ways out and the way in held are outlined on the deck. The board opens square to the ship, where tiles are biggest, and every enemy is shown (no fog of war); those the selected unit can see show the hit chance. No button sits over the board (M18): Title, Log and Fit head the orders' column on the right, since Chrome takes a tap on a tile beside a button for the button.
 - **The enemy's turn** is worked out at once by the rules and then played out on the board, event by event: walks, shots that land or fly wide with the damage over the unit hit, doors opening, whose turn it is. Skip goes to the end.
@@ -2178,9 +2179,35 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **A fight past round 40 with no step nearer takes its best shot from where it stands** (`fightOut.js`): in a deserter's voyage a pilot and a brute, their fallen on the tiles between them, each stepped into the other's sight and back out, turn after turn, to the round limit.
   - **The way on foot from the airlock to the bridge:** the test player gives the colony no part whose going leaves a hatch no one can walk to from the bridge (`voyagePlan.js` hatchesCutOff). A reactor given on smuggler seed 22 joined the airlock's side to the bridge's by weapon mounts alone, and the boarding there never ended. A player can still do it (§9).
   - **Each pursuer's raids** (`tools/raids.js`, 150 a row) are as on main: at the hangar 53%, 63% and 46%, at the colony 41%, 42% and 41%.
-- [ ] **M41 Difficulty settings.** Easy, Normal and Hard since M18, a few numbers each. The draft:
-  - each setting through all three acts;
-  - permanent death as a harder setting (§9).
+- [x] **M41 Difficulty settings.** Easy, Normal and Hard since M18, a few numbers each: the enemy's aim and hit points in a fight. The draft was each setting through all three acts, and permanent death as a harder setting (§9).
+
+  Measured first (main after M40: 100 whole games from each start at each setting, act 1 to the days after the voyage out, every fight at the setting): every setting reaches the colony in all 100 from each start, and the fights part as they should (from the miner's start, Easy to Hard: boardings won 83%, 67% and 31%, raids at the colony 98%, 75% and 58%). Two gaps: an enemy ship's guns, and a raid fought out where the ship isn't, take no difficulty. Permanent death, tried with every bleed-out a death: the test crews bled out 3 to 9 times a game, and the smuggler's captain in nearly every game, because their AI never stabilizes anyone. Stabilizing where death is permanent, the deaths came to 0 or 1 a game at the median (at most 4), and the games that failed stalled in act 1 a crew member short, with no one to sign on (8 to 23 of 100 at Normal and Hard).
+
+  Done when (my recommendations, taken on Evan's standing word to go with them, 2026-10-19):
+  - **The difficulty is the game's,** picked at New game (Normal unless changed) and changed in Settings from the next fight, as M18 has it. It moves from the settings into the campaign (save v39: a save's setting becomes its campaign's).
+  - **It reaches every enemy:** in every fight as now (Easy aims 10 worse with 1 hit point fewer, Hard 5 better with 1 more), from act 1's jobs to a raid fought out where the ship isn't; and in an approach, an enemy ship's guns aim 10 worse on Easy and 5 better on Hard (`easyEnemyGunnery`, `hardEnemyGunnery`), in the odds shown.
+  - **Permanent death,** picked at New game, off unless turned on, and kept for the game:
+    - a crew member who bleeds out in a fight dies and leaves the crew; their weapon goes back to the spares, a companion's loyalty quest ends, and the fallen are named on the crew card;
+    - if the captain dies, whoever has stood in the most fights takes command;
+    - with no one left aboard, the game is over: its end names the fallen and shows the record, and New game starts another. The save keeps the ending until then;
+    - in act 1 the hangar has a green hand to sign on (no traits, no fights), one at a time and free, in the first job the crew is short of the start's. (Changed in the build: a fee left a crew of one with no credits and no way to earn any; Hard with permanent death stalled there.)
+    - a fight the player doesn't play (a raid fought out where the ship isn't) kills no one;
+    - the crew's AI stabilizes an ally who is down where death is permanent, so the test players play it as a careful player would.
+  - **Each setting through all three acts,** 100 whole games from each start (`node tools/voyage.js --difficulty`, and `--permadeath on`):
+    - without permanent death, every setting reaches the colony in all 100 from each start, and the share of fights won falls from Easy to Normal to Hard from each start;
+    - with permanent death at Normal, the game reaches the colony in at least 80 of 100 from each start. The deaths, the captains lost and the games over are reported at each setting;
+    - at Normal without permanent death, the voyage tests' rates stay main's and the golden files don't move.
+  - **Saves v39,** with the migration tested.
+  - **Every rule tested.**
+  - **Touch, at the three sizes:** New game's difficulty and permanent death, Settings' difficulty, a death at a fight's end, the hangar's recruit, and the game's end.
+
+  As built (2026-10-19), where it differs from the above or adds to it:
+  - **New game has a last screen,** "Your game", after the captain: the two rows side by side, Back to the captain with nothing lost, then Start. The captain's button says Next.
+  - **The hangar's recruit is free,** a green hand with no traits and no fights, in the first job the crew is short of (above).
+  - **The game's end** names the fallen (job and act) and the record: difficulty, fights, jobs, sectors, colonies and who was lost. Continue from the title comes back to it until New game.
+  - **Settings' Difficulty row** shows only with a game under way, and says the change holds from the next fight.
+  - **The crew's AI gets a downed ally up** before anything else where death is permanent (`src/sim/rescueAi.js`): stabilize beside them, or walk there with an action to spare, unless its own Patch can reach them.
+  - **Each setting through all three acts** (100 games from each start; Easy, Normal, Hard): without permanent death all 900 reach the colony, the fights won 89/78/63% from the miner's start, 84/70/61% from the deserter's, 89/79/69% from the smuggler's. With it at Normal the colony is reached in 100, 100 and 99; across all nine, one game over (Hard, the smuggler's, in act 3), and the smuggler's test player stopped short of launch in 1 at Normal and 3 at Hard.
 - [ ] **M42 Accessibility.** The draft:
   - a colorblind-safe palette;
   - text size;
@@ -2250,7 +2277,6 @@ These ideas wait until v0.4 or later:
 - the lift-off seen from the ground: the hangar's roof opening and the Tailings falling away, where M17's lift-off is drawn over the starfield (raised in M17)
 - Launch in construction mode, where the last check usually passes: M17 keeps it at the hangar and points there (raised in M17)
 - an act's record with time played and fights won and lost, kept per act: the colony shows what the flags count for the run (raised in M17)
-- permanent death as a harder setting: it needs recruits to replace the dead and a game over, which act 1 has neither of (raised in M18)
 - tips past the first fight: the shop, heat and payments, a raid, launch. M18's tips cover building, the job board and the first fight's orders (raised in M18)
 - reduced motion in a fight: the enemy's turn still plays step by step, with Skip to jump it (raised in M18)
 - the sector map in 3D: M19's chart is flat, drawn in SVG like the job board. A starfield with the nodes as places, seen through the orbit camera, would match the ships (raised in M19)

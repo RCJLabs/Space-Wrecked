@@ -2,6 +2,84 @@
 
 Newest entry first.
 
+## M41 Difficulty settings (2026-10-19)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves are at v39.
+
+**How it was picked:** M41 measured first (main after M40: 100 whole games from each start at each setting, act 1 to the days after the voyage out). Every setting reached the colony in all 100, and the fights parted as they should. Two gaps: an enemy ship's guns, and a raid fought out where the ship isn't, took no difficulty. Permanent death, tried with every bleed-out a death, killed 3 to 9 a game, because the test crews' AI never stabilized anyone. With stabilizing, deaths fell to 0 or 1 a game, and the failures were act 1 crews stuck a member short. My recommendations, taken on Evan's standing word to go with them (2026-10-19), are ROADMAP.md's M41 Done when.
+
+**What shipped:**
+- **The difficulty is the game's** (`src/sim/difficulty.js`): it moves from the settings into the campaign (`campaign.difficulty`, save v39). It is picked at New game, Normal unless changed, and changed in Settings from the next fight; Settings' row shows only with a game under way.
+- **It reaches every enemy:** every fight as before (act 1's jobs and raids, boardings, station jobs, the colony's raids and trips), a raid fought out where the ship isn't (`fightAway`), and in an approach an enemy ship's guns: 10 worse on Easy, 5 better on Hard (`easyEnemyGunnery`, `hardEnemyGunnery` in `data/balance.json`), in the odds shown and the odds rolled. The save keeps the ship, not the difficulty's aim.
+- **Permanent death,** picked at New game and kept for the game (`campaign.permadeath`):
+  - someone who bleeds out dies (`src/sim/campaign.js` `buried`): they leave the crew, their weapon goes back to the spares, a companion's loyalty quest goes cold, and they are named among the fallen (`campaign.fallen`, the newest 99), counted in the flags (`crewLost`, `captainsLost`);
+  - a captain's death passes command to whoever has stood in the most fights;
+  - with no one left aboard the game is over (`gameOver`, derived, not stored): the end screen names the fallen and the record, and Continue comes back to it until New game;
+  - in act 1 the hangar signs on a green hand, free, in the first job the crew is short of (`src/sim/recruits.js` `hangarRecruit`). A fee left a crew of one with no credits and no way to earn any; Hard with permanent death stalled there;
+  - a raid fought out where the ship isn't kills no one;
+  - the crew's AI gets a downed ally up first (`src/sim/rescueAi.js`), so the test players play it as a careful player would. A fallen crew member's id is never used again.
+- **New game's last screen,** "Your game" (`src/ui/campaign/startGame.js`): Difficulty and Permanent death side by side, each with what it means, Back to the captain with nothing lost, then Start. The captain's button says Next.
+- **Deaths in the UI:** the fight's end panel says who died, and that the game is over if no one is left; the crew card says who was lost; the hangar's hint and the crew card offer the recruit ("Looking for a berth", Sign on, free).
+- **The tools:** `node tools/voyage.js --difficulty <easy|normal|hard> --permadeath on`, with the share of fights won and a line for the dead, the captains lost and the games over; `tools/run.js` the same for act 1.
+
+**Done when** (ROADMAP.md, M41), and how each is met:
+- **The difficulty is the game's:** `tests/difficulty.test.js`, `tests/captain.test.js`; by touch.
+- **It reaches every enemy:** `tests/difficulty.test.js` (raids faced and fought out, an approach's odds), `tests/captain.test.js` (the other fights).
+- **Permanent death:** `tests/permadeath.test.js` (6 tests: the fight's option, the dead and command, the game's end, the hangar's recruit, the rescue AI, a raid fought out); by touch.
+- **Each setting through all three acts:** met (below).
+- **At Normal without permanent death, the voyage tests' rates stay main's and the golden files don't move:** `tests/voyage.test.js` passes against M40's `MAIN`; no golden file changed.
+- **Saves v39,** the migration tested (`tests/difficulty.test.js`): a save's settings difficulty becomes its campaign's, death not permanent, no one fallen.
+- **Touch, at the three sizes:** below.
+
+**Each setting through all three acts** (`node tools/voyage.js --runs 100 --background <start> --difficulty <setting> [--permadeath on]`, seeds 1 to 100, act 1 to the days after the voyage out):
+
+| | Easy | Normal | Hard |
+| --- | --- | --- | --- |
+| Reached the colony, miner / deserter / smuggler | 100 / 100 / 100 | 100 / 100 / 100 | 100 / 100 / 100 |
+| Fights won, miner | 89% | 78% | 63% |
+| Fights won, deserter | 84% | 70% | 61% |
+| Fights won, smuggler | 89% | 79% | 69% |
+
+With permanent death:
+
+| | Easy | Normal | Hard |
+| --- | --- | --- | --- |
+| Reached the colony, miner / deserter / smuggler | 100 / 100 / 100 | 100 / 100 / 99 | 100 / 100 / 96 |
+| Games over | 0 | 0 | 1 (smuggler, act 3) |
+| Died a game, the median (most), miner | 0 (2) | 0 (3) | 1 (4) |
+| … deserter | 0 (5) | 1 (6) | 0 (9) |
+| … smuggler | 0 (3) | 0 (4) | 1 (6) |
+| Games with a captain lost, miner / deserter / smuggler | 6 / 13 / 14 | 10 / 16 / 25 | 15 / 18 / 40 |
+
+The smuggler's games short of the colony with permanent death are its act 1 test player not reaching launch in 30 jobs (seed 90 at Normal; 90, 93 and 96 at Hard), not games over.
+
+**Balance numbers** (`data/balance.json`): two new, `easyEnemyGunnery` −10 and `hardEnemyGunnery` 5. `node tools/sim.js` (1,000 fights at Normal, AI against AI) doesn't read them, and its summary is as main's: 49% crew wins (45–52), 24.0 shots a fight, the shown odds as hit (9/9, 28/29, 45/45, 68/67, 83/83).
+
+**Tests:**
+- `node --test`: 1165 pass (1154 on main).
+- **New:** `tests/difficulty.test.js` (5), `tests/permadeath.test.js` (6).
+- **Changed on purpose:** the save version pins (38 → 39) across the tests; the campaign's new fields (`difficulty`, `permadeath`, `fallen`) in `tests/campaign.test.js`, `tests/sim.test.js` and the migration tests; the difficulty set on the campaign in `tests/captain.test.js`; the captain's hint says "Tap Next." (`tests/captainText.test.js`).
+
+**Browser checks:**
+- **`m41/verify.mjs`:** 25 of 25 at each of the three sizes. It covers New game to "Your game" (Normal and Off as it comes, Hard and On picked, Back keeps them, Start begins the game with both); Settings' Difficulty row (Easy saved in the campaign, none without a game); a death at a fight's end, the crew card's "Lost:", the hangar's free recruit in two taps; the game's end (the end panel, the fallen, the record, Continue back to it, New game to the backgrounds); a quit and reopen at v39; offline; every button 48 px or more; no console errors.
+- **Every earlier milestone's browser check:** passes at the three sizes unless named, each the latest adapted copy (`m41/regress-a.sh`, `regress-b.sh`), but M32b's first copy, whose 2 known failures since M36 its fix copy covers.
+  - **Adapted for M41:** the checks that pin the save version (now 39), and those that make a captain by touch, which now tap Start on "Your game" after the captain's Next (`m18/old.mjs` makeCaptain for the rest); M18's settings check reads the difficulty from the campaign.
+  - **Run again on their own, and passed:** M37's at the tab size, M34's, M33b's, M28's and M14's at the cover size and M23d's at the tab size, which timed out or found their server's port taken while both halves ran side by side.
+
+**Known issues:**
+- **The smuggler's act 1 can stall with permanent death** for the test player (4 of 300 games across the settings): a crew rebuilt from green hands takes longer than 30 jobs to launch. A player can go on; the test player gives up.
+- **Hard with permanent death costs the smuggler's captain often** (40 of 100 games): command passes on as it should, but it may feel harsh. Evan's call whether that is Hard.
+- **The difficulty applies from the next fight:** a fight under way keeps the setting it began with.
+
+**What Evan should test on the phone:**
+- **New game:** after the captain, "Your game" offers Difficulty and Permanent death; Back keeps what you picked; Start begins the game.
+- **Settings during a game:** Difficulty shows and changes the game from the next fight.
+- **Permanent death:** let someone bleed out; the end panel says they died, the crew card names them, and in act 1 the hangar offers a green hand for nothing.
+- **The game's end:** lose everyone; the end screen names the fallen and the record, and New game starts over.
+- **Quit and reopen:** a save from before opens at Normal, death not permanent.
+
+**Next milestone's first task:** M42 Accessibility: study the palette for colorblind players, text size and motion in a fight (§9); measure what today's UI does at each; settle its Done when.
+
 ## M40 Balance runs (2026-10-19)
 
 **Status:** done but for one bullet, and the ROADMAP.md box is ticked. Every bar of the Done when is met except one talent: **Bosun's weld still lifts its squad 0 points**, where the bar is 5 to 15. No weld I tried reached 5, so it is Evan's call (below, and ROADMAP.md §9). Saves stay at v38.

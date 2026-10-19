@@ -115,6 +115,12 @@
 //                                      (M30; data/backgrounds.json)
 //   node tools/voyage.js --runs 30 --background all
 //                                      every background's, side by side
+//   node tools/voyage.js --difficulty hard   the game's difficulty (M41),
+//                                      act 1 to the end; the summary
+//                                      gives the share of fights won
+//   node tools/voyage.js --permadeath on    death permanent (M41): the
+//                                      summary counts the dead and the
+//                                      games over
 //   node tools/voyage.js --runs 20 --set supplyPrice=2
 //                                      a balance number changed for this run
 //                                      only (as many --set as you like)
@@ -154,7 +160,7 @@ import { flightFromPlan, flyFrom, voyageHome, voyageHomePlan, voyageOut, voyageP
 import { runRecord } from '../src/ui/campaign/launchText.js';
 import { captainOrder } from './approachPlan.js';
 import { upgradeOf } from './arms.js';
-import { fightBoarding, fightPlace, fightRaid, fightStationJob, SealedIn } from './boarding.js';
+import { fightBoarding, fightPlace, fightRaid, fightStationJob, GameOver, SealedIn } from './boarding.js';
 import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
@@ -1527,22 +1533,28 @@ function namesOf(defs, types) {
 
 // Act 1's test run from campaign seed `seed` (from `background`'s start,
 // the first's if none), and the launch: { ok: true, campaign (launched),
-// jobs } or { ok: false, line }. The slow half of a voyage, so callers
-// flying a seed more than once can keep it.
-export function launchedAt(defs, seed, background) {
-  const act1 = runToLaunch(defs, seed, { background });
+// jobs } or { ok: false, line, over (true for a game over in act 1, M41) }.
+// The slow half of a voyage, so callers flying a seed more than once can
+// keep it. game is the game's: { difficulty, permadeath } (M41; Normal, and
+// death not permanent, unless given).
+export function launchedAt(defs, seed, background, game = {}) {
+  const act1 = runToLaunch(defs, seed, { background, ...game });
   const lifted = act1.launched ? launch(act1.campaign, defs) : null;
-  if (!lifted?.ok) return { ok: false, line: `Campaign seed ${seed}: ${lifted?.error ?? act1.lines.at(-1)}` };
+  if (!lifted?.ok) return { ok: false, line: `Campaign seed ${seed}: ${lifted?.error ?? act1.lines.at(-1)}`, over: act1.over, campaign: act1.campaign };
   return { ok: true, campaign: lifted.campaign, jobs: act1.jobs };
 }
 
 // A voyage from campaign seed `seed`: act 1's test run to launch (or
 // `lifted`, launchedAt's for the seed), then the voyage, with the parts in
 // fit (module types) fitted to the ship first. { launched, ...voyageFrom },
-// or { launched: false, lines } if the test run stopped short.
-export function voyage(defs, seed, options = {}, lifted = launchedAt(defs, seed, options.background)) {
-  const { fit = [], frame = null, background, ...rest } = options;
-  if (!lifted.ok) return { launched: false, lines: [lifted.line] };
+// or { launched: false, lines, over } if the test run stopped short. With
+// options.difficulty and options.permadeath (M41) the game is played at
+// them. Where death is permanent and a fight leaves no one aboard, the
+// game is over: { launched: true, over: true, act (where it ended),
+// campaign, lines }.
+export function voyage(defs, seed, options = {}, lifted = launchedAt(defs, seed, options.background, gameOf(options))) {
+  const { fit = [], frame = null, background, difficulty, permadeath, ...rest } = options;
+  if (!lifted.ok) return { launched: false, lines: [lifted.line], over: lifted.over === true, campaign: lifted.campaign };
   // On another hull frame first (M39), its parts where they were, shifted
   // in if need be, as a yard moves a ship over (reframe.js).
   const moved = frame ? onFrame(lifted.campaign.ship, defs, frame) : { ok: true, ship: lifted.campaign.ship };
@@ -1553,7 +1565,18 @@ export function voyage(defs, seed, options = {}, lifted = launchedAt(defs, seed,
   const broken = flightChecklist(ship, defs, lifted.campaign.crew.length).find((line) => line.ok !== true);
   const how = [frame && `On the ${defs.frames.get(frame).name}`, fit.length && `fitted with ${fit.join(' and ')}`].filter(Boolean).join(', ');
   if (broken) throw new Error(`${how.charAt(0).toUpperCase()}${how.slice(1)}, the ship fails a flight check: ${broken.text}.`);
-  return { launched: true, ...voyageFrom(defs, { ...lifted.campaign, ship }, { ...rest, label: `Campaign seed ${seed}, after ${lifted.jobs} jobs. ` }) };
+  try {
+    return { launched: true, ...voyageFrom(defs, { ...lifted.campaign, ship }, { ...rest, label: `Campaign seed ${seed}, after ${lifted.jobs} jobs. ` }) };
+  } catch (error) {
+    if (!(error instanceof GameOver)) throw error;
+    return { launched: true, over: true, act: error.campaign.act, campaign: error.campaign, lines: [`Campaign seed ${seed}: ${error.message}`] };
+  }
+}
+
+// The game's difficulty and permanent death from a voyage's options (M41):
+// { difficulty, permadeath }, Normal and not permanent unless given.
+function gameOf(options) {
+  return { difficulty: options.difficulty ?? 'normal', permadeath: options.permadeath === true };
 }
 
 // Voyages from seeds 1 to `runs` from each background's start, side by
@@ -1565,7 +1588,7 @@ export function voyage(defs, seed, options = {}, lifted = launchedAt(defs, seed,
 // lost, runsLost, standing, quests }.
 export function voyagesByBackground(defs, runs, options = {}) {
   const rows = [...defs.backgrounds.values()].map(({ id, name }) => {
-    const done = manyVoyages(defs, runs, { ...options, background: id }).results.filter((r) => r.launched);
+    const done = manyVoyages(defs, runs, { ...options, background: id }).results.filter((r) => r.launched && !r.over);
     const faced = done.flatMap((r) => r.tally.raids?.faced ?? []);
     const won = faced.filter((raid) => raid.won).length;
     return {
@@ -1696,7 +1719,7 @@ function standingLine(defs, standing) {
 export function manyVoyages(defs, runs, options = {}) {
   const results = [];
   for (let seed = 1; seed <= runs; seed++) results.push({ seed, ...voyage(defs, seed, options) });
-  const done = results.filter((r) => r.launched);
+  const done = results.filter((r) => r.launched && !r.over);
   const spread = (values) => {
     const sorted = [...values].sort((a, b) => a - b);
     return sorted.length ? `${sorted[Math.floor((sorted.length - 1) / 2)]} (${sorted[0]} to ${sorted.at(-1)})` : '-';
@@ -1709,7 +1732,7 @@ export function manyVoyages(defs, runs, options = {}) {
   const policy = ignoring || options.long === 'never' ? 'never' : `when heat is at ${LONG_FROM} or over`;
   const met = done.filter((r) => r.tally.hunts > 0).length;
   const lines = [
-    `${runs} voyages from launch, campaign seeds 1 to ${runs}${options.background ? `, the ${defs.backgrounds.get(options.background)?.name.toLowerCase()}` : ''}, ${ignoring ? 'ignoring heat' : 'managing heat'}, long jumps ${policy}, ${options.scans === 'no' ? 'no scans' : 'scanning'}, ${options.refit === 'no' ? 'no refits' : 'refitting at stations'}, ${options.jobs === 'no' ? 'no station jobs' : 'taking station jobs'}${options.fit?.length ? `, fitted with ${options.fit.join(' and ')}` : ''}. The median, then the least and most:`,
+    `${runs} voyages from launch, campaign seeds 1 to ${runs}${options.background ? `, the ${defs.backgrounds.get(options.background)?.name.toLowerCase()}` : ''}${options.difficulty && options.difficulty !== 'normal' ? `, on ${options.difficulty}` : ''}${options.permadeath ? ', death permanent' : ''}, ${ignoring ? 'ignoring heat' : 'managing heat'}, long jumps ${policy}, ${options.scans === 'no' ? 'no scans' : 'scanning'}, ${options.refit === 'no' ? 'no refits' : 'refitting at stations'}, ${options.jobs === 'no' ? 'no station jobs' : 'taking station jobs'}${options.fit?.length ? `, fitted with ${options.fit.join(' and ')}` : ''}. The median, then the least and most:`,
     `Sectors crossed: ${spread(of('crossed'))}; ${done.filter((r) => r.system).length} of ${done.length} entered the system past the charts, ${done.filter((r) => r.ended).length} settled a world; fed all the way in ${done.filter((r) => r.tally.hungryJumps === 0).length} of ${done.length}.`,
     systemLine(defs, done),
     colonySummary(defs, done),
@@ -1733,9 +1756,32 @@ export function manyVoyages(defs, runs, options = {}) {
     `Heat at launch: ${spread(done.map((r) => r.tally.heat[0]))}; at the end: ${spread(done.map((r) => r.tally.heat[1]))}; at most: ${spread(of('peak'))}. Jumps where the hunters might wait: ${spread(of('hotJumps'))}.`,
     `The hunters: met in ${met} of ${done.length} runs, ${spread(of('hunts'))} a run (the task force ${spread(of('taskForces'))}), faced ${spread(of('huntsFaced'))}. Regroups ${spread(of('regroups'))}, days hidden ${spread(of('hides'))}, healing ${spread(of('rested'))}; transponder swaps ${spread(of('swaps'))} for ${spread(of('swapCredits'))} credits.`,
     `The sides (M33): patrols waved the ship through ${spread(of('waved'))} times a run, fired first ${spread(of('fired'))}; traded at the pursuer's side's stations (each logging the ship) ${spread(of('docked'))} times, in ${done.filter((r) => r.tally.docked > 0).length} of ${done.length} runs, and passed one by without trading ${spread(of('passedBy'))} times, in ${done.filter((r) => r.tally.passedBy > 0).length}; called at a friendly or trusted side's station ${spread(of('friendly'))} times. Standing, the median at the launch, then at the landing: ${standingLine(defs, standingMedians(defs, done))}.`,
-    ...results.filter((r) => !r.launched).map((r) => r.lines.at(-1)),
+    ...(options.fights || options.permadeath ? [fightsLine(results)] : []),
+    ...(options.permadeath ? [deathLine(results)] : []),
+    ...results.filter((r) => !r.launched || r.over).map((r) => r.lines.at(-1)),
   ];
   return { lines, results };
+}
+
+// Where death is permanent (M41): the games over and the act each ended
+// in, and the dead and the captains lost a game, the median then the most,
+// over every game that began.
+// Every fight of the games, act 1's among them (M41): won of all, and the
+// share, from the campaigns' counts.
+export function fightsLine(results) {
+  const flags = results.map((r) => r.campaign?.flags ?? {});
+  const won = flags.reduce((sum, f) => sum + (f.fightsWon ?? 0), 0);
+  const all = won + flags.reduce((sum, f) => sum + (f.fightsLost ?? 0), 0);
+  return `Fights (M41): won ${won} of ${all}, ${all ? Math.round((100 * won) / all) : 0}%.`;
+}
+
+export function deathLine(results) {
+  const over = results.filter((r) => r.over);
+  const acts = [1, 2, 3].map((act) => over.filter((r) => (r.launched ? r.act : 1) === act).length);
+  const flags = results.map((r) => r.campaign?.flags ?? {}).filter(Boolean);
+  const died = flags.map((f) => f.crewLost ?? 0).sort((a, b) => a - b);
+  const median = died.length ? died[Math.floor((died.length - 1) / 2)] : 0;
+  return `Death permanent (M41): ${over.length} of ${results.length} games over (act 1 ${acts[0]}, act 2 ${acts[1]}, act 3 ${acts[2]}); died ${median} a game at the median, at most ${died.at(-1) ?? 0}, none in ${died.filter((n) => n === 0).length}; captains lost in ${flags.filter((f) => (f.captainsLost ?? 0) > 0).length}.`;
 }
 
 // The system past the charts (M25): the surveys, and the worlds settled.
@@ -1948,7 +1994,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const made = sets.length ? rulesWith(readData(), sets) : { ok: true, rules: indexDefs(readData()) };
   if (!made.ok) throw new Error(made.error);
   const fit = value('--fit', '');
-  const options = { long: value('--long', 'heat'), scans: value('--scan', 'yes'), refit: value('--refit', 'yes'), heat: value('--heat', 'manage'), jobs: value('--jobs', 'yes'), out: value('--out', 'yes'), settle: value('--settle', 'yes'), fit: fit ? fit.split(',') : [], frame: value('--frame', null), background: value('--background', undefined) };
+  const options = { long: value('--long', 'heat'), scans: value('--scan', 'yes'), refit: value('--refit', 'yes'), heat: value('--heat', 'manage'), jobs: value('--jobs', 'yes'), out: value('--out', 'yes'), settle: value('--settle', 'yes'), fit: fit ? fit.split(',') : [], frame: value('--frame', null), background: value('--background', undefined), difficulty: value('--difficulty', 'normal'), permadeath: value('--permadeath', 'off') === 'on', fights: args.includes('--difficulty') };
   const runs = Number(value('--runs', 0));
   if (options.background === 'all') console.log(voyagesByBackground(made.rules, runs || 30, { ...options, background: undefined }).lines.join('\n'));
   else console.log((runs ? manyVoyages(made.rules, runs, options) : voyage(made.rules, Number(value('--seed', 1)), options)).lines.join('\n'));

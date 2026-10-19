@@ -60,7 +60,7 @@ import { mapFromShip } from './mapFromShip.js';
 import { hasTag } from './modules.js';
 import { heldBy, stepDone, withQuestPlaces } from './quests.js';
 import { downText, raidDown, tripHeatOf } from './raids.js';
-import { enemyBonus } from './settings.js';
+import { enemyBonus, fightSetup } from './difficulty.js';
 import { MAX_PLACES } from './tripShape.js';
 
 const MAX_SEED = 0xffffffff;
@@ -313,7 +313,8 @@ export function placeFightDue(campaign, rules) {
 // materials in the kind's range. setup is what the settings make of the
 // fight (settings.js fightSettings). Returns { ok: true, campaign } with
 // the fight on, or { ok: false, error }.
-export function boardPlace(campaign, rules, { forgiving = false, difficulty = 'normal' } = {}) {
+export function boardPlace(campaign, rules, setup = {}) {
+  const { forgiving, difficulty, permadeath } = fightSetup(campaign, setup);
   const due = atColony(campaign, rules) ? placeFightDue(campaign, rules) : null;
   if (!due) return { ok: false, error: 'There is no one here to fight.' };
   const members = squadMembers(campaign.crew, campaign.colony.trip.squad);
@@ -346,7 +347,7 @@ export function boardPlace(campaign, rules, { forgiving = false, difficulty = 'n
     const member = members[i];
     return member ? { ...unit, ...crewUnit(member, rules) } : { ...unit, bonus };
   });
-  const { battle, events } = createBattle({ map, units: fighters, seed, options: { forgiving, press: false } }, rules);
+  const { battle, events } = createBattle({ map, units: fighters, seed, options: { forgiving, permadeath, press: false } }, rules);
   const { encounter } = due;
   const fight = { encounter, seed, crew: members.map((member) => member.id), battle, log: events, job: null, raid: false, boarding: { dir: 'them', salvage: { parts, credits: 0, materials: materials.value } } };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };

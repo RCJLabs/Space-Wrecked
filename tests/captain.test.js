@@ -5,7 +5,8 @@ import { beginFight, campaignProblems, captainProblem, maxHp, newCampaign } from
 import { takeJob, withBoard } from '../src/sim/contracts.js';
 import { beginRaid } from '../src/sim/raid.js';
 import { initialState, reduce, saveData } from '../src/sim/root.js';
-import { defaultSettings, enemyBonus, fightSettings, reduceSettings, settingsProblems } from '../src/sim/settings.js';
+import { enemyBonus } from '../src/sim/difficulty.js';
+import { defaultSettings, fightSettings, reduceSettings, settingsProblems } from '../src/sim/settings.js';
 import { LOOKS_APART, looksApart } from '../src/sim/looks.js';
 import { traitBonus } from '../src/sim/traits.js';
 import { rules } from './battleKit.js';
@@ -79,13 +80,13 @@ test("traits go into every fight: the captain's numbers in a job, a raid and a f
   assert.equal(captainOf(takeJob(hurt, rules, 0).campaign.fight).hp, 9);
 });
 
-test('difficulty changes what every enemy brings; normal changes nothing', () => {
-  const campaign = withBoard(newCampaign(rules, 77), rules);
+test("the game's difficulty changes what every enemy brings; normal changes nothing", () => {
   const { balance } = rules;
   assert.deepEqual(enemyBonus('normal', balance), {});
   for (const difficulty of ['easy', 'normal', 'hard']) {
+    const campaign = withBoard(newCampaign(rules, 77, { difficulty }), rules);
     const bonus = { aim: 0, hp: 0, ...enemyBonus(difficulty, balance) };
-    for (const begun of [takeJob(campaign, rules, 0, { difficulty }), beginRaid({ ...campaign, heat: 80 }, rules, { difficulty })]) {
+    for (const begun of [takeJob(campaign, rules, 0), beginRaid({ ...campaign, heat: 80 }, rules)]) {
       assert.ok(begun.ok, begun.error);
       for (const unit of begun.campaign.fight.battle.units.filter((u) => u.side === 'enemy')) {
         const template = rules.enemies.get(unit.kind);
@@ -101,19 +102,21 @@ test('difficulty changes what every enemy brings; normal changes nothing', () =>
   assert.ok(enemyBonus('easy', balance).aim < 0 && enemyBonus('hard', balance).aim > 0);
 });
 
-test('forgiving odds and difficulty come from the settings as a fight starts, and stay with it', () => {
+test("forgiving odds come from the settings and the difficulty from the game (M41) as a fight starts, and stay with it", () => {
   let state = reduce(initialState(3), { type: 'campaign/new', rules, captain: dell });
   assert.equal(state.campaign.captain, 2);
   state = reduce(state, { type: 'settings/forgiving', value: true });
-  state = reduce(state, { type: 'settings/difficulty', value: 'hard' });
-  assert.deepEqual(fightSettings(state.settings), { forgiving: true, difficulty: 'hard' });
+  state = reduce(state, { type: 'campaign/difficulty', value: 'hard' });
+  assert.equal(state.campaign.difficulty, 'hard');
+  assert.equal(reduce(state, { type: 'campaign/difficulty', value: 'brutal' }), state, 'Easy, Normal or Hard only');
+  assert.deepEqual(fightSettings(state.settings), { forgiving: true });
   const fighting = reduce(state, { type: 'campaign/job/take', index: 0, rules });
   const { battle } = fighting.campaign.fight;
   assert.equal(battle.options.forgiving, true);
   const enemy = battle.units.find((unit) => unit.side === 'enemy');
   assert.equal(enemy.aim, rules.enemies.get(enemy.kind).aim + rules.balance.hardEnemyAim);
   // Changing the setting mid-fight changes nothing in it.
-  const later = reduce(fighting, { type: 'settings/forgiving', value: false });
+  const later = reduce(reduce(fighting, { type: 'settings/forgiving', value: false }), { type: 'campaign/difficulty', value: 'easy' });
   assert.equal(later.campaign.fight.battle, battle);
   // A captain who can't be: no campaign.
   const refused = reduce(initialState(3), { type: 'campaign/new', rules, captain: { ...dell, name: '' } });
@@ -122,10 +125,9 @@ test('forgiving odds and difficulty come from the settings as a fight starts, an
 
 test('settings take only what they can hold', () => {
   const settings = defaultSettings();
-  assert.deepEqual(settings, { fpsCap: 60, difficulty: 'normal', forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70 });
+  assert.deepEqual(settings, { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70 });
   const apply = (action) => reduceSettings(settings, action);
-  assert.equal(apply({ type: 'settings/difficulty', value: 'easy' }).difficulty, 'easy');
-  assert.equal(apply({ type: 'settings/difficulty', value: 'brutal' }), settings);
+  assert.equal(apply({ type: 'settings/difficulty', value: 'easy' }), settings, 'the game keeps the difficulty from M41');
   assert.equal(apply({ type: 'settings/forgiving', value: 'yes' }), settings);
   assert.equal(apply({ type: 'settings/motion', value: 'reduce' }).motion, 'reduce');
   assert.equal(apply({ type: 'settings/motion', value: 'slow' }), settings);
@@ -137,7 +139,7 @@ test('settings take only what they can hold', () => {
   assert.deepEqual(reduceSettings({ ...seen, tips: false }, { type: 'settings/tips/reset' }), settings, 'Show tips again');
   assert.equal(reduceSettings(settings, { type: 'settings/tips/reset' }), settings);
   assert.deepEqual(settingsProblems(settings), []);
-  assert.deepEqual(settingsProblems({ ...settings, difficulty: 'brutal', tipsSeen: ['a', 'a'] }), ['The difficulty setting is invalid.', 'The tips settings are unreadable.']);
+  assert.deepEqual(settingsProblems({ ...settings, volume: 55, tipsSeen: ['a', 'a'] }), ['The volume setting is invalid.', 'The tips settings are unreadable.']);
 });
 
 test('a save from M17 (v8) opens with the default settings, its frame cap, and its first crew member as captain', () => {

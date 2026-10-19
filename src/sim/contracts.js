@@ -45,7 +45,7 @@ import { PAY_STEP, rollArms, rollStock } from './economy.js';
 import { tally } from './flags.js';
 import { generateSite } from './gen/site.js';
 import { huntersFor, jobHeat, raidDue, withHeat } from './heat.js';
-import { enemyBonus } from './settings.js';
+import { enemyBonus, fightSetup } from './difficulty.js';
 import { questJobs, stepDone } from './quests.js';
 import { jobMoves, jobPay, moveStanding } from './standing.js';
 
@@ -136,11 +136,12 @@ export function withBoard(campaign, rules) {
 // with its ward (M38): an escort's client at the next way in, named for
 // the job's client, or a rescue's captive held on a captive tile picked by
 // the seed; and the twist's sight range and deadline. The crew fight with what their
-// traits add, and every enemy with what the difficulty adds (settings.js);
-// forgiving odds are on or off as given. The battle's own seed is where
+// traits add, and every enemy with what the difficulty adds (difficulty.js);
+// forgiving odds, and permanent death (M41), are on or off as given. The
+// battle's own seed is where
 // the site's rolls left off. Throws if the site has too few places for
 // everyone (validate-data.js checks the content).
-export function jobSetup(job, rules, crew, { hunters = [], forgiving = false, difficulty = 'normal' } = {}) {
+export function jobSetup(job, rules, crew, { hunters = [], forgiving = false, difficulty = 'normal', permadeath = false } = {}) {
   const contract = rules.contracts.jobs.get(job.contract);
   const twist = job.twist ? rules.contracts.twists.get(job.twist) : null;
   const template = rules.siteMaps.get(rules.sites.get(job.site).map);
@@ -204,7 +205,7 @@ export function jobSetup(job, rules, crew, { hunters = [], forgiving = false, di
     default:
       break;
   }
-  const options = { forgiving };
+  const options = { forgiving, permadeath };
   if (twist?.sight) options.sight = twist.sight;
   if (twist?.deadline) options.deadline = twist.deadline;
   return { map: site.map, units, seed: state, options, objective };
@@ -213,9 +214,10 @@ export function jobSetup(job, rules, crew, { hunters = [], forgiving = false, di
 // Takes the job at that place on the board: its fight begins, with the
 // whole crew, and the pursuer's hunters if heat has brought them. Not
 // while a raid is due. setup is what the settings make of the fight
-// (settings.js fightSettings): { forgiving, difficulty }. Returns
-// { ok: true, campaign } with the fight on, or { ok: false, error } saying
-// why it can't.
+// (settings.js fightSettings): { forgiving }; the difficulty and permanent
+// death are the campaign's (M41, difficulty.js fightSetup). Returns { ok:
+// true, campaign } with the fight on, or { ok: false, error } saying why it
+// can't.
 export function takeJob(campaign, rules, index, setup = {}) {
   return startJob(campaign, rules, campaign.board[index], setup);
 }
@@ -230,7 +232,7 @@ function startJob(campaign, rules, job, setup) {
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
   if (!atHangar(campaign, rules)) return { ok: false, error: 'Jobs are taken from the hangar.' };
   if (raidDue(campaign, rules)) return { ok: false, error: 'Not with a raid at the door.' };
-  return beginJob(campaign, rules, job, campaign.crew, { ...setup, hunters: huntersFor(campaign, rules) });
+  return beginJob(campaign, rules, job, campaign.crew, { ...fightSetup(campaign, setup), hunters: huntersFor(campaign, rules) });
 }
 
 // The job's fight begun, with `crew` (campaign crew members, in order)

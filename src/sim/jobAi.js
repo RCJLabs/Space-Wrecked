@@ -23,6 +23,7 @@ import { objectiveDone } from './objectives.js';
 import { blastsAt } from './objectiveAi.js';
 import { moveRange, reachable, stepsFrom } from './moves.js';
 import { advance, pressAction } from './press.js';
+import { rescueAction } from './rescueAi.js';
 import { canSee } from './sight.js';
 import { inReach, walkable } from './terrain.js';
 
@@ -35,6 +36,9 @@ export function jobAction(battle, rules) {
   const unit = battle.units.find((u) => u.side === battle.side && u.status === 'active' && u.ap > 0);
   if (!unit || unit.side !== 'crew') return pressAction(battle, rules);
   if (unit.ward) return wardAction(battle, unit, rules);
+  // Where death is permanent (M41), a downed ally first (rescueAi.js).
+  const rescue = rescueAction(battle, unit, rules);
+  if (rescue) return rescue;
   const { objective } = battle;
   if (!objective || objectiveDone(objective)) return pressAction(battle, rules);
   const near = (at) => inReach(battle, [unit.x, unit.y], at);

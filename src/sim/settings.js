@@ -1,7 +1,5 @@
 // Player settings, saved with the game. Pure: plain data in, plain data out.
 //   fpsCap      60, or 30 to save battery
-//   difficulty  'easy', 'normal' or 'hard': what the enemy brings to a fight
-//               (enemyBonus), from the next fight on
 //   forgiving   forgiving odds (ROADMAP §4.3): each miss in a row makes the
 //               crew's next shot likelier, from the next fight on
 //   motion      'auto' (as the phone is set), 'reduce' or 'full'
@@ -9,10 +7,11 @@
 //   tipsSeen    the ids of the tips already put away
 //   sound       whether the game plays sound (M35)
 //   volume      how loud, in percent: one of VOLUMES
+// The difficulty was a setting too until M41, when it became the
+// campaign's (difficulty.js).
 
 // 60 is the target; 30 is the battery setting.
 export const FPS_CAPS = [60, 30];
-export const DIFFICULTIES = ['easy', 'normal', 'hard'];
 export const MOTIONS = ['auto', 'reduce', 'full'];
 // The volumes to pick from, in percent; a new game starts at 70 (Evan's
 // pick, M35).
@@ -22,12 +21,11 @@ export const MAX_TIPS = 64;
 const TIP_ID = /^[a-z][a-z0-9-]{0,31}$/;
 
 export function defaultSettings() {
-  return { fpsCap: 60, difficulty: 'normal', forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70 };
+  return { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70 };
 }
 
 // Actions:
 //   settings/fpsCap { value }       60 or 30
-//   settings/difficulty { value }   easy, normal or hard
 //   settings/forgiving { value }    true or false
 //   settings/motion { value }       auto, reduce or full
 //   settings/tips { value }         tips on or off
@@ -40,8 +38,6 @@ export function reduceSettings(settings, action) {
   switch (action.type) {
     case 'settings/fpsCap':
       return set('fpsCap', FPS_CAPS.includes(action.value));
-    case 'settings/difficulty':
-      return set('difficulty', DIFFICULTIES.includes(action.value));
     case 'settings/forgiving':
       return set('forgiving', typeof action.value === 'boolean');
     case 'settings/motion':
@@ -67,7 +63,6 @@ export function settingsProblems(settings) {
   if (typeof settings !== 'object' || settings === null || Array.isArray(settings)) return ['Settings are missing.'];
   const problems = [];
   if (!FPS_CAPS.includes(settings.fpsCap)) problems.push('The frame cap setting is invalid.');
-  if (!DIFFICULTIES.includes(settings.difficulty)) problems.push('The difficulty setting is invalid.');
   if (typeof settings.forgiving !== 'boolean') problems.push('The forgiving odds setting is invalid.');
   if (!MOTIONS.includes(settings.motion)) problems.push('The motion setting is invalid.');
   if (typeof settings.sound !== 'boolean') problems.push('The sound setting is invalid.');
@@ -79,18 +74,10 @@ export function settingsProblems(settings) {
   return problems;
 }
 
-// What the enemy brings at a difficulty, to add to each enemy's numbers in
-// a fight (battle.js bonus): balance.json's easyEnemyAim and the rest.
-// Normal adds nothing.
-export function enemyBonus(difficulty, balance) {
-  if (difficulty === 'easy') return { aim: balance.easyEnemyAim, hp: balance.easyEnemyHp };
-  if (difficulty === 'hard') return { aim: balance.hardEnemyAim, hp: balance.hardEnemyHp };
-  return {};
-}
-
-// What a fight takes from the settings as it starts: { forgiving,
-// difficulty } (contracts.js takeJob, raid.js beginRaid, campaign.js
-// beginFight). A fight keeps them to its end.
+// What a fight takes from the settings as it starts: { forgiving }
+// (contracts.js takeJob, raid.js beginRaid, campaign.js beginFight); the
+// difficulty and permanent death are the campaign's (difficulty.js
+// fightSetup, M41). A fight keeps them to its end.
 export function fightSettings(settings) {
-  return { forgiving: settings.forgiving === true, difficulty: settings.difficulty };
+  return { forgiving: settings.forgiving === true };
 }
