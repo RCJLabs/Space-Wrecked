@@ -16,8 +16,8 @@ import { shortNames } from '../names.js';
 import { portraitImg, rankMark, withRank } from '../portrait.js';
 import { stateText } from './hints.js';
 
-// onSelect(id), onEnd()
-export function createCrewBar({ onSelect, onEnd, rules = null }) {
+// onSelect(id), onEnd(); rules() the content once it has loaded.
+export function createCrewBar({ onSelect, onEnd, rules = () => null }) {
   const el = node('div', 'fgt-crew');
   const list = node('div', 'fgt-units');
   const end = toolButton('fgt-end', icons.endTurn, 'End turn');
@@ -38,7 +38,7 @@ export function createCrewBar({ onSelect, onEnd, rules = null }) {
         row.button.setAttribute('aria-pressed', String(unit.id === selected));
         row.button.dataset.state = unit.status;
         row.fill.style.width = `${(100 * unit.hp) / unit.maxHp}%`;
-        setText(row.state, stateText(unit, rules));
+        setText(row.state, stateText(unit, rules()));
       }
     },
     // 'ready', 'armed' (tap again to end) or 'off'.

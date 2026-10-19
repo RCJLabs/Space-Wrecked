@@ -23,14 +23,15 @@ import { gearWon } from '../src/sim/gear.js';
 import { launch } from '../src/sim/launch.js';
 import { createFight, ordersFor, reduceFight } from '../src/sim/fight.js';
 import { mapFromShip } from '../src/sim/mapFromShip.js';
-import { advance } from '../src/sim/press.js';
+import { stepsFrom } from '../src/sim/moves.js';
+import { advance, pressAction } from '../src/sim/press.js';
 import { landingPlan } from '../src/sim/raids.js';
 import { surveyPlan } from '../src/sim/survey.js';
 import { tileRule } from '../src/sim/terrain.js';
 import { beginRun, growsOf, jump, jumpHeatOf, jumpPlan, jumpFixes, leavePlan, linked, reach, scanReach, supplyCapacity } from '../src/sim/travel.js';
 import { stateText, unitText } from '../src/ui/fight/hints.js';
 import { launchedShip, withPart } from '../tools/startShip.js';
-import { rules } from './battleKit.js';
+import { openMap, rules, wall } from './battleKit.js';
 import { settled } from './colonyKit.js';
 import { readyToLaunch } from './launchKit.js';
 
@@ -337,6 +338,21 @@ test("a side whose people are all down has lost, whatever its turret: the boarde
   assert.equal(won.battle.winner, 'crew');
   // While someone stands, the turret fights on.
   assert.equal(act(crewLast, { type: 'end' }, rules).battle.winner, null);
+});
+
+test('those pressing on go on past a turret to the people, who decide the fight', () => {
+  // A wall down the room with a shut door at its foot: the engineer behind
+  // it, the crew's turret and a boarder this side.
+  const map = openMap(12, 3);
+  for (const y of [0, 1]) wall(map, 6, y, 'w');
+  wall(map, 6, 2, 'w', 'door');
+  const { battle } = createBattle({ map, units: [{ kind: 'engineer', x: 1, y: 1 }, { kind: 'turret', x: 8, y: 0, side: 'crew' }, { kind: 'pirate', x: 11, y: 1 }], seed: 1, first: 'enemy' }, rules);
+  const pirate = battle.units.find((u) => u.kind === 'pirate');
+  const step = pressAction(battle, rules);
+  assert.equal(step.type, 'move', JSON.stringify(step));
+  const away = stepsFrom(battle, [[1, 1]], rules);
+  assert.ok(away.get(step.to.join(',')) < away.get(`${pirate.x},${pirate.y}`), `nearer the engineer, to ${step.to}`);
+  assert.deepEqual(advance(battle, pirate, rules), step);
 });
 
 test('selected, a turret has only Shoot, Overwatch and Reload: no tiles to move to, no door, no stabilizing, and its card says so', () => {

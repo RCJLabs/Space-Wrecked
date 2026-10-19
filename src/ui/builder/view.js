@@ -1,5 +1,6 @@
-// The builder: build a ship by touch anywhere on the starter yard, and check
-// it against the flight checklist. Which ship it builds, and where its
+// The builder: build a ship by touch anywhere on its hull frame's yard (the
+// starter hull's, or since M39 another bought at a shipyard), and check it
+// against the flight checklist. Which ship it builds, and where its
 // changes go, is the source's business: the Builder sandbox (screen.js)
 // builds the open one of the builder's slots, construction mode
 // (../campaign/construction.js) the campaign's ship with the parts on hand.
@@ -51,7 +52,7 @@ const PICK = 56; // the Parts tab's picker row and the space over it
 
 // Mounts the builder in root and returns the screen's handle (resize, draw,
 // unmount, frameStats). source:
-//   open(defs, frame)   once the content has loaded, what to build:
+//   open(defs)          once the content has loaded, what to build:
 //                       { ship, log, stock, wrecked } (stock as in
 //                       session.js, or null for endless parts; wrecked, the
 //                       uids of parts that can't come off, as there), or
@@ -129,14 +130,12 @@ export function mountBuilder(root, source) {
     .then((content) => {
       if (!alive) return;
       defs = content;
-      frame = defs.frames.get(FRAME);
-      plans = createBoard(frame);
-      yard = yardBox(frame);
-      const opened = source.open(defs, frame);
+      const opened = source.open(defs);
       if (!opened) {
         setStatus({ tone: 'info', text: 'Nothing to build here.' });
         return;
       }
+      useFrame((opened.session ?? opened).ship.frame);
       store = createStore((session, action) => reduceSession(session, action, defs), opened.session ?? createSession(opened.ship, opened.log, opened.stock, opened.wrecked));
       derived = derive(store.getState().ship);
       store.subscribe(onSession);
@@ -145,6 +144,7 @@ export function mountBuilder(root, source) {
         // A ship that arrives from outside replaces the one being built.
         load(ship, log) {
           stopReplay();
+          useFrame(ship.frame);
           store.dispatch({ type: 'build/load', ship, log });
           drawer.saves?.reset();
           if (rect) refit(true); // another ship, maybe elsewhere in the yard
@@ -584,6 +584,20 @@ export function mountBuilder(root, source) {
     rect = { x: r.left, y: r.top, w: r.width, h: r.height };
     yardFit = fitOrbit({ ...BOARD_VIEW, pivot: middle(yard) }, rect, yard, MARGIN);
     refit(true);
+  }
+
+  // The board for the ship's hull frame (M39: a shipyard sells others), or
+  // the starter hull's for a frame this build doesn't know: its grid, the
+  // yard the camera stays in, and the cap the drawer counts against. A new
+  // board is given the ship and the rest anew.
+  function useFrame(id) {
+    const next = defs.frames.get(id) ?? defs.frames.get(FRAME);
+    if (next === frame) return;
+    frame = next;
+    plans = createBoard(frame);
+    yard = yardBox(frame);
+    if (rect) yardFit = fitOrbit({ ...BOARD_VIEW, pivot: middle(yard) }, rect, yard, MARGIN);
+    shown = { ...shown, ship: null, ghost: undefined, hull: null, marks: null };
   }
 
   // Works out the fitted view of the ship as it is now (boardBox), kept

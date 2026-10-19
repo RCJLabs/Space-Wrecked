@@ -97,7 +97,7 @@ export function mountFight(root, source) {
   const extraTools = (source.tools ?? []).map((tool) => ({ ...tool, button: toolButton('fgt-tool', tool.icon, tool.label) }));
   chip.hidden = goal.hidden = card.hidden = over.hidden = true;
   board.append(chip, goal, status, card, over);
-  const crewBar = createCrewBar({ onSelect: (id) => order({ type: 'fight/select', unit: id }), onEnd: endTurn, rules: defs });
+  const crewBar = createCrewBar({ onSelect: (id) => order({ type: 'fight/select', unit: id }), onEnd: endTurn, rules: () => defs });
   // The tools head the orders' column, off the board: the source's own
   // (Title) at the top, the least used in a fight and the first to scroll
   // away on a short screen.

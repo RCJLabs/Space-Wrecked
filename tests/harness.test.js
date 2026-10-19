@@ -157,14 +157,16 @@ test('another squad, and the orders the crew gives: all, none or some kinds (M32
 });
 
 // 48 fights: with M37's gunner in the boarding party, the pilot's hustle
-// changed none of the first 24.
+// changed none of the first 24. And 96 for hustle since M39, whose enemy
+// hulls and parts moved the fights: it changed none of the first 48 (on
+// main, 2), and 2 of 96.
 test('every order is used by the crew\'s AI, and the same fights without it come out differently (M32)', () => {
   const ships = shipsFor(['example', 'cutter', 'hauler'], rules);
   const kinds = { marine: 'suppress', engineer: 'weld', medic: 'patch', pilot: 'hustle', scout: 'mark', xenobiologist: 'sedate', quartermaster: 'kit' };
   for (const [job, kind] of Object.entries(kinds)) {
     const squad = job === 'medic' ? ['medic', 'marine', 'engineer'] : [job, 'engineer', 'medic'];
     const others = Object.values(kinds).filter((k) => k !== kind).join(',');
-    const fights = (orders) => runFights(rulesFor(rules, { squad, orders }).rules, { ...DEFAULTS, ships, fights: 48 });
+    const fights = (orders) => runFights(rulesFor(rules, { squad, orders }).rules, { ...DEFAULTS, ships, fights: kind === 'hustle' ? 96 : 48 });
     const used = fights('all');
     const unused = fights(others);
     assert.ok(used.some((r) => r.given[kind] > 0), `${kind} is given`);

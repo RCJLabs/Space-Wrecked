@@ -295,27 +295,40 @@ test("point defense takes its intercept off the other ship's hit chance, up to i
 // 100 on the score) or by losing less (5 fewer boardings of the player's ship
 // in every 100). And the guns, shields and engines, whose job the approach
 // is, do worse against none (3 points of score at most, within the dice),
-// but for one trade measured since M31: the shield array's mass lets the
+// but for the trades measured: since M31 the shield array's mass lets the
 // Halloran runner, light on Kestrel's parts, board the ship a little more
-// often (4 points at 300 approaches, 5 at 120).
+// often (4 points at 300 approaches, 5 at 120); and since M39 the railgun's
+// lets the repo gunship and the frigate, which the start ship beats with it
+// or without it in none of 120, board it a little more often (4 and 5
+// points at 120), where it wins 53 to 101 points more against four others.
 // The small reactor's job is power: as a spare it keeps the ship going
 // against a ship that fires at reactors, and its mass costs a little against
-// one that doesn't.
+// one that doesn't. M39's cockpit is a lighter bridge, so it goes in the
+// bridge's place: 2 mass less, and the ship is boarded less often against
+// every preset.
 const FIGHTING = ['weapons', 'defense', 'engines'];
-const TRADES = [{ part: 'shieldarray', preset: 'runner', score: -5 }];
-test("Law 1: each part an approach plays with, added to the launched start ship, changes how it goes; the guns, shields and engines do worse against no preset; each maker's versions change it too", () => {
+const TRADES = [
+  { part: 'shieldarray', preset: 'runner', score: -5 },
+  { part: 'railgun', preset: 'repogunship', score: -4 },
+  { part: 'railgun', preset: 'frigate', score: -5 },
+];
+test("Law 1: each part an approach plays with, added to the launched start ship, changes how it goes; the guns, shields and engines do worse against no preset; a cockpit for the bridge and each maker's versions change it too", () => {
   const rows = runApproaches(rules, { runs: 120 });
   const row = (ship, preset) => rows.find((r) => r.ship === ship && r.preset === preset);
-  for (const part of ADDED) {
-    const deltas = hostilePresets(rules).map((preset) => ({
+  const deltasOf = (ship) =>
+    hostilePresets(rules).map((preset) => ({
       preset,
-      score: row(`+${part}`, preset).score - row('start', preset).score,
-      fewer: Math.round((100 * (row('start', preset).losses - row(`+${part}`, preset).losses)) / row('start', preset).runs),
+      score: row(ship, preset).score - row('start', preset).score,
+      fewer: Math.round((100 * (row('start', preset).losses - row(ship, preset).losses)) / row('start', preset).runs),
     }));
+  for (const part of ADDED) {
+    const deltas = deltasOf(`+${part}`);
     assert.ok(deltas.some((d) => d.score >= 10 || d.fewer >= 5), `+${part} does better against some preset: ${JSON.stringify(deltas)}`);
     const worst = (d) => TRADES.find((t) => t.part === part && t.preset === d.preset)?.score ?? -3;
     if (FIGHTING.includes(rules.modules.get(part).category)) assert.ok(deltas.every((d) => d.score >= worst(d)), `+${part} does worse against none: ${JSON.stringify(deltas)}`);
   }
+  const cockpit = deltasOf('cockpit for bridge');
+  assert.ok(cockpit.some((d) => d.fewer >= 5) && cockpit.every((d) => d.score >= 0), `the cockpit for the bridge: ${JSON.stringify(cockpit)}`);
   assert.equal(rules.modules.get('smallreactor').category, 'power');
   assert.ok(rules.ships.get('corvette').tactics.aim.includes('reactor'), 'the corvette fires at reactors');
   // v0.1's gun, shield and engine each win more against some preset, as in M21.
