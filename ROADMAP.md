@@ -2178,9 +2178,27 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **A fight past round 40 with no step nearer takes its best shot from where it stands** (`fightOut.js`): in a deserter's voyage a pilot and a brute, their fallen on the tiles between them, each stepped into the other's sight and back out, turn after turn, to the round limit.
   - **The way on foot from the airlock to the bridge:** the test player gives the colony no part whose going leaves a hatch no one can walk to from the bridge (`voyagePlan.js` hatchesCutOff). A reactor given on smuggler seed 22 joined the airlock's side to the bridge's by weapon mounts alone, and the boarding there never ended. A player can still do it (§9).
   - **Each pursuer's raids** (`tools/raids.js`, 150 a row) are as on main: at the hangar 53%, 63% and 46%, at the colony 41%, 42% and 41%.
-- [ ] **M41 Difficulty settings.** Easy, Normal and Hard since M18, a few numbers each. The draft:
-  - each setting through all three acts;
-  - permanent death as a harder setting (§9).
+- [ ] **M41 Difficulty settings.** Easy, Normal and Hard since M18, a few numbers each: the enemy's aim and hit points in a fight. The draft was each setting through all three acts, and permanent death as a harder setting (§9).
+
+  Measured first (main after M40: 100 whole games from each start at each setting, act 1 to the days after the voyage out, every fight at the setting): every setting reaches the colony in all 100 from each start, and the fights part as they should (from the miner's start, Easy to Hard: boardings won 83%, 67% and 31%, raids at the colony 98%, 75% and 58%). Two gaps: an enemy ship's guns, and a raid fought out where the ship isn't, take no difficulty. Permanent death, tried with every bleed-out a death: the test crews bled out 3 to 9 times a game, and the smuggler's captain in nearly every game, because their AI never stabilizes anyone. Stabilizing where death is permanent, the deaths came to 0 or 1 a game at the median (at most 4), and the games that failed stalled in act 1 a crew member short, with no one to sign on (8 to 23 of 100 at Normal and Hard).
+
+  Done when (my recommendations, taken on Evan's standing word to go with them, 2026-10-19):
+  - **The difficulty is the game's,** picked at New game (Normal unless changed) and changed in Settings from the next fight, as M18 has it. It moves from the settings into the campaign (save v39: a save's setting becomes its campaign's).
+  - **It reaches every enemy:** in every fight as now (Easy aims 10 worse with 1 hit point fewer, Hard 5 better with 1 more), from act 1's jobs to a raid fought out where the ship isn't; and in an approach, an enemy ship's guns aim 10 worse on Easy and 5 better on Hard (`easyEnemyGunnery`, `hardEnemyGunnery`), in the odds shown.
+  - **Permanent death,** picked at New game, off unless turned on, and kept for the game:
+    - a crew member who bleeds out in a fight dies and leaves the crew; their weapon goes back to the spares, a companion's loyalty quest ends, and the fallen are named on the crew card;
+    - if the captain dies, whoever has stood in the most fights takes command;
+    - with no one left aboard, the game is over: its end names the fallen and shows the record, and New game starts another. The save keeps the ending until then;
+    - in act 1 the hangar has a recruit to sign on, one at a time for a recruit's fee, while the crew is short of the start's;
+    - a fight the player doesn't play (a raid fought out where the ship isn't) kills no one;
+    - the crew's AI stabilizes an ally who is down where death is permanent, so the test players play it as a careful player would.
+  - **Each setting through all three acts,** 100 whole games from each start (`node tools/voyage.js --difficulty`, and `--permadeath on`):
+    - without permanent death, every setting reaches the colony in all 100 from each start, and the share of fights won falls from Easy to Normal to Hard from each start;
+    - with permanent death at Normal, the game reaches the colony in at least 80 of 100 from each start. The deaths, the captains lost and the games over are reported at each setting;
+    - at Normal without permanent death, the voyage tests' rates stay main's and the golden files don't move.
+  - **Saves v39,** with the migration tested.
+  - **Every rule tested.**
+  - **Touch, at the three sizes:** New game's difficulty and permanent death, Settings' difficulty, a death at a fight's end, the hangar's recruit, and the game's end.
 - [ ] **M42 Accessibility.** The draft:
   - a colorblind-safe palette;
   - text size;
