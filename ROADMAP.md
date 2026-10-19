@@ -2261,6 +2261,20 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - tips past the first fight, for the run and the colony (§9);
   - a stranger plays from New game to the colony unaided.
 
+  Measured first (main after M42): 11 tips, ringed, one at a time and seen once, all in act 1 up to the first fight's orders. Past them the guidance is each screen's hint line (the hangar, the shop, the chart, a yard, the approach, the crew card, the colony, a trip's and a raid's reports). It names the next tap, but it rings nothing, and nothing says what a thing is the first time it comes: heat and a payment, a raid, launch, the jump plan and supplies, Scan and a long jump, a station, an event's choices, the approach's orders, the hunters' Regroup, Hide and swap, Survey and Settle here, the colony's needs, building, Next day, a trip and Defend. One tip has gone stale: it says a blocked ghost is red, which since M42 is crossed, and magenta under Colorblind-safe.
+
+  Done when (my recommendations, taken on Evan's standing word to go with them, 2026-10-19):
+  - **Tips past the first fight,** as M18's are (ringed, one at a time, seen once, their words in `data/tips.json`), each the first time its thing comes:
+    - act 1: the heat meter, a payment, a raid's Defend, the shop, Launch;
+    - the run: a jump planned and its cost, supplies, Scan, a long jump, a station, an event's choices, the approach's orders, the hunters' Regroup or Hide and the swap;
+    - past the charts: Survey and Settle here;
+    - the colony: its needs, Build, Next day, a trip, Defend.
+  - **A tip never covers its control** at the three sizes, nor shows while a playback runs or over an end panel.
+  - **The builder's tip** says a blocked ghost is crossed.
+  - **A stranger, as far as a check can stand in:** a walk by touch from New game to the colony, at the three sizes, finds at every stop either a tip ringing a control on screen or a hint naming one. The fights are won from the dev menu, as they are guidance-free past the first. The stranger with the phone is Evan's, at Gate 7.
+  - **No save change:** the new tips' ids join `tipsSeen` as M18's do. A save under way sees each new tip once, where its thing next comes.
+  - **Every rule tested;** every earlier milestone's check passes.
+
 **Gate 7 (draft):** v1.0's content plays on the phone, balanced from each start, with a tutorial a stranger can follow; and Evan wants to release.
 
 ### Phase 8: Release (v1.0)
