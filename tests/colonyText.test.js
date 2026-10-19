@@ -27,6 +27,8 @@ test('the colony as it opens: nothing built, everyone aboard, every part still o
     { label: 'Beds', value: '0 for 3', ok: false },
     { label: 'Air', value: '0 for 3', ok: false },
     { label: 'Aboard', value: '3 sleep on the ship', ok: false },
+    // M38f: no citizens, and none to come while the crew have every bed.
+    { label: 'Citizens', value: 'None · none comes: no bed and air free', ok: true },
     // The survey ate a day's food.
     { label: 'Food', value: '24 of 30 · +0, eats 3', ok: true },
     { label: 'Materials', value: '20 of 30 · +0 a day', ok: true },
@@ -80,6 +82,8 @@ test('parts given: the needs met, the buildings and what they give, and who stil
     { label: 'Beds', value: '4 for 3', ok: true },
     { label: 'Air', value: '4 for 3', ok: true },
     { label: 'Aboard', value: 'Nobody', ok: true },
+    // M38f: a bed and air free, every building lit: the first in 5 days.
+    { label: 'Citizens', value: 'None · the first in 5 days', ok: true },
     { label: 'Food', value: '27 of 30 · +0, eats 3', ok: true },
     { label: 'Materials', value: '20 of 30 · +0 a day', ok: true },
     // M29: what fires at a raid's lander as it comes down.

@@ -54,7 +54,10 @@
 // system's jump point; those at home face any raid meanwhile. The voyage
 // keeps a tally of its own, so act 2's rates are as they were; only the
 // refitting player's runs fly it, the rest flying no voyage out, as the
-// fitted ones fly no refits.
+// fitted ones fly no refits. And M38f's: back from it, the careful player
+// plays the first colony's next AFTER_DAYS days, the second living them
+// too; citizens grow at both, and a raid where the ship isn't is fought
+// out without it.
 // Each voyage launches from a test run of act 1 (tools/run.js) and is
 // played by the test player in tools/voyage.js. The voyages before M23h's
 // fly as fitted, with no refits, so each compares one part's difference.
@@ -76,7 +79,7 @@ import { tripHeatOf } from '../src/sim/raids.js';
 import { feeOf } from '../src/sim/recruits.js';
 import { costAt } from '../src/sim/standing.js';
 import { voyagePlan } from '../src/sim/voyage.js';
-import { COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, NEW_DAYS, outSummary, playColony, playTrips, secondSummary, SETTLE_SYSTEM, TRIP_DAYS, voyage, VOYAGE_SYSTEMS, voyagesByBackground } from '../tools/voyage.js';
+import { AFTER_DAYS, citizensSummary, COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, NEW_DAYS, outSummary, playColony, playTrips, secondSummary, SETTLE_SYSTEM, TRIP_DAYS, voyage, VOYAGE_SYSTEMS, voyagesByBackground } from '../tools/voyage.js';
 import { bestWorld, FIT_ORDER, FIT_SHARE, HOME_JUMPS, nextGift, STOCK_DAYS, systemMove } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 
@@ -1039,7 +1042,9 @@ test("after the colony's 60 days the careful player stocks the holds and flies o
     const step = out.steps.find((s) => s.kind === 'home');
     if (out.second) assert.equal(step, undefined, `seed ${seed}: flown back from the second colony, not home from the run`);
     else {
-      assert.ok((step.atExit && step.out === VOYAGE_SYSTEMS) || step.supplies[0] <= step.eats + HOME_JUMPS * step.each || (step.coming !== null && step.flight <= step.coming), `seed ${seed}: home with ${step.supplies[0]} supplies, ${step.out} systems out`);
+      // From M38f the flight lands the day before a raid it is for: on its
+      // day the raid is fought out without the ship.
+      assert.ok((step.atExit && step.out === VOYAGE_SYSTEMS) || step.supplies[0] <= step.eats + HOME_JUMPS * step.each || (step.coming !== null && step.flight < step.coming), `seed ${seed}: home with ${step.supplies[0]} supplies, ${step.out} systems out`);
       assert.equal(out.back.called, step.coming !== null);
     }
     // Landed: the ship home and the crew one again in its order, with whoever
@@ -1121,4 +1126,38 @@ test("on its voyage out the careful player settles a world in its second system,
   const stayed = voyage(rules, SEEDS[0], { refit: 'yes', jobs: 'yes', settle: 'no' }, lifts[0]);
   assert.equal(stayed.out.second, undefined);
   assert.ok(stayed.out.steps.some((step) => step.kind === 'home'));
+});
+
+// M38f's: back from its voyage out the careful player plays the first
+// colony's next AFTER_DAYS days as its first, the second living them too.
+// Measured over the same 100 voyages (PROGRESS.md): citizens at the first
+// in 86 (1, 0 to 5), at the second in 42 of 76 (1, 0 to 5); since flying
+// out 133 came, 5 left short of food and 7 fell in raids, and 1 freed
+// captive settled; 1 raid fought out without the ship, lost. CITIZENS holds
+// those rates within MARGIN.
+const CITIZENS = { first: 86, second: 42 };
+test("back from its voyage out the careful player plays the first colony's next 20 days, the second living them too; citizens come at both, and a raid where the ship isn't is fought out without it (M38f)", () => {
+  assert.equal(AFTER_DAYS, 20);
+  for (const [i, r] of refittingAll.entries()) {
+    const seed = i + 1;
+    const { out } = r;
+    const { after } = out;
+    assert.ok(after, `seed ${seed}: the days after the voyage`);
+    // Twenty days at the first, every colony living them.
+    const dayOf = (campaign, id) => (campaign.colony.id === id ? campaign.colony : campaign.colonies.find((colony) => colony.id === id)).day;
+    for (const [id] of after.citizens) assert.equal(dayOf(after.campaign, id), dayOf(out.campaign, id) + AFTER_DAYS, `seed ${seed}: colony ${id}'s days`);
+    assert.deepEqual(after.citizens.map(([id]) => id), out.second ? [1, 2] : [1]);
+    // The citizens now are those at flying out, with those who came and
+    // settled, less those who left and fell.
+    const now = after.citizens.reduce((sum, [, n]) => sum + n, 0);
+    assert.equal(now, (out.before.colony.citizens ?? 0) + after.grown + after.settled - after.left - after.fell, `seed ${seed}: the headcount`);
+    assert.equal(after.won + after.lost, after.foughtOut);
+    // None faced while the ship was away: fought out without it.
+    assert.deepEqual([...out.raids.faced, ...after.raids.faced].filter((raid) => raid.away), [], `seed ${seed}: a raid faced while away`);
+    assert.equal(after.campaign.crew.length + after.campaign.colonies.reduce((sum, colony) => sum + colony.keep.crew.length, 0), out.campaign.crew.length + out.campaign.colonies.reduce((sum, colony) => sum + colony.keep.crew.length, 0), `seed ${seed}: crew are never killed`);
+  }
+  const runs = (id) => refittingAll.filter((r) => (r.out.after.citizens.find(([colony]) => colony === id)?.[1] ?? 0) > 0).length;
+  assert.ok(runs(1) >= CITIZENS.first - MARGIN, `citizens at the first in ${runs(1)} of ${RATE_RUNS}`);
+  assert.ok(runs(2) >= CITIZENS.second - MARGIN, `citizens at the second in ${runs(2)}`);
+  assert.match(citizensSummary(refittingAll), /^Citizens \(M38f\): back from the voyage out and 20 days more at the first colony, at the first \d+ \(\d+ to \d+\), in \d+ of 100; at the second \d+ \(\d+ to \d+\), in \d+ of \d+\. Since flying out \d+ came, \d+ left short of food, \d+ fell in raids, \d+ freed captives? settled\. Raids fought out without the ship \d+: won \d+, lost \d+\. Hungry days in the 20: \d+, in \d+ runs\.$/);
 });

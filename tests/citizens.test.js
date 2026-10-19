@@ -25,7 +25,7 @@ import { citizensDay, dayPlan, nextDay, planDay } from '../src/sim/days.js';
 import { flyHome, flyOut } from '../src/sim/expeditions.js';
 import { fightOut, MAX_ROUNDS } from '../src/sim/fightOut.js';
 import { launch } from '../src/sim/launch.js';
-import { colonistsOf, defensesOf, endColonyRaid, faceRaid, fallenColonists, fightAway, landingPlan } from '../src/sim/raids.js';
+import { colonistsOf, defensesOf, endColonyRaid, faceRaid, fallenColonists, fightAway, landingPlan, raidTake } from '../src/sim/raids.js';
 import { initialState, saveData } from '../src/sim/root.js';
 import { stationBoard, takeStationJob } from '../src/sim/stationJobs.js';
 import { beginRun } from '../src/sim/travel.js';
@@ -169,7 +169,7 @@ test('grown: a day fed, with a bed and air free and every building lit, counts; 
   assert.deepEqual(citizensDay({ ...hungry, colony: { ...hungry.colony, citizens: 0 } }, rules, colonyStats(hungry, rules), false), { now: 0, after: 0, growth: [3, 3], why: 'hungry' });
 });
 
-test("the colony's news: while the ship is away, who came and who left; read once it has landed, and let go as it leaves again", () => {
+test("the colony's news: while the ship is away, who came and who left; read once it has landed, and let go as a day passes there or it leaves again", () => {
   // A day short of the next citizen, out on a trip with one aboard.
   const ready = roomy();
   const near = { ...ready, colony: { ...ready.colony, growth: citizenDays - 1 } };
@@ -185,11 +185,14 @@ test("the colony's news: while the ship is away, who came and who left; read onc
   const { news } = home.campaign.colony;
   assert.deepEqual(news.map((entry) => [entry.kind, entry.citizens]), [['grew', 1], ['left', 0]]);
   assert.equal(home.campaign.flags.citizensLeft, 1);
-  // Landed, it waits to be read; the next trip out lets it go.
+  // Landed, it waits to be read; a day there, or the next trip out, lets
+  // it go.
   assert.equal(home.campaign.colony.trip, null);
-  const again = flyOut({ ...home.campaign, supplies: 20 }, rules, 0, [1]);
+  const fed = { ...home.campaign, supplies: 20 };
+  assert.deepEqual(nextDay(fed, rules).campaign.colony.news, []);
+  const again = flyOut(fed, rules, 0, [1]);
   assert.ok(again.ok, again.error);
-  assert.ok(again.campaign.colony.news.every((entry) => entry.day > home.campaign.colony.day - 1), 'the old news is gone');
+  assert.ok(again.campaign.colony.news.every((entry) => entry.day >= fed.colony.day), 'the old news is gone');
   // At most MAX_NEWS, the oldest let go.
   const many = Array.from({ length: MAX_NEWS + 2 }, (_, i) => ({ day: i + 1, kind: 'grew', citizens: i + 1 }));
   const kept = many.reduce((colony, entry) => withNews(colony, entry), { news: [] }).news;
@@ -241,7 +244,7 @@ test("a raid where the ship isn't is fought out at once: the guns first, then wh
     assert.equal(campaign.colony.raid, null);
     const food = Math.floor(before.supplies / 2);
     const materials = Math.floor(before.colony.materials / 2);
-    assert.deepEqual(campaign.colony.news, [{ day: 2, kind: 'raid', won, landed: plan.raiders.length, fell, food: won ? 0 : food, materials: won ? 0 : materials }]);
+    assert.deepEqual(campaign.colony.news, [{ day: 2, kind: 'raid', won, landed: plan.raiders.length, fell, food: won ? 0 : food, materials: won ? 0 : materials, part: won ? null : raidTake(before, rules).part }]);
     assert.equal(campaign.supplies, before.supplies - (won ? 0 : food));
     // The crew there fought: wounded at worst, the fight counted; the squad
     // away sat it out.
@@ -323,9 +326,11 @@ test("a raid the player fights: the citizens stand beside the crew as colonists,
   assert.notEqual(broken({ side: 'enemy' }), null);
   assert.notEqual(broken({ citizen: false }), null);
   assert.notEqual(broken({ ward: true, weapon: null }), null);
-  // Two fall: gone from the colony once it is over, won or lost.
+  // Two fall: gone from the colony once it is over, won or lost. One
+  // stabilized as they lay is not lost.
   const units = fight.battle.units.map((unit) => (unit.citizen && unit.name !== 'Colonist 3' ? { ...unit, hp: 0, status: 'down' } : unit));
   assert.equal(fallenColonists({ ...fight.battle, units }), 2);
+  assert.equal(fallenColonists({ ...fight.battle, units: units.map((unit) => (unit.name === 'Colonist 2' ? { ...unit, status: 'stable' } : unit)) }), 1);
   for (const winner of ['crew', 'enemy']) {
     const after = endColonyRaid(ending(faced.campaign, winner, units), rules);
     assert.deepEqual([after.colony.citizens, after.flags.citizensFell, after.colony.raid], [1, 2, null]);
@@ -359,7 +364,7 @@ test('saves at v38: a colony from before has no citizens, nothing toward the nex
   assert.ok(loaded.ok, loaded.error);
   assert.deepEqual(loaded.save.data.campaign, now);
   // Unreadable.
-  const raid = { day: 2, kind: 'raid', won: false, landed: 4, fell: 1, food: 3, materials: 2 };
+  const raid = { day: 2, kind: 'raid', won: false, landed: 4, fell: 1, food: 3, materials: 2, part: 'shield' };
   assert.deepEqual(campaignProblems({ ...now, colony: { ...now.colony, news: [raid] } }), []);
   const broken = (change) => campaignProblems({ ...now, colony: { ...now.colony, ...change } });
   for (const change of [
@@ -371,6 +376,8 @@ test('saves at v38: a colony from before has no citizens, nothing toward the nex
     { news: [{ ...raid, day: 0 }] },
     { news: [{ ...raid, won: 'no' }] },
     { news: [{ ...raid, fell: -1 }] },
+    { news: [{ ...raid, part: undefined }] },
+    { news: [{ ...raid, part: 3 }] },
     { news: [{ day: 2, kind: 'moved', citizens: 1 }] },
     { news: [{ day: 2, kind: 'grew' }] },
   ]) {

@@ -292,9 +292,9 @@ function raidBattle(there, rules, plan, landed, rng, { forgiving = false, diffic
 }
 
 // The colonists who fell in a raid's battle (M38f): those of its citizens
-// not standing at its end.
+// not standing at its end, but for one stabilized as they lay.
 export function fallenColonists(battle) {
-  return battle.units.filter((unit) => unit.citizen && unit.status !== 'active').length;
+  return battle.units.filter((unit) => unit.citizen && unit.status !== 'active' && unit.status !== 'stable').length;
 }
 
 // The campaign with the colony's citizens fewer by fell.
@@ -374,7 +374,7 @@ export function fightAway(campaign, rules) {
   }
   const settled = settleRaid(lessCitizens(now, fell), rules, won);
   const { colony } = settled.campaign;
-  const told = withNews(colony, { day: colony.day, kind: 'raid', won, landed: landing.landed.length, fell, food: settled.taken?.food ?? 0, materials: settled.taken?.materials ?? 0 });
+  const told = withNews(colony, { day: colony.day, kind: 'raid', won, landed: landing.landed.length, fell, food: settled.taken?.food ?? 0, materials: settled.taken?.materials ?? 0, part: settled.taken?.part ?? null });
   const flags = tally(settled.campaign.flags, { raidsFoughtOut: 1, [won ? 'raidsFoughtOutWon' : 'raidsFoughtOutLost']: 1 });
   return { campaign: { ...settled.campaign, colony: told, flags }, won, fell, landing };
 }

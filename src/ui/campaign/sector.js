@@ -62,6 +62,7 @@ import { crewCardText, crewHeading, crewSaid } from './crewText.js';
 import { createEventCard } from './eventCard.js';
 import { eventText, resultText } from './eventText.js';
 import { crewRows, heatChip, listRows, panel, questRows, sideRows } from './hubParts.js';
+import { carry, takeCarried } from './carried.js';
 import { flightReport } from './colonyListText.js';
 import { landingReport } from './raidText.js';
 import { jumpText, sectorText } from './sectorText.js';
@@ -199,7 +200,10 @@ export const sectorScreen = {
     let armed = null; // 'on', 'scan', 'rest', 'swap', 'repair', 'patch', 'survey', 'settle', 'home', 'defend', the supplies a Buy is for, a rack's weapon ('rack:<slot>'), a colony's Fly to ('fly:<id>', M38e), or a crew card button's key, after its first tap
     let others = new Map(); // the other colonies' panels (M38e), by number: { panel, title, rows, line, button, detach }
     let othersShown = null; // the numbers of those drawn
-    let report = null; // { campaign, words }: what Defend or Fly home came to, shown until the campaign moves on
+    // { campaign, words }: what Defend or Fly home came to, shown until the
+    // campaign moves on; or what Fly out from the colony came to, carried
+    // over as the chart opened (M38f, carried.js).
+    let report = carried(game.getState().campaign);
     let crewOpen = false; // the crew card is up
     let closed = null; // the result put away with Carry on (resultKey)
     let armTimer = 0;
@@ -698,14 +702,15 @@ export const sectorScreen = {
     }
 
     // Fly home's second tap (M38d): the flight's days pass, and the ship
-    // lands at the colony, whose screen opens, or a lander stops it and the
-    // hint says so.
+    // lands at the colony, whose screen opens with what the flight came to
+    // (carried.js), or a lander stops it and the hint says so.
     function flyHome() {
       const { campaign } = game.getState();
       if (!defs || !campaign) return;
       const result = voyageHome(campaign, defs);
+      carry(result.ok ? voyageReport(result, campaign, defs) : { tone: 'bad', text: result.error });
       game.dispatch({ type: 'campaign/voyage/home', rules: defs });
-      report = { campaign: game.getState().campaign, words: result.ok ? voyageReport(result, campaign, defs) : { tone: 'bad', text: result.error } };
+      report = carried(game.getState().campaign);
     }
 
     // The other colonies' panels (M38e): made again when which colonies
@@ -744,14 +749,15 @@ export const sectorScreen = {
     }
 
     // Fly to's second tap (M38e): the flight's days pass, and the ship
-    // lands at that colony, whose screen opens, or a lander stops it and the
-    // hint says so.
+    // lands at that colony, whose screen opens with what the flight came to,
+    // or a lander stops it and the hint says so.
     function flyThere(id) {
       const { campaign } = game.getState();
       if (!defs || !campaign) return;
       const result = flyTo(campaign, defs, id);
+      carry(result.ok ? flightReport(result, campaign, defs) : { tone: 'bad', text: result.error });
       game.dispatch({ type: 'campaign/voyage/to', id, rules: defs });
-      report = { campaign: game.getState().campaign, words: result.ok ? flightReport(result, campaign, defs) : { tone: 'bad', text: result.error } };
+      report = carried(game.getState().campaign);
     }
 
     // Defend's second tap (M38d): the colony's guns fire at the lander, and
@@ -830,3 +836,10 @@ export const sectorScreen = {
     };
   },
 };
+
+// The words carried to this screen (carried.js), as the report shown until
+// the campaign moves on, or null.
+function carried(campaign) {
+  const words = takeCarried();
+  return words ? { campaign, words } : null;
+}

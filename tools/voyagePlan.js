@@ -997,7 +997,8 @@ export function voyageCrew(campaign, rules) {
 
 // Whether the player flies home from its voyage now (M38d): flying on once
 // a lander stopped the flight; with the pursuer's lander coming down at
-// the colony no sooner than the flight home lands (M38d's fix); at the jump
+// the colony no sooner than the flight home lands (M38d's fix), from M38f
+// the day after; at the jump
 // point of the `systems`th system out; or once the holds come down to the
 // way home's supplies and HOME_JUMPS jumps' more. Never while something
 // holds the ship.
@@ -1006,8 +1007,10 @@ export function homeNow(campaign, rules, systems) {
   const plan = voyage ? voyageHomePlan(campaign, rules) : null;
   if (!plan?.ok) return false;
   if (voyage.homing) return true;
+  // A raid coming that the flight home lands the day before (M38f: on its
+  // day it is fought out without the ship).
   const coming = raidIn(campaign);
-  if (coming !== null && plan.days <= coming) return true;
+  if (coming !== null && plan.days < coming) return true;
   const { run } = campaign;
   if (voyage.out >= systems && run.at === run.sector.exit) return true;
   return campaign.supplies <= plan.eats + HOME_JUMPS * jumpSupplies(campaign, rules);

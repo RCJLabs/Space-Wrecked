@@ -89,7 +89,11 @@
 // parts and plays the new colony's first NEW_DAYS days, building its
 // farms and mines, then flies straight back to the first colony, leaving
 // the least fit there when three or more landed (backCrew); a raid coming
-// at the first cuts the days short (secondColony).
+// at the first cuts the days short (secondColony). From M38f, back from
+// its voyage out, it plays the first colony's next AFTER_DAYS days as its
+// first (afterVoyage), the second living them too; a raid where the ship
+// isn't is fought out without it, and it flies home for one only when it
+// lands the day before (voyagePlan.js homeNow).
 //
 //   node tools/voyage.js               a voyage from campaign seed 1, step by step
 //   node tools/voyage.js --seed 7      another seed
@@ -136,7 +140,7 @@ import { hireRecruit } from '../src/sim/recruits.js';
 import { regroup } from '../src/sim/regroup.js';
 import { repairShip } from '../src/sim/repair.js';
 import { settle } from '../src/sim/settle.js';
-import { colonyById } from '../src/sim/colonies.js';
+import { allColonies, colonyById } from '../src/sim/colonies.js';
 import { jobPay, levelOf, shareHere, standingWith, stationSide } from '../src/sim/standing.js';
 import { survey } from '../src/sim/survey.js';
 import { swapTransponder } from '../src/sim/transponder.js';
@@ -165,6 +169,9 @@ export const VOYAGE_SYSTEMS = 3;
 // it the test player plays before flying back to the first (M38e).
 export const SETTLE_SYSTEM = 2;
 export const NEW_DAYS = 10;
+// The first colony's days the test player plays once back from its voyage
+// out (M38f).
+export const AFTER_DAYS = 20;
 const MAX_JUMPS = 100; // a voyage still going after this many stops
 // The colony's days the test player plays, and the days from the landing
 // within which its farms are to feed the crew (M27's Done when).
@@ -823,6 +830,8 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     const days = colonyById(landedAt, 1).day - away.before.colony.day;
     const found = away.second ? { first: since('raidsFound') - away.second.found.second, second: away.second.found.second } : { first: since('raidsFound'), second: 0 };
     out = { ...away, tally, steps, campaign, colony: { days, hungry: since('hungryDays'), found: since('raidsFound'), at: found, dugLost: away.back?.dugLost ?? since('materialsLost') }, credits: [away.before.credits, campaign.credits] };
+    // Back home (M38f): the first colony's next days, the second's too.
+    out.after = away.back && !campaign.colony.voyage ? afterVoyage(campaign, defs, away.before) : null;
     ({ tally, steps } = act);
     campaign = foundedAt;
   }
@@ -867,6 +876,34 @@ export function foundColony(campaign, defs) {
     flies: shipChecklist(campaign, defs).every((line) => line.ok === true),
   };
   return { campaign, colony };
+}
+
+// The first colony's next AFTER_DAYS days once the ship is back from its
+// voyage out (M38f), played as its first (playColony), the second colony
+// living them too: { campaign, days (playColony's), raids, citizens ([[id,
+// count]]: at each colony at the end), and since flying out (before):
+// grown, left, fell, settled (the citizens grown, gone short of food,
+// fallen in raids, and rescued and settled), foughtOut, won, lost (the
+// raids fought out without the ship, and how they went), hungry (every
+// colony's hungry days) }.
+export function afterVoyage(campaign, defs, before) {
+  const played = playColony(campaign, defs, AFTER_DAYS);
+  const now = played.campaign;
+  const since = (flag) => (now.flags[flag] ?? 0) - (before.flags[flag] ?? 0);
+  return {
+    campaign: now,
+    days: played.days,
+    raids: played.raids,
+    citizens: allColonies(now).map((colony) => [colony.id, colony.citizens ?? 0]),
+    grown: since('citizensGrown'),
+    left: since('citizensLeft'),
+    fell: since('citizensFell'),
+    settled: since('rescuedSettled'),
+    foughtOut: since('raidsFoughtOut'),
+    won: since('raidsFoughtOutWon'),
+    lost: since('raidsFoughtOutLost'),
+    hungry: since('hungryDays') + since('othersHungryDays'),
+  };
 }
 
 // The colony's first days as the careful player plays them (M27): before
@@ -1416,8 +1453,17 @@ function voyageLine(out) {
     `The voyage out: ${tally.crossed} of ${VOYAGE_SYSTEMS} systems crossed, ${where}; ${tally.jumps} jumps (${tally.hungryJumps} hungry); ${tally.stationJobs} station jobs (${tally.stationJobsWon} done) for ${tally.jobCredits} credits; ` +
     `spent ${spentOf(tally)} credits, ${tally.yardBought} parts bought, ${tally.fitted} fitted; credits ${out.credits[0]} to ${out.credits[1]}. ` +
     `${tally.approaches} hostile ships, the hunters ${tally.hunts}; heat ${tally.heat[0]} to ${tally.heat[1]}, at most ${tally.peak}; crew ${tally.hp[0]} to ${tally.hp[1]}. ` +
-    `At home: found ${out.colony.found} time${out.colony.found === 1 ? '' : 's'}, ${faced.length} raid${faced.length === 1 ? '' : 's'} faced while away, ${lost} lost; ${out.colony.hungry} hungry day${out.colony.hungry === 1 ? '' : 's'}.`
+    `At home: found ${out.colony.found} time${out.colony.found === 1 ? '' : 's'}, ${faced.length} raid${faced.length === 1 ? '' : 's'} faced while away, ${lost} lost; ${out.colony.hungry} hungry day${out.colony.hungry === 1 ? '' : 's'}.` +
+    (out.after ? ` ${afterLine(out.after)}` : '')
   );
+}
+
+// The days after the voyage out (M38f), as the log says them: "20 days
+// more at the first colony. Citizens: 2 at the first, 0 at the second; 3
+// came, 1 left, 0 fell. Raids fought out without the ship 1: won 1."
+function afterLine(after) {
+  const at = after.citizens.map(([id, n]) => `${n} at the ${id === 1 ? 'first' : id === 2 ? 'second' : `colony ${id}`}`);
+  return `${AFTER_DAYS} days more at the first colony. Citizens: ${at.join(', ')}; ${after.grown} came, ${after.left} left, ${after.fell} fell${after.settled ? `, ${after.settled} rescued settled` : ''}. Raids fought out without the ship ${after.foughtOut}: won ${after.won}, lost ${after.lost}.`;
 }
 
 // The credits a voyage's tally spent: supplies, patching, repairs,
@@ -1657,6 +1703,7 @@ export function manyVoyages(defs, runs, options = {}) {
     raidsSummary(defs, done),
     outSummary(done),
     secondSummary(done),
+    citizensSummary(done),
     `The quests (M33b): ${questsLine(questCounts(defs, done))}`,
     `The companions (M33c): ${companionsLine(companionCounts(defs, done))}.`,
     `Jumps: ${spread(of('jumps'))}, long ${spread(of('longJumps'))}, hungry ${spread(of('hungryJumps'))}.`,
@@ -1791,6 +1838,29 @@ export function secondSummary(done) {
     `More colonies (M38e): founded on ${founded.length} of ${flown.length} voyages out, in system ${SETTLE_SYSTEM}; days there ${of(founded, (out) => out.second.days)}, cut short by a raid at the first in ${founded.filter((out) => out.second.called).length}; one left there in ${founded.filter((out) => out.second.left.length).length}. ` +
     `Flown back in ${back.length}: ${of(back, (out) => out.second.back.days)} days, stopped by a lander in ${back.filter((out) => out.second.back.stops).length}, hungry in ${back.filter((out) => out.second.back.hungry > 0).length}. ` +
     `The first colony's days away ${of(flown, (out) => out.colony.days)}. Raids since flying out: at the first ${raids(1, 'first')}; at the second ${raids(2, 'second')}. Every colony fed all the while in ${flown.filter((out) => out.colony.hungry === 0).length} of ${flown.length}.`
+  );
+}
+
+// The citizens (M38f): back from the voyage out and AFTER_DAYS more days at
+// the first colony, how many at each colony; since flying out, those grown,
+// gone short of food, fallen in raids and rescued; the raids fought out
+// without the ship; and the hungry days of the days after.
+export function citizensSummary(done) {
+  const after = done.map((r) => r.out?.after).filter(Boolean);
+  const median = (values) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted.length ? `${sorted[Math.floor((sorted.length - 1) / 2)]} (${sorted[0]} to ${sorted.at(-1)})` : '-';
+  };
+  const at = (id) => after.map((a) => a.citizens.find(([colony]) => colony === id)?.[1]).filter((n) => n !== undefined);
+  const sum = (key) => after.reduce((total, a) => total + a[key], 0);
+  const where = (id, name) => {
+    const counts = at(id);
+    return `at the ${name} ${median(counts)}, in ${counts.filter((n) => n > 0).length} of ${counts.length}`;
+  };
+  return (
+    `Citizens (M38f): back from the voyage out and ${AFTER_DAYS} days more at the first colony, ${where(1, 'first')}; ${where(2, 'second')}. ` +
+    `Since flying out ${sum('grown')} came, ${sum('left')} left short of food, ${sum('fell')} fell in raids, ${sum('settled')} freed captive${sum('settled') === 1 ? '' : 's'} settled. ` +
+    `Raids fought out without the ship ${sum('foughtOut')}: won ${sum('won')}, lost ${sum('lost')}. Hungry days in the ${AFTER_DAYS}: ${sum('hungry')}, in ${after.filter((a) => a.hungry > 0).length} runs.`
   );
 }
 

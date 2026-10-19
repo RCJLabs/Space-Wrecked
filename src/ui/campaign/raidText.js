@@ -3,11 +3,13 @@
 // defenses, Defend's first tap, the landing's report, the raid fight's
 // line under the round, and how a raid ended. From M38e at any colony: a
 // lander down at another names it, and its own heat is what a raid there
-// sets. rules are the content tables (src/sim/defs.js).
+// sets. From M38f its citizens fight beside the crew as colonists, and a
+// raid where the ship isn't is fought out without it. rules are the
+// content tables (src/sim/defs.js).
 import { heatAt, thereAt } from '../../sim/colonies.js';
 import { colonyBy } from '../../sim/edges.js';
 import { pursuerOf, runLevel } from '../../sim/heat.js';
-import { colonyPursuer, defendersOf, defensesOf, downAt, foundOdds, landingPlan, raidCampaign, raidIn, raidTake } from '../../sim/raids.js';
+import { colonistsOf, colonyPursuer, defendersOf, defensesOf, downAt, fallenColonists, foundOdds, landingPlan, raidCampaign, raidIn, raidTake } from '../../sim/raids.js';
 import { gearLine } from './armsText.js';
 import { byJob } from './crewJobText.js';
 import { easedSaid } from './questText.js';
@@ -57,13 +59,20 @@ export function raidHint(campaign, rules) {
   }
   const status = raidStatus(campaign, rules);
   if (status.state === 'down') {
-    const fight = defendersOf(campaign).length ? 'then whoever is home fights the rest' : 'nobody is home to fight the rest';
+    const colonists = colonistsOf(campaign, rules);
+    const fight = defendersOf(campaign).length ? `then whoever is home${colonists ? ` and ${colonistCount(colonists)}` : ''} fights the rest` : colonists ? `then ${colonistCount(colonists)} fight the rest` : 'nobody is home to fight the rest';
     return { text: `${status.line} Tap Defend: the guns fire as it comes down, ${fight}.`, tone: 'bad' };
   }
   if (status.state !== 'coming') return null;
   const days = raidIn(campaign);
-  const away = campaign.colony.trip || campaign.colony.voyage ? ' The ship is away: whoever is home will fight.' : '';
+  // Away, it is fought out without the ship on the day it lands (M38f).
+  const away = campaign.colony.trip || campaign.colony.voyage ? ' The ship is away: home before then, the whole crew meets it; else whoever is home fights it without the ship.' : '';
   return { text: `${status.line} It lands in ${days} day${days === 1 ? '' : 's'}: set down guns, a shield and an armory from the hold.${away}`, tone: 'warn' };
+}
+
+// "1 colonist", "3 colonists" (M38f).
+function colonistCount(n) {
+  return `${n} colonist${n === 1 ? '' : 's'}`;
 }
 
 // Defend, for the button: { ok, ask (what its first tap says), why }. At
@@ -79,12 +88,16 @@ export function defendText(campaign, rules) {
     ? `${capital(listed(plan.guns.map((gun) => `the ${lowerFirst(gun.name)}${gun.shots > 1 ? ` (${gun.shots} shots)` : ''}`)))}${place ? ` at ${place}` : ''} fire${plan.guns.length === 1 ? 's' : ''} at the lander as it comes down, ${plan.hit}% a shot${spotter ? ` with ${byJob(spotter, rules)} calling them` : ''}, each hit a raider fewer.`
     : `Nothing at ${place ?? 'the colony'} fires at the lander.`;
   const party = countedNames(plan.raiders.map((id) => rules.enemies.get(id)?.name ?? id));
-  const fight = plan.defenders.length
-    ? `${plan.defenders.length} at ${place ?? 'home'} fight whoever lands of ${plan.raiders.length} (${party})`
+  // Its citizens stand beside the crew as colonists (M38f).
+  const colonists = plan.citizens ? colonistCount(plan.citizens) : null;
+  const who = plan.defenders.length ? `${plan.defenders.length} at ${place ?? 'home'}${colonists ? ` and ${colonists}` : ''}` : colonists ? `${colonists} at ${place ?? 'home'}` : null;
+  const fight = who
+    ? `${who} fight whoever lands of ${plan.raiders.length} (${party})`
     : `Nobody is ${place ? `at ${place}` : 'home'}: whoever lands of ${plan.raiders.length} (${party}) takes what they like`;
   const kit = [...(plan.armor ? [`the shield gives +${plan.armor} armor`] : []), ...(plan.aim ? [`the armory +${plan.aim} aim`] : [])];
   const gear = plan.defenders.length ? gearLine(rules) : null;
-  return { ok: true, ask: `${guns} ${fight}${kit.length && plan.defenders.length ? `; ${kit.join(' and ')}` : ''}.${gear ? ` ${gear}` : ''} Tap again to defend.`, why: null };
+  const lost = colonists ? ' A colonist who falls is lost to the colony.' : '';
+  return { ok: true, ask: `${guns} ${fight}${kit.length && who ? `; ${kit.join(' and ')}` : ''}.${gear ? ` ${gear}` : ''}${lost} Tap again to defend.`, why: null };
 }
 
 // What facing the raid came to (raids.js faceRaid's result), for the hint:
@@ -130,12 +143,15 @@ function stoppedOf(battle, fight, rules) {
 
 // How a raid on the colony ended, for the fight's end panel: { tone,
 // title, text }. campaign is as it stands before the crew goes home
-// (raids.js endColonyRaid). At another colony (M38e) its stores and heat.
+// (raids.js endColonyRaid). At another colony (M38e) its stores and heat;
+// from M38f the colonists who fell, lost to it.
 export function colonyRaidOutcome(battle, campaign, rules) {
   const there = raidCampaign(campaign);
   const heat = heatAfter(heatAt(there, there.colony), rules);
-  if (battle.winner === 'crew') return { tone: 'good', title: 'Raid beaten', text: `${colonyPursuer(campaign, rules)?.faced ?? 'They pull back to their lander.'} ${heat}` };
-  return { tone: 'bad', title: 'Raid lost', text: `They took ${takenText(raidTake(there, rules), rules)}. ${heat}` };
+  const fell = fallenColonists(battle);
+  const lost = fell ? ` ${fell === 1 ? 'A colonist' : `${fell} colonists`} fell, lost to the colony: ${Math.max(0, (there.colony.citizens ?? 0) - fell)} citizen${(there.colony.citizens ?? 0) - fell === 1 ? '' : 's'} left.` : '';
+  if (battle.winner === 'crew') return { tone: fell ? 'warn' : 'good', title: 'Raid beaten', text: `${colonyPursuer(campaign, rules)?.faced ?? 'They pull back to their lander.'}${lost} ${heat}` };
+  return { tone: 'bad', title: 'Raid lost', text: `They took ${takenText(raidTake(there, rules), rules)}.${lost} ${heat}` };
 }
 
 // What a lost raid took, in words: "12 food, 15 materials and the Shield

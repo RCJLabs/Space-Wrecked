@@ -2198,5 +2198,8 @@ These ideas wait until v0.4 or later:
 - the second colony's raids: two or three there and no guns yet, so the test player lost 2 of the 5 it faced there (none at the first). Its heat is the ship's as it settled, after a voyage's jumps, so it is found sooner than a new colony would expect. A quieter landing, or guns from the hold set down first, would even it (raised in M38e)
 - flights between colonies cross no system: days and supplies only, nothing met on the way. Fine for straight flights; a long one could pass a station or a hostile ship (raised in M38e)
 - the act line at every colony says "Act 3 · The colony"; the world's name is on the line under it. A colony's own name, or its number, could head it (raised in M38e)
+- survivors settling: since M38f a station job's freed captive settles at the colony flown from. An event's survivors (a derelict's crew, a wreck's) could settle the same way, a citizen more each (raised in M38f)
+- the test player builds no room for citizens: its shelters are for the crew who stay home, so a colony grows only into what is free. A careful player would build beds and air, and farms to feed them; M40's balance runs could measure it (raised in M38f)
+- a raid fought out without the player is decided whole at once. Its log could be kept, to replay on landing, or a fallen colonist named in the report (raised in M38f)
 
 Ideas that come up during a session go here, not into code.

@@ -2,7 +2,9 @@
 // it at the colony, the day's odds of being found, a raid coming and its
 // days, the colony's defenses, Defend's first tap, the landing's report,
 // the raid fight's line and opening words, and how it ended; and a trip's
-// leg a raid stopped, with Fly on.
+// leg a raid stopped, with Fly on. From M38f a raid while the ship is away
+// is fought out without it, and the leg's report tells it; a leg stopped
+// is a save's from before. Its citizens fight as colonists.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { seedFrom } from '../src/core/rng.js';
@@ -36,6 +38,16 @@ function at(campaign, { heat = campaign.heat, lanes = campaign.colony.world.lane
 // The raid found on day `found`, landing on day `lands`.
 function coming(campaign, found, lands) {
   return { ...campaign, colony: { ...campaign.colony, raid: { found, lands } } };
+}
+
+// A leg a raid's lander stopped, as a save from before M38f has it: the
+// squad a day out of the colony toward place with the rest of the leg to
+// fly, the lander down that day (as tests/raids.test.js has it).
+function stoppedOut(campaign, place, squad) {
+  const { day } = campaign.colony;
+  const quick = at(coming(campaign, day, day + 2), { places: [{ ...place, days: 1 }] });
+  const flown = flyOut(quick, rules, 0, squad).campaign;
+  return { ...flown, colony: { ...flown.colony, raid: { found: day, lands: day + 1 }, trip: { ...flown.colony.trip, place, leg: { dir: 'out', left: place.days - 1 } } } };
 }
 
 // The colony a day on, with the raid's lander down today.
@@ -165,16 +177,19 @@ test("Defend: the first tap says what fires at the lander, at what odds, and who
   assert.deepEqual(landingReport(beaten, guns, rules), { text: `8 shots at the lander, ${beaten.landing.hits} hits. Every raider stopped before they landed: the raid is beaten. Heat falls to 40.`, tone: 'good' });
 });
 
-test("while the ship is away: the leg a raid stopped, the hint and Defend with nobody home, Fly on's ask once it is faced, and each leg's report", () => {
+test("while the ship is away: a raid fought out at home and the leg's report of it (M38f); a leg stopped in a save from before, the hint and Defend with nobody home, and Fly on's ask once it is faced", () => {
   const base = at(settled(), { heat: 30, places: [far] });
   const found = coming(base, 1, 2);
   const out = flyOut(found, rules, 0, [1]);
-  assert.equal(out.stopped, true);
+  assert.equal(out.stopped, false);
   const report = legReport(out, 'out', found, rules);
-  assert.equal(report.tone, 'bad');
-  assert.ok(report.text.startsWith('1 day out: '), report.text);
-  assert.ok(report.text.endsWith(" Con-Reg Recovery's lander is down at the colony: the ship waits, 2 days still to fly, while those at home face it."), report.text);
-  const away = awayText(out.campaign, rules);
+  const [told] = out.campaign.colony.news;
+  assert.equal(report.tone, told.won ? (told.fell ? 'warn' : 'good') : 'bad');
+  assert.ok(report.text.startsWith('3 days out: '), report.text);
+  assert.match(report.text, / At the colony, Con-Reg Recovery's raiders (were fought off on day 2|won on day 2 and took .*)\. The squad is at Old Red\.$/);
+  // Stopped a day out in a save from before.
+  const stopped = stoppedOut(base, far, [1]);
+  const away = awayText(stopped, rules);
   assert.deepEqual([away.leg, away.on, away.event, away.held, away.home.ok], [
     { dir: 'out', left: 2, line: 'On the way out, 2 days still to fly' },
     { ok: false, ask: null, why: "Con-Reg Recovery's lander is down: face the raid first." },
@@ -183,7 +198,7 @@ test("while the ship is away: the leg a raid stopped, the hint and Defend with n
     false,
   ]);
   // Faced and won: Fly on says the days still to fly and what they eat.
-  const faced = settleRaid(out.campaign, rules, true).campaign;
+  const faced = settleRaid(stopped, rules, true).campaign;
   const on = awayText(faced, rules).on;
   assert.equal(on.ok, true);
   assert.match(on.ask, /^Fly on to Old Red: 2 days still to fly, the days eating \d+ food \(\d+ → \d+\)\. Tap again to fly\.$/);
@@ -191,8 +206,8 @@ test("while the ship is away: the leg a raid stopped, the hint and Defend with n
   assert.ok(legReport(flown, flown.dir, faced, rules).text.endsWith(' The squad is at Old Red.'));
   // A raid coming with the ship away, and with nobody home.
   const warned = coming(base, 1, 6);
-  assert.match(raidHint(flyOut(warned, rules, 0, [1]).campaign, rules).text, / The ship is away: whoever is home will fight\.$/);
-  const empty = flyOut(found, rules, 0, [1, 2, 3]).campaign;
+  assert.match(raidHint(flyOut(warned, rules, 0, [1]).campaign, rules).text, / The ship is away: home before then, the whole crew meets it; else whoever is home fights it without the ship\.$/);
+  const empty = stoppedOut(base, far, [1, 2, 3]);
   assert.deepEqual(raidHint(empty, rules), { text: `${words.landing} Tap Defend: the guns fire as it comes down, nobody is home to fight the rest.`, tone: 'bad' });
   assert.equal(defendText(empty, rules).ask, `Nothing at the colony fires at the lander. Nobody is home: whoever lands of 4 (${party}) takes what they like. Tap again to defend.`);
   const lost = faceRaid(empty, rules);
@@ -200,5 +215,10 @@ test("while the ship is away: the leg a raid stopped, the hint and Defend with n
   // heatAfterRaid, so it stays.
   assert.equal(lost.campaign.heat, empty.heat);
   assert.deepEqual(landingReport(lost, empty, rules), { text: `Nothing fired at the lander. Nobody home to stop 4: they took ${takenText(lost.taken, rules)}. Heat stays at ${empty.heat}.`, tone: 'bad' });
-  assert.equal(colonyRaidOutcome({ winner: 'crew' }, { ...empty, heat: 12 }, rules).text, `${words.faced} Heat stays at 12.`);
+  assert.equal(colonyRaidOutcome({ winner: 'crew', units: [] }, { ...empty, heat: 12 }, rules).text, `${words.faced} Heat stays at 12.`);
+  // M38f: the colonists who fell, lost to the colony.
+  const fell = { winner: 'crew', units: [{ citizen: true, status: 'down' }, { citizen: true, status: 'dead' }, { citizen: true, status: 'stable' }, { citizen: true, status: 'active' }] };
+  const peopled = { ...empty, heat: 12, colony: { ...empty.colony, citizens: 4 } };
+  assert.deepEqual(colonyRaidOutcome(fell, peopled, rules), { tone: 'warn', title: 'Raid beaten', text: `${words.faced} 2 colonists fell, lost to the colony: 2 citizens left. Heat stays at 12.` });
+  assert.match(colonyRaidOutcome({ ...fell, winner: 'enemy' }, peopled, rules).text, /^They took .*\. 2 colonists fell, lost to the colony: 2 citizens left\. Heat stays at 12\.$/);
 });

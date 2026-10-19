@@ -138,6 +138,13 @@ export function checkCampaignFiles(data, ids, fail) {
   const holding = checkSectors(data.sectors, data.campaign?.acts, ids.presets ?? new Map(), fail);
   checkWorlds(data.worlds, data.sectors, fail);
   checkColony(data.colony, data.modules?.modules, fail, data.weapons?.weapons);
+  // A battle unit's kind is its job's, an enemy's, a person's a job brings
+  // out, or else the colonist's (M38f, battle.js): none of them may share it.
+  const colonist = data.colony?.citizen?.id;
+  const people = new Set((data.contracts?.people ?? []).map((person) => person?.id));
+  if (typeof colonist === 'string' && (ids.jobIds?.has(colonist) || ids.enemyIds?.has(colonist) || people.has(colonist))) {
+    fail('colony.json citizen', `id: "${colonist}" is a job's, an enemy's or a person's: a colonist needs an id of its own`);
+  }
   const nodeKinds = new Set((data.sectors?.nodes ?? []).map((node) => node?.id));
   const places = checkExpeditions(data.expeditions, nodeKinds, ids, fail);
   const sides = ids.sides ?? new Set();

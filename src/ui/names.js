@@ -2,12 +2,15 @@
 // crew buttons, the squad card and the homes' crew panels. A first name
 // each; where two share one, the first name and the initial of the rest
 // ("Fen L."); where those match too, the whole names. Recruits can share a
-// first name with someone aboard. The crew card, the log and the hints keep
-// the whole names.
+// first name with someone aboard. A name numbered, as a raid's colonists
+// are (M38f: "Colonist 2"), keeps its number, its word cut to three
+// letters where it is longer than four ("Col. 2"), so a button tells them
+// apart. The crew card, the log and the hints keep the whole names.
 export function shortNames(names) {
   const first = names.map((name) => name.split(' ')[0]);
   const initial = names.map((name, i) => {
     const rest = name.slice(first[i].length).trim();
+    if (/^\d+$/.test(rest)) return `${first[i].length > 4 ? `${first[i].slice(0, 3)}.` : first[i]} ${rest}`;
     return rest ? `${first[i]} ${rest[0]}.` : first[i];
   });
   const shared = (list, i) => list.some((value, j) => j !== i && value === list[i]);

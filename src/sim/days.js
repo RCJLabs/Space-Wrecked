@@ -187,12 +187,13 @@ function passPlanned(campaign, rules, plan) {
     hungerHurt: hurt,
   });
   // The citizens (M38f): one more or one fewer, and while the ship isn't
-  // there, the news says so.
+  // there, the news says so; with the ship there, a day passed lets the
+  // news of its time away go, read.
   const { citizens } = plan;
   const grown = { ...campaign.colony, day: plan.day + 1, materials: plan.materials[1], citizens: citizens.after, growth: citizens.growth[1] };
   const kind = citizens.after > citizens.now ? 'grew' : citizens.after < citizens.now ? 'left' : null;
   const away = Boolean(campaign.colony.voyage || campaign.colony.trip);
-  const colony = kind && away ? withNews(grown, { day: plan.day, kind, citizens: citizens.after }) : grown;
+  const colony = !away ? { ...grown, news: [] } : kind ? withNews(grown, { day: plan.day, kind, citizens: citizens.after }) : grown;
   const counted = kind ? tally(flags, { [kind === 'grew' ? 'citizensGrown' : 'citizensLeft']: 1 }) : flags;
   const changed = hurt || healed ? crew : campaign.crew;
   const ended = raidDayEnd(campaign, { ...campaign, supplies: plan.food[1], crew: changed, colony, flags: counted }, rules);

@@ -20,10 +20,12 @@
 //   growth    the days it has been fit to grow since the last one came
 //   news      what happened there while the ship was away, oldest first:
 //             { day, kind: 'raid', won, landed (raiders), fell (citizens),
-//             food, materials (what it lost) }, or { day, kind: 'grew' |
+//             food, materials, part (what it lost: a part from the hold, a
+//             type or null) }, or { day, kind: 'grew' |
 //             'left' | 'settled', citizens (now) }; at most MAX_NEWS, kept
-//             while the ship is landed there to be read, and let go as it
-//             leaves again (voyage.js, expeditions.js)
+//             once the ship has landed there to be read, and let go as the
+//             first day passes there (days.js) or it leaves again
+//             (voyage.js, expeditions.js)
 // Plain data; imports nothing, so every part of the sim can ask.
 
 // More colonies than a run settles, and a place along the line farther than

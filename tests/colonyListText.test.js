@@ -95,21 +95,26 @@ test('a lander down at another colony: the hint and Defend name it, and the repo
   assert.match(defend.ask, new RegExp(`^Nothing at ${where} fires at the lander\\. 1 at ${where} fight whoever lands of 4`));
   const faced = faceRaid(down, rules);
   assert.equal(landingReport(faced, down, rules).text, `Nothing fired at the lander. 4 raiders land at ${where}: hold them off.`);
-  // Coming, from a voyage: whether flying there now meets it.
+  // Coming, from a voyage: whether flying there now meets it, landing the
+  // day before it comes down (M38f).
   const out = voyageOut(two, rules, ids.slice(0, 2)).campaign;
-  const coming = landerComing(raidAtFirst(out, out.colonies[0].day + 2), rules);
-  assert.equal(coming.text, `Con-Reg Recovery found ${where}: their lander comes down in 2 days. Fly to ${where} now (2 days) to meet it, or those there fight it.`);
-  const late = landerComing(raidAtFirst(out, out.colonies[0].day + 1), rules);
-  assert.match(late.text, /Flying there takes 2 days, too long to meet it: those there fight it\.$/);
+  const coming = landerComing(raidAtFirst(out, out.colonies[0].day + 3), rules);
+  assert.equal(coming.text, `Con-Reg Recovery found ${where}: their lander comes down in 3 days. Fly to ${where} now (2 days) to meet it, or those there fight it without the ship.`);
+  const late = landerComing(raidAtFirst(out, out.colonies[0].day + 2), rules);
+  assert.match(late.text, /Flying there takes 2 days, too long to meet it: those there fight it without the ship\.$/);
 });
 
-test('a flight from the colony screen a lander stopped: where the ship waits, Continue, Fly on and the hint', () => {
+test('a flight from the colony screen with a lander coming down on the way: fought out there, and the landing tells it (M38f); one stopped in a save from before: Continue, Fly on and the hint', () => {
   const far = raidAtFirst({ ...two, colony: { ...two.colony, at: 5 } }, two.colonies[0].day + 2);
-  const stopped = flyFrom(far, rules, 1, ids.slice(0, 2));
-  assert.equal(stopped.stopped, true);
+  const flown = flyFrom(far, rules, 1, ids.slice(0, 2));
+  assert.equal(flown.landed, true);
   const where = home.colony.world.name;
+  assert.match(flightReport(flown, far, rules).text, new RegExp(`^Landed at ${where} after 5 days: .* While the ship was away, Con-Reg Recovery's raiders (were fought off|won) on day \\d+`));
+  // Stopped two days out from the first colony, its lander down, as a save
+  // from before M38f has it.
+  const out = voyageOut(two, rules, ids.slice(0, 2)).campaign;
+  const stopped = { campaign: raidAtFirst({ ...out, colony: { ...out.colony, voyage: { ...out.colony.voyage, homing: 3, to: 1, at: 3 } } }) };
   const system = stopped.campaign.run.sector.name;
-  assert.equal(flightReport(stopped, far, rules).text, `Con-Reg Recovery's lander is down at ${where}: the ship waits in ${system}, 3 days still to fly to ${where}, until the raid is faced.`);
   assert.equal(continueText(stopped.campaign, rules), `Act 3 · ${system}, on the way to ${where}`);
   assert.deepEqual([homeText(stopped.campaign, rules).ok, homeText(stopped.campaign, rules).label], [false, 'Fly on']);
   assert.match(sectorText(stopped.campaign, rules).hint.text, new RegExp(`lander is down at ${where}`));

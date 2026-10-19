@@ -3,15 +3,19 @@
 // jump into the next system; the colony's panel on the chart while the
 // ship is away, its day, food and the raid coming; Fly home's plan; and
 // what flying out and home came to. From M38e a stopped flight can be for
-// another colony, and a lander can come at any. rules are the content
-// tables (src/sim/defs.js).
+// another colony, and a lander can come at any. From M38f the colony's
+// panel counts its citizens and gives its last news, a landing says what
+// happened there while the ship was away, and no lander stops a flight:
+// one is fought out where the ship isn't. rules are the content tables
+// (src/sim/defs.js).
 import { maxHp } from '../../sim/campaign.js';
 import { allColonies, colonyById, reachOf, thereAt } from '../../sim/colonies.js';
 import { storesOf } from '../../sim/colony.js';
 import { crewRoom } from '../../sim/crew.js';
 import { pursuerOf } from '../../sim/heat.js';
-import { colonistsOf, downAt } from '../../sim/raids.js';
+import { colonistsOf } from '../../sim/raids.js';
 import { voyageHomePlan } from '../../sim/voyage.js';
+import { newsLine, newsText } from './newsText.js';
 import { raidStatus } from './raidText.js';
 
 // Who Fly out picks first (crew ids, in the crew's order): the healthiest,
@@ -78,18 +82,27 @@ export function colonyPanelText(campaign, rules) {
   const food = voyage.home?.food ?? campaign.supplies;
   const room = storesOf(campaign, rules).colony;
   const raid = raidStatus(campaign, rules);
+  const news = newsLine(campaign.colony);
   return {
     title: `Colony · ${campaign.colony.world.name}`,
     rows: [
       ['Day', String(campaign.colony.day)],
       ['Food', `${food} of ${room}`],
-      ['Home', home.length ? listed(home.map((member) => member.name.split(' ')[0])) : 'Nobody'],
+      ['Home', whoThere(home, campaign.colony.citizens ?? 0)],
       [raid.label, raid.value],
       ['Flight', dayCount(reachOf(campaign, campaign.colony))],
+      ...(news ? [['News', news]] : []),
     ],
     tone: raid.ok ? 'info' : 'bad',
     line: raid.line,
   };
+}
+
+// Who is at a colony, for its panel (M38f): the crew there by first name
+// and its citizens, "Lark and 3 citizens", or "Nobody".
+export function whoThere(crew, citizens) {
+  const said = [...crew.map((member) => member.name.split(' ')[0]), ...(citizens ? [`${citizens} citizen${citizens === 1 ? '' : 's'}`] : [])];
+  return said.length ? listed(said) : 'Nobody';
 }
 
 // Fly home, for its button: { ok, label ('Fly home', or 'Fly on' once a
@@ -152,22 +165,26 @@ function dayCount(n) {
 
 // What flying out or home came to (voyage.js voyageOut's or voyageHome's
 // result), for the hint: { text, tone }. before: the campaign as it began.
+// Landed, what happened there while the ship was away follows (M38f).
 export function voyageReport(result, before, rules) {
   const world = before.colony.world.name;
   if (result.plan.jump) {
     const spoiled = result.plan.food.spoils ? ` ${result.plan.food.spoils} food spoiled.` : '';
     return { text: `Into ${result.campaign.run.sector.name}, a system nobody has charted. A day passes at ${world} with each jump.${spoiled}`, tone: 'good' };
   }
-  if (result.stopped) {
-    const left = result.campaign.colony.voyage.homing;
-    const at = downAt(result.campaign);
-    const home = !at || at === result.campaign.colony;
-    return { text: `${pursuerOf(before, rules)?.name ?? 'The pursuer'}'s lander is down at ${at?.world.name ?? world}: the ship waits, ${left} day${left === 1 ? '' : 's'} still to fly, while those ${home ? 'at home' : 'there'} face it.`, tone: 'bad' };
-  }
   const n = result.days.length;
   // Landed at another colony (M38e): a stopped flight flown on there.
-  if (result.campaign.colony.id !== before.colony.id) return { text: `Landed at ${result.campaign.colony.world.name} after ${n} day${n === 1 ? '' : 's'}: the ship's crew and stores join those there, ${result.campaign.supplies} food. ${world} keeps its own.`, tone: 'good' };
-  return { text: `Home at ${world} after ${n} day${n === 1 ? '' : 's'}: the crew and the stores are one again, ${result.campaign.supplies} food.`, tone: 'good' };
+  const landed = result.campaign.colony.id !== before.colony.id
+    ? `Landed at ${result.campaign.colony.world.name} after ${n} day${n === 1 ? '' : 's'}: the ship's crew and stores join those there, ${result.campaign.supplies} food. ${world} keeps its own.`
+    : `Home at ${world} after ${n} day${n === 1 ? '' : 's'}: the crew and the stores are one again, ${result.campaign.supplies} food.`;
+  return withNews(landed, result.campaign, rules);
+}
+
+// A landing's words with the news of the colony landed at after them
+// (M38f, newsText.js): { text, tone }, the news's tone if it has any.
+export function withNews(text, campaign, rules) {
+  const news = newsText(campaign.colony, campaign, rules);
+  return news ? { text: `${text} ${news.text}`, tone: news.tone } : { text, tone: 'good' };
 }
 
 // "a, b and c".

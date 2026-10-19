@@ -29,9 +29,11 @@
 // what they bring, a companion's past and loyalty, and from M37 what they
 // carry, a spare weapon swapped in two taps. From M38d Voyage heads the
 // right-hand panel: a voyage is planned and flown from there
-// (colonyVoyage.js), and the chart takes over while the ship is away. The
-// campaign is saved after every change, so Continue on the title comes back
-// here.
+// (colonyVoyage.js), and the chart takes over while the ship is away. From
+// M38f its citizens are a line of the needs, and landed again, the hint
+// tells what happened while the ship was away (newsText.js), till the
+// first day passes. The campaign is saved after every change, so Continue
+// on the title comes back here.
 import { loadContent } from '../../platform/content.js';
 import { buildPlan, build, movePlan, takeDown, takeDownPlan, turnedSpot } from '../../sim/colonyBuild.js';
 import { buildingName, siteDef } from '../../sim/colony.js';
@@ -45,6 +47,7 @@ import { icons } from '../icons.js';
 import { buildingInfo, builtText, colonyText, dayReport, dayText, givenText, placeText, takeDownText, takenText, whyNotText } from './colonyText.js';
 import { createStand } from './colonyStand.js';
 import { createTrips } from './colonyTrip.js';
+import { takeCarried } from './carried.js';
 import { createVoyages } from './colonyVoyage.js';
 import { createCrewCard } from './crewCard.js';
 import { crewCardText, crewSaid } from './crewText.js';
@@ -110,7 +113,9 @@ export const colonyScreen = {
     // or { kind: 'look', uid }.
     let mode = { kind: 'browse' };
     let armed = null; // 'day', 'defend' or 'down', a trip's, 'voyage' (M38d), or a crew card swap's ('arm:<id>:<weapon>', M37): a first tap waiting for its second
-    let said = null; // { text, tone }: what the last tap came to, until the next
+    // { text, tone }: what the last tap came to, until the next; first what a
+    // flight that landed here from the chart came to (M38f, carried.js).
+    let said = takeCarried();
     let marked = null; // the ship's parts a refusal is about
     let armTimer = 0;
     let rowButtons = [];
@@ -253,7 +258,7 @@ export const colonyScreen = {
         : (tripArmed ? trips.hint(campaign) : null) ?? said ?? (down ? raidHint(campaign, defs) : null) ?? voyages.hint(campaign) ?? trips.hint(campaign) ?? (plan?.same ? { text: `Tap the grid where the ${lowerFirst(buildingName(mode.type, defs))} should go, or turn it.`, tone: 'info' }
           : plan ? placeText(plan, { moving: mode.uid !== null })
           : mode.kind === 'look' ? buildingInfo(text.buildings.find((b) => b.uid === mode.uid))
-          : raidHint(campaign, defs) ?? { text: text.ahead, tone: 'info' });
+          : raidHint(campaign, defs) ?? text.news ?? { text: text.ahead, tone: 'info' });
       setText(hint, words.text);
       hint.dataset.tone = words.tone;
 

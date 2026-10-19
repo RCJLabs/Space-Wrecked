@@ -299,10 +299,17 @@ export function endJob(campaign, rules) {
 // from: a citizen more, if it has a bed and air free for one, and its news
 // says so; otherwise they go their way, as before.
 function settleRescued(campaign, rules, battle, won) {
+  if (!rescuedSettle(campaign, rules, battle, won)) return campaign;
   const { colony } = campaign;
-  if (!won || battle.objective?.type !== 'rescue' || !colony?.voyage?.home) return campaign;
-  if (colonyStats(campaign, rules).citizens.free <= 0) return campaign;
   const citizens = (colony.citizens ?? 0) + 1;
   const settled = withNews({ ...colony, citizens }, { day: colony.day, kind: 'settled', citizens });
   return { ...campaign, colony: settled, flags: tally(campaign.flags, { rescuedSettled: 1 }) };
+}
+
+// Whether the captive a job's battle freed settles at the colony the ship
+// flew from, once the fight ends (M38f, settleRescued): won, a rescue, on a
+// voyage, with a bed and air free there for one more.
+export function rescuedSettle(campaign, rules, battle, won) {
+  if (!won || battle.objective?.type !== 'rescue' || !campaign.colony?.voyage?.home) return false;
+  return colonyStats(campaign, rules).citizens.free > 0;
 }

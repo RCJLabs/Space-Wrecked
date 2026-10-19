@@ -655,11 +655,12 @@ function othersProblem(value) {
 }
 
 // An entry in a colony's news (M38f, colonies.js): a raid fought out there,
-// or its citizens grown, gone or settled.
+// with the part it took or null, or its citizens grown, gone or settled.
 function isNews(entry) {
   if (!isRecord(entry) || !isInt(entry.day, 1, MAX_DAYS)) return false;
   if (entry.kind === 'raid') {
-    return typeof entry.won === 'boolean' && [entry.landed, entry.fell, entry.food, entry.materials].every((n) => isInt(n, 0, MAX_SUPPLIES + MAX_CITIZENS));
+    if (typeof entry.won !== 'boolean' || (entry.part !== null && (typeof entry.part !== 'string' || entry.part.length > MAX_NAME))) return false;
+    return [entry.landed, entry.fell, entry.food, entry.materials].every((n) => isInt(n, 0, MAX_SUPPLIES + MAX_CITIZENS));
   }
   return ['grew', 'left', 'settled'].includes(entry.kind) && isInt(entry.citizens, 0, MAX_CITIZENS);
 }
