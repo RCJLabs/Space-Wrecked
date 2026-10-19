@@ -5,7 +5,9 @@
 // M23e's: a gun's damage and a shield's strength are its part's, point
 // defense cuts the other ship's odds, and each of the new parts that fights
 // changes how an approach goes. And M31's: each maker's parts change it,
-// Kestrel's as a trade on a shielded ship.
+// Kestrel's as a trade on a shielded ship. And M39's: the new parts that
+// fight in an approach, the cockpit, the courier's and the gunship's hulls,
+// and the grapple, with a player who closes to board.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { seedFrom } from '../src/core/rng.js';
@@ -14,7 +16,8 @@ import { shipStats } from '../src/sim/constraints.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { cellAt } from '../src/sim/grid.js';
 import { mapFromShip, WRECKS } from '../src/sim/mapFromShip.js';
-import { ADDED, hostilePresets, launchedShip, runApproaches, withPart } from '../tools/approach.js';
+import { ADDED, FRAMES, hostilePresets, launchedShip, playApproach, runApproaches, withPart } from '../tools/approach.js';
+import { boarderOrder } from '../tools/approachPlan.js';
 import { rules } from './battleKit.js';
 
 const { balance } = rules;
@@ -305,14 +308,16 @@ test("point defense takes its intercept off the other ship's hit chance, up to i
 // against a ship that fires at reactors, and its mass costs a little against
 // one that doesn't. M39's cockpit is a lighter bridge, so it goes in the
 // bridge's place: 2 mass less, and the ship is boarded less often against
-// every preset.
+// every preset. And M39's courier and gunship hulls, the start ship moved
+// onto each: their evasion and gunnery do better against some preset and
+// worse against none.
 const FIGHTING = ['weapons', 'defense', 'engines'];
 const TRADES = [
   { part: 'shieldarray', preset: 'runner', score: -5 },
   { part: 'railgun', preset: 'repogunship', score: -4 },
   { part: 'railgun', preset: 'frigate', score: -5 },
 ];
-test("Law 1: each part an approach plays with, added to the launched start ship, changes how it goes; the guns, shields and engines do worse against no preset; a cockpit for the bridge and each maker's versions change it too", () => {
+test("Law 1: each part an approach plays with, added to the launched start ship, changes how it goes; the guns, shields and engines do worse against no preset; a cockpit for the bridge, the courier's and the gunship's hulls and each maker's versions change it too", () => {
   const rows = runApproaches(rules, { runs: 120 });
   const row = (ship, preset) => rows.find((r) => r.ship === ship && r.preset === preset);
   const deltasOf = (ship) =>
@@ -329,6 +334,10 @@ test("Law 1: each part an approach plays with, added to the launched start ship,
   }
   const cockpit = deltasOf('cockpit for bridge');
   assert.ok(cockpit.some((d) => d.fewer >= 5) && cockpit.every((d) => d.score >= 0), `the cockpit for the bridge: ${JSON.stringify(cockpit)}`);
+  for (const frame of FRAMES) {
+    const deltas = deltasOf(`on ${frame}`);
+    assert.ok(deltas.some((d) => d.score >= 10 || d.fewer >= 5) && deltas.every((d) => d.score >= 0), `on the ${frame}: ${JSON.stringify(deltas)}`);
+  }
   assert.equal(rules.modules.get('smallreactor').category, 'power');
   assert.ok(rules.ships.get('corvette').tactics.aim.includes('reactor'), 'the corvette fires at reactors');
   // v0.1's gun, shield and engine each win more against some preset, as in M21.
@@ -373,4 +382,28 @@ test("Law 1: each part an approach plays with, added to the launched start ship,
   assert.ok(hostilePresets(rules).some((preset) => fares(scrapline, yard, preset)), 'Scrapline fares differently');
   // The same seeds always play out the same.
   assert.deepEqual(runApproaches(rules, { runs: 5 }), runApproaches(rules, { runs: 5 }));
+});
+
+// Law 1 for M39's grapple, whose pull plays only when the ship closes to
+// board, as the test player never does: with a player who closes whenever
+// it can (approachPlan.js boarderOrder), the grapple boards the other ship
+// more often against every preset, by 10 in every 100 or more against some;
+// and by its pull, since the same ship with its pull taken off boards her
+// less often than with it.
+test('Law 1 for the grapple: a player who closes to board boards more often with it, against every preset, by its pull', () => {
+  const runs = 120;
+  const grappled = withPart(you, rules, 'grapple');
+  const noPull = { ...rules, modules: new Map([...rules.modules].map(([id, def]) => [id, def.grapple ? { ...def, grapple: 0 } : def])) };
+  const gains = [];
+  for (const preset of hostilePresets(rules)) {
+    const boarded = (ship, at) => {
+      let n = 0;
+      for (let seed = 1; seed <= runs; seed++) if (playApproach(at, ship, preset, seed, { order: boarderOrder, made: generateShip(rules, preset, seed) }).outcome.kind === 'boarded') n += 1;
+      return n;
+    };
+    const [plain, pulled, unpulled] = [boarded(you, rules), boarded(grappled, rules), boarded(grappled, noPull)];
+    assert.ok(pulled > plain && pulled > unpulled, `${preset}: boarded ${plain} times without a grapple, ${pulled} with it, ${unpulled} with its pull off`);
+    gains.push(pulled - plain);
+  }
+  assert.ok(Math.max(...gains) >= runs / 10, `the most more boardings: ${Math.max(...gains)} of ${runs}`);
 });

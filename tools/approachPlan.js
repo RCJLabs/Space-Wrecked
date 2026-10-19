@@ -28,6 +28,14 @@ export function captainOrder(state, rules) {
   return best.order;
 }
 
+// A player who closes to board whenever closing is on, and otherwise gives
+// captainOrder's order (M39): the test player never closes, so a grapple's
+// pull shows only with this one (tests/approach.test.js).
+export function boarderOrder(state, rules) {
+  const close = choicesFor(state, enemyOrder(state, rules), rules).find((choice) => choice.ok && choice.order.kind === 'close');
+  return close ? close.order : captainOrder(state, rules);
+}
+
 // How an approach comes out, as a score, from `order` this round and
 // quickOrder's after, on the dice from rng.
 function imagine(state, order, rng, rules) {

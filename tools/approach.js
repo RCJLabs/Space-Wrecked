@@ -23,6 +23,7 @@ import { applyCommand } from '../src/sim/builder.js';
 import { shipStats } from '../src/sim/constraints.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { versionBy } from '../src/sim/makers.js';
+import { onFrame } from '../src/sim/reframe.js';
 import { captainOrder } from './approachPlan.js';
 import { readData } from './data.js';
 import { rulesWith, setting } from './sim.js';
@@ -35,19 +36,24 @@ export { launchedShip, withPart } from './startShip.js';
 // small reactor (a spare); and M39's that play in an approach: the railgun,
 // the flak battery, the shield emitter, the thruster, fire control, the ECM
 // suite and the torpedo bay. Not the grapple: the test player never closes
-// to board (approachPlan.js) and no preset flees, so its pull shows in the
-// voyage's boardings instead (tools/voyage.js --fit grapple).
+// to board (approachPlan.js) and no preset flees, so its pull shows only
+// with a player who closes whenever it can (approachPlan.js boarderOrder).
 export const ADDED = ['weapon', 'shield', 'engine', 'cannon', 'pointdefense', 'shieldarray', 'lightengine', 'heavyengine', 'smallreactor', 'railgun', 'flak', 'emitter', 'thruster', 'firecontrol', 'ecm', 'torpedobay'];
 // How an outcome counts for the player.
 const WINS = ['boarded', 'destroyed'];
 const LOSSES = ['boardedBy'];
 
+// The hull frames whose traits play in an approach (M39): the courier's
+// evasion and the gunship's gunnery. The freighter's lockers don't.
+export const FRAMES = ['courier', 'gunship'];
+
 // The ships the harness flies: the launched start ship, it with each of
 // ADDED, it with a cockpit in its bridge's place (M39, a lighter bridge:
-// 'cockpit for bridge'), and it with every part by each maker but the
-// first (M23g, named 'start <maker>', with the reactors it needs to fly:
-// madeToFly), and that again with the maker's shield (M31, 'start <maker>
-// +shield', beside the Yard's '+shield'): [{ name, ship }].
+// 'cockpit for bridge'), it moved onto each of FRAMES (M39, 'on <frame>'),
+// and it with every part by each maker but the first (M23g, named 'start
+// <maker>', with the reactors it needs to fly: madeToFly), and that again
+// with the maker's shield (M31, 'start <maker> +shield', beside the Yard's
+// '+shield'): [{ name, ship }].
 export function harnessShips(rules) {
   const base = launchedShip(rules);
   const makers = [...rules.manufacturers.keys()].slice(1);
@@ -55,6 +61,7 @@ export function harnessShips(rules) {
     { name: 'start', ship: base },
     ...ADDED.map((type) => ({ name: `+${type}`, ship: withPart(base, rules, type) })),
     { name: 'cockpit for bridge', ship: swapped(base, rules, 'bridge', 'cockpit') },
+    ...FRAMES.map((frame) => ({ name: `on ${frame}`, ship: onFrame(base, rules, frame).ship })),
     ...makers.flatMap((maker) => [
       { name: `start ${maker}`, ship: madeToFly(base, rules, maker) },
       { name: `start ${maker} +shield`, ship: madeToFly(base, rules, maker, ['shield']) },
@@ -159,7 +166,7 @@ export function approachText(rules, rows) {
   const head = `${'Ship'.padEnd(24)}${'Against'.padEnd(18)}${OUTCOMES.map((kind) => kind.padStart(10)).join('')}${'Score'.padStart(8)}${'Wrecked'.padStart(9)}${'Per hit'.padStart(9)}${'Hit'.padStart(6)}${'Evasion'.padStart(9)}`;
   const lines = rows.map((row) => `${row.ship.padEnd(24)}${rules.ships.get(row.preset).name.padEnd(18)}${OUTCOMES.map((kind) => pct(row.outcomes[kind], row.runs).padStart(10)).join('')}${String(row.score).padStart(8)}${(row.wrecked / row.runs).toFixed(2).padStart(9)}${(row.hits ? row.wrecked / row.hits : 0).toFixed(2).padStart(9)}${pct(row.hits, row.shots || 1).padStart(6)}${String(row.evasion).padStart(9)}`);
   return [
-    `${rows[0]?.runs ?? 0} approaches a preset for each ship: the launched start ship, it with one part more, it with a cockpit for its bridge, and it with every part by another maker (and that maker's reactor, if it needs one to fly), without a shield and with that maker's. The test player against each preset's tactics.`,
+    `${rows[0]?.runs ?? 0} approaches a preset for each ship: the launched start ship, it with one part more, it with a cockpit for its bridge, it on the courier's and the gunship's hulls, and it with every part by another maker (and that maker's reactor, if it needs one to fly), without a shield and with that maker's. The test player against each preset's tactics.`,
     head,
     ...lines,
     "Score: wins (boarded, destroyed) less losses (boardedBy), in every 100. Wrecked: the player's parts wrecked in an approach, on average. Per hit: parts wrecked for each hit the ship takes. Hit: the share of the other's shots that hit it. Evasion: the ship's.",
