@@ -101,7 +101,7 @@ test('a nose caps each run of cells on the front column, longer for longer runs'
 test('engines get nozzles and guns get barrels only where the way out faces space', () => {
   const hull = traceHull(ship(MOCKUP), defs);
   assert.deepEqual(hull.nozzles, [7, 7, 7, 7].map((x, i) => ({ x, y: 6 + i, side: 'w' })), 'two per engine, one per cell of its exhaust');
-  assert.deepEqual(hull.barrels.map(({ uid, ...barrel }) => barrel), [{ x: 13, y: 8, side: 's' }], 'turned twice, the gun points south');
+  assert.deepEqual(hull.barrels.map(({ uid, ...barrel }) => barrel), [{ x: 13, y: 8, side: 's', what: 'barrel' }], 'turned twice, the gun points south');
   assert.deepEqual(hull.barrels.map((barrel) => barrel.uid), ship(MOCKUP).modules.filter((module) => module.type === 'weapon').map((module) => module.uid), "each the gun's own (M38b)");
   const half = traceHull(ship([at('corridor', 0, 1), at('engine', 1, 1), at('corridor', 4, 0), at('weapon', 4, 1)]), defs);
   assert.deepEqual(half.nozzles, [{ x: 1, y: 2, side: 'w' }], 'a part behind half the exhaust');
@@ -109,9 +109,9 @@ test('engines get nozzles and guns get barrels only where the way out faces spac
   // A gun two cells across (M23e's cannon) has one heavy barrel, at the
   // middle of its muzzle side; turned, it points the way it faces.
   const cannon = traceHull(ship([at('cannon', 2, 1)]), defs);
-  assert.deepEqual(cannon.barrels, [{ x: 2.5, y: 1, side: 'n', heavy: true, uid: 1 }]);
+  assert.deepEqual(cannon.barrels, [{ x: 2.5, y: 1, side: 'n', heavy: true, uid: 1, what: 'barrel' }]);
   const east = traceHull(ship([at('cannon', 2, 1, 1)]), defs);
-  assert.deepEqual(east.barrels, [{ x: 2, y: 1.5, side: 'e', heavy: true, uid: 1 }]);
+  assert.deepEqual(east.barrels, [{ x: 2, y: 1.5, side: 'e', heavy: true, uid: 1, what: 'barrel' }]);
 });
 
 test('airlocks get a docking collar at the hatch on each side open to space', () => {

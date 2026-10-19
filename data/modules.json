@@ -316,7 +316,7 @@
       "stats": { "power": -1, "mass": 1, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 8 },
       "tags": ["scanner"],
       "station": { "scan": 1 },
-      "interior": ["c."],
+      "interior": [".."],
       "cost": 150
     },
     {
@@ -330,7 +330,7 @@
       "stats": { "power": -1, "mass": 1, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 10 },
       "tags": ["firecontrol"],
       "station": { "gunnery": 10 },
-      "interior": ["c."],
+      "interior": [".c"],
       "cost": 180
     },
     {
@@ -344,7 +344,7 @@
       "stats": { "power": -2, "mass": 1, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 8 },
       "tags": ["ecm"],
       "station": { "evasion": 10 },
-      "interior": ["#."],
+      "interior": [".h"],
       "cost": 190
     },
     {
@@ -411,12 +411,12 @@
       "glyph": "H",
       "category": "defense",
       "manufacturer": "yard",
-      "size": [2, 1],
+      "size": [3, 1],
       "rotates": true,
       "stats": { "power": -1, "mass": 1, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 8 },
       "tags": ["baffles"],
       "station": { "quiet": 1 },
-      "interior": ["h."],
+      "interior": ["h.h"],
       "cost": 220
     },
     {
@@ -564,10 +564,11 @@
       "manufacturer": "yard",
       "size": [1, 1],
       "rotates": true,
+      "facesSpace": { "side": "n", "what": "emitter" },
       "stats": { "power": -1, "mass": 1, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 8 },
       "tags": ["shield"],
       "shield": 5,
-      "interior": ["."],
+      "interior": ["h"],
       "cost": 80
     },
     {

@@ -101,9 +101,14 @@ export function exteriorScene({ ship, defs, hull, skin: base }) {
     glows.push({ at: [start[0] + dx * 0.78, start[1] + dy * 0.78, NOZZLE_Z], r: 0.6, color: skin.flame });
     exhausts.push({ at: [start[0] + dx * 0.42, start[1] + dy * 0.42, NOZZLE_Z], dir: [dx, dy], flame: skin.flame });
   }
-  for (const { x, y, side, heavy } of hull.barrels) {
+  for (const { x, y, side, heavy, what } of hull.barrels) {
     const skin = kitAt(x, y);
     const [dx, dy] = STEP[side];
+    // A torpedo bay's tube (M39): a short wide mouth, dark inside.
+    if (what === 'tube') {
+      solidTube(faces, [x + 0.5 + dx * 0.3, y + 0.5 + dy * 0.3, HULL + 0.16], [dx, dy], 0.36, 0.2, 0.2, skin.dark, { endColor: skin.darker, segments: sides });
+      continue;
+    }
     if (heavy) {
       solidTube(faces, [x + 0.5 + dx * 0.36, y + 0.5 + dy * 0.36, HULL + 0.18], [dx, dy], 1, 0.09, 0.08, skin.metalHi, { segments: sides });
       continue;
@@ -329,6 +334,144 @@ const ROOFS = {
     }
     solidBox(f, [0.48, 0.16, Z], [3.52, 0.32, Z + 0.03], k.hazard);
     solidBox(f, [0.48, 2.68, Z], [3.52, 2.84, Z + 0.03], k.hazard);
+  },
+  // M39's, each told apart from the rest.
+  // A radome on a short mast, its dish on top.
+  scanner(f, k, glows) {
+    solidCylinder(f, [1, 0.5, Z], 0.24, 0.06, k.dark, { edge: k.edge });
+    solidCylinder(f, [1, 0.5, Z + 0.06], 0.06, 0.18, k.metal, { edge: k.edge, segments: 6 });
+    solidCylinder(f, [1, 0.5, Z + 0.24], 0.32, 0.03, k.metalHi, { top: k.domeHi, edge: k.edge });
+    solidCylinder(f, [1, 0.5, Z + 0.27], 0.06, 0.03, k.livery, { emissive: true, segments: 6 });
+    glows.push({ at: [1, 0.5, Z + 0.32], r: 0.3, color: k.livery });
+  },
+  // A rangefinder: a long housing with its two lenses to the front.
+  firecontrol(f, k) {
+    solidBox(f, [1.14, 0.36, Z], [1.86, 0.74, Z + 0.14], k.metal, { edge: k.edge });
+    for (const x of [1.28, 1.72]) solidTube(f, [x, 0.36, Z + 0.08], [0, -1], 0.2, 0.06, 0.06, k.metalHi, { endColor: k.glassHi, segments: 8 });
+    solidBox(f, [0.2, 0.3, Z], [0.8, 0.7, Z + 0.04], k.dark, { edge: k.edge });
+  },
+  // A jammer's thicket of aerials, lit at the tips.
+  ecm(f, k, glows) {
+    solidBox(f, [1.12, 0.18, Z], [1.88, 0.82, Z + 0.06], k.dark, { edge: k.edge });
+    for (const [x, y, h] of [[1.3, 0.34, 0.3], [1.5, 0.5, 0.42], [1.7, 0.34, 0.26], [1.36, 0.68, 0.22], [1.66, 0.68, 0.34]]) {
+      solidBox(f, [x - 0.025, y - 0.025, Z + 0.06], [x + 0.025, y + 0.025, Z + 0.06 + h], k.metalHi);
+      solidBox(f, [x - 0.04, y - 0.04, Z + 0.06 + h], [x + 0.04, y + 0.04, Z + 0.09 + h], k.livery, { emissive: true });
+    }
+    glows.push({ at: [1.5, 0.5, Z + 0.52], r: 0.5, color: k.livery });
+  },
+  // A gantry crane's rails over a loading hatch.
+  workshop(f, k) {
+    for (const y of [0.18, 1.82]) solidBox(f, [0.16, y - 0.05, Z], [2.84, y + 0.05, Z + 0.12], k.metal, { edge: k.edge });
+    solidBox(f, [1.1, 0.12, Z + 0.12], [1.3, 1.88, Z + 0.18], k.metalHi, { edge: k.edge }); // the crane's bridge
+    solidBox(f, [0.5, 0.5, Z], [1.0, 1.5, Z + 0.04], k.dark, { edge: k.edge });
+    solidBox(f, [1.6, 0.6, Z], [2.6, 1.4, Z + 0.03], k.hazard);
+  },
+  // A sampling dome with its probe.
+  surveylab(f, k) {
+    solidCylinder(f, [1, 1, Z], 0.5, 0.05, k.dark, { edge: k.edge });
+    solidCylinder(f, [1, 1, Z + 0.05], 0.34, 0.18, k.glassLo, { top: k.glassHi, edge: k.edge });
+    solidTube(f, [1.38, 0.62, Z + 0.06], [1, 0], 0.4, 0.04, 0.03, k.metalHi, { segments: 6 });
+    solidBox(f, [0.18, 1.62, Z], [0.62, 1.86, Z + 0.06], k.metal, { edge: k.edge });
+  },
+  // Two long launch hatches and the tube's breech at the front.
+  torpedobay(f, k) {
+    for (const x of [0.32, 0.68]) solidBox(f, [x - 0.14, 0.4, Z], [x + 0.14, 1.84, Z + 0.06], k.metal, { edge: k.edge });
+    solidBox(f, [0.16, 0.12, Z], [1.84, 0.34, Z + 0.1], k.dark, { edge: k.edge });
+    solidBox(f, [1.2, 1.2, Z], [1.84, 1.84, Z + 0.03], k.hazard);
+  },
+  // The grapple: a boom out to the front, a claw at its end.
+  grapple(f, k) {
+    solidCylinder(f, [0.5, 0.62, Z], 0.26, 0.08, k.metal, { edge: k.edge });
+    solidBox(f, [0.42, 0.06, Z + 0.08], [0.58, 0.62, Z + 0.18], k.metalHi, { edge: k.edge });
+    for (const x of [0.36, 0.64]) solidBox(f, [x - 0.04, 0.02, Z + 0.06], [x + 0.04, 0.14, Z + 0.2], k.dark, { edge: k.edge });
+    solidBox(f, [1.14, 0.2, Z], [1.86, 0.8, Z + 0.12], k.dark, { edge: k.edge });
+  },
+  // Dark damping louvers the length of the part.
+  baffles(f, k) {
+    for (const x0 of [0.14, 1.14, 2.14]) {
+      solidBox(f, [x0, 0.16, Z], [x0 + 0.72, 0.84, Z + 0.05], k.dark, { edge: k.edge });
+      for (const y of [0.3, 0.5, 0.7]) solidBox(f, [x0 + 0.06, y - 0.03, Z + 0.05], [x0 + 0.66, y + 0.03, Z + 0.08], k.darker);
+    }
+  },
+  // An armored hatch, its sensor eye lit.
+  turret(f, k, glows) {
+    solidBox(f, [1.12, 0.14, Z], [1.88, 0.86, Z + 0.12], k.metal, { edge: k.edge });
+    solidCylinder(f, [1.5, 0.5, Z + 0.12], 0.14, 0.06, k.dark, { edge: k.edge, segments: 8 });
+    solidCylinder(f, [1.5, 0.5, Z + 0.18], 0.06, 0.02, k.hazard, { emissive: true, segments: 6 });
+    glows.push({ at: [1.5, 0.5, Z + 0.22], r: 0.3, color: k.hazard });
+    solidBox(f, [0.24, 0.3, Z], [0.76, 0.7, Z + 0.03], k.dark, { edge: k.edge });
+  },
+  // Skylights over the grow beds.
+  hydroponics(f, k) {
+    for (const x0 of [0.12, 2.12]) {
+      for (const y0 of [0.12, 1.12]) solidBox(f, [x0, y0, Z], [x0 + 0.76, y0 + 0.76, Z + 0.06], k.glassLo, { top: k.glassHi, edge: k.edge });
+    }
+    solidBox(f, [1.24, 0.3, Z], [1.76, 1.7, Z + 0.04], k.dark, { edge: k.edge });
+  },
+  // The railgun's mount: a long cradle between two capacitor coils.
+  railgun(f, k, glows) {
+    solidBox(f, [0.3, 0.3, Z], [2.7, 0.7, Z + 0.1], k.dark, { edge: k.edge });
+    for (const x of [0.5, 2.5]) {
+      solidCylinder(f, [x, 0.5, Z + 0.1], 0.22, 0.14, k.domeLo, { top: k.domeHi, edge: k.edge, segments: 8 });
+      solidCylinder(f, [x, 0.5, Z + 0.24], 0.08, 0.02, k.glow, { emissive: true, segments: 6 });
+    }
+    solidBox(f, [1.2, 0.22, Z + 0.1], [1.8, 0.78, Z + 0.2], k.metal, { edge: k.edge });
+    glows.push({ at: [1.5, 0.5, Z + 0.3], r: 0.5, color: k.glow });
+  },
+  // Twin flak turrets, each with two short barrels.
+  flak(f, k, glows, def, round) {
+    for (const x of [0.5, 1.5]) {
+      solidCylinder(f, [x, 0.6, Z], 0.28, 0.06, k.metal, { edge: k.edge });
+      solidCylinder(f, [x, 0.6, Z + 0.06], 0.18, 0.12, k.domeLo, { top: k.domeHi, edge: k.edge, segments: round ? 12 : 8 });
+      for (const dx of [-0.07, 0.07]) solidTube(f, [x + dx, 0.44, Z + 0.12], [0, -1], 0.4, 0.04, 0.04, k.metalHi, { segments: 6 });
+    }
+  },
+  // A long dome over twin cores.
+  largereactor(f, k, glows) {
+    for (const [x, y] of [[0.4, 0.4], [3.6, 0.4], [3.6, 2.6], [0.4, 2.6]]) solidBox(f, [x - 0.26, y - 0.26, Z], [x + 0.26, y + 0.26, Z + 0.08], k.dark, { edge: k.edge });
+    solidCylinder(f, [2, 1.5, Z], 1.2, 0.1, k.metal, { edge: k.edge, segments: 16 });
+    solidCylinder(f, [2, 1.5, Z + 0.1], 0.95, 0.2, k.domeHi, { top: k.domeLo, edge: k.edge, segments: 16 });
+    for (const x of [1.5, 2.5]) {
+      solidCylinder(f, [x, 1.5, Z + 0.3], 0.24, 0.03, k.glow, { top: k.glowCore, emissive: true });
+      glows.push({ at: [x, 1.5, Z + 0.36], r: 0.8, color: k.glow });
+    }
+  },
+  // A small thruster's housing, finned.
+  thruster(f, k) {
+    solidBox(f, [0.12, 0.2, Z], [0.84, 0.8, Z + 0.08], k.dark, { edge: k.edge });
+    for (const y of [0.34, 0.5, 0.66]) solidBox(f, [0.22, y - 0.03, Z + 0.08], [0.74, y + 0.03, Z + 0.12], k.metal);
+  },
+  // A small canopy over the pilot.
+  cockpit(f, k) {
+    solidBox(f, [0.16, 0.1, Z], [1.24, 0.8, Z + 0.05], k.dark, { edge: k.edge });
+    solidBox(f, [0.26, 0.16, Z + 0.05], [1.14, 0.6, Z + 0.2], k.glassLo, { top: k.glassHi, edge: k.edge });
+    solidBox(f, [1.5, 0.34, Z], [1.82, 0.66, Z + 0.04], k.metal, { edge: k.edge });
+  },
+  // A long row of lit windows, and the dormitory's hatch.
+  dormitory(f, k) {
+    for (let x = 0.3; x < 3.8; x += 0.36) solidBox(f, [x - 0.1, 0.12, Z], [x + 0.1, 0.28, Z + 0.025], k.livery, { emissive: true });
+    solidBox(f, [1.2, 0.9, Z], [2.8, 1.7, Z + 0.06], k.dark, { edge: k.edge });
+  },
+  // Two fan grilles over the scrubber towers.
+  airrecycler(f, k) {
+    for (const y of [0.5, 1.5]) {
+      solidCylinder(f, [0.5, y, Z], 0.36, 0.06, k.dark, { edge: k.edge });
+      solidCylinder(f, [0.5, y, Z + 0.06], 0.26, 0.05, k.domeLo, { top: k.domeHi, edge: k.edge });
+    }
+    solidBox(f, [1.2, 0.3, Z], [1.7, 1.7, Z + 0.08], k.metal, { edge: k.edge });
+  },
+  // A small cargo hatch between hazard stripes.
+  cargopod(f, k) {
+    solidBox(f, [0.16, 0.16, Z], [1.3, 0.84, Z + 0.07], k.metal, { edge: k.edge });
+    for (const x of [0.46, 0.73, 1.0]) solidBox(f, [x - 0.04, 0.22, Z + 0.07], [x + 0.04, 0.78, Z + 0.1], k.dark);
+    solidBox(f, [1.5, 0.16, Z], [1.64, 0.84, Z + 0.03], k.hazard);
+  },
+  // A small shield dome, its field lit.
+  emitter(f, k, glows) {
+    solidCylinder(f, [0.5, 0.55, Z], 0.3, 0.05, k.dark, { edge: k.edge });
+    solidCylinder(f, [0.5, 0.55, Z + 0.05], 0.2, 0.12, k.domeLo, { top: k.domeHi, edge: k.edge });
+    solidCylinder(f, [0.5, 0.55, Z + 0.17], 0.08, 0.02, k.shield, { emissive: true });
+    glows.push({ at: [0.5, 0.55, Z + 0.22], r: 0.45, color: k.shield });
   },
 };
 

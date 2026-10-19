@@ -191,6 +191,140 @@ const DRAWINGS = {
     for (const y of [1.62, 1.38]) polyline(m, 'floorMark', [[1.72, y + 0.14, 0.041], [2, y - 0.14, 0.041], [2.28, y + 0.14, 0.041]]);
     for (const y of [0.18, 2.82]) polyline(m, 'floorMark', [[1, y, 0.005], [3, y, 0.005]]); // the gantry's rails
   },
+  // M39's: five doing a crew job's ship effect, five with rules of their
+  // own, and nine versions of parts already there, each told apart.
+  scanner(m) {
+    box(m, [0.2, 0.12, 0], [1.8, 0.42, 0.3], PROP); // the sensor desk along the front
+    cylinder(m, [1, 0.27, 0.3], 0.13, 0.02, { fill: null, ends: 'glass', edge: 'propEdge' }); // its scope
+    circle(m, 'fieldRing', [1, 0.27, 0.33], 0.09);
+    for (const x of [0.5, 1.5]) rect(m, [x - 0.18, 0.18], [x + 0.18, 0.32], 0.301, { fill: 'glass' });
+    cylinder(m, [1, 0.72, 0], 0.13, 0.2, CAN); // the operator's seat
+  },
+  firecontrol(m) {
+    box(m, [1.16, 0.14, 0], [1.86, 0.86, 0.34], PROP); // the director's console
+    rect(m, [1.24, 0.24], [1.78, 0.5], 0.341, { fill: 'glass' });
+    polyline(m, 'propFine', [[1.51, 0.26, 0.345], [1.51, 0.48, 0.345]]); // the crosshairs on its screen
+    polyline(m, 'propFine', [[1.27, 0.37, 0.345], [1.75, 0.37, 0.345]]);
+    cylinder(m, [0.7, 0.5, 0], 0.15, 0.22, CAN); // the gunnery officer's seat
+  },
+  ecm(m) {
+    box(m, [1.16, 0.18, 0], [1.84, 0.82, 0.44], PROP); // the jammer's cabinet
+    for (const y of [0.32, 0.5, 0.68]) polyline(m, 'propFine', [[1.2, y, 0.3], [1.8, y, 0.3]]);
+    for (const x of [1.32, 1.5, 1.68]) polyline(m, 'propEdge', [[x, 0.5, 0.44], [x, 0.5, 0.66]]); // its aerial stubs
+    glow(m, [1.5, 0.5, 0.68], 0.22, palette.bpLine);
+    box(m, [0.2, 0.62, 0], [0.62, 0.86, 0.12], PROP); // a cable tray
+  },
+  workshop(m) {
+    box(m, [0.14, 0.14, 0], [0.86, 0.86, 0.4], PROP); // the lathe
+    cylinder(m, [0.5, 0.5, 0.4], 0.12, 0.2, { ...CAN, axis: 'x' });
+    box(m, [2.18, 0.2, 0], [2.82, 0.8, 0.26], PROP); // the workbench
+    for (const x of [2.34, 2.5, 2.66]) polyline(m, 'propFine', [[x, 0.3, 0.27], [x, 0.7, 0.27]]); // tools on it
+    box(m, [0.18, 1.18, 0], [0.82, 1.82, 0.3], PROP); // the parts register
+    rect(m, [0.26, 1.28], [0.74, 1.46], 0.301, { fill: 'glass' });
+    rect(m, [1.2, 1.2], [2.8, 1.8], 0.005, { edge: 'floorDash' }); // the welding bay
+  },
+  surveylab(m) {
+    box(m, [0.16, 0.16, 0], [0.84, 0.84, 0.32], PROP); // the analyser
+    rect(m, [0.24, 0.24], [0.76, 0.46], 0.321, { fill: 'glass' });
+    box(m, [0.2, 1.2, 0], [0.8, 1.8, 0.24], PROP); // the sample bench
+    for (const y of [1.35, 1.65]) cylinder(m, [0.5, y, 0.24], 0.09, 0.14, { fill: null, ends: 'glass', edge: 'propEdge' }); // specimen jars
+    cylinder(m, [1.4, 1, 0], 0.15, 0.22, CAN); // a stool
+  },
+  torpedobay(m) {
+    box(m, [0.12, 0.14, 0], [0.88, 1.86, 0.12], PROP); // the torpedo rack
+    for (const x of [0.32, 0.68]) cylinder(m, [x, 0.3, 0.26], 0.13, 1.4, { ...CAN, axis: 'y' }); // two torpedoes on it
+    box(m, [1.2, 0.16, 0], [1.84, 0.8, 0.34], PROP); // the launch console
+    rect(m, [1.28, 0.24], [1.76, 0.42], 0.341, { fill: 'glass' });
+    polyline(m, 'floorMark', [[1.5, 1.86, 0.005], [1.5, 1.12, 0.005]]); // the loading track
+  },
+  grapple(m) {
+    cylinder(m, [0.18, 0.5, 0.3], 0.26, 0.64, { ...CAN, axis: 'x', ribs: 8 }); // the cable drum
+    box(m, [1.14, 0.18, 0], [1.86, 0.82, 0.5], PROP); // the winch motor
+    polyline(m, 'propEdge', [[0.5, 0.24, 0.5], [0.5, 0.06, 0.6]]); // the cable out to the claw
+  },
+  baffles(m) {
+    for (const x0 of [0.12, 2.12]) {
+      box(m, [x0, 0.16, 0], [x0 + 0.76, 0.84, 0.3], PROP); // a damping panel
+      for (const x of [0.22, 0.4, 0.58]) polyline(m, 'propFine', [[x0 + x, 0.2, 0.31], [x0 + x, 0.8, 0.31]]); // its fins
+    }
+    rect(m, [1.12, 0.14], [1.88, 0.86], 0.005, { edge: 'floorDash' }); // the quiet deck
+  },
+  turret(m) {
+    box(m, [1.12, 0.12, 0], [1.88, 0.88, 0.62], PROP); // the armored mount
+    cylinder(m, [1.5, 0.5, 0.62], 0.22, 0.06, CAN); // its sensor eye
+    glow(m, [1.5, 0.5, 0.7], 0.2, palette.bpGlow);
+    rect(m, [0.14, 0.14], [0.86, 0.86], 0.005, { edge: 'floorDash' }); // where the gun stands
+  },
+  hydroponics(m) {
+    for (const x0 of [0.14, 2.14]) {
+      for (const y0 of [0.14, 1.14]) {
+        box(m, [x0, y0, 0], [x0 + 0.72, y0 + 0.72, 0.22], PROP); // a grow bed
+        for (const [dx, dy] of [[0.2, 0.2], [0.52, 0.2], [0.2, 0.52], [0.52, 0.52]]) cylinder(m, [x0 + dx, y0 + dy, 0.22], 0.08, 0.12, { fill: null, ends: 'glass', edge: 'propFine' }); // plants
+      }
+    }
+    for (const x of [0.5, 2.5]) glow(m, [x, 1, 0.6], 0.3, palette.bpGlow); // the grow lights
+    polyline(m, 'floorMark', [[1.5, 0.2, 0.005], [1.5, 1.8, 0.005]]);
+  },
+  railgun(m) {
+    for (const x0 of [0.12, 2.12]) box(m, [x0, 0.16, 0], [x0 + 0.76, 0.84, 0.46], PROP); // capacitor banks
+    for (const x of [0.3, 0.5, 0.7, 2.3, 2.5, 2.7]) polyline(m, 'propFine', [[x, 0.2, 0.47], [x, 0.8, 0.47]]);
+    box(m, [1.18, 0.4, 0], [1.82, 0.84, 0.3], PROP); // the gunner's console
+    rect(m, [1.26, 0.48], [1.74, 0.62], 0.301, { fill: 'glass' });
+    box(m, [0.9, 0.04, 0.34], [2.1, 0.2, 0.46], { fill: null, top: null, edge: 'propEdge' }); // the rails' breech
+  },
+  flak(m) {
+    for (const x of [0.5, 1.5]) {
+      cylinder(m, [x, 0.6, 0], 0.26, 0.2, CAN); // a turret ring
+      for (const dx of [-0.08, 0.08]) box(m, [x + dx - 0.025, 0.1, 0.24], [x + dx + 0.025, 0.42, 0.28], { fill: null, top: null, edge: 'propEdge' }); // its barrels
+    }
+    box(m, [0.84, 0.66, 0], [1.16, 0.9, 0.3], PROP); // the shared magazine
+  },
+  largereactor(m) {
+    cylinder(m, [2, 1.5, 0], 1.18, 0.62, { ...CAN, ribs: 10 }); // housing
+    for (const x of [1.5, 2.5]) {
+      cylinder(m, [x, 1.5, 0], 0.32, 1.2, CORE); // twin cores
+      glow(m, [x, 1.5, 1.24], 0.58, palette.bpGlow);
+    }
+    for (const [x, y] of [[0.3, 0.3], [3.7, 0.3], [3.7, 2.7], [0.3, 2.7]]) polyline(m, 'propEdge', [[x, y, 0], [2 + (x - 2) * 0.62, 1.5 + (y - 1.5) * 0.62, 0.54]]); // struts
+  },
+  thruster(m) {
+    cylinder(m, [0.12, 0.5, 0.3], 0.24, 0.56, { ...CAN, axis: 'x' }); // the nozzle housing
+    cylinder(m, [0.2, 0.5, 0.3], 0.1, 0.03, { axis: 'x', ends: 'coreFace', edge: 'coreEdge' });
+    box(m, [0.7, 0.32, 0], [0.88, 0.68, 0.28], PROP); // its valve
+  },
+  cockpit(m) {
+    box(m, [0.14, 0.12, 0], [1.2, 0.5, 0.3], PROP); // the flight console along the front
+    rect(m, [0.24, 0.2], [1.1, 0.36], 0.301, { fill: 'glass' });
+    cylinder(m, [0.68, 0.72, 0], 0.16, 0.24, CAN); // the pilot's seat
+    box(m, [1.5, 0.66, 0], [1.86, 0.88, 0.14], PROP); // a kit locker
+  },
+  dormitory(m) {
+    for (const x0 of [0.12, 1.12, 3.12]) {
+      box(m, [x0, 0.12, 0], [x0 + 0.76, 0.86, 0.17], PROP); // a bunk
+      box(m, [x0, 0.12, 0.4], [x0 + 0.76, 0.86, 0.46], PROP); // and the one above
+    }
+    box(m, [2.18, 0.14, 0], [2.82, 0.5, 0.62], PROP); // lockers
+    for (const x of [1.2, 2.8]) cylinder(m, [x, 1.5, 0], 0.24, 0.24, CAN); // tables
+  },
+  airrecycler(m) {
+    for (const y of [0.5, 1.5]) {
+      box(m, [0.12, y - 0.38, 0], [0.88, y + 0.38, 0.62], PROP); // a scrubber tower
+      circle(m, 'propFine', [0.5, y, 0.621], 0.26); // its fan
+    }
+    for (const y of [0.5, 1.5]) polyline(m, 'propFine', [[0.88, y, 0.3], [1.3, y, 0.3]]); // ducts
+    box(m, [1.3, 0.3, 0], [1.6, 1.7, 0.34], PROP); // the manifold
+  },
+  cargopod(m) {
+    box(m, [0.14, 0.14, 0], [0.86, 0.86, 0.42], PROP); // a crate
+    box(m, [0.24, 0.24, 0.42], [0.76, 0.76, 0.7], PROP); // another on it
+    rect(m, [1.14, 0.14], [1.86, 0.86], 0.005, { edge: 'floorDash' }); // the loading space
+  },
+  emitter(m) {
+    cylinder(m, [0.5, 0.56, 0], 0.26, 0.14, CAN); // the emitter's base
+    cylinder(m, [0.5, 0.56, 0.14], 0.06, 0.5, { fill: null, ends: 'glass', edge: 'propEdge', ribs: 3 });
+    circle(m, 'fieldRing', [0.5, 0.56, 0.6], 0.3);
+    glow(m, [0.5, 0.56, 0.66], 0.26, palette.bpLine);
+  },
 };
 
 // Module ids with a drawing of their own, for tests.

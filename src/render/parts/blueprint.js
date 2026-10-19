@@ -302,6 +302,216 @@ const DRAWINGS = {
       line(200, 18, 200, 80, k.thin), // the gantry's hook line
     ].join('');
   },
+  // M39's: five doing a crew job's ship effect, five with rules of their
+  // own, and nine versions of parts already there, each told apart.
+  scanner(k) {
+    return [
+      rect(20, 12, 160, 30, { rx: 6, ...k.S }), // the sensor desk along the front
+      ...[50, 150].map((x) => rect(x - 18, 18, 36, 14, { rx: 2, ...k.glass })),
+      circle(100, 27, 13, k.S), // its scope
+      circle(100, 27, 5, k.glow),
+      line(100, 27, 110, 19, k.thin), // the sweep
+      circle(100, 72, 13, k.S), // the operator's seat
+    ].join('');
+  },
+  firecontrol(k) {
+    return [
+      rect(116, 14, 70, 72, { rx: 6, ...k.S }), // the director's console
+      rect(124, 24, 54, 26, { rx: 2, ...k.glass }),
+      line(151, 26, 151, 48, k.thin), // the crosshairs on its screen
+      line(127, 37, 175, 37, k.thin),
+      circle(151, 37, 7, k.thin),
+      circle(70, 50, 15, k.S), // the gunnery officer's seat
+    ].join('');
+  },
+  ecm(k) {
+    return [
+      rect(116, 18, 68, 64, { rx: 5, ...k.S }), // the jammer's cabinet
+      ...[34, 50, 66].map((y) => line(122, y, 178, y, k.thin)),
+      ...[132, 150, 168].map((x) => line(x, 18, x, 6, k.S)), // its aerial stubs
+      circle(150, 6, 4, k.glow),
+      rect(20, 62, 42, 24, { rx: 3, ...k.thin }), // a cable tray
+    ].join('');
+  },
+  workshop(k) {
+    return [
+      rect(14, 14, 72, 72, { rx: 6, ...k.S }), // the lathe
+      line(26, 50, 74, 50, k.heavy),
+      circle(50, 50, 10, k.S),
+      rect(218, 20, 64, 60, { rx: 4, ...k.S }), // the workbench
+      ...[234, 250, 266].map((x) => line(x, 30, x, 70, k.thin)), // tools on it
+      rect(18, 118, 64, 64, { rx: 5, ...k.S }), // the parts register
+      rect(26, 128, 48, 18, { rx: 2, ...k.glass }),
+      rect(120, 120, 160, 60, { rx: 6, ...k.dashed }), // the welding bay
+    ].join('');
+  },
+  surveylab(k) {
+    return [
+      rect(16, 16, 68, 68, { rx: 6, ...k.S }), // the analyser
+      rect(24, 24, 52, 22, { rx: 2, ...k.glass }),
+      rect(20, 120, 60, 60, { rx: 5, ...k.S }), // the sample bench
+      circle(50, 135, 9, k.glass), // specimen jars
+      circle(50, 165, 9, k.glass),
+      circle(140, 100, 15, k.S), // a stool
+    ].join('');
+  },
+  torpedobay(k) {
+    const torpedo = (x) => [rect(x - 13, 30, 26, 140, { rx: 13, ...k.S }), line(x, 30, x, 18, k.thin), path(`M ${x - 13} 158 L ${x - 20} 172 M ${x + 13} 158 L ${x + 20} 172`, k.thin)];
+    return [
+      rect(12, 14, 76, 172, { rx: 6, ...k.thin }), // the torpedo rack
+      ...torpedo(32),
+      ...torpedo(68),
+      rect(120, 16, 64, 64, { rx: 5, ...k.S }), // the launch console
+      rect(128, 24, 48, 18, { rx: 2, ...k.glass }),
+      line(150, 186, 150, 112, k.dashed), // the loading track
+    ].join('');
+  },
+  grapple(k) {
+    return [
+      rect(18, 24, 64, 52, { rx: 14, ...k.S }), // the cable drum
+      ...[36, 50, 64].map((x) => line(x, 24, x, 76, k.thin)),
+      path('M 50 24 L 50 8', k.S), // the cable out to the claw
+      path('M 40 8 L 50 2 L 60 8', k.S),
+      rect(114, 18, 72, 64, { rx: 5, ...k.S }), // the winch motor
+      circle(150, 50, 16, k.thin),
+    ].join('');
+  },
+  baffles(k) {
+    const panel = (x0) => [rect(x0, 16, 76, 68, { rx: 5, ...k.S }), ...[22, 40, 58].map((x) => line(x0 + x, 22, x0 + x, 78, k.thin))];
+    return [
+      ...panel(12),
+      ...panel(212),
+      rect(112, 14, 76, 72, { rx: 6, ...k.dashed }), // the quiet deck
+      path('M 132 50 q 9 -10 18 0 t 18 0', k.thin),
+    ].join('');
+  },
+  turret(k) {
+    return [
+      rect(112, 12, 76, 76, { rx: 8, ...k.S }), // the armored mount
+      rect(122, 22, 56, 56, { rx: 6, ...k.thin }),
+      circle(150, 50, 14, k.S), // its sensor eye
+      circle(150, 50, 6, k.glow),
+      rect(14, 14, 72, 72, { rx: 6, ...k.dashed }), // where the gun stands
+      circle(50, 50, 18, k.thin),
+      line(50, 32, 50, 16, k.S),
+    ].join('');
+  },
+  hydroponics(k) {
+    const bed = (x0, y0) => [
+      rect(x0, y0, 72, 72, { rx: 6, ...k.S }),
+      ...[[20, 20], [52, 20], [20, 52], [52, 52]].map(([dx, dy]) => circle(x0 + dx, y0 + dy, 8, k.glass)),
+    ];
+    return [
+      ...bed(14, 14),
+      ...bed(14, 114),
+      ...bed(214, 14),
+      ...bed(214, 114),
+      line(150, 20, 150, 180, k.dashed), // the walkway
+      circle(150, 100, 7, k.glow), // the grow light
+    ].join('');
+  },
+  railgun(k) {
+    return [
+      ...[12, 212].map((x0) => rect(x0, 16, 76, 68, { rx: 5, ...k.S })), // capacitor banks
+      ...[30, 50, 70, 230, 250, 270].map((x) => line(x, 22, x, 78, k.thin)),
+      rect(90, 4, 120, 16, { rx: 3, ...k.S }), // the rails' breech, toward the muzzle
+      line(96, 12, 204, 12, k.thin),
+      rect(118, 40, 64, 44, { rx: 5, ...k.S }), // the gunner's console
+      rect(126, 48, 48, 14, { rx: 2, ...k.glass }),
+      circle(150, 74, 4, k.glow),
+    ].join('');
+  },
+  flak(k) {
+    const turret = (cx) => [
+      line(cx - 8, 36, cx - 8, 10, k.S), // two barrels, toward the muzzle
+      line(cx + 8, 36, cx + 8, 10, k.S),
+      circle(cx, 60, 24, { ...k.S, fill: palette.bpPaper }), // turret ring
+      circle(cx, 60, 10, k.S),
+    ];
+    return [...turret(50), ...turret(150), rect(86, 66, 28, 24, { rx: 3, ...k.thin })].join(''); // and the shared magazine
+  },
+  largereactor(k, W, H) {
+    const [cx, cy] = [W / 2, H / 2];
+    const struts = [[30, 30], [W - 30, 30], [W - 30, H - 30], [30, H - 30]].map(([x, y]) => line(x, y, cx + (x - cx) * 0.6, cy + (y - cy) * 0.6, k.heavy));
+    return [
+      ...struts,
+      rect(cx - 118, cy - 80, 236, 160, { rx: 80, ...k.S, fill: palette.bpPaper }), // the long housing
+      rect(cx - 100, cy - 62, 200, 124, { rx: 62, ...k.dashed }), // shielding
+      circle(cx - 50, cy, 30, k.S), // twin cores
+      circle(cx - 50, cy, 18, k.glow),
+      circle(cx + 50, cy, 30, k.S),
+      circle(cx + 50, cy, 18, k.glow),
+    ].join('');
+  },
+  thruster(k) {
+    return [
+      rect(12, 28, 56, 44, { rx: 14, ...k.S }), // the nozzle housing
+      circle(30, 50, 12, k.S),
+      circle(30, 50, 5, k.glow),
+      line(68, 50, 74, 50, k.thin),
+      rect(74, 34, 14, 32, { rx: 3, ...k.S }), // its valve
+    ].join('');
+  },
+  cockpit(k) {
+    return [
+      rect(14, 12, 106, 38, { rx: 8, ...k.S }), // the flight console along the front
+      rect(24, 20, 86, 16, { rx: 2, ...k.glass }),
+      circle(68, 72, 16, k.S), // the pilot's seat
+      circle(68, 72, 6, k.glow),
+      rect(150, 66, 36, 22, { rx: 3, ...k.thin }), // a kit locker
+    ].join('');
+  },
+  dormitory(k) {
+    const bunk = (x0) => [rect(x0, 12, 76, 74, { rx: 8, ...k.S }), rect(x0 + 8, 18, 22, 60, { rx: 5, ...k.thin })];
+    return [
+      ...bunk(12),
+      ...bunk(112),
+      ...bunk(312),
+      rect(218, 14, 64, 36, { rx: 4, ...k.S }), // lockers
+      line(250, 14, 250, 50, k.thin),
+      circle(120, 150, 24, k.S), // tables
+      circle(280, 150, 24, k.S),
+    ].join('');
+  },
+  airrecycler(k) {
+    const tower = (cy) => {
+      const blades = [0, 60, 120].map((deg) => {
+        const a = (deg * Math.PI) / 180;
+        return line(50 - 20 * Math.cos(a), cy - 20 * Math.sin(a), 50 + 20 * Math.cos(a), cy + 20 * Math.sin(a), k.thin);
+      });
+      return [rect(12, cy - 38, 76, 76, { rx: 8, ...k.S }), circle(50, cy, 26, k.S), ...blades];
+    };
+    return [
+      ...tower(50),
+      ...tower(150),
+      line(88, 50, 130, 50, k.thin), // ducts
+      line(88, 150, 130, 150, k.thin),
+      rect(130, 30, 30, 140, { rx: 5, ...k.S }), // the manifold
+    ].join('');
+  },
+  cargopod(k) {
+    return [
+      rect(14, 14, 72, 72, { rx: 4, ...k.S }), // a crate
+      line(14, 14, 86, 86, k.thin),
+      line(86, 14, 14, 86, k.thin),
+      rect(24, 24, 52, 52, { rx: 3, ...k.thin }), // another on it
+      rect(114, 14, 72, 72, { rx: 6, ...k.dashed }), // the loading space
+      path('M 134 58 L 150 42 L 166 58', k.thin),
+    ].join('');
+  },
+  emitter(k) {
+    const arc = (r) => {
+      const a0 = (-160 * Math.PI) / 180;
+      const a1 = (-20 * Math.PI) / 180;
+      return path(`M ${num(50 + r * Math.cos(a0))} ${num(56 + r * Math.sin(a0))} A ${r} ${r} 0 0 1 ${num(50 + r * Math.cos(a1))} ${num(56 + r * Math.sin(a1))}`, k.dashed);
+    };
+    return [
+      arc(30),
+      arc(40),
+      circle(50, 56, 22, { ...k.S, fill: palette.bpPaper }), // the emitter, toward the space it faces
+      circle(50, 56, 10, k.field),
+    ].join('');
+  },
 };
 
 // Module ids with a drawing of their own, for tests.
