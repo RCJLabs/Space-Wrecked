@@ -125,7 +125,13 @@ The longest fight took 132 ms.
   - Defend with three colonists, Col. 1 to Col. 3 in the crew bar, every button 48 px or more;
   - a quit and reopen at v38;
   - offline, and no console errors.
-- **Every earlier milestone's browser check** (`m38f/regress-a.sh` and `regress-b.sh`): running.
+- **Every earlier milestone's browser check** passes at the three sizes unless named, each the latest adapted copy (`m38f/regress-a.sh` and `regress-b.sh`; after the container restarted mid-run, `regress-a2.sh` and `regress-b2.sh` ran the rest). The one exception is M32b's first copy, whose 2 known failures since M36 its fix copy covers, as in M36 to M38e.
+  - **Adapted for M38f:**
+    - M38e's, M38d fix's, M38c's, M38b's, M35's, M34's, M31's, M30's, M29's, M28's and M27's pinned saves at v37; their copies (`verify38f.mjs` beside each) pin v38;
+    - M38d fix's lander coming says those at home fight it without the ship;
+    - M29's legs no longer stop for a raid. Its steps 7 and 8 now fly out with the raid fought out at home, with someone there and with nobody, and check the leg's report. Its stopped leg, and Defend with nobody home, are built as saves from before;
+    - M27's and M26's checks read the needs with the Citizens line in them.
+  - **Run again on its own, and passed:** M35's at the tab size, which lost its port to the run beside it.
 
 **Found while building, and fixed:**
 - **The landing's words never showed:** since M38d a screen switch remounts the screen, so what Fly home, Fly to and Fly out said was lost with it. The words are now carried across (`carried.js`), and the colony's news is in its hint.
