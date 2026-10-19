@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "6e28b7dd1ff9";
+const VERSION = "14356c79a17b";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -113,6 +113,7 @@ const FILES = [
   "src/render/solid.js",
   "src/render/starfield.js",
   "src/render/svg.js",
+  "src/render/textScale.js",
   "src/render/units.js",
   "src/sim/acts.js",
   "src/sim/ai.js",
@@ -287,6 +288,7 @@ const FILES = [
   "src/ui/fight/view.js",
   "src/ui/gestures.js",
   "src/ui/icons.js",
+  "src/ui/look.js",
   "src/ui/motion.js",
   "src/ui/names.js",
   "src/ui/portrait.js",

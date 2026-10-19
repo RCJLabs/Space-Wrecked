@@ -7,6 +7,8 @@
 //   tipsSeen    the ids of the tips already put away
 //   sound       whether the game plays sound (M35)
 //   volume      how loud, in percent: one of VOLUMES
+//   colors      'standard', or 'safe' for colorblind-safe colors (M42)
+//   textSize    how big the text is, in percent: one of TEXT_SIZES (M42)
 // The difficulty was a setting too until M41, when it became the
 // campaign's (difficulty.js).
 
@@ -16,12 +18,16 @@ export const MOTIONS = ['auto', 'reduce', 'full'];
 // The volumes to pick from, in percent; a new game starts at 70 (Evan's
 // pick, M35).
 export const VOLUMES = [10, 30, 50, 70, 100];
+// The color sets (src/render/palette.js COLOR_SETS) and the text sizes, in
+// percent (M42).
+export const COLORS = ['standard', 'safe'];
+export const TEXT_SIZES = [100, 115, 130];
 // More tips than the game has: a guard on what a save can hold.
 export const MAX_TIPS = 64;
 const TIP_ID = /^[a-z][a-z0-9-]{0,31}$/;
 
 export function defaultSettings() {
-  return { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70 };
+  return { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, colors: 'standard', textSize: 100 };
 }
 
 // Actions:
@@ -33,6 +39,8 @@ export function defaultSettings() {
 //   settings/tip/seen { id }        a tip put away, not to show again
 //   settings/sound { value }        sound on or off
 //   settings/volume { value }       one of VOLUMES
+//   settings/colors { value }       standard or safe
+//   settings/textSize { value }     one of TEXT_SIZES
 export function reduceSettings(settings, action) {
   const set = (key, ok) => (!ok || action.value === settings[key] ? settings : { ...settings, [key]: action.value });
   switch (action.type) {
@@ -48,6 +56,10 @@ export function reduceSettings(settings, action) {
       return set('sound', typeof action.value === 'boolean');
     case 'settings/volume':
       return set('volume', VOLUMES.includes(action.value));
+    case 'settings/colors':
+      return set('colors', COLORS.includes(action.value));
+    case 'settings/textSize':
+      return set('textSize', TEXT_SIZES.includes(action.value));
     case 'settings/tips/reset':
       return settings.tips && !settings.tipsSeen.length ? settings : { ...settings, tips: true, tipsSeen: [] };
     case 'settings/tip/seen':
@@ -67,6 +79,8 @@ export function settingsProblems(settings) {
   if (!MOTIONS.includes(settings.motion)) problems.push('The motion setting is invalid.');
   if (typeof settings.sound !== 'boolean') problems.push('The sound setting is invalid.');
   if (!VOLUMES.includes(settings.volume)) problems.push('The volume setting is invalid.');
+  if (!COLORS.includes(settings.colors)) problems.push('The colors setting is invalid.');
+  if (!TEXT_SIZES.includes(settings.textSize)) problems.push('The text size setting is invalid.');
   const { tipsSeen } = settings;
   if (typeof settings.tips !== 'boolean' || !Array.isArray(tipsSeen) || tipsSeen.length > MAX_TIPS || !tipsSeen.every((id) => TIP_ID.test(id)) || new Set(tipsSeen).size !== tipsSeen.length) {
     problems.push('The tips settings are unreadable.');

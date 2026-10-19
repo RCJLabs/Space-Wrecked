@@ -8,14 +8,19 @@
 import { project } from './orbit.js';
 import { palette, rgba } from './palette.js';
 import { FLIGHT, FLOAT_MS } from './playback.js';
+import { textScale } from './textScale.js';
 import { LYING_TOP, UNIT_TOP } from './units.js';
 
-const SMALL = "600 9.5px ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace";
-const BADGE = "700 11px ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace";
-const FLOAT = "800 15px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
-const BANNER = "800 26px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+// The labels' fonts at Settings' Text size (M42), 10 px at the least.
+const mono = (weight, px) => `${weight} ${px * textScale()}px ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace`;
+const sans = (px) => `800 ${px * textScale()}px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif`;
+const SMALL = () => mono(600, 10);
+const BADGE = () => mono(700, 11);
+const FLOAT = () => sans(15);
+const BANNER = () => sans(26);
 const BAR_W = 34; // a unit's hit point bar, in px, however many it has
-const TONES = { hit: palette.bpGlow, hurt: palette.bad, miss: palette.inkDim, good: palette.good, info: palette.visor };
+// Read as drawn: Settings' Colors can swap them (M42).
+const toneColor = (name) => ({ hit: palette.bpGlow, hurt: palette.bad, miss: palette.inkDim, good: palette.good, info: palette.visor })[name];
 
 // input: {
 //   units    [{ at: [x, y], status, hp, maxHp, color, overwatch, bleed,
@@ -60,7 +65,7 @@ function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, overwatch, bleed,
   const word = status === 'down' ? [`DOWN · ${bleed}${carrying ? ' · CRATE' : ''}`, palette.bad] : status === 'stable' ? ['STABLE', palette.good] : status === 'out' ? ['OUT', palette.inkDim] : status === 'held' ? ['HELD', palette.accent] : standing ? orderWord({ overwatch, marked, suppressed, asleep, carrying }) : null;
   let top = y0 - 2;
   if (word) {
-    ctx.font = SMALL;
+    ctx.font = SMALL();
     const w = ctx.measureText(word[0]).width + 8;
     ctx.fillStyle = rgba(palette.space, 0.78);
     ctx.fillRect(Math.round(sx - w / 2), y0 - 15, w, 12);
@@ -99,7 +104,7 @@ function orderWord({ overwatch, marked, suppressed, asleep, carrying }) {
 function pill(ctx, cam, { at: [x, y], text, strong, tone }) {
   const [sx, sy] = project(cam, x + 0.5, y + 0.5, UNIT_TOP + 0.62);
   const color = tone === 'order' ? palette.good : palette.target;
-  ctx.font = BADGE;
+  ctx.font = BADGE();
   const w = ctx.measureText(text).width + 12;
   ctx.beginPath();
   ctx.roundRect(sx - w / 2, sy - 9, w, 18, 9);
@@ -116,7 +121,7 @@ function pill(ctx, cam, { at: [x, y], text, strong, tone }) {
 // with the rounds it still holds.
 function seam(ctx, cam, { at: [x, y], text }) {
   const [sx, sy] = project(cam, x, y, 0.18);
-  ctx.font = SMALL;
+  ctx.font = SMALL();
   const w = ctx.measureText(text).width + 8;
   ctx.fillStyle = rgba(palette.space, 0.85);
   ctx.fillRect(Math.round(sx - w / 2), Math.round(sy - 6), w, 12);
@@ -140,7 +145,7 @@ function tag(ctx, cam, { at: [x, y], text, done, tone }) {
   ctx.moveTo(bx, by);
   ctx.lineTo(sx, sy + 8);
   ctx.stroke();
-  ctx.font = SMALL;
+  ctx.font = SMALL();
   const w = ctx.measureText(text).width + 10;
   ctx.beginPath();
   ctx.roundRect(sx - w / 2, sy - 8, w, 16, 4);
@@ -158,12 +163,12 @@ function rising(ctx, cam, { at: [x, y], text, tone, age }) {
   const t = age / FLOAT_MS;
   const [sx, sy] = project(cam, x + 0.5, y + 0.5, UNIT_TOP + 0.3);
   ctx.globalAlpha = t < 0.6 ? 1 : Math.max(0, (1 - t) / 0.4);
-  ctx.font = FLOAT;
+  ctx.font = FLOAT();
   ctx.lineWidth = 3.5;
   ctx.lineJoin = 'round';
   ctx.strokeStyle = rgba(palette.space, 0.9);
   ctx.strokeText(text, sx, sy - 6 - t * 26);
-  ctx.fillStyle = TONES[tone] ?? palette.ink;
+  ctx.fillStyle = toneColor(tone) ?? palette.ink;
   ctx.fillText(text, sx, sy - 6 - t * 26);
   ctx.globalAlpha = 1;
 }
@@ -237,7 +242,7 @@ function sign(ctx, rect, { text, progress }) {
   ctx.globalAlpha = alpha;
   ctx.fillStyle = rgba(palette.space, 0.7);
   ctx.fillRect(rect.x, cy - 24, rect.w, 48);
-  ctx.font = BANNER;
+  ctx.font = BANNER();
   ctx.letterSpacing = '6px';
   ctx.fillStyle = palette.ink;
   ctx.fillText(text, cx, cy + 1);

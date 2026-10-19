@@ -26,6 +26,8 @@ html {
 }
 
 body {
+  /* Every size below multiplies by --ts, Settings' Text size (M42, src/ui/look.js). */
+  font-size: calc(16px * var(--ts, 1));
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
   overscroll-behavior: none;
   user-select: none;
@@ -111,7 +113,7 @@ textarea {
 
 .title h1 {
   margin: 0;
-  font-size: clamp(32px, 10vh, 76px);
+  font-size: calc(clamp(32px, 10vh, 76px) * var(--ts, 1));
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -122,7 +124,7 @@ textarea {
    title, so it reads at 4.5 to 1 or more where the floodlights cross. */
 .title .tag {
   margin: 0.6em 0 0;
-  font-size: clamp(13px, 3.4vh, 18px);
+  font-size: calc(clamp(13px, 3.4vh, 18px) * var(--ts, 1));
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.8);
 }
 
@@ -156,7 +158,7 @@ textarea {
 }
 
 .title-continue small {
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   font-weight: 600;
   opacity: 0.8;
 }
@@ -165,7 +167,7 @@ textarea {
   min-height: 1.3em;
   margin: 8px 0 0;
   color: var(--c-dash);
-  font-size: 14px;
+  font-size: calc(14px * var(--ts, 1));
 }
 
 /* Said, on a ground of its own, as the buttons are: whatever of the hangar
@@ -200,7 +202,7 @@ textarea {
 
 .hgr-head h1 {
   margin: 0;
-  font-size: clamp(18px, 6vh, 28px);
+  font-size: calc(clamp(18px, 6vh, 28px) * var(--ts, 1));
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -210,7 +212,7 @@ textarea {
 .hgr-home {
   margin: 0;
   color: var(--c-ink-dim);
-  font-size: 15px;
+  font-size: calc(15px * var(--ts, 1));
 }
 
 .hgr-panel {
@@ -221,7 +223,7 @@ textarea {
   border: 1px solid var(--c-line);
   border-radius: 12px;
   background: var(--c-panel);
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--ts, 1));
   line-height: 1.3;
   pointer-events: auto;
 }
@@ -229,7 +231,7 @@ textarea {
 .hgr-panel h2 {
   margin: 0 0 6px;
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -346,7 +348,7 @@ textarea {
 
 .hgr-fix {
   color: var(--c-dash);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ts, 1));
 }
 
 .hgr-crew li {
@@ -474,7 +476,7 @@ textarea {
   flex: 1;
   margin: 0;
   color: var(--c-ink-dim);
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--ts, 1));
 }
 
 .hgr-hint[data-tone='good'] {
@@ -532,7 +534,7 @@ textarea {
   border: 1px solid var(--c-line);
   border-radius: 12px;
   background: var(--c-panel);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
   white-space: nowrap;
   pointer-events: auto;
 }
@@ -624,7 +626,7 @@ textarea {
 
   .hgr-panel {
     padding: 6px 8px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--ts, 1));
   }
 
   .hgr-crew li {
@@ -633,7 +635,7 @@ textarea {
   }
 
   .hgr-hint {
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--ts, 1));
   }
 }
 
@@ -721,7 +723,7 @@ textarea {
 .sct-event-where {
   margin: 0;
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -730,13 +732,13 @@ textarea {
 .sct-crew h2,
 .apr-squad h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: calc(18px * var(--ts, 1));
 }
 
 .sct-event-text,
 .sct-crew-text {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--ts, 1));
   line-height: 1.35;
 }
 
@@ -744,7 +746,7 @@ textarea {
 .apr-squad-said {
   margin: 0;
   color: var(--c-ink-dim);
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--ts, 1));
   line-height: 1.3;
 }
 
@@ -773,7 +775,7 @@ textarea {
   padding: 5px 0;
   border-top: 1px solid var(--c-line);
   border-bottom: 1px solid var(--c-line);
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--ts, 1));
   line-height: 1.25;
 }
 
@@ -809,7 +811,7 @@ textarea {
 
 #ui .sct-choice small {
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   font-weight: 500;
 }
 
@@ -847,24 +849,24 @@ textarea {
   }
 
   .sct-event-where {
-    font-size: 11px;
+    font-size: calc(11px * var(--ts, 1));
   }
 
   .sct-event h2,
   .sct-crew h2,
   .apr-squad h2 {
-    font-size: 16px;
+    font-size: calc(16px * var(--ts, 1));
   }
 
   .sct-event-text,
   .sct-crew-text {
-    font-size: 13.5px;
+    font-size: calc(13.5px * var(--ts, 1));
     line-height: 1.3;
   }
 
   .sct-event-said,
   .apr-squad-said {
-    font-size: 13px;
+    font-size: calc(13px * var(--ts, 1));
   }
 
   .sct-event-choices {
@@ -892,7 +894,7 @@ textarea {
 
 .sct-crew-panel h2 b {
   color: var(--c-accent);
-  font-size: 18px;
+  font-size: calc(18px * var(--ts, 1));
   line-height: 0.6;
 }
 
@@ -933,7 +935,7 @@ textarea {
 
 .sct-ship-panel h2 b {
   color: var(--c-accent);
-  font-size: 18px;
+  font-size: calc(18px * var(--ts, 1));
   line-height: 0.6;
 }
 
@@ -966,7 +968,7 @@ textarea {
 .sct-colony-line {
   margin: 4px 0 0;
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
 }
 
 .sct-colony-panel[data-tone='bad'] .sct-colony-line {
@@ -1074,7 +1076,7 @@ textarea {
 .sct-crew-list h3 {
   margin: 2px 0;
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1082,7 +1084,7 @@ textarea {
 .sct-crew-line {
   margin: 0 0 2px;
   color: var(--c-dash);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
 }
 
 .sct-crew-list ul {
@@ -1099,7 +1101,7 @@ textarea {
   min-height: 40px;
   padding: 3px 0;
   border-top: 1px solid var(--c-line);
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--ts, 1));
   line-height: 1.25;
 }
 
@@ -1150,7 +1152,7 @@ textarea {
     grid-template-columns: 34px minmax(0, 1fr) 52px auto;
     min-height: 34px;
     padding: 2px 0;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--ts, 1));
   }
 
   .sct-crew-list .crew-face {
@@ -1161,7 +1163,7 @@ textarea {
 
 .sct-name {
   margin: 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--ts, 1));
   font-weight: 700;
 }
 
@@ -1169,7 +1171,7 @@ textarea {
 .sct-text {
   margin: 0;
   color: var(--c-ink-dim);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ts, 1));
 }
 
 .sct-kind:empty {
@@ -1257,7 +1259,7 @@ textarea {
 .sct-rack-facts {
   margin-bottom: 4px;
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
 }
 
 /* A station selling three things or more (sector.js): the foot's buttons
@@ -1463,7 +1465,7 @@ textarea {
   display: flex;
   flex-direction: column;
   transform: translate(26px, -50%);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   line-height: 1.2;
   text-align: left;
   white-space: nowrap;
@@ -1534,7 +1536,7 @@ textarea {
 
 .sct-node[data-here='true'] .sct-dot {
   border-color: var(--c-ink);
-  box-shadow: 0 0 0 4px rgba(255, 155, 61, 0.35);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-accent) 35%, transparent);
 }
 
 /* The ship, over the node it is at; it glides to the next. */
@@ -1569,7 +1571,7 @@ textarea {
   z-index: 20;
   border: 2px solid var(--c-accent);
   border-radius: 12px;
-  box-shadow: 0 0 0 4px rgba(255, 155, 61, 0.25);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-accent) 25%, transparent);
   pointer-events: none;
 }
 
@@ -1591,7 +1593,7 @@ textarea {
 
 .tip-text {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--ts, 1));
   line-height: 1.35;
 }
 
@@ -1613,7 +1615,7 @@ textarea {
   }
 
   .tip-text {
-    font-size: 13px;
+    font-size: calc(13px * var(--ts, 1));
   }
 }
 
@@ -1641,7 +1643,7 @@ textarea {
 
 .cap-head h1 {
   margin: 0;
-  font-size: clamp(18px, 6vh, 28px);
+  font-size: calc(clamp(18px, 6vh, 28px) * var(--ts, 1));
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -1650,7 +1652,7 @@ textarea {
 .cap-sub {
   margin: 0;
   color: var(--c-ink-dim);
-  font-size: 15px;
+  font-size: calc(15px * var(--ts, 1));
 }
 
 .cap-numbers,
@@ -1688,7 +1690,7 @@ textarea {
 
 .crew-swaps-label {
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
 }
 
 #ui .crew-swap {
@@ -1708,7 +1710,7 @@ textarea {
 .crew-swap-facts {
   grid-column: 2 / -1;
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
 }
 
 .crew-swap-facts p {
@@ -1823,13 +1825,13 @@ textarea {
 
 .cap-layer-name {
   color: var(--c-ink-dim);
-  font-size: 11px;
+  font-size: calc(11px * var(--ts, 1));
   font-weight: 500;
 }
 
 .cap-layer-value {
   max-width: 100%;
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
   line-height: 1.1;
 }
 
@@ -1863,7 +1865,7 @@ textarea {
   display: block;
   margin: 2px 0 4px;
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -1879,7 +1881,7 @@ textarea {
   background: var(--c-space-hi);
   color: var(--c-ink);
   font: inherit;
-  font-size: 16px; /* no zoom on focus */
+  font-size: calc(16px * var(--ts, 1)); /* no zoom on focus */
   letter-spacing: normal;
   text-transform: none;
 }
@@ -1919,7 +1921,7 @@ textarea {
 
 .cap-trait-effect {
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   font-weight: 500;
 }
 
@@ -1971,7 +1973,7 @@ textarea {
   flex: 1;
   margin: 0;
   color: var(--c-ink-dim);
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--ts, 1));
 }
 
 .cap-hint[data-tone='good'] {
@@ -2093,12 +2095,12 @@ textarea {
 }
 
 .bkg-name {
-  font-size: 15px;
+  font-size: calc(15px * var(--ts, 1));
 }
 
 .bkg-pursuer {
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   font-weight: 500;
 }
 
@@ -2125,7 +2127,7 @@ textarea {
 .bkg-facts dt {
   padding-top: 2px;
   color: var(--c-ink-dim);
-  font-size: 11px;
+  font-size: calc(11px * var(--ts, 1));
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -2148,7 +2150,7 @@ textarea {
 
 .set-head h1 {
   margin: 0;
-  font-size: clamp(18px, 6vh, 28px);
+  font-size: calc(clamp(18px, 6vh, 28px) * var(--ts, 1));
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -2187,7 +2189,7 @@ textarea {
 .set-save h2 {
   margin: 0 0 4px;
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -2208,7 +2210,7 @@ textarea {
 .set-note {
   margin: 4px 0 0;
   color: var(--c-ink-dim);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
   line-height: 1.3;
 }
 
@@ -2236,7 +2238,7 @@ textarea {
   border-radius: 8px;
   background: var(--c-space-hi);
   color: var(--c-ink);
-  font: 12px ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
+  font: calc(12px * var(--ts, 1)) ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
   resize: vertical;
 }
 
@@ -2288,7 +2290,7 @@ textarea {
 
 .lnc-head h1 {
   margin: 0;
-  font-size: clamp(18px, 6vh, 28px);
+  font-size: calc(clamp(18px, 6vh, 28px) * var(--ts, 1));
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -2298,7 +2300,7 @@ textarea {
 .lnc-from {
   margin: 0;
   color: var(--c-ink-dim);
-  font-size: 15px;
+  font-size: calc(15px * var(--ts, 1));
 }
 
 /* The ship's place: empty, so the canvas shows through. */
@@ -2314,7 +2316,7 @@ textarea {
   border: 1px solid var(--c-line);
   border-radius: 12px;
   background: var(--c-panel);
-  font-size: 14px;
+  font-size: calc(14px * var(--ts, 1));
   line-height: 1.35;
   opacity: 0;
   transition: opacity 0.6s ease;
@@ -2368,7 +2370,7 @@ textarea {
 
   .lnc-words {
     padding: 6px 10px;
-    font-size: 13px;
+    font-size: calc(13px * var(--ts, 1));
   }
 }
 
@@ -2415,7 +2417,7 @@ textarea {
 .jobs-head h1,
 .shop-head h1 {
   margin: 0;
-  font-size: clamp(18px, 6vh, 28px);
+  font-size: calc(clamp(18px, 6vh, 28px) * var(--ts, 1));
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -2425,7 +2427,7 @@ textarea {
 .shop-where {
   margin: 0;
   color: var(--c-ink-dim);
-  font-size: 15px;
+  font-size: calc(15px * var(--ts, 1));
 }
 
 .jobs-list,
@@ -2460,7 +2462,7 @@ textarea {
 
 .jobs-pick b,
 .shop-pick b {
-  font-size: 14px;
+  font-size: calc(14px * var(--ts, 1));
 }
 
 .jobs-pick span,
@@ -2468,7 +2470,7 @@ textarea {
   max-width: 100%;
   overflow: hidden;
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   font-weight: 500;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -2494,7 +2496,7 @@ textarea {
 .shop-pick .shop-twist {
   flex: none;
   color: var(--c-dash);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--ts, 1));
 }
 
 /* A quest's job (M33b): its quest's name where a twist would be, in the
@@ -2511,7 +2513,7 @@ textarea {
   flex: none;
   max-width: 50%;
   color: var(--c-accent);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--ts, 1));
 }
 
 .jobs-detail,
@@ -2523,7 +2525,7 @@ textarea {
   border: 1px solid var(--c-line);
   border-radius: 12px;
   background: var(--c-panel);
-  font-size: 14px;
+  font-size: calc(14px * var(--ts, 1));
   line-height: 1.35;
   pointer-events: auto;
 }
@@ -2531,7 +2533,7 @@ textarea {
 .jobs-detail h2,
 .shop-detail h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: calc(18px * var(--ts, 1));
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -2540,7 +2542,7 @@ textarea {
 .shop-who {
   margin: 0 0 8px;
   color: var(--c-ink-dim);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
 }
 
 .jobs-pitch,
@@ -2588,7 +2590,7 @@ textarea {
   flex: 1;
   margin: 0;
   color: var(--c-ink-dim);
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--ts, 1));
 }
 
 .jobs-hint[data-tone='warn'],
@@ -2638,18 +2640,18 @@ textarea {
 
   .jobs-pick b,
   .shop-pick b {
-    font-size: 13px;
+    font-size: calc(13px * var(--ts, 1));
   }
 
   .jobs-detail,
   .shop-detail {
     padding: 8px 10px;
-    font-size: 13px;
+    font-size: calc(13px * var(--ts, 1));
   }
 
   .jobs-hint,
   .shop-hint {
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--ts, 1));
   }
 }
 
@@ -2661,7 +2663,7 @@ textarea {
   border: 1px solid var(--c-line);
   border-radius: 12px;
   background: var(--c-panel);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
   white-space: nowrap;
 }
 
@@ -2669,7 +2671,7 @@ textarea {
   flex: none;
   margin: 2px 2px 0;
   color: var(--c-ink-dim);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--ts, 1));
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -2681,14 +2683,14 @@ textarea {
 .shop-pick .shop-need {
   flex: none;
   color: var(--c-accent);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--ts, 1));
 }
 
 /* A weapon among the parts (M37). */
 .shop-pick .shop-arm {
   flex: none;
   color: var(--c-ink-dim);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--ts, 1));
 }
 
 .shop-hint[data-tone='good'] {
@@ -2744,7 +2746,7 @@ textarea {
   justify-content: center;
   min-width: 48px;
   padding: 0 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
 }
 
 #ui .bld-tab[aria-selected='true'] {
@@ -2764,7 +2766,7 @@ textarea {
   padding: 0 2px;
   border-color: var(--c-accent);
   color: var(--c-accent);
-  font-size: 11px;
+  font-size: calc(11px * var(--ts, 1));
 }
 
 .bld-leave svg {
@@ -2781,7 +2783,7 @@ textarea {
   min-width: 18px;
   padding: 1px 5px;
   border-radius: 9px;
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--ts, 1));
   line-height: 15px;
   color: var(--c-space);
 }
@@ -2822,7 +2824,7 @@ textarea {
   align-items: center;
   gap: 6px;
   padding: 0 8px 0 10px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
 }
 
 .bld-pick-name,
@@ -2843,7 +2845,7 @@ textarea {
 
 .bld-pick-maker {
   color: var(--c-ink-dim);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--ts, 1));
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2853,14 +2855,14 @@ textarea {
 .bld-pick-count,
 .bld-look-count {
   color: var(--c-ink-dim);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--ts, 1));
   font-weight: 600;
 }
 
 .bld-pick-arrow,
 .bld-look-arrow {
   margin-left: auto;
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
 }
 
 #ui .bld-pick[aria-expanded='true'],
@@ -2878,19 +2880,19 @@ textarea {
   justify-content: center;
   gap: 1px;
   padding: 0 2px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ts, 1));
   line-height: 1.15;
 }
 
 .bld-size small {
   color: var(--c-ink-dim);
-  font-size: 10px;
+  font-size: calc(10px * var(--ts, 1));
   font-weight: 600;
 }
 
 /* "Medium" fits a 48 px button. */
 .bld-size b {
-  font-size: min(11px, calc(var(--tile) * 0.22));
+  font-size: calc(max(10px, min(11px, calc(var(--tile) * 0.22))) * var(--ts, 1));
 }
 
 /* The Look tab (M23f): how many styling pieces the ship has, of its
@@ -2907,13 +2909,13 @@ textarea {
   gap: 1px;
   border: 1px solid var(--c-line);
   border-radius: 10px;
-  font-size: min(11.5px, calc(var(--tile) * 0.22));
+  font-size: calc(max(10px, min(11.5px, calc(var(--tile) * 0.22))) * var(--ts, 1));
   line-height: 1.15;
 }
 
 .bld-tally small {
   color: var(--c-ink-dim);
-  font-size: 10px;
+  font-size: calc(10px * var(--ts, 1));
   font-weight: 600;
 }
 
@@ -2994,7 +2996,7 @@ textarea {
   min-width: 0;
   padding: 3px 1px;
   border-radius: 10px;
-  font-size: min(10.5px, calc(var(--tile) * 0.18));
+  font-size: calc(max(10px, min(10.5px, calc(var(--tile) * 0.18))) * var(--ts, 1));
   line-height: 1.1;
   overflow: hidden;
 }
@@ -3011,7 +3013,7 @@ textarea {
 .bld-cat-count,
 .bld-look-group-count {
   color: var(--c-ink-dim);
-  font-size: 10px;
+  font-size: calc(10px * var(--ts, 1));
 }
 
 /* The Ship and Saves tabs: they scroll when long. */
@@ -3023,7 +3025,7 @@ textarea {
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ts, 1));
   line-height: 1.35;
 }
 
@@ -3031,7 +3033,7 @@ textarea {
 .bld-saves h3 {
   margin: 8px 0 6px;
   color: var(--c-ink-dim);
-  font-size: 11px;
+  font-size: calc(11px * var(--ts, 1));
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -3085,7 +3087,7 @@ textarea {
   margin: 4px 0 2px;
   padding: 4px 8px;
   text-align: left;
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   font-weight: 600;
   color: var(--c-accent);
 }
@@ -3103,13 +3105,13 @@ textarea {
   width: 100%;
   min-height: 52px;
   margin-top: 10px;
-  font-size: 15px;
+  font-size: calc(15px * var(--ts, 1));
   letter-spacing: 0.04em;
   box-shadow: 0 -10px 12px var(--c-panel);
 }
 
 #ui .bld-launch small {
-  font-size: 11px;
+  font-size: calc(11px * var(--ts, 1));
   font-weight: 500;
 }
 
@@ -3173,7 +3175,7 @@ textarea {
   min-height: 48px;
   margin: 0 0 6px;
   padding: 4px 8px;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ts, 1));
   font-weight: 600;
 }
 
@@ -3187,7 +3189,7 @@ textarea {
   border-radius: 8px;
   background: var(--c-space);
   color: var(--c-ink);
-  font: 11px/1.35 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
+  font: calc(11px * var(--ts, 1))/1.35 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
   word-break: break-all;
   resize: none;
 }
@@ -3259,7 +3261,7 @@ textarea {
   border-radius: 10px;
   background: var(--c-space-hi);
   /* Shrinks with the tile so "generator" fits a 48 px tile. */
-  font-size: min(10.5px, calc(var(--tile) * 0.18));
+  font-size: calc(max(10px, min(10.5px, calc(var(--tile) * 0.18))) * var(--ts, 1));
   font-weight: 600;
   line-height: 1.1;
   text-align: center;
@@ -3300,7 +3302,7 @@ textarea {
   border-radius: 5px;
   background: var(--c-space-hi);
   color: var(--c-accent);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--ts, 1));
   font-weight: 700;
   line-height: 1.3;
 }
@@ -3310,7 +3312,7 @@ textarea {
   align-self: end;
   margin: 0;
   color: var(--c-ink-dim);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ts, 1));
 }
 
 .bld-part[aria-pressed='true'],
@@ -3349,7 +3351,7 @@ textarea {
   width: 56px;
   height: 54px;
   padding: 0;
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--ts, 1));
 }
 
 /* The board's own buttons, top right: Hull (the ship from outside), and
@@ -3418,14 +3420,14 @@ textarea {
   left: 50%;
   bottom: 4px;
   transform: translateX(-50%);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
 }
 
 .bld-layout {
   top: 4px;
   left: 8px;
   max-width: calc(100% - 136px);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
 }
 
 .bld-status[data-tone='bad'],
@@ -3448,7 +3450,7 @@ textarea {
   border-radius: 12px;
   background: var(--c-panel);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
   line-height: 1.4;
   pointer-events: auto;
 }
@@ -3462,7 +3464,7 @@ textarea {
 
 .bld-card h3 {
   margin: 0 0 4px;
-  font-size: 15px;
+  font-size: calc(15px * var(--ts, 1));
 }
 
 .bld-card p {
@@ -3514,14 +3516,14 @@ textarea {
   top: 4px;
   left: 8px;
   max-width: calc(100% - 96px);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
 }
 
 .bat-status {
   left: 8px;
   bottom: 4px;
   max-width: calc(100% - 152px);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
 }
 
 .bat-status[data-tone='bad'] {
@@ -3550,7 +3552,7 @@ textarea {
   height: 52px;
   padding: 0;
   background: var(--c-panel);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--ts, 1));
 }
 
 .bat-card {
@@ -3563,7 +3565,7 @@ textarea {
   border-radius: 12px;
   background: var(--c-panel);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
   line-height: 1.4;
   pointer-events: auto;
 }
@@ -3578,7 +3580,7 @@ textarea {
 
 .bat-card h3 {
   margin: 0 0 4px;
-  font-size: 15px;
+  font-size: calc(15px * var(--ts, 1));
 }
 
 .bat-card p {
@@ -3629,7 +3631,7 @@ textarea {
 #ui .shp-button {
   padding: 0 10px;
   background: var(--c-panel);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
   white-space: nowrap;
 }
 
@@ -3646,7 +3648,7 @@ textarea {
   padding: 5px 8px;
   border-radius: 12px;
   background: rgba(7, 10, 20, 0.82);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
   font-weight: 600;
   text-align: center;
   white-space: nowrap;
@@ -3677,7 +3679,7 @@ textarea {
 }
 
 .shp-info {
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
 }
 
 .shp-info[data-tone='bad'],
@@ -3686,7 +3688,7 @@ textarea {
 }
 
 .shp-status {
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
 }
 
 .shp-status[data-tone='good'] {
@@ -3711,7 +3713,7 @@ textarea {
   border-radius: 12px;
   background: var(--c-panel);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
   line-height: 1.4;
   pointer-events: auto;
 }
@@ -3726,7 +3728,7 @@ textarea {
 
 .shp-card h3 {
   margin: 0 0 4px;
-  font-size: 15px;
+  font-size: calc(15px * var(--ts, 1));
 }
 
 .shp-card p {
@@ -3817,7 +3819,7 @@ textarea {
 
 .fgt-name {
   overflow: hidden;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ts, 1));
   font-weight: 700;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -3840,7 +3842,7 @@ textarea {
 .fgt-state {
   overflow: hidden;
   color: var(--c-ink-dim);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--ts, 1));
   font-weight: 500;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -3867,7 +3869,7 @@ textarea {
   gap: 6px;
   min-height: 52px;
   padding: 0 8px;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ts, 1));
 }
 
 #ui .fgt-end[data-state='armed'] {
@@ -3948,7 +3950,7 @@ textarea {
   height: 52px;
   padding: 0;
   background: var(--c-panel);
-  font-size: 10px;
+  font-size: calc(10px * var(--ts, 1));
 }
 
 #ui .fgt-skip,
@@ -3982,7 +3984,7 @@ textarea {
   top: 4px;
   left: 8px;
   max-width: calc(100% - 16px);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
 }
 
 /* A job's objective, under the round. */
@@ -3996,7 +3998,7 @@ textarea {
   border-left: 3px solid var(--c-accent);
   border-radius: 4px 12px 12px 4px;
   background: rgba(7, 10, 20, 0.82);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4013,7 +4015,7 @@ textarea {
   bottom: 4px;
   max-width: calc(100% - 16px);
   transform: translateX(-50%);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
 }
 
 .fgt-chip[data-tone='good'],
@@ -4055,7 +4057,7 @@ textarea {
   border-radius: 12px;
   background: var(--c-panel);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
   line-height: 1.4;
   pointer-events: auto;
   touch-action: pan-y;
@@ -4074,7 +4076,7 @@ textarea {
   justify-content: space-between;
   gap: 14px;
   margin: 0 0 4px;
-  font-size: 15px;
+  font-size: calc(15px * var(--ts, 1));
 }
 
 .fgt-card p {
@@ -4084,7 +4086,7 @@ textarea {
 
 .fgt-hit {
   color: var(--c-target);
-  font-size: 22px;
+  font-size: calc(22px * var(--ts, 1));
   font-variant-numeric: tabular-nums;
 }
 
@@ -4181,7 +4183,7 @@ textarea {
 
 .fgt-over p {
   margin: 0;
-  font-size: 17px;
+  font-size: calc(17px * var(--ts, 1));
   font-weight: 700;
 }
 
@@ -4195,7 +4197,7 @@ textarea {
 
 .fgt-over .fgt-over-note {
   margin-top: -4px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ts, 1));
   font-weight: 500;
   color: var(--c-ink);
 }
@@ -4206,7 +4208,7 @@ textarea {
   padding: 0;
   list-style: none;
   color: var(--c-good);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
   font-weight: 600;
   line-height: 1.35;
   text-align: center;
@@ -4218,7 +4220,7 @@ textarea {
   padding: 0;
   list-style: none;
   color: var(--c-ink);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
   line-height: 1.35;
   text-align: center;
 }
@@ -4263,7 +4265,7 @@ textarea {
 
 #rotate p {
   margin: 0;
-  font-size: 18px;
+  font-size: calc(18px * var(--ts, 1));
   font-weight: 600;
 }
 
@@ -4287,7 +4289,7 @@ textarea {
 .apr-round {
   margin: 0;
   color: var(--c-dash);
-  font-size: 15px;
+  font-size: calc(15px * var(--ts, 1));
   font-weight: 700;
 }
 
@@ -4319,7 +4321,7 @@ textarea {
 
 .apr-name {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--ts, 1));
   font-weight: 700;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
 }
@@ -4327,7 +4329,7 @@ textarea {
 .apr-stats {
   margin: 0;
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   line-height: 1.25;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
 }
@@ -4375,7 +4377,7 @@ textarea {
 .apr-side .apr-out-title {
   margin: 2px 0 0;
   color: var(--c-ink);
-  font-size: 15px;
+  font-size: calc(15px * var(--ts, 1));
   letter-spacing: normal;
   text-transform: none;
 }
@@ -4385,7 +4387,7 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ts, 1));
 }
 
 .apr-log {
@@ -4406,7 +4408,7 @@ textarea {
   align-self: center;
   width: 3.2em;
   color: var(--c-ink-dim);
-  font-size: 11px;
+  font-size: calc(11px * var(--ts, 1));
   font-weight: 700;
   letter-spacing: 0.06em;
   line-height: 1.1;
@@ -4435,7 +4437,7 @@ textarea {
   min-width: 0;
   min-height: 48px;
   padding: 2px 4px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ts, 1));
   line-height: 1.15;
   white-space: nowrap;
 }
@@ -4448,7 +4450,7 @@ textarea {
 
 #ui .apr-order small {
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   font-weight: 500;
 }
 
@@ -4563,7 +4565,7 @@ textarea {
 
 @media (max-height: 320px) {
   .apr-stats {
-    font-size: 11px;
+    font-size: calc(11px * var(--ts, 1));
   }
 
   .apr-side {
@@ -4572,17 +4574,17 @@ textarea {
 
   .apr-side h2 {
     margin: 2px 0 0;
-    font-size: 11px;
+    font-size: calc(11px * var(--ts, 1));
   }
 
   .apr-intent,
   .apr-said {
-    font-size: 12px;
+    font-size: calc(12px * var(--ts, 1));
     line-height: 1.2;
   }
 
   #ui .apr-order {
-    font-size: 13px;
+    font-size: calc(13px * var(--ts, 1));
   }
 }
 
@@ -4622,13 +4624,13 @@ textarea {
   justify-content: center;
   gap: 1px;
   padding: 0 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   letter-spacing: 0.08em;
   opacity: 0.85;
 }
 
 .dev-fps {
-  font: 600 10px/1.1 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
+  font: 600 calc(10px * var(--ts, 1))/1.1 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
   letter-spacing: 0;
   white-space: nowrap;
 }
@@ -4643,7 +4645,7 @@ textarea {
 
 .fps {
   margin: 0;
-  font: 12px/1.5 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
+  font: calc(12px * var(--ts, 1))/1.5 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
   white-space: pre;
   overflow-x: auto;
 }
@@ -4671,13 +4673,13 @@ textarea {
 
 .dev-head h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: calc(18px * var(--ts, 1));
 }
 
 .dev-section h3 {
   margin: 16px 0 8px;
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -4692,7 +4694,7 @@ textarea {
 .dev-note {
   margin: 4px 0;
   color: var(--c-ink-dim);
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
 }
 
 .dev-note[data-tone='good'] {
@@ -4709,14 +4711,14 @@ textarea {
   border: 1px solid var(--c-line);
   border-radius: 8px;
   background: var(--c-space);
-  font: 12px/1.4 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
+  font: calc(12px * var(--ts, 1))/1.4 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
   word-break: break-all;
   resize: vertical;
 }
 
 .dev-status {
   margin: 0;
-  font: 12px/1.5 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
+  font: calc(12px * var(--ts, 1))/1.5 ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace;
   white-space: pre-wrap;
   word-break: break-word;
   user-select: text;
@@ -4796,7 +4798,7 @@ textarea {
 
 .cln-crew h2 b {
   color: var(--c-accent);
-  font-size: 18px;
+  font-size: calc(18px * var(--ts, 1));
   line-height: 0.6;
 }
 
@@ -4815,7 +4817,7 @@ textarea {
 .cln-note {
   margin: 4px 0 0;
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
 }
 
 .cln-buildings li {
@@ -4841,7 +4843,7 @@ textarea {
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 13px;
+  font-size: calc(13px * var(--ts, 1));
   line-height: 1.3;
 }
 
@@ -4874,7 +4876,7 @@ textarea {
 
 #ui .cln-part small {
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
 }
 
 #ui .cln-part[data-ok='true'] > small {
@@ -4942,7 +4944,7 @@ textarea {
 .cln-placing small {
   display: block;
   color: var(--c-ink-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--ts, 1));
   font-weight: 400;
 }
 

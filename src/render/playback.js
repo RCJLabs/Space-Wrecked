@@ -238,7 +238,8 @@ function wordsFor(event, view) {
     case 'shot': {
       const target = unitOf(view, event.target);
       if (!event.hit) return over(event.target, 'MISS', 'miss', FLIGHT);
-      return over(event.target, `${event.crit ? 'CRIT ' : ''}−${event.damage}`, target.side === 'crew' ? 'hurt' : 'hit', FLIGHT);
+      // A hurt to the crew says so in words, not only in its color (M42).
+      return over(event.target, `${target.side === 'crew' ? 'HURT ' : ''}${event.crit ? 'CRIT ' : ''}−${event.damage}`, target.side === 'crew' ? 'hurt' : 'hit', FLIGHT);
     }
     case 'down':
       return over(event.unit, 'DOWN', 'hurt');
@@ -271,7 +272,7 @@ function wordsFor(event, view) {
       return on(event.at, 'PULLED', 'hurt');
     case 'blast':
       // On the tile, and the damage over each unit beside it.
-      return [...on(event.at, 'BLAST', 'hit'), ...event.units.flatMap((id) => over(id, `−${event.damage}`, unitOf(view, id)?.side === 'crew' ? 'hurt' : 'hit', 0.2))];
+      return [...on(event.at, 'BLAST', 'hit'), ...event.units.flatMap((id) => over(id, `${unitOf(view, id)?.side === 'crew' ? 'HURT ' : ''}−${event.damage}`, unitOf(view, id)?.side === 'crew' ? 'hurt' : 'hit', 0.2))];
     case 'through':
       return over(event.unit, 'THROUGH', 'hurt');
     default:

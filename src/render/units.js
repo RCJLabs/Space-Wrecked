@@ -92,6 +92,8 @@ export function ordersScene({ reach = null, preview = null, battle = null, rules
   for (const spot of reach?.values() ?? []) {
     const color = spot.dash ? palette.dash : palette.reach;
     plate(faces, [spot.x + 0.07, spot.y + 0.07], [spot.x + 0.93, spot.y + 0.93], DECK, color, { emissive: true, alpha: 0.2, edge: rgba(color, 0.6), bias: -0.03 });
+    // A dash is hatched as well as colored (M42: never color alone).
+    if (spot.dash) for (const k of [0.3, 0.55, 0.8]) hatch(faces, [spot.x + 0.07, spot.y + 0.07], [spot.x + 0.93, spot.y + 0.93], 1, k, color, 0.55);
   }
   if (selected) ring(faces, selected, 0.34, 0.44, palette.accent, 0.95);
   for (const at of targets) ring(faces, at, 0.36, 0.42, palette.target, 0.6);
@@ -121,9 +123,42 @@ export function zonesScene(zones) {
   const faces = [];
   for (const { tiles, tone } of zones) {
     const color = tone === 'hold' ? palette.target : palette.accent;
-    for (const [x, y] of tiles) plate(faces, [x + 0.12, y + 0.12], [x + 0.88, y + 0.88], DECK, color, { emissive: true, alpha: 0.14, edge: rgba(color, 0.85), bias: -0.02 });
+    for (const [x, y] of tiles) {
+      plate(faces, [x + 0.12, y + 0.12], [x + 0.88, y + 0.88], DECK, color, { emissive: true, alpha: 0.14, edge: rgba(color, 0.85), bias: -0.02 });
+      // The way in held is crossed, not just colored (M42).
+      if (tone === 'hold') for (const sign of [1, -1]) hatch(faces, [x + 0.12, y + 0.12], [x + 0.88, y + 0.88], sign, 0.5, color, 0.7, -0.025);
+    }
   }
   return faces;
+}
+
+// A strip across the box [x0, y0]..[x1, y1] on the deck, along the line
+// x + sign * y through the point k of the way across (0 to 1), clipped to
+// the box: hatching (several) or a cross (one each way). bias as a face's.
+function hatch(out, [x0, y0], [x1, y1], sign, k, color, alpha, bias = -0.035, w = 0.035) {
+  const z = DECK * 1.3;
+  // In box coordinates u, v (0..1) the line is u + sign * v = c.
+  const [lo, hi] = sign > 0 ? [0, 2] : [-1, 1];
+  const at = (c) => {
+    const ends = [];
+    for (const v of [0, 1]) {
+      const u = c - sign * v;
+      if (u >= 0 && u <= 1) ends.push([u, v]);
+    }
+    for (const u of [0, 1]) {
+      const v = (c - u) * sign;
+      if (v > 0 && v < 1) ends.push([u, v]);
+    }
+    return ends.length === 2 ? ends : null;
+  };
+  const c = lo + (hi - lo) * k;
+  const [a, b] = [at(c - w), at(c + w)];
+  if (!a || !b) return;
+  const pt = ([u, v]) => [x0 + u * (x1 - x0), y0 + v * (y1 - y0), z];
+  const order = (e) => [...e].sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+  const [a0, a1] = order(a);
+  const [b0, b1] = order(b);
+  out.push({ pts: [pt(a0), pt(a1), pt(b1), pt(b0)], normal: [0, 0, 1], color, emissive: true, alpha, bias });
 }
 
 // A ring on the deck round the middle of tile [x, y].

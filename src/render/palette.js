@@ -406,6 +406,55 @@ export const bustColors = {
   tubeLight: '#6a7383',
 };
 
+// Colorblind-safe colors (M42, Settings' Colors): the tokens that tell
+// states apart by color alone, moved so that each pair in MUST_DIFFER stays
+// at least 20 apart (CIEDE2000) to normal eyes and to protanopia,
+// deuteranopia and tritanopia (tests/palette.test.js): good blue, bad
+// magenta-red, the accent gold, a warning near white, the boarders' trim and
+// shots a burnt orange. Everything else keeps its color.
+export const colorblindSafe = {
+  good: '#3d9cff',
+  bad: '#e83a8a',
+  target: '#e83a8a',
+  accent: '#f4b01c',
+  dash: '#fff8d6',
+  enemyTrim: '#d25215',
+  enemyTracer: '#f6802c',
+};
+
+// The pairs of tokens a player tells apart by color, each [a, b, where].
+export const MUST_DIFFER = [
+  ['good', 'bad', 'hints, ghosts, rings, checks'],
+  ['good', 'target', 'an order ring and a target ring'],
+  ['accent', 'bad', "a jump's ring and the hunters'; a zone's way out and way in"],
+  ['accent', 'target', 'the picked unit and its target'],
+  ['good', 'dash', 'a hit point bar, full and wounded'],
+  ['good', 'accent', 'the heat meter'],
+  ['dash', 'accent', 'the heat meter'],
+  ['dash', 'bad', 'the heat meter, a warning and a danger'],
+  ['reach', 'dash', 'move tiles, an action and a dash'],
+  ['bpGlow', 'bad', 'a hit on an enemy and a hurt to the crew'],
+  ['tracer', 'enemyTracer', 'shots on the approach, ours and theirs'],
+  ['crewSuit', 'enemySuit', 'the crew and boarders'],
+  ['crewA', 'enemyTrim', 'hit point pips'],
+  ['crewB', 'enemyTrim', 'hit point pips'],
+  ['crewC', 'enemyTrim', 'hit point pips'],
+  ['crewD', 'enemyTrim', 'hit point pips'],
+  ['crewE', 'enemyTrim', 'hit point pips'],
+  ['fire', 'vacuum', 'wrecked rooms'],
+  ['fire', 'rubble', 'wrecked rooms'],
+  ['vacuum', 'rubble', 'wrecked rooms'],
+  ['burn', 'frost', 'hull marks'],
+];
+
+// The color sets Settings offers, and the one in use: the palette object is
+// the same everywhere, its tokens swapped in place.
+export const COLOR_SETS = ['standard', 'safe'];
+const standard = { ...palette };
+export function usePalette(set) {
+  Object.assign(palette, standard, set === 'safe' ? colorblindSafe : {});
+}
+
 export function applyCssVars(root = document.documentElement) {
   for (const [name, value] of Object.entries(palette)) {
     root.style.setProperty(`--c-${name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`, value);

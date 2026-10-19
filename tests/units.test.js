@@ -47,10 +47,11 @@ test('each crew member has a trim of their own, round again after five', () => {
   assert.equal(crewColor(5), crewColor(0));
 });
 
-test('reach marks one tile each, blue for one action and amber for a dash', () => {
+test('reach marks one tile each, blue for one action and amber for a dash, the dash hatched too (M42)', () => {
   const reach = new Map([['1,1', { x: 1, y: 1, dash: false }], ['2,1', { x: 2, y: 1, dash: true }]]);
   const { faces } = ordersScene({ reach });
-  assert.deepEqual(faces.map((f) => f.color), [palette.reach, palette.dash]);
+  assert.deepEqual(faces.map((f) => f.color), [palette.reach, palette.dash, palette.dash, palette.dash, palette.dash]);
+  assert.ok(faces.slice(2).every((f) => f.pts.every(([x, y]) => x >= 2.069 && x <= 2.931 && y >= 1.069 && y <= 1.931)), 'the hatching inside its tile');
   for (const face of faces) {
     assert.ok(face.alpha > 0 && face.alpha < 1, 'the floor shows through');
     assert.ok(face.pts.every((p) => p[2] > 0 && p[2] < 0.05), 'just above the deck');

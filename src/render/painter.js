@@ -6,6 +6,7 @@
 // cancelling out.
 import { eyeOf } from './orbit.js';
 import { rgba } from './palette.js';
+import { textScale } from './textScale.js';
 
 // A model's faces and lines grouped by style. Made once per scene; the
 // painter projects it for every frame.
@@ -275,7 +276,8 @@ export function drawOrder(faces, cam, items = []) {
   return shown.sort((a, b) => b.depth - a.depth);
 }
 
-const LABEL_FONT = "600 10.5px ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace";
+// At Settings' Text size (M42).
+const labelFont = () => `600 ${10.5 * textScale()}px ui-monospace, 'Roboto Mono', Menlo, Consolas, monospace`;
 
 // Callouts: a leader line from a point in the scene to its name, kept
 // inside rect. labels: [{ at: [x, y, z], text, tone }]; tones maps a tone
@@ -284,7 +286,7 @@ export function paintLabels(ctx, labels, cam, rect, tones, backdrop) {
   if (!labels.length) return;
   const project = projector(cam);
   ctx.save();
-  ctx.font = LABEL_FONT;
+  ctx.font = labelFont();
   ctx.letterSpacing = '1px';
   ctx.textBaseline = 'middle';
   for (const label of labels) {

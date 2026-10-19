@@ -13,6 +13,7 @@ import { applyCssVars } from './render/palette.js';
 import { initialState, reduce, saveData } from './sim/root.js';
 import { createDevMenu } from './ui/dev/menu.js';
 import { createFpsReadout } from './ui/dev/fps.js';
+import { syncLook } from './ui/look.js';
 import { syncMotion } from './ui/motion.js';
 import { screenFor } from './ui/screens.js';
 import { gameSounds } from './ui/sounds.js';
@@ -40,6 +41,7 @@ store.subscribe((state) => {
 });
 const persistence = storage.requestPersistence();
 syncMotion(store);
+syncLook(store);
 // Sound (M35): from the first tap, at the settings' volume.
 startAudio(store);
 store.subscribe((state, prev, action) => gameSounds(state, prev, action).forEach(cue));

@@ -11,7 +11,7 @@ function deepFreeze(value) {
 }
 
 test('initial state starts on the title with default settings and the given seed', () => {
-  const settings = { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70 };
+  const settings = { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, colors: 'standard', textSize: 100 };
   assert.deepEqual(initialState(42), { screen: 'title', settings, rng: 42, builds: { active: 0, slots: [] }, campaign: null });
   assert.equal(initialState(-1).rng, 0xffffffff);
 });
