@@ -141,7 +141,9 @@ Job orders a fight: patch 0.8, suppress 0.4, weld 0.2.
   - "lost the trail" past the charts at heat 60 (a jump's plan, Survey's and Regroup's first taps);
   - the talents' new numbers on the crew card (Dez's 3 tiles, Teo's 8 aim);
   - a quit and reopen at v38, offline, every button 48 px or more, no console errors.
-- **Every earlier milestone's browser check:** REGRESSIONS
+- **Every earlier milestone's browser check** passes at the three sizes unless named, each the latest adapted copy (`m40/regress-a.sh`, `regress-b.sh`), but M32b's first copy, whose 2 known failures since M36 its fix copy covers.
+  - **Adapted for M40:** M39's (hydroponics grows 1 a jump) and M33c's (Steward's kit is +1 armor and +8 aim).
+  - **Run again on their own, and passed:** M29's at the open size, M37's at the tab size, M23's at the cover size and M17's at the open size, which timed out while the voyage tests ran beside them.
 
 **Known issues:**
 - **Bosun's weld lifts its squad 0 points** (above). Evan's call.
