@@ -48,6 +48,9 @@ export function startTips(root, store) {
     if (shown?.step !== step) {
       setText(words, rules.tips.get(step.id)?.text ?? '');
       card.dataset.tip = step.id;
+      // A control part way out of its panel's sight is brought into it
+      // (M43), as a thumb would scroll to it.
+      anchor.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
     shown = { step, anchor, done: step.done ? find(step.done) : anchor };
     ring.hidden = card.hidden = false;

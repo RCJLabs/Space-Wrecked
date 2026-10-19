@@ -672,7 +672,7 @@ function sectorHint(campaign, rules, { each, offer, leave, known, yard }) {
   if (offer.ok && wrecked) return { tone: 'good', text: `Supplies and repairs here. ${parts} wrecked aboard.` };
   if (offer.ok && hurt) return { tone: 'good', text: 'Supplies and a medic here. The crew is hurt.' };
   if (campaign.run.sector.system) return systemHint(campaign, rules);
-  if (offer.ok && offer.room && offer.most) return { tone: 'good', text: `Supplies sell here. A jump eats ${each}.` };
+  if (offer.ok && offer.room && offer.most) return { tone: 'good', text: `Supplies sell here: tap Buy or Fill up. A jump eats ${each}.` };
   const recruits = campaign.crew.length < crewRoom(campaign.ship, rules) ? recruitOffer(campaign, rules).length : 0;
   if (recruits) return { tone: 'good', text: `${recruits === 1 ? 'A recruit wants' : `${recruits} recruits want`} a berth here: tap Crew.` };
   // The parts on hand: the station's panel says so too, whatever comes

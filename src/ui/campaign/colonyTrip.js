@@ -49,7 +49,7 @@ export function createTrips(ctx) {
     placesSection(campaign) {
       const rows = placesText(campaign, defs());
       if (!rows.length) return [];
-      return [node('h2', null, 'Fly out'), list(rows.map((row) => rowButton(row.name, row.line, true, () => plan(row.index))))];
+      return [node('h2', null, 'Fly out'), list(rows.map((row) => rowButton(row.name, row.line, true, () => plan(row.index))), 'cln-places')];
     },
 
     planPanel(campaign) {
