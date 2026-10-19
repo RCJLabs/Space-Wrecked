@@ -3,14 +3,14 @@
 // for act 3 (gen/system.js), once a world. The day eats a jump's supplies
 // and adds surveyHeat, and the pursuer's hunters may find the ship as it
 // sits, at a jump's odds (hunt.js), as when regrouping. A day the supplies
-// don't cover isn't taken. With a xenobiologist aboard (edges.js, M32) a
-// survey takes no day: it eats nothing, adds no heat, and gives the hunters
-// no time to find the ship. On a voyage from the colony (M38d) the worlds
+// don't cover isn't taken. With a xenobiologist aboard (edges.js, M32), or
+// from M39 a working survey lab, a survey takes no day: it eats nothing,
+// adds no heat, and gives the hunters no time to find the ship. On a voyage from the colony (M38d) the worlds
 // of each system passed can be surveyed too, and the day passes at the
 // colony (days.js voyageDay). The flags count the surveys, and the free
 // ones. Pure.
 import { voyageDay } from './days.js';
-import { stationEdge } from './edges.js';
+import { shipEdge } from './edges.js';
 import { tally } from './flags.js';
 import { withHeat } from './heat.js';
 import { huntOdds, rollHunt } from './hunt.js';
@@ -28,7 +28,7 @@ export function surveyPlan(campaign, rules) {
   const here = hereOf(campaign);
   if (!here.world) return { ok: false, error: 'There is no world here to survey.' };
   if (run.surveyed.includes(run.at)) return { ok: false, error: `${here.name} has been surveyed.` };
-  if (stationEdge(campaign.crew, rules, 'freeSurvey')) return { ok: true, free: true, supplies: 0, heat: 0, hunt: null };
+  if (shipEdge(campaign.ship, campaign.crew, rules, 'freeSurvey', campaign.wrecks)) return { ok: true, free: true, supplies: 0, heat: 0, hunt: null };
   const supplies = jumpSupplies(campaign, rules);
   if (campaign.supplies < supplies) return { ok: false, error: `A day's survey eats ${supplies} supplies, and the holds have ${campaign.supplies}.` };
   const heat = withHeat(campaign.heat, rules.balance.surveyHeat) - campaign.heat;

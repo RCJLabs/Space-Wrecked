@@ -9,6 +9,7 @@
 // Pure: every roll is the campaign's.
 import { int } from '../core/rng.js';
 import { createBattle } from './battle.js';
+import { machinesOn } from './deploy.js';
 import { crewUnit, endFight } from './campaign.js';
 import { PAY_STEP } from './economy.js';
 import { hangarDoors, hangarMap, waysIn } from './hangarMap.js';
@@ -37,13 +38,17 @@ export function beginRaid(campaign, rules, { forgiving = false, difficulty = 'no
   const map = hangarMap(campaign.ship, rules);
   if (!map) return { ok: false, error: 'The ship has no parts yet.' };
   if (!waysIn(map)) return { ok: false, error: `${pursuer.name} won't cut through the hull. Put an airlock on it, then face them.` };
-  const placed = raidPlaces(map, campaign.crew.length, raiders.length, rules);
+  // The ship's working turrets (M39) fight for the crew, after everyone
+  // else, and no one else starts on their tiles.
+  const machines = machinesOn(map, rules, 'crew');
+  const placed = raidPlaces(map, campaign.crew.length, raiders.length, rules, machines.map(({ x, y }) => [x, y]));
   if (!placed) return { ok: false, error: `There isn't room for ${campaign.crew.length} crew and ${raiders.length} raiders.` };
   const { value: seed, state: rng } = int(campaign.rng, 0, MAX_SEED);
   const bonus = enemyBonus(difficulty, rules.balance);
   const units = [
     ...campaign.crew.map((member, i) => ({ ...crewUnit(member, rules), x: placed.crew[i][0], y: placed.crew[i][1] })),
     ...raiders.map((kind, i) => ({ kind, x: placed.raiders[i][0], y: placed.raiders[i][1], bonus })),
+    ...machines,
   ];
   const { battle, events } = createBattle({ map, units, seed, options: { forgiving, press: true } }, rules);
   const fight = { encounter: pursuer.raiders, seed, crew: campaign.crew.map((member) => member.id), battle, log: events, job: null, raid: true, boarding: null };
@@ -52,8 +57,9 @@ export function beginRaid(campaign, rules, { forgiving = false, difficulty = 'no
 
 // Where everyone starts: the crew on the bridge, nearest its middle by
 // walking first (with no bridge, as far from the hangar's doors as it
-// goes), and the raiders inside the hangar's doors. Null without room.
-function raidPlaces(map, crew, raiders, rules) {
+// goes), and the raiders inside the hangar's doors, none on a tile held
+// already ([[x, y]], the turrets'). Null without room.
+function raidPlaces(map, crew, raiders, rules, held = []) {
   const field = { map, doors: [], units: [] };
   const doors = hangarDoors(map).slice(0, raiders);
   const bridge = [];
@@ -66,7 +72,7 @@ function raidPlaces(map, crew, raiders, rules) {
   const fromDoors = stepsFrom(field, doors, rules);
   const furthest = Math.max(...fromDoors.values());
   const start = bridge.length ? bridge : [...fromDoors].filter(([, steps]) => steps === furthest).map(([key]) => key.split(',').map(Number));
-  const taken = new Set(doors.map(([x, y]) => `${x},${y}`));
+  const taken = new Set([...doors, ...held].map(([x, y]) => `${x},${y}`));
   const spots = [...stepsFrom(field, start, rules)]
     .map(([key, steps]) => ({ key, steps, at: key.split(',').map(Number) }))
     .filter(({ key }) => !taken.has(key))

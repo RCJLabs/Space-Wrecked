@@ -96,6 +96,24 @@ test("the details card says what a gun, a shield and point defense do in an appr
   assert.equal(cardFor(defs, defs.modules.get('surgery')).lines[2], 'On the run: heals each of the wounded 2 a jump, 3 with a medic aboard. Wrecked, it heals no one.');
 });
 
+test("M39's parts say what they do: a torpedo bay's rounds through the shields, a grapple's pull, a job's ship effect and its cap, the turret in a fight", () => {
+  const lines = (type) => cardFor(defs, defs.modules.get(type)).lines;
+  assert.equal(lines('torpedobay')[2], 'In an approach: 20 damage a hit, through the shields, one shot in rounds 1 and 3 only: never in the opening volley.');
+  assert.equal(lines('grapple')[2], "In an approach: closing in is 15 in 100 likelier, and the other ship's flight 15 less. The best working grapple counts.");
+  assert.equal(lines('scanner')[2], 'On the run, while it works: a scan reaches 1 more link. It adds to what the crew and other parts bring, up to 3 in all.');
+  assert.equal(lines('baffles')[2], 'On the run, while it works: each jump adds 1 less heat. A second adds nothing, nor does one of the crew who does the same.');
+  assert.equal(lines('hydroponics')[2], 'On the run, while it works: 2 supplies grow aboard each jump. It adds to what the crew and other parts bring, up to 6 in all.');
+  assert.equal(lines('turret')[2], 'In a fight aboard: it stands in its room for the ship\'s side, 10 hit points, aim 60, with an autogun. It never moves; at 0 hit points it is wrecked.');
+  // One part at the cap says a second adds nothing.
+  assert.equal(lines('flak')[2], "In an approach: the other ship's guns hit 20 in 100 less, the most there is, so a second adds nothing. Their volleys at your guns hit it too.");
+  // A maker's version says what its base does.
+  assert.equal(cardFor(defs, defs.modules.get('bastion-grapple')).lines[2], lines('grapple')[2]);
+  // And what it brings at the colony, given as a building.
+  assert.equal(lines('scanner')[3], "At the colony, given as the sensor mast, while it has power: each defense's shot at a lander is +10 to hit.");
+  assert.equal(lines('hydroponics')[3], 'At the colony, given as the greenhouse, while it has power: it grows 2 food a day.');
+  assert.ok(!lines('reactor').some((line) => line.startsWith('At the colony')), "a part whose building only gives its numbers says nothing more");
+});
+
 test('the details card says what quarters, life support and the med bay do on the run', () => {
   const room = 'On the run: the ship carries as many crew as its berths and life support both cover. Recruits sign on at stations.';
   assert.equal(cardFor(defs, defs.modules.get('quarters')).lines[2], room);

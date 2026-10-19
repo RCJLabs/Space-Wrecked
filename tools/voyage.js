@@ -102,6 +102,9 @@
 //   node tools/voyage.js --scan no     no scans
 //   node tools/voyage.js --fit medbay  a part fitted before the voyage (or a
 //                                      list, like --fit cargo,medbay)
+//   node tools/voyage.js --frame courier
+//                                      the ship moved onto another hull
+//                                      frame first (M39), as a yard moves it
 //   node tools/voyage.js --refit no    no refits at stations
 //   node tools/voyage.js --jobs no     no jobs at stations (M38c)
 //   node tools/voyage.js --out no      no voyage out from the colony (M38d)
@@ -124,6 +127,7 @@ import { dayPlan, nextDay } from '../src/sim/days.js';
 import { chooseAtPlace, flyHome, flyOn, flyOut, tripHere, withPlaces } from '../src/sim/expeditions.js';
 import { flightChecklist } from '../src/sim/constraints.js';
 import { indexDefs } from '../src/sim/defs.js';
+import { shipEdge } from '../src/sim/edges.js';
 import { jobHeat } from '../src/sim/heat.js';
 import { FACED } from '../src/sim/approach.js';
 import { approachState, closeApproach, giveOrder } from '../src/sim/encounter.js';
@@ -134,6 +138,7 @@ import { buyFromRack, rackHere } from '../src/sim/racks.js';
 import { buyFromYard } from '../src/sim/yards.js';
 import { eased, questOf, threadOf } from '../src/sim/quests.js';
 import { raidLoss } from '../src/sim/raid.js';
+import { onFrame } from '../src/sim/reframe.js';
 import { landingPlan, raidDown, raidIn } from '../src/sim/raids.js';
 import { huntersOf } from '../src/sim/hunt.js';
 import { hireRecruit } from '../src/sim/recruits.js';
@@ -379,7 +384,10 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     // Out of the map: into the next sector, the system past the charts, or
     // on a voyage the next system past the colony's (M38d).
     const out = plan.kind === 'sector' || plan.kind === 'system' || plan.kind === 'beyond';
-    record(plan.kind, before, { hungry: plan.hungry, heal: plan.heal, max: before.crew.map((member) => maxHp(member, defs)), to: out ? null : campaign.run.at, hunt: moved.hunt });
+    // M39: what hydroponics grew on the way, and the heat the baffles took
+    // off it.
+    const quiet = shipEdge(before.ship, before.crew, defs, 'quiet', before.wrecks);
+    record(plan.kind, before, { hungry: plan.hungry, heal: plan.heal, grows: plan.grows ?? 0, quiet, max: before.crew.map((member) => maxHp(member, defs)), to: out ? null : campaign.run.at, hunt: moved.hunt });
     tally.jumps += 1;
     if (moved.hunt.chance > 0) tally.hotJumps += 1;
     tally.peak = Math.max(tally.peak, campaign.heat);
@@ -1531,13 +1539,18 @@ export function launchedAt(defs, seed, background) {
 // fit (module types) fitted to the ship first. { launched, ...voyageFrom },
 // or { launched: false, lines } if the test run stopped short.
 export function voyage(defs, seed, options = {}, lifted = launchedAt(defs, seed, options.background)) {
-  const { fit = [], background, ...rest } = options;
+  const { fit = [], frame = null, background, ...rest } = options;
   if (!lifted.ok) return { launched: false, lines: [lifted.line] };
-  const ship = fit.reduce((fitted, type) => withPart(fitted, defs, type), lifted.campaign.ship);
+  // On another hull frame first (M39), its parts where they were, shifted
+  // in if need be, as a yard moves a ship over (reframe.js).
+  const moved = frame ? onFrame(lifted.campaign.ship, defs, frame) : { ok: true, ship: lifted.campaign.ship };
+  if (!moved.ok) throw new Error(moved.error);
+  const ship = fit.reduce((fitted, type) => withPart(fitted, defs, type), moved.ship);
   // A ship that fails a flight check can't leave a station (M23h), so what
   // is fitted has to keep every check passing.
   const broken = flightChecklist(ship, defs, lifted.campaign.crew.length).find((line) => line.ok !== true);
-  if (broken) throw new Error(`Fitted with ${fit.join(' and ')}, the ship fails a flight check: ${broken.text}.`);
+  const how = [frame && `On the ${defs.frames.get(frame).name}`, fit.length && `fitted with ${fit.join(' and ')}`].filter(Boolean).join(', ');
+  if (broken) throw new Error(`${how.charAt(0).toUpperCase()}${how.slice(1)}, the ship fails a flight check: ${broken.text}.`);
   return { launched: true, ...voyageFrom(defs, { ...lifted.campaign, ship }, { ...rest, label: `Campaign seed ${seed}, after ${lifted.jobs} jobs. ` }) };
 }
 
@@ -1933,7 +1946,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const made = sets.length ? rulesWith(readData(), sets) : { ok: true, rules: indexDefs(readData()) };
   if (!made.ok) throw new Error(made.error);
   const fit = value('--fit', '');
-  const options = { long: value('--long', 'heat'), scans: value('--scan', 'yes'), refit: value('--refit', 'yes'), heat: value('--heat', 'manage'), jobs: value('--jobs', 'yes'), out: value('--out', 'yes'), settle: value('--settle', 'yes'), fit: fit ? fit.split(',') : [], background: value('--background', undefined) };
+  const options = { long: value('--long', 'heat'), scans: value('--scan', 'yes'), refit: value('--refit', 'yes'), heat: value('--heat', 'manage'), jobs: value('--jobs', 'yes'), out: value('--out', 'yes'), settle: value('--settle', 'yes'), fit: fit ? fit.split(',') : [], frame: value('--frame', null), background: value('--background', undefined) };
   const runs = Number(value('--runs', 0));
   if (options.background === 'all') console.log(voyagesByBackground(made.rules, runs || 30, { ...options, background: undefined }).lines.join('\n'));
   else console.log((runs ? manyVoyages(made.rules, runs, options) : voyage(made.rules, Number(value('--seed', 1)), options)).lines.join('\n'));

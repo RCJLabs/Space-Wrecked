@@ -3094,6 +3094,12 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 
+/* The hull frame's trait (M39), under the totals. */
+.bld-trait {
+  margin: 6px 0 0;
+  color: var(--c-ink-dim);
+}
+
 /* The Saves tab. */
 .bld-current {
   margin: 0 0 6px;

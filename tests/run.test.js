@@ -6,7 +6,7 @@ import { applyCommand } from '../src/sim/builder.js';
 import { newCampaign, partsNeeded, shipChecklist } from '../src/sim/campaign.js';
 import { canLaunch } from '../src/sim/constraints.js';
 import { threadOf } from '../src/sim/quests.js';
-import { fitPart, manyRuns, PACE, runToLaunch } from '../tools/run.js';
+import { fitPart, helps, manyRuns, PACE, runToLaunch } from '../tools/run.js';
 import { rules } from './battleKit.js';
 
 const TOOL = fileURLToPath(new URL('../tools/run.js', import.meta.url));
@@ -30,6 +30,24 @@ test('fitting a part: where the rules allow it and the ship stays whole, or nowh
   for (const type of ['quarters', 'lifesupport']) ship = fitPart(ship, rules, type).ship;
   assert.ok(canLaunch(shipChecklist({ ...newCampaign(rules, 1), ship }, rules)), 'three engines, quarters and life support: ready');
   assert.equal(fitPart(ship, rules, 'teleporter'), null);
+});
+
+// M39: the test player takes a part the checklist doesn't name where it
+// does a named one's work, and leaves the checklist asking for fewer parts.
+test("a part that does a needed one's work counts as needed: a thruster or a light engine for an engine, a dormitory for quarters (M39)", () => {
+  const campaign = newCampaign(rules, 1);
+  for (const type of ['thruster', 'lightengine', 'dormitory', 'airrecycler']) assert.equal(helps(campaign, rules, type), true, type);
+  // Not one the checklist names (that is needed already), one that does
+  // nothing for it, or one that fixes a line and breaks another.
+  for (const type of ['engine', 'quarters', 'cargo', 'cockpit', 'bunks', 'teleporter']) assert.equal(helps(campaign, rules, type), false, type);
+  // Ready to launch, nothing helps.
+  let { ship } = campaign;
+  for (const type of ['engine', 'engine', 'engine', 'quarters', 'lifesupport']) ship = fitPart(ship, rules, type).ship;
+  assert.equal(helps({ ...campaign, ship }, rules, 'thruster'), false);
+  // A run buys one and fits it: seed 4's thruster.
+  const run = runToLaunch(rules, 4);
+  assert.ok(run.lines.some((line) => /Bought the Thruster .*to do a needed part's work/.test(line)), run.lines.join('\n'));
+  assert.ok(run.campaign.ship.modules.some((module) => module.type === 'thruster'));
 });
 
 // M16's Done when: a test run reaches launch in under an hour. Ten runs,

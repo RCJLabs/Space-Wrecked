@@ -9,7 +9,7 @@
 // event's words for it, its ship having fired first. The rules are
 // src/sim/approach.js's, played by src/sim/encounter.js. rules are the
 // content tables (src/sim/defs.js).
-import { AIMS, choicesFor, closeChance, FACED, fleeChance, sideStats } from '../../sim/approach.js';
+import { AIMS, choicesFor, closeChance, FACED, fleeChance, sideStats, torpedoRounds } from '../../sim/approach.js';
 import { approachIntent, approachState } from '../../sim/encounter.js';
 import { pursuerOf } from '../../sim/heat.js';
 import { boardingStakes } from './boardingText.js';
@@ -78,11 +78,16 @@ function sideText(name, side, rules) {
     return { all: all.length, text: `${working.length} of ${all.length}` };
   };
   const turrets = count('pointdefense');
+  // M39: torpedo bays among the guns, and a grapple, on a ship that has them.
+  const bays = count('torpedo');
+  const claws = count('grapple');
   return {
     name,
     stats: [
       ['Guns', count('weapon').text],
+      ...(bays.all ? [['Torpedo bays', bays.text]] : []),
       ...(turrets.all ? [['Point defense', stats.intercept ? String(stats.intercept) : 'out']] : []),
+      ...(claws.all ? [['Grapple', stats.grapple ? `+${stats.grapple}` : 'out']] : []),
       ['Shields', stats.shields ? `${stats.shields} a round` : 'none'],
       ['Engines', count('engine').text],
       ['Reactor', count('reactor').text],
@@ -105,7 +110,7 @@ export function damageText(damages) {
 // the odds it rolls at.
 function intentText(intent, state, theirName, rules) {
   const they = `The ${theirName}`;
-  const theirs = sideStats(state.them, rules);
+  const theirs = sideStats(state.them, rules, state.round ?? null);
   const yours = sideStats(state.you, rules);
   if (intent.kind === 'fire') {
     const choices = choicesFor(state, intent, rules);
@@ -113,13 +118,17 @@ function intentText(intent, state, theirName, rules) {
     const guns = `${theirs.guns} gun${theirs.guns === 1 ? '' : 's'}`;
     return {
       short: `Fires at your ${AIM_NAMES[intent.at]}`,
-      text: `${they} fires at your ${AIM_NAMES[intent.at]}: ${guns}, ${evade.was}% each (${evade.chance}% if you evade), ${damageText(theirs.damages)} damage a hit.`,
+      text: `${they} fires at your ${AIM_NAMES[intent.at]}: ${guns}, ${evade.was}% each (${evade.chance}% if you evade), ${damageText(theirs.damages)} damage a hit.${torpedoWords(theirs, 'your', rules)}`,
     };
   }
   if (intent.kind === 'close') {
-    return { short: 'Closes to board', text: `${they} closes to board: ${closeChance(theirs, yours, rules)}% to grapple on, after the volleys. Getting away, or disabling it, stops it.` };
+    const claw = theirs.grapple ? ` Their grapple adds ${theirs.grapple}.` : '';
+    return { short: 'Closes to board', text: `${they} closes to board: ${closeChance(theirs, yours, rules)}% to grapple on, after the volleys.${claw} Getting away, or disabling it, stops it.` };
   }
-  if (intent.kind === 'flee') return { short: 'Runs', text: `${they} is running: ${fleeChance(theirs, yours, rules)}% to get away, before anyone fires.` };
+  if (intent.kind === 'flee') {
+    const held = yours.grapple ? ` Your grapple holds it: ${yours.grapple} less.` : '';
+    return { short: 'Runs', text: `${they} is running: ${fleeChance(theirs, yours, rules)}% to get away, before anyone fires.${held}` };
+  }
   return { short: 'Evades', text: `${they} is evading: your guns hit less.` };
 }
 
@@ -127,13 +136,17 @@ function intentText(intent, state, theirName, rules) {
 // it.
 function ordersText(state, intent, theirName, rules) {
   const choices = choicesFor(state, intent, rules);
+  // M39: what the ships' torpedo bays and grapples do, as the odds count them.
+  const yours = sideStats(state.you, rules, state.round ?? null);
+  const theirs = sideStats(state.them, rules);
   const out = [];
   for (const choice of choices) {
     const { order } = choice;
     if (order.kind === 'fire') {
       const name = AIM_NAMES[order.at];
       const guns = `${choice.guns} gun${choice.guns === 1 ? '' : 's'}`;
-      const shields = choice.shields ? `, their shields soak up ${choice.shields} a round` : '';
+      const torpedo = (choice.through ?? []).some(Boolean);
+      const shields = choice.shields ? `, their shields soak up ${choice.shields} a round${torpedo ? ' but not a torpedo' : ''}` : '';
       // Wrecking the last reactor rolls for the ship blowing apart.
       const blow = order.at === 'reactor' && choice.targets.length === 1 ? ` If their last reactor is wrecked, the ${theirName} blows apart ${rules.balance.blowChance}% of the time, leaving only scrap.` : '';
       out.push({
@@ -144,7 +157,7 @@ function ordersText(state, intent, theirName, rules) {
         ok: choice.ok,
         why: choice.why,
         ask: `${capital(name)}?`,
-        text: `Fire at their ${name}: your ${guns}, ${choice.chance}% each to hit, ${damageText(choice.damages)} damage a hit${shields}.${blow} Tap again to fire.`,
+        text: `Fire at their ${name}: your ${guns}, ${choice.chance}% each to hit, ${damageText(choice.damages)} damage a hit${shields}.${torpedoWords(yours, 'their', rules, false)}${blow} Tap again to fire.`,
         // The parts it would hit, the first first: marked on her hull as
         // it is armed (M38b).
         targets: choice.targets.map((target) => target.uid),
@@ -153,12 +166,28 @@ function ordersText(state, intent, theirName, rules) {
       const against = choice.chance === null ? 'Their guns are quiet this round.' : `Their guns hit ${choice.chance}% instead of ${choice.was}%.`;
       out.push({ key: 'evade', order, label: 'Evade', small: choice.chance === null ? '' : `${choice.chance}%`, ok: true, why: null, ask: 'Evade?', text: `Evade: you don't fire. ${against} Tap again to evade.` });
     } else if (order.kind === 'flee') {
-      out.push({ key: 'flee', order, label: 'Flee', small: choice.ok ? `${choice.chance}%` : '–', ok: choice.ok, why: choice.why, ask: 'Flee?', text: `Flee: ${choice.chance}% to get away before anyone fires. Tap again to run.` });
+      const held = theirs.grapple ? ` Their grapple holds you: ${theirs.grapple} less.` : '';
+      out.push({ key: 'flee', order, label: 'Flee', small: choice.ok ? `${choice.chance}%` : '–', ok: choice.ok, why: choice.why, ask: 'Flee?', text: `Flee: ${choice.chance}% to get away before anyone fires.${held} Tap again to run.` });
     } else {
-      out.push({ key: 'close', order, label: 'Board', small: choice.ok ? `${choice.chance}%` : '–', ok: choice.ok, why: choice.why, ask: 'Board?', text: `Close to board the ${theirName}: ${choice.chance}% to grapple on, after the volleys, then a fight with her crew aboard her. Tap again to close.` });
+      const claw = yours.grapple ? ` Your grapple adds ${yours.grapple}.` : '';
+      out.push({ key: 'close', order, label: 'Board', small: choice.ok ? `${choice.chance}%` : '–', ok: choice.ok, why: choice.why, ask: 'Board?', text: `Close to board the ${theirName}: ${choice.chance}% to grapple on, after the volleys, then a fight with her crew aboard her.${claw} Tap again to close.` });
     }
   }
   return out;
+}
+
+// A side's torpedo bays this round (M39), in words, or '': those firing
+// pass `whose` shields; those holding fire say when they fire. stats is
+// sideStats for the round. shields: whether to say the torpedoes pass them
+// (the order's own words say it already).
+function torpedoWords(stats, whose, rules, shields = true) {
+  const firing = stats.through.filter(Boolean).length;
+  const holding = stats.armed - stats.guns;
+  const rounds = torpedoRounds(rules);
+  const when = rounds.length > 1 ? `rounds ${rounds.slice(0, -1).join(', ')} and ${rounds.at(-1)}` : `round ${rounds[0]}`;
+  if (firing) return shields ? ` ${firing === 1 ? 'A torpedo' : `${firing} torpedoes`} among them, through ${whose} shields.` : '';
+  if (holding > 0) return ` ${holding === 1 ? 'A torpedo bay holds' : `${holding} torpedo bays hold`} fire this round: they fire in ${when}.`;
+  return '';
 }
 
 // What the last round came to, a line an event.
@@ -183,7 +212,7 @@ function roundLines({ events }, state, theirName, rules) {
       .map((shot) => {
         const part = `${ours ? 'their' : 'your'} ${nameOf(target, shot.module)}`;
         if (!shot.module) return shot.absorbed ? `shields take ${shot.absorbed}` : 'nothing left to hit';
-        const soaked = shot.absorbed ? ` (shields take ${shot.absorbed})` : '';
+        const soaked = shot.absorbed ? ` (shields take ${shot.absorbed})` : shot.torpedo ? ' (a torpedo, through the shields)' : '';
         return shot.wreck ? `${part} wrecked, ${WRECK_WORDS[shot.wreck]}${soaked}` : `${part} takes ${shot.damage}${soaked}`;
       })
       .join('; ');

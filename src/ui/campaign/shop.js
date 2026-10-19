@@ -11,6 +11,8 @@
 // sector map at one: its parts for sale, never restocked, and the parts on
 // hand it buys, at its prices; Map goes back. The first trade at a yard of
 // the pursuer's side says the heat it adds. Those words are yardText.js's.
+// Since M39 a yard sells hull frames too, listed between the two: bought
+// with two taps, the ship moves onto the frame at once.
 import { loadContent } from '../../platform/content.js';
 import { palette } from '../../render/palette.js';
 import { node, setText, toolButton } from '../fight/panels.js';
@@ -42,9 +44,10 @@ export const shopScreen = {
 
     let defs = null;
     let alive = true;
-    // What is picked: { from: 'stock' | 'held', key } where key is the
-    // part's type or 'w:' and the weapon's (shopText.js), so a pick survives
-    // the stock or the hold changing.
+    // What is picked: { from: 'stock' | 'frames' | 'held', key } where key
+    // is the part's type, 'w:' and the weapon's (shopText.js) or 'f:' and
+    // the frame's (yardText.js), so a pick survives the stock or the hold
+    // changing.
     let picked = null;
     let shownPick = null; // the pick the list last showed
     let armed = false; // Buy or Sell has had its first tap
@@ -88,7 +91,8 @@ export const shopScreen = {
       }
       setText(where, text.name);
       setText(creditsChip, text.credits);
-      const items = [...text.stock.map((item) => ({ from: 'stock', key: item.key, item })), ...text.held.map((item) => ({ from: 'held', key: item.key, item }))];
+      const frames = text.frames ?? [];
+      const items = [...text.stock.map((item) => ({ from: 'stock', key: item.key, item })), ...frames.map((item) => ({ from: 'frames', key: item.key, item })), ...text.held.map((item) => ({ from: 'held', key: item.key, item }))];
       const current = items.find((entry) => entry.from === picked?.from && entry.key === picked?.key) ?? items[0] ?? null;
       if (current?.from !== picked?.from || current?.key !== picked?.key) disarm();
       const moved = current?.from !== shownPick?.from || current?.key !== shownPick?.key;
@@ -117,7 +121,7 @@ export const shopScreen = {
       tradeButton.dataset.armed = String(armed);
       tradeButton.setAttribute('aria-label', `${selling ? 'Sell' : 'Buy'} the ${item.name}`);
       const again = `Tap again to ${selling ? 'sell' : 'buy'} it.`;
-      const confirm = selling && item.warn ? `${item.warn}: tap again to sell it anyway.` : text.dock ? `${text.dock} ${again}` : again;
+      const confirm = item.warn ? `${item.warn}: tap again to ${selling ? 'sell' : 'buy'} it anyway.` : text.dock ? `${text.dock} ${again}` : again;
       const why = !item.ok ? item.why : armed ? confirm : null;
       setText(hint, why ?? text.hint.text);
       hint.dataset.tone = why ? (item.ok ? 'warn' : 'bad') : text.hint.tone;
@@ -139,12 +143,15 @@ export const shopScreen = {
         button.append(top, node('span', 'shop-price', from === 'held' ? `Sells for ${item.price}` : item.price));
         return { button, detach: onTap(button, () => pick(from, item.key)) };
       };
-      rows = [...text.stock.map((item) => row('stock', item)), ...text.held.map((item) => row('held', item))];
+      const frames = text.frames ?? [];
+      rows = [...text.stock.map((item) => row('stock', item)), ...frames.map((item) => row('frames', item)), ...text.held.map((item) => row('held', item))];
       const forSale = rows.slice(0, text.stock.length).map((r) => r.button);
-      const onHand = rows.slice(text.stock.length).map((r) => r.button);
+      const hulls = rows.slice(text.stock.length, text.stock.length + frames.length).map((r) => r.button);
+      const onHand = rows.slice(text.stock.length + frames.length).map((r) => r.button);
       list.replaceChildren(
         section('For sale'),
         ...(forSale.length ? forSale : [node('p', 'shop-none', text.soldOut ?? 'Sold out until the next job.')]),
+        ...(hulls.length ? [section('Hull frames'), ...hulls] : []),
         ...(onHand.length ? [section('On hand'), ...onHand] : []),
       );
     }
@@ -169,6 +176,15 @@ export const shopScreen = {
         line.append(node('dt', null, label), node('dd', null, value));
         facts.append(line);
       };
+      if (from === 'frames') {
+        const [size, trait, price] = item.facts;
+        fact('Size', size);
+        fact('Trait', trait);
+        fact('Price', price);
+        fact('You pay', item.price);
+        detail.replaceChildren(node('h2', null, item.name), node('p', 'shop-who', `For sale · ${text.dealer}`), facts, node('p', 'shop-pitch', text.framePitch ?? ''));
+        return;
+      }
       if (item.weapon) {
         const [what, aim, rules] = item.facts;
         fact('Weapon', what);
@@ -208,8 +224,14 @@ export const shopScreen = {
       const { campaign } = game.getState();
       const yard = yardText(campaign, defs);
       if (yard) {
-        // At a yard: by the part's slot to buy, by its type to sell.
-        if (picked.from === 'stock') {
+        // At a yard: by the part's slot to buy, by its type to sell, a frame
+        // by its id (M39), after which the ship's own frame is for sale in
+        // its place.
+        if (picked.from === 'frames') {
+          const item = yard.frames.find((entry) => entry.key === picked.key);
+          picked = { from: 'frames', key: `f:${campaign.ship.frame}` };
+          if (item) game.dispatch({ type: 'campaign/yard/frame', frame: item.frame, rules: defs });
+        } else if (picked.from === 'stock') {
           const item = yard.stock.find((entry) => entry.key === picked.key);
           picked = { from: 'held', key: picked.key };
           if (item) game.dispatch({ type: 'campaign/yard/buy', slot: item.slot, rules: defs });

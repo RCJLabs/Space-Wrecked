@@ -33,7 +33,7 @@ import { tileText } from '../battle/tileText.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { cueSound, fightSounds } from '../sounds.js';
-import { portraitUrl } from '../portrait.js';
+import { machineUrl, portraitUrl } from '../portrait.js';
 import { chipFor, endingFor, eventText, hintFor, oddsText, unitText } from './hints.js';
 import { objectiveMarks, objectiveZones } from './marks.js';
 import { createActionBar, createCrewBar, node, setText, toolButton } from './panels.js';
@@ -97,7 +97,7 @@ export function mountFight(root, source) {
   const extraTools = (source.tools ?? []).map((tool) => ({ ...tool, button: toolButton('fgt-tool', tool.icon, tool.label) }));
   chip.hidden = goal.hidden = card.hidden = over.hidden = true;
   board.append(chip, goal, status, card, over);
-  const crewBar = createCrewBar({ onSelect: (id) => order({ type: 'fight/select', unit: id }), onEnd: endTurn });
+  const crewBar = createCrewBar({ onSelect: (id) => order({ type: 'fight/select', unit: id }), onEnd: endTurn, rules: () => defs });
   // The tools head the orders' column, off the board: the source's own
   // (Title) at the top, the least used in a fight and the first to scroll
   // away on a short screen.
@@ -250,6 +250,12 @@ export function mountFight(root, source) {
     const looks = [];
     battle.units.filter((u) => u.side === 'crew').forEach((u, i) => {
       colors.set(u.id, crewColor(i));
+      // A ship's turret (M39) shows its own badge.
+      const machine = defs.machines?.get(u.kind)?.look?.machine;
+      if (machine) {
+        faces.set(u.id, machineUrl(machine, colors.get(u.id), 'face'));
+        return;
+      }
       // The crew member's look, or one rolled for a fight with no campaign
       // behind it (the Fight sandbox), the same every time; the person the
       // crew brings out (M38) and a raid's colonist (M38f), one rolled from
@@ -445,7 +451,7 @@ export function mountFight(root, source) {
   function showBoard(fight, orders, frame) {
     const battle = frame ? frame.view : fight.battle;
     if (battle.doors !== doorsShown || battle.fires !== firesShown) {
-      mapView.setMap({ map, skin: skinOf(map, defs), open: battle.doors, fires: battle.fires ?? [] });
+      mapView.setMap({ map, skin: skinOf(map, defs), open: battle.doors, fires: battle.fires ?? [], mounts: battle.units.filter((u) => defs.machines?.has(u.kind)).map((u) => [u.x, u.y]) });
       doorsShown = battle.doors;
       firesShown = battle.fires;
     }
@@ -516,10 +522,11 @@ export function mountFight(root, source) {
     return [Math.cos(a + turn * t), Math.sin(a + turn * t)];
   }
 
-  // A unit's kind: its job, its enemy, the person a job brings out (M38),
-  // or a raid's colonist (M38f, data/colony.json citizen).
+  // A unit's kind, as battle.js finds it: its job, the person a job brings
+  // out (M38), a raid's colonist (M38f, data/colony.json citizen), a ship's
+  // turret (M39, a part's unit) or its enemy.
   function kindOf(u) {
-    return defs.jobs.get(u.kind) ?? defs.enemies.get(u.kind) ?? defs.people?.get(u.kind) ?? (u.citizen ? defs.colony?.citizen : null) ?? null;
+    return defs.jobs.get(u.kind) ?? defs.people?.get(u.kind) ?? (u.citizen ? defs.colony?.citizen : null) ?? defs.machines?.get(u.kind) ?? defs.enemies.get(u.kind) ?? null;
   }
 
   // Standing, a unit looks at the nearest enemy still up; lying down, it

@@ -47,6 +47,7 @@
 // against whom it would have no cover, without a reason: a plan like that
 // only counts for a shot worth the risk (OPEN_SHOT) and better than any
 // covered tile offers, or when no covered tile is in reach.
+import { isMachine } from './battle.js';
 import { coverFrom } from './cover.js';
 import { blastsAt, playFor } from './objectiveAi.js';
 import { orderAction } from './orderAi.js';
@@ -84,7 +85,10 @@ export function aiAction(battle, rules) {
   const order = orderAction(battle, unit, rules);
   if (order) return order;
   if (unit.ammo < 1) return { type: 'reload', unit: unit.id };
-  return planAction(unit, bestPlan(plansFor(battle, unit, rules)));
+  // A machine (M39, a ship's turret) has no moves and opens no door: it
+  // shoots or watches from where it stands.
+  const plans = plansFor(battle, unit, rules);
+  return planAction(unit, bestPlan(isMachine(unit, rules) ? plans.filter((plan) => !plan.open) : plans));
 }
 
 // The next action toward a plan of plansFor's: open the door, get there,

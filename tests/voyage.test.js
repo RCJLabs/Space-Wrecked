@@ -75,12 +75,13 @@ import { colonyStats, donate, shipParts } from '../src/sim/colony.js';
 import { outcomeFor } from '../src/sim/events.js';
 import { shipStats } from '../src/sim/constraints.js';
 import { crewRoom } from '../src/sim/crew.js';
+import { hasTag } from '../src/sim/modules.js';
 import { tripHeatOf } from '../src/sim/raids.js';
 import { feeOf } from '../src/sim/recruits.js';
 import { costAt } from '../src/sim/standing.js';
 import { voyagePlan } from '../src/sim/voyage.js';
 import { AFTER_DAYS, citizensSummary, COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, NEW_DAYS, outSummary, playColony, playTrips, secondSummary, SETTLE_SYSTEM, TRIP_DAYS, voyage, VOYAGE_SYSTEMS, voyagesByBackground } from '../tools/voyage.js';
-import { bestWorld, FIT_ORDER, FIT_SHARE, HOME_JUMPS, nextGift, STOCK_DAYS, systemMove } from '../tools/voyagePlan.js';
+import { bestWorld, FIT_ORDER, FIT_SHARE, HOME_JUMPS, NEVER_FIT, nextGift, STOCK_DAYS, systemMove } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 
 const { balance } = rules;
@@ -390,12 +391,15 @@ function checkStep(step, capacity, kinds) {
   }
   const long = step.kind === 'long';
   const cost = balance.jumpSupplies * step.crew * (long ? balance.longJumpFactor : 1);
-  assert.equal(step.hungry, supplies < cost);
-  assert.equal(after, Math.max(0, supplies - cost));
-  // The jump's heat, and since M33's fix nothing for docking where it
-  // comes out: that is a trade's.
+  // What hydroponics grow on the way (M39) is eaten first, the rest kept
+  // up to what the holds take.
+  assert.equal(step.hungry, supplies + step.grows < cost);
+  assert.equal(after, Math.min(capacity, Math.max(0, supplies - cost + step.grows)));
+  // The jump's heat, less what stealth baffles take off it (M39), and
+  // since M33's fix nothing for docking where it comes out: that is a
+  // trade's.
   assert.equal(step.dock, undefined);
-  assert.equal(step.heat[1], clamp(step.heat[0] + (long ? balance.longJumpHeat : balance.jumpHeat), HEAT_MAX));
+  assert.equal(step.heat[1], clamp(step.heat[0] + (long ? balance.longJumpHeat : balance.jumpHeat) - step.quiet, HEAT_MAX));
   // Hunger first, then the med bay's healing, up to each one's most.
   assert.deepEqual(step.hp[1], step.hp[0].map((hp, i) => Math.min(step.max[i], (step.hungry ? Math.max(1, hp - balance.hungerHp) : hp) + step.heal)));
   assert.equal(step.credits[1], step.credits[0]);
@@ -545,8 +549,12 @@ test('the careful player refits at stations with what it has, every flight check
     assert.deepEqual([step.credits[1], step.supplies[1], step.heat[1], step.hp[1]], [step.credits[0], step.supplies[0], step.heat[0], step.hp[0]]);
     assert.equal(step.passes, true);
     // Only what feeds, heals, houses, guards, arms or drives the ship, and
-    // a reactor with a part the power doesn't stretch to.
-    for (const type of step.fitted) assert.ok([...FIT_ORDER, 'power'].includes(rules.modules.get(type).category), type);
+    // from M39 its systems, never a second bridge, a corridor, an airlock
+    // or an armory; and a reactor with a part the power doesn't stretch to.
+    for (const type of step.fitted) {
+      const def = rules.modules.get(type);
+      assert.ok([...FIT_ORDER, 'power'].includes(def.category) && !NEVER_FIT.some((tag) => hasTag(def, tag)), type);
+    }
   }
   // Without refits, the same seeds fly as before.
   const fedHere = refitting.filter((trip) => trip.tally.hungryJumps === 0).length;

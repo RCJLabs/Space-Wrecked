@@ -3,7 +3,7 @@
     {
       "id": "cutter",
       "name": "Pirate cutter",
-      "frame": "starter",
+      "frame": "smallcraft",
       "crew": 4,
       "beam": [4, 5],
       "symmetric": false,
@@ -30,7 +30,7 @@
       "id": "corvette",
       "name": "Patrol corvette",
       "side": "fleet",
-      "frame": "starter",
+      "frame": "patrolhull",
       "crew": 6,
       "beam": [7, 7],
       "symmetric": true,
@@ -46,7 +46,8 @@
         "lifesupport": 2,
         "airlock": 2,
         "reactor": 2,
-        "engine": [2, 4]
+        "engine": [2, 4],
+        "flak": 1
       },
       "makers": { "bastion": 80 },
       "tactics": { "aim": ["weapons", "reactor"], "flee": 70 },
@@ -71,7 +72,9 @@
         "cargo": [2, 4],
         "largehold": [0, 1],
         "reactor": 1,
-        "engine": [2, 4]
+        "engine": [2, 4],
+        "hydroponics": 1,
+        "cargopod": [1, 2]
       },
       "makers": { "scrapline": 80 },
       "wrecks": [1, 3],
@@ -81,7 +84,7 @@
       "id": "repotug",
       "name": "Con-Reg repo tug",
       "side": "conreg",
-      "frame": "starter",
+      "frame": "smallcraft",
       "crew": 3,
       "beam": [5, 7],
       "symmetric": false,
@@ -136,7 +139,7 @@
       "id": "provostcutter",
       "name": "Provost cutter",
       "side": "fleet",
-      "frame": "starter",
+      "frame": "smallcraft",
       "crew": 3,
       "beam": [5, 7],
       "symmetric": false,
@@ -150,7 +153,8 @@
         "airlock": 1,
         "reactor": 1,
         "engine": 1,
-        "lightengine": 2
+        "lightengine": 2,
+        "turret": 1
       },
       "makers": { "bastion": 50 },
       "tactics": { "aim": ["engines", "weapons"], "board": 2, "flee": 50 },
@@ -163,7 +167,7 @@
       "id": "frigate",
       "name": "Fleet frigate",
       "side": "fleet",
-      "frame": "starter",
+      "frame": "patrolhull",
       "crew": 4,
       "beam": [5, 6],
       "symmetric": false,
@@ -179,7 +183,8 @@
         "airlock": 1,
         "reactor": 1,
         "smallreactor": 1,
-        "engine": 2
+        "engine": 2,
+        "firecontrol": 1
       },
       "makers": { "bastion": 80 },
       "tactics": { "aim": ["engines", "weapons"], "board": 2, "flee": 70 },
@@ -206,7 +211,8 @@
         "airlock": 1,
         "reactor": 1,
         "engine": 1,
-        "lightengine": 2
+        "lightengine": 2,
+        "baffles": 1
       },
       "makers": { "kestrel": 80 },
       "tactics": { "aim": ["engines", "weapons"], "board": 2, "flee": 50 },
@@ -235,7 +241,8 @@
         "airlock": 1,
         "reactor": 1,
         "smallreactor": 1,
-        "engine": 2
+        "engine": 2,
+        "ecm": 1
       },
       "makers": { "bastion": 50 },
       "tactics": { "aim": ["engines", "weapons"], "board": 2, "flee": 70 },

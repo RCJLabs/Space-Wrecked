@@ -17,7 +17,7 @@ const OTHER = { you: 'them', them: 'you' };
 // shots one after another, each shot's flight and the flash where it lands,
 // a flight that gets away and a closing that grapples on, a try that fails,
 // and a reactor going.
-export const MS = { pause: 160, gap: 200, travel: 340, land: 300, flight: 950, close: 700, lurch: 450, blow: 1000, holds: 450 };
+export const MS = { pause: 160, gap: 200, travel: 340, torpedo: 620, land: 300, flight: 950, close: 700, lurch: 450, blow: 1000, holds: 450 };
 // How far a ship that gets away flies off, in widths of its own part of
 // the screen, and how far a failed try lurches. Ships closing to board come
 // together as far as approachView.js finds room for.
@@ -30,9 +30,10 @@ const MUZZLE = { light: [1.16, HULL + 0.14], heavy: [1.36, HULL + 0.18] };
 const STEP = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 
 // Where things are on a ship, in her own deck's cells: { guns, center,
-// edge, span, partAt(uid), miss(i) }. guns: [{ uid, at }], the muzzles of
-// the guns working as the round began (wrecked: { [uid]: hazard }), in the
-// order they fire (fitted order, as approach.js sideStats counts them).
+// edge, span, partAt(uid), miss(i) }. guns: [{ uid, at, torpedo }], the
+// muzzles of the guns working as the round began (wrecked: { [uid]: hazard
+// }), in the order they fire (fitted order, as approach.js sideStats counts
+// them), torpedo true for a torpedo bay's tube (M39).
 // edge is her nose, where a shot her shields stop flashes; a miss flies by
 // her, above or below in turn.
 export function shipGeometry({ ship, defs, hull, wrecked = {} }) {
@@ -46,13 +47,14 @@ export function shipGeometry({ ship, defs, hull, wrecked = {} }) {
     const def = defs.modules.get(module.type);
     if (!def || !hasTag(def, 'weapon') || module.uid in wrecked) continue;
     const barrel = muzzles.get(module.uid);
+    const torpedo = hasTag(def, 'torpedo');
     if (!barrel) {
-      guns.push({ uid: module.uid, at: partPoint(ship, defs, module.uid) ?? center });
+      guns.push({ uid: module.uid, at: partPoint(ship, defs, module.uid) ?? center, torpedo });
       continue;
     }
     const [dx, dy] = STEP[barrel.side];
     const [reach, z] = MUZZLE[barrel.heavy ? 'heavy' : 'light'];
-    guns.push({ uid: module.uid, at: [barrel.x + 0.5 + dx * reach, barrel.y + 0.5 + dy * reach, z] });
+    guns.push({ uid: module.uid, at: [barrel.x + 0.5 + dx * reach, barrel.y + 0.5 + dy * reach, z], torpedo });
   }
   return {
     guns,
@@ -69,9 +71,11 @@ export function shipGeometry({ ship, defs, hull, wrecked = {} }) {
 // damage, wrecked } as it began; outcome: the approach's once played
 // (null while it goes on); geometry: each side's shipGeometry. A beat is a
 // shot ({ kind: 'shot', side (who fired), at, lands, from, to, hit,
-// shield, module, damage, wreck }), a flight, a closing or a reactor going
-// ({ kind: 'flee' | 'close' | 'blow', side, ok, at, ms }). ends: when each
-// event's beats are over, so its line can show.
+// shield, module, damage, wreck, torpedo }), a flight, a closing or a
+// reactor going ({ kind: 'flee' | 'close' | 'blow', side, ok, at, ms }).
+// ends: when each event's beats are over, so its line can show. A torpedo
+// (M39) flies slower than a gun's shot, and in a round its bays hold fire
+// the shots are the other guns', in their order.
 export function roundTimeline({ events, before, outcome = null, geometry }) {
   const beats = [];
   const ends = [];
@@ -80,12 +84,17 @@ export function roundTimeline({ events, before, outcome = null, geometry }) {
     if (event.kind === 'volley') {
       const shooter = geometry[event.side];
       const target = geometry[OTHER[event.side]];
+      const firing = event.shots.length === shooter.guns.length ? shooter.guns : shooter.guns.filter((gun) => !gun.torpedo);
+      let last = t;
       event.shots.forEach((shot, i) => {
         const at = t + i * MS.gap;
+        const torpedo = shot.torpedo === true;
+        const lands = at + (torpedo ? MS.torpedo : MS.travel);
+        last = Math.max(last, lands);
         const to = shot.module !== null ? target.partAt(shot.module) : shot.hit ? target.edge : target.miss(i);
-        beats.push({ kind: 'shot', side: event.side, at, lands: at + MS.travel, from: shooter.guns[i]?.at ?? shooter.center, to, hit: shot.hit, shield: shot.absorbed > 0, module: shot.module, damage: shot.damage, wreck: shot.wreck });
+        beats.push({ kind: 'shot', side: event.side, at, lands, from: firing[i]?.at ?? shooter.center, to, hit: shot.hit, shield: shot.absorbed > 0, module: shot.module, damage: shot.damage, wreck: shot.wreck, torpedo });
       });
-      if (event.shots.length) t += (event.shots.length - 1) * MS.gap + MS.travel + MS.land;
+      if (event.shots.length) t = last + MS.land;
     } else {
       const ms = event.kind === 'blow' ? (event.ok ? MS.blow : MS.holds) : event.ok ? MS[event.kind === 'flee' ? 'flight' : 'close'] : MS.lurch;
       beats.push({ kind: event.kind, side: event.side ?? 'them', ok: event.ok, at: t, ms });
@@ -105,7 +114,8 @@ export function roundTimeline({ events, before, outcome = null, geometry }) {
 
 // What the screen shows t ms into the round: { done, shots, flashes,
 // shimmers, moves, close, gone, marks, lines, grapple }.
-//   shots     in flight: [{ side (who fired), target, from, to, progress }]
+//   shots     in flight: [{ side (who fired), target, from, to, progress,
+//             torpedo }]
 //   flashes   [{ side (whose ship), at, kind: 'hit' | 'burst' | 'blowup',
 //             progress }]: a hit, a part wrecked, a ship blowing apart
 //   shimmers  [{ side, progress }]: a shield taking a shot
@@ -135,7 +145,7 @@ export function frameAt(timeline, t) {
     if (beat.kind === 'shot') {
       const target = OTHER[beat.side];
       if (t < beat.lands) {
-        frame.shots.push({ side: beat.side, target, from: beat.from, to: beat.to, progress: (t - beat.at) / (beat.lands - beat.at) });
+        frame.shots.push({ side: beat.side, target, from: beat.from, to: beat.to, progress: (t - beat.at) / (beat.lands - beat.at), torpedo: beat.torpedo === true });
         continue;
       }
       const marks = frame.marks[target];

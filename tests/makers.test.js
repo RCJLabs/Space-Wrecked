@@ -47,13 +47,14 @@ const LINES = {
     differs: (made, def) => made.stats.hp > def.stats.hp && made.stats.mass > def.stats.mass && made.cost >= def.cost,
   },
   // About a third less mass, half the hit points (Evan's call, 2026-10-15:
-  // the trade has to show on a shielded ship) and a fifth dearer. The four
-  // parts that weigh 1 can't get lighter in whole numbers, and it makes no
+  // the trade has to show on a shielded ship) and a fifth dearer. The parts
+  // that weigh 1 can't get lighter in whole numbers, and it makes no
   // reactor (Evan's call, 2026-10-15): at half the hit points one gun hit
-  // disabled every ship that flew one.
+  // disabled every ship that flew one. M39's large reactor neither, for the
+  // same reason; the small one, a spare, it makes.
   kestrel: {
     name: 'Kestrel Dynamics',
-    makes: (def) => def.stats.mass >= 2 && def.id !== 'reactor',
+    makes: (def) => def.stats.mass >= 2 && !['reactor', 'largereactor'].includes(def.id),
     keeps: ['power', 'thrust', 'berths', 'lifeSupport', 'cargo'],
     differs: (made, def) =>
       made.stats.mass < def.stats.mass && made.stats.mass <= Math.ceil(def.stats.mass * 0.75) &&
@@ -74,7 +75,7 @@ const LINES = {
 
 test("each maker makes its line of parts on the Yard part's shape: Bastion's tougher and heavier, Kestrel's lighter, frailer and dearer, Scrapline's cheaper, frailer and hungrier for power (M23g, M31)", () => {
   assert.deepEqual([...rules.manufacturers.keys()], ['yard', ...Object.keys(LINES)]);
-  assert.equal(parts.length, 21);
+  assert.equal(parts.length, 40);
   const made = Object.fromEntries(Object.keys(LINES).map((maker) => [maker, 0]));
   for (const def of parts) {
     const makers = Object.keys(LINES).filter((maker) => LINES[maker].makes(def));
@@ -91,7 +92,7 @@ test("each maker makes its line of parts on the Yard part's shape: Bastion's tou
       made[maker] += 1;
     }
   }
-  assert.deepEqual(made, { bastion: 21, kestrel: 16, scrapline: 21 });
+  assert.deepEqual(made, { bastion: 40, kestrel: 27, scrapline: 40 });
   for (const [maker, line] of Object.entries(LINES)) assert.equal(rules.manufacturers.get(maker).name, line.name);
 });
 

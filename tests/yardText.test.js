@@ -2,7 +2,7 @@
 // its kind and side, what it has left for sale, Yard and Refit, and what to
 // do; a jump to one. The shop screen as the yard (yardText.js): its parts
 // at its prices, the parts on hand at what it pays, the docking heat said
-// first, and Map back.
+// first, and Map back. Since M39 the hull frames it sells, too.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { launch } from '../src/sim/launch.js';
@@ -36,7 +36,8 @@ test('the map at a yard: its kind and side, what it has left, Yard and Refit, an
   assert.deepEqual([text.here.name, text.here.kind], ['Drydock Nine', 'Shipyard · Con-Reg']);
   assert.equal(text.station.line, "Con-Reg's yard: hostile, prices 150%.");
   const prices = yardHere(campaign, rules).map((item) => item.price);
-  assert.deepEqual(text.yard, { label: 'Yard', parts: 12, line: `12 parts for sale, ${Math.min(...prices)} to ${Math.max(...prices)} credits. The yard buys parts on hand too.` });
+  // And the hull frames it sells (M39), all but the ship's own.
+  assert.deepEqual(text.yard, { label: 'Yard', parts: 12, frames: 3, line: `12 parts for sale, ${Math.min(...prices)} to ${Math.max(...prices)} credits. 3 hull frames too, the ship's own in part payment. The yard buys parts on hand too.` });
   assert.equal(text.refit.line, 'A part on hand: Refit fits it, free.');
   assert.deepEqual([text.offer, text.rack, text.patch, text.repair, text.swap], [null, null, null, null, null], "a station's trades stay at stations");
   assert.deepEqual(text.hint, { tone: 'warn', text: 'Con-Reg is after you, and this is their yard: your first trade here adds 10 heat. Passing through costs nothing.' });
@@ -47,16 +48,16 @@ test('the map at a yard: its kind and side, what it has left, Yard and Refit, an
   assert.deepEqual([far.type, far.known], ['shipyard', true], 'known from the way in');
   // Docked: what to do there.
   const docked = buyFromYard(campaign, rules, 0).campaign;
-  assert.deepEqual(sectorText(docked, rules).hint, { tone: 'good', text: "2 parts on hand: Refit, on the ship's panel, fits them, free. Tap Yard to buy parts, or sell what you have." });
+  assert.deepEqual(sectorText(docked, rules).hint, { tone: 'good', text: "2 parts on hand: Refit, on the ship's panel, fits them, free. Tap Yard to buy parts or a hull frame, or sell what you have." });
   // Nobody's yard: no side, and nothing to fit.
   const nobodys = atTheYard({ credits: 500, parts: {} }, 'The Gantry');
   const plain = sectorText(nobodys, rules);
   assert.deepEqual([plain.station, plain.here.kind, plain.nodes[nobodys.run.at].side], [null, 'Shipyard', null]);
-  assert.deepEqual(plain.hint, { tone: 'good', text: 'Tap Yard to buy parts, or sell what you have.' });
+  assert.deepEqual(plain.hint, { tone: 'good', text: 'Tap Yard to buy parts or a hull frame, or sell what you have.' });
   assert.equal(plain.refit.line, "Refit moves and turns the ship's parts, free.");
   // Bought out.
   const empty = sectorText(soldOut(nobodys), rules);
-  assert.deepEqual([empty.yard.parts, empty.yard.line, empty.hint.text], [0, 'Sold out. The yard buys parts on hand too.', 'The yard is sold out, but buys parts: tap Yard.']);
+  assert.deepEqual([empty.yard.parts, empty.yard.line, empty.hint.text], [0, "Sold out of parts. 3 hull frames too, the ship's own in part payment. The yard buys parts on hand too.", 'The yard is out of parts, but sells hull frames and buys parts: tap Yard.']);
   // Away from a yard, no Yard.
   assert.equal(sectorText(at(campaign, campaign.run.sector.start), rules).yard, null);
 });
@@ -100,6 +101,32 @@ test('the shop screen as the yard: its parts at its prices, yours at what it pay
   const bare = yardText(soldOut(atTheYard({ credits: 500, parts: {} }, 'The Gantry')), rules);
   assert.deepEqual([bare.stock, bare.held, bare.hint.text, bare.dealer], [[], [], 'The yard is sold out, and you have no parts to sell.', "Nobody's yard: full prices."]);
   assert.equal(yardText(soldOut(atTheYard({ credits: 500, parts: { cargo: 1 } }, 'The Gantry')), rules).hint.text, 'The yard is sold out, but buys parts: pick one of yours to sell.');
+  // Away from a yard, none.
+  assert.equal(yardText(at(campaign, campaign.run.sector.start), rules), null);
+});
+
+test("the yard's hull frames (M39): each but the ship's own, at its price less the ship's own, its size, caps and trait; one it can't pay for, or that leaves a flight check failing, says so", () => {
+  const campaign = atTheYard({ credits: 2000 }, 'The Gantry');
+  const { frames } = yardText(campaign, rules);
+  assert.deepEqual(frames.map((f) => f.frame), ['courier', 'gunship', 'freighter']);
+  const gunship = frames.find((f) => f.frame === 'gunship');
+  // Nobody's yard, full prices: 60% of 1,000, less half of 60% of the starter's 500.
+  assert.deepEqual([gunship.price, gunship.action, gunship.ask, gunship.ok, gunship.warn], ['450 credits', 'Buy · 450', 'Buy for 450?', true, null]);
+  assert.deepEqual(gunship.facts, [
+    '28×14 cells · 48 parts · 28 styling pieces · thrust for mass 0.5',
+    "The gunship frame: the ship's guns are +10 to hit in the approach, on top of the crew and the parts, within the cap.",
+    '600 credits here, less 150 for your starter hull',
+  ]);
+  // Too few credits.
+  const poor = yardText({ ...campaign, credits: 100 }, rules).frames.find((f) => f.frame === 'courier');
+  assert.deepEqual([poor.ok, poor.why], [false, "The Courier frame is 210 credits, the ship's own frame given in part payment."]);
+  // Two engines off: the ship still flies on the starter hull (0.5), but
+  // not on the freighter, which wants 0.6: bought, it stays at the yard.
+  const engines = campaign.ship.modules.filter((m) => m.type === 'engine').map((m) => m.uid);
+  const slow = { ...campaign, ship: { ...campaign.ship, modules: campaign.ship.modules.filter((m) => !engines.slice(1).includes(m.uid)) } };
+  const freighter = yardText(slow, rules).frames.find((f) => f.frame === 'freighter');
+  assert.equal(freighter.ok, true);
+  assert.match(freighter.warn, /^On it the ship would fail a flight check \(.+\): it stays at the yard until a refit fixes it$/);
   // Away from a yard, none.
   assert.equal(yardText(at(campaign, campaign.run.sector.start), rules), null);
 });

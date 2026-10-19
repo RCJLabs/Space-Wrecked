@@ -240,7 +240,9 @@ test("an unknown preset, or one that can't be built, says so", () => {
   const yard = (frame, preset) => ({ ...defs, frames: new Map([...defs.frames, [frame.id, frame]]), ships: new Map([[preset.id, preset]]) });
   const brick = { id: 'brick', name: 'Brick', frame: 'tiny', crew: 4, beam: [5, 5], symmetric: false, parts: { bridge: 1, cargo: 6, reactor: 1, engine: 2, airlock: 1, quarters: 1, lifesupport: 1 } };
   const tiny = { id: 'tiny', name: 'Tiny yard', width: 7, height: 5, maxModules: 40, minThrustToMass: 0.5 };
-  assert.deepEqual(generateShip(yard(tiny, brick), 'brick', 1), { ok: false, error: 'No layout for a Brick in 20 tries.' });
+  // From M39 the generator tries 80 layouts (it was 20): the presets'
+  // new parts gave it more to lay out.
+  assert.deepEqual(generateShip(yard(tiny, brick), 'brick', 1), { ok: false, error: 'No layout for a Brick in 80 tries.' });
   const capped = { ...tiny, width: 24, height: 14, maxModules: 3 };
   assert.deepEqual(generateShip(yard(capped, brick), 'brick', 1), { ok: false, error: 'A Brick needs more than the 3 parts its frame holds.' });
 });

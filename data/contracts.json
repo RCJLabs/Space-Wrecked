@@ -32,7 +32,7 @@
       "sites": ["pit9", "yard"],
       "encounter": "jumpers",
       "credits": [70, 100],
-      "drops": { "chance": 40, "parts": { "corridor": 1, "armory": 1, "pointdefense": 1 } },
+      "drops": { "chance": 40, "parts": { "corridor": 1, "armory": 1, "pointdefense": 1, "scanner": 1 } },
       "pitch": "Somebody's working {site} without a permit, and they brought guns to the paperwork. {client} wants them gone."
     },
     {
@@ -44,7 +44,7 @@
       "sites": ["yard"],
       "encounter": "scavvers",
       "credits": [40, 60],
-      "drops": { "chance": 80, "parts": { "cargo": 1, "armory": 1, "shield": 1, "corridor": 1, "engine": 1, "lightengine": 1, "heavyengine": 1, "smallreactor": 1, "largehold": 1, "scrapline-engine": 1, "scrapline-smallreactor": 1 } },
+      "drops": { "chance": 80, "parts": { "cargo": 1, "armory": 1, "shield": 1, "corridor": 1, "engine": 1, "lightengine": 1, "heavyengine": 1, "smallreactor": 1, "largehold": 1, "scrapline-engine": 1, "scrapline-smallreactor": 1, "thruster": 1 } },
       "pitch": "Scavvers are walking the good stuff out of {site}. {client} tagged what's his. Get it before they do."
     },
     {
@@ -92,7 +92,7 @@
       "encounter": "strikebreakers",
       "against": "conreg",
       "credits": [100, 140],
-      "drops": { "chance": 30, "parts": { "shield": 1, "weapon": 1, "cannon": 1, "pointdefense": 1, "shieldarray": 1, "bastion-weapon": 1, "bastion-shield": 1 } },
+      "drops": { "chance": 30, "parts": { "shield": 1, "weapon": 1, "cannon": 1, "pointdefense": 1, "shieldarray": 1, "bastion-weapon": 1, "bastion-shield": 1, "railgun": 1, "firecontrol": 1 } },
       "pitch": "Con-Reg hired muscle to break the picket at {site}. {client} hired you to break the muscle."
     },
     {
@@ -105,7 +105,7 @@
       "encounter": "guards",
       "against": "conreg",
       "credits": [80, 120],
-      "drops": { "chance": 50, "parts": { "medbay": 1, "cargo": 1, "surgery": 1, "largehold": 1 } },
+      "drops": { "chance": 50, "parts": { "medbay": 1, "cargo": 1, "surgery": 1, "largehold": 1, "surveylab": 1 } },
       "pitch": "{client} wants to know what's on the next ore hauler out. The terminal at {site} knows. Keep it company for a couple of turns."
     },
     {
@@ -118,7 +118,7 @@
       "encounter": "guards",
       "against": "conreg",
       "credits": [30, 50],
-      "drops": { "chance": 60, "parts": { "medbay": 1, "lifesupport": 1, "surgery": 1, "bunks": 1 } },
+      "drops": { "chance": 60, "parts": { "medbay": 1, "lifesupport": 1, "surgery": 1, "bunks": 1, "airrecycler": 1 } },
       "pitch": "The mission kitchen is out of antiseptic, and {site} is full of it. {client} calls it redistribution. The guards on the door call it theft."
     },
     {
@@ -141,7 +141,7 @@
       "sites": ["whistle", "yard"],
       "encounter": "regulars",
       "credits": [60, 90],
-      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1 } },
+      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1, "dormitory": 1 } },
       "pitch": "{client}'s other tenants are three months behind and armed about it. She calls it an eviction. You'll call it Tuesday."
     },
     {
@@ -154,7 +154,7 @@
       "encounter": "customs",
       "against": "fleet",
       "credits": [60, 90],
-      "drops": { "chance": 50, "parts": { "cargo": 1, "armory": 1, "bunks": 1, "kestrel-cargo": 1 } },
+      "drops": { "chance": 50, "parts": { "cargo": 1, "armory": 1, "bunks": 1, "kestrel-cargo": 1, "cargopod": 1 } },
       "pitch": "Customs seized a load {client} had already sold twice. It's in {site}, two crates, tagged. She'd like them back before the buyers come asking."
     },
     {
@@ -165,7 +165,7 @@
       "sites": ["pits", "breakers"],
       "encounter": "dockers",
       "credits": [70, 100],
-      "drops": { "chance": 40, "parts": { "corridor": 1, "airlock": 1, "pointdefense": 1 } },
+      "drops": { "chance": 40, "parts": { "corridor": 1, "airlock": 1, "pointdefense": 1, "cockpit": 1 } },
       "pitch": "The other gang has been loading ships at {site} without {client}'s say-so. He'd like them persuaded, and he isn't fussy how."
     },
     {
@@ -178,7 +178,7 @@
       "encounter": "customs",
       "against": "fleet",
       "credits": [80, 120],
-      "drops": { "chance": 50, "parts": { "medbay": 1, "lifesupport": 1, "surgery": 1, "largehold": 1 } },
+      "drops": { "chance": 50, "parts": { "medbay": 1, "lifesupport": 1, "surgery": 1, "largehold": 1, "workshop": 1 } },
       "pitch": "{client} signed for more stores than the Fleet ever sent. The manifest on the terminal at {site} needs to agree with him before the auditors land."
     },
     {
@@ -190,7 +190,7 @@
       "sites": ["breakers"],
       "encounter": "scavvers",
       "credits": [40, 60],
-      "drops": { "chance": 80, "parts": { "cargo": 1, "shield": 1, "corridor": 1, "engine": 1, "lightengine": 1, "heavyengine": 1, "smallreactor": 1, "largehold": 1, "scrapline-engine": 1, "scrapline-smallreactor": 1 } },
+      "drops": { "chance": 80, "parts": { "cargo": 1, "shield": 1, "corridor": 1, "engine": 1, "lightengine": 1, "heavyengine": 1, "smallreactor": 1, "largehold": 1, "scrapline-engine": 1, "scrapline-smallreactor": 1, "thruster": 1, "workshop": 1 } },
       "pitch": "A hulk came in for breaking this morning, and the scavvers got to it first. {client} has tagged what's his at {site}. Walk it out before they do."
     },
     {
@@ -202,7 +202,7 @@
       "encounter": "provostpatrol",
       "against": "fleet",
       "credits": [100, 140],
-      "drops": { "chance": 30, "parts": { "shield": 1, "weapon": 1, "cannon": 1, "pointdefense": 1, "shieldarray": 1, "bastion-weapon": 1, "bastion-shield": 1 } },
+      "drops": { "chance": 30, "parts": { "shield": 1, "weapon": 1, "cannon": 1, "pointdefense": 1, "shieldarray": 1, "bastion-weapon": 1, "bastion-shield": 1, "flak": 1, "emitter": 1 } },
       "pitch": "The Provost is pressing sailors at {site} to fill a cruiser's crew, and two of them are {client}'s. She'd like them back. The Provost would like you."
     },
     {
@@ -215,7 +215,7 @@
       "encounter": "guards",
       "against": "fleet",
       "credits": [30, 50],
-      "drops": { "chance": 60, "parts": { "medbay": 1, "lifesupport": 1, "surgery": 1, "bunks": 1 } },
+      "drops": { "chance": 60, "parts": { "medbay": 1, "lifesupport": 1, "surgery": 1, "bunks": 1, "dormitory": 1 } },
       "pitch": "The mission's furnace is out, and the Fleet's coal is piled at {site}. {client} calls it charity. The guards call it theft."
     },
     {
@@ -240,7 +240,7 @@
       "sites": ["brig", "pits"],
       "encounter": "regulars",
       "credits": [60, 90],
-      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1 } },
+      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1, "airrecycler": 1 } },
       "pitch": "Some of {client}'s customers pawned the same pistol to her three times. They're drinking the proceeds at {site}. She'd like a word, and you're the word."
     },
     {
@@ -252,7 +252,7 @@
       "sites": ["kettle"],
       "encounter": "scavvers",
       "credits": [40, 60],
-      "drops": { "chance": 80, "parts": { "cargo": 1, "engine": 1, "lightengine": 1, "heavyengine": 1, "smallreactor": 1, "corridor": 1, "largehold": 1, "kestrel-engine": 1, "kestrel-cargo": 1 } },
+      "drops": { "chance": 80, "parts": { "cargo": 1, "engine": 1, "lightengine": 1, "heavyengine": 1, "smallreactor": 1, "corridor": 1, "largehold": 1, "kestrel-engine": 1, "kestrel-cargo": 1, "thruster": 1 } },
       "pitch": "{client} sold a load at {site} and then reported it stolen. Now it needs stealing. Three crates, and the scavvers there have the same idea."
     },
     {
@@ -265,7 +265,7 @@
       "encounter": "customs",
       "against": "fleet",
       "credits": [70, 100],
-      "drops": { "chance": 50, "parts": { "lightengine": 1, "cargo": 1, "shield": 1, "bunks": 1, "kestrel-shield": 1 } },
+      "drops": { "chance": 50, "parts": { "lightengine": 1, "cargo": 1, "shield": 1, "bunks": 1, "kestrel-shield": 1, "emitter": 1 } },
       "pitch": "Customs seized a shipment {client} had already cleared, then forgot she'd cleared it. Two crates in {site}. Bring them out before anyone remembers."
     },
     {
@@ -278,7 +278,7 @@
       "encounter": "customs",
       "against": "fleet",
       "credits": [80, 120],
-      "drops": { "chance": 50, "parts": { "medbay": 1, "cargo": 1, "surgery": 1, "largehold": 1 } },
+      "drops": { "chance": 50, "parts": { "medbay": 1, "cargo": 1, "surgery": 1, "largehold": 1, "surveylab": 1 } },
       "pitch": "{client} needs a few lines of the customs ledger to say something new. The terminal's at {site}, and so are the people who'd mind."
     },
     {
@@ -290,7 +290,7 @@
       "encounter": "collectors",
       "against": "hallorans",
       "credits": [100, 140],
-      "drops": { "chance": 30, "parts": { "shield": 1, "weapon": 1, "cannon": 1, "pointdefense": 1, "shieldarray": 1, "bastion-weapon": 1, "bastion-shield": 1 } },
+      "drops": { "chance": 30, "parts": { "shield": 1, "weapon": 1, "cannon": 1, "pointdefense": 1, "shieldarray": 1, "bastion-weapon": 1, "bastion-shield": 1, "railgun": 1, "flak": 1 } },
       "pitch": "The Hallorans are collecting at {site} tonight. {client} would like them not to. So would you, as it happens."
     },
     {
@@ -302,7 +302,7 @@
       "sites": ["quarry"],
       "encounter": "pikes",
       "credits": [30, 50],
-      "drops": { "chance": 60, "parts": { "medbay": 1, "quarters": 1, "lifesupport": 1, "surgery": 1, "bunks": 1 } },
+      "drops": { "chance": 60, "parts": { "medbay": 1, "quarters": 1, "lifesupport": 1, "surgery": 1, "bunks": 1, "airrecycler": 1 } },
       "pitch": "The Pikes took {client}'s instruments as payment for a patient who didn't make it. Two cases, at {site}. He'd like them back before the next patient."
     },
     {
@@ -313,7 +313,7 @@
       "sites": ["quarry", "kettle"],
       "encounter": "jumpers",
       "credits": [70, 100],
-      "drops": { "chance": 40, "parts": { "corridor": 1, "armory": 1, "pointdefense": 1 } },
+      "drops": { "chance": 40, "parts": { "corridor": 1, "armory": 1, "pointdefense": 1, "cockpit": 1 } },
       "pitch": "Divers are pulling what people dropped in {site} and selling it to everyone but {client}. He'd like them to take up another hobby."
     },
     {
@@ -338,7 +338,7 @@
       "sites": ["velvet"],
       "encounter": "pikes",
       "credits": [60, 90],
-      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1 } },
+      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1, "dormitory": 1 } },
       "pitch": "The Pikes have taken over the back room at {site} and drink on the house. {client} says the house is closing."
     },
     {
@@ -351,7 +351,7 @@
       "encounter": "guards",
       "against": "conreg",
       "credits": [70, 100],
-      "drops": { "chance": 50, "parts": { "medbay": 1, "cargo": 1, "surgery": 1, "largehold": 1 } },
+      "drops": { "chance": 50, "parts": { "medbay": 1, "cargo": 1, "surgery": 1, "largehold": 1, "surveylab": 1 } },
       "pitch": "Con-Reg froze the union's strike fund and keeps it in a cage at {site}: one strongbox, tagged. {client} wants it carried out the way you came in, past the guards who count it."
     },
     {
@@ -362,7 +362,7 @@
       "sites": ["whistle", "yard"],
       "encounter": "regulars",
       "credits": [70, 100],
-      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1 } },
+      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1, "airrecycler": 1 } },
       "pitch": "{client} took one bet too many on a cave-in that didn't happen. The losers are waiting out front of {site}, and he'd like to leave by the far gate with you between him and them."
     },
     {
@@ -374,7 +374,7 @@
       "sites": ["yard"],
       "encounter": "scavvers",
       "credits": [80, 110],
-      "drops": { "chance": 60, "parts": { "corridor": 1, "armory": 1, "pointdefense": 1, "cargo": 1 } },
+      "drops": { "chance": 60, "parts": { "corridor": 1, "armory": 1, "pointdefense": 1, "cargo": 1, "scanner": 1 } },
       "pitch": "The scavvers have picked tonight to clear out {site}, and {client}'s fence won't hold them. Hold the gate till the shift whistle. He pays in parts, some of them his."
     },
     {
@@ -387,7 +387,7 @@
       "encounter": "guards",
       "against": "conreg",
       "credits": [100, 130],
-      "drops": { "chance": 30, "parts": { "shield": 1, "weapon": 1, "cannon": 1, "pointdefense": 1, "shieldarray": 1, "bastion-weapon": 1, "bastion-shield": 1 } },
+      "drops": { "chance": 30, "parts": { "shield": 1, "weapon": 1, "cannon": 1, "pointdefense": 1, "shieldarray": 1, "bastion-weapon": 1, "bastion-shield": 1, "firecontrol": 1, "emitter": 1 } },
       "pitch": "Con-Reg is pumping the old workings at {site} full of slurry to bury the cave-in report. {client} wants the pump stopped for good: one charge, and stand well back."
     },
     {
@@ -400,7 +400,7 @@
       "encounter": "recovery",
       "against": "conreg",
       "credits": [80, 120],
-      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1 } },
+      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1, "dormitory": 1 } },
       "pitch": "Recovery took {client}'s nephew Danny for the family's debt, and they're keeping him at {site} until somebody pays. Nobody's paying. Bring him out."
     },
     {
@@ -413,7 +413,7 @@
       "encounter": "customs",
       "against": "fleet",
       "credits": [70, 100],
-      "drops": { "chance": 50, "parts": { "cargo": 1, "armory": 1, "bunks": 1, "kestrel-cargo": 1 } },
+      "drops": { "chance": 50, "parts": { "cargo": 1, "armory": 1, "bunks": 1, "kestrel-cargo": 1, "cargopod": 1 } },
       "pitch": "The Fleet's rum for the quarter sits in {site}, and {client} has tagged the cask worth having. He has buyers in every bar on the Strand. Carry it out the way you came in. Customs counts casks at the door."
     },
     {
@@ -425,7 +425,7 @@
       "encounter": "provostpatrol",
       "against": "fleet",
       "credits": [70, 100],
-      "drops": { "chance": 50, "parts": { "medbay": 1, "lifesupport": 1, "surgery": 1, "largehold": 1 } },
+      "drops": { "chance": 50, "parts": { "medbay": 1, "lifesupport": 1, "surgery": 1, "largehold": 1, "workshop": 1 } },
       "pitch": "The Fleet's auditors land at noon, and {client} would rather be on a freighter by then. It's berthed past {site}, and the Provost has men on the way. Walk him to the far gate."
     },
     {
@@ -437,7 +437,7 @@
       "sites": ["pits"],
       "encounter": "dockers",
       "credits": [80, 110],
-      "drops": { "chance": 40, "parts": { "corridor": 1, "airlock": 1, "pointdefense": 1 } },
+      "drops": { "chance": 40, "parts": { "corridor": 1, "airlock": 1, "pointdefense": 1, "ecm": 1 } },
       "pitch": "{client}'s stevedores are out on strike, and the other gang has been paid to load the ships anyway. Hold the gate at {site} till the shift's over."
     },
     {
@@ -450,7 +450,7 @@
       "encounter": "provostpatrol",
       "against": "fleet",
       "credits": [100, 130],
-      "drops": { "chance": 30, "parts": { "shield": 1, "weapon": 1, "cannon": 1, "pointdefense": 1, "shieldarray": 1, "bastion-weapon": 1, "bastion-shield": 1 } },
+      "drops": { "chance": 30, "parts": { "shield": 1, "weapon": 1, "cannon": 1, "pointdefense": 1, "shieldarray": 1, "bastion-weapon": 1, "bastion-shield": 1, "flak": 1, "firecontrol": 1 } },
       "pitch": "The Provost's press tender takes on its boarding gear at {site} tonight. {client} would like it to sail without. One charge, and don't stand too close."
     },
     {
@@ -463,7 +463,7 @@
       "encounter": "provostpatrol",
       "against": "fleet",
       "credits": [80, 120],
-      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1 } },
+      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1, "airrecycler": 1 } },
       "pitch": "The Provost has one of {client}'s lodgers in the back of {site}, waiting on the press gang's boat. Sam Okoro owes her two months. She'd like him out to pay it."
     },
     {
@@ -476,7 +476,7 @@
       "encounter": "customs",
       "against": "fleet",
       "credits": [70, 100],
-      "drops": { "chance": 50, "parts": { "lightengine": 1, "cargo": 1, "shield": 1, "bunks": 1, "kestrel-shield": 1 } },
+      "drops": { "chance": 50, "parts": { "lightengine": 1, "cargo": 1, "shield": 1, "bunks": 1, "kestrel-shield": 1, "emitter": 1 } },
       "pitch": "Customs is sitting on a crate of {client}'s ledgers at {site}. She'd like it back in her office, not read. Carry it out the way you came in."
     },
     {
@@ -488,7 +488,7 @@
       "encounter": "collectors",
       "against": "hallorans",
       "credits": [70, 100],
-      "drops": { "chance": 60, "parts": { "medbay": 1, "quarters": 1, "lifesupport": 1, "surgery": 1, "bunks": 1 } },
+      "drops": { "chance": 60, "parts": { "medbay": 1, "quarters": 1, "lifesupport": 1, "surgery": 1, "bunks": 1, "dormitory": 1 } },
       "pitch": "{client} has a patient on the far side of {site} who can't be moved, and the Hallorans would like a word with the doctor first. Walk him across to the far gate."
     },
     {
@@ -500,7 +500,7 @@
       "sites": ["velvet"],
       "encounter": "pikes",
       "credits": [80, 110],
-      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1 } },
+      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1, "dormitory": 1 } },
       "pitch": "The Pikes want {site}, and they're coming through the front tonight. {client} says hold the door till the band's done."
     },
     {
@@ -513,7 +513,7 @@
       "encounter": "collectors",
       "against": "hallorans",
       "credits": [100, 130],
-      "drops": { "chance": 30, "parts": { "shield": 1, "weapon": 1, "cannon": 1, "pointdefense": 1, "shieldarray": 1, "bastion-weapon": 1, "bastion-shield": 1 } },
+      "drops": { "chance": 30, "parts": { "shield": 1, "weapon": 1, "cannon": 1, "pointdefense": 1, "shieldarray": 1, "bastion-weapon": 1, "bastion-shield": 1, "railgun": 1, "emitter": 1 } },
       "pitch": "The Hallorans run a still behind {site} that pays for half their muscle. {client} wants it gone, loudly."
     },
     {
@@ -526,7 +526,7 @@
       "encounter": "collectors",
       "against": "hallorans",
       "credits": [80, 120],
-      "drops": { "chance": 40, "parts": { "corridor": 1, "armory": 1, "pointdefense": 1 } },
+      "drops": { "chance": 40, "parts": { "corridor": 1, "armory": 1, "pointdefense": 1, "ecm": 1 } },
       "pitch": "The Hallorans are holding {client}'s nephew Joey in the pump house at {site}, against what {client} owes them. He'd like the boy back before he has to pay."
     },
     {
@@ -578,7 +578,7 @@
       "encounter": "customs",
       "against": "fleet",
       "credits": [60, 90],
-      "drops": { "chance": 40, "parts": { "cargo": 2, "kestrel-cargo": 1, "largehold": 1 } },
+      "drops": { "chance": 40, "parts": { "cargo": 2, "kestrel-cargo": 1, "largehold": 1, "cargopod": 1 } },
       "pitch": "Customs pulled two crates off a freighter at {site} and stacked them for the auction. {client} knows the crates, and a buyer on {station} who doesn't hold with auctions."
     },
     {
@@ -589,7 +589,7 @@
       "sites": ["tumble", "claim"],
       "encounter": "jumpers",
       "credits": [70, 100],
-      "drops": { "chance": 40, "parts": { "lightengine": 1, "smallreactor": 1, "armory": 1 } },
+      "drops": { "chance": 40, "parts": { "lightengine": 1, "smallreactor": 1, "armory": 1, "largereactor": 1 } },
       "pitch": "A crew has set up out at {site} with a borrowed drill and a lot of rifles. {client} holds the claim on that rock, on paper, and would like the paper to mean something."
     },
     {
@@ -601,7 +601,7 @@
       "sites": ["fueldock", "cargoring"],
       "encounter": "podthieves",
       "credits": [80, 110],
-      "drops": { "chance": 40, "parts": { "weapon": 1, "pointdefense": 1, "scrapline-weapon": 1 } },
+      "drops": { "chance": 40, "parts": { "weapon": 1, "pointdefense": 1, "scrapline-weapon": 1, "flak": 1 } },
       "pitch": "Pod thieves have been cutting cargo off ships at {site} while their crews sleep. {client} has a freighter docking at {station} tonight. Hold the way in till she's sealed."
     },
     {
@@ -614,7 +614,7 @@
       "encounter": "collectors",
       "against": "hallorans",
       "credits": [80, 120],
-      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bastion-quarters": 1 } },
+      "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bastion-quarters": 1, "dormitory": 1 } },
       "pitch": "The Hallorans keep a terminal in the freight office at {site}, with every loan they've made on {station} on it. {client} would like a copy before anyone else's debts come due."
     },
     {
@@ -627,7 +627,7 @@
       "encounter": "guards",
       "against": "conreg",
       "credits": [80, 120],
-      "drops": { "chance": 40, "parts": { "medbay": 1, "surgery": 1, "scrapline-medbay": 1 } },
+      "drops": { "chance": 40, "parts": { "medbay": 1, "surgery": 1, "scrapline-medbay": 1, "surveylab": 1 } },
       "pitch": "Company guards picked up a union steward on {station} for trespass, and they're holding him in the shack at {site} till their shuttle comes. {client} wants him back before he signs anything."
     },
     {
@@ -638,7 +638,7 @@
       "sites": ["cargoring", "fueldock"],
       "encounter": "pikes",
       "credits": [70, 100],
-      "drops": { "chance": 40, "parts": { "airlock": 1, "corridor": 1, "kestrel-lifesupport": 1 } },
+      "drops": { "chance": 40, "parts": { "airlock": 1, "corridor": 1, "kestrel-lifesupport": 1, "cockpit": 1 } },
       "pitch": "The Pikes want a word with {client} about something seen on {station}, and the only cutter leaving tonight is at the far lock of {site}. Get {client} across."
     },
     {
@@ -650,7 +650,7 @@
       "sites": ["tumble"],
       "encounter": "scavvers",
       "credits": [100, 130],
-      "drops": { "chance": 40, "parts": { "cannon": 1, "shield": 1, "bastion-weapon": 1 } },
+      "drops": { "chance": 40, "parts": { "cannon": 1, "shield": 1, "bastion-weapon": 1, "railgun": 1 } },
       "pitch": "Scavvers are stripping a wreck out at {site} with a cutting rig they lifted on {station}. {client} doesn't need it back. Blow its power pack and let the rocks have the rest."
     },
     {
@@ -663,7 +663,7 @@
       "encounter": "guards",
       "against": "conreg",
       "credits": [70, 100],
-      "drops": { "chance": 40, "parts": { "cargo": 1, "bunks": 1, "scrapline-cargo": 1 } },
+      "drops": { "chance": 40, "parts": { "cargo": 1, "bunks": 1, "scrapline-cargo": 1, "cargopod": 1 } },
       "pitch": "A year of the union's dues went missing on {station} and turned up in a Company strongroom at {site}, under guard. {client} wants the box walked out the way it went in: quietly, and by somebody else."
     },
     {
@@ -674,7 +674,7 @@
       "sites": ["fueldock"],
       "encounter": "podthieves",
       "credits": [100, 140],
-      "drops": { "chance": 50, "parts": { "weapon": 1, "shield": 1, "pointdefense": 1, "scrapline-shield": 1 } },
+      "drops": { "chance": 50, "parts": { "weapon": 1, "shield": 1, "pointdefense": 1, "scrapline-shield": 1, "emitter": 1 } },
       "pitch": "Pirates came in on a dead transponder and took {site} on {station}, and they're filling their tanks for free. {client} wants them gone before the next tanker docks."
     },
     {
@@ -686,7 +686,7 @@
       "sites": ["tumble"],
       "encounter": "scavvers",
       "credits": [40, 60],
-      "drops": { "chance": 60, "parts": { "engine": 1, "lightengine": 1, "heavyengine": 1, "kestrel-engine": 1 } },
+      "drops": { "chance": 60, "parts": { "engine": 1, "lightengine": 1, "heavyengine": 1, "kestrel-engine": 1, "thruster": 1 } },
       "pitch": "A freighter broke up out at {site} last month, and the scavvers got there first. {client} holds the salvage rights to what's left, and two crates of it are worth the trouble."
     },
     {
@@ -698,7 +698,7 @@
       "sites": ["fueldock", "cargoring"],
       "encounter": "pikes",
       "credits": [80, 120],
-      "drops": { "chance": 40, "parts": { "reactor": 1, "smallreactor": 1, "scrapline-reactor": 1 } },
+      "drops": { "chance": 40, "parts": { "reactor": 1, "smallreactor": 1, "scrapline-reactor": 1, "largereactor": 1 } },
       "pitch": "The Pikes have locked the pumps at {site} and charge every ship on {station} by the litre for the key. {client} wants the pumps' terminal worked till the locks come off."
     },
     {
@@ -709,7 +709,7 @@
       "sites": ["claim", "tumble"],
       "encounter": "regulars",
       "credits": [60, 90],
-      "drops": { "chance": 40, "parts": { "armory": 1, "corridor": 1, "kestrel-armory": 1 } },
+      "drops": { "chance": 40, "parts": { "armory": 1, "corridor": 1, "kestrel-armory": 1, "scanner": 1 } },
       "pitch": "A crew ran up a debt on {station} and holed up out at {site} with the money and a lot of friends. {client} isn't fussy about the money. Show them what the paper's worth."
     },
     {
@@ -721,7 +721,7 @@
       "sites": ["claim"],
       "encounter": "pikes",
       "credits": [80, 120],
-      "drops": { "chance": 40, "parts": { "medbay": 1, "bunks": 1, "kestrel-medbay": 1 } },
+      "drops": { "chance": 40, "parts": { "medbay": 1, "bunks": 1, "kestrel-medbay": 1, "scanner": 1 } },
       "pitch": "The Pikes took a courier off {station} with a bag of somebody else's money, and they're holding her in the shack at {site}. {client} wants her back, and doesn't much care about the bag."
     },
     {
@@ -733,7 +733,7 @@
       "sites": ["claim", "tumble"],
       "encounter": "scavvers",
       "credits": [70, 100],
-      "drops": { "chance": 50, "parts": { "lifesupport": 1, "largehold": 1, "bastion-cargo": 1 } },
+      "drops": { "chance": 50, "parts": { "lifesupport": 1, "largehold": 1, "bastion-cargo": 1, "airrecycler": 1 } },
       "pitch": "Scavvers lifted a crate of Fleet stores off a Company freighter at {station} and stashed it out at {site}. {client} would like it back before anybody has to write a report."
     },
     {
@@ -746,7 +746,7 @@
       "encounter": "recovery",
       "against": "conreg",
       "credits": [80, 110],
-      "drops": { "chance": 40, "parts": { "engine": 1, "airlock": 1, "bastion-engine": 1 } },
+      "drops": { "chance": 40, "parts": { "engine": 1, "airlock": 1, "bastion-engine": 1, "thruster": 1 } },
       "pitch": "Con-Reg's recovery agents are coming for a freighter at {site} on {station}, over a debt {client} swears was paid. Hold the way in till her papers clear."
     }
   ]

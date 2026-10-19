@@ -15,6 +15,7 @@ import { approachText, damageText } from '../src/ui/campaign/approachText.js';
 import { boardingObjective, boardingOutcome } from '../src/ui/campaign/boardingText.js';
 import { continueText } from '../src/ui/campaign/hubText.js';
 import { nodeText, sectorText } from '../src/ui/campaign/sectorText.js';
+import { withPart } from '../tools/startShip.js';
 import { rules } from './battleKit.js';
 import { CUTTER_SEED, readyToLaunch } from './launchKit.js';
 
@@ -71,6 +72,31 @@ test('an approach: the two ships, their order, and every order with the odds the
   assert.equal(text.orders.find((order) => order.key === 'fire-shields').why, 'They have no working shields.');
   assert.deepEqual(text.last, []);
   assert.equal(continueText(campaign, rules), 'Act 2 · Pirate cutter, round 1');
+});
+
+// M39: a ship with a torpedo bay and a grapple. The odds count the bays
+// among the ship's numbers and give the grapple's pull; Board says what the
+// grapple adds; and a torpedo that hits says it went through the shields.
+test("a torpedo bay and a grapple in the approach's words (M39)", () => {
+  const fresh = onRun();
+  const ship = withPart(withPart(withPart(fresh.ship, rules, 'smallreactor'), rules, 'torpedobay'), rules, 'grapple');
+  const { sector } = fresh.run;
+  const to = linked(sector, sector.start)[0];
+  const nodes = sector.nodes.map(({ event, hostile, ...node }) => (node.id === to ? { ...node, type: 'hostile', hostile: { ship: 'cutter', seed: CUTTER_SEED } } : node));
+  const campaign = jump({ ...fresh, ship, run: { ...fresh.run, sector: { ...sector, nodes } } }, rules, to).campaign;
+  const text = approachText(campaign, rules);
+  assert.deepEqual(text.you.stats.slice(0, 3), [['Guns', '2 of 2'], ['Torpedo bays', '1 of 1'], ['Grapple', `+${rules.modules.get('grapple').grapple}`]]);
+  assert.ok(!text.them.stats.some(([label]) => label === 'Torpedo bays' || label === 'Grapple'), 'the cutter has neither');
+  assert.match(text.orders.find((order) => order.key === 'close').text, new RegExp(`Your grapple adds ${rules.modules.get('grapple').grapple}\\.`));
+  // A round fired at her engines in which the torpedo hits.
+  for (let seed = 0; seed < 500; seed++) {
+    const played = giveOrder({ ...campaign, rng: seedFrom(seed) }, rules, { kind: 'fire', at: 'engines' }).campaign;
+    const torpedo = (played.run.approach.last?.events ?? []).some((e) => e.kind === 'volley' && e.side === 'you' && e.shots.some((shot) => shot.torpedo && shot.hit && shot.module));
+    if (!torpedo) continue;
+    assert.ok(approachText(played, rules).last.some((line) => line.includes('(a torpedo, through the shields)')), approachText(played, rules).last.join(' | '));
+    return;
+  }
+  assert.fail('no seed puts a torpedo on her');
 });
 
 test('the last round, roll by roll, and the cutter closing', () => {

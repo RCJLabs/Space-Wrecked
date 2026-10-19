@@ -31,7 +31,7 @@ export function describeEvent(event, battle) {
     case 'down':
       return `${who} is down, bleeding out in ${turns(event.bleed)}.`;
     case 'dead':
-      return `${who} is dead.`;
+      return event.wrecked ? `${who} is wrecked.` : `${who} is dead.`;
     case 'bleed':
       return `${who} is bleeding out: ${turns(event.bleed)} left.`;
     case 'bled out':

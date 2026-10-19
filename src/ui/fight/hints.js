@@ -4,6 +4,7 @@
 // armor it pierces, its reach, a stun and fire. Since M38, what a job's
 // objective asks of the unit giving orders (Free, Plant, a crate in hand),
 // and the person the crew brings out, who has no gun.
+import { isMachine } from '../../sim/battle.js';
 import { describeEvent } from '../../sim/battleLog.js';
 import { orderOf } from '../../sim/orders.js';
 import { rankNameFor } from '../../sim/ranks.js';
@@ -176,12 +177,12 @@ function shotRules(weapon) {
 // A unit's state in a few words: actions and shots left, or how hurt. The
 // person the crew brings out (M38) has no shots, and is held until freed; a
 // carrier says so first, where a narrow crew bar cuts the end short.
-export function stateText(unit) {
+export function stateText(unit, rules = null) {
   if (unit.status === 'held') return 'Held';
   if (unit.status === 'down') return `Down · ${unit.bleed} turn${unit.bleed === 1 ? '' : 's'}`;
   if (unit.status === 'stable') return 'Stable';
   if (unit.status === 'out') return 'Out of the fight';
-  if (unit.status === 'dead') return 'Dead';
+  if (unit.status === 'dead') return rules && isMachine(unit, rules) ? 'Wrecked' : 'Dead';
   if (unit.overwatch) return 'Overwatch';
   if (unit.ward) return `${unit.ap} AP · no gun`;
   const shots = `${unit.ap} AP · ${unit.ammo} shot${unit.ammo === 1 ? '' : 's'}`;
@@ -197,6 +198,7 @@ export function stateText(unit) {
 export function unitText(unit, rules, battle = null) {
   const fire = battle && burningAt(battle, unit.x, unit.y) ? [`Standing in fire: ${rules.balance.fireDamage} at the start of each of its turns, until it burns out.`] : [];
   if (unit.ward) return wardText(unit, rules, fire);
+  if (isMachine(unit, rules)) return machineText(unit, rules, fire);
   const weapon = rules.weapons.get(unit.weapon);
   // A raid's colonist (M38f): a citizen of the colony beside the crew.
   const side = unit.citizen ? 'Colonist' : unit.side === 'crew' ? 'Crew' : 'Enemy';
@@ -205,7 +207,7 @@ export function unitText(unit, rules, battle = null) {
   return {
     title: `${unit.name} ${unit.id}`,
     lines: [
-      `${side}${unit.rank ? ` · rank ${unit.rank}${rank ? `, ${rank}` : ''}` : ''} · ${unit.hp}/${unit.maxHp} hit points · ${stateText(unit)}.`,
+      `${side}${unit.rank ? ` · rank ${unit.rank}${rank ? `, ${rank}` : ''}` : ''} · ${unit.hp}/${unit.maxHp} hit points · ${stateText(unit, rules)}.`,
       ...(unit.citizen ? ['A citizen of the colony, under your orders: if they fall, the colony loses them, unless they are stabilized.'] : []),
       `Aim ${unit.aim} · defense ${unit.defense} · armor ${unit.armor} · moves ${unit.mobility}.`,
       `${weapon.name}: damage ${weapon.damage[0]}–${weapon.damage[1]}, crit ${weapon.crit}%, ${unit.ammo}/${weapon.clip} shots.${rulesLine(weapon) ? ` ${rulesLine(weapon)}` : ''}`,
@@ -227,6 +229,24 @@ function wardText(unit, rules, fire) {
   return {
     title: `${unit.name} ${unit.id}`,
     lines: [`${kind} · ${unit.hp}/${unit.maxHp} hit points · ${stateText(unit)}.`, `Defense ${unit.defense} · armor ${unit.armor} · moves ${unit.mobility}.`, how, ...fire],
+  };
+}
+
+// A ship's turret's card (M39): whose it is, its numbers and its gun, and
+// what it can't do.
+function machineText(unit, rules, fire) {
+  const weapon = rules.weapons.get(unit.weapon);
+  const whose = unit.side === 'crew' ? 'Your ship\'s' : 'Their ship\'s';
+  return {
+    title: `${unit.name} ${unit.id}`,
+    lines: [
+      `${whose} security turret · ${unit.hp}/${unit.maxHp} hit points · ${stateText(unit, rules)}.`,
+      `Aim ${unit.aim} · defense ${unit.defense} · armor ${unit.armor} · bolted down.`,
+      `${weapon.name}: damage ${weapon.damage[0]}–${weapon.damage[1]}, crit ${weapon.crit}%, ${unit.ammo}/${weapon.clip} shots.${rulesLine(weapon) ? ` ${rulesLine(weapon)}` : ''}`,
+      'It shoots, watches and reloads; it never moves or opens a door. At 0 hit points it is wrecked, and no one can patch it up in the fight.',
+      ...ordersOn(unit),
+      ...fire,
+    ],
   };
 }
 

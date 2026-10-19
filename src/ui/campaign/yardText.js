@@ -6,8 +6,8 @@
 import { atYard } from '../../sim/acts.js';
 import { pursuerSide } from '../../sim/standing.js';
 import { hereOf, tradeHeat } from '../../sim/travel.js';
-import { yardBuyBack, yardHere, yardPlan, yardSellPlan } from '../../sim/yards.js';
-import { cardFor } from '../builder/card.js';
+import { framePlan, framesHere, yardBuyBack, yardHere, yardPlan, yardSellPlan } from '../../sim/yards.js';
+import { cardFor, traitText } from '../builder/card.js';
 import { dockSaid, sideIs, stationText } from './standingText.js';
 
 // The yard as the shop screen shows it, or null away from one:
@@ -23,9 +23,16 @@ import { dockSaid, sideIs, stationText } from './standingText.js';
 //   held        the parts on hand, to sell: [{ key, part, weapon: null,
 //               name, count, price, needed: null, facts, carried: null, ok,
 //               why, action, ask, warn: null }]
+//   frames      the hull frames for sale (M39): [{ key ('f:' and its id),
+//               frame, name, price, facts, ok, why, warn, action, ask }],
+//               price what it costs with the ship's own frame given in part
+//               payment, facts its size, caps, trait and that payment, and
+//               warn the flight check the ship would fail on it, which keeps
+//               it at the yard until a refit, or null
 //   dock        what the first trade adds at a yard of the pursuer's side
 //               ("Con-Reg logs the ship: heat +10 to 40."), or ''
 //   soldOut     the words for a yard with nothing left
+//   framePitch  what buying a frame does
 //   back        the way back: { label, screen }
 //   hint        { tone, text }
 // key is the part's type: a yard has no part twice. facts are a part's
@@ -49,6 +56,18 @@ export function yardText(campaign, rules) {
       const price = yardBuyBack(campaign, rules, part);
       return { key: part, part, weapon: null, name: name(part), count, price: price === null ? '' : credits(price), needed: null, facts: facts(part), carried: null, ok: plan.ok, why: plan.ok ? null : plan.error, action: `Sell · ${price}`, ask: `Sell for ${price}?`, warn: null };
     });
+  const frames = framesHere(campaign, rules).map((item) => {
+    const frame = rules.frames.get(item.frame);
+    const plan = framePlan(campaign, rules, item.frame);
+    const own = rules.frames.get(campaign.ship.frame)?.name ?? 'old frame';
+    const facts = [
+      `${frame.width}×${frame.height} cells · ${frame.maxModules} parts · ${frame.maxStyling} styling pieces · thrust for mass ${frame.minThrustToMass}`,
+      traitText(frame) || 'No trait of its own.',
+      item.worth ? `${item.price} credits here, less ${item.worth} for your ${own.toLowerCase()}` : `${item.price} credits here`,
+    ];
+    const warn = plan.ok && plan.check ? `On it the ship would fail a flight check (${plan.check.text.charAt(0).toLowerCase()}${plan.check.text.slice(1)}): it stays at the yard until a refit fixes it` : null;
+    return { key: `f:${item.frame}`, frame: item.frame, name: item.name, price: credits(item.cost), facts, ok: plan.ok, why: plan.ok ? null : plan.error, warn, action: `Buy · ${item.cost}`, ask: `Buy for ${item.cost}?` };
+  });
   const side = stationText(here, campaign, rules);
   const heat = tradeHeat(campaign, rules);
   return {
@@ -60,8 +79,10 @@ export function yardText(campaign, rules) {
     credits: credits(campaign.credits),
     stock,
     held,
+    frames,
     dock: dockSaid(campaign, rules, heat).trim(),
     soldOut: 'Sold out: what was here is gone for good. The yard still buys parts.',
+    framePitch: 'Bought, the ship moves onto it at once: every part where it was, with the frame\'s trait and its thrust for mass. Your own frame is the part payment.',
     back: { label: 'Map', screen: 'sector' },
     hint: yardHint(campaign, rules, { stock, held, heat }),
   };

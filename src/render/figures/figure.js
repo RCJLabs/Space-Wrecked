@@ -9,7 +9,9 @@
 //   pose.fall    0 standing to 1 lying on its back: it tips over backward,
 //                its hands let go and the weapon drops beside it
 // held false is no weapon at all: the person a job's crew brings out (M38)
-// stands with empty hands.
+// stands with empty hands. A machine's look ({ machine }, M39) is drawn as
+// itself (turret.js), its gun its own: held is not drawn, and a fall is its
+// wreck.
 // colors: { suit, trim, dark, under, visor, glass, lamp, gun }. detail (0
 // to 1) thins the round parts out for figures drawn small.
 import { bodyOf, bones } from './bones.js';
@@ -17,6 +19,7 @@ import { dressEva } from './eva.js';
 import { PLAIN_HELD, PLAIN_LOOK } from './looks.js';
 import { makeKit, norm } from './shapes.js';
 import { dressSkinsuit } from './skinsuit.js';
+import { dressTurret } from './turret.js';
 import { weapon } from './weapon.js';
 
 export const FIGURE_TOP = 0.84; // the top of the tallest figure standing (a skinsuit's fin)
@@ -24,8 +27,16 @@ const MIDDLE = 0.38; // where a standing figure sorts, up from the deck
 const LYING = 0.12; // and a figure lying down
 const SLIDE = 0.38; // how far ahead its heels slide as it falls, so it lies on its tile
 const DRESS = { eva: dressEva, skinsuit: dressSkinsuit };
+const MACHINES = { turret: dressTurret };
 
 export function figureFaces(out, { at: [cx, cy], facing: [fx, fy] }, look, held, colors, pose = {}, detail = 1) {
+  const world = ([u, v, w]) => [cx + u * fx - v * fy, cy + u * fy + v * fx, w];
+  if (MACHINES[look?.machine]) {
+    const kit = makeKit({ place: world, colors, detail });
+    MACHINES[look.machine](kit, pose);
+    out.push(...kit.faces);
+    return;
+  }
   const suit = DRESS[look?.suit] ? look : PLAIN_LOOK;
   const unarmed = held === false;
   const hand = unarmed ? PLAIN_HELD : held ?? PLAIN_HELD;
@@ -33,7 +44,6 @@ export function figureFaces(out, { at: [cx, cy], facing: [fx, fy] }, look, held,
   const limp = Math.min(1, fall * 1.6);
   const body = bodyOf(suit.suit, suit.build);
   const s = bones(body, hand, { aim: pose.aim ?? 0, stride: pose.stride ?? null, limp });
-  const world = ([u, v, w]) => [cx + u * fx - v * fy, cy + u * fy + v * fx, w];
   // Tipping over backward about the heels, which slide ahead.
   const [c, sn] = [Math.cos((fall * Math.PI) / 2), Math.sin((fall * Math.PI) / 2)];
   const tip = ([u, v, w]) => [SLIDE * fall + u * c - w * sn, v, u * sn + w * c];

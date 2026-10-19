@@ -30,12 +30,21 @@
 // scrap; the player's ship never blows. After the last round, the ships
 // part.
 //
+// From M39 (data/modules.json): a torpedo bay is a gun that fires only in
+// the odd rounds (1 and 3), never in an opening volley, and its hit passes
+// the shields whole; a grapple adds its pull to its ship's chance to close
+// and takes it off the other ship's chance to flee, its best working one
+// counting; and a ship's gunnery and evasion come from its crew's edge,
+// its working parts that do a job's ship effect and its hull frame's
+// trait, together within the effect's cap (edges.js edgeWith).
+//
 // Pure. A side is { ship, damage, wrecked }: the ship's plain data
 // (builder.js), the hit points each module has lost in this approach
 // ({ [uid]: hit points }), and its wrecked modules ({ [uid]: 'fire' |
 // 'vacuum' | 'rubble' }), the player's from earlier approaches included.
 import { percent, pick } from '../core/rng.js';
 import { shipStats } from './constraints.js';
+import { edgeWith } from './edges.js';
 import { godMode } from './god.js';
 import { WRECKS } from './mapFromShip.js';
 import { hasTag } from './modules.js';
@@ -67,13 +76,20 @@ export function aimedAt(def, aim) {
 }
 
 // A side's numbers, from the modules it has working and its crew's edge:
-// { guns, damages (each gun's damage a hit, in the order they fire), shields
-// (what they hold in a round), intercept (what its point defense takes off
-// the other ship's hit chance), thrust, mass, ratio (thrust for mass),
-// evasion, gunnery (what its crew adds to its guns' hit chance), powered,
-// moving, disabled }. side.edge, where given, is { gunnery, evasion }: what
-// the crew's jobs add (edges.js; encounter.js approachState, M32).
-export function sideStats(side, rules) {
+// { guns (those that fire this round), damages (each one's damage a hit, in
+// the order they fire), through (for each, true where its hit passes the
+// shields: a torpedo's, M39), armed (the working guns, torpedo bays still
+// to fire among them), shields (what they hold in a round), intercept (what
+// its point defense takes off the other ship's hit chance), thrust, mass,
+// ratio (thrust for mass), evasion, gunnery (what its crew, its parts and
+// its frame add to its guns' hit chance), grapple (what its best working
+// grapple adds to closing and takes off the other ship's fleeing, M39),
+// powered, moving, disabled }. round is the round its guns fire in: a
+// torpedo bay fires in the odd ones, never in an opening volley (round 0);
+// with none given, every working gun counts. side.edge, where given, is {
+// gunnery, evasion }: what the crew's jobs add (edges.js; encounter.js
+// approachState, M32).
+export function sideStats(side, rules, round = null) {
   const { balance } = rules;
   const working = side.ship.modules.filter((module) => !(module.uid in side.wrecked) && rules.modules.has(module.type)).map((module) => rules.modules.get(module.type));
   const tagged = (tag) => working.filter((def) => hasTag(def, tag));
@@ -82,21 +98,37 @@ export function sideStats(side, rules) {
   const ratio = mass > 0 ? thrust / mass : 0;
   const powered = tagged('reactor').length > 0;
   const moving = thrust > 0;
-  const damages = tagged('weapon').map((def) => def.damage);
+  const weapons = tagged('weapon');
+  const firing = weapons.filter((def) => !hasTag(def, 'torpedo') || round === null || torpedoRound(round));
+  const damages = firing.map((def) => def.damage);
+  const edge = (key) => edgeWith(side.edge?.[key] ?? 0, side.ship, rules, key, side.wrecked);
   return {
     guns: damages.length,
     damages,
+    through: firing.map((def) => hasTag(def, 'torpedo')),
+    armed: weapons.length,
     shields: tagged('shield').reduce((sum, def) => sum + def.shield, 0),
     intercept: Math.min(balance.interceptMax, tagged('pointdefense').reduce((sum, def) => sum + def.intercept, 0)),
     thrust,
     mass,
     ratio,
-    evasion: Math.round(balance.evasionPerThrust * ratio) + (side.edge?.evasion ?? 0),
-    gunnery: side.edge?.gunnery ?? 0,
+    evasion: Math.round(balance.evasionPerThrust * ratio) + edge('evasion'),
+    gunnery: edge('gunnery'),
+    grapple: Math.max(0, ...working.map((def) => def.grapple ?? 0)),
     powered,
     moving,
     disabled: !powered || !moving,
   };
+}
+
+// True for a round a torpedo bay fires in (M39): the odd ones, 1 and 3.
+export function torpedoRound(round) {
+  return round % 2 === 1;
+}
+
+// The rounds of an approach a torpedo bay fires in: [1, 3].
+export function torpedoRounds(rules) {
+  return Array.from({ length: rules.balance.approachRounds }, (_, i) => i + 1).filter(torpedoRound);
 }
 
 // The working modules a volley aimed at `aim` can hit, fewest hit points
@@ -118,16 +150,18 @@ export function hitChance(target, evading, rules, gunnery = 0) {
   return within(base + gunnery - target.evasion - target.intercept - (evading ? evadeBonus : 0), rules);
 }
 
-// The chance a ship gets away from another, by their thrust for mass.
+// The chance a ship gets away from another, by their thrust for mass, less
+// the other's grapple (M39).
 export function fleeChance(mine, theirs, rules) {
   const { fleeChance: base, fleePerThrust } = rules.balance;
-  return within(base + Math.round(fleePerThrust * (mine.ratio - theirs.ratio)), rules);
+  return within(base + Math.round(fleePerThrust * (mine.ratio - theirs.ratio)) - (theirs.grapple ?? 0), rules);
 }
 
-// The chance a ship closes on another and boards it.
+// The chance a ship closes on another and boards it, with its grapple
+// (M39).
 export function closeChance(mine, theirs, rules) {
   const { closeChance: base, closePerThrust } = rules.balance;
-  return within(base + Math.round(closePerThrust * (mine.ratio - theirs.ratio)), rules);
+  return within(base + Math.round(closePerThrust * (mine.ratio - theirs.ratio)) + (mine.grapple ?? 0), rules);
 }
 
 // How much of a side's approach hit points (its weapons, engines, shields
@@ -150,11 +184,12 @@ export function lostShare(side, rules) {
 // of its approach hit points lost, in percent, at which it runs }. It runs
 // once it has lost that much, or with no guns and no wish to board; closes
 // from its boarding round; or else fires at the first kind it aims at that
-// the player still has working; and evades with nothing to fire.
+// the player still has working; and evades with nothing to fire (a
+// torpedo bay between its rounds, M39, fires nothing).
 export function enemyOrder({ you, them, round, tactics }, rules) {
-  const mine = sideStats(them, rules);
+  const mine = sideStats(them, rules, round);
   const running = tactics.flee !== undefined && lostShare(them, rules) >= tactics.flee;
-  if (mine.moving && (running || (!mine.guns && tactics.board === undefined))) return { kind: 'flee' };
+  if (mine.moving && (running || (!mine.armed && tactics.board === undefined))) return { kind: 'flee' };
   if (tactics.board !== undefined && round >= tactics.board && mine.moving) return { kind: 'close' };
   if (mine.guns) {
     const at = [...tactics.aim, ...AIMS].find((aim) => targetsOf(you, aim, rules).length);
@@ -166,16 +201,18 @@ export function enemyOrder({ you, them, round, tactics }, rules) {
 // Every order the player could give this round, against the other ship's
 // order (intent), each with its odds and whether it can be given:
 // [{ order, ok, why, ... }]. Fire carries guns, chance, damages (each
-// gun's, as sideStats has them), the shields in the way and its targets;
-// evade the chance the other ship's guns hit, and was (without evading);
-// flee and close their chance.
+// gun's that fires this round, as sideStats has them), through (which of
+// them pass the shields: torpedoes, M39), the shields in the way and its
+// targets; evade the chance the other ship's guns hit, and was (without
+// evading); flee and close their chance.
 export function choicesFor(state, intent, rules) {
-  const you = sideStats(state.you, rules);
-  const them = sideStats(state.them, rules);
+  const you = sideStats(state.you, rules, state.round);
+  const them = sideStats(state.them, rules, state.round);
   const choices = AIMS.map((at) => {
     const targets = targetsOf(state.them, at, rules);
-    const why = !you.guns ? 'Your guns are out.' : !targets.length ? `They have no working ${at === 'reactor' ? 'reactor' : at}.` : null;
-    return { order: { kind: 'fire', at }, ok: !why, why, guns: you.guns, chance: hitChance(them, intent.kind === 'evade', rules, you.gunnery), damages: you.damages, shields: them.shields, targets };
+    const out = you.armed ? `Your torpedo bays fire in rounds ${andList(torpedoRounds(rules))}.` : 'Your guns are out.';
+    const why = !you.guns ? out : !targets.length ? `They have no working ${at === 'reactor' ? 'reactor' : at}.` : null;
+    return { order: { kind: 'fire', at }, ok: !why, why, guns: you.guns, chance: hitChance(them, intent.kind === 'evade', rules, you.gunnery), damages: you.damages, through: you.through, shields: them.shields, targets };
   });
   const theirs = intent.kind === 'fire' ? { chance: hitChance(you, true, rules, them.gunnery), was: hitChance(you, false, rules, them.gunnery) } : { chance: null, was: null };
   choices.push({ order: { kind: 'evade' }, ok: true, why: null, ...theirs });
@@ -197,15 +234,16 @@ export function isOrder(order) {
 // be given. events, in order:
 //   { kind: 'flee' | 'close', side, chance, roll, ok }
 //   { kind: 'volley', side, at, chance, shots: [{ roll, hit, absorbed,
-//     damage, module, wreck }] }   module: the uid hit, or null
+//     damage, module, wreck, torpedo? }] }   module: the uid hit, or null;
+//     torpedo: true for a torpedo bay's (M39)
 //   { kind: 'blow', chance, roll, ok }
 export function playRound(state, order, rng, rules) {
   const intent = enemyOrder(state, rules);
   const choice = isOrder(order) && choicesFor(state, intent, rules).find((c) => c.order.kind === order.kind && c.order.at === order.at);
   if (!choice) return { ok: false, error: 'That order is unknown.' };
   if (!choice.ok) return { ok: false, error: choice.why };
-  const youAt = sideStats(state.you, rules);
-  const themAt = sideStats(state.them, rules);
+  const youAt = sideStats(state.you, rules, state.round);
+  const themAt = sideStats(state.them, rules, state.round);
   const events = [];
   let r = rng;
   const roll = (chance) => {
@@ -270,35 +308,40 @@ export function playRound(state, order, rng, rules) {
 // events: [the volley], fired }; with no guns, or nothing to aim at, no
 // volley (events []).
 export function openingVolley(state, rng, rules) {
-  const them = sideStats(state.them, rules);
+  // Before the first round: round 0, when no torpedo bay fires (M39).
+  const them = sideStats(state.them, rules, 0);
   const at = them.guns ? [...state.tactics.aim, ...AIMS].find((aim) => targetsOf(state.you, aim, rules).length) : null;
   if (!at) return { you: state.you, rng, events: [], fired: false };
-  const shot = volley(them, sideStats(state.you, rules), state.you, at, false, rng, rules, godMode(rules));
+  const shot = volley(them, sideStats(state.you, rules, 0), state.you, at, false, rng, rules, godMode(rules));
   return { you: shot.side, rng: shot.rng, events: [{ kind: 'volley', side: 'them', at, chance: shot.chance, shots: shot.shots }], fired: shot.shots.length > 0 };
 }
 
-// One ship's volley at a kind of module on the other: every working gun
-// fires once, at the chance shown, for its own damage. Returns { side (the
-// target after it), rng, chance, shots }. A spared target (the player's
-// ship in God mode, god.js) takes every hit whole, as shields take one.
+// One ship's volley at a kind of module on the other: every gun firing
+// this round fires once, at the chance shown, for its own damage, the
+// shields taking what they hold off each hit in turn but a torpedo's (M39),
+// which passes them. Returns { side (the target after it), rng, chance,
+// shots }. A spared target (the player's ship in God mode, god.js) takes
+// every hit whole, as shields take one.
 function volley(shooter, target, side, aim, evading, rng, rules, spared = false) {
   const chance = hitChance(target, evading, rules, shooter.gunnery);
   let r = rng;
   let hit = side;
   let shields = target.shields;
   const shots = [];
-  for (const gunDamage of shooter.damages) {
+  for (const [i, gunDamage] of shooter.damages.entries()) {
+    const through = shooter.through?.[i] === true;
+    const torpedo = through ? { torpedo: true } : {};
     const p = percent(r, chance);
     r = p.state;
     if (!p.value) {
-      shots.push({ roll: p.roll, hit: false, absorbed: 0, damage: 0, module: null, wreck: null });
+      shots.push({ roll: p.roll, hit: false, absorbed: 0, damage: 0, module: null, wreck: null, ...torpedo });
       continue;
     }
     if (spared) {
-      shots.push({ roll: p.roll, hit: true, absorbed: gunDamage, damage: 0, module: null, wreck: null });
+      shots.push({ roll: p.roll, hit: true, absorbed: gunDamage, damage: 0, module: null, wreck: null, ...torpedo });
       continue;
     }
-    const absorbed = Math.min(shields, gunDamage);
+    const absorbed = through ? 0 : Math.min(shields, gunDamage);
     shields -= absorbed;
     const left = gunDamage - absorbed;
     const module = left > 0 ? targetsOf(hit, aim, rules)[0] : null;
@@ -314,7 +357,7 @@ function volley(shooter, target, side, aim, evading, rng, rules, spared = false)
         hit = { ...hit, wrecked: { ...hit.wrecked, [module.uid]: wreck } };
       }
     }
-    shots.push({ roll: p.roll, hit: true, absorbed, damage, module: module?.uid ?? null, wreck });
+    shots.push({ roll: p.roll, hit: true, absorbed, damage, module: module?.uid ?? null, wreck, ...torpedo });
   }
   return { side: hit, rng: r, chance, shots };
 }
@@ -331,4 +374,9 @@ function massOf(ship, rules) {
 
 function within(chance, rules) {
   return Math.max(rules.balance.chanceMin, Math.min(rules.balance.chanceMax, chance));
+}
+
+// "1", "1 and 3", "1, 3 and 5".
+function andList(items) {
+  return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
 }

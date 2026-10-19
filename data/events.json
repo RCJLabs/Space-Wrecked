@@ -1,6 +1,6 @@
 {
   "drops": {
-    "salvage": { "corridor": 3, "armory": 2, "cargo": 2, "medbay": 1, "shield": 1, "weapon": 1, "engine": 1, "lightengine": 1, "smallreactor": 1, "pointdefense": 1, "bunks": 1, "largehold": 1, "bastion-armory": 1, "bastion-shield": 1, "bastion-weapon": 1, "kestrel-engine": 1, "kestrel-shield": 1, "kestrel-weapon": 1, "scrapline-engine": 1, "scrapline-reactor": 1, "scrapline-shield": 1 },
+    "salvage": { "corridor": 3, "armory": 2, "cargo": 2, "medbay": 1, "shield": 1, "weapon": 1, "engine": 1, "lightengine": 1, "smallreactor": 1, "pointdefense": 1, "bunks": 1, "largehold": 1, "bastion-armory": 1, "bastion-shield": 1, "bastion-weapon": 1, "kestrel-engine": 1, "kestrel-shield": 1, "kestrel-weapon": 1, "scrapline-engine": 1, "scrapline-reactor": 1, "scrapline-shield": 1, "cargopod": 1, "thruster": 1, "emitter": 1, "cockpit": 1, "scanner": 1, "surveylab": 1, "grapple": 1, "dormitory": 1, "airrecycler": 1 },
     "colony": { "lifesupport": 3, "bunks": 3, "quarters": 2, "smallreactor": 2, "cargo": 2, "medbay": 1, "weapon": 1, "shield": 1, "armory": 1 }
   },
   "events": [

@@ -106,7 +106,7 @@ Numbers marked as starting values live in `data/balance.json` and get tuned with
 
 - **One grid model** (`src/sim/grid.js`) serves the player's ship, enemy ships, battle maps and the colony.
 - **Cells and tiles:** one builder cell is one battle tile. Until M5b a cell was 2 × 2 tiles; Evan asked for finer building. Rooms that need cover are at least 2 cells across, and a corridor can be one tile wide, so where to put a chokepoint is the player's call. (Revisit after M8.)
-- **Hull frames** set the build area and the part cap. The starter frame is an open yard of 24 × 14 cells holding up to 40 parts, nose to the right. The ship can go anywhere in it, and the hull is traced from whatever is built. A typical starter ship is 10 × 5 to 14 × 8 cells, so its battle map fits one phone screen at 48-pixel tiles; bigger ships pan.
+- **Hull frames** set the build area and the part cap. The starter frame is an open yard of 24 × 14 cells holding up to 40 parts, nose to the right. The ship can go anywhere in it, and the hull is traced from whatever is built. A typical starter ship is 10 × 5 to 14 × 8 cells, so its battle map fits one phone screen at 48-pixel tiles; bigger ships pan. Since M39 a shipyard sells three more, each with a trait (the courier, the gunship and the freighter), and the ship moves over with its parts; two more, a patrol hull and a small-craft hull, are for enemies.
 - **Frame shapes:** a frame can still cut cells out of its rectangle, for a special hull. The starter frame had a ship-shaped outline from M4 to M5b; it is open now.
 - **Module definitions** (`data/modules.json`) hold:
   - id, name, manufacturer, size in cells, and whether it rotates
@@ -528,9 +528,13 @@ The v1.0 column is a set of targets, not commitments.
 
 **M23e's variants** (21 module types in all): light engine, heavy engine, small reactor, point defense, cannon, shield array, bunks, surgery and large hold.
 
+**M39's nineteen** (40 module types in all): five doing a crew job's ship effect (scanner, fire control, ECM suite, workshop, survey lab), five with rules of their own (torpedo bay, grapple, stealth baffles, security turret, hydroponics), and nine versions of parts already there (railgun, flak battery, large reactor, thruster, cockpit, dormitory, air recycler, cargo pod, shield emitter).
+
+**Hull frames as built:** six since M39 (`data/frames.json`): the starter hull, and the courier, gunship and freighter frames sold at shipyards; a patrol hull and a small-craft hull for enemies.
+
 **Traits as built:** 20 since M32b (`data/traits.json`), ten of them trading one fight number for another as Hothead does. The captain picks 2; recruits roll theirs from their background.
 
-**Manufacturers as built:** four, one past the target: the Yard's, Bastion Arms' (M23g, 21 versions), Kestrel Dynamics' (M31, 16) and Scrapline's (M31, 21). 79 parts in all in `data/modules.json`.
+**Manufacturers as built:** four, one past the target: the Yard's, Bastion Arms' (M23g, 40 versions since M39), Kestrel Dynamics' (M31, 27) and Scrapline's (M31, 40). 147 parts in all in `data/modules.json`.
 
 **Backgrounds as built** (`data/backgrounds.json`), each with its district in `data/districts.json`: six clients, four job sites (one on each site map), a shop, and its jobs in `data/contracts.json`:
 - **Debt-bound miner** (M14). Con-Reg Recovery, the company's repo crews, hunt you by tracking your ship's registration, and take payments on the debt. Act 1's district is the Tailings, with 10 jobs.
@@ -2029,9 +2033,87 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **Colonists in a fight** are Colonist 1 to 6, "Col. 1" on their buttons (`src/ui/names.js`); their card says a fallen colonist is lost unless stabilized, Defend's first tap that a colonist who falls is lost, and the end panel how many fell and how many are left. `tools/validate-campaign.js` refuses a colonist id that is a job's, an enemy's or a person's.
   - **The test player** plays the 20 days after (`AFTER_DAYS`) and flies home for a raid only when it lands the day before (`voyagePlan.js` `homeNow`).
   - **Measured over 100 voyages** (PROGRESS.md): citizens at the first colony in 86 (median 1, at most 5), at the second in 42 of 76; since flying out 133 came, 5 left hungry, 7 fell and 1 freed captive settled. One raid was fought out without the player, lost. The voyage's rates are within main's margins (home 100, fed 99, fed aboard 99).
-- [ ] **M39 Parts and hull frames.** 21 module types against §5's 40 to 60, and one hull frame against 6. The draft:
-  - the types §9 asks for, a scanner first;
-  - frames for bigger ships, and an enemy frame (§9).
+- [x] **M39 Parts and hull frames.** 21 module types against §5's 40 to 60, and one hull frame against 6.
+
+  Measured first (100 voyages, the miner as `tools/voyage.js` plays; every enemy preset at seeds 1 to 50; medians):
+  - **No ship comes near the starter frame's 40 parts and 24 × 14 cells.** The test player's ship has 12 parts at launch and 13 at the landing (24 at most), 8 × 9 cells (15 × 10 at most). The biggest preset, the corvette, has 28 parts at most and 20 × 13 cells. What holds a ship back is parts and credits: 2 parts on hand and 50 credits at the landing.
+  - **Four of the 21 types never end up on the test player's ship:** the armory, the cannon, the shield array and the heavy engine. Only the cutters and the patrol carry an armory, and aboard a ship it does nothing but its room's cover (the colony's arms raid defenders).
+  - **The crew jobs' ship effects** (`edges.js`): scan, gunnery, evasion, repair, a free survey, lockers and healing come only from who is aboard, save the med bay's healing.
+
+  Evan's picks (2026-10-19):
+  - **19 new types, 40 in all:** 5 that do a crew job's ship effect, 5 with rules of their own, and 9 bigger or smaller versions of parts already there;
+  - **frames that differ in kind:** three more for the player, each with a trait outside the builder, bought at a shipyard, the ship moving over with its parts; two enemy frames;
+  - **a part and a job with the same effect add up**, within the effect's cap;
+  - **enemy ships fly some of the new parts now.**
+
+  **Done when:**
+  - **The 19 parts** are in `data/modules.json`, each with its own footprint, interior, plans, model outside and icon, and each maker's versions as §4.1 has them (Bastion every part, Kestrel those weighing 2 or more but reactors, Scrapline every part). Size, power, mass, hit points and price as below, numbers to be tuned by the tools:
+    - **Doing a job's ship effect:**
+      - Scanner, 2 × 1, command: a scan reaches 1 link more (the scout's).
+      - Fire control, 2 × 1, weapons: +10 to hit in the approach (the marine's).
+      - ECM suite, 2 × 1, defense: +10 evasion in the approach (the pilot's).
+      - Workshop, 3 × 2, utility: mends a wrecked part a jump (the engineer's).
+      - Survey lab, 2 × 2, utility: a survey takes no day (the xenobiologist's).
+    - **With rules of their own:**
+      - Torpedo bay, 2 × 2, weapons, facing space: 20 a hit that no shield takes off, firing in rounds 1 and 3 of an approach.
+      - Grapple, 2 × 1, utility, facing space: +15 to closing to board, and 15 off the other ship's fleeing.
+      - Stealth baffles, 2 × 1, defense: each jump adds 1 less heat.
+      - Security turret, 2 × 1, defense: in a boarding fight on its ship, a turret on its floor tile fights for that ship's side, with a gun and no moves; it can be shot down.
+      - Hydroponics, 3 × 2, crew: grows 2 supplies a jump aboard.
+    - **Bigger or smaller versions:** a railgun (3 × 1, 45 a hit), a flak battery (2 × 1, 20 point defense), a large reactor (4 × 3, 14 power), a thruster (1 × 1, 4 thrust), a cockpit (a 2 × 1 bridge), barracks (4 × 2, 8 berths), an air plant (2 × 2, 8 life support), a cargo pod (2 × 1, 6 cargo) and a shield emitter (1 × 1, 5 shield).
+  - **Effects add up within their caps** (`edges.js`'s): a working part's, its frame's and the best job's among the crew. A wrecked part gives nothing. A second of the same part adds nothing past the cap.
+  - **Law 1:** each new part changes the approach, a fight, the voyage or the colony, shown by `tools/approach.js`, `tools/sim.js` or `tools/voyage.js` (its `fit` and a new `--frame`), and none is worse than another part in every way (`tests/catalog.test.js`, with the new effects among what a part gives).
+  - **At the colony** (M26's giving): each new part gives what its numbers give (power, beds, air, storage, guns, shields, point defense), and:
+    - the scanner and fire control +10 to hit at a raid's lander;
+    - the workshop 1 more material from each mine a day;
+    - the survey lab a place more within reach;
+    - hydroponics 2 food a day.
+
+    The ECM suite, the grapple, the baffles, the turret, the thruster and the cockpit can't be given, and say why.
+  - **Hull frames** (`data/frames.json`), three more for the player and two for enemies; the numbers to be tuned:
+    - Starter hull: 24 × 14, 40 parts, thrust for mass 0.5 (as now);
+    - Courier: 18 × 10, 24 parts, 0.3, +10 evasion;
+    - Gunship: 28 × 14, 48 parts, 0.5, +10 to hit;
+    - Freighter: 30 × 16, 56 parts, 0.6, the lockers hold 20 more supplies;
+    - for enemies, a patrol hull (30 × 16, 56 parts) for the corvette and the frigate, and a small-craft hull (16 × 9, 20 parts) for the cutters, the repo tug and the runner. These two only give room.
+  - **A new frame at a shipyard:**
+    - every yard sells the player's frames but the ship's own, at the yard's percent of the frame's price and its side's share, less half what the old frame would fetch there;
+    - two taps move the ship over: its parts and styling pieces keep their places, shifted into the new yard if they don't fit where they are;
+    - it is refused, saying why, when the parts outnumber the new frame's cap, the ship won't fit its yard, or the styling pieces outnumber its own;
+    - the frame's trait and its thrust for mass hold at once, and a ship that then fails a flight check can't jump until it is fixed (M23h's rule).
+  - **Enemy ships:** the presets fly some of the new parts (the frigate fire control, the corvette a flak battery, the pirates' cutter and the repo tug a grapple, Con-Reg's gunship a torpedo bay, the runner stealth baffles, the hauler hydroponics and cargo pods, the Provost cutter a security turret, the yacht an ECM suite) and the enemy frames. The golden ships file is rewritten on purpose, and the approach and boarding fights are measured against main's (`tools/approach.js`, `tools/sim.js`).
+  - **Where the parts come from:** every yard can sell any part, as now; act 1's shops and the job drops carry the variants and the five job parts, and act 2's salvage the cheaper new parts, with act 1's test run as long as main's within its margin (`tools/run.js`).
+  - **The screens:**
+    - the builder's drawer, part cards and ship panel: each new part's effect, at the colony too, and the ship's frame and its trait;
+    - the shipyard's frames, with what each holds, its trait and its price;
+    - the approach: torpedoes and the grapple in the odds and the round's words, a torpedo seen in flight;
+    - the jump's plan: what hydroponics grow and the baffles save;
+    - the fight: the turret on the board and in the crew bar, its card.
+  - **Saves stay at v38:** a frame is the ship's `frame` (as since M3), a turret is a unit of a part's kind, and torpedoes go by the approach's round, so nothing new is saved. A blueprint code carries its frame by name, as now.
+  - **The test players** fit the new parts they find and buy where `voyagePlan.js` refits; the voyage's rates stay within main's margins (`MAIN`).
+  - **Every rule tested.**
+  - **Touch, at the three sizes:**
+    - the drawer with the 40 types and their makers;
+    - a part placed in two taps on each new frame;
+    - a frame bought and moved to at a yard, and one refused;
+    - an approach with torpedoes and a grapple;
+    - a boarding fight with a turret;
+    - a jump's plan with hydroponics and baffles;
+    - a quit and reopen;
+    - offline, every button 48 px or more, no console errors;
+    - every earlier milestone's browser check still passes.
+
+  As built (2026-10-19), where it differs from the above or adds to it:
+  - **Two names, two shapes:** barracks and the air plant are the dormitory and the air recycler, as the colony's buildings for crew quarters and life support already carry those names. The stealth baffles are 3 × 1, two panels either side of a walkway, and the shield emitter faces space, a dish on the hull. Every new part's room can be walked through.
+  - **The turret stands on its mount:** its room's tile of full cover, with a base plate drawn there (`deploy.js` `mountOf`). On its floor tile it shut the only way through its room.
+  - **A side whose people are all down has lost, whatever its turrets** (`battle.js`): the crew's last one down, the boarders have the ship; the boarders down, the crew has won, their turret firing or not. Those pressing on go on past a turret to the people (`press.js`). Before these, a crew down to its turret held a fight up for good, and the crew won 13% of its boardings of the Provost cutter against 50% with her turret taken off.
+  - **A long shot gives way past 40 rounds** (`fightOut.js` `LONG_SHOT`): a shot under 25% to hit gives way to a step nearer, where since M32 a shot under 10% did. A medic in cover took 20% shots at a brute who couldn't hit back for 20 rounds, and a voyage's boarding stalled.
+  - **Enemy ships:** none flies a grapple or a torpedo bay, and the runner keeps the starter hull. With them, the start ship did worse against those presets with a part added, which Law 1 forbids: an engine or a gun against the pirate cutter's and the repo tug's grapples (10 to 23 points of score), a gun or a shield against the gunship's torpedoes (6), point defense against the runner on the small-craft hull (4); and the cutter's grapple took a second reactor and a third gun. The rest fly as above, and the patrol hull carries the corvette and the frigate, the small-craft hull the two cutters and the repo tug. The generator tries 80 layouts where it tried 20, for the smaller hull. The golden ships file is rewritten on purpose. (§9: an enemy's grapple and torpedoes.)
+  - **Act 1's shops:** the Tailings sells the thruster, the cargo pod and the workshop, the Strand the flak battery, fire control and the shield emitter, the Narrows the cargo pod, the cockpit, the scanner and the large reactor; the jobs drop the variants and the job parts.
+  - **The test players:** act 1's fits and buys a part the checklist doesn't name where it leaves the checklist asking for fewer parts (`tools/run.js` `helps`: a thruster or a light engine for an engine, a dormitory for quarters). The voyage's also fits the scanner, the workshop, the survey lab and the grapple, never a part whose ship effects are at their caps already, nor a second grapple (`voyagePlan.js`). `tools/sim.js --boardings --fit turret` boards the start ship with parts added, and `tools/approach.js` adds the railgun, the flak battery, the emitter, the thruster, fire control, the ECM suite and the torpedo bay one at a time (`ADDED`), puts a cockpit in the bridge's place, and moves the ship onto the courier's and the gunship's hulls (`FRAMES`; the freighter's lockers play no part in an approach). The grapple's pull shows only with a player who closes to board whenever it can (`approachPlan.js` `boarderOrder`): the test player never closes, and no preset flees.
+  - **Law 1's one new trade:** the railgun's mass costs 5 evasion, so the repo gunship and the frigate, which the start ship beats with it or without it in none of 120 approaches, board it a little more often (4 and 5 points of score), where it wins 53 to 101 points more against four other presets. `tests/approach.test.js` lists it beside M31's shield array (`TRADES`).
+  - **Counted:** frames bought and supplies grown, in the campaign's flags (`framesBought`, `suppliesGrown`).
+  - **Measured** (PROGRESS.md): every new part and the courier's and gunship's hulls change the approach, a fight or the voyage, the grapple only with a player who closes to board; the freighter's lockers show on the voyage (hungry jumps 35 to 22 over 30). Over 100 voyages the rates stay within main's margins (fed all the way 80, main 77), and act 1's runs within 10 minutes of main's (the miner's 39 against 42).
 - [ ] **M40 Balance runs.** The draft:
   - the voyage's rates, held at main's since M31, brought to their first targets (§9);
   - the miner's hunters past the charts, the deserter's crew aboard ships, the talents' worth (§9);
@@ -2094,7 +2176,7 @@ These ideas wait until v0.4 or later:
 - the lift-off's and the landing's backdrop as layers the compositor moves, under a canvas of the ship's own: no backdrop drawing in a frame at all, if the phone stutters unfolded where this machine's processor-drawn canvas spends 2.8 to 3.6 ms on it (raised in M34)
 - dragging to lay a run of corridor in one go: since M5b a corridor is one cell, so a long one takes two taps a cell (raised in M5b; could come sooner if Gate 1 finds it tedious)
 - doorways onto lockers: the builder puts a doorway in the middle of a shared wall even with a locker, crates or machinery behind it. That can leave a room out of reach on foot in a fight. Generated ships avoid it; a player's ship still can, with no warning (raised in M10)
-- an enemy hull frame: §5 counts one for v0.1, but every preset builds on the starter yard for now. One comes when enemy ships need a bigger yard or a higher cap (raised in M10)
+- an enemy hull frame: §5 counts one for v0.1, but every preset builds on the starter yard for now. One comes when enemy ships need a bigger yard or a higher cap (raised in M10; M39 brought two, the patrol hull and the small-craft hull)
 - the campaign ship's timelapse: the campaign keeps no build log, so construction mode has no replay. A log would need a save version bump (raised in M13)
 - the hangar's goal lines as shortcuts: a fix whose part is on hand could open construction mode with that part picked, one tap fewer (raised in M13)
 - a job board that remembers further back than the last board, so a job comes back less often (raised in M14)
@@ -2114,7 +2196,7 @@ These ideas wait until v0.4 or later:
 - the sector map in 3D: M19's chart is flat, drawn in SVG like the job board. A starfield with the nodes as places, seen through the orbit camera, would match the ships (raised in M19)
 - names on the sector map: M19 names a node in the left panel when it is picked. Every name on the chart would crowd it at 7 columns on the cover screen (raised in M19)
 - tips for the run: what a jump costs, long jumps, stations and hunger, and since M24 the hunters' rings, Regroup, Hide and the transponder swap (raised in M19)
-- a scanner part: scanning comes from the ship as such since M20. A sensor module that lengthens `scanRange` would tie scanning to the build, as Law 1 asks (raised in M20)
+- a scanner part: scanning comes from the ship as such since M20. A sensor module that lengthens `scanRange` would tie scanning to the build, as Law 1 asks (raised in M20; M39's scanner reaches a link more)
 - more for credits to buy in act 2: M20's runs end with about 100 unspent. Repairs came in M21, patching the crew in M22 (the careful test player spends 18 a run on it at the median), recruits in M23 (50 each; the careful test player signs one on in 15 of 30 runs with a cargo hold, and none on the lockers alone) and the transponder swap in M24 (40 a sector; managing heat, the careful test player swaps once a run at the median, 0 to 4). Bribes (§4.4) are still to come (raised in M20)
 - events that start a fight: M20's events settle with a roll. M21 put hostile ships on nodes of their own; a distress call that turns out to be a trap would join the two (raised in M20)
 - shots in the approach: M21 shows a hit as the wrecked room's hazard and a line in the log. Tracers, a flash on the module hit and a shudder would make a round read at a glance (raised in M21)
@@ -2210,5 +2292,10 @@ These ideas wait until v0.4 or later:
 - survivors settling: since M38f a station job's freed captive settles at the colony flown from. An event's survivors (a derelict's crew, a wreck's) could settle the same way, a citizen more each (raised in M38f)
 - the test player builds no room for citizens: its shelters are for the crew who stay home, so a colony grows only into what is free. A careful player would build beds and air, and farms to feed them; M40's balance runs could measure it (raised in M38f)
 - a raid fought out without the player is decided whole at once. Its log could be kept, to replay on landing, or a fallen colonist named in the report (raised in M38f)
+- an enemy's grapple and torpedoes: M39's Done when had the pirate cutter and the repo tug fly a grapple, and Con-Reg's gunship a torpedo bay. With them, an engine or a gun added to the start ship scored worse against those ships, which Law 1 forbids as it is measured: by score, where a getaway counts for less than a fight won. A Law 1 that weighs a getaway as the player does would let them fly (raised in M39)
+- a turret that matters aboard an enemy ship: boarders go on past a turret to the people, so the Provost cutter's changes the crew's boardings of her little (50% of 40 with it and without it). A turret guarding something, the bridge or a hatch, or one the AI keeps the crew under, would (raised in M39)
+- a test player that buys a hull frame: none does, so a frame's worth on a run is measured only by moving the ship onto it (`tools/voyage.js --frame`). One that buys the courier or the freighter when the credits allow would show what a frame does to a run as played (raised in M39)
+- hydroponics' worth: fitted, it ends the test player's hunger outright (46 hungry jumps in 30 voyages to none) and cuts the supplies it buys by 60%, for 200 credits. For M40's balance runs (raised in M39)
+- boarding the yacht and the runner: on their new parts and layouts the crew wins 13% and 55% of its boardings of them, against 25% and 68% on main, and the yacht's stall 3 times in 40. For M40's balance runs (raised in M39)
 
 Ideas that come up during a session go here, not into code.

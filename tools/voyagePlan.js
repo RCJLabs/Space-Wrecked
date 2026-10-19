@@ -79,10 +79,13 @@
 // nothing in what an unknown node is worth.
 // At a station it refits (refitAt, M23h): every part on hand that feeds,
 // heals, houses, guards, arms or drives the ship goes on, in that order,
-// where it touches most of the ship, each kept only while every flight
-// check still passes; a part the power doesn't stretch to takes a reactor
-// on hand with it. Never corridors, airlocks, armories or a second bridge,
-// and no healer that heals no more than one aboard.
+// and from M39 its systems (a scanner, a workshop, a survey lab, a
+// grapple), where it touches most of the ship, each kept only while every
+// flight check still passes; a part the power doesn't stretch to takes a
+// reactor on hand with it. Never corridors, airlocks, armories or a second
+// bridge, no healer that heals no more than one aboard, and no part whose
+// ship effects are all at their caps already, or a second grapple: they
+// would add nothing.
 // From M38c it takes work at a station (stationJobPick): of the jobs on its
 // board, the one worth most, if that is anything, with a full squad of the
 // fit going (tripSquad). A job is worth its pay, its part and the standing
@@ -167,6 +170,7 @@ import { canRefit, maxHp, refitShip, shipChecklist } from '../src/sim/campaign.j
 import { buildingOf, colonyStats, givesOf, shipParts, storesOf, yieldOf } from '../src/sim/colony.js';
 import { build, buildPlan, takeDown } from '../src/sim/colonyBuild.js';
 import { crewRoom } from '../src/sim/crew.js';
+import { shipEdge, STATION_EFFECTS } from '../src/sim/edges.js';
 import { sellPriceOf, weaponPrice } from '../src/sim/economy.js';
 import { wrecksOn } from '../src/sim/encounter.js';
 import { eventsOf, freshest } from '../src/sim/eventPool.js';
@@ -174,6 +178,7 @@ import { choiceProblem, wreckable } from '../src/sim/events.js';
 import { tripPlan } from '../src/sim/expeditions.js';
 import { LANES } from '../src/sim/gen/system.js';
 import { jobHeat, withHeat } from '../src/sim/heat.js';
+import { hasTag } from '../src/sim/modules.js';
 import { huntOdds } from '../src/sim/hunt.js';
 import { openStep } from '../src/sim/quests.js';
 import { raidIn } from '../src/sim/raids.js';
@@ -272,8 +277,10 @@ function stationJobWorth(campaign, rules, job, added, heat) {
 }
 
 // The kinds of part the test player fits at a station, in the order it
-// fits them (data/modules.json categories).
-export const FIT_ORDER = ['cargo', 'crew', 'defense', 'weapons', 'engines'];
+// fits them (data/modules.json categories), and the parts it never fits, by
+// tag.
+export const FIT_ORDER = ['cargo', 'crew', 'defense', 'weapons', 'engines', 'command', 'utility'];
+export const NEVER_FIT = ['bridge', 'corridor', 'airlock', 'armory'];
 
 // The parts on hand the test player would fit, in order: by FIT_ORDER, the
 // dearest first in each, one entry for each part.
@@ -285,10 +292,16 @@ export function refitPicks(campaign, rules) {
 }
 
 // Whether the test player fits a part of `type` at all: one of FIT_ORDER's
-// kinds, and a healing part only when it heals better than the ship's best.
+// kinds and none of NEVER_FIT's; a healing part only when it heals better
+// than the ship's best; and (M39) a part with ship effects only while one
+// of them is short of its cap with the crew aboard, a grapple only with
+// none aboard.
 function wouldFit(campaign, rules, type) {
   const def = rules.modules.get(type);
-  if (!FIT_ORDER.includes(def?.category)) return false;
+  if (!FIT_ORDER.includes(def?.category) || NEVER_FIT.some((tag) => hasTag(def, tag))) return false;
+  const effects = Object.keys(def.station ?? {});
+  if (effects.length && effects.every((key) => shipEdge(campaign.ship, campaign.crew, rules, key, campaign.wrecks ?? {}) >= STATION_EFFECTS[key][1])) return false;
+  if (hasTag(def, 'grapple') && campaign.ship.modules.some((module) => hasTag(rules.modules.get(module.type), 'grapple'))) return false;
   const healer = Math.max(0, ...campaign.ship.modules.map((module) => rules.modules.get(module.type)?.heal ?? 0));
   return !def.heal || def.heal > healer;
 }

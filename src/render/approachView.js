@@ -28,6 +28,9 @@ import { shade } from './solid.js';
 
 const SIDES = ['you', 'them'];
 const TAIL = 0.2; // a shot's streak, as a share of its flight
+// A gun's shot, and a torpedo's (M39): heavier, its trail longer.
+const SHELL = { tail: TAIL, width: 2.5, head: 7 };
+const TORPEDO = { tail: 0.4, width: 4.5, head: 12 };
 const FLASH = { hit: 14, burst: 26 }; // a flash's size in CSS pixels
 const ARM = 0.3; // a target's bracket, as a share of each side
 const ROOM = 26; // CSS px left between the noses of two ships come together
@@ -85,7 +88,7 @@ export function createApproachView() {
         if (placed(shimmer.side)) shield(ctx, sides[shimmer.side], offset(shimmer.side), shimmer.progress);
       }
       for (const shot of frame.shots ?? []) {
-        if (placed(shot.side) && sides[shot.target].cam) streak(ctx, at(shot.side, shot.from), at(shot.target, shot.to), shot.progress, shot.side === 'you' ? palette.tracer : palette.enemyTracer);
+        if (placed(shot.side) && sides[shot.target].cam) streak(ctx, at(shot.side, shot.from), at(shot.target, shot.to), shot.progress, shot.side === 'you' ? palette.tracer : palette.enemyTracer, shot.torpedo ? TORPEDO : SHELL);
       }
       for (const flash of frame.flashes ?? []) {
         if (sides[flash.side].cam) burst(ctx, at(flash.side, flash.at), flash, sides[flash.side].rect);
@@ -186,22 +189,22 @@ function brackets(ctx, corners, first) {
 }
 
 // A shot in flight: a bright head and a streak behind it, from where it
-// was fired toward where it goes.
-function streak(ctx, [ax, ay], [bx, by], progress, color) {
+// was fired toward where it goes, as `look` has it (SHELL or TORPEDO).
+function streak(ctx, [ax, ay], [bx, by], progress, color, look = SHELL) {
   const lerp = (p) => [ax + (bx - ax) * p, ay + (by - ay) * p];
   const [hx, hy] = lerp(progress);
-  const [tx, ty] = lerp(Math.max(0, progress - TAIL));
+  const [tx, ty] = lerp(Math.max(0, progress - look.tail));
   const line = ctx.createLinearGradient(tx, ty, hx, hy);
   line.addColorStop(0, rgba(color, 0));
   line.addColorStop(1, rgba(color, 0.95));
   ctx.strokeStyle = line;
-  ctx.lineWidth = 2.5;
+  ctx.lineWidth = look.width;
   ctx.lineCap = 'round';
   ctx.beginPath();
   ctx.moveTo(tx, ty);
   ctx.lineTo(hx, hy);
   ctx.stroke();
-  glowAt(ctx, hx, hy, 7, color, 0.9);
+  glowAt(ctx, hx, hy, look.head, color, 0.9);
 }
 
 // Where a shot struck: a flash, bigger for a part wrecked, and for a ship

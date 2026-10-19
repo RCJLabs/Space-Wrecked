@@ -19,6 +19,7 @@
 import { BUILD_GIVES, MAKES, RESOURCES } from '../src/sim/colony.js';
 import { MAX_PLACE_NAME as MAX_NAME } from '../src/sim/runShape.js';
 import { lookProblems } from '../src/render/figures/looks.js';
+import { COLONY_EFFECTS } from '../src/sim/edges.js';
 import { isId, isIntIn, isObject, isText, knownKeys, listOf } from './checks.js';
 
 const FILE_KEYS = ['site', 'aboard', 'text', 'materials', 'citizen', 'builds', 'buildings'];
@@ -28,7 +29,10 @@ const CITIZEN_NUMBERS = { hp: [1, 20], aim: [0, 100], defense: [0, 50], mobility
 const SITE_KEYS = ['width', 'height', 'gap'];
 // shots (M29): how many times a defense fires at a raid's lander as it
 // comes down (src/sim/raids.js).
-const BUILDING_KEYS = ['part', 'name', 'shots', 'text'];
+// effects and makes (M39): what a given part does at the colony besides its
+// numbers, a colony effect as a job's (src/sim/edges.js) or what it makes a
+// day, as a farm does.
+const BUILDING_KEYS = ['part', 'name', 'shots', 'effects', 'makes', 'text'];
 const MAX_SHOTS = 4;
 const BUILD_KEYS = ['id', 'name', 'size', 'cost', 'makes', 'from', 'least', 'gives', 'text'];
 const MAX_TEXT = 200;
@@ -115,7 +119,26 @@ export function checkColony(file, modules, fail, weapons = []) {
     names.add(building.name);
     if (!isText(building.text) || building.text.length > MAX_TEXT) fail(at, `text must be a non-empty string of up to ${MAX_TEXT} letters`);
     if (building.shots !== undefined && !isIntIn(building.shots, 1, MAX_SHOTS)) fail(at, `shots must be a whole number from 1 to ${MAX_SHOTS}, or left out for a building that doesn't fire`);
+    if (building.effects !== undefined) checkBuildingEffects(building.effects, at, fail);
+    if (building.makes !== undefined) {
+      if (!isObject(building.makes) || !Object.keys(building.makes).length) fail(at, `makes must be { ${MAKES.join(' | ')}: a day }`);
+      else for (const [what, n] of Object.entries(building.makes)) if (!MAKES.includes(what) || !isIntIn(n, 1, MAX_LEAST)) fail(at, `makes: ${what} must be one of ${MAKES.join(', ')}, from 1 to ${MAX_LEAST} a day`);
+    }
   });
+}
+
+// A given part's colony effects (M39): each a job's colony effect, within
+// its range.
+function checkBuildingEffects(effects, at, fail) {
+  if (!isObject(effects) || !Object.keys(effects).length) {
+    fail(at, `effects must be an object of ${Object.keys(COLONY_EFFECTS).join(', ')}`);
+    return;
+  }
+  for (const [key, n] of Object.entries(effects)) {
+    const range = COLONY_EFFECTS[key];
+    if (!range) fail(at, `effects: unknown effect "${key}"`);
+    else if (!isIntIn(n, range[0], range[1])) fail(at, `effects: ${key} must be a whole number from ${range[0]} to ${range[1]}`);
+  }
 }
 
 // The colonist a citizen fights a raid as (M38f): its id, name, numbers,

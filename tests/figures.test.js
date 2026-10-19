@@ -88,6 +88,44 @@ test('fallen, a figure lies on its back along the way it faced, its weapon on th
   }
 });
 
+test("a ship's turret (M39) is a figure of its own: on its tile, below a person, barrels level aimed, slumped and dark once wrecked", () => {
+  const turret = rules.machines.get('turret');
+  const colors = new Set(Object.values(palette));
+  const facesFor = (pose, { facing = [0, 1], detail = 1 } = {}) => {
+    const out = [];
+    figureFaces(out, { at: [2.5, 3.5], facing }, turret.look, heldOf(turret), crewColors, pose, detail);
+    return out;
+  };
+  for (const pose of [{}, { aim: 1 }, { fall: 0.4 }, { fall: 1 }]) {
+    for (const detail of [1, 0.6]) {
+      const faces = facesFor(pose, { detail });
+      assert.ok(faces.length > 60, 'more than a box');
+      for (const face of faces) {
+        assert.ok(face.pts.flat().every(Number.isFinite));
+        assert.ok(Math.abs(Math.hypot(...face.normal) - 1) < 1e-9);
+        assert.ok(colors.has(face.color), face.color);
+      }
+      assert.ok(points(faces).every(([x, y, z]) => x > 2 && x < 3 && y > 3 && y < 4 && z >= -1e-9), `${JSON.stringify(pose)}: within its tile, above the deck`);
+      assert.ok(top(faces) < 0.7 && top(faces) <= FIGURE_TOP, `lower than a person: ${top(faces)}`);
+    }
+  }
+  // No suit: nothing in a visor's colours.
+  assert.ok(!facesFor({}).some((f) => f.color === crewColors.visor || f.color === crewColors.glass));
+  // Its barrels reach ahead the way it faces, turned with it.
+  const muzzle = (pose, facing = [0, 1]) => {
+    const pts = points(facesFor(pose, { facing }).filter((f) => f.color === crewColors.gun));
+    const far = Math.max(...pts.map(([x, y]) => (x - 2.5) * facing[0] + (y - 3.5) * facing[1]));
+    const tips = pts.filter(([x, y]) => (x - 2.5) * facing[0] + (y - 3.5) * facing[1] > far - 0.03);
+    return { far, high: tips.reduce((a, p) => a + p[2], 0) / tips.length };
+  };
+  assert.ok(muzzle({}).far > 0.35 && muzzle({}, [1, 0]).far > 0.35);
+  assert.ok(muzzle({ aim: 1 }).high > muzzle({}).high + 0.02, 'aimed, the barrels come up level');
+  assert.ok(muzzle({ fall: 1 }).high < muzzle({}).high - 0.05, 'wrecked, they droop');
+  // Its eye is lit until it is wrecked.
+  assert.ok(facesFor({}).some((f) => f.emissive && f.color === crewColors.lamp));
+  assert.ok(!facesFor({ fall: 1 }).some((f) => f.emissive));
+});
+
 test('each job and each enemy type has a look of its own, a suit both sides wear, and only what can be drawn', () => {
   for (const group of [[...rules.jobs.values()], [...rules.enemies.values()]]) {
     const looks = group.map((f) => JSON.stringify([f.look, heldOf(f)]));

@@ -15,6 +15,9 @@ export function indexDefs(files) {
     // The parts, each maker's versions filled in from their base parts
     // (M23g, withBases).
     modules: byId(withBases(modules.modules)),
+    // The machines that fight (M39, battle.js): each part's `unit` (the
+    // security turret's), by the unit's id, which is its kind in a fight.
+    machines: byId((modules.modules ?? []).filter((def) => def?.base === undefined && def?.unit).map((def) => def.unit)),
     // The builder's drawer sorts parts into these, in this order (M23e):
     // [{ id, name }], each module naming one as its category.
     categories: modules.categories ?? [],

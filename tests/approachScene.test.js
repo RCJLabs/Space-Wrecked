@@ -13,6 +13,7 @@ import { palette } from '../src/render/palette.js';
 import { playRound } from '../src/sim/approach.js';
 import { generateShip } from '../src/sim/gen/ship.js';
 import { launchedShip } from '../tools/approach.js';
+import { withPart } from '../tools/startShip.js';
 import { rules } from './battleKit.js';
 import { CUTTER_SEED } from './launchKit.js';
 
@@ -126,6 +127,27 @@ test("a round as beats: each shot from its gun to the part it struck or wide of 
   assert.equal(end.lines, played.events.length);
   assert.equal(frameAt(timeline, timeline.ends[0] - 1).lines, 0);
   assert.equal(frameAt(timeline, timeline.ends[0]).lines, 1, "the first event's line once it has played");
+});
+
+test('a torpedo bay (M39) holds fire in the even rounds, so the shots come from the other guns; in its rounds its torpedo flies slower than a shot', () => {
+  const armed = withPart(you, rules, 'torpedobay');
+  const geometry = { you: shipGeometry({ ship: armed, defs: rules, hull: traceHull(armed, rules) }), them: shipGeometry({ ship: cutter, defs: rules, hull: traceHull(cutter, rules) }) };
+  assert.equal(geometry.you.guns.filter((gun) => gun.torpedo).length, 1, 'the bay is one of her guns');
+  const others = geometry.you.guns.filter((gun) => !gun.torpedo);
+  for (const round of [1, 2]) {
+    const state = { you: side(armed), them: side(cutter), round, tactics };
+    const played = seedWhere(state, { kind: 'fire', at: 'weapons' }, (p) => p.events.some((e) => e.kind === 'volley' && e.side === 'you'));
+    const timeline = roundTimeline({ events: played.events, before: { you: state.you, them: state.them }, outcome: played.outcome, geometry });
+    const beats = timeline.beats.filter((beat) => beat.kind === 'shot' && beat.side === 'you');
+    const guns = round === 1 ? geometry.you.guns : others;
+    assert.equal(beats.length, guns.length, `round ${round}: a shot from each gun that fires`);
+    beats.forEach((beat, i) => assert.deepEqual(beat.from, guns[i].at, `round ${round}: from its own barrel`));
+    for (const beat of beats) assert.equal(beat.lands - beat.at, beat.torpedo ? MS.torpedo : MS.travel);
+    assert.equal(beats.some((beat) => beat.torpedo), round === 1, 'a torpedo only in its round');
+    // In flight, the screen is told which is the torpedo.
+    const tube = beats.find((beat) => beat.torpedo);
+    if (tube) assert.equal(frameAt(timeline, tube.at + 1).shots.find((shot) => shot.from === tube.from)?.torpedo, true);
+  }
 });
 
 test('a shot her shields stop flies to her nose and shimmers there; a hit flashes; a part wrecked bursts', () => {

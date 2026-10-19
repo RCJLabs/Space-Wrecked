@@ -7,6 +7,7 @@ import { HEAT_MAX } from '../src/sim/campaign.js';
 import { survey } from '../src/sim/survey.js';
 import { beginRun, brokenWhy, buySupplies, failingCheck, jumpPlan, knownNodes, leaveSector, linked, reach, scan, supplyCapacity } from '../src/sim/travel.js';
 import { fitPart } from '../tools/run.js';
+import { withPart } from '../tools/startShip.js';
 import { continueText } from '../src/ui/campaign/hubText.js';
 import { jumpText, nodeText, sectorText, worldSaid } from '../src/ui/campaign/sectorText.js';
 import { sideName } from '../src/ui/campaign/standingText.js';
@@ -62,6 +63,21 @@ test('what the map knows: the charted kinds and the nodes next to the route; the
   assert.equal(nodeText(derelict, rules).kind, 'Derelict: Dead hauler');
   assert.equal(nodeText(derelict, rules, { done: true }).kind, 'Derelict, been and done');
   assert.match(jumpText(campaign, rules, unknown.id).node.kind, /Unknown/);
+});
+
+test('the jump plan says what hydroponics grow on the way and what stealth baffles keep off the heat (M39)', () => {
+  const plain = onRun({ heat: 30 });
+  const campaign = { ...plain, ship: withPart(withPart(plain.ship, rules, 'hydroponics'), rules, 'baffles') };
+  const { sector } = campaign.run;
+  const next = linked(sector, sector.start)[0];
+  const grows = rules.modules.get('hydroponics').station.grows;
+  const quiet = rules.modules.get('baffles').station.quiet;
+  const room = supplyCapacity(campaign.ship, rules, campaign.crew);
+  const lines = jumpText(campaign, rules, next).lines;
+  assert.deepEqual(lines, [`Eats 3 supplies, and ${grows} grow aboard: ${Math.min(room, campaign.supplies - 3 + grows)} left.`, `Heat +${balance.jumpHeat - quiet}, the baffles keeping ${quiet} off: ${30 + balance.jumpHeat - quiet}.`]);
+  // Wrecked, they do nothing (the engineer aboard fixes one on the way).
+  const wrecks = Object.fromEntries(campaign.ship.modules.filter((m) => ['hydroponics', 'baffles'].includes(m.type)).map((m) => [m.uid, 'fire']));
+  assert.deepEqual(jumpText({ ...campaign, wrecks }, rules, next).lines.slice(0, 2), [`Eats 3 supplies: ${campaign.supplies - 3} left.`, `Heat +${balance.jumpHeat}: ${30 + balance.jumpHeat}.`]);
 });
 
 test('a jump picked says what it eats and what heat does; out of reach, why', () => {

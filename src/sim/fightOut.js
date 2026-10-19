@@ -3,11 +3,13 @@
 // tools/boarding.js; from M38f the sim's own, for a raid fought out
 // without the player, raids.js fightAway). Past DRAGGING rounds both sides
 // press on, so two sides on overwatch either side of a door can't hold a
-// fight up; and a shot with less than HOPELESS percent to hit, or
+// fight up; and a long shot, with less than LONG_SHOT percent to hit, or
 // overwatch, gives way to a step nearer, or with none (the fallen lying in
 // the only way through), to a tile with an enemy in sight, so two sides
-// can't trade misses or watch for each other for ever. A fight still going
-// after MAX_ROUNDS has stalled. Pure.
+// can't trade misses or watch for each other for ever. (Till M39 a shot
+// under 10%: a medic in cover kept taking 20% shots at a brute who
+// couldn't hit back, and missed for 20 rounds.) A fight still going after
+// MAX_ROUNDS has stalled. Pure.
 import { aiAction } from './ai.js';
 import { playFrom } from './autoplay.js';
 import { reachable, stepsFrom } from './moves.js';
@@ -17,7 +19,7 @@ import { canSee } from './sight.js';
 
 export const MAX_ROUNDS = 60;
 const DRAGGING = 40;
-const HOPELESS = 10;
+export const LONG_SHOT = 25;
 const BOTH_PRESS = { crew: charge, enemy: charge };
 // Who plays a raid on a colony (M29): those there the AI, the raiders
 // pressing on.
@@ -34,8 +36,8 @@ export function playOn(battle, rules, players, { maxRounds = MAX_ROUNDS } = {}) 
   return { battle: rest.battle, actions: [...played.actions, ...rest.actions], events: [...played.events, ...rest.events], dragged: true };
 }
 
-// Pressing on, past DRAGGING rounds: as pressAction, but a hopeless shot
-// or overwatch gives way to a step nearer, or with none and no enemy in
+// Pressing on, past DRAGGING rounds: as pressAction, but a long shot or
+// overwatch gives way to a step nearer, or with none and no enemy in
 // sight, to the nearest tile with one in sight, where there is one; and
 // from M37 a move that ends no nearer the enemy gives way to a step nearer
 // (a torch's reach short of the enemy, the AI stepped out and back each
@@ -46,7 +48,7 @@ function charge(battle, rules) {
   if (action.type === 'move') return nearer(battle, unit, action.to, rules) ? action : (advance(battle, unit, rules) ?? action);
   if (action.type !== 'shoot' && action.type !== 'overwatch') return action;
   const target = action.type === 'shoot' ? battle.units.find((u) => u.id === action.target) : null;
-  if (target && shotOdds(battle, unit, target, rules).hit >= HOPELESS) return action;
+  if (target && shotOdds(battle, unit, target, rules).hit >= LONG_SHOT) return action;
   return advance(battle, unit, rules) ?? (target ? null : intoSight(battle, unit, rules)) ?? action;
 }
 

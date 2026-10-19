@@ -23,7 +23,7 @@
         "dealer": "dutch",
         "pitch": "Dutch sells what the scavvers missed, and buys whatever you can carry in. Cash, no questions, no refunds.",
         "size": 4,
-        "parts": { "engine": 9, "reactor": 1, "quarters": 1, "lifesupport": 1, "corridor": 2, "airlock": 1, "cargo": 2, "medbay": 1, "armory": 1, "weapon": 1, "shield": 1, "lightengine": 1, "heavyengine": 1, "smallreactor": 1, "pointdefense": 1, "cannon": 1, "shieldarray": 1, "bunks": 1, "surgery": 1, "largehold": 1, "bastion-engine": 2, "bastion-reactor": 1, "bastion-weapon": 1, "bastion-shield": 1, "bastion-cannon": 1, "bastion-armory": 1, "scrapline-engine": 1, "scrapline-reactor": 1, "scrapline-quarters": 1, "scrapline-cargo": 1, "kestrel-engine": 1, "kestrel-weapon": 1 },
+        "parts": { "engine": 9, "reactor": 1, "quarters": 1, "lifesupport": 1, "corridor": 2, "airlock": 1, "cargo": 2, "medbay": 1, "armory": 1, "weapon": 1, "shield": 1, "lightengine": 1, "heavyengine": 1, "smallreactor": 1, "pointdefense": 1, "cannon": 1, "shieldarray": 1, "bunks": 1, "surgery": 1, "largehold": 1, "bastion-engine": 2, "bastion-reactor": 1, "bastion-weapon": 1, "bastion-shield": 1, "bastion-cannon": 1, "bastion-armory": 1, "scrapline-engine": 1, "scrapline-reactor": 1, "scrapline-quarters": 1, "scrapline-cargo": 1, "kestrel-engine": 1, "kestrel-weapon": 1, "thruster": 1, "cargopod": 1, "workshop": 1 },
         "armsSize": 2,
         "arms": { "rivetgun": 3, "torch": 3, "shotgun": 2, "pistol": 2, "carbine": 2, "sawnoff": 1, "rifle": 1, "autogun": 1 }
       }
@@ -78,7 +78,10 @@
           "bastion-shield": 2,
           "bastion-cannon": 1,
           "bastion-armory": 1,
-          "bastion-pointdefense": 1, "kestrel-engine": 1, "kestrel-weapon": 1, "kestrel-shield": 1, "scrapline-weapon": 1, "scrapline-reactor": 1
+          "bastion-pointdefense": 1, "kestrel-engine": 1, "kestrel-weapon": 1, "kestrel-shield": 1, "scrapline-weapon": 1, "scrapline-reactor": 1,
+          "flak": 1,
+          "firecontrol": 1,
+          "emitter": 1
         },
         "armsSize": 2,
         "arms": { "rifle": 3, "marksman": 2, "baton": 2, "carbine": 2, "pistol": 2, "longrifle": 1, "riotgun": 1, "railrifle": 1 }
@@ -131,7 +134,10 @@
           "bastion-engine": 2,
           "bastion-reactor": 1,
           "bastion-lightengine": 1,
-          "bastion-cargo": 1, "kestrel-engine": 1, "kestrel-cargo": 1, "kestrel-lifesupport": 1, "scrapline-engine": 1, "scrapline-shield": 1
+          "bastion-cargo": 1, "kestrel-engine": 1, "kestrel-cargo": 1, "kestrel-lifesupport": 1, "scrapline-engine": 1, "scrapline-shield": 1,
+          "cargopod": 1,
+          "cockpit": 1,
+          "scanner": 1, "largereactor": 1
         },
         "armsSize": 2,
         "arms": { "machinepistol": 3, "sawnoff": 3, "autogun": 2, "pistol": 2, "carbine": 2, "shotgun": 1, "dartgun": 1 }
