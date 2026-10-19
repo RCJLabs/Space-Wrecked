@@ -2247,6 +2247,16 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **Reduced motion in a fight:** with Motion at Reduce (or the phone asking for less), an enemy turn shows its end at once with each action's words. The board is free within 1 s of the turn's start, the sounds play, and Skip is not needed. Full motion plays as now.
   - **Saves v40:** the two new settings, with the migration tested (Standard, 100%).
   - **Touch, at the three sizes:** the new settings, the fight under each, the chart and the builder at 130%, every earlier milestone's check at 100% and Standard.
+
+  As built (2026-10-19), where it differs from the above or adds to it:
+  - **The hunters' ring is doubled,** a second ring outside it, not dashed: a dashed ring already means a long jump.
+  - **A wounded HP bar is striped,** not notched: stripes run the bar's length, where a notch marks one point.
+  - **The crew trims carry each member's initial** in a box beside their pips on the board, not on a badge.
+  - **A hurt to the crew reads "HURT −2"**, the word itself the mark; a blast's hurt to the crew the same.
+  - **A way in held is crossed** (an X under the reach marks); a dash tile has three hatch strips.
+  - **The colorblind-safe set** changes `good` to blue, `bad` and `target` to magenta, `accent` to gold, and `dash`, the enemy trim and the enemy tracer; the rest are Standard's. Its least pair is 20.8 apart (deuteranopia and tritanopia); Standard's is 6.5.
+  - **Reduced motion reaches every fight's playback,** the crew's own actions as well as the enemy's: every event takes no time, and the words of one tile stack rather than overlap.
+  - **The colony's crew opener** lies over the whole crew list, taller than its panel at 130% on the short screens; it scrolls into view and takes a tap anywhere on the list.
 - [ ] **M43 Tutorial polish.** M18's tips cover building, the job board and the first fight. The draft:
   - tips past the first fight, for the run and the colony (§9);
   - a stranger plays from New game to the colony unaided.
