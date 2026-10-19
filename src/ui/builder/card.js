@@ -5,8 +5,11 @@
 // from its base part (M23g), and cost; and for a placed part, where it is,
 // whether it reaches the bridge and whether it is wrecked. For a styling
 // piece (M23f), pieceCard.
+import { torpedoRounds } from '../../sim/approach.js';
+import { STATION_EFFECTS } from '../../sim/edges.js';
 import { footprint } from '../../sim/modules.js';
 import { pieceFootprint } from '../../sim/styling.js';
+import { STATION_WORDS } from '../campaign/crewJobText.js';
 
 const STATS = [
   ['power', 'Power'],
@@ -46,11 +49,18 @@ export function cardFor(defs, def, placed = null) {
 }
 
 // What a part does in an approach (src/sim/approach.js), as a line, or
-// none: the numbers its part gives the rules, as the odds use them.
+// none: the numbers its part gives the rules, as the odds use them. A
+// torpedo bay's (M39) fires in the odd rounds only, through the shields; a
+// grapple's pulls the ships together.
 function approachLine(defs, def) {
+  if (def.damage && def.tags.includes('torpedo')) return [`In an approach: ${def.damage} damage a hit, through the shields, one shot in rounds ${listed(torpedoRounds(defs))} only: never in the opening volley.`];
   if (def.damage) return [`In an approach: ${def.damage} damage a hit, one shot a round.`];
   if (def.shield) return [`In an approach: holds off ${def.shield} damage a round, from the first hits.`];
-  if (def.intercept) return [`In an approach: the other ship's guns hit ${def.intercept} in 100 less, up to ${defs.balance.interceptMax} with more turrets. Their volleys at your guns hit it too.`];
+  if (def.intercept) {
+    const most = def.intercept >= defs.balance.interceptMax ? 'the most there is, so a second adds nothing' : `up to ${defs.balance.interceptMax} with more turrets`;
+    return [`In an approach: the other ship's guns hit ${Math.min(def.intercept, defs.balance.interceptMax)} in 100 less, ${most}. Their volleys at your guns hit it too.`];
+  }
+  if (def.grapple) return [`In an approach: closing in is ${def.grapple} in 100 likelier, and the other ship's flight ${def.grapple} less. The best working grapple counts.`];
   return [];
 }
 
@@ -58,6 +68,18 @@ function approachLine(defs, def) {
 // a line, or none: a med bay's healing, with the best healer's job aboard
 // (the medic's, data/jobs.json); berths and life support, the crew's room.
 function runLine(defs, def) {
+  // M39: a part doing a job's ship effect, on top of the crew's best; and a
+  // security turret, which fights for the ship.
+  const station = Object.entries(def.station ?? {}).map(([key, n]) => {
+    const most = STATION_EFFECTS[key]?.[1] ?? n;
+    const more = n >= most ? 'A second adds nothing, nor does one of the crew who does the same.' : `It adds to what the crew and other parts bring, up to ${most} in all.`;
+    return `On the run, while it works: ${STATION_WORDS[key]?.(n) ?? key}. ${more}`;
+  });
+  if (def.unit) {
+    const gun = defs.weapons.get(def.unit.weapon)?.name ?? def.unit.weapon;
+    station.push(`In a fight aboard: it stands in its room for the ship's side, ${def.unit.hp} hit points, aim ${def.unit.aim}, with ${article(gun)} ${gun.toLowerCase()}. It never moves; at 0 hit points it is wrecked.`);
+  }
+  if (station.length) return station;
   if (def.heal) {
     const healer = [...defs.jobs.values()].reduce((best, job) => ((job.station?.heal ?? 0) > (best?.station?.heal ?? 0) ? job : best), null);
     const more = healer?.station?.heal ? `, ${def.heal + healer.station.heal} with a ${healer.name.toLowerCase()} aboard` : '';
@@ -84,6 +106,13 @@ function makerLines(defs, def) {
   return lines;
 }
 
+// A hull frame's trait in words (data/frames.json traits, M39), or ''.
+export function traitText(frame) {
+  const traits = Object.entries(frame?.traits ?? {});
+  if (!traits.length) return '';
+  return `The ${frame.name.toLowerCase()}: ${traits.map(([key, n]) => STATION_WORDS[key]?.(n) ?? key).join('; ')}, on top of the crew and the parts, within the cap.`;
+}
+
 // A styling piece's card: its size and turns, where it goes, and that it
 // is only looks; for a placed one, where it is.
 export function pieceCard(def, placed = null) {
@@ -99,6 +128,15 @@ export function pieceCard(def, placed = null) {
   ];
   if (placed) lines.push(`At (${placed.x}, ${placed.y})`);
   return { title: def.name, lines };
+}
+
+// "1 and 3", "1, 3 and 5".
+function listed(items) {
+  return items.length > 1 ? `${items.slice(0, -1).join(', ')} and ${items.at(-1)}` : String(items[0] ?? '');
+}
+
+function article(word) {
+  return /^[aeiou]/i.test(word) ? 'an' : 'a';
 }
 
 function signed(n) {

@@ -11,6 +11,7 @@ import { test } from 'node:test';
 import { seedFrom } from '../src/core/rng.js';
 import { choicesFor, closeChance, enemyOrder, fleeChance, hitChance, openingVolley, playRound, sideStats, torpedoRounds } from '../src/sim/approach.js';
 import { act, createBattle, isMachine } from '../src/sim/battle.js';
+import { describeEvent } from '../src/sim/battleLog.js';
 import { aiAction } from '../src/sim/ai.js';
 import { campaignProblems, endFight, maxHp } from '../src/sim/campaign.js';
 import { colonyStats, crewYields, donatePlan } from '../src/sim/colony.js';
@@ -20,11 +21,13 @@ import { edgeWith, shipEdge, STATION_EFFECTS } from '../src/sim/edges.js';
 import { rollPlaces } from '../src/sim/expeditions.js';
 import { gearWon } from '../src/sim/gear.js';
 import { launch } from '../src/sim/launch.js';
+import { createFight, ordersFor, reduceFight } from '../src/sim/fight.js';
 import { mapFromShip } from '../src/sim/mapFromShip.js';
 import { advance } from '../src/sim/press.js';
 import { landingPlan } from '../src/sim/raids.js';
 import { surveyPlan } from '../src/sim/survey.js';
 import { beginRun, growsOf, jump, jumpHeatOf, jumpPlan, jumpFixes, leavePlan, linked, reach, scanReach, supplyCapacity } from '../src/sim/travel.js';
+import { stateText, unitText } from '../src/ui/fight/hints.js';
 import { launchedShip, withPart } from '../tools/startShip.js';
 import { rules } from './battleKit.js';
 import { settled } from './colonyKit.js';
@@ -297,6 +300,31 @@ test('a turret shoots, watches and reloads, never moves or opens a door, and at 
   assert.ok(shot, 'a seed where the shot takes its last hit point');
   assert.equal(shot.battle.units.find((u) => u.id === unit.id).status, 'dead');
   assert.ok(!shot.events.some((event) => event.type === 'down' && event.unit === unit.id));
+  // The log and the fight's words say it is wrecked.
+  const wreck = shot.events.find((event) => event.type === 'dead' && event.unit === unit.id);
+  assert.equal(wreck.wrecked, true);
+  assert.equal(describeEvent(wreck, shot.battle), `Turret ${unit.id} is wrecked.`);
+  assert.equal(stateText(shot.battle.units.find((u) => u.id === unit.id), rules), 'Wrecked');
+});
+
+test('selected, a turret has only Shoot, Overwatch and Reload: no tiles to move to, no door, no stabilizing, and its card says so', () => {
+  const { battle } = turretFight();
+  const unit = battle.units.find((u) => u.kind === 'turret');
+  // A crew member down beside it, for a Stabilize it can't give.
+  const beside = battle.units.find((u) => u.side === 'crew' && u !== unit);
+  const placed = { ...battle, units: battle.units.map((u) => (u === beside ? { ...u, x: unit.x + 1, y: unit.y, status: 'down', bleed: 2, hp: 0 } : u === unit ? { ...u, ammo: 1 } : u)) };
+  const fight = { ...createFight(placed, rules), selected: unit.id };
+  const orders = ordersFor(fight, rules);
+  assert.equal(orders.reach.size, 0);
+  assert.deepEqual([orders.stabilize, orders.door, orders.grab, orders.hack, orders.free, orders.plant, orders.order], [null, null, null, false, false, null, null]);
+  assert.deepEqual([orders.reload, orders.overwatch], [true, true]);
+  const card = unitText(placed.units.find((u) => u.id === unit.id), rules, placed);
+  assert.match(card.lines[0], /^Your ship's security turret · \d+\/\d+ hit points/);
+  assert.match(card.lines.join(' '), /never moves or opens a door/);
+  // Wrecked, it can't be picked, and the notice says why.
+  const wrecked = { ...createFight({ ...placed, units: placed.units.map((u) => (u.id === unit.id ? { ...u, status: 'dead', hp: 0 } : u)) }, rules) };
+  const tapped = reduceFight(wrecked, { type: 'fight/select', unit: unit.id }, rules);
+  assert.match(tapped.notice?.text ?? '', /Turret is wrecked\./);
 });
 
 test("a turret isn't one of the crew: a fight's end maps the crew past it, a save reads with it, and its gun never comes away", () => {

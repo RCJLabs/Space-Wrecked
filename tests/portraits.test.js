@@ -3,8 +3,10 @@
 // each time, and every choice in every layer drawn its own way.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { SUITS } from '../src/render/figures/looks.js';
+import { MACHINES, SUITS } from '../src/render/figures/looks.js';
 import { portraitSvg } from '../src/render/portraits/badge.js';
+import { machineSvg } from '../src/render/portraits/machine.js';
+import { palette } from '../src/render/palette.js';
 import { FACE_SHAPES } from '../src/render/portraits/face.js';
 import { FACES, LOOK_KEYS, LOOK_LAYERS, stepLook } from '../src/sim/looks.js';
 import { rules } from './battleKit.js';
@@ -32,6 +34,20 @@ test('every helmet a suit has draws a well-formed badge, close up and as a face,
   for (const job of rules.jobs.values()) assert.ok(helmets.some((h) => h.suit === job.look.suit && h.helmet === job.look.helmet), job.id);
   const worn = [...rules.jobs.values()].map((job) => `${job.look.suit} ${job.look.helmet}`);
   assert.equal(new Set(worn).size, rules.jobs.size, worn.join(', '));
+});
+
+test("every machine (M39, a ship's turret) draws a well-formed badge of its own, in its trim, the same each time", () => {
+  for (const machine of MACHINES) {
+    for (const crop of ['bust', 'face']) {
+      const svg = machineSvg(machine, { trim: '#5fd3e8', crop, id: 'a' });
+      assert.match(svg, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 100 100">/);
+      wellFormed(svg);
+      assert.equal(machineSvg(machine, { trim: '#5fd3e8', crop, id: 'a' }), svg, 'pure');
+      assert.ok(svg.includes('#5fd3e8'), 'in its trim');
+      assert.ok(svg.includes(palette.lamp), `${machine}'s eye is lit`);
+    }
+  }
+  for (const unit of rules.machines.values()) assert.ok(MACHINES.includes(unit.look.machine), unit.id);
 });
 
 test('every choice in every layer draws its own way, through glass that shows the hair', () => {

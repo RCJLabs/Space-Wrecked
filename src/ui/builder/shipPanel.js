@@ -5,8 +5,10 @@
 // Launch is locked while any line is open: a tap on it then just says what
 // to fix. When it is ready, the first tap arms it and a second tap within
 // ARM_MS launches. Construction mode has no Launch: launching ends act 1,
-// and the hangar has it (M17).
+// and the hangar has it (M17). Under the totals, the hull frame and what
+// its trait does (M39).
 import { onTap } from '../gestures.js';
+import { traitText } from './card.js';
 
 const ARM_MS = 3000;
 
@@ -17,6 +19,7 @@ const MARKS = {
 };
 
 const STAT_ROWS = [
+  ['Hull', (t, c) => c.frame?.name ?? '—'],
   ['Parts', (t, c) => `${t.parts}/${c.maxModules}`],
   ['Crew', (t, c) => c.crew],
   ['Power', (t) => `${t.power > 0 ? '+' : t.power < 0 ? '−' : ''}${Math.abs(t.power)}`],
@@ -37,7 +40,8 @@ export function createShipPanel({ onLaunch, onFix }) {
   launch.type = 'button';
   launch.hidden = !onLaunch;
   const stats = node('dl', 'bld-stats');
-  el.append(node('h3', null, 'Flight check'), checks, launch, node('h3', null, 'Ship'), stats);
+  const trait = node('p', 'bld-trait');
+  el.append(node('h3', null, 'Flight check'), checks, launch, node('h3', null, 'Ship'), stats, trait);
 
   let open = 0; // lines still to pass
   let armedUntil = 0;
@@ -99,7 +103,7 @@ export function createShipPanel({ onLaunch, onFix }) {
   return {
     el,
     // lines from flightChecklist, totals from shipStats, and { crew,
-    // maxModules, onHand(type) }.
+    // maxModules, onHand(type), frame }.
     update(lines, totals, context) {
       onHand = context.onHand ?? (() => Infinity);
       for (const detach of fixTaps) detach();
@@ -115,6 +119,9 @@ export function createShipPanel({ onLaunch, onFix }) {
           return row;
         }),
       );
+      const text = traitText(context.frame);
+      trait.hidden = !text;
+      trait.textContent = text;
     },
     dispose() {
       clearTimeout(timer);

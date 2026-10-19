@@ -459,7 +459,7 @@ function hurt(battle, unit, damage, events, rules) {
     events.push({ type: 'down', unit: unit.id, bleed: unit.bleed });
   } else {
     unit.status = 'dead';
-    events.push({ type: 'dead', unit: unit.id });
+    events.push(isMachine(unit, rules) ? { type: 'dead', unit: unit.id, wrecked: true } : { type: 'dead', unit: unit.id });
   }
   decide(battle, events);
 }

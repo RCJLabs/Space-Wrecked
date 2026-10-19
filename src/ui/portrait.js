@@ -5,6 +5,7 @@
 // can share a page.
 import { portraitSvg } from '../render/portraits/badge.js';
 import { bustSvg } from '../render/portraits/bust.js';
+import { machineSvg } from '../render/portraits/machine.js';
 import { icons } from './icons.js';
 
 // Drawings kept, oldest first; stepping through looks at captain creation
@@ -24,6 +25,12 @@ export function portraitUrl(look, jobLook, trim, crop = 'bust') {
 export function faceUrl(face, crop = 'bust') {
   if (!face.bust) return portraitUrl(face.look, face.job, face.trim, crop);
   return keep(JSON.stringify([face.look, face.bust, face.trim, face.mark, crop]), () => bustSvg(face.look, face.bust, { trim: face.trim, mark: face.mark, crop }));
+}
+
+// The data URL of a machine's badge (M39, a ship's turret in the crew bar)
+// in `trim`, at a crop.
+export function machineUrl(machine, trim, crop = 'bust') {
+  return keep(JSON.stringify(['machine', machine, trim, crop]), () => machineSvg(machine, { trim, crop }));
 }
 
 // A drawing's data URL, kept by `key`: made by draw() the first time.

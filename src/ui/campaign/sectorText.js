@@ -25,7 +25,7 @@ import { MAX_RATING, RATINGS } from '../../sim/gen/system.js';
 import { withHeat } from '../../sim/heat.js';
 import { maxHp } from '../../sim/campaign.js';
 import { crewRoom } from '../../sim/crew.js';
-import { stationBy } from '../../sim/edges.js';
+import { shipEdge, stationBy } from '../../sim/edges.js';
 import { healRate } from '../../sim/medbay.js';
 import { patchPlan } from '../../sim/patch.js';
 import { raidDown } from '../../sim/raids.js';
@@ -38,7 +38,7 @@ import { surveyPlan } from '../../sim/survey.js';
 import { swapPlan } from '../../sim/transponder.js';
 import { dockHeat, jobPay, patrolWelcome, pursuerSide, stationSide } from '../../sim/standing.js';
 import { stationBoard, stationHere } from '../../sim/stationJobs.js';
-import { yardHere } from '../../sim/yards.js';
+import { framesHere, yardHere } from '../../sim/yards.js';
 import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesCost, suppliesOver, supplyCapacity, supplyOffer, tradeHeat } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
 import { defendText, raidHint } from './raidText.js';
@@ -312,14 +312,17 @@ function refitText(campaign, rules) {
   return { label: 'Refit', parts, line, broken: check ? brokenWhy(check) : null };
 }
 
-// The shipyard the ship is at (M37b): what it has left for sale and that it
-// buys parts too; Yard opens the shop screen on them. null away from one.
+// The shipyard the ship is at (M37b): what it has left for sale, the hull
+// frames it sells (M39), and that it buys parts too; Yard opens the shop
+// screen on them. null away from one.
 function shipyardText(campaign, rules) {
   if (!atYard(campaign, rules)) return null;
   const prices = yardHere(campaign, rules).map((item) => item.price);
   const [least, most] = [Math.min(...prices), Math.max(...prices)];
-  const forSale = !prices.length ? 'Sold out' : `${prices.length === 1 ? 'One part' : `${prices.length} parts`} for sale, ${least === most ? `${least}` : `${least} to ${most}`} credits`;
-  return { label: 'Yard', parts: prices.length, line: `${forSale}. The yard buys parts on hand too.` };
+  const forSale = !prices.length ? 'Sold out of parts' : `${prices.length === 1 ? 'One part' : `${prices.length} parts`} for sale, ${least === most ? `${least}` : `${least} to ${most}`} credits`;
+  const frames = framesHere(campaign, rules).length;
+  const hulls = frames ? ` ${frames === 1 ? 'A hull frame' : `${frames} hull frames`} too, the ship's own in part payment.` : '';
+  return { label: 'Yard', parts: prices.length, frames, line: `${forSale}.${hulls} The yard buys parts on hand too.` };
 }
 
 // The station's job board this visit (M38c): how many jobs it posts and
@@ -434,7 +437,7 @@ export function jumpText(campaign, rules, id) {
   const long = plan.kind === 'long';
   const label = long ? 'Long jump' : 'Jump';
   const known = knownNodes(campaign.run, rules).has(id) && !campaign.run.done.includes(id);
-  const lines = [...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...dockLine(campaign, rules, target), ...patrolLine(campaign, rules, known ? target : null), ...huntLine(campaign, rules, plan, target), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)];
+  const lines = [...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, rules, plan), ...dockLine(campaign, rules, target), ...patrolLine(campaign, rules, known ? target : null), ...huntLine(campaign, rules, plan, target), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)];
   if (long) lines.push('A long jump passes the node between, and the pursuer loses the trail.');
   const between = long ? linked(sector, at).find((next) => linked(sector, next).includes(id)) : null;
   const way = long ? [at, between, id] : [at, id];
@@ -535,10 +538,17 @@ function leftLine(campaign, rules, plan) {
 
 // What a jump eats, and what is left after it, or the hunger: of what the
 // holds carry, once any supplies past them are left behind.
+// What a jump eats, and what hydroponics grow on it (M39), up to what the
+// holds take.
 function suppliesLine(campaign, rules, plan) {
   const carried = campaign.supplies - (plan.left ?? 0);
-  if (!plan.hungry) return `Eats ${plan.supplies} supplies: ${carried - plan.supplies} left.`;
-  return `Eats ${plan.supplies} supplies, and the ship has ${carried}: the crew goes hungry, ${rules.balance.hungerHp} hit points each.`;
+  const grows = plan.grows ?? 0;
+  const grown = grows ? `, and ${grows} grow aboard` : '';
+  if (!plan.hungry) {
+    const after = Math.max(0, carried - plan.supplies + grows);
+    return `Eats ${plan.supplies} supplies${grown}: ${grows ? Math.min(after, supplyCapacity(campaign.ship, rules, campaign.crew)) : after} left.`;
+  }
+  return `Eats ${plan.supplies} supplies, and the ship has ${carried}${grown}: the crew goes hungry, ${rules.balance.hungerHp} hit points each.`;
 }
 
 // What the med bay heals on the way, with anyone hurt: a line, or none.
@@ -554,10 +564,12 @@ function fixLine(campaign, rules, plan) {
   return [`${byJob(stationBy(campaign.crew, rules, 'repair'), rules)} fixes ${parts} on the way.`];
 }
 
-function heatLine(campaign, plan) {
+// What a jump adds to the heat, and what stealth baffles keep off it (M39).
+function heatLine(campaign, rules, plan) {
   const after = withHeat(campaign.heat, plan.heat);
   const change = plan.heat < 0 ? `−${-plan.heat}` : `+${plan.heat}`;
-  return `Heat ${change}: ${after}.`;
+  const quiet = shipEdge(campaign.ship, campaign.crew, rules, 'quiet', campaign.wrecks);
+  return `Heat ${change}${quiet ? `, the baffles keeping ${quiet} off` : ''}: ${after}.`;
 }
 
 // The station's supplies: a jump's worth, and as many as the holds and
@@ -588,7 +600,7 @@ function leaveText(campaign, rules) {
   // Leaving the last sector, the quests still open on the run go cold
   // (M33b): the plan says so first.
   const cold = plan.ok ? coldWarning((plan.cold ?? []).map((id) => questOf(rules, id)).filter(Boolean), 'Leaving the charts') : null;
-  const lines = plan.ok ? [...(cold ? [cold] : []), ...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, plan), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)] : [plan.error];
+  const lines = plan.ok ? [...(cold ? [cold] : []), ...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, rules, plan), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)] : [plan.error];
   return { ok: plan.ok, label: 'Jump on', ask: 'Jump on?', title: `On to ${onTo(campaign, rules)}`, lines, tone: plan.check ? 'bad' : cold ? 'warn' : plan.ok ? planTone(plan) : 'info' };
 }
 
@@ -672,7 +684,8 @@ function systemHint(campaign, rules) {
 function yardHint(campaign, yard) {
   const onHand = Object.values(campaign.parts).reduce((sum, count) => sum + count, 0);
   const fit = onHand ? `${onHand === 1 ? 'A part' : `${onHand} parts`} on hand: Refit, on the ship's panel, fits ${onHand === 1 ? 'it' : 'them'}, free. ` : '';
-  return `${fit}${yard.parts ? 'Tap Yard to buy parts, or sell what you have.' : 'The yard is sold out, but buys parts: tap Yard.'}`;
+  if (yard.parts) return `${fit}Tap Yard to buy parts${yard.frames ? ' or a hull frame' : ''}, or sell what you have.`;
+  return `${fit}${yard.frames ? 'The yard is out of parts, but sells hull frames and buys parts: tap Yard.' : 'The yard is sold out, but buys parts: tap Yard.'}`;
 }
 
 function capital(text) {

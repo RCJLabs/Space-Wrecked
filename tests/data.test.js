@@ -312,6 +312,7 @@ const cases = [
   ['a turret with an unknown gun', (d) => (d.modules.modules.find((m) => m.id === 'turret').unit.weapon = 'phaser'), /turret unit: unknown weapon "phaser"/],
   ['a turret dressed as a person', (d) => (d.modules.modules.find((m) => m.id === 'turret').unit.look = { suit: 'eva' }), /turret unit: look must be a machine's/],
   ['a turret of an unknown machine', (d) => (d.modules.modules.find((m) => m.id === 'turret').unit.look = { machine: 'drone' }), /look\.machine must be one of turret/],
+  ['a turret named like a job', (d) => (d.modules.modules.find((m) => m.id === 'turret').unit.id = 'marine'), /turret unit: id "marine" is also a job's or an enemy's/],
   ['a frame with no price', (d) => delete d.frames.frames.find((f) => f.id === 'courier').cost, /courier: cost must be a whole number from 1 to 99999/],
   ['an enemy frame for sale', (d) => (d.frames.frames.find((f) => f.id === 'patrolhull').cost = 900), /patrolhull: an enemy's frame has no cost or traits/],
   ['a frame half an enemy', (d) => (d.frames.frames.find((f) => f.id === 'courier').enemy = false), /courier: enemy must be true or left out/],

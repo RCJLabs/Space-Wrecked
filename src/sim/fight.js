@@ -58,7 +58,7 @@
 //   fight/end                ends the crew's turn
 //   fight/load { battle, events }   a new battle
 import { aiAction } from './ai.js';
-import { act, targetsFor } from './battle.js';
+import { act, isMachine, targetsFor } from './battle.js';
 import { shotOdds } from './odds.js';
 import { dartOdds, ORDER_KINDS, orderOf, orderTargets } from './orders.js';
 import { canSee } from './sight.js';
@@ -82,7 +82,7 @@ export function reduceFight(fight, action, rules) {
   const unit = selectedUnit(fight);
   switch (action.type) {
     case 'fight/select':
-      return select(fight, fight.battle.units.find((u) => u.id === action.unit));
+      return select(fight, fight.battle.units.find((u) => u.id === action.unit), rules);
     case 'fight/tap':
       return tap(fight, action.x, action.y, rules);
     case 'fight/aim':
@@ -154,14 +154,17 @@ export function canAct(battle, unit) {
 //              null (a sabotage)
 //   order      its job's order while it can use it on someone or something
 //              now: { kind, name, uses, reaches }, or null
-// Null when no one is selected. A ward (objectives.js) can only move.
+// Null when no one is selected. A ward (objectives.js) can only move; a
+// machine (M39, a ship's turret) only shoots, watches and reloads.
 export function ordersFor(fight, rules) {
   const unit = selectedUnit(fight);
   if (!unit || !canAct(fight.battle, unit)) return null;
   const { battle } = fight;
   const reach = reachOf(battle, unit, rules);
-  if (unit.ward) return { unit, reach, targets: [], reload: false, overwatch: false, stabilize: null, door: null, grab: null, hack: false, free: false, plant: null, order: null };
+  const none = { stabilize: null, door: null, grab: null, hack: false, free: false, plant: null, order: null };
+  if (unit.ward) return { unit, reach, targets: [], reload: false, overwatch: false, ...none };
   const clip = rules.weapons.get(unit.weapon).clip;
+  if (isMachine(unit, rules)) return { unit, reach: new Map(), targets: unit.ammo > 0 ? sortedTargets(battle, unit, rules) : [], reload: unit.ammo < clip, overwatch: unit.ammo > 0, ...none };
   return {
     unit,
     reach,
@@ -199,18 +202,19 @@ function sortedTargets(battle, unit, rules) {
   return targetsFor(battle, unit, rules).sort((a, b) => b.odds.hit - a.odds.hit || a.target.hp - b.target.hp);
 }
 
-function select(fight, unit) {
+function select(fight, unit, rules) {
   if (!unit || unit.side !== 'crew') return fight;
   if (unit.id === fight.selected) return fight.preview ? { ...fight, preview: null } : fight;
   if (canAct(fight.battle, unit)) return { ...fight, selected: unit.id, preview: null };
-  const why = unit.status === 'active' ? 'has no actions left this turn' : unit.status === 'down' ? 'is down: stand beside them and tap Stabilize' : unit.status === 'held' ? 'is held: stand beside them and tap Free' : `is ${unit.status}`;
+  const status = unit.status === 'dead' && isMachine(unit, rules) ? 'wrecked' : unit.status;
+  const why = status === 'active' ? 'has no actions left this turn' : status === 'down' ? 'is down: stand beside them and tap Stabilize' : status === 'held' ? 'is held: stand beside them and tap Free' : `is ${status}`;
   return withNotice(fight, 'info', `${unit.name} ${why}.`);
 }
 
 function tap(fight, x, y, rules) {
   const { battle } = fight;
   const there = battle.units.find((u) => u.status !== 'dead' && u.x === x && u.y === y);
-  if (there?.side === 'crew') return select(fight, there);
+  if (there?.side === 'crew') return select(fight, there, rules);
   if (there && fight.preview?.type === 'order' && ORDER_KINDS[fight.preview.kind]?.reaches === 'enemy') return orderAt(fight, selectedUnit(fight), there.id, rules);
   if (there) return aim(fight, there.id, rules);
   const unit = selectedUnit(fight);

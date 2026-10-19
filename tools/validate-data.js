@@ -490,7 +490,11 @@ export function validateData(data) {
     // M39: a part doing a job's ship effect; a turret's unit.
     if (def.station !== undefined) checkEffects(def.station, STATION_EFFECTS, `${where} station`, fail);
     if (Array.isArray(def.tags) && def.tags.includes('turret') !== (def.unit !== undefined)) fail(where, 'a part tagged "turret", and only one, has a unit');
-    if (def.unit !== undefined && def.base === undefined) checkTurretUnit(def.unit, `${where} unit`, weaponIds, fail);
+    if (def.unit !== undefined && def.base === undefined) {
+      checkTurretUnit(def.unit, `${where} unit`, weaponIds, fail);
+      // A battle names a fighter by its kind, a machine's too.
+      if (jobIds.has(def.unit?.id) || enemyIds.has(def.unit?.id)) fail(`${where} unit`, `id "${def.unit.id}" is also a job's or an enemy's`);
+    }
     checkStats(def.stats, where, fail);
     if (!Array.isArray(def.tags)) {
       fail(where, 'tags must be a list');

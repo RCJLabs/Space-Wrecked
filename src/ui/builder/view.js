@@ -352,7 +352,7 @@ export function mountBuilder(root, source) {
     const onHand = (type) => partsLeft(session, type);
     // The checklist's fixes ask for a part: any maker's version will do.
     const ofAny = (type) => countOfAny(defs, type, onHand);
-    drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules, onHand: ofAny, ship: session.ship, cleared: source.cleared });
+    drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules, onHand: ofAny, ship: session.ship, cleared: source.cleared, frame });
     drawer.setStock(session.stock ? onHand : null);
   }
 
