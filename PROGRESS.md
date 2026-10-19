@@ -2,6 +2,165 @@
 
 Newest entry first.
 
+## M40 Balance runs (2026-10-19)
+
+**Status:** done but for one bullet, and the ROADMAP.md box is ticked. Every bar of the Done when is met except one talent: **Bosun's weld still lifts its squad 0 points**, where the bar is 5 to 15. No weld I tried reached 5, so it is Evan's call (below, and ROADMAP.md §9). Saves stay at v38.
+
+**How it was picked:** M40 measured first (main after M39): 100 voyages from each start, act 1's 50 runs a start, every act 1 board job over 200 seeds, 1,000 fights a talent, 25 boardings a row. Evan's picks (2026-10-19):
+- each start meets the hunters in at most 25 voyages of 100, fed all the way in 80 or more, hungry in the system in none;
+- past the charts only the task force follows;
+- a swap costs more each time, hydroponics grows 1 a jump, and the jump into the system warns when the holds are short;
+- every act 1 job won 35% to 90%, each talent worth 5 to 15 points, every boarding won 20% to 80%.
+
+**What shipped:**
+- **The rules:**
+  - **past the charts only the task force follows** (`src/sim/hunt.js`): in an uncharted system (act 2's, and those a voyage out crosses), under heat 75 the hunters have lost the trail, and the jump's plan, a survey's and a regroup's say so;
+  - **a swap costs more each time** (`src/sim/transponder.js` swapPriceOf): 40 credits and 20 more (`swapRise`) for each swap made; every price shown is the next swap's own;
+  - **hydroponics grows 1 supply a jump** (was 2); at the colony still 2 food a day;
+  - **the jump into the system warns** (`src/sim/travel.js` leavePlan): when the holds can't cover a survey's day and a jump on, its plan, the hint and the Here panel say by how much.
+- **The fights:**
+  - **four act 1 jobs** came in by their enemies (`data/encounters.json`): the picket line's strikebreakers are two guards and a breacher, the dock war's other gang three dockers, the pawn tickets' drinkers a scavver, a jumper and a heavy, Impounded's bonded store three MPs;
+  - **talents** (`data/companions.json`): Steward's kit is armor 1 and 8 aim (was armor 2), Surveyor's eye Mark +60 (was +30), Family medicine's Patch reaches an ally in sight 3 tiles off. For these an order kind may have numbers besides its own (`src/sim/orders.js` `extras`): Patch a `reach` (2 to 6), Kit out an `aim` (1 to 50), validated, and words for each on the crew card, the fight's hints and the log;
+  - **the crew's AI patches** an ally who has lost 5 hit points (`PATCH_LOST`) where a talent's patch is bigger than that; it waited for 8;
+  - **boardings:** Con-Reg's gunship sends a crew of its own (two agents, a heavy and a breacher; it sent the task force), and the Halloran yacht's party is a collector fewer;
+  - **a fight past round 40 with no step nearer takes its best shot** (`src/sim/fightOut.js`): a deserter's boarding went to the round limit, a pilot and a brute stepping in and out of each other's sight.
+- **The test players** (`tools/`):
+  - the voyage's keeps **the food to the system** in hand (`voyagePlan.js` foodReserve): in act 2's charted sectors, credits enough for what the jumps left eat (7 a sector, half a sector into the system, 4 jumps' buffer) and the system's survey and jump on, less what the holds carry. Swaps, yard parts, racks, recruits, patching and repairs come out of what is above it, and credits below it weigh as the supplies they buy;
+  - it swaps only with that and half a holdful left, hides only while fed, and takes no station job with a squad short of hands;
+  - act 1's takes **a job more** once ready while its credits fall short of act 2's food and a first swap (`run.js` launchFood: 123 for a crew of three). It took up to three at first, but then the smuggler's act 1 ran 12 minutes past the miner's, over `tests/run.test.js`'s 10; with one the voyages still meet the bars (fed all the way in 98, 93 and 97 of 100, against 99, 96 and 98 with three);
+  - it gives the colony **no part whose going leaves a hatch no one can walk to from the bridge** (`voyagePlan.js` hatchesCutOff): a reactor given on smuggler seed 22 joined the airlock's side to the bridge's by weapon mounts alone, and the boarding there never ended.
+
+**Done when** (ROADMAP.md, M40), and how each is met:
+- **The voyage from each start:** met, below; `tests/voyage.test.js` holds the three bars (`BARS`), and `MAIN` is M40's rates.
+- **Past the charts, only the task force follows:** `tests/system.test.js`, `tests/sectorText.test.js`, `tests/colonyVoyage.test.js`; by touch.
+- **A swap costs more each time:** `tests/regroup.test.js`, `tests/huntText.test.js`, and each voyage's swaps in `tests/voyage.test.js`; by touch.
+- **Hydroponics 1 a jump:** `tests/partRules.test.js`, `tests/builderText.test.js`.
+- **The jump into the system warns:** `tests/sectorText.test.js`; by touch. The test player comes in with that much where its credits allow (`tests/foodReserve.test.js`): hungry in the system in none of 300.
+- **Every act 1 board job 35% to 90%:** met, 44% to 90% (below).
+- **Each talent 5 to 15 points:** three met (12, 9, 7); **Bosun's weld 0, not met.**
+- **Every boarding 20% to 80%:** met, 21% to 64% (below).
+- **Act 1 within 10 minutes of main's:** met (below); raids measured (below).
+- **Saves stay at v38:** nothing new is saved; a quit and reopen by touch.
+- **Every rule tested:** `tests/orders.test.js` (2 new), `tests/orderAi.test.js` (1), `tests/fightOut.test.js` (1), `tests/foodReserve.test.js` (4), `tests/hatches.test.js` (2), `tests/data.test.js` (5 cases), and the rules' tests above.
+- **Touch, at the three sizes:** below.
+
+**The voyage** (100 voyages from each start, seeds 1 to 100, the voyage tests' own sets; main's in brackets):
+
+| | Miner | Deserter | Smuggler |
+| --- | --- | --- | --- |
+| Met the hunters | 11 (35) | 21 (26) | 6 (13) |
+| … in the sectors | 11 (21) | 18 (15) | 6 (5) |
+| … past the charts | 2 (20) | 4 (16) | 0 (9) |
+| Fed all the way | 98 (80) | 93 (85) | 97 (94) |
+| Hungry in the system | 0 (8) | 0 (7) | 0 (2) |
+| Surveyed two worlds or more | 96 (76) | 87 (77) | 94 (93) |
+| Lost a raid at the colony | 13 (13) | 11 (6) | 4 (5) |
+| Heat at launch, the median | 36 (31) | 43 (39) | 40 (38) |
+
+Past the charts only the task force comes now, from heat 75. The other sets the voyage tests fly, all as M40's rates now (`MAIN`; main's in brackets): fed with a cargo hold 97 (78), with a med bay 96 (75), with surgery 95 (76), with bunks 94 (73), with the large hold 99 (94), the careful player without refits 94 (76); recruits signed on with a cargo hold in 72 runs (50); ignoring heat, the hunters in all 100 (100).
+
+**Act 1** (`node tools/run.js --runs 50 --background <start>`, the median slow-pace minutes): the miner 42 (main 39), the deserter 40 (39), the smuggler 50 (49), each within `tests/run.test.js`'s 10 of the miner's and of the M33 fix's. The job for the food: 24 of the miner's 50 runs took it, 13 of the deserter's, 14 of the smuggler's.
+
+**Jobs** (every act 1 board job, 200 seeds, its start's fresh crew): all 41 won 44% to 90%. The four brought in: the picket line 57% (was 6%), the dock war 44% (13%), pawn tickets 64% (32%), Impounded 88% (97%). Lowest after the dock war: Back rent and Dock strike, 45%; highest: Left luggage 90%, Impounded and Repossession 88%.
+
+**Talents** (`node tools/sim.js --talent <companion> --compare`, 1,000 fights against the same squad at rank 2):
+
+| Talent | Wins | Points |
+| --- | --- | --- |
+| Steward's kit (Teo Brandt) | 51% → 63% | +12 (was +27) |
+| Surveyor's eye (Osei) | 42% → 51% | +9 (was +2) |
+| Family medicine (Dez Halloran) | 50% → 57% | +7 (was +1) |
+| Bosun's weld (Varga) | 50% → 50% | 0 (was 0) |
+
+**Bosun's weld:** the AI welds 0.2 times a fight, and in 1,000-fight trials no weld lifted the wins more than 4 points: 20 rounds or 6 uses, none; a weld that also patches the allies beside it 4 to 10 hit points, 2 to 3; that and getting a fallen ally beside it up, 3 to 4; welding as soon as an enemy is in sight cost 9 to 13. Candidates, Evan's call: accept it as it is, the weld that patches and gets the fallen up (+4), or an engineer's talent of another kind.
+
+**Boardings** (`node tools/sim.js --boardings --fights 1600`, 100 a row, the crew's wins):
+
+| Preset | At home | Boarding her |
+| --- | --- | --- |
+| Pirate cutter | 62% | 58% |
+| Patrol corvette | 51% | 44% |
+| Con-Reg repo tug | 52% | 53% |
+| Con-Reg gunship | 21% (was 8%) | 24% |
+| Provost cutter | 43% | 45% |
+| Fleet frigate | 28% | 30% |
+| Halloran runner | 64% | 64% |
+| Halloran yacht | 38% (was 16%) | 37% (was 12%) |
+
+**Raids** (`node tools/raids.js`, 150 a row): as on main. At the hangar the miner's crew wins 53%, the deserter's 63%, the smuggler's 46%; at the colony 41%, 42% and 41%.
+
+**Balance numbers** (`data/balance.json`): one new, `swapRise` 20. `node tools/sim.js` (1,000 fights, the example ship, AI against AI) doesn't read it, so its summary is as main's:
+
+```
+1,000 fights on example ship, pirate cutter, patrol corvette, derelict hauler, con-reg repo tug, con-reg gunship, provost cutter, fleet frigate, halloran runner, halloran yacht. The squad (marine, engineer, medic), played by the AI with every job order, against the boarding party (pirate, gunner, brute, pirate), played by the AI. 30 rounds at most, seed "balance".
+
+Ship              Fights    Crew wins  Boarders win  No winner    Rounds  Crew orders
+Example ship         100  69% (59–77)           29%         2%  7 (5–10)           31
+Pirate cutter        100  53% (43–62)           28%        19%  8 (6–12)           32
+Patrol corvette      100  43% (34–53)           44%        13%  8 (5–13)           30
+Derelict hauler      100  55% (45–64)           44%         1%  7 (5–14)           29
+Con-Reg repo tug     100  53% (43–62)           37%        10%  7 (5–12)           29
+Con-Reg gunship      100  32% (24–42)           35%        33%  8 (5–13)           31
+Provost cutter       100  51% (41–61)           44%         5%  6 (5–12)           28
+Fleet frigate        100  38% (29–48)           29%        33%  7 (5–13)           32
+Halloran runner      100  51% (41–61)           43%         6%  7 (5–10)           27
+Halloran yacht       100  40% (31–50)           38%        22%  8 (5–11)           29
+All                1,000  49% (45–52)           37%        14%  7 (5–12)           30
+
+Rounds and crew orders count the fights with a winner: the median (10th to 90th percentile). Win rates have a 95% interval.
+
+Shots: 23,985, 24.0 a fight. Hit: crew 57%, boarders 39%.
+Shown odds  Shots  Shown  Hit
+0–19%       2,211     9%   9%
+20–39%      7,306    28%  29%
+40–59%      5,049    45%  45%
+60–79%      6,868    68%  67%
+80–100%     2,551    83%  83%
+On overwatch: 8% of shots, 25% hit. Crits: 34% of hits. Damage a hit: crew 4.5, boarders 4.4.
+A fight: 1.9 crew go down, 0.8 bleed out, 2.6 boarders die.
+Job orders a fight: patch 0.8, suppress 0.4, weld 0.2.
+
+1,000 fights in 58.4 s (58 ms a fight).
+```
+
+**Tests:**
+- `node --test`: 1154 pass (1139 on main); about 15 minutes here, with browser checks running beside it.
+- **New:** `tests/foodReserve.test.js` (4), `tests/hatches.test.js` (2); in `tests/orders.test.js` Patch with a reach and Kit out with aim; in `tests/orderAi.test.js` PATCH_LOST; in `tests/fightOut.test.js` the stalled duel (`tests/fixtures/stalled-duel.json`); in `tests/voyage.test.js` M40's bars and each run's swaps rising in price; in `tests/data.test.js` the extras' validation; the rules' tests in M40's first commits.
+- **Changed on purpose:**
+  - `MAIN` in `tests/voyage.test.js` is M40's rates, as its Done when asks; the colony's gifts leave aboard what would cut a hatch off;
+  - a raid calling the ship home on a voyage out is checked on seed 130: it came on 1 or 2 of the miner's 100 voyages out, and since M40 on none of seeds 1 to 100 (3 of seeds 101 to 220);
+  - the same seed's voyage is flown again with the options it was flown with: station jobs, now taken on seed 2, made the steps differ;
+  - the jump plan says "1 grows aboard" (`tests/sectorText.test.js`);
+  - the validator's counts: 28 encounters;
+  - Surveyor's eye reads +60 to hit (`tests/companionText.test.js`).
+
+**Browser checks:**
+- **`m40/verify.mjs`:** 22 of 22 at each of the three sizes. It covers:
+  - a swap's price at a station with two made before (Transponder · 80, the first tap asks, the second pays);
+  - the system's warning at act 2's last jump point with the holds short (the hint, the Here panel, Jump on's first tap);
+  - "lost the trail" past the charts at heat 60 (a jump's plan, Survey's and Regroup's first taps);
+  - the talents' new numbers on the crew card (Dez's 3 tiles, Teo's 8 aim);
+  - a quit and reopen at v38, offline, every button 48 px or more, no console errors.
+- **Every earlier milestone's browser check** passes at the three sizes unless named, each the latest adapted copy (`m40/regress-a.sh`, `regress-b.sh`), but M32b's first copy, whose 2 known failures since M36 its fix copy covers.
+  - **Adapted for M40:** M39's (hydroponics grows 1 a jump) and M33c's (Steward's kit is +1 armor and +8 aim).
+  - **Run again on their own, and passed:** M29's at the open size, M37's at the tab size, M23's at the cover size and M17's at the open size, which timed out while the voyage tests ran beside them.
+
+**Known issues:**
+- **Bosun's weld lifts its squad 0 points** (above). Evan's call.
+- **A ship whose airlock can't be walked to from the bridge** can still be built, or left after giving parts to the colony, by a player: a boarding there never ends. The test player avoids it; §9 has the candidates.
+- **Heat at launch is up** 2 to 5 at the median: act 1's test player takes a job more for the voyage's food, and a job adds heat.
+- **The deserter's colonies are short of air** in 16 of 100 (main 15): parts fitted on the run that hang off the life support (§9).
+
+**What Evan should test on the phone:**
+- **A swap's price:** swap at a station, then at the next sector's: the button says 40, then 60; the first tap says the price.
+- **The system's warning:** reach act 2's last jump point with the holds low: the hint warns, and Jump on's first tap says how far short.
+- **Past the charts:** with heat between 50 and 74, a jump's plan, Survey and Regroup say the hunters have lost the trail; from 75 the task force's chance shows.
+- **A loyal Dez and Teo:** Dez's Patch can be given to an ally in sight up to 3 tiles off; Teo's Kit out adds 8 aim (the log says so, and the ally's odds show it).
+- **The four act 1 jobs:** the picket line, the dock war, pawn tickets and Impounded feel winnable, and no easy walk.
+- **Quit and reopen:** a save from before opens and plays on.
+
+**Next milestone's first task:** M41 Difficulty settings: study what Easy, Normal and Hard change today (since M18) through all three acts, and permanent death as a harder setting (§9); measure each from each start; ask Evan; settle its Done when.
+
 ## M39 Parts and hull frames (2026-10-19)
 
 **Status:** done, and the ROADMAP.md box is ticked. 19 new module types bring the total to 40, each with every maker's version as §4.1 has them: 147 parts in `data/modules.json`. Six hull frames: three more for the player, sold at shipyards, each with a trait, and two for enemies. Saves stay at v38.

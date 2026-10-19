@@ -110,7 +110,7 @@ function orderLine(event, who, name) {
       return event.hit ? `${dart}, asleep.` : `${dart}, missed.`;
     }
     case 'kit':
-      return `${who} kits ${event.target === event.unit ? 'up' : `${them} out`}: armor +${event.armor}, ${event.ammo} shots.`;
+      return `${who} kits ${event.target === event.unit ? 'up' : `${them} out`}: armor +${event.armor}${event.aim ? `, aim +${event.aim}` : ''}, ${event.ammo} shots.`;
     default:
       return JSON.stringify(event);
   }

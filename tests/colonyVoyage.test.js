@@ -124,6 +124,20 @@ test('Fly out plans who goes and who stays, the flight checks for those aboard, 
   assert.match(voyagePlan(away, rules, ids).error, /leave from the colony/);
 });
 
+test('past the colony only the task force follows too (M40): Fly out, the jumps on and the jumps between them go by the uncharted rule', () => {
+  const trail = { chance: 0, ship: null, why: 'trail' };
+  const { taskForce } = rules.backgrounds.get(home.background).pursuer.run;
+  const warm = { ...home, heat: 60 };
+  assert.deepEqual(voyagePlan(warm, rules, ids.slice(0, 2)).jump.hunt, trail);
+  assert.deepEqual(voyagePlan({ ...home, heat: 80 }, rules, ids.slice(0, 2)).jump.hunt, { chance: rules.balance.taskForceChance, ship: taskForce, why: null });
+  // Out there, between its nodes and on to the next system.
+  const out = { ...away, heat: 60 };
+  const next = linked(out.run.sector, out.run.at).find((id) => !rules.nodeTypes.get(out.run.sector.nodes[id].type).safe && !rules.nodeTypes.get(out.run.sector.nodes[id].type).hides);
+  assert.deepEqual(jumpPlan(out, rules, next).hunt, trail);
+  const exit = at(out, out.run.sector.exit);
+  assert.deepEqual(leavePlan(exit, rules).hunt, trail);
+});
+
 test('flying out splits the crew and the stores, takes the credits and parts, and jumps into a system never charted', () => {
   const flown = voyageOut(home, rules, ids.slice(0, 2));
   assert.ok(flown.ok, flown.error);

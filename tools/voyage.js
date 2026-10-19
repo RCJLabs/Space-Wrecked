@@ -148,7 +148,7 @@ import { settle } from '../src/sim/settle.js';
 import { allColonies, colonyById } from '../src/sim/colonies.js';
 import { jobPay, levelOf, shareHere, standingWith, stationSide } from '../src/sim/standing.js';
 import { survey } from '../src/sim/survey.js';
-import { swapTransponder } from '../src/sim/transponder.js';
+import { swapPriceOf, swapTransponder } from '../src/sim/transponder.js';
 import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer, tradeHeat } from '../src/sim/travel.js';
 import { flightFromPlan, flyFrom, voyageHome, voyageHomePlan, voyageOut, voyagePlan } from '../src/sim/voyage.js';
 import { runRecord } from '../src/ui/campaign/launchText.js';
@@ -159,7 +159,7 @@ import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
 import { withPart } from './startShip.js';
-import { backCrew, bestChoice, boardIt, HEAT_POLICIES, hireWho, homeBuild, homeNow, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, settleMove, STOCK_DAYS, STOCK_SHARE, stationJobPick, stockFor, swapNow, systemMove, tradeHere, tripSquad, voyageCrew, worldScore, yardBuy } from './voyagePlan.js';
+import { backCrew, bestChoice, boardIt, foodReserve, HEAT_POLICIES, hireWho, homeBuild, homeNow, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, settleMove, STOCK_DAYS, STOCK_SHARE, stationJobPick, stockFor, swapNow, systemMove, tradeHere, tripSquad, voyageCrew, worldScore, yardBuy } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
@@ -699,13 +699,15 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       const before = campaign;
       const swapped = swapTransponder(campaign, defs);
       campaign = swapped.campaign;
-      const step = record('swap', before, { dock: swapped.plan.dock });
+      const step = record('swap', before, { dock: swapped.plan.dock, price: swapped.plan.price });
       tally.swaps += 1;
       tally.swapCredits += before.credits - campaign.credits;
       lines.push(`   Swapped the transponder for ${before.credits - campaign.credits} credits${logged(step)}: ${hold()}.`);
     }
-    // Patching up, then repairs, with what is left beyond a holdful's price.
-    const reserve = supplyCapacity(campaign.ship, defs, campaign.crew) * defs.balance.supplyPrice;
+    // Patching up, then repairs, with what is left beyond a holdful's price,
+    // or in act 2 the food to the system (voyagePlan.js foodReserve) if
+    // that is more.
+    const reserve = Math.max(supplyCapacity(campaign.ship, defs, campaign.crew) * defs.balance.supplyPrice, foodReserve(campaign, defs));
     const patched = trading && campaign.credits > reserve ? patchCrew({ ...campaign, credits: campaign.credits - reserve }, defs) : { ok: false };
     if (patched.ok) {
       const before = campaign;
@@ -729,7 +731,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     // beyond a holdful's price and a transponder swap's, which keeps the
     // hunters off: beyond a holdful's alone, fewer voyages crossed fed.
     for (const item of trading ? rackHere(campaign, defs) : []) {
-      if (!upgradeOf(campaign, defs, item.weapon, 'ship') || campaign.credits - item.price < reserve + defs.balance.swapPrice) continue;
+      if (!upgradeOf(campaign, defs, item.weapon, 'ship') || campaign.credits - item.price < reserve + swapPriceOf(campaign, defs)) continue;
       const before = campaign;
       const bought = buyFromRack(campaign, defs, item.slot);
       if (!bought.ok) continue;

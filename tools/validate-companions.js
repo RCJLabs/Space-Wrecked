@@ -115,7 +115,8 @@ function checkChain(companion, at, { quests, events }, fail) {
 
 // Their talent: its words, and their job's order numbers, each as sharp as
 // rank 2's or sharper, one of them sharper (further from 0, the same way),
-// and each within its order's range (orders.js ORDER_KINDS).
+// and each within its order's range (orders.js ORDER_KINDS); from M40 also
+// the numbers the kind may have besides (its extras), which sharpen it.
 function checkTalent(talent, at, job, fail) {
   if (!isObject(talent)) {
     fail(at, `must be { ${TALENT_KEYS.join(', ')} }`);
@@ -129,9 +130,10 @@ function checkTalent(talent, at, job, fail) {
     fail(at, 'order must be an object of the order numbers it sharpens');
     return;
   }
-  const numbers = Object.keys(below).filter((key) => !ORDER_WORDS.includes(key));
+  const extras = ORDER_KINDS[below.type]?.extras ?? {};
+  const numbers = [...Object.keys(below).filter((key) => !ORDER_WORDS.includes(key)), ...Object.keys(extras).filter((key) => !(key in below))];
   knownKeys(talent.order, numbers, `${at} order`, fail);
-  const ranges = { uses: [1, MAX_USES], ...(ORDER_KINDS[below.type]?.fields ?? {}) };
+  const ranges = { uses: [1, MAX_USES], ...(ORDER_KINDS[below.type]?.fields ?? {}), ...extras };
   let sharper = false;
   for (const [key, value] of Object.entries(talent.order)) {
     if (!numbers.includes(key)) continue;
@@ -140,7 +142,7 @@ function checkTalent(talent, at, job, fail) {
       fail(`${at} order`, `${key} must be a whole number from ${min} to ${max}`);
       continue;
     }
-    const was = below[key];
+    const was = below[key] ?? 0;
     if (value * was < 0 || Math.abs(value) < Math.abs(was)) fail(`${at} order`, `${key} must be as sharp as rank 2's (${was}) or sharper`);
     if (Math.abs(value) > Math.abs(was)) sharper = true;
   }

@@ -99,7 +99,7 @@ export function voyagePlan(campaign, rules, crew) {
     checks,
     food: { now: food, ship, colony: kept, room, spoils: food - ship - kept },
     materials: { now: campaign.colony.materials, dug: stats.made.materials, room },
-    jump: { kind: 'beyond', ...onwardCosts(split(kept), rules) },
+    jump: { kind: 'beyond', ...onwardCosts(split(kept), rules, true) },
   };
 }
 

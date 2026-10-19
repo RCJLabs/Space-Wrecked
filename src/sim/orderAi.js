@@ -13,8 +13,10 @@
 //             within WELD_STEPS, while it or an ally beside is down to
 //             half its hit points or less: the door beside it the nearest
 //             enemy would come through, to win the hurt some time
-//   patch     an ally beside who is down; else one beside who has lost the
-//             patch's hit points, when no shot of its own is GOOD
+//   patch     an ally it reaches who is down; else one who has lost the
+//             patch's hit points, or PATCH_LOST (M40: a talent's patch of 8
+//             waited for a near-dead ally, and was given half as often),
+//             when no shot of its own is GOOD
 //   hustle    at the start of its turn, with an enemy in its sight but no
 //             good shot from where it stands: a dash and a shot
 //   mark      at the start of its turn: of the enemies in sight not marked
@@ -33,6 +35,8 @@ import { canSee } from './sight.js';
 export const GOOD = 40;
 // How near, in steps, an enemy comes before a door is worth welding.
 export const WELD_STEPS = 6;
+// The most hit points an ally has lost before a patch is worth giving.
+export const PATCH_LOST = 5;
 
 export function orderAction(battle, unit, rules) {
   const order = orderOf(unit, rules);
@@ -59,7 +63,7 @@ export function orderAction(battle, unit, rules) {
       const down = targets.find((ally) => ally.status !== 'active');
       if (down) return give(down);
       if (bestShot(battle, unit, rules) >= GOOD) return null;
-      const hurt = most(targets.filter((ally) => ally.maxHp - ally.hp >= order.hp), (ally) => ally.maxHp - ally.hp);
+      const hurt = most(targets.filter((ally) => ally.maxHp - ally.hp >= Math.min(order.hp, PATCH_LOST)), (ally) => ally.maxHp - ally.hp);
       return hurt ? give(hurt) : null;
     }
     case 'hustle':

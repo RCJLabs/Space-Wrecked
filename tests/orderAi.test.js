@@ -7,7 +7,7 @@ import { aiAction } from '../src/sim/ai.js';
 import { createBattle } from '../src/sim/battle.js';
 import { edgeKey } from '../src/sim/mapFromShip.js';
 import { dartOdds } from '../src/sim/orders.js';
-import { GOOD, orderAction, WELD_STEPS } from '../src/sim/orderAi.js';
+import { GOOD, orderAction, PATCH_LOST, WELD_STEPS } from '../src/sim/orderAi.js';
 import { openMap, rules, wall } from './battleKit.js';
 
 const fight = (map, units, extra = {}) => createBattle({ map, units, seed: 7, ...extra }, rules).battle;
@@ -32,6 +32,22 @@ test('Patch: a downed ally beside first; a hurt one only when no shot is worth t
   // Not hurt by a patch's worth.
   tweak(battle, { c2: { hp: who(battle, 'c2').maxHp - 1 } });
   assert.equal(asks(battle, 'c1'), null);
+});
+
+test("Patch: a talent's bigger patch is given once an ally has lost PATCH_LOST, in its reach (M40)", () => {
+  const battle = fight(openMap(8, 2), [{ kind: 'medic', talent: 'halloran', rank: 3, x: 0, y: 0 }, { kind: 'marine', x: 2, y: 0 }, { kind: 'pirate', x: 7, y: 1 }]);
+  tweak(battle, { c1: { aim: 0 } });
+  const most = who(battle, 'c2').maxHp;
+  tweak(battle, { c2: { hp: most - PATCH_LOST } });
+  assert.deepEqual(asks(battle, 'c1'), { type: 'order', unit: 'c1', target: 'c2' }, 'two tiles off, 5 lost of a patch of 8');
+  tweak(battle, { c2: { hp: most - PATCH_LOST + 1 } });
+  assert.equal(asks(battle, 'c1'), null, 'not hurt enough yet');
+  // A plain Patch of 3 still waits for 3 lost.
+  const plain = fight(openMap(8, 2), [{ kind: 'medic', x: 0, y: 0 }, { kind: 'marine', x: 1, y: 0 }, { kind: 'pirate', x: 7, y: 1 }]);
+  tweak(plain, { c1: { aim: 0 }, c2: { hp: who(plain, 'c2').maxHp - 3 } });
+  assert.deepEqual(asks(plain, 'c1'), { type: 'order', unit: 'c1', target: 'c2' });
+  tweak(plain, { c2: { hp: who(plain, 'c2').maxHp - 2 } });
+  assert.equal(asks(plain, 'c1'), null);
 });
 
 test('Hustle: at the start of its turn, with an enemy in sight but no good shot from where it stands, once', () => {

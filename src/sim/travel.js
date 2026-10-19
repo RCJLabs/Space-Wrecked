@@ -395,9 +395,10 @@ export function buySupplies(campaign, rules, count) {
 // wait; from the act's last sector, into the system past the charts (kind
 // 'system'); on a voyage (M38d), into the next system past the colony's
 // (kind 'beyond'). { ok: true, kind: 'sector', 'system' or 'beyond',
-// supplies, left, heat, hungry, heal, fixes, hunt, cold } or { ok: false,
-// error, last, check } (last: in the system, past which nothing is charted;
-// check: as for a jump).
+// supplies, left, heat, hungry, heal, fixes, hunt, cold, and into the
+// system short (M40: the supplies the holds would come in short of
+// systemNeeds, or 0) } or { ok: false, error, last, check } (last: in the
+// system, past which nothing is charted; check: as for a jump).
 export function leavePlan(campaign, rules) {
   const { run } = campaign;
   if (!run || !onTheRun(campaign, rules)) return { ok: false, error: 'Jumps are made from the ship, on the run.' };
@@ -413,19 +414,36 @@ export function leavePlan(campaign, rules) {
   // Leaving the last sector, the quests whose step is on the run go cold
   // (M33b): their ids, for the plan to say so first.
   const cold = last ? coldAt(campaign, rules, 2).map((quest) => quest.id) : [];
-  return { ok: true, kind: voyage ? 'beyond' : last ? 'system' : 'sector', ...onwardCosts(campaign, rules), cold };
+  const costs = onwardCosts(campaign, rules, leadsUncharted(campaign, rules));
+  if (!last) return { ok: true, kind: voyage ? 'beyond' : 'sector', ...costs, cold };
+  const comingIn = Math.max(0, campaign.supplies - costs.left + costs.grows - costs.supplies);
+  return { ok: true, kind: 'system', ...costs, cold, short: Math.max(0, systemNeeds(campaign, rules) - comingIn) };
+}
+
+// What the system past the charts asks of the holds, having no station
+// (M40): a survey's day and a jump on.
+export function systemNeeds(campaign, rules) {
+  return 2 * jumpSupplies(campaign, rules);
+}
+
+// True when leaving the map the ship is on leads into an uncharted system
+// (M40, hunt.js): from act 2's last sector into the system past the charts,
+// or on a voyage into the next system past the colony's.
+export function leadsUncharted(campaign, rules) {
+  return Boolean(campaign.colony?.voyage) || campaign.run.sector.index >= (actOf(campaign, rules)?.sectors ?? 0);
 }
 
 // What a jump into a map's way in takes: a jump's supplies, heat and
-// healing, as leaving a sector does, with the hunters' odds there: {
-// supplies, grows, left, heat, hungry, heal, fixes, hunt }. A voyage's Fly
-// out takes it too (M38d, voyage.js).
-export function onwardCosts(campaign, rules) {
+// healing, as leaving a sector does, with the hunters' odds there (in an
+// uncharted system if `uncharted`, M40): { supplies, grows, left, heat,
+// hungry, heal, fixes, hunt }. A voyage's Fly out takes it too (M38d,
+// voyage.js).
+export function onwardCosts(campaign, rules, uncharted = false) {
   const supplies = jumpSupplies(campaign, rules);
   const grows = growsOf(campaign, rules);
   const left = suppliesOver(campaign, rules);
   const heat = jumpHeatOf(campaign, rules);
-  const hunt = huntOdds(campaign, rules, withHeat(campaign.heat, heat), 'start');
+  const hunt = huntOdds(campaign, rules, withHeat(campaign.heat, heat), 'start', uncharted);
   return { supplies, grows, left, heat, hungry: campaign.supplies - left + grows < supplies, heal: healRate(campaign, rules), fixes: jumpFixes(campaign, rules), hunt };
 }
 

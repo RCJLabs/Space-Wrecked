@@ -443,7 +443,7 @@
       "rotates": true,
       "stats": { "power": -2, "mass": 3, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 12 },
       "tags": ["hydroponics"],
-      "station": { "grows": 2 },
+      "station": { "grows": 1 },
       "interior": ["h.h", "h.h"],
       "cost": 200
     },

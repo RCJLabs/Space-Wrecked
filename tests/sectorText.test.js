@@ -74,7 +74,8 @@ test('the jump plan says what hydroponics grow on the way and what stealth baffl
   const quiet = rules.modules.get('baffles').station.quiet;
   const room = supplyCapacity(campaign.ship, rules, campaign.crew);
   const lines = jumpText(campaign, rules, next).lines;
-  assert.deepEqual(lines, [`Eats 3 supplies, and ${grows} grow aboard: ${Math.min(room, campaign.supplies - 3 + grows)} left.`, `Heat +${balance.jumpHeat - quiet}, the baffles keeping ${quiet} off: ${30 + balance.jumpHeat - quiet}.`]);
+  assert.equal(grows, 1, 'since M40');
+  assert.deepEqual(lines, [`Eats 3 supplies, and 1 grows aboard: ${Math.min(room, campaign.supplies - 3 + grows)} left.`, `Heat +${balance.jumpHeat - quiet}, the baffles keeping ${quiet} off: ${30 + balance.jumpHeat - quiet}.`]);
   // Wrecked, they do nothing (the engineer aboard fixes one on the way).
   const wrecks = Object.fromEntries(campaign.ship.modules.filter((m) => ['hydroponics', 'baffles'].includes(m.type)).map((m) => [m.uid, 'fire']));
   assert.deepEqual(jumpText({ ...campaign, wrecks }, rules, next).lines.slice(0, 2), [`Eats 3 supplies: ${campaign.supplies - 3} left.`, `Heat +${balance.jumpHeat}: ${30 + balance.jumpHeat}.`]);
@@ -130,12 +131,21 @@ test('the jump point leads on, and from the act\'s last into the system past the
   const campaign = onRun({ heat: 10 });
   const exit = at(campaign, campaign.run.sector.exit);
   const text = sectorText(exit, rules);
-  assert.deepEqual(text.leave, { ok: true, label: 'Jump on', ask: 'Jump on?', title: 'On to sector 2', lines: [`Eats 3 supplies: ${balance.baseSupplies - 3} left.`, `Heat +${balance.jumpHeat}: ${10 + balance.jumpHeat}.`], tone: 'info' });
+  assert.deepEqual(text.leave, { ok: true, label: 'Jump on', ask: 'Jump on?', title: 'On to sector 2', lines: [`Eats 3 supplies: ${balance.baseSupplies - 3} left.`, `Heat +${balance.jumpHeat}: ${10 + balance.jumpHeat}.`], short: null, tone: 'info' });
   assert.match(text.hint.text, /Jump on for sector 2/);
   const last = { ...exit, run: { ...exit.run, sector: { ...exit.run.sector, index: rules.acts.get(2).sectors } } };
   const end = sectorText(last, rules);
   assert.deepEqual([end.leave.ok, end.leave.title], [true, 'On to the system past the charts']);
   assert.match(end.hint.text, /Tap Jump on for the system past the charts/);
+  // With the holds short of a survey's day and a jump on past the charts,
+  // where no station lies (M40): Jump on and the hint say so, and warn.
+  const low = sectorText({ ...last, supplies: 5 }, rules);
+  const warning = 'No station lies past the charts: the holds come in with 2 supplies, short of the 6 a survey\'s day and a jump on eat. Fill them first.';
+  assert.equal(low.leave.short, warning);
+  assert.ok(low.leave.lines.includes(warning));
+  assert.equal(low.leave.tone, 'warn');
+  assert.deepEqual(low.hint, { tone: 'warn', text: warning });
+  assert.equal(sectorText({ ...exit, supplies: 5 }, rules).leave.short, null, 'a sector on has its stations');
 });
 
 // M25: the system past the charts.
@@ -211,6 +221,16 @@ test('at a world: Survey says what the day takes, and once surveyed the world\'s
   const hot = sectorText({ ...campaign, heat: HEAT_MAX }, rules);
   assert.match(hot.survey.text, /will find you\. Tap again to survey\.$/);
   assert.equal(hot.survey.tone, 'bad');
+  // Warm, where in a sector they would be out, past the charts they have
+  // lost the trail (M40): the survey, a day's rest and a jump say so.
+  const warm = { ...campaign, heat: 60 };
+  const said = sectorText(warm, rules);
+  assert.match(said.survey.text, /Out here the hunters have lost the trail\. Tap again to survey\.$/);
+  assert.equal(said.survey.tone, 'info');
+  const hurt = { ...warm, crew: warm.crew.map((member, i) => (i ? member : { ...member, hp: 1 })) };
+  assert.match(sectorText(hurt, rules).rest.text, /Out here the hunters have lost the trail\. Tap again to regroup\.$/);
+  assert.ok(jumpText(warm, rules, 1).lines.includes(`Past the charts the hunters have lost the trail: only the task force follows, from heat ${balance.raidHeat}.`));
+  assert.equal(jumpText(warm, rules, 1).tone, 'info');
 });
 
 test('Continue says the sector on the run', () => {

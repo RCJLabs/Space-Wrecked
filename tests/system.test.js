@@ -11,11 +11,13 @@ import { int } from '../src/core/rng.js';
 import { makeSave, MIGRATIONS, parseSave, SAVE_VERSION } from '../src/core/save.js';
 import { campaignProblems, COLONY_ACT, HEAT_MAX } from '../src/sim/campaign.js';
 import { generateSystem, LANES, RATINGS } from '../src/sim/gen/system.js';
+import { huntOdds } from '../src/sim/hunt.js';
 import { launch } from '../src/sim/launch.js';
+import { regroupPlan } from '../src/sim/regroup.js';
 import { campaignScreen, initialState, reduce, saveData } from '../src/sim/root.js';
 import { settle, settlePlan } from '../src/sim/settle.js';
 import { survey, surveyPlan } from '../src/sim/survey.js';
-import { beginRun, jump, jumpPlan, jumpSupplies, knownNodes, leavePlan, leaveSector, scanPlan } from '../src/sim/travel.js';
+import { beginRun, jump, jumpPlan, jumpSupplies, knownNodes, leavePlan, leaveSector, scanPlan, systemNeeds } from '../src/sim/travel.js';
 import { GOLDEN_SYSTEMS, systemsText } from '../tools/sectors.js';
 import { rules } from './battleKit.js';
 import { readyToLaunch } from './launchKit.js';
@@ -87,7 +89,12 @@ test("Jump on from the act's last jump point reaches the system, rolled from the
   const exit = atLastExit({ heat: 10 });
   assert.deepEqual(campaignProblems(exit), []);
   const plan = leavePlan(exit, rules);
-  assert.deepEqual(plan, { ok: true, kind: 'system', supplies: 3, grows: 0, left: 0, heat: balance.jumpHeat, hungry: false, heal: 0, fixes: [], hunt: { chance: 0, ship: null, why: null }, cold: [] });
+  assert.deepEqual(plan, { ok: true, kind: 'system', supplies: 3, grows: 0, left: 0, heat: balance.jumpHeat, hungry: false, heal: 0, fixes: [], hunt: { chance: 0, ship: null, why: null }, cold: [], short: 0 });
+  // Short (M40): what the holds would come in short of a survey's day and a
+  // jump on, there being no station past the charts.
+  assert.equal(systemNeeds(exit, rules), 2 * jumpSupplies(exit, rules));
+  assert.equal(leavePlan({ ...exit, supplies: 5 }, rules).short, systemNeeds(exit, rules) - (5 - 3));
+  assert.equal(leavePlan({ ...exit, supplies: 2 }, rules).short, systemNeeds(exit, rules), 'hungry on the way in, nothing left at all');
   const { campaign } = leaveSector(exit, rules);
   const { run } = campaign;
   assert.deepEqual(run.sector, generateSystem(rules, int(exit.rng, 0, 0xffffffff).value, SECTORS + 1));
@@ -113,6 +120,34 @@ test("Jump on from the act's last jump point reaches the system, rolled from the
   assert.equal(met.campaign.run.sector.system, true);
   assert.equal(met.campaign.run.approach.hunt, true);
   assert.deepEqual(campaignProblems(met.campaign), []);
+});
+
+test('past the charts only the task force follows (M40): under raidHeat the hunters have lost the trail, from it the task force comes, certain at the most heat', () => {
+  const { hunters, taskForce } = rules.backgrounds.get('miner').pursuer.run;
+  const trail = { chance: 0, ship: null, why: 'trail' };
+  // In a sector, the hunters at their heat; jumping into the system, by the
+  // heat the ship comes in with, the system's odds.
+  const warm = atLastExit({ heat: balance.raidHeat - 1 - balance.jumpHeat });
+  assert.deepEqual(huntOdds(onRun(), rules, balance.huntHeat, 'empty'), { chance: balance.huntChance, ship: hunters, why: null }, 'in a sector they still hunt');
+  assert.deepEqual(leavePlan(warm, rules).hunt, trail);
+  assert.deepEqual(leavePlan({ ...warm, heat: balance.raidHeat - balance.jumpHeat }, rules).hunt, { chance: balance.taskForceChance, ship: taskForce, why: null });
+  // Jumped in under raidHeat: no roll, no approach.
+  const into = leaveSector(warm, rules);
+  assert.deepEqual(into.hunt, { ...trail, roll: null, found: false });
+  assert.equal(into.campaign.run.approach, null);
+  // In it, a jump, a survey and a day's rest go by the same rule: at heat
+  // 60, where in a sector the hunters would be out.
+  const campaign = { ...at(into.campaign, 1), heat: 60 };
+  assert.deepEqual(jumpPlan(campaign, rules, 2).hunt, trail);
+  assert.deepEqual(surveyPlan(campaign, rules).hunt, trail);
+  const hurt = { ...campaign, crew: campaign.crew.map((member, i) => (i ? member : { ...member, hp: 1 })) };
+  assert.deepEqual(regroupPlan(hurt, rules).hunt, trail);
+  const taskForceHeat = { ...campaign, heat: balance.raidHeat };
+  assert.deepEqual(surveyPlan(taskForceHeat, rules).hunt, { chance: balance.taskForceChance, ship: taskForce, why: null });
+  assert.deepEqual(surveyPlan({ ...campaign, heat: HEAT_MAX }, rules).hunt, { chance: 100, ship: taskForce, why: null });
+  // Under huntHeat, nothing to say.
+  assert.deepEqual(surveyPlan({ ...campaign, heat: 10 }, rules).hunt, { chance: 0, ship: null, why: null });
+  assert.deepEqual(campaignProblems(into.campaign), []);
 });
 
 test('the worlds are known from afar, and jumps go between them as on any map', () => {

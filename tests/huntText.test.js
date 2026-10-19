@@ -135,3 +135,16 @@ test('the approach screen names the hunters, says what facing them buys, and wha
   assert.ok(ends.get(true).some((line) => line === `Heat −${HEAT_MAX - balance.heatAfterRaid}, to ${balance.heatAfterRaid}: ${pursuer.run.faced}`), ends.get(true).join(' | '));
   if (ends.has(false)) assert.ok(ends.get(false).some((line) => /^Still on your trail: heat \d+\.$/.test(line)), ends.get(false).join(' | '));
 });
+
+test('a swap dearer for those before it says its own price (M40), on its button, its words and the hint', () => {
+  const campaign = atKind(onRun({ heat: 60, credits: 300 }), 'station');
+  const twice = { ...campaign, flags: { ...campaign.flags, swaps: 2 } };
+  const price = balance.swapPrice + 2 * balance.swapRise;
+  const { swap } = sectorText(twice, rules);
+  assert.deepEqual([swap.label, swap.ask], [`Transponder · ${price}`, `Swap for ${price}?`]);
+  assert.match(swap.text, new RegExp(`for ${price} credits\\. Tap again to swap\\.$`));
+  assert.match(sectorText({ ...twice, supplies: balance.baseSupplies }, rules).hint.text, new RegExp(`sheds ${-balance.swapHeat}, for ${price}\\.`));
+  const broke = sectorText({ ...twice, credits: price - 1 }, rules).swap;
+  assert.equal(broke.label, `Transponder · ${price}`);
+  assert.match(broke.why, new RegExp(`A swap is ${price} credits\\.`));
+});

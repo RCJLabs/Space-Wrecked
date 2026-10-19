@@ -27,7 +27,7 @@
       "past": "Thirty years loading other people's ships at Pier Nine, the last ten as shop steward. When the Company broke the strike, the local put him on the food run, and he has ridden it since.",
       "chain": "foodrun",
       "loyalty": "brandt-loyal",
-      "talent": { "name": "Steward's kit", "order": { "uses": 3, "armor": 2 } }
+      "talent": { "name": "Steward's kit", "order": { "uses": 3, "armor": 1, "aim": 8 } }
     },
     {
       "id": "osei",
@@ -41,7 +41,7 @@
       "past": "Two years out of the Company's survey school. She logged your tow honestly, in triplicate, and was let go for the fuel it cost. She knows where Con-Reg's survey lines run, and where they don't.",
       "chain": "lifepod",
       "loyalty": "osei-loyal",
-      "talent": { "name": "Surveyor's eye", "order": { "uses": 3, "aim": 30 } }
+      "talent": { "name": "Surveyor's eye", "order": { "uses": 3, "aim": 60 } }
     },
     {
       "id": "halloran",
@@ -55,7 +55,7 @@
       "past": "Old Halloran's nephew, who patched up the family's runners for ten years and asked one question too many about what they ran. The family calls it a sabbatical.",
       "chain": "runner",
       "loyalty": "halloran-loyal",
-      "talent": { "name": "Family medicine", "order": { "uses": 3, "hp": 8 } }
+      "talent": { "name": "Family medicine", "order": { "uses": 3, "hp": 8, "reach": 3 } }
     }
   ]
 }

@@ -510,6 +510,11 @@ const cases = [
   ['a talent that sharpens nothing', (d) => (companion(d, 'osei').talent.order = { uses: 3 }), /companions\.json companion osei talent order: must sharpen one of rank 2's numbers/],
   ['a talent setting a number its order lacks', (d) => (companion(d, 'osei').talent.order.hp = 5), /companions\.json companion osei talent order: unknown field "hp"/],
   ['a talent past its order\'s range', (d) => (companion(d, 'brandt').talent.order.armor = 9), /companions\.json companion brandt talent order: armor must be a whole number from 1 to 5/],
+  ["a talent's reach past its range", (d) => (companion(d, 'halloran').talent.order.reach = 9), /companions\.json companion halloran talent order: reach must be a whole number from 2 to 6/],
+  ["a talent's aim on a kit past its range", (d) => (companion(d, 'brandt').talent.order.aim = 60), /companions\.json companion brandt talent order: aim must be a whole number from 1 to 50/],
+  ['a talent with an extra its order kind lacks', (d) => (companion(d, 'brandt').talent.order.reach = 3), /companions\.json companion brandt talent order: unknown field "reach"/],
+  ["an order's extra past its range", (d) => (d.jobs.jobs.find((j) => j.id === 'medic').order.reach = 1), /medic order: reach must be a whole number from 2 to 6/],
+  ['an extra its order kind lacks', (d) => (d.jobs.jobs.find((j) => j.id === 'medic').order.aim = 5), /medic order: unknown field "aim" for patch/],
 ];
 
 function companion(d, id) {
@@ -554,5 +559,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(147 modules, 6 frames, 4 manufacturers, 2 hull styles, 12 styling pieces, 15 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 20 enemies, 24 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 8 site maps, 59 job templates, 12 kinds of sector node, 5 kinds of world, 28 colony buildings, 4 colony builds, 4 kinds of place, 100 events, 4 sides, 11 quests, 4 companions, 25 sounds\)/);
+  assert.match(run.stdout, /OK \(147 modules, 6 frames, 4 manufacturers, 2 hull styles, 12 styling pieces, 15 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 20 enemies, 28 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 8 site maps, 59 job templates, 12 kinds of sector node, 5 kinds of world, 28 colony buildings, 4 colony builds, 4 kinds of place, 100 events, 4 sides, 11 quests, 4 companions, 25 sounds\)/);
 });
