@@ -2179,7 +2179,7 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **A fight past round 40 with no step nearer takes its best shot from where it stands** (`fightOut.js`): in a deserter's voyage a pilot and a brute, their fallen on the tiles between them, each stepped into the other's sight and back out, turn after turn, to the round limit.
   - **The way on foot from the airlock to the bridge:** the test player gives the colony no part whose going leaves a hatch no one can walk to from the bridge (`voyagePlan.js` hatchesCutOff). A reactor given on smuggler seed 22 joined the airlock's side to the bridge's by weapon mounts alone, and the boarding there never ended. A player can still do it (§9).
   - **Each pursuer's raids** (`tools/raids.js`, 150 a row) are as on main: at the hangar 53%, 63% and 46%, at the colony 41%, 42% and 41%.
-- [ ] **M41 Difficulty settings.** Easy, Normal and Hard since M18, a few numbers each: the enemy's aim and hit points in a fight. The draft was each setting through all three acts, and permanent death as a harder setting (§9).
+- [x] **M41 Difficulty settings.** Easy, Normal and Hard since M18, a few numbers each: the enemy's aim and hit points in a fight. The draft was each setting through all three acts, and permanent death as a harder setting (§9).
 
   Measured first (main after M40: 100 whole games from each start at each setting, act 1 to the days after the voyage out, every fight at the setting): every setting reaches the colony in all 100 from each start, and the fights part as they should (from the miner's start, Easy to Hard: boardings won 83%, 67% and 31%, raids at the colony 98%, 75% and 58%). Two gaps: an enemy ship's guns, and a raid fought out where the ship isn't, take no difficulty. Permanent death, tried with every bleed-out a death: the test crews bled out 3 to 9 times a game, and the smuggler's captain in nearly every game, because their AI never stabilizes anyone. Stabilizing where death is permanent, the deaths came to 0 or 1 a game at the median (at most 4), and the games that failed stalled in act 1 a crew member short, with no one to sign on (8 to 23 of 100 at Normal and Hard).
 
@@ -2200,6 +2200,14 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **Saves v39,** with the migration tested.
   - **Every rule tested.**
   - **Touch, at the three sizes:** New game's difficulty and permanent death, Settings' difficulty, a death at a fight's end, the hangar's recruit, and the game's end.
+
+  As built (2026-10-19), where it differs from the above or adds to it:
+  - **New game has a last screen,** "Your game", after the captain: the two rows side by side, Back to the captain with nothing lost, then Start. The captain's button says Next.
+  - **The hangar's recruit is free,** a green hand with no traits and no fights, in the first job the crew is short of (above).
+  - **The game's end** names the fallen (job and act) and the record: difficulty, fights, jobs, sectors, colonies and who was lost. Continue from the title comes back to it until New game.
+  - **Settings' Difficulty row** shows only with a game under way, and says the change holds from the next fight.
+  - **The crew's AI gets a downed ally up** before anything else where death is permanent (`src/sim/rescueAi.js`): stabilize beside them, or walk there with an action to spare, unless its own Patch can reach them.
+  - **Each setting through all three acts** (100 games from each start; Easy, Normal, Hard): without permanent death all 900 reach the colony, the fights won 89/78/63% from the miner's start, 84/70/61% from the deserter's, 89/79/69% from the smuggler's. With it at Normal the colony is reached in 100, 100 and 99; across all nine, one game over (Hard, the smuggler's, in act 3), and the smuggler's test player stopped short of launch in 1 at Normal and 3 at Hard.
 - [ ] **M42 Accessibility.** The draft:
   - a colorblind-safe palette;
   - text size;
