@@ -2,6 +2,165 @@
 
 Newest entry first.
 
+## M38f Citizens (2026-10-19)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every colony now has citizens: a headcount, not crew. They:
+- eat, sleep and work its farms and mines;
+- grow on its good days, and leave on its hungry ones;
+- include a captive freed on a voyage's rescue, who settles at the colony flown from.
+
+A raid at a colony the ship isn't at is fought out on the day it lands, the AI playing both sides. The ship is never held, and a report waits. In a raid the player fights, the citizens stand beside the crew as colonists, under the player's orders. Saves are at v38.
+
+**How it was picked:** Evan asked (2026-10-18) for colonies that thrive with citizens of their own. He picked a colony that runs itself while the ship is away, its citizens grown, rescued or left behind.
+
+Measured first (the miner, 100 voyages out, medians):
+- the first colony as the ship flies out: 1 at home of 3, room for 1 more, 6 food a day against 1 eaten;
+- with nothing built, 1 or 2 defending won 0 of 40 raids fought out by the AI on both sides, and 3 won 18 of 40.
+
+His picks (2026-10-19):
+- a citizen is a headcount;
+- a raid where the ship isn't is fought out at once;
+- a raid lost costs the stores and the citizens who fell;
+- in a raid the player fights, the citizens fight under the player's orders.
+
+ROADMAP.md has the Done when in full, and what was built where it differs.
+
+**What shipped:**
+- **Citizens** (`colony.citizens` and `colony.growth`, at every colony; `src/sim/colony.js`):
+  - each eats a jump's supplies a day;
+  - each takes a bed and air after the crew there;
+  - each works a farm or a mine, one to a building in the order built, for `citizenWork` (1) more a day;
+  - they aren't crew: the 20 don't count them, and none comes aboard.
+- **Grown** (`src/sim/days.js`):
+  - every `citizenDays` (5) fit days at a colony, one more comes. A fit day is fed, has a bed and air free for one more, and has every building powered;
+  - a hungry day there, one leaves;
+  - with nobody there, crew or citizens, none comes;
+  - the day's plan says why none comes ('hungry', 'nobody', 'room' or 'dark').
+- **The rescued** (`src/sim/contracts.js`): a captive freed on a station job during a voyage settles at the colony flown from, if it has room. Without room, or before act 3, they go their way as before.
+- **Raids where the ship isn't** (`src/sim/raids.js` `fightAway`, `src/sim/fightOut.js`). That covers a voyage, a trip, and another colony.
+  - On the day the lander comes down, the guns fire as before. Those who land fight whoever is there, crew and up to `raidCitizens` (6) citizens, on its grid, the AI playing both sides.
+  - Past 40 rounds both sides press on, and at 60 the raiders pull out and the colony holds.
+  - Crew come out with at least 1 hit point and their fights counted. The colonists who fell are gone, unless stabilized.
+  - It is settled as before (that colony's heat and, lost, what a raid takes from its stores), and the colony's news tells it.
+  - The playing-on that M32's test players used (`tools/boarding.js`) moved into the sim as `fightOut.js`, so the sim can fight out a raid without the player.
+- **When a raid lands while the ship is away:** no sooner than the day after the ship could be back. To meet it, the ship must land the day before, since on its day it is fought out.
+  - A flight, a leg or a voyage under way never stops for a raid now.
+  - A raid down while away, or a flight or a leg one stopped, exists only in a save from before. It keeps Defend and Fly on.
+- **The news** (`colony.news`, at most 12 entries): raids fought out, citizens come, gone or settled, added only while the ship is away. It is kept once the ship lands, until a day passes there or the ship leaves again.
+- **Colonists in a raid the player fights** (`data/colony.json` `citizen`: 6 hit points, aim 55, a pistol):
+  - up to 6 citizens stand on the grid beside the crew, under the player's orders and in the crew bar (Colonist 1 to 6, "Col. 1" on its button);
+  - their card says a fallen colonist is lost unless stabilized;
+  - those who fall are lost to the colony.
+- **The screens:**
+  - **the colony screen:**
+    - a Citizens line: how many, the beds they take, and the days to the next or why none comes ("2 in 2 beds · the next in 3 days");
+    - a farm or a mine a citizen works says so;
+    - the day's words count the citizens eating, coming and leaving;
+  - **landing:** the words say what happened while the ship was away ("While the ship was away, Con-Reg Recovery's raiders were fought off on day 34; 1 colonist fell"), and the hint keeps it until a day passes;
+  - **the chart:** each colony's panel names who is there, its citizens with them, and its last news ("Raid fought off, day 34 · 1 fell");
+  - **a trip's legs:** the report says what happened at the colony;
+  - **a lander coming while away:** the hint says who fights it without the ship, and whether flying home now meets it;
+  - **Defend:** its first tap counts the colonists, and the end panel says how many fell and how many are left;
+  - **a rescue on a voyage:** the end panel says the captive settles.
+  - Words for a landing or a flight now carry across to the screen that opens (`src/ui/campaign/carried.js`). Since M38d every screen switch remounts the screen, so they were lost.
+- **Saves at v38** (`src/core/save.js`): every colony from before has no citizens, nothing toward the next, and no news. `campaign.js` checks each colony's citizens, growth and news.
+- **Validation:** `tools/validate-colony.js` checks the colonist and the three balance numbers. `tools/validate-campaign.js` refuses a colonist id that is a job's, an enemy's or a person's.
+- **The test player** (`tools/voyage.js`):
+  - back from its voyage out, it plays the first colony's next 20 days (`AFTER_DAYS`), so the second lives them too;
+  - it flies home for a raid only when it can land the day before.
+
+  The report adds a citizens line.
+
+**Done when** (ROADMAP.md, M38f), and how each is met:
+- **Citizens** (eat, beds and air, work, not crew): `tests/citizens.test.js`.
+- **Grown, and one leaving on a hungry day:** `tests/citizens.test.js`. Over 100 test voyages, `tests/voyage.test.js` checks each colony's headcount: those grown and settled, less those gone and fallen.
+- **The rescued:** `tests/citizens.test.js` and `tests/citizensText.test.js`.
+- **A raid at a colony the ship isn't at:** `tests/citizens.test.js`, `tests/raids.test.js` (on a trip), `tests/colonyVoyage.test.js` (on a voyage) and `tests/colonies.test.js` (at another colony); by touch.
+- **A raid the player fights, with colonists:** `tests/citizens.test.js`; by touch.
+- **A colony with nobody left:** `tests/citizens.test.js`.
+- **The screens:** `tests/citizensText.test.js`, `tests/colonyText.test.js`, `tests/voyageText.test.js`, `tests/colonyListText.test.js` and `tests/raidText.test.js`; by touch.
+- **Saves:** `tests/citizens.test.js` (v38, a v37 save migrated, broken ones refused) and the stopped flights and legs from before in the tests above.
+- **The test player:** `tests/voyage.test.js` (a new test over its 100 voyages).
+- **Measured over 100 voyages:** below.
+- **Every rule tested:** as above.
+- **Touch, at the three sizes:** below.
+
+**Measured:** 100 voyages out, seeds 1 to 100, the miner as `tools/voyage.js` plays by default, then the 20 days after. Medians, then the least and most:
+
+| | |
+| --- | --- |
+| Citizens at the first colony | 1 (0 to 5), any in 86 of 100 |
+| Citizens at the second | 1 (0 to 5), any in 42 of the 76 founded |
+| Since flying out | 133 came, 5 left hungry, 7 fell in raids, 1 freed captive settled |
+| Raids fought out without the player | 1, lost (the test player flies home for every raid it can meet) |
+| Raids met at home once back | 9, 6 won |
+| Hungry days in the 20 after | 11, in 3 runs |
+| The voyage's rates (`VOYAGE_OUT`) | home 100, crossed 98, fed 99, fed aboard 99 (main's 100, 96, 100 and 100): within the margin |
+| Second colonies (`SECOND`) | founded on 76 (main's 75) |
+
+**A raid fought out, by who is there** (20 seeds each, the kit's colony with nothing built, the miner's 4 raiders):
+- 2 crew and 3 colonists won 7;
+- 3 colonists alone, 2 crew alone, and nobody there each won none.
+
+The longest fight took 132 ms.
+
+**Tests:**
+- `node --test`: 1107 pass (1088 on main).
+- **New:**
+  - `tests/citizens.test.js` (9): the headcount, its beds, air and work, growing and leaving, the rescued, raids fought out on a voyage, a trip and at another colony, colonists in a raid the player fights, the colony with nobody left, and v38 saves;
+  - `tests/citizensText.test.js` (9): the words for each;
+  - `tests/voyage.test.js`: the citizens over 100 voyages (`CITIZENS`).
+- **Changed on purpose:**
+  - the tests that pinned `SAVE_VERSION` at 37 now pin 38;
+  - M38d's and M38e's raid timing and stopped flights, M29's stopped legs: a raid where the ship isn't is fought out, and a stopped flight or leg is built as a save from before;
+  - the new colony's shape (`citizens`, `growth`, `news`);
+  - a battle's error for an unknown unit names colonists too.
+
+**Browser checks:**
+- **`m38f/verify.mjs`:** 21 of 21 at each of the three sizes. It covers:
+  - the colony screen's citizens, and a farm a citizen works;
+  - a lander coming while the ship is away, Fly home too late, and the raid fought out on the last day;
+  - the landing's words with the news, which go once a day passes;
+  - the chart's colony panel with the news;
+  - Defend with three colonists, Col. 1 to Col. 3 in the crew bar, every button 48 px or more;
+  - a quit and reopen at v38;
+  - offline, and no console errors.
+- **Every earlier milestone's browser check** passes at the three sizes unless named, each the latest adapted copy (`m38f/regress-a.sh` and `regress-b.sh`; after the container restarted mid-run, `regress-a2.sh` and `regress-b2.sh` ran the rest). The one exception is M32b's first copy, whose 2 known failures since M36 its fix copy covers, as in M36 to M38e.
+  - **Adapted for M38f:**
+    - M38e's, M38d fix's, M38c's, M38b's, M35's, M34's, M31's, M30's, M29's, M28's and M27's pinned saves at v37; their copies (`verify38f.mjs` beside each) pin v38;
+    - M38d fix's lander coming says those at home fight it without the ship;
+    - M29's legs no longer stop for a raid. Its steps 7 and 8 now fly out with the raid fought out at home, with someone there and with nobody, and check the leg's report. Its stopped leg, and Defend with nobody home, are built as saves from before;
+    - M27's and M26's checks read the needs with the Citizens line in them.
+  - **Run again on its own, and passed:** M35's at the tab size, which lost its port to the run beside it.
+
+**Found while building, and fixed:**
+- **The landing's words never showed:** since M38d a screen switch remounts the screen, so what Fly home, Fly to and Fly out said was lost with it. The words are now carried across (`carried.js`), and the colony's news is in its hint.
+- **The news went stale:** it now goes once a day passes at the colony, or when the ship leaves.
+- **A stabilized colonist was counted as fallen:** they now survive the fight.
+- **The colonists' names were cut to the same "Coloni…"** in the crew bar: a numbered name is shortened to "Col. 1" (`src/ui/names.js`).
+
+**Known issues:**
+- **The test player builds no room for citizens:** its shelters are for the crew who stay home, so a colony grows only into what is free (median 1; §9).
+- **Raids fought out without the player were rare** in the test runs (1 in 100 voyages, lost), since the test player flies home for every raid it can meet. A colony with few people and no guns loses them: 2 crew alone won none of 20.
+- **A raid fought out is decided whole at once.** There is no replay, and its news doesn't say who fell beyond a count (§9).
+- **A colony grid with no room for those there and the raiders** counts the raid as lost without a fight. The colonies seen so far have room.
+- **Since M38d, the words for a stopped flight or leg are gone:** they exist only in a save from before, whose hint is the raid's, with Defend and Fly on.
+
+**What Evan should test on the phone:**
+- **A colony's Citizens line:** how many, the beds, the days to the next. A farm a citizen works says so. Next day's words count them.
+- **A raid while the ship is away:**
+  - fly out leaving someone home, and let a lander come down before you can get back;
+  - the chart's colony panel says what happened;
+  - fly home: the landing's words give the news, and the hint keeps it until Next day.
+- **Defend with citizens at home:**
+  - Col. 1 and on in the crew bar, under your orders;
+  - long-press one for its card;
+  - the end panel counts those who fell and those left.
+- **A rescue at a station on a voyage:** the end panel says the captive settles at the colony.
+- **Quit and reopen:** a save from before opens with no citizens and plays on.
+
+**Next milestone's first task:** M39 Parts and hull frames: study the parts and frames (21 module types against §5's 40 to 60, one hull frame), measure, ask Evan, settle its Done when.
+
 ## M38e More colonies (2026-10-18)
 
 **Status:** done, and the ROADMAP.md box is ticked. A world a voyage passes can now be settled. The ship lands there with those aboard and founds another colony, and the colony it flew from keeps whoever was at home and its food. Each colony:

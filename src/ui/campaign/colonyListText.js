@@ -3,14 +3,15 @@
 // who is there and its raid; Fly to it, from the chart (voyage.js flyTo)
 // and from the colony screen with the crew picked (flyFrom); what a
 // flight came to; and the words a second colony's landing and Settle here
-// on a voyage say. rules are the content tables (src/sim/defs.js).
+// on a voyage say. From M38f each counts its citizens and gives its last
+// news, and a flight's landing what happened there while the ship was
+// away. rules are the content tables (src/sim/defs.js).
 import { allColonies, colonyById, reachOf, thereAt } from '../../sim/colonies.js';
 import { storesOf } from '../../sim/colony.js';
-import { pursuerOf } from '../../sim/heat.js';
-import { downAt } from '../../sim/raids.js';
 import { flightFromPlan, flightPlan } from '../../sim/voyage.js';
+import { newsLine } from './newsText.js';
 import { raidStatus } from './raidText.js';
-import { outText } from './voyageText.js';
+import { outText, whoThere, withNews } from './voyageText.js';
 
 const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth'];
 
@@ -21,17 +22,19 @@ export function ordinal(n) {
 
 // The other colonies, in the order settled: all but the one the ship is at
 // or flew from. Each { id, name, title, rows ([[label, value]]: the
-// flight there, its day, its food of its storehouses' room, who is there,
-// and its raid), tone ('bad' with a lander coming or down), line (the
-// pursuer's words for its raid), detail (the rows in one line, for the
-// colony screen's list), days (the flight's) }.
+// flight there, its day, its food of its storehouses' room, who is there
+// with its citizens (M38f), its raid, and its last news if any), tone
+// ('bad' with a lander coming or down), line (the pursuer's words for its
+// raid), detail (the rows in one line, for the colony screen's list), days
+// (the flight's) }.
 export function otherColonies(campaign, rules) {
   return allColonies(campaign).filter((colony) => colony !== campaign.colony).map((colony) => {
     const there = thereAt(campaign, colony.id);
     const days = reachOf(campaign, colony);
     const room = storesOf(there, rules).colony;
     const raid = raidStatus(there, rules);
-    const who = there.crew.length ? listed(there.crew.map((member) => member.name.split(' ')[0])) : 'Nobody';
+    const who = whoThere(there.crew, colony.citizens ?? 0);
+    const news = newsLine(colony);
     return {
       id: colony.id,
       name: colony.world.name,
@@ -42,10 +45,11 @@ export function otherColonies(campaign, rules) {
         ['Food', `${there.supplies} of ${room}`],
         ['There', who],
         [raid.label, raid.value],
+        ...(news ? [['News', news]] : []),
       ],
       tone: raid.ok ? 'info' : 'bad',
       line: raid.line,
-      detail: `${capital(flightOf(days))} · day ${colony.day} · food ${there.supplies} · ${who === 'Nobody' ? 'nobody there' : `${who} there`} · ${lowerFirst(raid.value)}`,
+      detail: `${capital(flightOf(days))} · day ${colony.day} · food ${there.supplies} · ${who === 'Nobody' ? 'nobody there' : `${who} there`} · ${lowerFirst(raid.value)}${news ? ` · ${lowerFirst(news)}` : ''}`,
       days,
     };
   });
@@ -101,15 +105,8 @@ export function flightFromText(campaign, rules, id, crew) {
 // result), for the hint: { text, tone }. before: the campaign as it began.
 export function flightReport(result, before, rules) {
   const now = result.campaign;
-  if (result.stopped) {
-    const at = downAt(now);
-    const left = now.colony.voyage.homing;
-    const bound = colonyById(now, now.colony.voyage.to ?? now.colony.id);
-    const where = at ? ` at ${at.world.name}` : '';
-    return { text: `${pursuerOf(before, rules)?.name ?? 'The pursuer'}'s lander is down${where}: the ship waits in ${now.run.sector.name}, ${dayCount(left)} still to fly to ${bound.world.name}, until the raid is faced.`, tone: 'bad' };
-  }
   const n = result.days.length;
-  return { text: `Landed at ${now.colony.world.name} after ${dayCount(n)}: the ship's crew and stores join those there, ${now.supplies} food. ${before.colony.world.name} keeps its own.`, tone: 'good' };
+  return withNews(`Landed at ${now.colony.world.name} after ${dayCount(n)}: the ship's crew and stores join those there, ${now.supplies} food. ${before.colony.world.name} keeps its own.`, now, rules);
 }
 
 // Settling on a voyage (M38e), for Settle here: the words of its first

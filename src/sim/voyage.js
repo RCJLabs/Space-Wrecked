@@ -110,8 +110,9 @@ function setOut(home, colony, to = null) {
 
 // The ship's side flying out with crew, as voyagePlan's plan splits it:
 // those picked aboard with the holds' food, those at home with the
-// colony's, the colony keeping the ship's heat as its trail (M38e). to is
-// the colony a flight from the colony screen is for (flyFrom), else null.
+// colony's, the colony keeping the ship's heat as its trail (M38e) and its
+// news, read while the ship was there, let go (M38f). to is the colony a
+// flight from the colony screen is for (flyFrom), else null.
 function splitOut(campaign, plan, counts, to = null) {
   const picked = new Set(plan.crew);
   const home = { crew: campaign.crew.filter((member) => !picked.has(member.id)), food: plan.food.colony };
@@ -120,7 +121,7 @@ function splitOut(campaign, plan, counts, to = null) {
     crew: campaign.crew.filter((member) => picked.has(member.id)),
     supplies: plan.food.ship,
     flags: tally(campaign.flags, { ...counts, foodLost: plan.food.spoils }),
-    colony: { ...campaign.colony, heat: campaign.heat, voyage: setOut(home, campaign.colony, to) },
+    colony: { ...campaign.colony, heat: campaign.heat, voyage: setOut(home, campaign.colony, to), news: [] },
   };
 }
 

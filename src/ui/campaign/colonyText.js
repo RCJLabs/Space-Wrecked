@@ -1,6 +1,6 @@
 // Text for the colony (src/sim/colony.js, M26; days and building by hand,
-// M27; raids, M29): what act 3's home shows. rules are the content tables
-// (src/sim/defs.js).
+// M27; raids, M29; citizens and the news of the ship's time away, M38f):
+// what act 3's home shows. rules are the content tables (src/sim/defs.js).
 import { actOf } from '../../sim/campaign.js';
 import { buildingOf, colonyStats, shipParts, storesOf } from '../../sim/colony.js';
 import { buildList } from '../../sim/colonyBuild.js';
@@ -8,6 +8,7 @@ import { dayPlan, planDay } from '../../sim/days.js';
 import { colonyPursuer, raidIn } from '../../sim/raids.js';
 import { actTitle, crewText, heatText } from './hubText.js';
 import { runRecord } from './launchText.js';
+import { newsText } from './newsText.js';
 import { defenseRow, raidHint, raidStatus } from './raidText.js';
 import { worldSaid } from './sectorText.js';
 import { easedSaid, questsText } from './questText.js';
@@ -19,9 +20,11 @@ import { sidesText } from './standingText.js';
 //   day         the colony's day
 //   needs       [{ label, value, ok }]: power, then beds and air against
 //               the crew at home and who sleeps aboard (while the ship is
-//               away, who goes without, and who is away); food and
-//               materials against the stores, with what a day makes and
-//               eats; the infirmary once the colony has one; defenses
+//               away, who goes without, and who is away); its citizens
+//               (M38f: how many, the beds they take, and the days to the
+//               next or why none comes); food and materials against the
+//               stores, with what a day makes and eats; the infirmary once
+//               the colony has one; defenses
 //               (M29: what fires at a lander and what the defenders gain)
 //               once it has any or a raid is coming; and the raid's line:
 //               the day's odds of being found, or the lander's days. ok is
@@ -34,7 +37,8 @@ import { sidesText } from './standingText.js';
 //   stores      what the stores keep of each: "30 each, in the landed
 //               ship's holds"
 //   buildings   [{ uid, name, gives, powered }] in the order built: what
-//               each gives or makes, or that it is dark and what it needs
+//               each gives or makes, or that it is dark and what it needs;
+//               a farm or a mine a citizen works says so (M38f)
 //   crew        crewText's rows (hubText.js), each with aboard: true for
 //               whoever sleeps aboard the landed ship, and (M28) away: true
 //               for the squad on a trip, rough: true for whoever is home
@@ -56,6 +60,8 @@ import { sidesText } from './standingText.js';
 //   world       { title, lines }: the world's numbers and lanes, and a
 //               line if it was settled without a survey
 //   record      { title, lines: [[label, value]] }: how the run went (M25)
+//   news        what happened there while the ship was away (M38f,
+//               newsText.js): { text, tone }, or null with none
 //   ahead       the act's words for what is still to come
 //   text        the colony's words (data/colony.json)
 export function colonyText(campaign, rules) {
@@ -80,6 +86,7 @@ export function colonyText(campaign, rules) {
     trip
       ? { label: 'Away', value: `${away.size} on the trip${rough.size ? `, ${rough.size} home without a bed` : ''}`, ok: rough.size === 0 }
       : { label: 'Aboard', value: aboard.size ? `${aboard.size} sleep${aboard.size === 1 ? 's' : ''} on the ship` : 'Nobody', ok: aboard.size === 0 },
+    citizensRow(stats, day, rules),
     { label: 'Food', value: `${campaign.supplies} of ${stores.total} · +${stats.made.food}, eats ${eats}`, ok: day.ok ? day.fed : true },
     { label: 'Materials', value: `${materials} of ${stores.total} · +${stats.made.materials} a day`, ok: true },
   ];
@@ -101,7 +108,7 @@ export function colonyText(campaign, rules) {
     buildings: stats.buildings.map((b) => ({
       uid: b.uid,
       name: b.name,
-      gives: !b.powered ? `Dark: needs ${b.need} power` : b.makes ? makesText(b.makes) : givesText(b.gives),
+      gives: !b.powered ? `Dark: needs ${b.need} power` : b.makes ? `${makesText(b.makes)}${b.worked ? ' · a citizen works it' : ''}` : givesText(b.gives),
       powered: b.powered,
     })),
     crew: crew.map((row, i) => ({ ...row, aboard: aboard.has(campaign.crew[i].id), away: away.has(campaign.crew[i].id), rough: rough.has(campaign.crew[i].id) })),
@@ -112,9 +119,28 @@ export function colonyText(campaign, rules) {
     parts: partRows(campaign, rules),
     world: { title: `${world.name} · ${kind}`, lines: [...worldSaid(world, rules, true), ...(world.surveyed ? [] : ['Settled without a survey: these are what the landing found.'])] },
     record: { title: actTitle(campaign.act - 1, rules), lines: runRecord(campaign, rules) },
+    news: newsText(campaign.colony, campaign, rules),
     ahead: actOf(campaign, rules)?.ahead ?? '',
     text: rules.colony?.text ?? '',
   };
+}
+
+// The colony's citizens, for its needs (M38f): how many and the beds they
+// take, then the days to the next, or why none comes: "2 in 2 beds · the
+// next in 3 days". Not ok only on a day that will go hungry, when one
+// leaves.
+function citizensRow(stats, day, rules) {
+  const { count, housed } = stats.citizens;
+  const plan = day.ok ? day.citizens : null;
+  const why = plan?.why ?? null;
+  const left = Math.max(1, (rules.balance.citizenDays ?? 0) - (plan?.growth[0] ?? 0));
+  const next = why === null ? `the ${count ? 'next' : 'first'} in ${left} day${left === 1 ? '' : 's'}`
+    : why === 'hungry' ? (count ? 'short of food: one leaves tonight' : 'none comes while food is short')
+    : why === 'room' ? 'none comes: no bed and air free'
+    : why === 'dark' ? 'none comes while a building is dark'
+    : 'none comes with nobody there';
+  const now = count ? `${count} in ${housed} bed${housed === 1 ? '' : 's'}` : 'None';
+  return { label: 'Citizens', value: `${now} · ${next}`, ok: why !== 'hungry' || !count };
 }
 
 // The ship's parts, as rows: see colonyText. Those that can be given are a
@@ -254,10 +280,29 @@ export function takenText(result) {
 export function dayText(plan, eased = null) {
   if (!plan.ok) return { text: plan.error, tone: 'warn' };
   const made = madeText(plan.made, 'grow', 'dig');
-  const eat = plan.fed ? `the crew eats ${plan.eats} and rests` : `the crew needs ${plan.eats} and goes hungry, losing ${plan.hunger} hit points each`;
+  const n = plan.citizens?.now ?? 0;
+  const who = eaters(plan);
+  const eat = !n
+    ? plan.fed ? `the crew eats ${plan.eats} and rests` : `the crew needs ${plan.eats} and goes hungry, losing ${plan.hunger} hit points each`
+    : plan.fed ? `${who} eat ${plan.eats}, and the crew rests` : `${who} need ${plan.eats} and go hungry, the crew losing ${plan.hunger} hit points each`;
   const lost = lostText(plan.lost, 'will be lost');
   const found = plan.found ? ` ${plan.found}% the colony is found tonight${eased ? `, ${eased}` : ''}.` : '';
-  return { text: `Day ${plan.day} ends: ${made}; ${eat}. Food ${plan.food[0]} → ${plan.food[1]}, materials ${plan.materials[0]} → ${plan.materials[1]}.${lost}${found} Tap again for day ${plan.day + 1}.`, tone: plan.fed ? 'info' : 'warn' };
+  return { text: `Day ${plan.day} ends: ${made}; ${eat}. Food ${plan.food[0]} → ${plan.food[1]}, materials ${plan.materials[0]} → ${plan.materials[1]}.${lost}${citizensSaid(plan, 'comes', 'leaves')}${found} Tap again for day ${plan.day + 1}.`, tone: plan.fed ? 'info' : 'warn' };
+}
+
+// Who eats at the colony (M38f): "the crew", or "the crew and 2 citizens".
+function eaters(plan) {
+  const n = plan.citizens?.now ?? 0;
+  return n ? `the crew and ${n} citizen${n === 1 ? '' : 's'}` : 'the crew';
+}
+
+// A citizen coming or leaving at the day's end (M38f): " A citizen
+// comes: 3 then.", or ''.
+function citizensSaid(plan, comes, leaves) {
+  const citizens = plan.citizens;
+  if (!citizens || citizens.after === citizens.now) return '';
+  const then = comes === 'comes' ? 'then' : 'now';
+  return citizens.after > citizens.now ? ` A citizen ${comes}: ${citizens.after} ${then}.` : ` Short of food, a citizen ${leaves}: ${citizens.after} ${then}.`;
 }
 
 // What passing the day came to (days.js nextDay's result): the day's
@@ -267,10 +312,12 @@ export function dayText(plan, eased = null) {
 export function dayReport(result, rules) {
   const { plan } = result;
   const made = madeText(plan.made, 'grew', 'dug');
-  let eat = `the crew ate ${plan.eats} and rested${result.healed ? `, healing ${result.healed} hit points` : ''}`;
-  if (!plan.fed) eat = `short of food, the crew went hungry${result.hurt ? `: ${result.hurt} hit points lost` : ''}${result.healed ? `, ${result.healed} healed` : ''}`;
+  const who = eaters(plan);
+  const rested = plan.citizens?.now ? ', and the crew rested' : ' and rested';
+  let eat = `${who} ate ${plan.eats}${rested}${result.healed ? `, healing ${result.healed} hit points` : ''}`;
+  if (!plan.fed) eat = `short of food, ${who} went hungry${result.hurt ? `: ${result.hurt} hit points lost` : ''}${result.healed ? `, ${result.healed} healed` : ''}`;
   const lost = lostText(plan.lost, 'lost');
-  const text = `Day ${plan.day + 1}. ${made.charAt(0).toUpperCase()}${made.slice(1)}; ${eat}. Food ${plan.food[1]}, materials ${plan.materials[1]}.${lost}`;
+  const text = `Day ${plan.day + 1}. ${made.charAt(0).toUpperCase()}${made.slice(1)}; ${eat}. Food ${plan.food[1]}, materials ${plan.materials[1]}.${lost}${citizensSaid(plan, 'came', 'left')}`;
   const days = (n) => `${n} day${n === 1 ? '' : 's'}`;
   const tone = plan.fed ? 'good' : 'bad';
   if (result.found) {

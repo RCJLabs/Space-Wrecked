@@ -33,6 +33,7 @@
 import { flyFrom, voyageOut, voyagePlan } from '../../sim/voyage.js';
 import { node } from '../fight/panels.js';
 import { icons } from '../icons.js';
+import { carry, takeCarried } from './carried.js';
 import { flightFromText, flightReport, otherColonies } from './colonyListText.js';
 import { pickList } from './colonyTrip.js';
 import { squadRows } from './tripText.js';
@@ -146,15 +147,18 @@ export function createVoyages(ctx) {
     const id = to;
     crew = null;
     to = null;
+    // What it came to is carried to the chart a voyage opens (carried.js),
+    // or taken back here when the screen stays: a flight lands here.
     if (id === null) {
       const result = voyageOut(campaign, rules, picked);
-      say(result.ok ? voyageReport(result, campaign, rules) : { text: result.error, tone: 'bad' });
+      carry(result.ok ? voyageReport(result, campaign, rules) : { text: result.error, tone: 'bad' });
       game.dispatch({ type: 'campaign/voyage/out', crew: picked, rules });
     } else {
       const result = flyFrom(campaign, rules, id, picked);
-      say(result.ok ? flightReport(result, campaign, rules) : { text: result.error, tone: 'bad' });
+      carry(result.ok ? flightReport(result, campaign, rules) : { text: result.error, tone: 'bad' });
       game.dispatch({ type: 'campaign/colony/fly', id, crew: picked, rules });
     }
+    say(takeCarried());
     refresh();
   }
 

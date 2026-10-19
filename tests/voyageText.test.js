@@ -2,7 +2,9 @@
 // plan, the colony's panel on the chart while the ship is away, Fly home's
 // plan, what flying out and home came to, and the chart's words out in the
 // systems past the colony's: where it is, the lander coming and down, and
-// a flight home a lander stopped.
+// a flight home a lander stopped. From M38f a lander coming down while the
+// ship is away is fought out there: the landing tells it, and a flight
+// stopped is a save's from before.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { crewRoom } from '../src/sim/crew.js';
@@ -111,11 +113,14 @@ test("Fly home's plan, and what flying out and home came to", () => {
   assert.deepEqual(voyageReport(flown, home, rules), { text: `Into ${away.run.sector.name}, a system nobody has charted. A day passes at Copperhill with each jump.`, tone: 'good' });
   const back = voyageHome(away, rules);
   assert.deepEqual(voyageReport(back, away, rules), { text: `Home at Copperhill after 1 day: the crew and the stores are one again, ${back.campaign.supplies} food.`, tone: 'good' });
-  // A lander that stops the flight home: the hint says so, and Fly on.
+  // A lander coming down on the way home is fought out without the ship
+  // (M38f): the landing says what came of it.
   const far = leaveSector({ ...away, run: { ...away.run, at: away.run.sector.exit, seen: [...away.run.seen, away.run.sector.exit] } }, rules).campaign;
-  const stopped = voyageHome(landing(far, far.colony.day + 1), rules);
-  assert.equal(stopped.stopped, true);
-  assert.deepEqual(voyageReport(stopped, far, rules), { text: "Con-Reg Recovery's lander is down at Copperhill: the ship waits, 1 day still to fly, while those at home face it.", tone: 'bad' });
+  const through = voyageHome(landing(far, far.colony.day + 1), rules);
+  assert.equal(through.landed, true);
+  const said = voyageReport(through, far, rules);
+  assert.match(said.text, new RegExp(`^Home at Copperhill after 2 days: the crew and the stores are one again, ${through.campaign.supplies} food\\. While the ship was away, Con-Reg Recovery's raiders (were fought off|won) on day ${far.colony.day + 1}`), said.text);
+  assert.equal(said.tone, through.campaign.colony.news[0].won ? 'good' : 'bad');
 });
 
 test("the chart out in the systems past the colony's: where it is, the colony, Fly home, Defend, and the hints", () => {
@@ -140,12 +145,20 @@ test("the chart out in the systems past the colony's: where it is, the colony, F
   assert.equal(continueText(away, rules), `Act 3 · ${away.run.sector.name}, out from Copperhill`);
   // A lander coming, then down.
   const coming = landing(away, away.colony.day + 2);
-  assert.deepEqual(landerComing(coming, rules), { text: 'Con-Reg Recovery found Copperhill: their lander comes down in 2 days. Fly home now (1 day) to meet it, or those at home fight it.', tone: 'warn' });
+  assert.deepEqual(landerComing(coming, rules), { text: 'Con-Reg Recovery found Copperhill: their lander comes down in 2 days. Fly home now (1 day) to meet it, or those at home fight it without the ship.', tone: 'warn' });
   assert.deepEqual(sectorText(coming, rules).hint, landerComing(coming, rules));
   // Too far out to meet it (M38d's fix: the player jumped on after the
   // warning): the hint says so.
   const farOut = { ...coming, colony: { ...coming.colony, voyage: { ...coming.colony.voyage, out: 4, at: 4 } } };
-  assert.equal(landerComing(farOut, rules).text, 'Con-Reg Recovery found Copperhill: their lander comes down in 2 days. Flying home takes 4 days, too long to meet it: those at home fight it.');
+  assert.equal(landerComing(farOut, rules).text, 'Con-Reg Recovery found Copperhill: their lander comes down in 2 days. Flying home takes 4 days, too long to meet it: those at home fight it without the ship.');
+  // M38f: the ship must land the day before, as on its day it is fought
+  // out; its colonists fight beside those at home.
+  const soon = landing(away, away.colony.day + 1);
+  assert.match(landerComing(soon, rules).text, /in 1 day\. Flying home takes 1 day, too long to meet it: those at home fight it without the ship\.$/);
+  const peopled = { ...coming, colony: { ...coming.colony, citizens: 3 } };
+  assert.match(landerComing(peopled, rules).text, /or those at home and 3 colonists fight it without the ship\.$/);
+  const alone = { ...peopled, colony: { ...peopled.colony, voyage: { ...peopled.colony.voyage, home: { ...peopled.colony.voyage.home, crew: [] } } } };
+  assert.match(landerComing(alone, rules).text, /or its 3 colonists fight it without the ship\.$/);
   const down = landing(away, away.colony.day);
   const held = sectorText(down, rules);
   assert.ok(held.defend.ok);
@@ -153,10 +166,10 @@ test("the chart out in the systems past the colony's: where it is, the colony, F
   assert.equal(held.hint.tone, 'bad');
   assert.match(held.hint.text, /Tap Defend/);
   assert.equal(held.home.ok, false);
-  // A flight home a lander stopped, once it is faced: Fly on.
+  // A flight home a lander stopped, in a save from before, once it is
+  // faced: Fly on.
   const far = leaveSector({ ...away, run: { ...away.run, at: away.run.sector.exit, seen: [...away.run.seen, away.run.sector.exit] } }, rules).campaign;
-  const stopped = voyageHome(landing(far, far.colony.day + 1), rules).campaign;
-  const faced = { ...stopped, colony: { ...stopped.colony, raid: null } };
+  const faced = { ...far, colony: { ...far.colony, voyage: { ...far.colony.voyage, homing: 1, at: 1 } } };
   const homing = sectorText(faced, rules);
   assert.equal(homing.home.label, 'Fly on');
   assert.ok(homing.home.ok);

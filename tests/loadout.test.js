@@ -159,7 +159,7 @@ test('through the game: a swap, a spare sold at the hangar and a weapon bought f
 });
 
 test('SAVE_VERSION 32: a save from before keeps everyone with their job\'s weapon and none spare, and racks with nothing bought', () => {
-  assert.equal(SAVE_VERSION, 37);
+  assert.equal(SAVE_VERSION, 38);
   const step = MIGRATIONS.find((m) => m.from === 31);
   const campaign = fresh();
   const { arms, ...before } = campaign;

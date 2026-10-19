@@ -86,13 +86,15 @@ export function indexDefs(files) {
     // by the part's base id, in data order. From M27 (days.js), the
     // materials it starts with and what it builds from them, the farms and
     // mines, by id in data order; from M28 the solar arrays and shelters
-    // too.
+    // too; from M38f the colonist a citizen fights a raid as (raids.js),
+    // or null.
     colony: colony
       ? {
           site: colony.site,
           aboard: colony.aboard ?? [],
           text: colony.text,
           materials: colony.materials ?? 0,
+          citizen: colony.citizen ?? null,
           builds: byId(colony.builds),
           buildings: new Map((colony.buildings ?? []).map((b) => [b.part, b])),
         }

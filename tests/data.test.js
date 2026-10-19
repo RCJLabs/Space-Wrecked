@@ -370,6 +370,15 @@ const cases = [
   ['a build whose least is unbounded', (d) => (d.colony.builds[0].least = -1), /colony.json build farm: least must be a whole number from 0 to 9/],
   ['a build with a stray field', (d) => (d.colony.builds[0].power = 2), /colony.json build farm: unknown field "power"/],
   ['a build with no words', (d) => delete d.colony.builds[1].text, /colony.json build mine: text must be a non-empty string/],
+  // M38f: the colonist a citizen fights a raid as, and the citizens' numbers.
+  ['no colonist', (d) => delete d.colony.citizen, /colony.json citizen: must be an object: the colonist a citizen fights a raid as/],
+  ['a colonist with a stray field', (d) => (d.colony.citizen.rank = 1), /colony.json citizen: unknown field "rank"/],
+  ['a colonist past counting', (d) => (d.colony.citizen.hp = 50), /colony.json citizen: hp must be a whole number from 1 to 20/],
+  ['a colonist with an unknown gun', (d) => (d.colony.citizen.weapon = 'railgun'), /colony.json citizen: weapon: unknown weapon "railgun"/],
+  ["a colonist with a job's id", (d) => (d.colony.citizen.id = 'medic'), /colony.json citizen: id: "medic" is a job's, an enemy's or a person's/],
+  ['a colonist in an unknown suit', (d) => (d.colony.citizen.look.suit = 'tuxedo'), /colony.json citizen: .*suit/],
+  ['citizens that never grow', (d) => (d.balance.citizenDays = 0), /balance.json: citizenDays must be a whole number from 1 to 60/],
+  ['citizens past counting in a raid', (d) => (d.balance.raidCitizens = 40), /balance.json: raidCitizens must be a whole number from 0 to 12/],
   // M32b: ranks, the fee and recruits' backgrounds.
   ['a job with one rank', (d) => (d.jobs.jobs[0].ranks = d.jobs.jobs[0].ranks.slice(0, 1)), /jobs\.json marine ranks: must be a list of 2 ranks/],
   ['a rank with no name', (d) => (d.jobs.jobs[1].ranks[1].name = ''), /jobs\.json engineer ranks 2: name must be a non-empty string/],

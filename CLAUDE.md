@@ -8,13 +8,13 @@ A ship-first sandbox RPG in 3D: build a ship on a grid, run from a pursuer, and 
 
 ## Session protocol
 
-- **One milestone per session.** Do not start the next milestone, even if it's tempting. Meet the current milestone's Done when, then stop.
+- **Milestones run back to back** (Evan's call, 2026-10-18; until then it was one a session). Meet a milestone's Done when and close it out (PROGRESS.md, the ROADMAP.md tick, merge and deploy) before starting the next: never two at once.
 - **Start** by reading ROADMAP.md §7 and PROGRESS.md. Then state the active milestone and its Done when.
-- **End** by updating PROGRESS.md with:
+- **End** each milestone by updating PROGRESS.md with:
   - the milestone and what shipped
   - known issues
   - what Evan should test on the phone
-  - the next session's first task
+  - the next milestone's first task
 
   Then tick the milestone's box in ROADMAP.md.
 - If a milestone won't fit the session, cut scope inside it (fewer modules, smaller maps) rather than deferring its Done when.
@@ -30,7 +30,7 @@ A ship-first sandbox RPG in 3D: build a ship on a grid, run from a pursuer, and 
 - **Seeded RNG everywhere**, using `mulberry32` in `src/core/rng.js`. This covers battles, the approach phase, generators, loot and events. No bare `Math.random()` in game logic. RNG state is part of the save, so reloading never rerolls.
 - **All content is data** in `data/*.json`:
   - modules (each maker's versions with them) and the builder's part categories, hull frames, hull styles, styling pieces with the paints and trims, manufacturers, weapons (each one's kind, price and rules: bursts, piercing, reach, stun and fire), enemies, encounters, ship presets (each with its side's look and makers), the campaign's acts (act 1 naming the scene it lifts off from)
-  - crew jobs (with the kinds of weapon each carries), traits, recruits' names, backgrounds (each with its start, district and pursuer, the pursuer's side and words, fighters, ships and raiders in each act, and its payment or none), districts (each with its clients, their sides, sites and shop, weapons among its stock), the stations' clients and the sites at their docks and on the rocks nearby (`docks.json`), the job sites' map templates (a dock's or a rock's naming its look), the run's sectors (with their stations and shipyards), the worlds past the charts (each kind naming the scene it lands on, and the worlds in each system a voyage from the colony crosses, with the words for its way in and jump point), the colony's buildings (with the shots its defenses fire at a raid's lander) and what it builds (farms, mines, solar arrays and shelters), the places within reach of the colony, the sides (with whose stations and shipyards are whose, what their stations' racks sell and the makers their shipyards lean to), the quests (each background's thread and the sides' chains, their steps and pay-offs, and each companion's loyalty quest), the companions (each with their side, job, traits, face, the clothes and gear of their bust, past, chain, loyalty quest and talent)
+  - crew jobs (with the kinds of weapon each carries), traits, recruits' names, backgrounds (each with its start, district and pursuer, the pursuer's side and words, fighters, ships and raiders in each act, and its payment or none), districts (each with its clients, their sides, sites and shop, weapons among its stock), the stations' clients and the sites at their docks and on the rocks nearby (`docks.json`), the job sites' map templates (a dock's or a rock's naming its look), the run's sectors (with their stations and shipyards), the worlds past the charts (each kind naming the scene it lands on, and the worlds in each system a voyage from the colony crosses, with the words for its way in and jump point), the colony's buildings (with the shots its defenses fire at a raid's lander), what it builds (farms, mines, solar arrays and shelters) and the colonist its citizens fight a raid as, the places within reach of the colony, the sides (with whose stations and shipyards are whose, what their stations' racks sell and the makers their shipyards lean to), the quests (each background's thread and the sides' chains, their steps and pay-offs, and each companion's loyalty quest), the companions (each with their side, job, traits, face, the clothes and gear of their bust, past, chain, loyalty quest and talent)
   - the sounds (each one's ZzFX parameters by name, and how loud it is meant to be) and the sound each weapon's shot makes
   - how jobs, enemies and weapons look in a fight (`look` and `held`, checked against `src/render/figures/looks.js`)
   - mission and job templates, and the people a job brings out (`data/contracts.json`), events (each choice's needs, a job or a trait among them; each background's own; traps, wrecks and repairs), balance numbers
@@ -55,7 +55,7 @@ CNAME                       # spacewrecked.rcjlabs.com
 .well-known/assetlinks.json # TWA verification, added with the TWA
 src/
   core/      rng, save, blueprint codes, store, events, sound parameters (soundParams.js)
-  sim/       grid, builder rules, styling, makers, constraints, mapFromShip, battle, objectives (a job's, with what the AI plays for in them, objectiveAi.js), ai, approach, heat, standing (the sides), events (with the pools they are drawn from, eventPool.js), quests, companions (with their talents), campaign, colony (with its building by hand, its days and its expeditions), voyages from it (voyage.js, with who is aboard and who at home while the ship is away, away.js), the other colonies (colonies.js), raids (with the colony as a battle map), economy, weapons (their rules), loadout (who carries what, and the spares on hand), gear (what a won fight leaves), racks (the stations'), stationJobs (the stations' boards), yards (the shipyards'), dev (the dev menu's cheats; God mode is god), gen/
+  sim/       grid, builder rules, styling, makers, constraints, mapFromShip, battle, objectives (a job's, with what the AI plays for in them, objectiveAi.js), ai, approach, heat, standing (the sides), events (with the pools they are drawn from, eventPool.js), quests, companions (with their talents), campaign, colony (with its building by hand, its days and its expeditions), voyages from it (voyage.js, with who is aboard and who at home while the ship is away, away.js), the other colonies (colonies.js), raids (with the colony as a battle map, and one fought out without the player, fightOut.js), economy, weapons (their rules), loadout (who carries what, and the spares on hand), gear (what a won fight leaves), racks (the stations'), stationJobs (the stations' boards), yards (the shipyards'), dev (the dev menu's cheats; God mode is god), gen/
   render/    3D camera, scenes and painters, part and styling piece models, figures (figures/), portraits (portraits/, the companions' busts with them), painted backdrops (scenes/), hull tracer and hull shapes, the approach's two ships seen from outside (approachView.js, with the marks on a hull, hullMarks.js, and a round played out, approachPlayback.js), SVG icons, tweens, particles
   ui/        screens, panels, gestures, which moment plays which sound (sounds.js), the ?dev=1 menu (dev/)
   platform/  storage, service worker registration, haptics, orientation, audio (audio.js, playing zzfx.js)
@@ -119,7 +119,7 @@ PROGRESS.md
 - The credits screen lists every entry in LICENSES.md.
 - Every Base44 image gets an entry in LOG.md: prompt, date, model, and what was edited by hand.
 
-## Definition of done (every session)
+## Definition of done (every milestone)
 
 - `node --test` passes.
 - The game loads with no console errors, and works offline after a reload with the network off.
@@ -128,7 +128,7 @@ PROGRESS.md
 
 ## Don'ts
 
-- Don't start the next milestone.
+- Don't start the next milestone before the current one is closed out, or a new phase before its gate passes.
 - Don't add a framework, bundler or dependency.
 - Don't use `Math.random()` or `Date.now()` in `src/sim/`.
 - Don't call any network service or generate images from game code.

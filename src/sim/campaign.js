@@ -75,7 +75,7 @@
 import { int, isState, pick, seedFrom } from '../core/rng.js';
 import { actOf, atColony, atHangar, atPort } from './acts.js';
 import { aboardOf, MAX_OUT } from './away.js';
-import { MAX_AT, MAX_COLONIES } from './colonies.js';
+import { MAX_AT, MAX_CITIZENS, MAX_COLONIES, MAX_NEWS } from './colonies.js';
 import { battleProblem } from './battleShape.js';
 import { createBattle } from './battle.js';
 import { buildShip, isShipData } from './builder.js';
@@ -137,6 +137,8 @@ const MAX_BUILDINGS = 1200;
 // More days and materials than a colony will count (M27): the same kind of
 // guard.
 const MAX_DAYS = 99999;
+// More days toward the next citizen than citizenDays allows (M38f).
+const MAX_GROWTH = 60;
 export const MAX_MATERIALS = 9999;
 // More days than a raid's lander takes to come (data/balance.json
 // raidWarning, held to 10 by tools/validate-data.js): M29's guard.
@@ -459,9 +461,11 @@ export function rankUps(campaign, battle, rules) {
 }
 
 // The crew in a fight, by id: the unit each crew member is in battle
-// (fight.crew lists them in the order of its crew units).
+// (fight.crew lists them in the order of its crew units; the person a job
+// brings out, M38, and a raid's colonists, M38f, are on the crew's side
+// but not of it).
 function standing(fight, battle) {
-  const units = battle.units.filter((unit) => unit.side === 'crew' && !unit.ward);
+  const units = battle.units.filter((unit) => unit.side === 'crew' && !unit.ward && !unit.citizen);
   return new Map(fight.crew.map((id, i) => [id, units[i]]).filter(([, unit]) => unit));
 }
 
@@ -545,8 +549,9 @@ function fightProblem(fight, crew) {
   if (fight.boarding !== null && !(isBoarding(fight.boarding) && !fight.raid && fight.job === null)) return 'has an unreadable boarding';
   const battle = battleProblem(fight.battle);
   if (battle) return battle;
-  // The person a job brings out (M38) is on the crew's side, not of it.
-  if (fight.battle.units.filter((unit) => unit.side === 'crew' && !unit.ward).length !== fight.crew.length) return "doesn't match its crew";
+  // The person a job brings out (M38) and a raid's colonists (M38f) are on
+  // the crew's side, not of it.
+  if (fight.battle.units.filter((unit) => unit.side === 'crew' && !unit.ward && !unit.citizen).length !== fight.crew.length) return "doesn't match its crew";
   if (!Array.isArray(fight.log) || !fight.log.every((event) => isRecord(event) && typeof event.type === 'string')) return 'has an unreadable log';
   return null;
 }
@@ -558,7 +563,8 @@ function fightProblem(fight, crew) {
 // expeditions.js; the trip's squad is checked against the crew apart); its
 // system's other worlds, and the voyage under way, or null (M38d,
 // voyage.js; checked apart); its number, where it lies along the line of
-// systems and its own heat (M38e, colonies.js).
+// systems and its own heat (M38e, colonies.js); its citizens, the days
+// toward the next and its news (M38f).
 function isColony(colony) {
   const world = colony?.world;
   if (!isRecord(colony) || !isWorld(world) || typeof world.name !== 'string' || world.name.trim() === '' || world.name.length > MAX_NAME || typeof world.surveyed !== 'boolean') return false;
@@ -570,6 +576,9 @@ function isColony(colony) {
   if (colony.voyage !== null && !isRecord(colony.voyage)) return false;
   // Its number, where it lies and its own heat (M38e, colonies.js).
   if (!isInt(colony.id, 1, MAX_COLONIES) || !isInt(colony.at, 0, MAX_AT) || !isInt(colony.heat, 0, HEAT_MAX)) return false;
+  // Its citizens, the days toward the next, and its news (M38f).
+  if (!isInt(colony.citizens, 0, MAX_CITIZENS) || !isInt(colony.growth, 0, MAX_GROWTH)) return false;
+  if (!Array.isArray(colony.news) || colony.news.length > MAX_NEWS || !colony.news.every(isNews)) return false;
   return Array.isArray(colony.buildings) && colony.buildings.length <= MAX_BUILDINGS && isShipData({ frame: 'colony', modules: colony.buildings, nextUid: colony.nextUid });
 }
 
@@ -643,6 +652,17 @@ function othersProblem(value) {
   const everyone = [...(Array.isArray(value.crew) ? value.crew : []), ...waitingCrew(value)].map((member) => member?.id);
   if (new Set(everyone).size !== everyone.length || everyone.length > MAX_CREW) return 'name crew twice';
   return null;
+}
+
+// An entry in a colony's news (M38f, colonies.js): a raid fought out there,
+// with the part it took or null, or its citizens grown, gone or settled.
+function isNews(entry) {
+  if (!isRecord(entry) || !isInt(entry.day, 1, MAX_DAYS)) return false;
+  if (entry.kind === 'raid') {
+    if (typeof entry.won !== 'boolean' || (entry.part !== null && (typeof entry.part !== 'string' || entry.part.length > MAX_NAME))) return false;
+    return [entry.landed, entry.fell, entry.food, entry.materials].every((n) => isInt(n, 0, MAX_SUPPLIES + MAX_CITIZENS));
+  }
+  return ['grew', 'left', 'settled'].includes(entry.kind) && isInt(entry.citizens, 0, MAX_CITIZENS);
 }
 
 // A raid coming (M29, raids.js): the day the pursuer found the colony and

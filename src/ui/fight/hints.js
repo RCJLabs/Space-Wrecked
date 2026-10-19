@@ -198,13 +198,15 @@ export function unitText(unit, rules, battle = null) {
   const fire = battle && burningAt(battle, unit.x, unit.y) ? [`Standing in fire: ${rules.balance.fireDamage} at the start of each of its turns, until it burns out.`] : [];
   if (unit.ward) return wardText(unit, rules, fire);
   const weapon = rules.weapons.get(unit.weapon);
-  const side = unit.side === 'crew' ? 'Crew' : 'Enemy';
+  // A raid's colonist (M38f): a citizen of the colony beside the crew.
+  const side = unit.citizen ? 'Colonist' : unit.side === 'crew' ? 'Crew' : 'Enemy';
   const order = orderOf(unit, rules);
   const rank = talentName(unit, rules) ?? (unit.rank ? rules.jobs.get(unit.kind)?.ranks?.[unit.rank - 1]?.name : null);
   return {
     title: `${unit.name} ${unit.id}`,
     lines: [
       `${side}${unit.rank ? ` · rank ${unit.rank}${rank ? `, ${rank}` : ''}` : ''} · ${unit.hp}/${unit.maxHp} hit points · ${stateText(unit)}.`,
+      ...(unit.citizen ? ['A citizen of the colony, under your orders: if they fall, the colony loses them, unless they are stabilized.'] : []),
       `Aim ${unit.aim} · defense ${unit.defense} · armor ${unit.armor} · moves ${unit.mobility}.`,
       `${weapon.name}: damage ${weapon.damage[0]}–${weapon.damage[1]}, crit ${weapon.crit}%, ${unit.ammo}/${weapon.clip} shots.${rulesLine(weapon) ? ` ${rulesLine(weapon)}` : ''}`,
       ...(order ? [`${order.name}: ${unit.uses} of ${order.uses} left this fight${unit.talent && ORDER_SHORT[order.type] ? `, ${ORDER_SHORT[order.type](order)} each` : ''}.`] : []),

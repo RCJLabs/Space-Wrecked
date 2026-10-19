@@ -44,8 +44,9 @@ test('a day: farms grow food and mines dig materials by the world, the crew eats
   // Each crew member's heal (M28: it can differ, away from home).
   const heals = Object.fromEntries(campaign.crew.map((member) => [member.id, regroupHp]));
   // found: the odds of the pursuer finding the colony at the day's end
-  // (M29), none at the settled colony's heat.
-  assert.deepEqual(plan, { ok: true, day: 1, made: { food: 2, materials: 3 }, eats: 3, fed: true, heals, hunger: 0, rough: [], food: [27, 26], materials: [20, 23], lost: { food: 0, materials: 0 }, stores: 30, found: 0 });
+  // (M29), none at the settled colony's heat. citizens (M38f): none, and
+  // none to come, the crew taking every bed.
+  assert.deepEqual(plan, { ok: true, day: 1, made: { food: 2, materials: 3 }, eats: 3, fed: true, heals, hunger: 0, rough: [], food: [27, 26], materials: [20, 23], lost: { food: 0, materials: 0 }, stores: 30, found: 0, citizens: { now: 0, after: 0, growth: [0, 0], why: 'room' } });
   const { campaign: after, healed, hurt } = nextDay(campaign, rules);
   assert.deepEqual([after.colony.day, after.supplies, after.colony.materials, healed, hurt], [2, 26, 23, 0, 0]);
   assert.deepEqual(after.flags, { ...campaign.flags, colonyDays: 1, foodGrown: 2, materialsDug: 3 });
@@ -179,7 +180,8 @@ test('a v20 save in act 3 opens on day 1 with 20 materials, its buildings standi
   assert.equal(nextDay(campaign, rules).campaign.colony.day, 2);
   // A new colony starts the same way, with no places yet and the ship home
   // (M28), no raid coming (M29), from M38d the other worlds it is given
-  // and no voyage, and from M38e the first colony's number and place, at
-  // no heat of its own unless given.
-  assert.deepEqual(newColony(now.colony.world, 20), { world: now.colony.world, buildings: [], nextUid: 1, day: 1, materials: 20, places: [], trip: null, raid: null, worlds: [], voyage: null, id: 1, at: 0, heat: 0 });
+  // and no voyage, from M38e the first colony's number and place, at no
+  // heat of its own unless given, and from M38f no citizens, nothing toward
+  // the next and no news.
+  assert.deepEqual(newColony(now.colony.world, 20), { world: now.colony.world, buildings: [], nextUid: 1, day: 1, materials: 20, places: [], trip: null, raid: null, worlds: [], voyage: null, id: 1, at: 0, heat: 0, citizens: 0, growth: 0, news: [] });
 });

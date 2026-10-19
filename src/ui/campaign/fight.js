@@ -8,7 +8,8 @@
 // end, what it came to (boardingText.js); a fight at home is the
 // boarders'. Whatever the fight, the end panel names who reaches a rank as
 // it ends (M32b), a job's what it moves with the sides (M33), and a won
-// fight a weapon it left behind (M37). Title leaves it as it is, for Continue; once it is won or
+// fight a weapon it left behind (M37), and a rescue on a voyage the captive
+// settling at the colony (M38f). Title leaves it as it is, for Continue; once it is won or
 // lost, Continue takes the crew home, or back to the run. The board is
 // ../fight/view.js's.
 import { rankUps } from '../../sim/campaign.js';
@@ -19,7 +20,7 @@ import { icons } from '../icons.js';
 import { boardingObjective, boardingOutcome } from './boardingText.js';
 import { aWeapon } from './armsText.js';
 import { rankUpLines } from './crewJobText.js';
-import { jobOutcome, objectiveText, raidObjective, raidOutcome } from './jobText.js';
+import { jobOutcome, objectiveText, raidObjective, raidOutcome, settledLine } from './jobText.js';
 import { questJobEnd, questPlaceEnd } from './questText.js';
 import { jobEndLines } from './standingText.js';
 import { colonyRaidObjective, colonyRaidOutcome, landingNotice } from './raidText.js';
@@ -77,7 +78,8 @@ export const campaignFightScreen = {
         // A weapon of the fallen's it left (gear.js), the roll endFight makes.
         const gear = gearWon(fightOn(), battle, defs);
         const left = gear ? [`Left behind: ${aWeapon(gear, defs)}, on hand to swap in on the crew card.`] : [];
-        const sides = [...left, ...quests, ...(job() ? jobEndLines(campaign, defs, job(), won) : [])];
+        const settled = job() ? settledLine(battle, campaign, defs) : null;
+        const sides = [...left, ...(settled ? [settled] : []), ...quests, ...(job() ? jobEndLines(campaign, defs, job(), won) : [])];
         return { ...endedAs(battle, log, campaign), ranks, sides };
       },
       onChange(fight, prev) {

@@ -3,16 +3,17 @@
 // what each leg's days came to; since M29 a leg a raid stopped, and Fly
 // on; since M33b a quest's place, named for its quest, and what winning
 // her did to the quest; since M36 who in the squad would take a choice,
-// and a trap that leaves the place held. rules are the content tables
-// (src/sim/defs.js).
+// and a trap that leaves the place held; since M38f what happened at the
+// colony on a leg, a raid fought out without the ship among it. rules are
+// the content tables (src/sim/defs.js).
 import { maxHp } from '../../sim/campaign.js';
 import { colonyBy } from '../../sim/edges.js';
 import { homePlan, kindOf, onPlan, otherWorlds, placeFightDue, tripHere } from '../../sim/expeditions.js';
-import { pursuerOf } from '../../sim/heat.js';
 import { aWeapon, gearLine } from './armsText.js';
 import { byJob } from './crewJobText.js';
 import { faceOf } from './crewText.js';
 import { changesText, choiceSaid } from './eventText.js';
+import { newsSaid, newsTone } from './newsText.js';
 import { questNoteLines, questPlaceText } from './questText.js';
 
 // The places within reach, a row each: [{ index, name, kind (its kind's
@@ -121,8 +122,9 @@ export function awayText(campaign, rules) {
 
 // What a leg's days came to (expeditions.js flyOut's, flyHome's or
 // flyOn's result), for the hint: { text, tone }. leg: 'out' or 'home';
-// before: the campaign as the leg began. A leg a raid's lander stopped
-// (M29) says so, and the days still to fly.
+// before: the campaign as the leg began. From M38f what happened at the
+// colony on the way (its news), a raid fought out without the ship among
+// it; no lander stops a leg any more (M29's did).
 export function legReport(result, leg, before, rules) {
   const sum = (key) => result.days.reduce((total, day) => total + key(day), 0);
   const grown = sum((day) => day.plan.made.food);
@@ -135,11 +137,20 @@ export function legReport(result, leg, before, rules) {
   if (hungry) said.push(`Short of food on ${hungry} day${hungry === 1 ? '' : 's'}: ${hurt} hit points lost.`);
   const rough = result.days[0]?.plan.rough ?? [];
   if (rough.length) said.push(`With no bed and air at the colony, ${listed(rough.map((id) => before.crew.find((member) => member.id === id)?.name ?? '?'))} didn't rest.`);
-  const left = result.stopped ? result.campaign.colony.trip?.leg?.left ?? 0 : 0;
-  if (left) said.push(`${pursuerOf(before, rules)?.name ?? 'The pursuer'}'s lander is down at the colony: the ship waits, ${left} day${left === 1 ? '' : 's'} still to fly, while those at home face it.`);
-  else if (leg === 'out') said.push(`The squad is at ${result.plan.place.name}.`);
+  const fresh = newEntries(before.colony.news, result.campaign.colony.news);
+  const news = newsSaid(fresh, result.campaign.colony, before, rules);
+  if (news) said.push(`At the colony, ${news}.`);
+  if (leg === 'out') said.push(`The squad is at ${result.plan.place.name}.`);
   else said.push(`The ship is home. ${broughtText(before.colony.trip?.result ?? null, before, rules)}`, ...questNoteLines(before.colony.trip?.result?.quest ?? null, rules, before));
-  return { text: said.join(' '), tone: hungry || left ? 'bad' : 'good' };
+  const tone = hungry ? 'bad' : news ? newsTone(fresh) : 'good';
+  return { text: said.join(' '), tone };
+}
+
+// The colony's news a leg added (M38f): what is in after and wasn't in
+// before.
+function newEntries(before = [], after = []) {
+  const known = new Set(before.map((entry) => JSON.stringify(entry)));
+  return after.filter((entry) => !known.has(JSON.stringify(entry)));
 }
 
 // What a trip brought home, in words.

@@ -9,7 +9,9 @@
 // colony's stores and nothing aboard. Fly home goes from anywhere, a day
 // and a jump's supplies for each system out, with one jump's heat, and a
 // lander can stop it on the way. Landed, the crew is one and the stores
-// one store. Saves are at v36.
+// one store. Saves are at v36. From M38f a raid where the ship isn't is
+// fought out the day its lander comes down (raids.js fightAway), so no
+// lander stops a flight but one stopped in a save from before.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { seedFrom } from '../src/core/rng.js';
@@ -201,7 +203,7 @@ test("the materials keep while the ship is away, past the storehouses' room too,
   assert.equal(nextDay(crammed, rules).campaign.colony.materials, storesOf(crammed, rules).total);
 });
 
-test("a raid found while the ship is away comes down no sooner than the flight home would land (M38d's fix)", () => {
+test("a raid found while the ship is away comes down no sooner than the day after the flight home would land (M38d's fix, M38f's day)", () => {
   // The first seed that finds the colony on the day a jump passes at home.
   const found = (campaign) => {
     for (let n = 1; n <= 500; n++) {
@@ -217,20 +219,27 @@ test("a raid found while the ship is away comes down no sooner than the flight h
   assert.ok(near, 'some seed finds the colony');
   assert.deepEqual(near.campaign.colony.raid, { found: away.colony.day, lands: away.colony.day + 1 + raidWarning });
   assert.equal(flightHome(near.campaign), 1);
-  // Five out: five days, the flight home's.
+  // Five out: six days, the day after the flight home's five (M38f: a raid
+  // where the ship isn't is fought out the day it comes down, so the ship
+  // flying home at once is in the day before).
   const out = 5;
   const far = { ...hot, colony: { ...hot.colony, voyage: { ...hot.colony.voyage, out, at: out } } };
   const farFound = found(far);
   assert.ok(farFound);
-  assert.deepEqual(farFound.campaign.colony.raid, { found: far.colony.day, lands: far.colony.day + 1 + Math.max(raidWarning, out) });
-  // Flying home at once lands the day it comes down: no lander stops it,
-  // and everyone is home to face it.
+  assert.deepEqual(farFound.campaign.colony.raid, { found: far.colony.day, lands: far.colony.day + 1 + Math.max(raidWarning, out + 1) });
+  // Flying home at once lands the day before it comes down: no lander
+  // stops it, and the next day everyone is home to face it.
   const flown = voyageHome(farFound.campaign, rules);
   assert.ok(flown.ok, flown.error);
   assert.equal(flown.landed, true);
   assert.equal(flown.days.length, out);
-  assert.equal(raidDown(flown.campaign), true);
-  assert.deepEqual(landingPlan(flown.campaign, rules).defenders, ids);
+  assert.equal(raidDown(flown.campaign), false);
+  assert.equal(flown.campaign.colony.raid.lands, flown.campaign.colony.day + 1);
+  const next = nextDay(flown.campaign, rules);
+  assert.ok(next.ok, next.error);
+  assert.equal(next.fought, null);
+  assert.equal(raidDown(next.campaign), true);
+  assert.deepEqual(landingPlan(next.campaign, rules).defenders, ids);
   // Found on the way home, the same: the lander comes once the ship is in.
   const homing = { ...far, colony: { ...far.colony, voyage: { ...far.colony.voyage, homing: 2, at: 2 } } };
   assert.equal(found(homing).campaign.colony.raid.lands, homing.colony.day + 1 + raidWarning);
@@ -454,19 +463,25 @@ test('Fly home: a day and a jump\'s supplies a system out, with one jump\'s heat
   assert.match(voyageHomePlan(home, rules).error, /The ship is home/);
 });
 
-test('a lander coming down on the way home stops the flight; once it is faced, Fly home flies on', () => {
+test('a lander coming down on the way home is fought out there and the flight goes on (M38f); a flight one stopped in a save from before flies on once it is faced', () => {
   // Three systems out, the lander coming down after the first day home.
   let far = away;
   for (let n = 0; n < 2; n++) far = leaveSector(at(far, far.run.sector.exit), rules).campaign;
   assert.equal(far.colony.voyage.out, 3);
   const coming = landing(far, far.colony.day + 1);
-  const stopped = voyageHome(coming, rules);
-  assert.ok(stopped.ok, stopped.error);
-  assert.equal(stopped.stopped, true);
-  assert.equal(stopped.landed, false);
-  assert.equal(stopped.days.length, 1);
-  const { campaign } = stopped;
-  assert.equal(campaign.colony.voyage.homing, 2);
+  const flown = voyageHome(coming, rules);
+  assert.ok(flown.ok, flown.error);
+  assert.equal(flown.stopped, false);
+  assert.equal(flown.landed, true);
+  assert.equal(flown.days.length, 3);
+  // Fought out by those at home the day it came down, and the report waits.
+  assert.equal(flown.campaign.colony.raid, null);
+  assert.equal(flown.campaign.flags.raidsFoughtOut, 1);
+  assert.deepEqual(flown.campaign.colony.news.map((entry) => [entry.kind, entry.day]), [['raid', far.colony.day + 1]]);
+  assert.deepEqual(campaignProblems(flown.campaign), []);
+  // Stopped two systems out with the lander down, as a save from before
+  // has it.
+  const campaign = landing({ ...far, colony: { ...far.colony, voyage: { ...far.colony.voyage, homing: 2, at: 2 } } });
   assert.equal(onTheRun(campaign, rules), false, 'on its way home, the ship makes no moves on the run');
   assert.deepEqual(campaignProblems(campaign), []);
   assert.equal(campaignScreen(campaign), 'sector');
@@ -484,12 +499,13 @@ test('a lander coming down on the way home stops the flight; once it is faced, F
   assert.equal(landed.landed, true);
   assert.equal(landed.campaign.colony.voyage, null);
   assert.equal(landed.campaign.heat, over.heat);
-  // A lander on the last day lands the ship with it: the raid is the
-  // colony's, faced with everyone home.
+  // A lander on the flight's last day is fought out before the ship is in
+  // (M38f): it lands to the report, with nothing to face.
   const last = voyageHome(landing(away, away.colony.day + 1), rules);
   assert.equal(last.landed, true);
-  assert.ok(landingPlan(last.campaign, rules).ok);
-  assert.deepEqual(landingPlan(last.campaign, rules).defenders, ids);
+  assert.equal(raidDown(last.campaign), false);
+  assert.equal(last.campaign.colony.raid, null);
+  assert.equal(last.campaign.colony.news.at(-1).kind, 'raid');
 });
 
 test("the colony keeps its system's other worlds, which its trips reach, as the run moves on past them", () => {
@@ -508,7 +524,7 @@ test("the colony keeps its system's other worlds, which its trips reach, as the 
 });
 
 test('saves at v36 keep a voyage, and those at home in play in a raid fight; a v35 colony migrates home with its worlds; voyages that do not read are caught', () => {
-  assert.equal(SAVE_VERSION, 37);
+  assert.equal(SAVE_VERSION, 38);
   assert.equal(MIGRATIONS.at(-1).from, SAVE_VERSION - 1);
   const fighting = faceRaid(landing(away), rules).campaign;
   for (const campaign of [away, fighting]) {
@@ -521,8 +537,9 @@ test('saves at v36 keep a voyage, and those at home in play in a raid fight; a v
   assert.equal(opened.screen, 'sector');
   // A colony saved at v35 has the ship home and keeps the worlds of the
   // system its run ended in.
-  // (It has no number, place or heat of its own either: M38e's.)
-  const { worlds, voyage, id: _id, at: _at, heat: _heat, ...colony } = home.colony;
+  // (It has no number, place or heat of its own either, M38e's, nor
+  // citizens, growth or news, M38f's.)
+  const { worlds, voyage, id: _id, at: _at, heat: _heat, citizens: _citizens, growth: _growth, news: _news, ...colony } = home.colony;
   assert.equal(voyage, null);
   const v35 = { ...makeSave(saveData({ ...initialState(7), campaign: { ...home, colony } })), version: 35 };
   const migrated = parseSave(JSON.stringify(v35));

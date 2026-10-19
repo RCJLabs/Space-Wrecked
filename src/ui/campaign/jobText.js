@@ -1,10 +1,11 @@
 // Words for jobs (src/sim/contracts.js): the job board's cards, the
 // objective in the fight, and the pay; since M33, whom a job is for and
-// against, and what its client's side adds to the pay (standingText.js).
+// against, and what its client's side adds to the pay (standingText.js);
+// since M38f the captive a rescue on a voyage frees settling at the colony.
 // Pure: rules are the content tables (src/sim/defs.js). tools/jobs.js
 // prints jobs with them too.
 import { objectiveDone } from '../../sim/battle.js';
-import { jobSetup } from '../../sim/contracts.js';
+import { jobSetup, rescuedSettle } from '../../sim/contracts.js';
 import { jobHeat } from '../../sim/heat.js';
 import { raidLoss } from '../../sim/raid.js';
 import { jobPay } from '../../sim/standing.js';
@@ -177,4 +178,15 @@ function countedNames(names) {
   const counts = new Map();
   for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
   return [...counts].map(([name, n]) => (n > 1 ? `${name} ×${n}` : name)).join(', ');
+}
+
+// The captive a rescue on a voyage freed, settling at the colony the ship
+// flew from as the fight ends (M38f, contracts.js rescuedSettle), for the
+// end panel: "Sana Ito settles at Copperhill: 2 citizens there now.", or
+// null when they go their way.
+export function settledLine(battle, campaign, rules) {
+  if (!rescuedSettle(campaign, rules, battle, battle.winner === 'crew')) return null;
+  const ward = battle.units.find((unit) => unit.ward);
+  const n = (campaign.colony.citizens ?? 0) + 1;
+  return `${ward?.name ?? 'The captive'} settles at ${campaign.colony.world.name}: ${n} citizen${n === 1 ? '' : 's'} there now.`;
 }

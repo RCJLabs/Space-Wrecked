@@ -252,11 +252,12 @@ export function mountFight(root, source) {
       colors.set(u.id, crewColor(i));
       // The crew member's look, or one rolled for a fight with no campaign
       // behind it (the Fight sandbox), the same every time; the person the
-      // crew brings out (M38), one rolled from their name, in their kind's
-      // suit.
-      const look = u.ward ? crewLook(`ward ${u.name}`, u.id, looks) : source.lookOf?.(u, i) ?? crewLook('sandbox', i + 1, looks);
+      // crew brings out (M38) and a raid's colonist (M38f), one rolled from
+      // their name, in their kind's suit.
+      const rolled = u.ward ? `ward ${u.name}` : u.citizen ? `colonist ${u.name}` : null;
+      const look = rolled ? crewLook(rolled, u.id, looks) : source.lookOf?.(u, i) ?? crewLook('sandbox', i + 1, looks);
       looks.push(look);
-      faces.set(u.id, portraitUrl(look, (defs.jobs.get(u.kind) ?? defs.people?.get(u.kind))?.look, colors.get(u.id), 'face'));
+      faces.set(u.id, portraitUrl(look, kindOf(u)?.look, colors.get(u.id), 'face'));
     });
     playing = null;
     doorsShown = null;
@@ -504,7 +505,7 @@ export function mountFight(root, source) {
     if (pose.fall > 0) facing = turned(facing, lookOf({ ...u, status: 'down' }, battle), pose.fall);
     const length = Math.hypot(...facing) || 1;
     // A ward (M38), the person the crew brings out, carries no weapon.
-    const kind = defs.jobs.get(u.kind) ?? defs.enemies.get(u.kind) ?? defs.people?.get(u.kind);
+    const kind = kindOf(u);
     return { id: u.id, side: u.side, status: u.status, at, facing: [facing[0] / length, facing[1] / length], trim: colors.get(u.id) ?? palette.enemyTrim, flash: frame?.hit === u.id, look: kind?.look, held: u.ward ? false : defs.weapons.get(u.weapon)?.held, pose };
   }
 
@@ -513,6 +514,12 @@ export function mountFight(root, source) {
     const [a, b] = [Math.atan2(from[1], from[0]), Math.atan2(to[1], to[0])];
     const turn = Math.atan2(Math.sin(b - a), Math.cos(b - a));
     return [Math.cos(a + turn * t), Math.sin(a + turn * t)];
+  }
+
+  // A unit's kind: its job, its enemy, the person a job brings out (M38),
+  // or a raid's colonist (M38f, data/colony.json citizen).
+  function kindOf(u) {
+    return defs.jobs.get(u.kind) ?? defs.enemies.get(u.kind) ?? defs.people?.get(u.kind) ?? (u.citizen ? defs.colony?.citizen : null) ?? null;
   }
 
   // Standing, a unit looks at the nearest enemy still up; lying down, it

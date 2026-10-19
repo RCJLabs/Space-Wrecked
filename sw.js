@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "44974d79f724";
+const VERSION = "849aeec31a93";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -144,6 +144,7 @@ const FILES = [
   "src/sim/events.js",
   "src/sim/expeditions.js",
   "src/sim/fight.js",
+  "src/sim/fightOut.js",
   "src/sim/flags.js",
   "src/sim/frame.js",
   "src/sim/gear.js",
@@ -228,6 +229,7 @@ const FILES = [
   "src/ui/campaign/boardingText.js",
   "src/ui/campaign/captain.js",
   "src/ui/campaign/captainText.js",
+  "src/ui/campaign/carried.js",
   "src/ui/campaign/colony.js",
   "src/ui/campaign/colonyListText.js",
   "src/ui/campaign/colonyStand.js",
@@ -251,6 +253,7 @@ const FILES = [
   "src/ui/campaign/launch.js",
   "src/ui/campaign/launchText.js",
   "src/ui/campaign/newGame.js",
+  "src/ui/campaign/newsText.js",
   "src/ui/campaign/questText.js",
   "src/ui/campaign/raidText.js",
   "src/ui/campaign/sector.js",
