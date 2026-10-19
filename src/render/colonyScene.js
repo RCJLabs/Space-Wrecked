@@ -114,6 +114,8 @@ export function colonyScene({ ship, hull, buildings, site, kind, defs, skin: bas
     const [w, h] = footprint(ghostDef, ghost.rot);
     const color = ghost.ok ? palette.accent : palette.bad;
     plate(ground, [ghost.x - SLAB, ghost.y - SLAB], [ghost.x + w + SLAB, ghost.y + h + SLAB], 0, color, { edge: skin.edge, alpha: GHOST });
+    // Where it can't stand the plate is crossed as well (M42).
+    if (!ghost.ok) cross(ground, ghost.x, ghost.y, ghost.x + w, ghost.y + h, color);
     const model = standing({ ...ghost, uid: 0 }, { defs, skin, round, lit: false });
     for (const { emissive, ...face } of model.faces) faces.push({ ...face, alpha: GHOST });
     glows.push({ at: [ghost.x + w / 2, ghost.y + h / 2, 0.3], r: Math.max(w, h) * 0.8, color });
@@ -142,6 +144,21 @@ function standing(building, { defs, skin, round, lit }) {
 }
 
 // A frame lying on the ground round [x0, y0] to [x1, y1].
+// A cross over the box [x0, y0]..[x1, y1], just above the ground: two
+// strips corner to corner.
+function cross(out, x0, y0, x1, y1, color) {
+  const w = 0.08;
+  const z = 0.02;
+  const strip = ([ax, ay], [bx, by]) => {
+    const [dx, dy] = [bx - ax, by - ay];
+    const n = Math.hypot(dx, dy);
+    const [nx, ny] = [(-dy / n) * w, (dx / n) * w];
+    out.push({ pts: [[ax + nx, ay + ny, z], [bx + nx, by + ny, z], [bx - nx, by - ny, z], [ax - nx, ay - ny, z]], normal: [0, 0, 1], color, alpha: 0.85 });
+  };
+  strip([x0, y0], [x1, y1]);
+  strip([x1, y0], [x0, y1]);
+}
+
 function frame(out, x0, y0, x1, y1, color) {
   plate(out, [x0 - FRAME, y0 - FRAME], [x1 + FRAME, y0], 0, color);
   plate(out, [x0 - FRAME, y1], [x1 + FRAME, y1 + FRAME], 0, color);

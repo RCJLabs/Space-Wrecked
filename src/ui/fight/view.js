@@ -313,7 +313,10 @@ export function mountFight(root, source) {
     fightSounds(fight, prev, action).forEach(cue);
     if (fight.played !== prev.played && fight.played.length) {
       // heard: how far into the playback its sounds have played, in ms.
-      playing = { timeline: makeTimeline(prev.battle, fight.played), start: performance.now(), frame: null, done: false, heard: -1 };
+      // With reduced motion (M42) the end shows at once, its words and
+      // sounds with it, and the board is free.
+      const still = document.documentElement.dataset.motion === 'reduce';
+      playing = { timeline: makeTimeline(prev.battle, fight.played, { still }), start: performance.now(), frame: null, done: false, heard: -1 };
       closeCard();
     }
     if (fight.notice && fight.notice !== prev.notice) {
@@ -483,7 +486,7 @@ export function mountFight(root, source) {
       mapView.setActors({ faces: [...zonesScene(objectiveZones(battle.objective)), ...marks.faces], glows: [], figures: unitsScene(figures).figures });
     }
     labels = {
-      units: battle.units.map((u, i) => ({ at: figures[i].at, status: u.status, hp: u.hp, maxHp: u.maxHp, color: colors.get(u.id) ?? palette.enemyTrim, overwatch: u.overwatch, bleed: u.bleed, selected: u.id === orders?.unit.id, marked: Boolean(u.mark), suppressed: Boolean(u.suppressed), asleep: u.asleep, carrying: Boolean(u.carrying) })),
+      units: battle.units.map((u, i) => ({ at: figures[i].at, status: u.status, hp: u.hp, maxHp: u.maxHp, color: colors.get(u.id) ?? palette.enemyTrim, initial: colors.has(u.id) ? (u.name?.[0] ?? null) : null, overwatch: u.overwatch, bleed: u.bleed, selected: u.id === orders?.unit.id, marked: Boolean(u.mark), suppressed: Boolean(u.suppressed), asleep: u.asleep, carrying: Boolean(u.carrying) })),
       badges: [
         ...(orders?.targets ?? []).filter(({ target }) => target.id !== ordered?.id).map(({ target, odds }) => ({ at: [target.x, target.y], text: `${odds.hit}%`, strong: target.id === aimed?.id })),
         ...orderBadge(preview, orders, ordered),

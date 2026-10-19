@@ -16,9 +16,10 @@
 //     shot     { shooter, target, from, to, hit, progress } for a shot
 //     hit      the id of a unit a shot has just hit, or null
 //     blast    { at: [x, y], progress } for a charge blowing (M38), or null
-//     floats   [{ at: [x, y], text, tone, age }]: words over tiles; tone is
-//              'hit' (an enemy hit), 'hurt' (one of the crew), 'miss',
-//              'good' or 'info'
+//     floats   [{ at: [x, y], text, tone, age, stack }]: words over tiles;
+//              tone is 'hit' (an enemy hit), 'hurt' (one of the crew),
+//              'miss', 'good' or 'info'; stack, how many rose with them on
+//              the same tile before (drawn that many lines higher)
 //     done     true once t is past the last event
 //   }
 //   timeline.length is the ms the events take; timeline.tail, the ms until
@@ -58,12 +59,15 @@ export function durationOf(event) {
   return event.type === 'move' ? STEP_MS * (event.path.length - 1) : MS[event.type] ?? 0;
 }
 
-export function makeTimeline(before, played) {
+// still (M42, reduced motion): every event takes no time, so the end shows
+// at once with all the words rising together, stacked where they share a
+// tile.
+export function makeTimeline(before, played, { still = false } = {}) {
   const beats = [];
   let at = 0;
   for (const step of played) {
     for (const event of step.events) {
-      const ms = durationOf(event);
+      const ms = still ? 0 : durationOf(event);
       beats.push({ at, ms, event });
       at += ms;
     }
@@ -84,7 +88,11 @@ export function frameAt(timeline, t) {
     }
     for (const words of wordsFor(beat.event, view)) {
       const shown = t - beat.at - words.delay * beat.ms;
-      if (shown >= 0 && shown < FLOAT_MS) floats.push({ at: words.at, text: words.text, tone: words.tone, age: shown });
+      if (shown >= 0 && shown < FLOAT_MS) {
+        // Words rising together over one tile stack, one above another.
+        const stack = floats.filter((f) => f.at[0] === words.at[0] && f.at[1] === words.at[1] && Math.abs(f.age - shown) < 1).length;
+        floats.push({ at: words.at, text: words.text, tone: words.tone, age: shown, stack });
+      }
     }
     if (t < beat.at + beat.ms) {
       playing = { event: beat.event, progress: (t - beat.at) / beat.ms };

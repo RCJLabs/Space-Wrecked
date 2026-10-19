@@ -197,11 +197,15 @@ export function sectorText(campaign, rules) {
   };
 }
 
-// A station's or a shipyard's side, for the chart (M33): { name, color },
-// or null for nobody's and for a node that is neither.
+// A station's or a shipyard's side, for the chart (M33): { name, color,
+// initial }, or null for nobody's and for a node that is neither. The
+// initial is the name's first letter past "the" (M42: a pip says whose it
+// is without its color).
 function sideOf(node, rules) {
   const side = stationSide(node, rules);
-  return side ? { name: sideName(side, rules), color: sideColor(side, rules) } : null;
+  if (!side) return null;
+  const name = sideName(side, rules);
+  return { name, color: sideColor(side, rules), initial: name.replace(/^the /i, '')[0].toUpperCase() };
 }
 
 // A node: { name, kind, text }. kind is its kind's name, unless that is its

@@ -397,8 +397,10 @@ textarea {
   background: var(--c-good);
 }
 
-.hgr-crew li[data-wounded='true'] .hgr-hp span {
-  background: var(--c-dash);
+.hgr-crew li[data-wounded='true'] .hgr-hp span,
+.sct-crew-list li[data-wounded='true'] .hgr-hp span {
+  /* Wounded: striped as well as the warning's color (M42). */
+  background: repeating-linear-gradient(135deg, transparent 0 3px, rgba(7, 10, 20, 0.5) 3px 5px), var(--c-dash);
 }
 
 .hgr-num {
@@ -1130,10 +1132,6 @@ textarea {
   gap: 3px;
 }
 
-.sct-crew-list li[data-wounded='true'] .hgr-hp span {
-  background: var(--c-dash);
-}
-
 #ui .sct-crew-act {
   min-height: 48px;
   padding: 0 12px;
@@ -1479,14 +1477,19 @@ textarea {
 }
 
 /* A station of a side (M33): a pip of the side's color at its mark's
-   corner. */
+   corner, with the side's initial in it (M42). */
 .sct-side {
   position: absolute;
-  width: 9px;
-  height: 9px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
   border: 1.5px solid var(--c-space);
   border-radius: 50%;
-  transform: translate(7px, -15px);
+  color: var(--c-space);
+  font: 800 calc(10px * var(--ts, 1))/1 system-ui, sans-serif;
+  font-style: normal;
+  transform: translate(5px, -19px);
   pointer-events: none;
 }
 
@@ -1522,9 +1525,11 @@ textarea {
   outline-offset: 3px;
 }
 
-/* Where the pursuer's hunters may wait (M24): the ring in red. */
+/* Where the pursuer's hunters may wait (M24): the ring in red, and since
+   M42 a second ring outside it, so it needs no color to tell. */
 .sct-node[data-hunt='true'] .sct-dot {
   outline-color: var(--c-bad);
+  box-shadow: 0 0 0 7px var(--c-space), 0 0 0 9px var(--c-bad);
 }
 
 .sct-node[aria-pressed='true'] .sct-dot {
@@ -4812,6 +4817,13 @@ textarea {
 
 .cln-needs div[data-ok='false'] dd {
   color: var(--c-bad);
+}
+
+/* An unmet need carries a mark as well as the danger's color (M42). */
+.cln-needs div[data-ok='false'] dt::before {
+  content: '! ';
+  color: var(--c-bad);
+  font-weight: 800;
 }
 
 .cln-note {

@@ -23,9 +23,10 @@ const BAR_W = 34; // a unit's hit point bar, in px, however many it has
 const toneColor = (name) => ({ hit: palette.bpGlow, hurt: palette.bad, miss: palette.inkDim, good: palette.good, info: palette.visor })[name];
 
 // input: {
-//   units    [{ at: [x, y], status, hp, maxHp, color, overwatch, bleed,
-//            selected, carrying }]: at is the point it stands on, color its
-//            pips'; the selected unit has a marker over it
+//   units    [{ at: [x, y], status, hp, maxHp, color, initial, overwatch,
+//            bleed, selected, carrying }]: at is the point it stands on,
+//            color its pips'; initial a crew member's, by them (M42); the
+//            selected unit has a marker over it
 //   badges   [{ at: [x, y], text, strong }]: over tiles
 //   marks    [{ at: [x, y], text, done, tone }]: a job's objective, on its
 //            tiles; tone 'charge' for a charge set (M38)
@@ -51,7 +52,7 @@ export function paintFightLabels(ctx, cam, rect, { units = [], badges = [], mark
 
 // Hit points over a standing unit, or over one lying on the deck, and a
 // word for its state. A captive held (M38) stands.
-function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, overwatch, bleed, selected, marked, suppressed, asleep, carrying }) {
+function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, initial, overwatch, bleed, selected, marked, suppressed, asleep, carrying }) {
   const standing = status === 'active' || status === 'held';
   const [sx, sy] = project(cam, x, y, standing ? UNIT_TOP + 0.16 : LYING_TOP + 0.14);
   const seg = (BAR_W - (maxHp - 1)) / maxHp;
@@ -61,6 +62,16 @@ function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, overwatch, bleed,
   for (let i = 0; i < maxHp; i++) {
     ctx.fillStyle = i < hp ? color : rgba(palette.ink, 0.16);
     ctx.fillRect(x0 + i * (seg + 1), y0, seg, 5);
+  }
+  // One of the crew: their initial by the bar in their trim, so whose it is
+  // needs no color (M42).
+  if (initial) {
+    ctx.font = SMALL();
+    const w = ctx.measureText(initial).width + 6;
+    ctx.fillStyle = rgba(palette.space, 0.78);
+    ctx.fillRect(x0 - 3 - w, y0 - 4, w, 13);
+    ctx.fillStyle = color;
+    ctx.fillText(initial, x0 - 3 - w / 2, y0 + 2.5);
   }
   const word = status === 'down' ? [`DOWN · ${bleed}${carrying ? ' · CRATE' : ''}`, palette.bad] : status === 'stable' ? ['STABLE', palette.good] : status === 'out' ? ['OUT', palette.inkDim] : status === 'held' ? ['HELD', palette.accent] : standing ? orderWord({ overwatch, marked, suppressed, asleep, carrying }) : null;
   let top = y0 - 2;
@@ -159,9 +170,10 @@ function tag(ctx, cam, { at: [x, y], text, done, tone }) {
 }
 
 // Words over a tile, rising and fading.
-function rising(ctx, cam, { at: [x, y], text, tone, age }) {
+function rising(ctx, cam, { at: [x, y], text, tone, age, stack = 0 }) {
   const t = age / FLOAT_MS;
-  const [sx, sy] = project(cam, x + 0.5, y + 0.5, UNIT_TOP + 0.3);
+  const [sx, sy0] = project(cam, x + 0.5, y + 0.5, UNIT_TOP + 0.3);
+  const sy = sy0 - stack * 17 * textScale();
   ctx.globalAlpha = t < 0.6 ? 1 : Math.max(0, (1 - t) / 0.4);
   ctx.font = FLOAT();
   ctx.lineWidth = 3.5;

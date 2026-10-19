@@ -106,7 +106,7 @@ test("a station's side on the chart, and in its services its prices at the crew'
   const text = sectorText(hall, rules);
   assert.equal(text.station.line, "The union's station: friendly, prices 90%.");
   assert.match(text.offer.line, /^Supplies, 1 credit each, 90% here\./);
-  assert.deepEqual(text.nodes[hall.run.at].side, { name: 'The union', color: text.station.color });
+  assert.deepEqual(text.nodes[hall.run.at].side, { name: 'The union', color: text.station.color, initial: 'U' });
   const depot = there(ahead(onRun({ standing: STOOD }), { type: 'station', name: 'The Depot' }));
   assert.deepEqual([stationText(depot.run.sector.nodes[depot.run.at], depot, rules).line, sectorText(depot, rules).station.tone], ["Con-Reg's station: hostile, prices 150%.", 'warn']);
   // Con-Reg is the miner's pursuer (M33's fix): what the first trade adds,
