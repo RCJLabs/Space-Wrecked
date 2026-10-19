@@ -163,7 +163,7 @@
       "mission": "clear",
       "clients": ["gage"],
       "sites": ["pits", "breakers"],
-      "encounter": "dockers",
+      "encounter": "dockgang",
       "credits": [70, 100],
       "drops": { "chance": 40, "parts": { "corridor": 1, "airlock": 1, "pointdefense": 1, "cockpit": 1 } },
       "pitch": "The other gang has been loading ships at {site} without {client}'s say-so. He'd like them persuaded, and he isn't fussy how."
@@ -225,7 +225,7 @@
       "crates": 1,
       "clients": ["achebe"],
       "sites": ["bonded"],
-      "encounter": "provostpatrol",
+      "encounter": "bonded",
       "against": "fleet",
       "credits": [20, 40],
       "drops": { "chance": 100, "parts": { "engine": 1 } },
@@ -238,7 +238,7 @@
       "mission": "clear",
       "clients": ["linnet"],
       "sites": ["brig", "pits"],
-      "encounter": "regulars",
+      "encounter": "pawners",
       "credits": [60, 90],
       "drops": { "chance": 40, "parts": { "quarters": 1, "lifesupport": 1, "bunks": 1, "airrecycler": 1 } },
       "pitch": "Some of {client}'s customers pawned the same pistol to her three times. They're drinking the proceeds at {site}. She'd like a word, and you're the word."

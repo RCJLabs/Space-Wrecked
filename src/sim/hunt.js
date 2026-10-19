@@ -6,16 +6,25 @@
 //   - at HEAT_MAX, certainly, the task force.
 // The ships are the pursuer's (its run, data/backgrounds.json). Never at a
 // safe kind of node (a station) or one to hide in (a nebula,
-// data/sectors.json). The chance is worked out before the jump, shown, and
-// rolled as shown (Law 4) with the campaign's RNG; a certain one isn't
-// rolled. Found, they are an approach (encounter.js openHunt), and facing
-// them drops heat to heatAfterRaid (encounter.js). Pure.
+// data/sectors.json). In an uncharted system (act 2's past the charts, and
+// those a voyage out crosses) only the task force follows, from raidHeat:
+// under it the hunters have lost the trail (M40). The chance is worked out
+// before the jump, shown, and rolled as shown (Law 4) with the campaign's
+// RNG; a certain one isn't rolled. Found, they are an approach (encounter.js
+// openHunt), and facing them drops heat to heatAfterRaid (encounter.js).
+// Pure.
 import { int, percent } from '../core/rng.js';
 import { HEAT_MAX } from './campaign.js';
 import { openHunt } from './encounter.js';
 import { pursuerOf } from './heat.js';
 
 const MAX_SEED = 0xffffffff;
+
+// True when the ship is in an uncharted system (M40): act 2's past the
+// charts, or any a voyage out from the colony crosses (M38d).
+export function unchartedHere(campaign) {
+  return campaign.run?.sector?.system === true || Boolean(campaign.colony?.voyage);
+}
 
 // The pursuer's ways on the run, or null: { levels, hunters, taskForce,
 // faced }.
@@ -25,9 +34,12 @@ export function huntersOf(campaign, rules) {
 
 // The chance the hunters are waiting at a node of kind `type`, for a ship
 // there with `heat`: { chance (0 to 100), ship (the preset they fly, or
-// null), why } (why: 'safe' or 'hidden' when the kind keeps them off, else
-// null).
-export function huntOdds(campaign, rules, heat, type) {
+// null), why } (why: 'safe' or 'hidden' when the kind keeps them off,
+// 'trail' when an uncharted system has thrown the hunters off it, else
+// null). uncharted: whether the node is in an uncharted system, the ship's
+// own (unchartedHere) unless a jump into one says so (travel.js
+// leadsUncharted).
+export function huntOdds(campaign, rules, heat, type, uncharted = unchartedHere(campaign)) {
   const run = huntersOf(campaign, rules);
   const kind = rules.nodeTypes.get(type);
   if (!run || heat < rules.balance.huntHeat) return { chance: 0, ship: null, why: null };
@@ -35,6 +47,7 @@ export function huntOdds(campaign, rules, heat, type) {
   if (kind?.safe) return { chance: 0, ship: null, why: 'safe' };
   if (heat >= HEAT_MAX) return { chance: 100, ship: run.taskForce, why: null };
   if (heat >= rules.balance.raidHeat) return { chance: rules.balance.taskForceChance, ship: run.taskForce, why: null };
+  if (uncharted) return { chance: 0, ship: null, why: 'trail' };
   return { chance: rules.balance.huntChance, ship: run.hunters, why: null };
 }
 

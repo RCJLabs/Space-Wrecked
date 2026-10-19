@@ -35,11 +35,11 @@ import { regroupPlan } from '../../sim/regroup.js';
 import { repairPlan, wrecksToRepair } from '../../sim/repair.js';
 import { settlePlan } from '../../sim/settle.js';
 import { surveyPlan } from '../../sim/survey.js';
-import { swapPlan } from '../../sim/transponder.js';
+import { swapPlan, swapPriceOf } from '../../sim/transponder.js';
 import { dockHeat, jobPay, patrolWelcome, pursuerSide, stationSide } from '../../sim/standing.js';
 import { stationBoard, stationHere } from '../../sim/stationJobs.js';
 import { framesHere, yardHere } from '../../sim/yards.js';
-import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesCost, suppliesOver, supplyCapacity, supplyOffer, tradeHeat } from '../../sim/travel.js';
+import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesCost, suppliesOver, supplyCapacity, supplyOffer, systemNeeds, tradeHeat } from '../../sim/travel.js';
 import { actTitle, crewText, heatText } from './hubText.js';
 import { defendText, raidHint } from './raidText.js';
 import { colonyPanelText, homeText, landerComing } from './voyageText.js';
@@ -268,8 +268,7 @@ function surveyText(campaign, rules) {
     return { ok: true, label: 'Survey', ask: 'Survey?', text: `${xeno} reads ${here.name} from orbit as the ship passes: no day, no supplies, no heat. Tap again to survey.`, why: null, tone: 'good' };
   }
   const after = campaign.heat + plan.heat;
-  const ship = rules.ships.get(plan.hunt.ship)?.name ?? plan.hunt.ship;
-  const hunters = !plan.hunt.chance ? '' : plan.hunt.chance >= 100 ? ` The ${ship} will find you.` : ` Hunters: ${plan.hunt.chance}% the ${ship} finds you.`;
+  const hunters = huntersFind(rules, plan.hunt);
   return {
     ok: true,
     label: 'Survey',
@@ -482,8 +481,19 @@ function huntLine(campaign, rules, plan, node = null) {
   if (!hunt || withHeat(campaign.heat, plan.heat) < rules.balance.huntHeat) return [];
   if (hunt.why === 'safe') return [`The hunters keep clear of ${portWord(node)}s.`];
   if (hunt.why === 'hidden') return ['The nebula hides the ship: the hunters can\'t see in.'];
+  if (hunt.why === 'trail') return [`Past the charts the hunters have lost the trail: only the task force follows, from heat ${rules.balance.raidHeat}.`];
   const ship = rules.ships.get(hunt.ship)?.name ?? hunt.ship;
   return [hunt.chance >= 100 ? `The ${ship} will be waiting there.` : `Hunters: ${hunt.chance}% the ${ship} waits there.`];
+}
+
+// The hunters' chance of finding the ship where it sits out a day, a
+// survey's or a rest's (hunt.js): a sentence, or none. Past the charts
+// under the task force's heat, that they have lost the trail (M40).
+function huntersFind(rules, hunt) {
+  if (hunt.why === 'trail') return ' Out here the hunters have lost the trail.';
+  if (!hunt.chance) return '';
+  const ship = rules.ships.get(hunt.ship)?.name ?? hunt.ship;
+  return hunt.chance >= 100 ? ` The ${ship} will find you.` : ` Hunters: ${hunt.chance}% the ${ship} finds you.`;
 }
 
 // A day's rest where the ship is (regroup.js), two taps: Regroup, or Hide
@@ -499,8 +509,7 @@ function restText(campaign, rules) {
   const heat = plan.heat < 0 ? `heat −${-plan.heat} to ${after}` : `heat +${plan.heat} to ${after}`;
   const hurt = campaign.crew.some((member) => member.hp < maxHp(member, rules));
   const heal = hurt ? ` Each of the wounded heals ${plan.heal}.` : '';
-  const ship = rules.ships.get(plan.hunt.ship)?.name ?? plan.hunt.ship;
-  const hunters = !plan.hunt.chance ? '' : plan.hunt.chance >= 100 ? ` The ${ship} will find you.` : ` Hunters: ${plan.hunt.chance}% the ${ship} finds you.`;
+  const hunters = huntersFind(rules, plan.hunt);
   return {
     kind: plan.kind,
     label: hide ? 'Hide' : 'Regroup',
@@ -515,7 +524,7 @@ function restText(campaign, rules) {
 function swapText(campaign, rules) {
   if (campaign.run.swapped || campaign.heat <= 0 || hereOf(campaign)?.type !== 'station') return null;
   const plan = swapPlan(campaign, rules);
-  const price = rules.balance.swapPrice;
+  const price = swapPriceOf(campaign, rules);
   const label = `Transponder · ${price}`;
   if (!plan.ok) return { ok: false, label, ask: `Swap for ${price}?`, text: plan.error, why: `${plan.error} You have ${campaign.credits}.` };
   // At a station of the pursuer's side, they log the ship first (M33's fix).
@@ -600,8 +609,18 @@ function leaveText(campaign, rules) {
   // Leaving the last sector, the quests still open on the run go cold
   // (M33b): the plan says so first.
   const cold = plan.ok ? coldWarning((plan.cold ?? []).map((id) => questOf(rules, id)).filter(Boolean), 'Leaving the charts') : null;
-  const lines = plan.ok ? [...(cold ? [cold] : []), ...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), heatLine(campaign, rules, plan), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)] : [plan.error];
-  return { ok: plan.ok, label: 'Jump on', ask: 'Jump on?', title: `On to ${onTo(campaign, rules)}`, lines, tone: plan.check ? 'bad' : cold ? 'warn' : plan.ok ? planTone(plan) : 'info' };
+  const short = plan.ok ? shortLine(campaign, rules, plan) : [];
+  const lines = plan.ok ? [...(cold ? [cold] : []), ...leftLine(campaign, rules, plan), suppliesLine(campaign, rules, plan), ...short, heatLine(campaign, rules, plan), ...huntLine(campaign, rules, plan), ...healLine(campaign, rules, plan), ...fixLine(campaign, rules, plan)] : [plan.error];
+  return { ok: plan.ok, label: 'Jump on', ask: 'Jump on?', title: `On to ${onTo(campaign, rules)}`, lines, short: short[0] ?? null, tone: plan.check || (plan.ok && plan.hungry) ? 'bad' : cold || short.length ? 'warn' : plan.ok ? planTone(plan) : 'info' };
+}
+
+// Into the system past the charts, which has no station, with the holds
+// short of a survey's day and a jump on (M40, travel.js systemNeeds): a
+// line, or none.
+function shortLine(campaign, rules, plan) {
+  if (!plan.short) return [];
+  const needs = systemNeeds(campaign, rules);
+  return [`No station lies past the charts: the holds come in with ${needs - plan.short} supplies, short of the ${needs} a survey's day and a jump on eat. Fill them first.`];
 }
 
 // Where the jump point leads: "sector 3", or past the act's last, "the
@@ -656,6 +675,7 @@ function sectorHint(campaign, rules, { each, offer, leave, known, yard }) {
   // first here.
   const onHand = offer.ok ? Object.values(campaign.parts).reduce((sum, count) => sum + count, 0) : 0;
   if (onHand) return { tone: 'good', text: `${onHand === 1 ? 'A part' : `${onHand} parts`} on hand: tap Refit, on the ship's panel, to fit ${onHand === 1 ? 'it' : 'them'}, free.` };
+  if (leave?.short) return { tone: 'warn', text: leave.short };
   if (leave) return { tone: 'good', text: `Tap Jump on for ${onTo(campaign, rules)}.` };
   if (campaign.supplies < each) return { tone: 'bad', text: 'Short of supplies: the next jump goes hungry. Stations and traders sell them.' };
   if (hunted) return { tone: 'warn', text: `Heat ${campaign.heat}: the hunters may wait where you jump. A long jump sheds heat; so do nebulae and a station's transponder swap.` };

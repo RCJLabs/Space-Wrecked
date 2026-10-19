@@ -180,6 +180,8 @@ import { LANES } from '../src/sim/gen/system.js';
 import { jobHeat, withHeat } from '../src/sim/heat.js';
 import { hasTag } from '../src/sim/modules.js';
 import { huntOdds } from '../src/sim/hunt.js';
+import { mapFromShip } from '../src/sim/mapFromShip.js';
+import { stepsFrom } from '../src/sim/moves.js';
 import { openStep } from '../src/sim/quests.js';
 import { raidIn } from '../src/sim/raids.js';
 import { recruitOffer } from '../src/sim/recruits.js';
@@ -187,8 +189,9 @@ import { repairPrice, wrecksToRepair } from '../src/sim/repair.js';
 import { regroupPlan } from '../src/sim/regroup.js';
 import { dockHeat, jobMoves, jobPay, levelOf, moveStanding, patrolWelcome, priceShare, standingWith, stationSide } from '../src/sim/standing.js';
 import { stationBoard } from '../src/sim/stationJobs.js';
-import { swapPlan } from '../src/sim/transponder.js';
-import { failingCheck, holdOf, jumpSupplies, knownNodes, leavePlan, linked, reach, supplyCapacity, tradeHeat, within } from '../src/sim/travel.js';
+import { walkable } from '../src/sim/terrain.js';
+import { swapPlan, swapPriceOf } from '../src/sim/transponder.js';
+import { failingCheck, holdOf, jumpSupplies, knownNodes, leadsUncharted, leavePlan, linked, reach, supplyCapacity, tradeHeat, within } from '../src/sim/travel.js';
 import { voyageHomePlan, voyagePlan } from '../src/sim/voyage.js';
 import { yardHere } from '../src/sim/yards.js';
 import { upgradeOf } from './arms.js';
@@ -317,7 +320,7 @@ function fitOrder(rules, a, b) {
 // price and a transponder swap's, as a weapon off a rack does (M37): { slot,
 // part, price } or null.
 export function yardBuy(campaign, rules) {
-  const reserve = supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice + rules.balance.swapPrice;
+  const reserve = supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice + swapPriceOf(campaign, rules);
   const items = yardHere(campaign, rules)
     .filter((item) => campaign.credits - item.price >= reserve && wouldFit(campaign, rules, item.part))
     .sort((a, b) => fitOrder(rules, a.part, b.part) || a.slot - b.slot);
@@ -744,7 +747,7 @@ export function nextJump(campaign, rules, policy, { heat = 'manage', from = LONG
   const { jumpHeat } = rules.balance;
   const next = sector.nodes[way.way[1]];
   const out = next.id === sector.exit ? jumpHeat : 0;
-  const hot = heat === 'manage' && (huntOdds(campaign, rules, withHeat(campaign.heat, jumpHeat), next.type).chance > 0 || (out > 0 && huntOdds(campaign, rules, withHeat(campaign.heat, jumpHeat + out), 'start').chance > 0));
+  const hot = heat === 'manage' && (huntOdds(campaign, rules, withHeat(campaign.heat, jumpHeat), next.type).chance > 0 || (out > 0 && huntOdds(campaign, rules, withHeat(campaign.heat, jumpHeat + out), 'start', leadsUncharted(campaign, rules)).chance > 0));
   let long = null;
   for (const [to, links] of reach(sector, at)) {
     if (links !== 2 || sector.nodes[to].col !== sector.nodes[at].col + 2) continue;
@@ -802,11 +805,37 @@ export function restNow(campaign, rules, heat) {
 
 // The ship's part the player gives the colony next: one that gives beds
 // or air, if any can go, else the first that can. A uid, or null once the
-// flight checks (or the room) let no more go.
+// flight checks (or the room) let no more go. From M40 never one whose
+// going cuts a hatch off from the bridge on foot (hatchesCutOff): in 5 of
+// 300 voyages a reactor or a cargo hold given was all that joined the
+// airlock to the rest of the ship, and one boarding on the voyage out
+// sealed itself in.
 export function nextGift(campaign, rules) {
-  const ready = shipParts(campaign, rules).filter((part) => part.ok);
+  const cut = hatchesCutOff(campaign.ship, rules);
+  const ready = shipParts(campaign, rules).filter((part) => part.ok && hatchesCutOff(part.ship, rules) <= cut);
   const housing = ready.find((part) => part.gives.beds > 0 || part.gives.air > 0);
   return (housing ?? ready[0])?.uid ?? null;
+}
+
+// How many of the airlocks' hatches no one can walk to from the bridge, on
+// the ship's battle map (mapFromShip). The builder joins rooms by a shared
+// wall, but a room that can't be walked through (a weapon mount's
+// console) can be the only join left; boarders come in by the hatches and
+// the crew starts on the bridge (deploy.js), so a fight there could never
+// end (boarding.js sealedIn). A ship without a bridge has every hatch cut
+// off.
+export function hatchesCutOff(ship, rules) {
+  const map = mapFromShip(ship, rules);
+  const field = { map, doors: [], units: [] };
+  const bridge = [];
+  for (const room of map.rooms) {
+    if (!hasTag(rules.modules.get(room.type), 'bridge')) continue;
+    for (let y = room.y; y < room.y + room.h; y++) {
+      for (let x = room.x; x < room.x + room.w; x++) if (walkable(field, x, y, rules)) bridge.push([x, y]);
+    }
+  }
+  const away = stepsFrom(field, bridge, rules);
+  return map.hatches.filter(({ x, y }) => !away.has(`${x},${y}`)).length;
 }
 
 // What the player builds at the colony next, before the day passes (see

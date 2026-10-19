@@ -2,14 +2,15 @@
 // stations a day's rest eats a jump's supplies, heals each of the wounded
 // regroupHp and the med bay's day, and costs heat; the hunters may find the
 // ship while it sits. In a nebula the day hides it: heat falls, no roll. At
-// a station, once a sector, the transponder is swapped for credits.
+// a station, once a sector, the transponder is swapped for credits, each
+// swap dearer than the last (M40).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { campaignProblems, HEAT_MAX, maxHp } from '../src/sim/campaign.js';
 import { launch } from '../src/sim/launch.js';
 import { regroup, regroupPlan } from '../src/sim/regroup.js';
 import { initialState, reduce } from '../src/sim/root.js';
-import { swapPlan, swapTransponder } from '../src/sim/transponder.js';
+import { swapPlan, swapPriceOf, swapTransponder } from '../src/sim/transponder.js';
 import { beginRun, jumpSupplies, leaveSector } from '../src/sim/travel.js';
 import { rules } from './battleKit.js';
 import { readyToLaunch } from './launchKit.js';
@@ -108,4 +109,24 @@ test('the transponder swap: at a station, once a sector, heat down swapHeat for 
   const state = reduce({ ...initialState(1), campaign, screen: 'sector' }, { type: 'campaign/swap', rules });
   assert.equal(state.campaign.run.swapped, true);
   assert.equal(state.screen, 'sector');
+});
+
+test('each swap costs swapRise more than the one before it (M40): the campaign counts them, so saves keep the price', () => {
+  const campaign = atKind(onRun({ heat: 60, credits: 500 }), 'station');
+  assert.equal(swapPriceOf(campaign, rules), balance.swapPrice);
+  const first = swapTransponder(campaign, rules).campaign;
+  assert.equal(first.credits, 500 - balance.swapPrice);
+  // A sector on, at a station again: the second costs swapRise more.
+  const exit = { ...first, run: { ...first.run, at: first.run.sector.exit } };
+  const next = atKind({ ...leaveSector(exit, rules).campaign, heat: 60 }, 'station');
+  assert.equal(next.flags.swaps, 1);
+  assert.equal(swapPriceOf(next, rules), balance.swapPrice + balance.swapRise);
+  const plan = swapPlan(next, rules);
+  assert.equal(plan.price, balance.swapPrice + balance.swapRise);
+  const second = swapTransponder(next, rules).campaign;
+  assert.equal(second.credits, next.credits - plan.price);
+  assert.equal(swapPriceOf(second, rules), balance.swapPrice + 2 * balance.swapRise);
+  // Short of the risen price, it says so.
+  assert.match(swapPlan({ ...next, credits: plan.price - 1 }, rules).error, new RegExp(`A swap is ${plan.price} credits`));
+  assert.deepEqual(campaignProblems(second), []);
 });

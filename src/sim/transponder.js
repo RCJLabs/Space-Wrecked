@@ -1,7 +1,8 @@
 // The transponder swap (ROADMAP §4.4, M24): at a station, once a sector (on
 // a voyage, M38d, once a system), the ship's transponder is swapped for one
 // with a clean registration, and the pursuer loses the trail: heat falls
-// swapHeat, for swapPrice credits.
+// swapHeat, for swapPrice credits and swapRise more for each swap the
+// campaign has made (M40: swapPriceOf).
 // A swap docks the ship at the station first (travel.js dockShip), so at
 // one of the pursuer's side the docking heat comes before the swap's fall.
 // The run keeps whether it has been swapped in this sector (run.swapped,
@@ -10,6 +11,12 @@ import { tally } from './flags.js';
 import { withHeat } from './heat.js';
 import { dockShip, hereOf, onTheRun, tradeHeat } from './travel.js';
 
+// What the campaign's next swap costs (M40): swapPrice, and swapRise more
+// for each swap made before it (its flags).
+export function swapPriceOf(campaign, rules) {
+  return rules.balance.swapPrice + rules.balance.swapRise * (campaign.flags?.swaps ?? 0);
+}
+
 // What a swap where the ship is would come to: { ok: true, price, dock (the
 // heat docking adds first: travel.js tradeHeat), heat (the swap's change
 // after it) }, or { ok: false, error }.
@@ -17,7 +24,7 @@ export function swapPlan(campaign, rules) {
   if (!campaign.run || !onTheRun(campaign, rules) || hereOf(campaign)?.type !== 'station') return { ok: false, error: 'Transponders are swapped at stations.' };
   if (campaign.run.swapped) return { ok: false, error: `The transponder has been swapped in this ${campaign.colony?.voyage ? 'system' : 'sector'} already.` };
   if (campaign.heat <= 0) return { ok: false, error: 'There is no heat to lose.' };
-  const price = rules.balance.swapPrice;
+  const price = swapPriceOf(campaign, rules);
   if (campaign.credits < price) return { ok: false, error: `A swap is ${price} credits.` };
   const dock = tradeHeat(campaign, rules);
   const from = withHeat(campaign.heat, dock);

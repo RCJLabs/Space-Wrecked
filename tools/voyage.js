@@ -148,7 +148,7 @@ import { settle } from '../src/sim/settle.js';
 import { allColonies, colonyById } from '../src/sim/colonies.js';
 import { jobPay, levelOf, shareHere, standingWith, stationSide } from '../src/sim/standing.js';
 import { survey } from '../src/sim/survey.js';
-import { swapTransponder } from '../src/sim/transponder.js';
+import { swapPriceOf, swapTransponder } from '../src/sim/transponder.js';
 import { beginRun, buySupplies, failingCheck, hereOf, jump, jumpSupplies, leaveSector, openEvent, scan, scanPlan, supplyCapacity, supplyOffer, tradeHeat } from '../src/sim/travel.js';
 import { flightFromPlan, flyFrom, voyageHome, voyageHomePlan, voyageOut, voyagePlan } from '../src/sim/voyage.js';
 import { runRecord } from '../src/ui/campaign/launchText.js';
@@ -729,7 +729,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     // beyond a holdful's price and a transponder swap's, which keeps the
     // hunters off: beyond a holdful's alone, fewer voyages crossed fed.
     for (const item of trading ? rackHere(campaign, defs) : []) {
-      if (!upgradeOf(campaign, defs, item.weapon, 'ship') || campaign.credits - item.price < reserve + defs.balance.swapPrice) continue;
+      if (!upgradeOf(campaign, defs, item.weapon, 'ship') || campaign.credits - item.price < reserve + swapPriceOf(campaign, defs)) continue;
       const before = campaign;
       const bought = buyFromRack(campaign, defs, item.slot);
       if (!bought.ok) continue;

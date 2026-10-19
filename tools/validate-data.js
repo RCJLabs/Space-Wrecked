@@ -167,6 +167,7 @@ const BALANCE = {
   hideHeat: [-100, 0],
   swapHeat: [-100, 0],
   swapPrice: [0, 1000],
+  swapRise: [0, 1000],
   surveyHeat: [0, 50],
   // Raids on the colony (src/sim/raids.js, M29): the heat a colony day
   // sheds and a trip adds, off the lanes; what lying near the lanes and far

@@ -112,7 +112,7 @@ function fightThrough(campaign, rules, end, players = BOARDING_PLAYERS[campaign.
   const { dragged } = played;
   if (!played.battle.winner) {
     const what = fight.raid ? 'raid' : fight.job ? 'job' : 'boarding';
-    if (sealedIn(played.battle, rules)) throw new SealedIn(`A ${what} fight sealed itself in: after ${MAX_ROUNDS} rounds no one standing can reach a tile with an enemy in sight.`);
+    if (sealedIn(played.battle, rules)) throw new SealedIn(`A ${what} fight sealed itself in: after ${MAX_ROUNDS} rounds no one standing can reach a tile with an enemy in sight.`, played.battle);
     throw new Error(`A ${what} fight stalled after ${MAX_ROUNDS} rounds.`);
   }
   const over = saveFight(campaign, played.battle, [...fight.log, ...played.events]);
@@ -125,7 +125,13 @@ function fightThrough(campaign, rules, end, players = BOARDING_PLAYERS[campaign.
 // fights have no objective, and a fight can't be left once begun (ROADMAP
 // §9), so a player would be held there for good; the test player's trips
 // stop (tools/voyage.js).
-export class SealedIn extends Error {}
+export class SealedIn extends Error {
+  // battle: the fight as it stood, to see what shut it.
+  constructor(message, battle = null) {
+    super(message);
+    this.battle = battle;
+  }
+}
 
 export function sealedIn(battle, rules) {
   const standing = battle.units.filter((u) => u.status === 'active');

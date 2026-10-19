@@ -100,7 +100,7 @@ test('stealth baffles: each jump adds 1 less heat, a long jump too, and so do th
   assert.deepEqual(campaignProblems(jump(quiet, rules, near).campaign), []);
 });
 
-test('hydroponics: 2 supplies grown a jump, a long jump three times that, eaten first, the rest kept up to what the holds take', () => {
+test('hydroponics: its supplies grown a jump (1 since M40), a long jump three times that, eaten first, the rest kept up to what the holds take', () => {
   const run = onRun();
   const { near, far } = nextNodes(run);
   const green = fitted(run, 'hydroponics');
@@ -110,8 +110,8 @@ test('hydroponics: 2 supplies grown a jump, a long jump three times that, eaten 
   assert.equal(growsOf(green, rules, true), grows * balance.longJumpFactor);
   const plan = jumpPlan(green, rules, near);
   assert.deepEqual([plan.supplies, plan.grows], [green.crew.length * balance.jumpSupplies, grows]);
-  // Short of supplies, what grows feeds the crew first: 1 carried and 2
-  // grown cover 3 eaten.
+  // Short of supplies, what grows feeds the crew first: what is carried and
+  // what grows cover what is eaten.
   const short = { ...green, supplies: plan.supplies - grows };
   assert.equal(jumpPlan(short, rules, near).hungry, false);
   assert.equal(jumpPlan({ ...run, supplies: plan.supplies - grows }, rules, near).hungry, true, 'without them, hungry');
@@ -124,7 +124,7 @@ test('hydroponics: 2 supplies grown a jump, a long jump three times that, eaten 
   const full = jump({ ...green, supplies: cap }, rules, near).campaign;
   assert.equal(full.supplies, cap - plan.supplies + grows);
   const one = { ...green, crew: green.crew.slice(0, 1), supplies: supplyCapacity(green.ship, rules, green.crew.slice(0, 1)) };
-  assert.equal(jump(one, rules, near).campaign.supplies, supplyCapacity(one.ship, rules, one.crew), 'one aboard eats 1 and 2 grow: still full');
+  assert.equal(jump(one, rules, near).campaign.supplies, supplyCapacity(one.ship, rules, one.crew), 'one aboard eats 1 and what grows: still full');
   if (far !== undefined) assert.equal(jumpPlan(green, rules, far).grows, grows * balance.longJumpFactor);
   // Two grow twice as much; wrecked, they grow nothing.
   assert.equal(growsOf(fitted(green, 'hydroponics'), rules), 2 * grows);
