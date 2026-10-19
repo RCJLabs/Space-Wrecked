@@ -2,6 +2,62 @@
 
 Newest entry first.
 
+## M43 Tutorial polish (2026-10-19)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met but the stranger with the phone, which is Evan's, at Gate 7. No save change: saves stay at v40.
+
+**How it was picked:** M43 measured first (main after M42). M18's 11 tips all come before the first fight's end. Past them, the guidance is each screen's hint line, which rings nothing and says nothing the first time a thing comes. One tip had gone stale since M42 (a blocked ghost "red"). My recommendations, taken on Evan's standing word to go with them (2026-10-19), are ROADMAP.md's M43 Done when.
+
+**What shipped:**
+- **21 new tips** (`data/tips.json`, `src/ui/tipSteps.js`), ringed and seen once as M18's are:
+  - act 1: a raid, heat, a payment, the shop, Launch;
+  - the run: the chart (with the long jump), a jump, an event, a station, Scan, Regroup or Hide, the swap;
+  - the approach: its orders, Board her;
+  - Survey, Settle here;
+  - the colony: Defend, needs, Build, Next day, a trip.
+- **No tip over a card or a round:** none shows on the chart under an event or the crew card, or on the approach while a round plays (`data-playing`) or over its end. Board her's tip waits until boarding is the crew's choice.
+- **A tip brings its control into sight** (`src/ui/tips.js`).
+- **The builder's tip** says a blocked ghost is crossed.
+- **Guidance the walk found missing:**
+  - the colony's hint says what's next (`colonyText` `next`) where it showed the act's stub words;
+  - Build lists first at the colony;
+  - a day's report ends with what's next;
+  - the approach's later rounds say to tap an order;
+  - the station's supplies hint names Buy and Fill up.
+
+**Done when** (ROADMAP.md, M43), and how each is met:
+- **Tips past the first fight:** `tests/tutorial.test.js` (6 tests: act 1's, the run's, the approach's, the colony's in order, the builder's words, the colony's next); by touch in the walk.
+- **A tip never covers its control:** the walk checks every tip it meets at the three sizes (card clear of the ring, on screen, its control under the ring's middle).
+- **A stranger, as far as a check can stand in:** `m43/walk.mjs` (below).
+- **No save change:** `tipsSeen` takes the new ids; a save under way meets each new tip once.
+- **Every rule tested;** every earlier milestone's check: below.
+
+**The walk** (`m43/walk.mjs`): New game to the colony's first day by touch.
+- **How it goes:** act 1 by touch to the first fight's end. Then a save the sim makes, ready to launch, stands in for act 1's remaining jobs and building, with the tips seen so far kept. From there it is touch again: Launch, two sectors' events, stations and an approach, the system, Survey, Settle here, the landing, and the colony's tips and a day. Fights are won and supplies filled from the dev menu.
+- **Results:** cover 171 of 171 (146 stops), tab 169 of 169 (145 stops), open 171 of 171 (146 stops), with no console errors.
+- **Tips met on the way (22):** the goal, Build, the parts, Take the job, the crew, heat, Pay, Launch, the chart, a jump, an event, Scan, a station, Regroup, the approach's orders, the swap, Survey, Settle here, the needs, Build, Next day and a trip.
+- **Covered by the tests only:** the raid's, the shop's, Board her's and the colony's Defend, which the walk's run didn't meet.
+
+**Tests:**
+- `node --test`: 1179 pass (1173 on main).
+- **New:** `tests/tutorial.test.js` (6).
+- **Changed on purpose:** `tests/approachText.test.js`, whose later rounds now carry a hint ("Next round: tap an order to see its odds.").
+
+**Browser checks:** REGRESS
+
+**Known issues:**
+- **Not a stranger:** the walk proves every stop has guidance, not that a stranger follows it. That is Evan's test at Gate 7.
+- **A save under way meets the new tips once,** where their things next come, even a player who knows them. Settings' Tips Off puts them all away.
+- **The act's words for what's ahead** no longer show at the colony: its hint says what's next instead. `data/campaign.json` keeps them.
+
+**What Evan should test on the phone:**
+- **New game with tips on, to the colony:** each new thing gets a ringed card the first time (heat, the shop, Launch, the chart, a jump, an event, a station, an approach, Survey, Settle here, the colony's needs, Build, Next day, a trip), and none covers what it points at.
+- **The colony:** Build is at the top of the side panel; the hint says which needs are unmet; after Next day it says to tap it again.
+- **An approach past round 1:** the hint says to tap an order.
+- **Hand it to someone new** (Gate 7).
+
+**Next milestone's first task:** none in Phase 7. Gate 7 is Evan's call: v1.0's content on the phone, balanced from each start, with a tutorial a stranger can follow.
+
 ## M42 Accessibility (2026-10-19)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves are at v40.

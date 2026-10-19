@@ -2275,6 +2275,23 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **No save change:** the new tips' ids join `tipsSeen` as M18's do. A save under way sees each new tip once, where its thing next comes.
   - **Every rule tested;** every earlier milestone's check passes.
 
+  As built (2026-10-19), where it differs from the above or adds to it:
+  - **21 new tips:**
+    - act 1: a raid, heat, a payment, the shop and Launch;
+    - the run: the chart, a jump, an event, a station, Scan, Regroup or Hide, and the swap;
+    - the approach: its orders, and Board her;
+    - Survey and Settle here;
+    - the colony: Defend, its needs, Build, Next day and a trip.
+  - **A long jump** is in the chart's tip (a dashed link: three times the supplies, and it sheds heat), not a tip of its own: a planned jump's length lives in the screen, not the state.
+  - **A tip brings its control into sight** when it first shows, scrolling its panel as a thumb would.
+  - **The walk found guidance missing, and it was added:**
+    - the colony's hint was the act's stub words ("All of v0.4 is here…"); it now says what's next, the needs not met and then Next day;
+    - the colony lists Build first, then the places and the voyage out;
+    - a day's report ends "Tap Next day for the next.";
+    - the approach's rounds past the first say "Next round: tap an order to see its odds.", where they said nothing;
+    - the station's supplies hint names Buy and Fill up.
+  - **The walk** is act 1 by touch to the first fight's end, then a sim-made save ready to launch, with the tips seen kept, standing in for act 1's remaining jobs and building. From there it is touch again to the colony's first day. It counts as guidance a tip, a hint naming a button, a hint saying what to tap ("tap one", "Pick 2 traits"), a scene with one way on (the lift-off, the landing), or, once the chart's tip is seen, the ringed nodes in reach.
+
 **Gate 7 (draft):** v1.0's content plays on the phone, balanced from each start, with a tutorial a stranger can follow; and Evan wants to release.
 
 ### Phase 8: Release (v1.0)
@@ -2336,10 +2353,8 @@ These ideas wait until v0.4 or later:
 - the lift-off seen from the ground: the hangar's roof opening and the Tailings falling away, where M17's lift-off is drawn over the starfield (raised in M17)
 - Launch in construction mode, where the last check usually passes: M17 keeps it at the hangar and points there (raised in M17)
 - an act's record with time played and fights won and lost, kept per act: the colony shows what the flags count for the run (raised in M17)
-- tips past the first fight: the shop, heat and payments, a raid, launch. M18's tips cover building, the job board and the first fight's orders (raised in M18)
 - the sector map in 3D: M19's chart is flat, drawn in SVG like the job board. A starfield with the nodes as places, seen through the orbit camera, would match the ships (raised in M19)
 - names on the sector map: M19 names a node in the left panel when it is picked. Every name on the chart would crowd it at 7 columns on the cover screen (raised in M19)
-- tips for the run: what a jump costs, long jumps, stations and hunger, and since M24 the hunters' rings, Regroup, Hide and the transponder swap (raised in M19)
 - a scanner part: scanning comes from the ship as such since M20. A sensor module that lengthens `scanRange` would tie scanning to the build, as Law 1 asks (raised in M20; M39's scanner reaches a link more)
 - more for credits to buy in act 2: M20's runs end with about 100 unspent. Repairs came in M21, patching the crew in M22 (the careful test player spends 18 a run on it at the median), recruits in M23 (50 each; the careful test player signs one on in 15 of 30 runs with a cargo hold, and none on the lockers alone) and the transponder swap in M24 (40 a sector; managing heat, the careful test player swaps once a run at the median, 0 to 4). Bribes (§4.4) are still to come (raised in M20)
 - events that start a fight: M20's events settle with a roll. M21 put hostile ships on nodes of their own; a distress call that turns out to be a trap would join the two (raised in M20)
