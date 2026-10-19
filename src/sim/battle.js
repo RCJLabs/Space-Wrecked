@@ -95,7 +95,9 @@ import { armorAgainst, outOfReach, shotsOf, withinReach } from './weapons.js';
 // (data/jobs.json), which puts the unit on the crew's side, an enemy
 // (data/enemies.json), or a person the crew brings out (`people` in
 // data/contracts.json, M38): a ward, on the crew's side with no weapon, id
-// w1, w2..., held if `held` (a rescue's captive).
+// w1, w2..., held if `held` (a rescue's captive); or from M38f a colonist
+// (data/colony.json citizen): a citizen standing in a raid, on the crew's
+// side with its weapon, `citizen: true`, and no crew member.
 // bonus adds to its kind's numbers: { hp, aim, defense, mobility, armor },
 // each optional (a captain's traits, the difficulty), with at least 1 hit
 // point and 1 of mobility left. rank is a crew member's job rank (ranks.js,
@@ -117,9 +119,10 @@ export function createBattle({ map, units, seed, first = 'crew', options = {}, o
     units: units.map(({ kind, x, y, name, hp: wounded, bonus = {}, rank = 0, talent = null, weapon: carried = null, held = false }) => {
       const job = rules.jobs.get(kind);
       const person = job ? null : rules.people?.get(kind) ?? null;
-      const template = job ?? person ?? rules.enemies.get(kind);
-      if (!template) throw new Error(`createBattle: no job, person or enemy "${kind}"`);
-      const side = job || person ? 'crew' : 'enemy';
+      const colonist = job || person || rules.colony?.citizen?.id !== kind ? null : rules.colony.citizen;
+      const template = job ?? person ?? colonist ?? rules.enemies.get(kind);
+      if (!template) throw new Error(`createBattle: no job, person, colonist or enemy "${kind}"`);
+      const side = job || person || colonist ? 'crew' : 'enemy';
       const team = person ? 'ward' : side;
       counts[team] += 1;
       const add = (key) => (template[key] ?? 0) + (bonus[key] ?? 0);
@@ -154,6 +157,7 @@ export function createBattle({ map, units, seed, first = 'crew', options = {}, o
         ...(job && rank > 0 ? { rank } : {}),
         ...(job && talent ? { talent } : {}),
         ...(person ? { ward: true } : {}),
+        ...(colonist ? { citizen: true } : {}),
       };
     }),
     doors: [],

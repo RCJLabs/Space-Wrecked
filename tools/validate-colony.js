@@ -12,12 +12,19 @@
 // and its words. From M28 a build may give instead (a solar array's power,
 // a shelter's beds and air): what it gives, each a whole number other than
 // 0 (power below 0 is what it needs), and at least one of them. A build
-// makes or gives, never both, and gives power only if it makes none.
+// makes or gives, never both, and gives power only if it makes none. From
+// M38f the colonist a citizen fights a raid as (raids.js): an id of its
+// own, a name, its numbers, a weapon that exists, and a look
+// (src/render/figures/looks.js).
 import { BUILD_GIVES, MAKES, RESOURCES } from '../src/sim/colony.js';
 import { MAX_PLACE_NAME as MAX_NAME } from '../src/sim/runShape.js';
+import { lookProblems } from '../src/render/figures/looks.js';
 import { isId, isIntIn, isObject, isText, knownKeys, listOf } from './checks.js';
 
-const FILE_KEYS = ['site', 'aboard', 'text', 'materials', 'builds', 'buildings'];
+const FILE_KEYS = ['site', 'aboard', 'text', 'materials', 'citizen', 'builds', 'buildings'];
+// The colonist (M38f): its keys and the range of each number.
+const CITIZEN_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'weapon', 'look'];
+const CITIZEN_NUMBERS = { hp: [1, 20], aim: [0, 100], defense: [0, 50], mobility: [1, 8], armor: [0, 5] };
 const SITE_KEYS = ['width', 'height', 'gap'];
 // shots (M29): how many times a defense fires at a raid's lander as it
 // comes down (src/sim/raids.js).
@@ -34,8 +41,8 @@ const MAX_SIZE = 4;
 const MAX_LEAST = 9;
 const MAX_GIVES = 20;
 
-// modules: data/modules.json's list.
-export function checkColony(file, modules, fail) {
+// modules: data/modules.json's list; weapons, data/weapons.json's.
+export function checkColony(file, modules, fail, weapons = []) {
   const where = 'colony.json';
   if (!isObject(file)) {
     fail(where, 'must be an object');
@@ -58,6 +65,7 @@ export function checkColony(file, modules, fail) {
   }
 
   if (!isIntIn(file.materials, 0, MAX_MATERIALS)) fail(where, `materials must be a whole number from 0 to ${MAX_MATERIALS}`);
+  checkCitizen(file.citizen, new Set((Array.isArray(weapons) ? weapons : []).map((w) => w?.id)), `${where} citizen`, fail);
   const builds = listOf(file, 'builds', where, fail);
   if (!builds.length) fail(where, 'needs a build at least');
   const ids = new Set();
@@ -108,6 +116,23 @@ export function checkColony(file, modules, fail) {
     if (!isText(building.text) || building.text.length > MAX_TEXT) fail(at, `text must be a non-empty string of up to ${MAX_TEXT} letters`);
     if (building.shots !== undefined && !isIntIn(building.shots, 1, MAX_SHOTS)) fail(at, `shots must be a whole number from 1 to ${MAX_SHOTS}, or left out for a building that doesn't fire`);
   });
+}
+
+// The colonist a citizen fights a raid as (M38f): its id, name, numbers,
+// a weapon of weapons (ids), and its look.
+function checkCitizen(citizen, weapons, at, fail) {
+  if (!isObject(citizen)) {
+    fail(at, 'must be an object: the colonist a citizen fights a raid as');
+    return;
+  }
+  knownKeys(citizen, CITIZEN_KEYS, at, fail);
+  if (!isId(citizen.id)) fail(at, 'id must be lowercase letters, digits and dashes');
+  if (!isText(citizen.name) || citizen.name.length > MAX_NAME) fail(at, `name must be a non-empty string of up to ${MAX_NAME} letters`);
+  for (const [key, [min, max]] of Object.entries(CITIZEN_NUMBERS)) {
+    if (!isIntIn(citizen[key], min, max)) fail(at, `${key} must be a whole number from ${min} to ${max}`);
+  }
+  if (!weapons.has(citizen.weapon)) fail(at, `weapon: unknown weapon "${citizen.weapon}"`);
+  for (const problem of lookProblems(citizen.look)) fail(at, problem);
 }
 
 // A build that makes: what, from which of the world's numbers, and the

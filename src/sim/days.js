@@ -39,8 +39,8 @@
 // pursuer's, the campaign's. Pure.
 import { atColony } from './acts.js';
 import { backAboard, homeFront } from './away.js';
-import { thereAt, thereFrom } from './colonies.js';
-import { colonyStats, storesOf } from './colony.js';
+import { thereAt, thereFrom, withNews } from './colonies.js';
+import { citizenEats, colonyStats, homeCrew, storesOf } from './colony.js';
 import { colonyEdge } from './edges.js';
 import { tally } from './flags.js';
 import { healCrew, healRate } from './medbay.js';
@@ -70,10 +70,11 @@ export function dayPlan(campaign, rules) {
 // who don't rest for want of a bed and air, while the ship is away), food
 // and materials ([now, after the day]), lost ({ food, materials }: what
 // the stores can't keep), stores (what they keep of each), found (the
-// odds, percent, of the pursuer finding the colony at the day's end, M29)
-// }, or { ok: false, error }. While the ship is away on a voyage (M38d) it
-// is the day of those at home, on the colony's food, and the materials
-// past the stores keep (see the top of the file).
+// odds, percent, of the pursuer finding the colony at the day's end, M29),
+// citizens (M38f: citizensDay's) }, or { ok: false, error }. While the ship
+// is away on a voyage (M38d) it is the day of those at home, on the
+// colony's food, and the materials past the stores keep (see the top of
+// the file). From M38f the citizens eat too.
 export function planDay(campaign, rules) {
   if (campaign.colony.voyage?.home) return planDay(homeFront(campaign), rules);
   const { day, materials, trip } = campaign.colony;
@@ -81,7 +82,7 @@ export function planDay(campaign, rules) {
   const stats = colonyStats(campaign, rules);
   const stores = storesOf(campaign, rules, stats).total;
   const { made } = stats;
-  const eats = jumpSupplies(campaign, rules);
+  const eats = jumpSupplies(campaign, rules) + citizenEats(campaign.colony, rules);
   const harvest = campaign.supplies + made.food;
   const fed = harvest >= eats;
   const { regroupHp, hungerHp } = rules.balance;
@@ -110,13 +111,32 @@ export function planDay(campaign, rules) {
     lost: { food: Math.max(0, food - stores), materials: Math.max(0, dug - keeps) },
     stores,
     found: foundOdds(campaign, rules),
+    citizens: citizensDay(campaign, rules, stats, fed),
   };
+}
+
+// What the day comes to for the colony's citizens (M38f): { now, after,
+// growth ([now, after]: the days it has been fit to grow), why (why none
+// grows: 'hungry', 'nobody', 'room' (no bed and air free for one more) or
+// 'dark' (a building unpowered); null when the day counts toward the next)
+// }. Fit, a day counts; every citizenDays such days, one more citizen. A
+// hungry day, one leaves.
+export function citizensDay(campaign, rules, stats, fed) {
+  const { colony } = campaign;
+  const now = colony.citizens ?? 0;
+  const growth = colony.growth ?? 0;
+  const days = rules.balance.citizenDays ?? 0;
+  const why = !fed ? 'hungry' : !now && !homeCrew(campaign).length ? 'nobody' : stats.citizens.free <= 0 ? 'room' : stats.buildings.some((b) => !b.powered) ? 'dark' : null;
+  if (why === 'hungry') return { now, after: Math.max(0, now - 1), growth: [growth, growth], why };
+  if (why || !days) return { now, after: now, growth: [growth, growth], why };
+  return growth + 1 >= days ? { now, after: now + 1, growth: [growth, 0], why } : { now, after: now, growth: [growth, growth + 1], why };
 }
 
 // Passes Next day (see dayPlan). Returns { ok: true, plan, campaign, healed
 // (hit points healed in all), hurt (hit points hunger took in all), found
 // (the raid the pursuer found at the day's end, or null), roll (its roll,
-// or null when there were no odds) } or { ok: false, error }.
+// or null when there were no odds), fought (a raid fought out where the
+// ship isn't, M38f: raids.js fightAway's, or null) } or { ok: false, error }.
 export function nextDay(campaign, rules) {
   const plan = dayPlan(campaign, rules);
   return plan.ok ? passPlanned(campaign, rules, plan) : plan;
@@ -166,10 +186,17 @@ function passPlanned(campaign, rules, plan) {
     colonyHealed: healed,
     hungerHurt: hurt,
   });
-  const colony = { ...campaign.colony, day: plan.day + 1, materials: plan.materials[1] };
+  // The citizens (M38f): one more or one fewer, and while the ship isn't
+  // there, the news says so.
+  const { citizens } = plan;
+  const grown = { ...campaign.colony, day: plan.day + 1, materials: plan.materials[1], citizens: citizens.after, growth: citizens.growth[1] };
+  const kind = citizens.after > citizens.now ? 'grew' : citizens.after < citizens.now ? 'left' : null;
+  const away = Boolean(campaign.colony.voyage || campaign.colony.trip);
+  const colony = kind && away ? withNews(grown, { day: plan.day, kind, citizens: citizens.after }) : grown;
+  const counted = kind ? tally(flags, { [kind === 'grew' ? 'citizensGrown' : 'citizensLeft']: 1 }) : flags;
   const changed = hurt || healed ? crew : campaign.crew;
-  const ended = raidDayEnd(campaign, { ...campaign, supplies: plan.food[1], crew: changed, colony, flags }, rules);
-  return { ok: true, plan, campaign: othersDay(ended.campaign, rules), healed, hurt, found: ended.found, roll: ended.roll };
+  const ended = raidDayEnd(campaign, { ...campaign, supplies: plan.food[1], crew: changed, colony, flags: counted }, rules);
+  return { ok: true, plan, campaign: othersDay(ended.campaign, rules), healed, hurt, found: ended.found, roll: ended.roll, fought: ended.fought };
 }
 
 // The day at each other colony (M38e), in the order settled, once the

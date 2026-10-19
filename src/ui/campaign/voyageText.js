@@ -10,7 +10,7 @@ import { allColonies, colonyById, reachOf, thereAt } from '../../sim/colonies.js
 import { storesOf } from '../../sim/colony.js';
 import { crewRoom } from '../../sim/crew.js';
 import { pursuerOf } from '../../sim/heat.js';
-import { downAt } from '../../sim/raids.js';
+import { colonistsOf, downAt } from '../../sim/raids.js';
 import { voyageHomePlan } from '../../sim/voyage.js';
 import { raidStatus } from './raidText.js';
 
@@ -116,8 +116,10 @@ export function homeText(campaign, rules) {
 
 // What the chart's hint says of a raid's lander on its way to a colony
 // while the ship is away, or null with none coming: { text, tone }. It says
-// whether flying there now lands before it. The colony flown from first,
-// then the others (M38e).
+// whether flying there now lands before it, and who fights it without the
+// ship. The colony flown from first, then the others (M38e). From M38f a
+// lander coming down where the ship isn't is fought out that day, so to
+// meet it the ship lands the day before.
 export function landerComing(campaign, rules) {
   if (!campaign.colony?.voyage) return null;
   const colony = allColonies(campaign).find((one) => one.raid && one.day < one.raid.lands);
@@ -125,11 +127,22 @@ export function landerComing(campaign, rules) {
   const days = colony.raid.lands - colony.day;
   const flight = reachOf(campaign, colony);
   const home = colony === campaign.colony;
-  const there = home ? campaign.colony.voyage.home?.crew ?? [] : thereAt(campaign, colony.id).crew;
-  const who = home ? (there.length ? 'those at home fight it' : 'nobody is home to fight it') : there.length ? 'those there fight it' : 'nobody is there to fight it';
+  const there = home ? campaign : thereAt(campaign, colony.id);
+  const crew = home ? campaign.colony.voyage.home?.crew ?? [] : there.crew;
+  const who = fightersText(crew.length, colonistsOf(there, rules), home);
   const go = home ? 'Fly home' : `Fly to ${colony.world.name}`;
-  const then = flight <= days ? `${go} now (${dayCount(flight)}) to meet it, or ${who}.` : `${home ? 'Flying home' : 'Flying there'} takes ${dayCount(flight)}, too long to meet it: ${who}.`;
+  const then = flight < days ? `${go} now (${dayCount(flight)}) to meet it, or ${who}.` : `${home ? 'Flying home' : 'Flying there'} takes ${dayCount(flight)}, too long to meet it: ${who}.`;
   return { text: `${pursuerOf(campaign, rules)?.name ?? 'The pursuer'} found ${colony.world.name}: their lander comes down in ${dayCount(days)}. ${then}`, tone: 'warn' };
+}
+
+// Who fights a raid the ship doesn't meet (M38f): the crew there, as those
+// at home or those there, and its colonists.
+function fightersText(crew, colonists, home) {
+  if (!crew && !colonists) return `nobody is ${home ? 'home' : 'there'} to fight it`;
+  const them = home ? 'those at home' : 'those there';
+  const theirs = `${colonists} colonist${colonists === 1 ? '' : 's'}`;
+  const who = crew && colonists ? `${them} and ${theirs}` : crew ? them : `its ${theirs}`;
+  return `${who} fight${crew || colonists > 1 ? '' : 's'} it without the ship`;
 }
 
 // "1 day", "3 days".

@@ -103,7 +103,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      whoever is there and its food; every colony its number, where it
 //      lies along the line of systems and its own heat; a voyage where the
 //      ship is along that line and the colony it flies to (M38e)
-export const SAVE_VERSION = 37;
+//  38  citizens: every colony its citizens, the days toward the next and
+//      its news; a raid's fight can hold colonists (M38f)
+export const SAVE_VERSION = 38;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -511,6 +513,20 @@ export const MIGRATIONS = [
       const { voyage } = colony;
       const flying = isObject(voyage) ? { ...voyage, at: voyage.homing ?? voyage.out, to: null } : voyage;
       return { ...data, campaign: { ...data.campaign, colonies: [], colony: { ...colony, id: 1, at: 0, heat: data.campaign.heat, voyage: flying } } };
+    },
+  },
+  // Citizens (M38f): a colony from before has none, nothing toward the
+  // next and no news; a fight saved then holds no colonists.
+  {
+    from: 37,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign)) return data;
+      const fresh = (colony) => (isObject(colony) ? { ...colony, citizens: 0, growth: 0, news: [] } : colony);
+      const { colony, colonies } = data.campaign;
+      const campaign = { ...data.campaign };
+      if (isObject(colony)) campaign.colony = fresh(colony);
+      if (Array.isArray(colonies)) campaign.colonies = colonies.map(fresh);
+      return { ...data, campaign };
     },
   },
 ];

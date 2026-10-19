@@ -44,12 +44,13 @@
 import { int } from '../core/rng.js';
 import { atColony } from './acts.js';
 import { backAboard, colonyFood, homeFront, homeOf, withColonyFood } from './away.js';
-import { allColonies, backFrom, frontAt, heatAt, reachOf, thereAt, thereFrom } from './colonies.js';
+import { allColonies, backFrom, frontAt, heatAt, reachOf, thereAt, thereFrom, withNews } from './colonies.js';
 import { createBattle } from './battle.js';
 import { crewUnit, endFight } from './campaign.js';
 import { buildingOf, colonyStats } from './colony.js';
 import { colonyMap, raidStarts } from './colonyMap.js';
 import { colonyEdge } from './edges.js';
+import { fightOut } from './fightOut.js';
 import { tally } from './flags.js';
 import { pursuerOf, runLevel, withHeat } from './heat.js';
 import { eased } from './quests.js';
@@ -123,22 +124,28 @@ export function downText(campaign, rules) {
 // its count risen): with no raid coming, the pursuer may find the colony,
 // at the odds of the day just ended (foundOdds, on the campaign as it was),
 // its lander coming down no sooner than the ship could reach it (M38e,
-// reachOf); then heat falls there: the campaign's with the ship landed, else
-// the colony's own (M38e; M38d left it alone, heat following the ship).
-// Returns { campaign, odds, roll (null when nothing was rolled), found (the
-// raid found, or null) }.
+// reachOf), and from M38f, where the ship isn't, no sooner than the day
+// after it could land there (raidReach), so flying straight back meets it;
+// then heat falls there: the campaign's with the ship landed, else the
+// colony's own (M38e; M38d left it alone, heat following the ship). From
+// M38f, where the ship isn't (on a voyage or a trip, or at another colony),
+// a lander coming down is fought out at once (fightAway). Returns {
+// campaign, odds, roll (null when nothing was rolled), found (the raid
+// found, or null), fought (fightAway's, or null) }.
 export function raidDayEnd(before, campaign, rules) {
   const odds = foundOdds(before, rules);
   let { rng } = campaign;
   let roll = null;
   let raid = campaign.colony.raid;
   let found = null;
+  const away = Boolean(campaign.colony.voyage || campaign.colony.trip);
   if (odds > 0) {
     const rolled = int(rng, 0, 99);
     roll = rolled.value;
     rng = rolled.state;
     if (roll < odds) {
-      found = { found: before.colony.day, lands: campaign.colony.day + Math.max(rules.balance.raidWarning, reachOf(campaign, campaign.colony)) };
+      const reach = raidReach(campaign, campaign.colony);
+      found = { found: before.colony.day, lands: campaign.colony.day + Math.max(rules.balance.raidWarning, away ? reach + 1 : reach) };
       raid = found;
     }
   }
@@ -146,7 +153,19 @@ export function raidDayEnd(before, campaign, rules) {
   const fall = (heat) => withHeat(heat, -rules.balance.colonyHeatFall);
   const heat = voyage ? campaign.heat : fall(campaign.heat);
   const flags = tally(campaign.flags, { raidsFound: found ? 1 : 0, ...(found && voyage ? { raidsFoundAway: 1 } : {}) });
-  return { campaign: { ...campaign, rng, heat, flags, colony: { ...campaign.colony, raid, heat: voyage ? fall(campaign.colony.heat) : campaign.colony.heat } }, odds, roll, found };
+  const ended = { ...campaign, rng, heat, flags, colony: { ...campaign.colony, raid, heat: voyage ? fall(campaign.colony.heat) : campaign.colony.heat } };
+  const fought = away && raid && ended.colony.day >= raid.lands ? fightAway(ended, rules) : null;
+  return { campaign: fought ? fought.campaign : ended, odds, roll, found, fought };
+}
+
+// The days the ship needs to be back at a colony to meet a raid there
+// (M38f): on a trip from it, a leg home, or two while it is still on its
+// way out or at the place (expeditions.js; the place's days, a pilot's day
+// short of them not counted); else reachOf's.
+function raidReach(campaign, colony) {
+  const trip = colony === campaign.colony ? colony.trip : null;
+  if (trip) return (trip.place?.days ?? 0) * (trip.done ? 1 : 2);
+  return reachOf(campaign, colony);
 }
 
 // The days a flight home from the voyage would take from here: a day for
@@ -187,7 +206,8 @@ export function defensesOf(campaign, rules) {
 
 // What facing the raid that is down would come to: { ok: true, colony (the
 // number of the colony it is down at, M38e), raiders (the pursuer's, enemy
-// ids), defenders (crew ids there), guns, shots, armor and aim
+// ids), defenders (crew ids there), citizens (how many stand beside them
+// as colonists, M38f: colonistsOf), guns, shots, armor and aim
 // (defensesOf's, there), hit (each shot's chance, percent: landingHit, and
 // a marine there's more, edges.js) }, or { ok: false, error }. At the
 // colony, or from the run while the ship is away on a voyage (M38d); from
@@ -200,9 +220,88 @@ export function landingPlan(campaign, rules) {
   const pursuer = colonyPursuer(campaign, rules);
   const raiders = rules.encounters.get(pursuer?.raiders)?.enemies;
   if (!raiders) return { ok: false, error: 'The raiders are unknown.' };
+  return { ok: true, colony: at.id, ...facing(there, rules, raiders) };
+}
+
+// The raid's sides at a colony, as there lives it: { raiders, defenders
+// (crew ids), citizens, guns, shots, armor, aim, hit } (see landingPlan).
+function facing(there, rules, raiders) {
   const defenders = defendersOf(there);
   const hit = Math.min(100, rules.balance.landingHit + colonyEdge(defenders, rules, 'landing'));
-  return { ok: true, colony: at.id, raiders, defenders: defenders.map((member) => member.id), ...defensesOf(there, rules), hit };
+  return { raiders, defenders: defenders.map((member) => member.id), citizens: colonistsOf(there, rules), ...defensesOf(there, rules), hit };
+}
+
+// How many of a colony's citizens stand in its raid as colonists (M38f): all
+// of them, up to raidCitizens; none without data/colony.json's citizen.
+export function colonistsOf(campaign, rules) {
+  if (!rules.colony?.citizen) return 0;
+  return Math.min(campaign.colony?.citizens ?? 0, rules.balance.raidCitizens ?? 0);
+}
+
+// The guns fire at the lander (faceRaid, fightAway): a roll a shot (0 to 99,
+// under hit to hit), each hit a raider fewer, the last of the party first.
+// Returns { landing: { shots ([{ uid, name, roll, hit }]), hits, landed
+// (the raiders left) }, rolled (the campaign with the rolls and the flags) }.
+function fireAtLander(campaign, plan) {
+  let { rng } = campaign;
+  const shots = [];
+  for (const gun of plan.guns) {
+    for (let n = 0; n < gun.shots; n++) {
+      const rolled = int(rng, 0, 99);
+      rng = rolled.state;
+      shots.push({ uid: gun.uid, name: gun.name, roll: rolled.value, hit: rolled.value < plan.hit });
+    }
+  }
+  const hits = shots.filter((shot) => shot.hit).length;
+  const landed = plan.raiders.slice(0, Math.max(0, plan.raiders.length - hits));
+  const flags = tally(campaign.flags, { landingShots: shots.length, landingHits: hits, raidersStopped: plan.raiders.length - landed.length });
+  return { landing: { shots, hits, landed }, rolled: { ...campaign, rng, flags } };
+}
+
+// The raid's fight on the colony's grid, as there lives it (faceRaid,
+// fightAway): whoever is there and, from M38f, its colonists (colonistsOf)
+// beside them in the crew's band, against the raiders left, each defender
+// with a powered shield's armor and a powered armory's aim; its seed the
+// next roll of rng. Returns { battle, events, seed, rng, members (the crew
+// fighting, in their units' order) } or { error }.
+function raidBattle(there, rules, plan, landed, rng, { forgiving = false, difficulty = 'normal' } = {}) {
+  const map = colonyMap(there.colony, rules);
+  const members = defendersOf(there);
+  const unknown = members.find((member) => !rules.jobs.has(member.job));
+  if (unknown) return { error: `${unknown.name}'s job "${unknown.job}" is unknown.` };
+  const colonists = plan.citizens;
+  const starts = map && raidStarts(map, members.length + colonists, landed.length, rules);
+  if (!starts) return { error: `There isn't room on the colony's grid for ${members.length + colonists} defenders and ${landed.length} raiders.` };
+  const seedRoll = int(rng, 0, MAX_SEED);
+  const bonus = enemyBonus(difficulty, rules.balance);
+  const kit = (own = {}) => ({ ...own, armor: (own.armor ?? 0) + plan.armor, aim: (own.aim ?? 0) + plan.aim });
+  const citizen = rules.colony?.citizen;
+  const units = [
+    ...members.map((member, i) => {
+      const unit = crewUnit(member, rules);
+      return { ...unit, bonus: kit(unit.bonus), x: starts.crew[i][0], y: starts.crew[i][1] };
+    }),
+    ...Array.from({ length: colonists }, (_, i) => {
+      const [x, y] = starts.crew[members.length + i];
+      return { kind: citizen.id, name: `${citizen.name} ${i + 1}`, bonus: kit(), x, y };
+    }),
+    ...landed.map((kind, i) => ({ kind, x: starts.raiders[i][0], y: starts.raiders[i][1], bonus })),
+  ];
+  const { battle, events } = createBattle({ map, units, seed: seedRoll.value, options: { forgiving, press: true } }, rules);
+  return { battle, events, seed: seedRoll.value, rng: seedRoll.state, members };
+}
+
+// The colonists who fell in a raid's battle (M38f): those of its citizens
+// not standing at its end.
+export function fallenColonists(battle) {
+  return battle.units.filter((unit) => unit.citizen && unit.status !== 'active').length;
+}
+
+// The campaign with the colony's citizens fewer by fell.
+function lessCitizens(campaign, fell) {
+  if (!fell) return campaign;
+  const { colony } = campaign;
+  return { ...campaign, colony: { ...colony, citizens: Math.max(0, (colony.citizens ?? 0) - fell) }, flags: tally(campaign.flags, { citizensFell: fell }) };
 }
 
 // Faces the raid that is down (see landingPlan): the guns fire at the
@@ -224,46 +323,60 @@ export function faceRaid(campaign, rules, { forgiving = false, difficulty = 'nor
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
   const plan = landingPlan(campaign, rules);
   if (!plan.ok) return plan;
-  let { rng } = campaign;
-  const shots = [];
-  for (const gun of plan.guns) {
-    for (let n = 0; n < gun.shots; n++) {
-      const rolled = int(rng, 0, 99);
-      rng = rolled.state;
-      shots.push({ uid: gun.uid, name: gun.name, roll: rolled.value, hit: rolled.value < plan.hit });
-    }
-  }
-  const hits = shots.filter((shot) => shot.hit).length;
-  const landed = plan.raiders.slice(0, Math.max(0, plan.raiders.length - hits));
-  const landing = { shots, hits, landed };
-  const rolled = { ...campaign, rng, flags: tally(campaign.flags, { landingShots: shots.length, landingHits: hits, raidersStopped: plan.raiders.length - landed.length }) };
+  const { landing, rolled } = fireAtLander(campaign, plan);
+  const { landed } = landing;
   const other = plan.colony === campaign.colony.id ? null : plan.colony;
-  if (!landed.length || !plan.defenders.length) {
+  if (!landed.length || (!plan.defenders.length && !plan.citizens)) {
     const won = !landed.length;
     const settled = settleRaid(other ? thereAt(rolled, other) : rolled, rules, won);
     return { ok: true, campaign: other ? thereFrom(rolled, settled.campaign) : settled.campaign, colony: plan.colony, landing, fight: false, won, taken: settled.taken };
   }
   const there = other ? thereAt(campaign, other) : campaign;
-  const map = colonyMap(there.colony, rules);
-  const members = defendersOf(there);
-  const unknown = members.find((member) => !rules.jobs.has(member.job));
-  if (unknown) return { ok: false, error: `${unknown.name}'s job "${unknown.job}" is unknown.` };
-  const starts = map && raidStarts(map, members.length, landed.length, rules);
-  if (!starts) return { ok: false, error: `There isn't room on the colony's grid for ${members.length} crew and ${landed.length} raiders.` };
-  const seedRoll = int(rng, 0, MAX_SEED);
-  const bonus = enemyBonus(difficulty, rules.balance);
-  const units = [
-    ...members.map((member, i) => {
-      const unit = crewUnit(member, rules);
-      const kit = { ...unit.bonus, armor: (unit.bonus?.armor ?? 0) + plan.armor, aim: (unit.bonus?.aim ?? 0) + plan.aim };
-      return { ...unit, bonus: kit, x: starts.crew[i][0], y: starts.crew[i][1] };
-    }),
-    ...landed.map((kind, i) => ({ kind, x: starts.raiders[i][0], y: starts.raiders[i][1], bonus })),
-  ];
-  const { battle, events } = createBattle({ map, units, seed: seedRoll.value, options: { forgiving, press: true } }, rules);
-  const fight = { encounter: colonyPursuer(campaign, rules).raiders, seed: seedRoll.value, crew: members.map((member) => member.id), battle, log: events, job: null, raid: true, boarding: null, ...(other ? { colony: other } : {}) };
+  const begun = raidBattle(there, rules, plan, landed, rolled.rng, { forgiving, difficulty });
+  if (begun.error) return { ok: false, error: begun.error };
+  const { battle, events, seed, members } = begun;
+  const fight = { encounter: colonyPursuer(campaign, rules).raiders, seed, crew: members.map((member) => member.id), battle, log: events, job: null, raid: true, boarding: null, ...(other ? { colony: other } : {}) };
   const front = other ? frontAt(rolled, other) : homeFront(rolled);
-  return { ok: true, campaign: { ...front, rng: seedRoll.state, place: 'fight', fight }, colony: plan.colony, landing, fight: true, won: null, taken: null };
+  return { ok: true, campaign: { ...front, rng: begun.rng, place: 'fight', fight }, colony: plan.colony, landing, fight: true, won: null, taken: null };
+}
+
+// A raid whose lander comes down at a colony the ship isn't at (M38f,
+// Evan's pick): fought out at once. The guns fire as faceRaid's; with any
+// raiders left and anyone there, crew or citizens, they fight on its grid
+// as faceRaid's, the AI playing both sides (fightOut.js: past 40 rounds
+// both press on; still unended at 60, the raiders pull out and the colony
+// holds). Crew there come out wounded, never dead, and count the fight;
+// the colonists who fell are gone. Settled as settleRaid has it (that
+// colony's heat, and lost, half its food and materials), and its news tells
+// it. campaign: the colony as it lives its day (days.js), its crew those
+// there. Returns { campaign, won, fell (the citizens lost), landing }.
+export function fightAway(campaign, rules) {
+  const raiders = rules.encounters.get(colonyPursuer(campaign, rules)?.raiders)?.enemies ?? [];
+  const plan = facing(campaign, rules, raiders);
+  const { landing, rolled } = fireAtLander(campaign, plan);
+  let now = rolled;
+  let won = !landing.landed.length;
+  let fell = 0;
+  const begun = won || (!plan.defenders.length && !plan.citizens) ? null : raidBattle(rolled, rules, plan, landing.landed, rolled.rng);
+  if (begun && !begun.error) {
+    const { battle } = fightOut(begun.battle, rules);
+    won = battle.winner !== 'enemy';
+    fell = fallenColonists(battle);
+    // The crew there: wounds kept, never below 1, and the fight counted
+    // (campaign.js endFight's).
+    const units = battle.units.filter((unit) => unit.side === 'crew' && !unit.ward && !unit.citizen);
+    const stood = new Map(begun.members.map((member, i) => [member.id, units[i]]));
+    const crew = rolled.crew.map((member) => {
+      const unit = stood.get(member.id);
+      return unit ? { ...member, hp: Math.max(1, unit.hp), fights: (member.fights ?? 0) + 1 } : member;
+    });
+    now = { ...rolled, rng: begun.rng, crew, flags: tally(rolled.flags, { [won ? 'fightsWon' : 'fightsLost']: 1 }) };
+  }
+  const settled = settleRaid(lessCitizens(now, fell), rules, won);
+  const { colony } = settled.campaign;
+  const told = withNews(colony, { day: colony.day, kind: 'raid', won, landed: landing.landed.length, fell, food: settled.taken?.food ?? 0, materials: settled.taken?.materials ?? 0 });
+  const flags = tally(settled.campaign.flags, { raidsFoughtOut: 1, [won ? 'raidsFoughtOutWon' : 'raidsFoughtOutLost']: 1 });
+  return { campaign: { ...settled.campaign, colony: told, flags }, won, fell, landing };
 }
 
 // The campaign as the colony whose raid fight is on lives it (M38e): at
@@ -288,16 +401,19 @@ export function raidTake(campaign, rules) {
 // it, and while the ship is away on a voyage its side back in play (M38d,
 // away.js backAboard); at another colony (M38e), those there back at it
 // and the side parked there back in play (colonies.js backFrom), settled
-// there. Any other fight is left as it is.
+// there. From M38f the colonists who fell there are gone. Any other fight
+// is left as it is.
 export function endColonyRaid(campaign, rules) {
   const { fight } = campaign;
   if (!fight?.raid || !campaign.colony) return campaign;
   const after = endFight(campaign, rules);
   if (after === campaign) return campaign;
   const won = fight.battle.winner === 'crew';
-  if (fight.colony === undefined) return backAboard(settleRaid(after, rules, won).campaign);
+  // The colonists who fell are gone (M38f).
+  const fell = fallenColonists(fight.battle);
+  if (fight.colony === undefined) return backAboard(settleRaid(lessCitizens(after, fell), rules, won).campaign);
   const back = backFrom(after, fight.colony);
-  return thereFrom(back, settleRaid(thereAt(back, fight.colony), rules, won).campaign);
+  return thereFrom(back, settleRaid(lessCitizens(thereAt(back, fight.colony), fell), rules, won).campaign);
 }
 
 // A raid over, won or lost: heat down to heatAfterRaid, the raid gone, and

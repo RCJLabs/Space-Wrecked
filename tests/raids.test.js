@@ -5,8 +5,10 @@
 // colony's guns fire at the lander, each hit a raider fewer, and whoever is
 // home fights the rest on the colony's grid. Won or lost, heat falls;
 // lost, the raiders take half the stores and the dearest part in the hold.
-// A raid can land while the ship is away: the leg stops, those at home
-// face it, and the ship flies on.
+// A raid could land while the ship was away: the leg stopped, those at
+// home faced it, and the ship flew on. From M38f it is fought out there
+// and the leg goes on; a leg one stopped in a save from before still flies
+// on once it is faced.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { int, seedFrom } from '../src/core/rng.js';
@@ -44,6 +46,18 @@ function down(campaign) {
 // lanes.
 function at(campaign, { places = [rock], lanes = campaign.colony.world.lanes } = {}) {
   return { ...campaign, colony: { ...campaign.colony, places, world: { ...campaign.colony.world, lanes } } };
+}
+
+// A leg a raid's lander stopped, as a save from before M38f has it (M29):
+// the squad a day out of the colony toward place, with the rest of the
+// leg still to fly and the lander down that day. Flown as a day's trip to
+// the same place, the raid not yet due, then stopped by hand.
+function stoppedOut(campaign, place, squad) {
+  const { day } = campaign.colony;
+  const quick = at({ ...campaign, colony: { ...campaign.colony, raid: { found: day, lands: day + 2 } } }, { places: [{ ...place, days: 1 }] });
+  const flown = flyOut(quick, rules, 0, squad).campaign;
+  const { trip } = flown.colony;
+  return { ...flown, colony: { ...flown.colony, raid: { found: day, lands: day + 1 }, trip: { ...trip, place, leg: { dir: 'out', left: place.days - 1 } } } };
 }
 
 // The rolls int(rng, 0, 99) gives from the campaign's state on: n of them.
@@ -275,19 +289,36 @@ test("the fight on the colony's grid: buildings as cover, the crew by the ship a
   assert.equal(settleRaid({ ...fought, fight: null, place: 'hub', heat: 12 }, rules, true).campaign.heat, 12);
 });
 
-test('while the ship is away: a leg stops on the raid\'s day, those at home face it and the ship flies on; with nobody home it is lost unless every raider is stopped', () => {
-  // The lander comes down the day after the ship leaves for a place 3 days
-  // out: the leg stops there with 2 days to fly.
+test('while the ship is away: a raid is fought out by those at home and the leg goes on (M38f); a leg one stopped in a save from before flies on once it is faced; with nobody home it is lost unless every raider is stopped', () => {
   // From M38e the colony keeps a heat of its own, the ship's as v37 opens
   // it (unused while the ship is landed there).
   const placed = at(settled(), { places: [far] });
   const base = { ...placed, heat: 30, colony: { ...placed.colony, heat: 30 } };
+  // The lander comes down the day after the ship leaves for a place 3 days
+  // out: fought out there that day, and the squad is at the place on time.
   const coming = { ...base, colony: { ...base.colony, raid: { found: 1, lands: 2 } } };
   const out = flyOut(coming, rules, 0, [1]);
   assert.equal(out.ok, true, out.error);
-  assert.deepEqual([out.stopped, out.days.length, out.campaign.colony.day], [true, 1, 2]);
-  const away = out.campaign;
-  assert.deepEqual(away.colony.trip.leg, { dir: 'out', left: 2 });
+  assert.deepEqual([out.stopped, out.days.length, out.campaign.colony.day, out.campaign.colony.trip.leg, out.campaign.colony.raid], [false, 3, 4, null, null]);
+  assert.equal(tripHere(out.campaign, rules).event.id, 'rich-seam');
+  // Those at home fought it, the squad sitting out: wounded at worst, their
+  // fights counted, and the report waits.
+  const fights = (campaign) => campaign.crew.map((member) => member.fights ?? 0);
+  assert.deepEqual(fights(out.campaign), fights(coming).map((n, i) => (i ? n + 1 : n)));
+  assert.ok(out.campaign.crew.every((member) => member.hp >= 1));
+  assert.deepEqual(out.campaign.colony.news.map((entry) => [entry.kind, entry.day, entry.landed]), [['raid', 2, raiders.length]]);
+  assert.equal(out.campaign.flags.raidsFoughtOut, 1);
+  assert.deepEqual(campaignProblems(out.campaign), []);
+  // On the way home the same: fought out, and the ship lands.
+  const there = { ...out.campaign, colony: { ...out.campaign.colony, trip: { ...out.campaign.colony.trip, done: true, result: { event: 'rich-seam', choice: 'leave', outcome: 0, roll: null, changes: { credits: 0, supplies: 0, heat: 0, materials: 0, wounds: [], parts: [], sold: [] } } }, raid: { found: 4, lands: 6 } } };
+  const back = flyHome(there, rules);
+  assert.deepEqual([back.stopped, back.days.length, back.campaign.colony.trip, back.campaign.colony.raid], [false, 3, null, null]);
+  assert.deepEqual([back.campaign.colony.news.length, back.campaign.colony.news.at(-1).day], [2, 6]);
+  assert.equal(back.campaign.flags.tripsHome, 1);
+  // A leg stopped in a save from before: a day out of three, the lander
+  // down at home.
+  const away = stoppedOut(base, far, [1]);
+  assert.deepEqual([away.colony.day, away.colony.trip.leg], [2, { dir: 'out', left: 2 }]);
   assert.deepEqual(campaignProblems(away), []);
   // On the way: nothing at the place yet, no flying home, no flying on.
   const here = tripHere(away, rules);
@@ -318,20 +349,28 @@ test('while the ship is away: a leg stops on the raid\'s day, those at home face
   assert.deepEqual([ahead.eats, ahead.food], [on.days.reduce((sum, day) => sum + day.plan.eats, 0), [after.supplies, on.campaign.supplies]]);
   assert.deepEqual([on.dir, on.stopped, on.days.length, on.campaign.colony.trip.leg, on.campaign.colony.day], ['out', false, 2, null, 4]);
   assert.equal(tripHere(on.campaign, rules).event.id, 'rich-seam');
-  // The same on the way home: the leg stops, and flying on lands the ship.
-  const there = { ...on.campaign, colony: { ...on.campaign.colony, trip: { ...on.campaign.colony.trip, done: true, result: { event: 'rich-seam', choice: 'leave', outcome: 0, roll: null, changes: { credits: 0, supplies: 0, heat: 0, materials: 0, wounds: [], parts: [], sold: [] } } }, raid: { found: 4, lands: 6 } } };
-  const home = flyHome(there, rules);
-  assert.deepEqual([home.stopped, home.campaign.colony.trip.leg], [true, { dir: 'home', left: 1 }]);
-  const settledHome = settleRaid(home.campaign, rules, true).campaign;
+  // The same on the way home, stopped a day short: flying on lands the
+  // ship.
+  const homing = { ...there, colony: { ...there.colony, day: 6, trip: { ...there.colony.trip, leg: { dir: 'home', left: 1 } } } };
+  assert.deepEqual(campaignProblems(homing), []);
+  assert.match(flyOn(homing, rules).error, /lander is down/);
+  const settledHome = settleRaid(homing, rules, true).campaign;
   const landed = flyOn(settledHome, rules);
   assert.deepEqual([landed.dir, landed.campaign.colony.trip, landed.campaign.colony.places.length], ['home', null, 3]);
   assert.equal(landed.campaign.flags.tripsHome, 1);
-  // Nobody home and no guns: the raid is lost without a fight.
-  const everyone = flyOut(coming, rules, 0, [1, 2, 3]).campaign;
-  assert.deepEqual(defendersOf(everyone), []);
-  const empty = faceRaid(everyone, rules);
+  // Nobody home and no guns: the raid is lost without a fight, out on the
+  // trip (M38f) as in a save from before.
+  const everyone = flyOut(coming, rules, 0, [1, 2, 3]);
+  assert.deepEqual([everyone.stopped, everyone.campaign.colony.raid], [false, null]);
+  const [lost] = everyone.campaign.colony.news;
+  assert.deepEqual([lost.won, lost.landed, lost.fell], [false, raiders.length, 0]);
+  assert.ok(lost.food > 0 && lost.materials > 0);
+  assert.equal(everyone.campaign.flags.raidsFoughtOutLost, 1);
+  const stranded = stoppedOut(base, far, [1, 2, 3]);
+  assert.deepEqual(defendersOf(stranded), []);
+  const empty = faceRaid(stranded, rules);
   assert.deepEqual([empty.ok, empty.fight, empty.won, empty.campaign.place], [true, false, false, 'hub']);
-  assert.deepEqual(empty.taken, raidTake(everyone, rules));
+  assert.deepEqual(empty.taken, raidTake(stranded, rules));
   assert.equal(empty.campaign.colony.raid, null);
   assert.deepEqual(campaignProblems(empty.campaign), []);
 });
@@ -339,7 +378,7 @@ test('while the ship is away: a leg stops on the raid\'s day, those at home face
 test('saves: v23 for the raid coming and a leg it stopped; a v22 colony opens with none coming; broken ones are caught', () => {
   // 24 since M32's orders in a fight, 27 since M33's fix, 28 since M33b's
   // quests, 29 since M33c's companions.
-  assert.equal(SAVE_VERSION, 37);
+  assert.equal(SAVE_VERSION, 38);
   // From M38e the colony keeps a heat of its own, the ship's as v37 opens
   // it (unused while the ship is landed there).
   const placed = at(settled(), { places: [far] });
@@ -366,7 +405,7 @@ test('saves: v23 for the raid coming and a leg it stopped; a v22 colony opens wi
   assert.deepEqual(opened.save.data.campaign, { ...base, quests: { debt: { step: 2, state: 'open' } } });
   // A raid coming, a leg stopped and a raid fight each reload as they were.
   const coming = { ...base, colony: { ...base.colony, raid: { found: 1, lands: 2 } } };
-  const stopped = flyOut(coming, rules, 0, [1]).campaign;
+  const stopped = stoppedOut(base, far, [1]);
   let fighting = null;
   for (let n = 1; n <= 50 && !fighting; n++) {
     const tried = faceRaid({ ...down(base), rng: seedFrom(n) }, rules);
@@ -406,9 +445,13 @@ test('the reducer: Defend opens the fight on its screen, and its end comes home;
   state = reduce(defended, { type: 'campaign/fight/save', battle, log: defended.campaign.fight.log });
   state = reduce(state, { type: 'campaign/fight/end', rules });
   assert.deepEqual([state.screen, state.campaign.colony.raid, state.campaign.heat], ['colony', null, heatAfterRaid]);
-  // A stopped leg flies on through the reducer, once the raid is faced.
+  // Out on a trip, a raid is fought out and the leg goes on (M38f).
   const coming = { ...base, heat: 30, colony: { ...base.colony, raid: { found: 1, lands: 2 } } };
-  let away = reduce({ ...initialState(3), campaign: coming, screen: 'colony' }, { type: 'campaign/trip/out', index: 0, squad: [1], rules });
+  const out = reduce({ ...initialState(3), campaign: coming, screen: 'colony' }, { type: 'campaign/trip/out', index: 0, squad: [1], rules });
+  assert.deepEqual([out.screen, out.campaign.colony.trip.leg, out.campaign.colony.raid, out.campaign.colony.day], ['colony', null, null, 4]);
+  // A stopped leg, from a save from before, flies on through the reducer
+  // once the raid is faced.
+  let away = { ...initialState(3), campaign: stoppedOut({ ...base, heat: 30 }, far, [1]), screen: 'colony' };
   assert.equal(away.campaign.colony.trip.leg.left, 2);
   assert.equal(reduce(away, { type: 'campaign/trip/on', rules }), away, 'not while the lander is down');
   away = { ...away, campaign: settleRaid(away.campaign, rules, true).campaign };

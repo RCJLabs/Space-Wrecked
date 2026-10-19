@@ -15,12 +15,30 @@
 //   heat   its own trail (Evan's pick): the heat the ship left it with,
 //          falling a day; while the ship is landed there the campaign's
 //          heat is the colony's, and this is unused
+// and from M38f its citizens (days.js, raids.js):
+//   citizens  how many, a headcount (Evan's pick): no names, not crew
+//   growth    the days it has been fit to grow since the last one came
+//   news      what happened there while the ship was away, oldest first:
+//             { day, kind: 'raid', won, landed (raiders), fell (citizens),
+//             food, materials (what it lost) }, or { day, kind: 'grew' |
+//             'left' | 'settled', citizens (now) }; at most MAX_NEWS, kept
+//             while the ship is landed there to be read, and let go as it
+//             leaves again (voyage.js, expeditions.js)
 // Plain data; imports nothing, so every part of the sim can ask.
 
 // More colonies than a run settles, and a place along the line farther than
 // a run flies: guards on what a save can hold.
 export const MAX_COLONIES = 12;
 export const MAX_AT = 99999;
+// More citizens than a colony beds, and more news than it keeps (M38f).
+export const MAX_CITIZENS = 999;
+export const MAX_NEWS = 12;
+
+// The colony's news with entry added at the end, the oldest let go past
+// MAX_NEWS (M38f).
+export function withNews(colony, entry) {
+  return { ...colony, news: [...(colony.news ?? []), entry].slice(-MAX_NEWS) };
+}
 
 // Every colony: the one the ship is at or flew from first, then the others
 // in the order settled. [] before act 3.

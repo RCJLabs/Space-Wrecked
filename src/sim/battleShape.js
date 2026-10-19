@@ -105,8 +105,9 @@ function isMap(map) {
   );
 }
 
-// A unit; a ward (M38) is on the crew's side with no weapon, and a carrier
-// has a crate's tile in hand.
+// A unit; a ward (M38) is on the crew's side with no weapon, a colonist
+// (M38f) on the crew's side with one, and a carrier has a crate's tile in
+// hand.
 function isUnit(unit, map) {
   const onMap = (at) => Array.isArray(at) && at.length === 2 && isInt(at[0], 0, map.width - 1) && isInt(at[1], 0, map.height - 1);
   return (
@@ -116,6 +117,7 @@ function isUnit(unit, map) {
     isInt(unit.maxHp, 1, MAX) && isInt(unit.hp, 0, unit.maxHp) &&
     STATS.every((key) => isInt(unit[key], -MAX, MAX)) &&
     (unit.ward === undefined || (unit.ward === true && unit.side === 'crew')) &&
+    (unit.citizen === undefined || (unit.citizen === true && unit.side === 'crew' && unit.ward === undefined)) &&
     (unit.ward ? unit.weapon === null : typeof unit.weapon === 'string') && isInt(unit.ammo, 0, MAX) && isInt(unit.ap, 0, MAX) &&
     (unit.status !== 'held' || unit.ward === true) &&
     (unit.carrying === undefined || (unit.side === 'crew' && onMap(unit.carrying))) &&

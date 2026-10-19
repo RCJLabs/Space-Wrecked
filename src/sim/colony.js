@@ -64,9 +64,16 @@ export const BUILD_GIVES = ['power', 'beds', 'air', 'storage'];
 // materials the landing salvaged, no places rolled, the ship home and no
 // raid coming; worlds, the other worlds of its system. From M38e its number,
 // where it lies along the line of systems and its own heat (colonies.js):
-// the first is 1, at 0.
+// the first is 1, at 0. From M38f no citizens yet, none on the way and no
+// news.
 export function newColony(world, materials = 0, worlds = [], { id = 1, at = 0, heat = 0 } = {}) {
-  return { world, buildings: [], nextUid: 1, day: 1, materials, places: [], trip: null, raid: null, worlds, voyage: null, id, at, heat };
+  return { world, buildings: [], nextUid: 1, day: 1, materials, places: [], trip: null, raid: null, worlds, voyage: null, id, at, heat, citizens: 0, growth: 0, news: [] };
+}
+
+// What the colony's citizens eat a day (M38f): a jump's supplies each, as a
+// crew member does.
+export function citizenEats(colony, rules) {
+  return (colony?.citizens ?? 0) * rules.balance.jumpSupplies;
 }
 
 // The colony's build of id type (data/colony.json builds: a farm, a mine,
@@ -166,12 +173,14 @@ export function givesOf(def) {
 //              its reactors make beyond what its own parts use; none while
 //              the ship is away, M28), the two together, what the powered
 //              buildings take, and what is left
-//   buildings  [{ uid, type, name, need, powered, gives, makes }], in the
-//              order built. Each takes the power it needs, in that order,
-//              while enough is left; one it doesn't reach is dark and gives
-//              nothing. One that makes power, or needs none, is never dark,
-//              and farms and mines need none. makes is a farm's or a mine's
-//              ({ food } or { materials }: what it makes a day), else null.
+//   buildings  [{ uid, type, name, need, powered, gives, makes, worked }],
+//              in the order built. Each takes the power it needs, in that
+//              order, while enough is left; one it doesn't reach is dark and
+//              gives nothing. One that makes power, or needs none, is never
+//              dark, and farms and mines need none. makes is a farm's or a
+//              mine's ({ food } or { materials }: what it makes a day), else
+//              null; worked, whether a citizen works it (M38f): one to each
+//              farm and mine in the order built, for citizenWork more a day.
 //   beds, air  from the powered buildings, one each for a crew member
 //   housed     the crew at home with a bed and air at the colony: the first
 //              of those at home, in the crew's order. The rest sleep aboard
@@ -182,7 +191,11 @@ export function givesOf(def) {
 //              anywhere in the crew adds (M32): at home, while the ship is
 //              away on a voyage (M38d)
 //   made       { food, materials }: what the farms and mines make a day,
-//              with what the crew at home adds (crewYields)
+//              with what the crew at home adds (crewYields) and the
+//              citizens working them (M38f)
+//   citizens   { count, housed, free, working } (M38f): how many, how many
+//              have a bed and air (after the crew at home), the beds and
+//              air free for more, and how many work a farm or a mine
 //   defense    { damage, shield, intercept, armories } of the powered
 //              defenses (M29)
 //   infirmary  the best powered infirmary's heal, 0 without one
@@ -193,19 +206,26 @@ export function colonyStats(campaign, rules) {
   const gone = Boolean(trip || colony.voyage);
   const ship = gone ? 0 : Math.max(0, shipStats(campaign.ship, rules).power);
   const more = crewYields(campaign, rules);
+  // The citizens' hands (M38f): one to each farm and mine, in the order
+  // built.
+  const work = rules.balance.citizenWork ?? 0;
+  let hands = colony.citizens ?? 0;
   const known = colony.buildings.map((building) => {
     const build = buildOf(building.type, rules);
     const def = build ? null : rules.modules.get(building.type);
-    const makes = build ? makesOf(build, colony.world, more) : null;
-    return { ...building, makes, gives: build ? buildGives(build) : def ? givesOf(def) : null };
+    const own = build ? makesOf(build, colony.world, more) : null;
+    const worked = Boolean(own) && hands > 0;
+    if (worked) hands -= 1;
+    const makes = worked ? Object.fromEntries(Object.entries(own).map(([what, n]) => [what, n + work])) : own;
+    return { ...building, makes, worked, gives: build ? buildGives(build) : def ? givesOf(def) : null };
   });
   const plants = known.reduce((sum, { gives }) => sum + Math.max(0, gives?.power ?? 0), 0);
   let left = plants + ship;
-  const buildings = known.map(({ uid, type, gives, makes }) => {
+  const buildings = known.map(({ uid, type, gives, makes, worked }) => {
     const need = Math.max(0, -(gives?.power ?? 0));
     const powered = gives !== null && need <= left;
     if (powered) left -= need;
-    return { uid, type, name: buildingName(type, rules), need, powered, gives, makes };
+    return { uid, type, name: buildingName(type, rules), need, powered, gives, makes, worked };
   });
   const lit = buildings.filter((b) => b.powered);
   const sum = (key) => lit.reduce((total, b) => total + b.gives[key], 0);
@@ -215,6 +235,9 @@ export function colonyStats(campaign, rules) {
   const home = homeCrew(campaign);
   const housed = Math.min(home.length, beds, air);
   const without = home.slice(housed).map((member) => member.id);
+  // The citizens (M38f), bedded after the crew at home.
+  const count = colony.citizens ?? 0;
+  const room = Math.max(0, Math.min(beds, air) - home.length);
   return {
     power: { plants, ship, made: plants + ship, used: plants + ship - left, spare: left },
     buildings,
@@ -226,6 +249,7 @@ export function colonyStats(campaign, rules) {
     away: [...away],
     storage: sum('storage') + colonyEdge(colony.voyage ? home : campaign.crew, rules, 'stores'),
     made: { food: made('food'), materials: made('materials') },
+    citizens: { count, housed: Math.min(count, room), free: Math.max(0, room - count), working: count - hands },
     defense: { damage: sum('damage'), shield: sum('shield'), intercept: sum('intercept'), armories: lit.filter((b) => b.gives.armory).length },
     infirmary: Math.max(0, ...lit.map((b) => b.gives.heal)),
   };

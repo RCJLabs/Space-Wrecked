@@ -38,8 +38,11 @@ import { int, percent, shuffle } from '../core/rng.js';
 import { atHangar } from './acts.js';
 import { createBattle } from './battle.js';
 import { crewUnit, endFight } from './campaign.js';
+import { withNews } from './colonies.js';
+import { colonyStats } from './colony.js';
 import { rollDrop } from './drops.js';
 import { PAY_STEP, rollArms, rollStock } from './economy.js';
+import { tally } from './flags.js';
 import { generateSite } from './gen/site.js';
 import { huntersFor, jobHeat, raidDue, withHeat } from './heat.js';
 import { enemyBonus } from './settings.js';
@@ -261,8 +264,9 @@ export function beginJob(campaign, rules, job, crew, setup) {
 // one's jobs and a new stock at the shop, and a quest's job done moves its
 // quest on (quests.js stepDone, M33b). A station's job (M38c, with its
 // station's name) is counted apart (stationJobsDone or stationJobsFailed),
-// and leaves act 1's board and shop alone. A fight still going is left as
-// it is.
+// and leaves act 1's board and shop alone; from M38f, a captive it freed on
+// a voyage settles at the colony the ship flew from (settleRescued). A
+// fight still going is left as it is.
 export function endJob(campaign, rules) {
   const { fight } = campaign;
   const after = endFight(campaign, rules);
@@ -275,7 +279,7 @@ export function endJob(campaign, rules) {
   const { campaign: moved } = moveStanding(after, rules, jobMoves(job, rules, won));
   const flags = { ...after.flags, [flag]: (after.flags[flag] ?? 0) + 1 };
   const paid = { ...moved, credits: after.credits + (won ? jobPay(campaign, rules, job) : 0), heat: withHeat(after.heat, jobHeat(job, rules).heat), parts, flags };
-  if (station) return paid;
+  if (station) return settleRescued(paid, rules, fight.battle, won);
   const spent = won && rules.contracts.jobs.get(job.contract)?.once === true && !after.spent.includes(job.contract) ? [...after.spent, job.contract] : after.spent;
   const district = rules.backgrounds.get(after.background)?.district;
   const skip = [job.contract, ...campaign.board.map((offer) => offer.contract), ...spent];
@@ -289,4 +293,16 @@ export function endJob(campaign, rules) {
     rng: restocked.rng,
   };
   return won && job.quest ? stepDone(ended, rules, job.quest).campaign : ended;
+}
+
+// A captive freed on a voyage (M38f) settles at the colony the ship flew
+// from: a citizen more, if it has a bed and air free for one, and its news
+// says so; otherwise they go their way, as before.
+function settleRescued(campaign, rules, battle, won) {
+  const { colony } = campaign;
+  if (!won || battle.objective?.type !== 'rescue' || !colony?.voyage?.home) return campaign;
+  if (colonyStats(campaign, rules).citizens.free <= 0) return campaign;
+  const citizens = (colony.citizens ?? 0) + 1;
+  const settled = withNews({ ...colony, citizens }, { day: colony.day, kind: 'settled', citizens });
+  return { ...campaign, colony: settled, flags: tally(campaign.flags, { rescuedSettled: 1 }) };
 }

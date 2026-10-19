@@ -137,7 +137,7 @@ export function checkCampaignFiles(data, ids, fail) {
   checkActs(data.campaign, fail);
   const holding = checkSectors(data.sectors, data.campaign?.acts, ids.presets ?? new Map(), fail);
   checkWorlds(data.worlds, data.sectors, fail);
-  checkColony(data.colony, data.modules?.modules, fail);
+  checkColony(data.colony, data.modules?.modules, fail, data.weapons?.weapons);
   const nodeKinds = new Set((data.sectors?.nodes ?? []).map((node) => node?.id));
   const places = checkExpeditions(data.expeditions, nodeKinds, ids, fail);
   const sides = ids.sides ?? new Set();

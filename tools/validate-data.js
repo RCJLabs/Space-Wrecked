@@ -187,6 +187,12 @@ const BALANCE = {
   landingHit: [0, 100],
   raidShieldArmor: [0, 5],
   raidArmoryAim: [0, 50],
+  // Citizens (src/sim/days.js and raids.js, M38f): the days a colony fit
+  // to grow takes to gain one, what each adds to the farm or mine they
+  // work, and how many of them fight a raid at most.
+  citizenDays: [1, 60],
+  citizenWork: [0, 5],
+  raidCitizens: [0, 12],
   // Standing with the sides (src/sim/standing.js, M33), from -10 to 10:
   // where the pursuer's side starts a campaign; where each level above
   // hostile begins (cold, neutral, friendly, then trusted); what a job done
