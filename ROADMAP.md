@@ -2114,10 +2114,57 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **Law 1's one new trade:** the railgun's mass costs 5 evasion, so the repo gunship and the frigate, which the start ship beats with it or without it in none of 120 approaches, board it a little more often (4 and 5 points of score), where it wins 53 to 101 points more against four other presets. `tests/approach.test.js` lists it beside M31's shield array (`TRADES`).
   - **Counted:** frames bought and supplies grown, in the campaign's flags (`framesBought`, `suppliesGrown`).
   - **Measured** (PROGRESS.md): every new part and the courier's and gunship's hulls change the approach, a fight or the voyage, the grapple only with a player who closes to board; the freighter's lockers show on the voyage (hungry jumps 35 to 22 over 30). Over 100 voyages the rates stay within main's margins (fed all the way 80, main 77), and act 1's runs within 10 minutes of main's (the miner's 39 against 42).
-- [ ] **M40 Balance runs.** The draft:
-  - the voyage's rates, held at main's since M31, brought to their first targets (§9);
-  - the miner's hunters past the charts, the deserter's crew aboard ships, the talents' worth (§9);
-  - act 1, the voyage and the colony measured from each start.
+- [ ] **M40 Balance runs.** The voyage's rates have been held at main's since M31, short of their first targets (§9), and some fights sit far outside what a careful crew wins.
+
+  Measured first (main after M39):
+  - 100 voyages from each start, as `tools/voyage.js` plays;
+  - act 1's 50 runs a start;
+  - every act 1 board job over 200 seeds, with its start's fresh crew;
+  - 1,000 fights a talent;
+  - 25 boardings a row.
+
+  What they showed:
+  - **The voyage** from the miner's, the deserter's and the smuggler's starts:
+    - the hunters met in 35, 26 and 13 runs of 100 (in the sectors 21, 15 and 5; past the charts 20, 16 and 9);
+    - fed all the way in 80, 85 and 94;
+    - hungry in the system in 8, 7 and 2, each time on the first jump after coming in with empty holds;
+    - a boarding lost at home in 28, 13 and 14.
+  - **Past the charts** most hunts are the regular hunters at heat 50 to 74: 18 of the miner's 23, 14 of the deserter's 20, 8 of the smuggler's 9.
+  - **Swaps:** the miner and the deserter swap the transponder 4 times a run (the median), taking 120 heat off for 160 credits, where their station jobs add 24 to 26.
+  - **Act 1:** 39, 40 and 49 minutes at the slow pace (medians). The deserter's longest run is 227 minutes (29 jobs), the smuggler's 189.
+  - **Jobs:** 37 of the 41 board jobs are won 35% to 90%; the picket line 6%, the dock war 13%, pawn tickets 32% and Impounded (the tug engine) 97% are not.
+  - **Talents**, against the same squad at rank 2: Steward's kit +27 points, Bosun's weld 0, Surveyor's eye +2, Family medicine +1.
+  - **Boardings:** every row is 20% to 80% but the yacht's (12% boarding her, 16% at home) and the gunship's at home (8%).
+  - **The deserter's crew aboard ships** (§9) needs nothing now: its thread pays off in 85 voyages of 100, against the miner's 82 and the smuggler's 91.
+  - **Weapons:** the carbine, the rifle, the long rifle and the pistol miss M37's rule. They weren't picked, so they stay in §9.
+
+  Evan's picks (2026-10-19):
+  - **each start meets the hunters in at most 25 voyages of 100**, fed all the way in 80 or more, hungry in the system in none;
+  - **past the charts only the task force follows;**
+  - **a swap costs more each time, hydroponics grows 1 a jump, and the jump into the system warns** when the holds are short;
+  - **every act 1 job won 35% to 90%, each talent worth 5 to 15 points, and every boarding won 20% to 80%.**
+
+  **Done when:**
+  - **The voyage from each start** (`tools/voyage.js --runs 100 --background all`, the careful test player managing heat):
+    - the hunters met in at most 25 runs of 100, the sectors and the system together;
+    - fed all the way in 80 or more;
+    - hungry in the system in none.
+
+    `tests/voyage.test.js` holds these three as bars from each start, and its `MAIN` moves to M40's rates.
+  - **Past the charts, only the task force follows** (`hunt.js`). In an uncharted system (act 2's past the charts, and those a voyage out crosses):
+    - under heat 75 (`raidHeat`) the hunters' odds are 0: they have lost the trail, and the jump's plan, a survey's and a regroup's say so;
+    - at 75 and over, the task force's odds are as now, and certain at 100;
+    - a jump into such a system counts as in it.
+  - **A swap costs more each time** (`transponder.js`): `swapPrice`, and `swapRise` (20) more for each swap the campaign has made. The flags count them already, so saves don't change. Every price shown is the swap's own.
+  - **Hydroponics grows 1 supply a jump** (was 2), each maker's version alike. At the colony it stays 2 food a day.
+  - **The jump into the system warns** when the holds can't cover a survey's day and a jump on. The test player comes in with that much where its credits allow.
+  - **Every act 1 board job** is won 35% to 90% by its start's fresh crew over 200 seeds. The picket line, the dock war, pawn tickets and Impounded come in by their enemies, their numbers or their sites.
+  - **Each talent lifts its squad's wins 5 to 15 points** over rank 2 (`node tools/sim.js --talent <companion> --compare`, 1,000 fights): Steward's kit down, the other three up.
+  - **Every preset's boarding, both ways,** is won 20% to 80% (`node tools/sim.js --boardings`, 100 fights a row).
+  - **Act 1 from each start** stays within `tests/run.test.js`'s 10 minutes of main's. Each pursuer's raids, at the hangar and at the colony (`tools/raids.js`), are measured and reported.
+  - **Saves stay at v38:** nothing new is saved.
+  - **Every rule tested.** Balance numbers changed with `node tools/sim.js`'s summary in PROGRESS.md.
+  - **Touch, at the three sizes:** a swap's price, the system's warning, and "lost the trail" past the charts.
 - [ ] **M41 Difficulty settings.** Easy, Normal and Hard since M18, a few numbers each. The draft:
   - each setting through all three acts;
   - permanent death as a harder setting (§9).
