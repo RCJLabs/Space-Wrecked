@@ -2212,6 +2212,41 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - a colorblind-safe palette;
   - text size;
   - reduced motion in a fight (§9).
+
+  Measured first (main after M41):
+  - **Color:** 25 places carry meaning by color. In 11 of them color is the only cue:
+    - move tiles in one action vs a dash;
+    - a job zone's way out vs way in;
+    - a hit on an enemy vs a hurt to the crew (the same "−2");
+    - the builder's and the colony's ghost, fits vs blocked;
+    - HP bars healthy vs wounded;
+    - a colony's need met or not;
+    - the jump's reach ring vs the hunters' ring;
+    - a station's side pip;
+    - your shots vs theirs on the approach;
+    - the five crew trims against each other.
+
+    Simulated for the three kinds of colorblindness (Machado 2009, CIEDE2000), `good`/`bad` are 7.8 apart for deuteranopia, `good`/`dash` 10.2 for protanopia, `accent`/`bad` 9.8 for tritanopia, and four of the five crew trims fall under 20 against another; normal vision has them 26 to 68 apart.
+  - **Text:** every size is fixed px, with no rem and no setting. The smallest that renders is 8.6 px (the builder's look tiles at 821×283), and 9.5 px on the fight's canvas labels. With every size at 125% on 821×283, no button leaves the screen outside a scroll area, but the builder's part tiles clip their names and the chart's side lines ellipsise.
+  - **Motion in a fight:** the Motion setting changes nothing there. An enemy turn plays for 3.8 to 12.1 s (5.7 s at the median over 7,709 turns), 1.8 s of it two banners, and Skip jumps it.
+
+  Done when (my recommendations, taken on Evan's standing word to go with them, 2026-10-19):
+  - **Never color alone:** each of the 11 places above gets a second cue that needs no color:
+    - a dash tile is hatched;
+    - a way in held is marked by its own glyph;
+    - a hurt to the crew rises with a mark of its own beside the number;
+    - a blocked ghost is crossed;
+    - a wounded HP bar is notched at its fill;
+    - an unmet need carries "!";
+    - the hunters' ring is dashed;
+    - a side pip carries its side's letter;
+    - their shots trail dashes;
+    - each crew trim's badge carries the member's initial.
+  - **Colors, in Settings:** Standard or Colorblind-safe. The colorblind-safe tokens keep every pair that must be told apart at least 20 apart (CIEDE2000) for normal vision and for each of protanopia, deuteranopia and tritanopia, and a test checks it from the palette. Text in either keeps WCAG AA (4.5) on the panels.
+  - **Text size, in Settings:** 100%, 115% or 130%, for every screen's text and the fight's canvas labels. Nothing renders under 10 px at 100%. At 130% on all three sizes, every button is 48 px or more and reachable (in a scroll area if need be), and no name or line a choice needs is clipped.
+  - **Reduced motion in a fight:** with Motion at Reduce (or the phone asking for less), an enemy turn shows its end at once with each action's words. The board is free within 1 s of the turn's start, the sounds play, and Skip is not needed. Full motion plays as now.
+  - **Saves v40:** the two new settings, with the migration tested (Standard, 100%).
+  - **Touch, at the three sizes:** the new settings, the fight under each, the chart and the builder at 130%, every earlier milestone's check at 100% and Standard.
 - [ ] **M43 Tutorial polish.** M18's tips cover building, the job board and the first fight. The draft:
   - tips past the first fight, for the run and the colony (§9);
   - a stranger plays from New game to the colony unaided.
@@ -2278,7 +2313,6 @@ These ideas wait until v0.4 or later:
 - Launch in construction mode, where the last check usually passes: M17 keeps it at the hangar and points there (raised in M17)
 - an act's record with time played and fights won and lost, kept per act: the colony shows what the flags count for the run (raised in M17)
 - tips past the first fight: the shop, heat and payments, a raid, launch. M18's tips cover building, the job board and the first fight's orders (raised in M18)
-- reduced motion in a fight: the enemy's turn still plays step by step, with Skip to jump it (raised in M18)
 - the sector map in 3D: M19's chart is flat, drawn in SVG like the job board. A starfield with the nodes as places, seen through the orbit camera, would match the ships (raised in M19)
 - names on the sector map: M19 names a node in the left panel when it is picked. Every name on the chart would crowd it at 7 columns on the cover screen (raised in M19)
 - tips for the run: what a jump costs, long jumps, stations and hunger, and since M24 the hunters' rings, Regroup, Hide and the transponder swap (raised in M19)
