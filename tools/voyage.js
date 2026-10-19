@@ -699,7 +699,7 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       const before = campaign;
       const swapped = swapTransponder(campaign, defs);
       campaign = swapped.campaign;
-      const step = record('swap', before, { dock: swapped.plan.dock });
+      const step = record('swap', before, { dock: swapped.plan.dock, price: swapped.plan.price });
       tally.swaps += 1;
       tally.swapCredits += before.credits - campaign.credits;
       lines.push(`   Swapped the transponder for ${before.credits - campaign.credits} credits${logged(step)}: ${hold()}.`);

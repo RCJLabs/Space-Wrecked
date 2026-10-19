@@ -130,7 +130,7 @@ test('the loyalty place at the colony, with who holds her; won, the fight says t
   assert.match(row.about, /^Chief Surveyor Harl's tug/);
   assert.deepEqual(questPlaceEnd(place, true, home, rules), [
     "Ama's survey chief: done. Harl's claim stakes go out the airlock with his survey log. Ama files her own, honestly, in triplicate, with the colony's name on it.",
-    "Ama Osei is loyal: rank 3, Surveyor's eye (Mark ×3 a fight, +30 to hit), from the next fight.",
+    "Ama Osei is loyal: rank 3, Surveyor's eye (Mark ×3 a fight, +60 to hit), from the next fight.",
   ]);
   assert.deepEqual(questPlaceEnd(place, false, home, rules), [], 'lost, nothing');
 });

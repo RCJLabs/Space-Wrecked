@@ -12,7 +12,7 @@ import { createFight, ordersFor, reduceFight } from '../src/sim/fight.js';
 import { edgeKey } from '../src/sim/mapFromShip.js';
 import { reachable } from '../src/sim/moves.js';
 import { shotOdds } from '../src/sim/odds.js';
-import { dartOdds, orderTargets } from '../src/sim/orders.js';
+import { dartOdds, orderOf, orderTargets } from '../src/sim/orders.js';
 import { initialState, saveData } from '../src/sim/root.js';
 import { canSee } from '../src/sim/sight.js';
 import { openMap, rules, wall } from './battleKit.js';
@@ -193,6 +193,43 @@ test('Kit out: itself or an ally beside, a full clip and 1 armor for the fight, 
   const self = play(after, order('c1', { target: 'c1' }));
   assert.deepEqual([who(self.battle, 'c1').armor, who(self.battle, 'c1').ammo], [2, 3]);
   assert.match(describeEvent(self.events[0], self.battle), /kits up: armor \+1, 3 shots/);
+});
+
+// M40: two talents reach past their job's order. Dez's Patch (halloran)
+// reaches an ally in sight 3 tiles off or nearer; Brandt's Kit out adds aim.
+test("Patch with a reach (M40, Dez's talent): an ally in sight that many tiles off or nearer, and still anyone beside", () => {
+  const units = [{ kind: 'medic', talent: 'halloran', rank: 3, x: 0, y: 1 }, { kind: 'marine', x: 3, y: 1 }, { kind: 'marine', x: 4, y: 0 }, { kind: 'marine', x: 1, y: 2 }, { kind: 'pirate', x: 7, y: 2 }];
+  const hurt = (battle) => tweak(battle, { c2: { hp: 2 }, c3: { hp: 2 }, c4: { hp: 2 } });
+  const battle = hurt(fight(openMap(8, 3), units));
+  assert.equal(orderOf(who(battle, 'c1'), rules).reach, 3);
+  assert.deepEqual(orderTargets(battle, who(battle, 'c1'), rules), ['c2', 'c4'], 'three tiles off and beside, not four');
+  const { battle: after, events } = play(battle, order('c1', { target: 'c2' }));
+  assert.deepEqual(events[0], { type: 'order', order: 'patch', unit: 'c1', target: 'c2', hp: 10, healed: 8, up: false });
+  assert.equal(who(after, 'c1').uses, 2);
+  assert.match(act(battle, order('c1', { target: 'c3' }), rules).error, /has to be in .+'s sight, 3 tiles off or nearer/);
+  // A wall between them: out of sight, so out of reach; the one beside
+  // is still reached, as a plain Patch reaches them.
+  const walled = openMap(8, 3);
+  for (let y = 0; y < 3; y++) wall(walled, 2, y, 'w');
+  const apart = hurt(fight(walled, units));
+  assert.equal(canSee(apart, [0, 1], [3, 1], rules), false);
+  assert.deepEqual(orderTargets(apart, who(apart, 'c1'), rules), ['c4']);
+  // Without the talent, beside only.
+  const plain = hurt(fight(openMap(8, 3), units.map((u, i) => (i === 0 ? { kind: 'medic', x: 0, y: 1 } : u))));
+  assert.deepEqual(orderTargets(plain, who(plain, 'c1'), rules), ['c4']);
+});
+
+test("Kit out with aim (M40, Brandt's talent): the ally's aim rises by it for the fight too, and the event and its line say so", () => {
+  const battle = fight(openMap(5, 1), [{ kind: 'quartermaster', talent: 'brandt', rank: 3, x: 0, y: 0 }, { kind: 'marine', x: 1, y: 0 }, { kind: 'pirate', x: 4, y: 0 }]);
+  const { aim } = who(battle, 'c2');
+  const { battle: after, events } = play(battle, order('c1', { target: 'c2' }));
+  assert.deepEqual(events[0], { type: 'order', order: 'kit', unit: 'c1', target: 'c2', armor: 1, ammo: 4, aim: 8 });
+  assert.deepEqual([who(after, 'c2').aim, who(after, 'c2').armor, who(after, 'c2').kitted], [aim + 8, 2, true]);
+  assert.match(describeEvent(events[0], after), /armor \+1, aim \+8, 4 shots/);
+  assert.equal(battleProblem(after), null);
+  // The odds of the ally's shot carry it.
+  const before = shotOdds(battle, who(battle, 'c2'), who(battle, 'e1'), rules).hit;
+  assert.equal(shotOdds(after, who(after, 'c2'), who(after, 'e1'), rules).hit, Math.min(100, before + 8));
 });
 
 test('every order event reads as a line of the log', () => {

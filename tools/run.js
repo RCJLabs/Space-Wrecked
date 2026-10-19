@@ -103,10 +103,11 @@ const MAX_JOBS = 30; // a run not at launch after this many stops
 // Jumps a sector of act 2 takes the careful player, about (M40: the median
 // over 36 voyages, tools/voyage.js).
 export const SECTOR_JUMPS = 7;
-// The most jobs a ship ready to launch takes for act 2's food (launchFood),
-// and the jumps' food over the median the launch keeps (voyagePlan.js
-// BUFFER_JUMPS).
-const FOOD_JOBS = 3;
+// The most jobs a ship ready to launch takes for act 2's food (launchFood):
+// one (with three the smuggler's act 1 ran 12 minutes past the miner's, and
+// with one the voyages still meet M40's bars); and the jumps' food over the
+// median the launch keeps (voyagePlan.js BUFFER_JUMPS).
+export const FOOD_JOBS = 1;
 const LAUNCH_BUFFER = 4;
 
 // The ship with a part of `type` fitted where the builder's rules allow it

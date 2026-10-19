@@ -869,13 +869,16 @@ function checkOrder(order, where, fail) {
     return;
   }
   for (const key of Object.keys(order)) {
-    if (!['type', 'name', 'uses', 'weapon', ...Object.keys(kind.fields)].includes(key)) fail(where, `unknown field "${key}" for ${order.type}`);
+    if (!['type', 'name', 'uses', 'weapon', ...Object.keys(kind.fields), ...Object.keys(kind.extras ?? {})].includes(key)) fail(where, `unknown field "${key}" for ${order.type}`);
   }
   if (order.weapon !== undefined && !isText(order.weapon)) fail(where, 'weapon must be the id of the weapon it needs in hand');
   if (!isText(order.name)) fail(where, 'name must be a non-empty string');
   if (!isIntIn(order.uses, 1, MAX_USES)) fail(where, `uses must be a whole number from 1 to ${MAX_USES}`);
   for (const [key, [min, max]] of Object.entries(kind.fields)) {
     if (!isIntIn(order[key], min, max)) fail(where, `${key} must be a whole number from ${min} to ${max}`);
+  }
+  for (const [key, [min, max]] of Object.entries(kind.extras ?? {})) {
+    if (order[key] !== undefined && !isIntIn(order[key], min, max)) fail(where, `${key} must be a whole number from ${min} to ${max}`);
   }
 }
 

@@ -110,7 +110,7 @@ function orderHint(battle, unit, order, preview) {
     case 'sedate':
       return `${preview.odds.hit}% to put ${who} to sleep for its next turn. Ends the turn. ${again}`;
     case 'kit':
-      return `Kit out ${target.id === unit.id ? unit.name : who}: a full clip and ${signed(def.armor)} armor for the fight. ${again}`;
+      return `Kit out ${target.id === unit.id ? unit.name : who}: a full clip and ${signed(def.armor)} armor${def.aim ? `, aim ${signed(def.aim)}` : ''} for the fight. ${again}`;
     default:
       return again;
   }

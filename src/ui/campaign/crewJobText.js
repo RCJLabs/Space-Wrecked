@@ -16,11 +16,11 @@ const plural = (n, one, many) => (n === 1 ? one : many);
 export const ORDER_WORDS = {
   suppress: (o) => `an enemy in sight shoots at ${signed(o.aim)} to hit until its side's next turn ends. It ends the turn.`,
   weld: (o) => `the door beside them is welded shut for ${o.rounds} ${plural(o.rounds, 'round', 'rounds')}: no one walks or sees through it.`,
-  patch: (o) => `an ally beside gets ${o.hp} hit points back; one who is down gets up.`,
+  patch: (o) => `an ally ${o.reach ? `in sight within ${o.reach} tiles` : 'beside'} gets ${o.hp} hit points back; one who is down gets up.`,
   hustle: (o) => `${o.ap} more ${plural(o.ap, 'action', 'actions')} this turn.`,
   mark: (o) => `the crew's shots at an enemy in sight are ${signed(o.aim)} to hit until the crew's next turn ends.`,
   sedate: (o) => `a dart at an enemy in sight, at a shot's odds${o.aim ? ` ${signed(o.aim)}` : ''}: a hit puts it to sleep through its side's next turn. It ends the turn.`,
-  kit: (o) => `they or an ally beside get a full clip and ${o.armor} more armor, once each.`,
+  kit: (o) => `they or an ally beside get a full clip and ${o.armor} more armor${o.aim ? `, and aim ${signed(o.aim)}` : ''}, once each.`,
 };
 
 // Each ship effect's words (edges.js STATION_EFFECTS), from its number.
@@ -52,11 +52,11 @@ export const COLONY_WORDS = {
 export const ORDER_SHORT = {
   suppress: (o) => `${signed(o.aim)} aim`,
   weld: (o) => `${o.rounds} ${plural(o.rounds, 'round', 'rounds')}`,
-  patch: (o) => `${o.hp} hit points`,
+  patch: (o) => `${o.hp} hit points${o.reach ? `, ${o.reach} tiles` : ''}`,
   hustle: (o) => `+${o.ap} ${plural(o.ap, 'action', 'actions')}`,
   mark: (o) => `${signed(o.aim)} to hit`,
   sedate: (o) => `${signed(o.aim)} to hit`,
-  kit: (o) => `+${o.armor} armor`,
+  kit: (o) => `+${o.armor} armor${o.aim ? `, ${signed(o.aim)} aim` : ''}`,
 };
 
 // The same, short, for a crew list's line (jobBrief).

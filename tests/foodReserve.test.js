@@ -2,7 +2,7 @@
 // the credits the food to the system past the charts still takes
 // (tools/voyagePlan.js foodReserve) from swaps, yard parts, racks, recruits,
 // patching and repairs, and weighs credits below it at the supplies they
-// buy; act 1's player takes up to three jobs more before launching while
+// buy; act 1's player takes a job more (FOOD_JOBS) before launching while
 // the credits fall short of act 2's (tools/run.js launchFood). The
 // voyages that came into the system hungry had spent that money on the way,
 // or left act 1 with 10 to 35 credits.
@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { launch } from '../src/sim/launch.js';
 import { beginRun, jumpSupplies, supplyCapacity, systemNeeds } from '../src/sim/travel.js';
-import { launchFood, runToLaunch, SECTOR_JUMPS } from '../tools/run.js';
+import { FOOD_JOBS, launchFood, runToLaunch, SECTOR_JUMPS } from '../tools/run.js';
 import { BUFFER_JUMPS, effectsWorth, foodReserve, swapNow, SWAP_FROM, WORTH } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 import { settled } from './colonyKit.js';
@@ -47,13 +47,14 @@ test("the food to the system: what act 2's jumps left eat, with the buffer, and 
   assert.equal(foodReserve(settled(), rules), 0);
 });
 
-test('the managing player swaps the transponder only with the food to the system left over (M40)', () => {
+test('the managing player swaps the transponder only with the food to the system and half a holdful left over (M40)', () => {
   const station = { ...atStation(onRun), heat: SWAP_FROM + 20 };
-  const reserve = foodReserve(station, rules);
+  const keep = foodReserve(station, rules) + (supplyCapacity(station.ship, rules, station.crew) * rules.balance.supplyPrice) / 2;
   const price = rules.balance.swapPrice;
-  assert.ok(reserve > (supplyCapacity(station.ship, rules, station.crew) * rules.balance.supplyPrice) / 2, 'more than half a holdful');
-  assert.equal(swapNow({ ...station, credits: price + reserve }, rules, 'manage'), true);
-  assert.equal(swapNow({ ...station, credits: price + reserve - 1 }, rules, 'manage'), false, 'a credit short of the food');
+  assert.equal(swapNow({ ...station, credits: price + keep }, rules, 'manage'), true);
+  assert.equal(swapNow({ ...station, credits: price + keep - 1 }, rules, 'manage'), false, 'a credit short');
+  assert.equal(swapNow({ ...inSector(station, 5), supplies: 999, credits: price + 14 }, rules, 'manage'), false, 'the food covered, half a holdful still kept');
+  assert.equal(swapNow({ ...inSector(station, 5), supplies: 999, credits: price + 15 }, rules, 'manage'), true);
   assert.equal(swapNow({ ...station, heat: SWAP_FROM - 1, credits: 999 }, rules, 'manage'), false, 'too cool to bother');
 });
 
@@ -69,7 +70,8 @@ test('credits below the food to the system weigh as the supplies they buy; above
   assert.equal(effectsWorth({ ...settled(), credits: 0 }, rules, { credits: -10 }), -10, 'at the colony, no food to keep');
 });
 
-test("act 1's player takes up to three jobs more once ready while the credits fall short of act 2's food and first swap (M40)", () => {
+test("act 1's player takes a job more once ready while the credits fall short of act 2's food and first swap (M40)", () => {
+  assert.equal(FOOD_JOBS, 1);
   const each = rules.balance.jumpSupplies * readyToLaunch().crew.length;
   const food = Math.ceil((SECTOR_JUMPS * sectors - SECTOR_JUMPS / 2 + BUFFER_JUMPS) * each) + 2 * each - supplyCapacity(readyToLaunch().ship, rules, readyToLaunch().crew);
   assert.equal(launchFood(readyToLaunch(), rules), food * rules.balance.supplyPrice + rules.balance.swapPrice);
@@ -79,8 +81,8 @@ test("act 1's player takes up to three jobs more once ready while the credits fa
     const run = runToLaunch(rules, seed);
     assert.ok(run.launched, `seed ${seed} launches`);
     const jobs = forFood(run);
-    assert.ok(jobs <= 3, `seed ${seed}: ${jobs} jobs for the food`);
-    assert.ok(run.campaign.credits >= launchFood(run.campaign, rules) || jobs === 3, `seed ${seed}: launches with ${run.campaign.credits} credits after ${jobs} jobs for the food`);
+    assert.ok(jobs <= FOOD_JOBS, `seed ${seed}: ${jobs} jobs for the food`);
+    assert.ok(run.campaign.credits >= launchFood(run.campaign, rules) || jobs === FOOD_JOBS, `seed ${seed}: launches with ${run.campaign.credits} credits after ${jobs} jobs for the food`);
     if (jobs) assert.match(run.lines.at(-1), /^Ready to launch/);
   }
   assert.equal(forFood(runToLaunch(rules, 1)), 0, 'seed 1 is ready with the credits already');

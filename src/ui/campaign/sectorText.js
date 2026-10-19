@@ -552,7 +552,7 @@ function leftLine(campaign, rules, plan) {
 function suppliesLine(campaign, rules, plan) {
   const carried = campaign.supplies - (plan.left ?? 0);
   const grows = plan.grows ?? 0;
-  const grown = grows ? `, and ${grows} grow aboard` : '';
+  const grown = grows ? `, and ${grows} ${grows === 1 ? 'grows' : 'grow'} aboard` : '';
   if (!plan.hungry) {
     const after = Math.max(0, carried - plan.supplies + grows);
     return `Eats ${plan.supplies} supplies${grown}: ${grows ? Math.min(after, supplyCapacity(campaign.ship, rules, campaign.crew)) : after} left.`;

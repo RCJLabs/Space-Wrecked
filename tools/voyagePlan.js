@@ -795,12 +795,13 @@ export function nextJump(campaign, rules, policy, { heat = 'manage', from = LONG
 
 // Whether the managing player swaps the transponder where the ship is: at
 // a station, heat at SWAP_FROM or more, and the credits covering it beyond
-// half a holdful's price, or in act 2 the food to the system (foodReserve)
-// if that is more.
+// half a holdful's price, and in act 2 the food to the system too
+// (foodReserve, M40: a third swap, at 80, left a voyage the food to the
+// system and 15 credits over, and a boarding lost took half).
 export function swapNow(campaign, rules, heat) {
   if (heat !== 'manage' || campaign.heat < SWAP_FROM) return false;
   const plan = swapPlan(campaign, rules);
-  return plan.ok && campaign.credits - plan.price >= Math.max((supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice) / 2, foodReserve(campaign, rules));
+  return plan.ok && campaign.credits - plan.price >= (supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice) / 2 + foodReserve(campaign, rules);
 }
 
 // The credits the food to the system past the charts still takes, in act
@@ -827,12 +828,18 @@ export function scanNow(campaign, rules, heat) {
 // Whether to take a day where the ship is: { kind: 'hide' | 'regroup' } or
 // null. Managing heat, it hides in a nebula from HIDE_FROM; either way it
 // regroups when the crew is down REST_HP each on average, but managing
-// heat, only while heat stays under huntHeat. Never below the buffer.
+// heat, only while heat stays under huntHeat. Never below the buffer, and
+// from M40 never a day hidden that leaves the food to the system more than
+// the credits buy (foodReserve): two days hidden at heat 27 with no credits
+// ate what a voyage came into the system short.
 export function restNow(campaign, rules, heat) {
   const plan = regroupPlan(campaign, rules);
   if (!plan.ok) return null;
   if (campaign.supplies - plan.supplies < REST_JUMPS * jumpSupplies(campaign, rules)) return null;
-  if (plan.kind === 'hide') return heat === 'manage' && campaign.heat >= HIDE_FROM && campaign.supplies - plan.supplies >= HIDE_JUMPS * jumpSupplies(campaign, rules) ? plan : null;
+  if (plan.kind === 'hide') {
+    const fed = foodReserve({ ...campaign, supplies: campaign.supplies - plan.supplies }, rules) <= campaign.credits;
+    return heat === 'manage' && campaign.heat >= HIDE_FROM && fed && campaign.supplies - plan.supplies >= HIDE_JUMPS * jumpSupplies(campaign, rules) ? plan : null;
+  }
   // Managing heat, a day's rest costs more heat than it heals: patch up at
   // stations instead.
   if (heat === 'manage') return null;

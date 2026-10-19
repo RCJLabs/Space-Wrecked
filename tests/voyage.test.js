@@ -81,7 +81,7 @@ import { feeOf } from '../src/sim/recruits.js';
 import { costAt } from '../src/sim/standing.js';
 import { voyagePlan } from '../src/sim/voyage.js';
 import { AFTER_DAYS, citizensSummary, COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, NEW_DAYS, outSummary, playColony, playTrips, secondSummary, SETTLE_SYSTEM, TRIP_DAYS, voyage, VOYAGE_SYSTEMS, voyagesByBackground } from '../tools/voyage.js';
-import { bestWorld, FIT_ORDER, FIT_SHARE, HOME_JUMPS, NEVER_FIT, nextGift, STOCK_DAYS, systemMove } from '../tools/voyagePlan.js';
+import { bestWorld, FIT_ORDER, FIT_SHARE, hatchesCutOff, HOME_JUMPS, NEVER_FIT, nextGift, STOCK_DAYS, systemMove } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 
 const { balance } = rules;
@@ -111,14 +111,20 @@ const RUNS = 30;
 // main's had come down to 59 by M37 (63 before it); on seeds 101 to 300 its
 // voyages matched main's (122 of 199 against 119). So that one holds main's
 // rate before M37b, as M37's two do. The rest fly the first RUNS, as
-// before.
+// before. Since M40 MAIN is M40's own rates over seeds 1 to 100 (its Done
+// when), those three with the rest, and M40's bars (BARS) hold the voyage
+// from each start.
 const RATE_RUNS = 100;
 const MARGIN = 15;
 const MARGIN_RARE = 5;
+// M40's bars (Evan's picks, 2026-10-19), over RATE_RUNS voyages from each
+// start: the hunters met in at most `met` (the sectors and the system
+// together), fed all the way in `fed` or more, hungry in the system in none.
+const BARS = { met: 25, fed: 80, systemHungry: 0 };
 const MAIN = {
-  miner: { metSectors: 33, ignoringMet: 100, fed: 73, metAny: 42, lost: 29, systemHungry: 14, shortOfAir: 0, surveyed: 68, housed: 41, noScan: 0, medbayFed: 79, surgeryFed: 81, signed: 44, settledSurveyed: 81, carefulFed: 82, refitRuns: 59, cargoFed: 81, bunksFed: 75, largeholdFed: 98 },
-  deserter: { fed: 80, metAny: 45, lost: 20 },
-  smuggler: { fed: 89, metAny: 19, lost: 18 },
+  miner: { metSectors: 11, ignoringMet: 100, fed: 98, metAny: 11, lost: 13, systemHungry: 0, shortOfAir: 0, surveyed: 96, housed: 55, noScan: 2, medbayFed: 96, surgeryFed: 95, signed: 72, settledSurveyed: 95, carefulFed: 94, refitRuns: 84, cargoFed: 97, bunksFed: 94, largeholdFed: 99 },
+  deserter: { fed: 93, metAny: 21, lost: 11 },
+  smuggler: { fed: 97, metAny: 6, lost: 4 },
 };
 // Each seed's act 1 test run, once: the voyages below fly from it.
 const lifts = Array.from({ length: RATE_RUNS }, (_, i) => launchedAt(rules, i + 1));
@@ -202,6 +208,13 @@ test('supplies and heat move as data/balance.json and data/events.json say, step
   // deserter's runs repair now and then, so theirs are walked too, but for
   // their refits (the refit test's).
   for (const trip of deserters) for (const step of trip.steps) if (step.kind !== 'refit') checkStep(step, step.room, kinds);
+  // M40: each swap costs swapRise more than the one before it, from
+  // swapPrice for the first.
+  for (const trip of [...refitting, ...deserters]) {
+    const prices = trip.steps.filter((step) => step.kind === 'swap').map((step) => step.price);
+    assert.deepEqual(prices, prices.map((_, i) => balance.swapPrice + i * balance.swapRise));
+  }
+  assert.ok(refitting.some((trip) => trip.steps.filter((step) => step.kind === 'swap').length >= 3), 'a run swaps three times or more');
   // A weapon bought from a station's rack (M37) comes up too, a part
   // bought at a shipyard (M37b) and a station's job (M38c).
   assert.deepEqual([...kinds].sort(), ['approach', 'arms', 'boarding', 'buy', 'event', 'hide', 'hire', 'job', 'jump', 'long', 'patch', 'repair', 'scan', 'sector', 'settle', 'survey', 'swap', 'system', 'yard'], 'every kind of step comes up');
@@ -227,8 +240,9 @@ function checkStep(step, capacity, kinds) {
   }
   if (step.kind === 'swap') {
     // M24: the transponder swapped, at its price, for its heat, after
-    // any docking heat.
-    assert.equal(step.credits[0] - step.credits[1], balance.swapPrice);
+    // any docking heat. Since M40 the price rises with each swap made
+    // (the run's own, tested below).
+    assert.equal(step.credits[0] - step.credits[1], step.price);
     checkDock(step, (heat) => clamp(heat + balance.swapHeat, HEAT_MAX));
     assert.deepEqual([after, step.hp[1]], [supplies, step.hp[0]]);
     return;
@@ -469,7 +483,8 @@ test('recruits sign on where the holds can feed them, and the run still pays its
   assert.ok(signed >= MAIN.miner.signed - MARGIN, `runs with a recruit: ${signed} of ${RATE_RUNS}`);
   assert.ok(cargo.every((trip) => trip.campaign.crew.length <= 4), 'up to the berths and life support: 4');
   // Fed in 24 or more of 30 until M33c, and since its companions over 100
-  // seeds, as main's within MARGIN (main's before M37 since then).
+  // seeds, as main's within MARGIN (main's before M37 from then, and M40's
+  // since).
   const fed = cargoAll.filter((trip) => trip.tally.hungryJumps === 0).length;
   assert.ok(fed >= MAIN.miner.cargoFed - MARGIN, `fed all the way in ${fed} of ${RATE_RUNS} with a cargo hold`);
 });
@@ -494,7 +509,7 @@ test('surgery, bunks and the large hold each change the voyage (Law 1)', () => {
   for (const voyages of [surgery, bunks, largehold]) assert.ok(voyages.every((trip) => trip.launched && trip.ended), 'every run settles a world past the charts');
   // Fed in 24 or more of 30 with bunks or the large hold until M33c, and
   // since its companions over 100 seeds, as main's within MARGIN (with
-  // bunks, main's before M37 since then).
+  // bunks, main's before M37 from then, and M40's since).
   assert.ok(fed(bunksAll) >= MAIN.miner.bunksFed - MARGIN, `fed all the way in ${fed(bunksAll)} of ${RATE_RUNS} with bunks`);
   assert.ok(fed(largeholdAll) >= MAIN.miner.largeholdFed - MARGIN, `fed all the way in ${fed(largeholdAll)} of ${RATE_RUNS} with the large hold`);
   assert.ok(fed(surgeryAll) >= MAIN.miner.surgeryFed - MARGIN, `fed all the way in ${fed(surgeryAll)} of ${RATE_RUNS} with surgery`);
@@ -518,7 +533,7 @@ test('surgery, bunks and the large hold each change the voyage (Law 1)', () => {
 });
 
 test('the same seed always gives the same sectors, none named twice in a run', () => {
-  const again = voyage(rules, SEEDS[1], { refit: 'no' });
+  const again = voyage(rules, SEEDS[1], { refit: 'no', jobs: 'no', out: 'no', fit: powered(lifts[1]) });
   assert.deepEqual(again.sectors, trips[1].sectors);
   assert.deepEqual(again.steps, trips[1].steps);
   assert.notDeepEqual(trips[0].sectors, trips[1].sectors);
@@ -595,7 +610,7 @@ test("the careful player takes a station's job where it is worth it, with a full
 // pick: at most 6). Main met those on seeds 1 to 30 alone: over 100, the
 // hunters came in 33 managed runs and 73 crossed fed (§9). Since M31 they
 // are rates over 100 seeds, within MARGIN of main's.
-test("ignoring heat brings the hunters, and managing it keeps them off: over 100 runs, as often as main's before M31 within 15, all meet them ignoring it, about a third managing it, and three in four cross fed managing it (M24)", () => {
+test("ignoring heat brings the hunters, and managing it keeps them off: over 100 runs, as often as main's within 15 (M40's since M40), all meet them ignoring it, few managing it, and nearly all cross fed managing it (M24)", () => {
   // Met crossing the act's sectors, as M24 measured it: the system past the
   // charts (M25) is the next test's.
   const met = (voyages) => voyages.filter((trip) => trip.steps.some((step) => step.kind === 'approach' && step.hunt && step.sector <= LAST)).length;
@@ -671,6 +686,9 @@ test('the colony: the careful player founds it in every run, giving every useful
     const { stats } = rules.modules.get(type);
     return stats.berths > 0 || stats.lifeSupport > 0;
   };
+  // From M40 the parts whose going leaves a hatch no one can walk to from
+  // the bridge stay aboard too (tests/hatches.test.js).
+  const givable = (state) => shipParts(state, rules).filter((part) => part.ok && hatchesCutOff(part.ship, rules) <= hatchesCutOff(state.ship, rules));
   for (const [i, trip] of refitting.entries()) {
     const seed = i + 1;
     const { campaign } = trip;
@@ -678,7 +696,7 @@ test('the colony: the careful player founds it in every run, giving every useful
     assert.ok(colony && campaign.colony, `seed ${seed} founds the colony`);
     assert.deepEqual(campaign.colony.buildings.map((b) => b.type), colony.given, `seed ${seed}: the buildings are the parts given, in order`);
     // Nothing is left aboard that could be given.
-    assert.deepEqual(shipParts(campaign, rules).filter((part) => part.ok), [], `seed ${seed}: every part the checks let go is given`);
+    assert.deepEqual(givable(campaign), [], `seed ${seed}: every part the checks and the walk to the hatches let go is given`);
     // The ship still flies, counting nobody aboard, and every building is
     // powered.
     assert.ok(shipChecklist(campaign, rules).every((line) => line.ok === true), `seed ${seed}: the ship passes every flight check`);
@@ -690,7 +708,7 @@ test('the colony: the careful player founds it in every run, giving every useful
     // landing founds the same colony.
     let state = trip.landed;
     for (const type of colony.given) {
-      const ready = shipParts(state, rules).filter((part) => part.ok);
+      const ready = givable(state);
       if (!housing(type)) assert.equal(ready.some((part) => housing(part.type)), false, `seed ${seed}: ${type} given while beds or air could go`);
       const uid = nextGift(state, rules);
       assert.equal(state.ship.modules.find((m) => m.uid === uid).type, type);
@@ -862,7 +880,7 @@ test("the colony's raids: over its 60 days the careful player stays home while o
 // seeds, within MARGIN. Since M33b no worse than them (Evan's call,
 // 2026-10-16): the deserter's thread takes 35 heat off a pursuer who takes
 // no payments, and it met the hunters in 21 of 100 against main's 45.
-test("from each background's start, the careful player crosses fed, meets the hunters and loses a raid at the colony in no more runs than main's before M31 by 15 of 100 (M30, M33b)", () => {
+test("from each background's start, the careful player crosses fed, meets the hunters and loses a raid at the colony in no more runs than main's by 15 of 100 (M30, M33b; main's M40's since M40)", () => {
   const count = (fleet) => ({
     fed: fleet.filter((r) => r.tally.hungryJumps === 0).length,
     metAny: fleet.filter((r) => r.tally.hunts > 0).length,
@@ -878,6 +896,23 @@ test("from each background's start, the careful player crosses fed, meets the hu
   const side = voyagesByBackground(rules, 1);
   assert.deepEqual(side.rows.map((row) => row.id), [...rules.backgrounds.keys()]);
   assert.match(side.lines[1], /^Background +Launched +Fed +Met +Raids +Won +Lost +Runs lost$/);
+});
+
+// M40's Done when: from each start, over RATE_RUNS voyages, the careful
+// player managing heat meets the hunters in at most BARS.met runs, the
+// sectors and the system together (M40 brought them from 35, 26 and 13 of
+// 100: only the task force past the charts, swaps dearer each time, and the
+// test player keeping the food to the system in hand); is fed all the way in
+// BARS.fed or more; and comes into the system hungry in none.
+test("from each start, over 100 voyages, the hunters met in 25 runs or fewer, fed all the way in 80 or more, and hungry in the system in none (M40)", () => {
+  for (const [id, all] of [['miner', refittingAll], ['deserter', desertersAll], ['smuggler', smugglersAll]]) {
+    const met = all.filter((r) => r.tally.hunts > 0).length;
+    const fed = all.filter((r) => r.tally.hungryJumps === 0).length;
+    const hungry = all.filter((r) => r.tally.systemHungry > 0).length;
+    assert.ok(met <= BARS.met, `${id}: the hunters met in ${met} of ${RATE_RUNS}`);
+    assert.ok(fed >= BARS.fed, `${id}: fed all the way in ${fed} of ${RATE_RUNS}`);
+    assert.ok(hungry <= BARS.systemHungry, `${id}: hungry in the system in ${hungry} of ${RATE_RUNS}`);
+  }
 });
 
 // M36: the events met. An event met comes again only once its kind has
@@ -1079,7 +1114,11 @@ test("after the colony's 60 days the careful player stocks the holds and flies o
   assert.deepEqual(flown.tally, stayed.tally);
   assert.deepEqual(flown.steps, stayed.steps);
   assert.equal(stayed.out, null);
-  assert.ok(runs((out) => out.back.called) > 0, 'a raid calls the ship home on some voyage out');
+  // A raid coming calls the ship home: on 1 or 2 of the miner's 100
+  // voyages out, and since M40 on none of seeds 1 to 100, so seed 130's,
+  // one of 3 among seeds 101 to 220, shows it.
+  const lifted = launchedAt(rules, 130);
+  assert.ok(voyage(rules, 130, { refit: 'yes', jobs: 'yes', fit: powered(lifted) }, lifted).out.back.called, "a raid calls the ship home on seed 130's voyage out");
   assert.match(outSummary(refittingAll), /^The voyage out \(M38d\): flown in 100 of 100, home in \d+; .+ systems crossed \d+ \(\d+ to \d+\), all 3 in \d+; days away .+ At home: found in \d+ runs, calling the ship home in \d+; raids faced while away \d+, lost \d+ .+ met at home once back \d+, won \d+; fed all the while in \d+ of 100; the mines' digging past the storehouses lost in \d+ runs \(\d+ in all\)\. Before flying out, \d+ \(\d+ to \d+\) days stocking the holds, full in \d+ runs; flying out, food spoiled in \d+ runs \(\d+ in all\)\.$/);
   assert.match(flown.lines.at(-1), /^The voyage out: [0-3] of 3 systems crossed, home after \d+ days away(, called home by a raid)?; /);
 });

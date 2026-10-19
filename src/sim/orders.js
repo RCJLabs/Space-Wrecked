@@ -12,7 +12,9 @@
 //                       welded shut for `rounds` rounds, this one counted:
 //                       no one walks or sees through it.
 //   patch    { hp }     an ally beside, hurt or down: `hp` hit points back,
-//                       up to their most. One down gets up with `hp`.
+//                       up to their most. One down gets up with `hp`. With
+//                       `reach` (M40, a talent's), an ally that many tiles
+//                       off or nearer, in sight.
 //   hustle   { ap }     itself: `ap` more actions this turn. It costs none.
 //   mark     { aim }    an enemy in sight: the other side's shots at it take
 //                       `aim` until the crew's next turn ends.
@@ -22,7 +24,9 @@
 //                       side's next turn. Ends the unit's turn and uses a
 //                       round.
 //   kit      { armor }  itself or an ally beside, once each: a full clip
-//                       and `armor` more armor for the rest of the fight.
+//                       and `armor` more armor for the rest of the fight,
+//                       and with `aim` (M40, a talent's) that much more
+//                       aim.
 // The others take one action. Any order can name a weapon it needs in hand
 // (`weapon`, M37: Sedate the dart gun), and the two that fire a round,
 // Suppress and Sedate, reach only as far as the weapon does (weapons.js).
@@ -42,16 +46,18 @@ import { weldedAt } from './terrain.js';
 import { outOfReach, withinReach } from './weapons.js';
 
 // Each kind's numbers, with how far they go, and whom it reaches: 'enemy'
-// (in sight), 'ally' (beside), 'self', 'kit' (itself or an ally beside) or
-// 'door' (a side of its tile).
+// (in sight), 'ally' (beside, or within the order's reach), 'self', 'kit'
+// (itself or an ally beside) or 'door' (a side of its tile). extras: the
+// numbers an order of the kind may have besides (M40: a talent's), with
+// how far they go.
 export const ORDER_KINDS = {
   suppress: { fields: { aim: [-100, -1] }, reaches: 'enemy' },
   weld: { fields: { rounds: [1, 20] }, reaches: 'door' },
-  patch: { fields: { hp: [1, 99] }, reaches: 'ally' },
+  patch: { fields: { hp: [1, 99] }, extras: { reach: [2, 6] }, reaches: 'ally' },
   hustle: { fields: { ap: [1, 3] }, reaches: 'self' },
   mark: { fields: { aim: [1, 100] }, reaches: 'enemy' },
   sedate: { fields: { aim: [0, 100] }, reaches: 'enemy' },
-  kit: { fields: { armor: [1, 5] }, reaches: 'kit' },
+  kit: { fields: { armor: [1, 5] }, extras: { aim: [1, 50] }, reaches: 'kit' },
 };
 
 // The crew's turn ends a mark lasts, the one it was made in counted.
@@ -86,7 +92,7 @@ export function orderTargets(battle, unit, rules) {
       return others.filter((u) => u.side !== unit.side && u.status === 'active' && (!fires || withinReach(weapon, [unit.x, unit.y], [u.x, u.y])) && canSee(battle, [unit.x, unit.y], [u.x, u.y], rules)).map((u) => u.id);
     }
     case 'ally':
-      return others.filter((u) => u.side === unit.side && beside(unit, u) && patchable(u)).map((u) => u.id);
+      return others.filter((u) => u.side === unit.side && withinOrder(battle, unit, u, order, rules) && patchable(u)).map((u) => u.id);
     case 'kit':
       // A ward (objectives.js, M38) has no gun to load.
       return [unit, ...others.filter((u) => u.side === unit.side && !u.ward && beside(unit, u))].filter((u) => u.status === 'active' && !u.kitted).map((u) => u.id);
@@ -167,9 +173,10 @@ export function doOrder(battle, unit, action, events, rules) {
       const clip = rules.weapons.get(target.weapon).clip;
       unit.ap -= 1;
       target.armor += order.armor;
+      target.aim += order.aim ?? 0;
       target.ammo = clip;
       target.kitted = true;
-      events.push({ ...said, armor: order.armor, ammo: clip });
+      events.push({ ...said, armor: order.armor, ammo: clip, ...(order.aim ? { aim: order.aim } : {}) });
       return null;
     }
     default:
@@ -216,7 +223,7 @@ function whyNot(battle, unit, order, target, rules) {
     return `${unit.name} can't see ${target.name}.`;
   }
   if (target.side !== unit.side) return `${order.name} is for the crew.`;
-  if (!beside(unit, target)) return `${unit.name} has to be next to ${target.name}.`;
+  if (!withinOrder(battle, unit, target, order, rules)) return order.reach ? `${target.name} has to be in ${unit.name}'s sight, ${order.reach} tiles off or nearer.` : `${unit.name} has to be next to ${target.name}.`;
   if (reaches === 'kit') return target.kitted ? `${target.name} is kitted out already.` : `${target.name} is ${target.status}.`;
   return target.status === 'active' ? `${target.name} isn't hurt.` : `${target.name} is ${target.status}.`;
 }
@@ -254,6 +261,13 @@ export function endWelds(battle, events) {
 // Ally `b` beside `a`: next to it by a side or a corner, as Stabilize asks.
 function beside(a, b) {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) <= 1;
+}
+
+// Ally `b` where unit `a`'s order reaches it: beside it, or with the
+// order's `reach` (M40) that many tiles off or nearer, in sight.
+function withinOrder(battle, a, b, order, rules) {
+  if (beside(a, b)) return true;
+  return !!order.reach && Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) <= order.reach && canSee(battle, [a.x, a.y], [b.x, b.y], rules);
 }
 
 // One Patch can help: down or stable, or standing and hurt.

@@ -74,7 +74,8 @@ test('the jump plan says what hydroponics grow on the way and what stealth baffl
   const quiet = rules.modules.get('baffles').station.quiet;
   const room = supplyCapacity(campaign.ship, rules, campaign.crew);
   const lines = jumpText(campaign, rules, next).lines;
-  assert.deepEqual(lines, [`Eats 3 supplies, and ${grows} grow aboard: ${Math.min(room, campaign.supplies - 3 + grows)} left.`, `Heat +${balance.jumpHeat - quiet}, the baffles keeping ${quiet} off: ${30 + balance.jumpHeat - quiet}.`]);
+  assert.equal(grows, 1, 'since M40');
+  assert.deepEqual(lines, [`Eats 3 supplies, and 1 grows aboard: ${Math.min(room, campaign.supplies - 3 + grows)} left.`, `Heat +${balance.jumpHeat - quiet}, the baffles keeping ${quiet} off: ${30 + balance.jumpHeat - quiet}.`]);
   // Wrecked, they do nothing (the engineer aboard fixes one on the way).
   const wrecks = Object.fromEntries(campaign.ship.modules.filter((m) => ['hydroponics', 'baffles'].includes(m.type)).map((m) => [m.uid, 'fire']));
   assert.deepEqual(jumpText({ ...campaign, wrecks }, rules, next).lines.slice(0, 2), [`Eats 3 supplies: ${campaign.supplies - 3} left.`, `Heat +${balance.jumpHeat}: ${30 + balance.jumpHeat}.`]);

@@ -131,7 +131,7 @@
       "makers": { "bastion": 50 },
       "tactics": { "aim": ["engines", "weapons"], "board": 2, "flee": 70 },
       "scrap": [25, 45],
-      "party": "raid",
+      "party": "gunshipcrew",
       "salvage": 2,
       "look": { "paint": "graphite", "trim": "amber", "pieces": { "sweptwing": [1, 2], "armorplate": [1, 3], "floodlight": [1, 2] } }
     },
