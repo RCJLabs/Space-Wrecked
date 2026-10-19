@@ -47,7 +47,10 @@ Newest entry first.
 
 **Browser checks:**
 - **`m42/verify.mjs`:** 17 of 17 at each of the three sizes. It covers Settings' two rows (Colorblind-safe saved and swapped in the CSS, 130% saved and the title's words 1.3 times as big); a fight's enemy turn under reduced motion (board free in under 1 s, Skip never needed) and full (over 2 s); at 130% the fight, the chart, the builder and the colony with every button 48 px or more and reachable; the chart's side letters, no part's name clipped, an unmet need marked; a quit and reopen at v40; offline; no console errors.
-- **Every earlier milestone's browser check:** REGRESS
+- **Every earlier milestone's browser check:** passes at the three sizes unless named, each the latest adapted copy (`m42/regress-a.sh`, `regress-b.sh`), but M32b's first copy, whose 2 known failures since M36 its fix copy covers.
+  - **Adapted for M42:** the checks that pin the save version (now 40), and M38c's, whose dock-floor color sample now leaves out amber pixels. The new hatching on the dash tiles had pulled the board's middle from rgb(65, 68, 69) to rgb(67, 69, 69), under its "leaning blue" bar. With the hatching left out it reads rgb(60, 64, 68).
+  - **Run again on their own, and passed:** M14's at the cover size, cut off when the chain reached its two-hour limit.
+- **Text sizes measured** (`m42/measure2.mjs`, 10 screens at each of the three sizes): at 100% the smallest text is 10 px; at 130%, 11 px. Nothing is clipped at either, and no line ellipsises at 130%.
 
 **Known issues:**
 - **Standard stays as it was:** its 12 pairs under 20 for some eye remain, with the second cues to tell them apart. Colorblind-safe is the fix, off unless picked.

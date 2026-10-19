@@ -2208,7 +2208,7 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **Settings' Difficulty row** shows only with a game under way, and says the change holds from the next fight.
   - **The crew's AI gets a downed ally up** before anything else where death is permanent (`src/sim/rescueAi.js`): stabilize beside them, or walk there with an action to spare, unless its own Patch can reach them.
   - **Each setting through all three acts** (100 games from each start; Easy, Normal, Hard): without permanent death all 900 reach the colony, the fights won 89/78/63% from the miner's start, 84/70/61% from the deserter's, 89/79/69% from the smuggler's. With it at Normal the colony is reached in 100, 100 and 99; across all nine, one game over (Hard, the smuggler's, in act 3), and the smuggler's test player stopped short of launch in 1 at Normal and 3 at Hard.
-- [ ] **M42 Accessibility.** The draft:
+- [x] **M42 Accessibility.** The draft:
   - a colorblind-safe palette;
   - text size;
   - reduced motion in a fight (§9).
