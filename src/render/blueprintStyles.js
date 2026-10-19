@@ -5,7 +5,7 @@ import { palette, planLine, rgba, skins } from './palette.js';
 
 const line = palette.bpLine;
 const glow = palette.bpGlow;
-const { good, bad, ink } = palette;
+const { ink } = palette;
 
 // The styles a room is drawn in (shipScene.js room()), in a line color: the
 // blueprint's own, or a maker's (M23g).
@@ -38,9 +38,17 @@ export const BLUEPRINT_STYLES = {
   floorMark: ROOM.floorMark,
   floorDash: ROOM.floorDash,
   liftedEdge: { stroke: rgba(line, 0.5), width: 1.2, dash: [5, 5] },
-  flagEdge: { stroke: bad, width: 2, dash: [6, 5] },
-  blockFace: { fill: rgba(bad, 0.22) },
-  blockEdge: { stroke: bad, width: 2.2 },
+  // Good and bad read the palette as they are drawn: Settings' Colors can
+  // swap them (M42).
+  get flagEdge() {
+    return { stroke: palette.bad, width: 2, dash: [6, 5] };
+  },
+  get blockFace() {
+    return { fill: rgba(palette.bad, 0.22) };
+  },
+  get blockEdge() {
+    return { stroke: palette.bad, width: 2.2 };
+  },
   // A wrecked part (M23h), in the fire of a wrecked room on a battle map.
   wreckFace: { fill: rgba(palette.fire, 0.16) },
   wreckEdge: { stroke: palette.fire, width: 1.6, dash: [4, 3] },
@@ -65,14 +73,30 @@ export const BLUEPRINT_STYLES = {
   rimTop: { stroke: line, width: 1.8, halo: rgba(line, 0.2) },
   selectEdge: { stroke: ink, width: 2.4, halo: rgba(ink, 0.25) },
   glows: {},
-  ghostTarget: { fill: rgba(good, 0.16), stroke: good, width: 1.6, dash: [6, 4] },
-  ghostDrop: { stroke: rgba(good, 0.85), width: 1, dash: [3, 4] },
-  ghostFace: { fill: rgba(good, 0.1) },
-  ghostLine: { stroke: good, width: 1.3, halo: rgba(good, 0.2) },
-  ghostBadTarget: { fill: rgba(bad, 0.16), stroke: bad, width: 1.6, dash: [6, 4] },
-  ghostBadDrop: { stroke: rgba(bad, 0.85), width: 1, dash: [3, 4] },
-  ghostBadFace: { fill: rgba(bad, 0.1) },
-  ghostBadLine: { stroke: bad, width: 1.3, halo: rgba(bad, 0.2) },
+  get ghostTarget() {
+    return { fill: rgba(palette.good, 0.16), stroke: palette.good, width: 1.6, dash: [6, 4] };
+  },
+  get ghostDrop() {
+    return { stroke: rgba(palette.good, 0.85), width: 1, dash: [3, 4] };
+  },
+  get ghostFace() {
+    return { fill: rgba(palette.good, 0.1) };
+  },
+  get ghostLine() {
+    return { stroke: palette.good, width: 1.3, halo: rgba(palette.good, 0.2) };
+  },
+  get ghostBadTarget() {
+    return { fill: rgba(palette.bad, 0.16), stroke: palette.bad, width: 1.6, dash: [6, 4] };
+  },
+  get ghostBadDrop() {
+    return { stroke: rgba(palette.bad, 0.85), width: 1, dash: [3, 4] };
+  },
+  get ghostBadFace() {
+    return { fill: rgba(palette.bad, 0.1) };
+  },
+  get ghostBadLine() {
+    return { stroke: palette.bad, width: 1.3, halo: rgba(palette.bad, 0.2) };
+  },
 };
 
 // Each maker with a line of its own on the plans (palette.js planLine,
@@ -99,4 +123,13 @@ export function makerStyle(style, maker) {
 // the player is doing on top.
 export const BLUEPRINT_ORDER = order;
 
-export const LABEL_TONES = { info: line, good, bad };
+// A callout's tones, good and bad read as drawn (M42).
+export const LABEL_TONES = {
+  info: line,
+  get good() {
+    return palette.good;
+  },
+  get bad() {
+    return palette.bad;
+  },
+};

@@ -1,7 +1,7 @@
 // Text for the settings screen (settings.js): each setting's choices, and
 // what the one picked does, its numbers from data/balance.json. Pure.
 import { DIFFICULTIES, enemyBonus, gunneryBonus } from '../sim/difficulty.js';
-import { FPS_CAPS, MOTIONS, VOLUMES } from '../sim/settings.js';
+import { COLORS, FPS_CAPS, MOTIONS, TEXT_SIZES, VOLUMES } from '../sim/settings.js';
 
 // The rows, in order: [{ key, title, choices: [{ value, label }], value,
 // action, line }]. key is the setting (sim/settings.js); value is the one
@@ -47,9 +47,24 @@ export function settingsText(settings, balance, campaign = null) {
       choices: MOTIONS.map((value) => ({ value, label: { auto: 'As the phone', reduce: 'Reduce', full: 'Full' }[value] })),
       line: {
         auto: 'As the phone is set: reduced if it asks for less motion.',
-        reduce: 'The stars stand still, the ship lifts off without moving, and nothing fades.',
+        reduce: "The stars stand still, the ship lifts off without moving, nothing fades, and an enemy's turn in a fight shows its end at once.",
         full: 'Everything moves, whatever the phone asks.',
       }[settings.motion],
+    },
+    {
+      key: 'colors',
+      title: 'Colors',
+      choices: COLORS.map((value) => ({ value, label: { standard: 'Standard', safe: 'Colorblind-safe' }[value] })),
+      line: {
+        standard: 'The game as drawn. Every color that tells you something has a shape or a word with it too.',
+        safe: 'Colors picked to stay apart for every kind of colorblindness: good is blue, danger magenta, warnings near white.',
+      }[settings.colors],
+    },
+    {
+      key: 'textSize',
+      title: 'Text size',
+      choices: TEXT_SIZES.map((value) => ({ value, label: `${value}%` })),
+      line: settings.textSize === 100 ? 'Text as drawn.' : `Every word ${settings.textSize}% as big, in the panels and on the board. Long lists scroll.`,
     },
     {
       key: 'fpsCap',

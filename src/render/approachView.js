@@ -88,7 +88,7 @@ export function createApproachView() {
         if (placed(shimmer.side)) shield(ctx, sides[shimmer.side], offset(shimmer.side), shimmer.progress);
       }
       for (const shot of frame.shots ?? []) {
-        if (placed(shot.side) && sides[shot.target].cam) streak(ctx, at(shot.side, shot.from), at(shot.target, shot.to), shot.progress, shot.side === 'you' ? palette.tracer : palette.enemyTracer, shot.torpedo ? TORPEDO : SHELL);
+        if (placed(shot.side) && sides[shot.target].cam) streak(ctx, at(shot.side, shot.from), at(shot.target, shot.to), shot.progress, shot.side === 'you' ? palette.tracer : palette.enemyTracer, shot.torpedo ? TORPEDO : SHELL, shot.side !== 'you');
       }
       for (const flash of frame.flashes ?? []) {
         if (sides[flash.side].cam) burst(ctx, at(flash.side, flash.at), flash, sides[flash.side].rect);
@@ -190,7 +190,8 @@ function brackets(ctx, corners, first) {
 
 // A shot in flight: a bright head and a streak behind it, from where it
 // was fired toward where it goes, as `look` has it (SHELL or TORPEDO).
-function streak(ctx, [ax, ay], [bx, by], progress, color, look = SHELL) {
+// Theirs trail in dashes, ours whole (M42: told apart without color).
+function streak(ctx, [ax, ay], [bx, by], progress, color, look = SHELL, dashed = false) {
   const lerp = (p) => [ax + (bx - ax) * p, ay + (by - ay) * p];
   const [hx, hy] = lerp(progress);
   const [tx, ty] = lerp(Math.max(0, progress - look.tail));
@@ -199,11 +200,13 @@ function streak(ctx, [ax, ay], [bx, by], progress, color, look = SHELL) {
   line.addColorStop(1, rgba(color, 0.95));
   ctx.strokeStyle = line;
   ctx.lineWidth = look.width;
-  ctx.lineCap = 'round';
+  ctx.lineCap = dashed ? 'butt' : 'round';
+  ctx.setLineDash(dashed ? [look.width * 2.5, look.width * 1.5] : []);
   ctx.beginPath();
   ctx.moveTo(tx, ty);
   ctx.lineTo(hx, hy);
   ctx.stroke();
+  ctx.setLineDash([]);
   glowAt(ctx, hx, hy, look.head, color, 0.9);
 }
 

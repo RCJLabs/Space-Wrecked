@@ -107,7 +107,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      its news; a raid's fight can hold colonists (M38f)
 //  39  the difficulty is the game's: the campaign keeps it, with permanent
 //      death and the fallen, and the settings keep none (M41)
-export const SAVE_VERSION = 39;
+//  40  accessibility: the settings keep the colors (standard or
+//      colorblind-safe) and the text size (M42)
+export const SAVE_VERSION = 40;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -543,6 +545,10 @@ export const MIGRATIONS = [
       const campaign = isObject(data.campaign) ? { ...data.campaign, difficulty: kept, permadeath: false, fallen: [] } : data.campaign;
       return { ...data, ...(isObject(data.settings) ? { settings } : {}), campaign };
     },
+  },
+  {
+    from: 39,
+    up: (data) => (isObject(data) && isObject(data.settings) ? { ...data, settings: { ...data.settings, colors: 'standard', textSize: 100 } } : data),
   },
 ];
 

@@ -468,7 +468,7 @@ export const sectorScreen = {
           button.append(dot);
           // A station of a side (M33) wears the side's color by its mark.
           if (n.side) {
-            const pip = node('i', 'sct-side');
+            const pip = node('i', 'sct-side', n.side.initial);
             Object.assign(pip.style, { left: dot.style.left, top: dot.style.top, background: n.side.color });
             button.append(pip);
           }

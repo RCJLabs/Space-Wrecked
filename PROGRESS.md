@@ -2,6 +2,70 @@
 
 Newest entry first.
 
+## M42 Accessibility (2026-10-19)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves are at v40.
+
+**How it was picked:** M42 measured first (main after M41). Color was the only cue in 11 places, and simulated colorblindness put `good`/`bad` 7.8 apart for deuteranopia. Every text size was fixed px, the smallest 8.6 px, and the Motion setting did nothing in a fight, where an enemy turn played for 5.7 s at the median. My recommendations, taken on Evan's standing word to go with them (2026-10-19), are ROADMAP.md's M42 Done when.
+
+**What shipped:**
+- **A second cue for each of the 11 color-only places:**
+  - a dash tile is hatched (`src/render/units.js` `hatch`);
+  - a way in held is crossed;
+  - a hurt to the crew reads "HURT −2" (`src/render/playback.js`);
+  - a blocked ghost is crossed, in the builder (`shipScene.js`) and the colony (`colonyScene.js`);
+  - a wounded HP bar is striped;
+  - an unmet need starts with "!";
+  - the hunters' ring is doubled;
+  - a station's side pip carries the side's letter;
+  - the enemy's shots on the approach are dashed (`approachView.js`);
+  - each crew member's initial sits beside their pips on the board (`fightLabels.js`).
+- **Colors, in Settings:** Standard or Colorblind-safe. `src/render/palette.js` has the safe set and `MUST_DIFFER`, the 21 pairs a player tells apart by color. `usePalette` swaps the set in place, so the canvas styles read it live; `src/ui/look.js` writes the CSS tokens.
+- **Text size, in Settings:** 100%, 115% or 130%. Every CSS size is multiplied by `--ts`, and the fight's canvas labels by `textScale()` (`src/render/textScale.js`). The builder's tiles are floored at 10 px. At 115% and 130%, names and lines that were cut short wrap instead: the hangar, the job board, the shop, the colony's home line, and the builder's part and look tiles, whose rows grow to hold them.
+- **Reduced motion in a fight:** with Motion at Reduce (or the phone asking for less), a playback shows its end at once (`makeTimeline(..., { still: true })`). Each action's words still rise, stacked where they share a tile, and the sounds play. The Settings line says so.
+- **Saves v40:** `colors` and `textSize` in the settings; the migration gives Standard and 100%.
+
+**Done when** (ROADMAP.md, M42), and how each is met:
+- **Never color alone:** `tests/accessibility.test.js` (the board's cues), `tests/units.test.js` (hatching), `tests/missionText.test.js` (zones, "HURT −4"), `tests/standingText.test.js` (the pip's letter); by touch.
+- **Colors, at least 20 apart to every eye; AA on the panels:** `tests/palette.test.js`, from the palette itself (below).
+- **Text size:** by touch at 130% (below). At 100% nothing renders under 10 px.
+- **Reduced motion in a fight:** `tests/accessibility.test.js` (a still enemy turn takes 0 ms); by touch, the board free 6 ms after End turn against about 5.6 s at full motion.
+- **Saves v40,** the migration tested (`tests/accessibility.test.js`).
+- **Touch, at the three sizes:** below.
+
+**The palette** (CIEDE2000 on Machado 2009's simulations; the least of the 21 pairs):
+
+| | Normal | Protanopia | Deuteranopia | Tritanopia | Pairs under 20 | Least text contrast |
+| --- | --- | --- | --- | --- | --- | --- |
+| Standard | 15.5 | 9.5 | 6.5 | 9.8 | 12 of 21 | 6.4 |
+| Colorblind-safe | 25.1 | 22.5 | 20.8 | 20.8 | 0 of 21 | 4.9 |
+
+**Tests:**
+- `node --test`: 1173 pass (1165 on main).
+- **New:** `tests/palette.test.js` (3), `tests/accessibility.test.js` (5), with `tests/colorVision.js`, the color kit both use.
+- **Changed on purpose:** the save version pins (39 → 40); the new settings' defaults in `tests/sim.test.js` and `tests/captain.test.js`; the zones' crosses, "HURT −4", the dash's hatching and the pip's letter in the tests above. No golden file changed.
+
+**Browser checks:**
+- **`m42/verify.mjs`:** 17 of 17 at each of the three sizes. It covers Settings' two rows (Colorblind-safe saved and swapped in the CSS, 130% saved and the title's words 1.3 times as big); a fight's enemy turn under reduced motion (board free in under 1 s, Skip never needed) and full (over 2 s); at 130% the fight, the chart, the builder and the colony with every button 48 px or more and reachable; the chart's side letters, no part's name clipped, an unmet need marked; a quit and reopen at v40; offline; no console errors.
+- **Every earlier milestone's browser check:** passes at the three sizes unless named, each the latest adapted copy (`m42/regress-a.sh`, `regress-b.sh`), but M32b's first copy, whose 2 known failures since M36 its fix copy covers.
+  - **Adapted for M42:** the checks that pin the save version (now 40), and M38c's, whose dock-floor color sample now leaves out amber pixels. The new hatching on the dash tiles had pulled the board's middle from rgb(65, 68, 69) to rgb(67, 69, 69), under its "leaning blue" bar. With the hatching left out it reads rgb(60, 64, 68).
+  - **Run again on their own, and passed:** M14's at the cover size, cut off when the chain reached its two-hour limit.
+- **Text sizes measured** (`m42/measure2.mjs`, 10 screens at each of the three sizes): at 100% the smallest text is 10 px; at 130%, 11 px. Nothing is clipped at either, and no line ellipsises at 130%.
+
+**Known issues:**
+- **Standard stays as it was:** its 12 pairs under 20 for some eye remain, with the second cues to tell them apart. Colorblind-safe is the fix, off unless picked.
+- **Colorblind-safe's text is closer to AA:** its least contrast on a panel is 4.9 (Standard's 6.4), over 4.5 but with less to spare.
+- **At 130% on the short screens** the panels scroll more, and the colony's crew list runs taller than its panel.
+- **Reduced motion stills the crew's own actions too:** a move or shot shows its end at once, with no walk to watch.
+
+**What Evan should test on the phone:**
+- **Settings, Colors:** Colorblind-safe turns the greens blue and the reds magenta across the fight, the builder, the chart and the colony; Standard brings them back.
+- **Settings, Text size:** 130% on the cover screen; the hangar, job board, shop, builder, chart and colony still read, and every button reaches.
+- **A fight with Motion at Reduce:** End turn shows the enemy's turn done at once, with its words over the units.
+- **The cues:** a dash tile hatched, "HURT" on the crew's wounds, a crossed ghost where a part won't fit, initials beside the crew's pips.
+
+**Next milestone's first task:** M43 Tutorial polish: study the tips past the first fight (the run, the colony; §9), measure where a new player is left without one, settle its Done when.
+
 ## M41 Difficulty settings (2026-10-19)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves are at v39.

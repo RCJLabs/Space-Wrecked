@@ -167,9 +167,12 @@ test('the board tags the crates, the way out, the far gate, the targets and thei
   const full = start({ type: 'defend', rounds: 6, line: [[0, 1], [0, 2]] }, [{ kind: 'marine', x: 0, y: 1 }, { kind: 'medic', x: 0, y: 2 }, { kind: 'pirate', x: 7, y: 3 }]);
   assert.deepEqual(objectiveMarks(full)[0].at, [0, 1], 'everyone on it: the middle tile');
   assert.deepEqual(objectiveZones(defend.objective), [{ tiles: WEST, tone: 'hold' }]);
-  // Each tile of each zone, outlined on the deck under the orders' marks.
+  // Each tile of each zone, outlined on the deck under the orders' marks,
+  // and the way in held crossed as well as colored (M42): a plate and two
+  // strips a tile.
   const faces = zonesScene(objectiveZones(defend.objective));
-  assert.equal(faces.length, WEST.length);
+  assert.equal(faces.length, WEST.length * 3);
+  assert.equal(zonesScene([{ tiles: WEST, tone: 'out' }]).length, WEST.length, 'a way out: the plate alone');
   assert.ok(faces.every((face) => face.normal[2] === 1 && face.bias > -0.03), 'flat on the deck, under the reach marks');
   // A captive held stands; down, they lie.
   const figure = (status) => unitsScene([{ id: 'w1', side: 'crew', status, at: [3.5, 1.5], facing: [1, 0], trim: '#fff', look: null, held: false, pose: { aim: 0, fall: 0 } }]).figures[0].pose.fall;
@@ -197,7 +200,7 @@ test('the playback: a crate picked up, taken from the fallen and carried out, th
   const frame = frameAt(timeline, timeline.length * 0.5);
   assert.deepEqual(frame.blast, { at: [2, 1], progress: 0.5 });
   const later = frameAt(timeline, timeline.length * 0.3);
-  assert.deepEqual(later.floats.map((f) => [f.at, f.text, f.tone]), [[[2, 1], 'BLAST', 'hit'], [[1, 1], '−4', 'hurt'], [[3, 1], '−4', 'hit']]);
+  assert.deepEqual(later.floats.map((f) => [f.at, f.text, f.tone]), [[[2, 1], 'BLAST', 'hit'], [[1, 1], 'HURT −4', 'hurt'], [[3, 1], '−4', 'hit']]);
   assert.equal(frameAt(timeline, timeline.length + 1).blast, null, 'gone once it has played');
   // Its words in the status line: bad when it catches one of the crew.
   assert.equal(eventText(blast, near).tone, 'bad');

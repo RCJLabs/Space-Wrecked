@@ -256,7 +256,7 @@ function greebles(model, hull, shape, makerOf) {
 const STEP = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 
 // A part being placed floats above its spot in green (red where it can't
-// go), with lines down to a dashed outline on the deck.
+// go, its outline crossed), with lines down to a dashed outline on the deck.
 function floating(model, defs, placement, ok) {
   const def = defs.modules.get(placement.type);
   const tone = ok ? 'ghost' : 'ghostBad';
@@ -268,6 +268,11 @@ function floating(model, defs, placement, ok) {
   const [w, h] = footprint(def, placement.rot);
   const [x0, y0, x1, y1] = [placement.x, placement.y, placement.x + w, placement.y + h];
   rect(model, [x0 + 0.03, y0 + 0.03], [x1 - 0.03, y1 - 0.03], 0.012, { fill: `${tone}Target`, edge: `${tone}Target` });
+  // Where it can't go the outline is crossed, not only red (M42).
+  if (!ok) {
+    polyline(model, 'ghostBadLine', [[x0 + 0.1, y0 + 0.1, 0.014], [x1 - 0.1, y1 - 0.1, 0.014]]);
+    polyline(model, 'ghostBadLine', [[x1 - 0.1, y0 + 0.1, 0.014], [x0 + 0.1, y1 - 0.1, 0.014]]);
+  }
   for (const [x, y] of [[x0 + INSET, y0 + INSET], [x1 - INSET, y0 + INSET], [x1 - INSET, y1 - INSET], [x0 + INSET, y1 - INSET]]) {
     polyline(model, `${tone}Drop`, [[x, y, HOVER], [x, y, 0.012]]);
   }
