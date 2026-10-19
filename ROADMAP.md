@@ -1974,11 +1974,52 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **The whole crew is at most 20** (`MAX_CREW`), at every colony and aboard: a recruit or a companion signs on only under it. Past it a save wouldn't read, a limit M38d could already reach with a big ship.
   - **The test player** settles the best world of the second system out (`settleMove`), gives the ship's parts as at the first colony, plays 10 days there (`NEW_DAYS`) building farms and mines, meets a raid coming there before it leaves, and would fly back at once for one coming at the first (none did). It leaves the least fit when three or more landed (`backCrew`). `--settle no` keeps M38d's voyage out, and `--out` and `--settle` now work from the command line (`--out` was documented in M38d but not read).
   - **Measured over 100 voyages** (PROGRESS.md): a second colony founded on 75, the other 25 flown home first by M38d's rules; 10 days there (10 to 12), one left there in 56; all 75 flown straight back in 2 days, none stopped; raids since flying out: at the first found 4, faced 4, none lost; at the second found 6, faced 5, lost 2; every colony fed in 99. The voyage's rates are within main's margins (home 100, fed 99, fed aboard 99).
-- [ ] **M38f Citizens.** Evan's picks (2026-10-18): a colony runs itself while the ship is away, and its citizens are grown, the rescued and crew left behind. The draft:
-  - a fed, housed, powered colony gains a citizen every few days, up to its beds;
-  - a rescue job's captive, or an event's survivors, can settle at a colony;
-  - a crew member can stay to run a colony, and be picked up later (M38e lets crew be left at any colony);
-  - citizens work the farms and mines, eat and fight a raid. A raid while the ship is away is fought out without the player, and a report waits on the return, so a colony can be lost.
+- [ ] **M38f Citizens.** Since M26 a colony's people are the crew: farms and mines make the same with nobody there, and a raid while the ship is away holds it until the player fights it. Evan's picks (2026-10-18): a colony runs itself while the ship is away, and its citizens are grown, the rescued and crew left behind.
+
+  Measured first (the miner, 100 voyages out; the first colony as the ship flies out, its own power only; medians):
+  - **Its people and room:** 1 at home of 3 (3 to 6); beds and air for 2 (0 to 8), so room for 1 more (−1 to 5), any room in 90. Landed again with everyone, room for 1 fewer than the crew (−5 to 3).
+  - **What it makes:** 6 food a day (3 to 16) against 1 eaten; 2 farms (1 to 8), no mine (0 to 2), 6 buildings (3 to 20); power to spare 1 (0 to 6), any in 61.
+  - **The second colony as the ship leaves it:** 1 there (0 to 1), no room, no guns, 4 food a day.
+  - **A raid fought out by the AI on both sides** (`tests/colonyKit.js`'s colony with nothing built, so nothing fires at the lander; the miner's raiders): 1 or 2 defending won 0 of 40 each, 3 won 18 of 40. Each fight took 7 to 25 ms (86 at most), and every one ended.
+  - **The code:** nobody but crew lives anywhere; a rescue's captive is a unit in the fight and gone at its end; no fight resolves without the player.
+
+  Evan's picks (2026-10-19):
+  - **a citizen:** a headcount, not a person: no names, and not crew;
+  - **a raid at a colony the ship isn't at:** fought out at once, under the battle rules with the AI on both sides; the ship is never held, and a report waits;
+  - **a raid lost:** its stores, as now, and the citizens who fell. Crew are never killed in a campaign fight; with nobody left, the colony stands empty;
+  - **in a raid the player fights:** the citizens fight under the player's orders, as colonists.
+
+  **Done when:**
+  - **Citizens** (`colony.citizens`, a headcount at every colony):
+    - each eats a jump's supplies a day, as a crew member does;
+    - each takes a bed and air, after the crew there;
+    - each works a farm or a mine, one to a building in the order built, for 1 more a day;
+    - not crew: the 20 at every colony and aboard don't count them, and a citizen never comes aboard.
+  - **Grown:** each day a colony is fed, has a bed and air free for one more and has every building powered counts toward the next citizen; every `citizenDays` (5, `data/balance.json`) such days, one more. A hungry day there, one leaves.
+  - **The rescued:** a captive freed on a voyage settles at the colony the ship flew from, a citizen more if it has room, and the job's end says so; without room, or before act 3, they go their way as now.
+  - **A raid at a colony the ship isn't at** (on a voyage, on a trip from it, or at another colony) is fought out on the day its lander comes down:
+    - its guns fire at the lander as now, and those who land fight whoever is there and its citizens on its grid, under the battle rules, the AI playing both sides. As the test player's raids, past 40 rounds both press on, and unended at 60 the raiders pull out;
+    - the ship is never held by it, and a flight or a trip under way goes on;
+    - settled as now: the colony's heat, and lost, half its food and materials;
+    - citizens who fell are gone, and crew there come out wounded, never dead;
+    - a report waits: the colony's panel on the chart says it, and the hint when the ship next lands there ("While the ship was away, Con-Reg Recovery's raiders were fought off on day 34; 1 colonist fell.").
+  - **A raid the player fights** (the ship landed there): its citizens stand on its grid beside the crew as colonists (`data/colony.json` `citizen`: fewer hit points than crew, a pistol), under the player's orders and in the crew bar. Those who fall are lost.
+  - **A colony with nobody left** (no crew there, no citizens) stands empty: it grows no one until crew are left there.
+  - **The screens:** the colony screen shows its citizens, the beds they take, the days to the next and why none comes; the chart's colony panels show each colony's citizens and its last report.
+  - **Saves:** `SAVE_VERSION` 38, with a migration: every colony with no citizens, nothing toward the next and no report. A raid already down at a colony the ship isn't at, or a flight or a trip one stopped, in a save from before, goes on as before (Defend, Fly on).
+  - **The test player** (`tools/voyage.js`): back from its voyage out, it plays the first colony's next 20 days, so the second lives them too; it flies home for a raid it can meet, as now.
+  - **Measured over 100 voyages:**
+    - the citizens grown at each colony;
+    - the raids fought out without the player, won and lost, and the citizens lost;
+    - the voyage's rates within the margin of main's (`MAIN`), or to Evan.
+  - **Every rule tested.**
+  - **Touch, at the three sizes:**
+    - the colony screen's citizens;
+    - a raid fought out while the ship is away, and its report on the chart and on landing;
+    - a raid fought with colonists in the crew bar;
+    - a quit and reopen;
+    - offline, every button 48 px or more, no console errors;
+    - every earlier milestone's browser check still passes.
 - [ ] **M39 Parts and hull frames.** 21 module types against §5's 40 to 60, and one hull frame against 6. The draft:
   - the types §9 asks for, a scanner first;
   - frames for bigger ships, and an enemy frame (§9).
