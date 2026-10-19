@@ -390,12 +390,15 @@ function checkStep(step, capacity, kinds) {
   }
   const long = step.kind === 'long';
   const cost = balance.jumpSupplies * step.crew * (long ? balance.longJumpFactor : 1);
-  assert.equal(step.hungry, supplies < cost);
-  assert.equal(after, Math.max(0, supplies - cost));
-  // The jump's heat, and since M33's fix nothing for docking where it
-  // comes out: that is a trade's.
+  // What hydroponics grow on the way (M39) is eaten first, the rest kept
+  // up to what the holds take.
+  assert.equal(step.hungry, supplies + step.grows < cost);
+  assert.equal(after, Math.min(capacity, Math.max(0, supplies - cost + step.grows)));
+  // The jump's heat, less what stealth baffles take off it (M39), and
+  // since M33's fix nothing for docking where it comes out: that is a
+  // trade's.
   assert.equal(step.dock, undefined);
-  assert.equal(step.heat[1], clamp(step.heat[0] + (long ? balance.longJumpHeat : balance.jumpHeat), HEAT_MAX));
+  assert.equal(step.heat[1], clamp(step.heat[0] + (long ? balance.longJumpHeat : balance.jumpHeat) - step.quiet, HEAT_MAX));
   // Hunger first, then the med bay's healing, up to each one's most.
   assert.deepEqual(step.hp[1], step.hp[0].map((hp, i) => Math.min(step.max[i], (step.hungry ? Math.max(1, hp - balance.hungerHp) : hp) + step.heal)));
   assert.equal(step.credits[1], step.credits[0]);

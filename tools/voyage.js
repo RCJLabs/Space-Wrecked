@@ -124,6 +124,7 @@ import { dayPlan, nextDay } from '../src/sim/days.js';
 import { chooseAtPlace, flyHome, flyOn, flyOut, tripHere, withPlaces } from '../src/sim/expeditions.js';
 import { flightChecklist } from '../src/sim/constraints.js';
 import { indexDefs } from '../src/sim/defs.js';
+import { shipEdge } from '../src/sim/edges.js';
 import { jobHeat } from '../src/sim/heat.js';
 import { FACED } from '../src/sim/approach.js';
 import { approachState, closeApproach, giveOrder } from '../src/sim/encounter.js';
@@ -379,7 +380,10 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
     // Out of the map: into the next sector, the system past the charts, or
     // on a voyage the next system past the colony's (M38d).
     const out = plan.kind === 'sector' || plan.kind === 'system' || plan.kind === 'beyond';
-    record(plan.kind, before, { hungry: plan.hungry, heal: plan.heal, max: before.crew.map((member) => maxHp(member, defs)), to: out ? null : campaign.run.at, hunt: moved.hunt });
+    // M39: what hydroponics grew on the way, and the heat the baffles took
+    // off it.
+    const quiet = shipEdge(before.ship, before.crew, defs, 'quiet', before.wrecks);
+    record(plan.kind, before, { hungry: plan.hungry, heal: plan.heal, grows: plan.grows ?? 0, quiet, max: before.crew.map((member) => maxHp(member, defs)), to: out ? null : campaign.run.at, hunt: moved.hunt });
     tally.jumps += 1;
     if (moved.hunt.chance > 0) tally.hotJumps += 1;
     tally.peak = Math.max(tally.peak, campaign.heat);

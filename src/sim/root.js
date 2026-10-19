@@ -20,7 +20,7 @@ import { beginRaid, endRaid } from './raid.js';
 import { endColonyRaid, faceRaid } from './raids.js';
 import { patchCrew } from './patch.js';
 import { buyFromRack } from './racks.js';
-import { buyFromYard, sellToYard } from './yards.js';
+import { buyFrame, buyFromYard, sellToYard } from './yards.js';
 import { dismissCrew, hireRecruit } from './recruits.js';
 import { regroup } from './regroup.js';
 import { repairShip } from './repair.js';
@@ -102,6 +102,9 @@ export function initialState(seed) {
 //                                  yards.js)
 //   campaign/yard/sell { part, rules }   a part on hand, sold to the
 //                                  shipyard the ship is at (M37b)
+//   campaign/yard/frame { frame, rules }   the ship moved onto a hull
+//                                  frame the shipyard sells (M39,
+//                                  yards.js buyFrame)
 //   campaign/job/take { index, rules }   the crew takes the board's job at
 //                                  index: its fight begins. Every fight
 //                                  takes forgiving odds and the difficulty
@@ -305,6 +308,7 @@ export function reduce(state, action) {
     case 'campaign/arms/rack':
     case 'campaign/yard/buy':
     case 'campaign/yard/sell':
+    case 'campaign/yard/frame':
     case 'campaign/donate':
     case 'campaign/build':
     case 'campaign/move':
@@ -337,6 +341,7 @@ export function reduce(state, action) {
         'campaign/arms/rack': (c) => buyFromRack(c, action.rules, action.slot),
         'campaign/yard/buy': (c) => buyFromYard(c, action.rules, action.slot),
         'campaign/yard/sell': (c) => sellToYard(c, action.rules, action.part),
+        'campaign/yard/frame': (c) => buyFrame(c, action.rules, action.frame),
         'campaign/donate': (c) => donate(c, action.rules, action.uid),
         'campaign/build': (c) => build(c, action.rules, action.what, action.placement ?? null),
         'campaign/move': (c) => moveBuilding(c, action.rules, action.uid, action.placement),
