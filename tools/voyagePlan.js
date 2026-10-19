@@ -166,6 +166,7 @@
 // (nextBuild), and days at home until the food fills the holds, at most
 // STOCK_DAYS; and it flies home when the pursuer finds the colony while
 // it is away, as long as the flight home lands before their lander.
+import { actOf } from '../src/sim/acts.js';
 import { canRefit, maxHp, refitShip, shipChecklist } from '../src/sim/campaign.js';
 import { buildingOf, colonyStats, givesOf, shipParts, storesOf, yieldOf } from '../src/sim/colony.js';
 import { build, buildPlan, takeDown } from '../src/sim/colonyBuild.js';
@@ -191,14 +192,14 @@ import { dockHeat, jobMoves, jobPay, levelOf, moveStanding, patrolWelcome, price
 import { stationBoard } from '../src/sim/stationJobs.js';
 import { walkable } from '../src/sim/terrain.js';
 import { swapPlan, swapPriceOf } from '../src/sim/transponder.js';
-import { failingCheck, holdOf, jumpSupplies, knownNodes, leadsUncharted, leavePlan, linked, reach, supplyCapacity, tradeHeat, within } from '../src/sim/travel.js';
+import { failingCheck, holdOf, jumpSupplies, knownNodes, leadsUncharted, leavePlan, linked, reach, supplyCapacity, systemNeeds, tradeHeat, within } from '../src/sim/travel.js';
 import { voyageHomePlan, voyagePlan } from '../src/sim/voyage.js';
 import { yardHere } from '../src/sim/yards.js';
 import { upgradeOf } from './arms.js';
-import { fitPart, jobOdds } from './run.js';
+import { fitPart, jobOdds, SECTOR_JUMPS } from './run.js';
 
 export const WORTH = { supply: 2, short: 6, hp: 2, heat: 0.3, part: 0.5, hostile: -30, nebula: 15, hot: 1.5, hunted: -40, volley: -10, standing: 2, friendly: 10, quest: 40, companion: 100, arms: 0.25 };
-const BUFFER_JUMPS = 4;
+export const BUFFER_JUMPS = 4;
 export const HIRE_JUMPS = 10;
 // How the test player treats heat (M24), and the managing player's lines.
 export const HEAT_POLICIES = ['manage', 'ignore'];
@@ -230,7 +231,7 @@ export function boardIt(campaign, rules) {
 export function hireWho(campaign, rules) {
   if (campaign.crew.length >= crewRoom(campaign.ship, rules)) return null;
   if (supplyCapacity(campaign.ship, rules, campaign.crew) < HIRE_JUMPS * rules.balance.jumpSupplies * (campaign.crew.length + 1)) return null;
-  const reserve = supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice;
+  const reserve = Math.max(supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice, foodReserve(campaign, rules));
   const offer = recruitOffer(campaign, rules).filter((recruit) => campaign.credits - recruit.fee >= reserve);
   if (!offer.length) return null;
   const count = (job) => campaign.crew.filter((member) => member.job === job).length;
@@ -253,9 +254,8 @@ const WOUNDS_ELSE = 15;
 // null.
 export function stationJobPick(campaign, rules, heat = 'manage') {
   const board = stationBoard(campaign, rules);
-  if (!board.length || holdOf(campaign, rules)) return null;
+  if (!board.length || holdOf(campaign, rules) || unfitForWork(campaign, rules)) return null;
   const squad = tripSquad(campaign, rules);
-  if (squad.length < Math.min(rules.balance.squadSize, campaign.crew.length)) return null;
   const dock = tradeHeat(campaign, rules);
   let best = null;
   board.forEach((job, index) => {
@@ -265,6 +265,12 @@ export function stationJobPick(campaign, rules, heat = 'manage') {
     if (worth > 0 && (!best || worth > best.worth)) best = { index, job, squad, worth };
   });
   return best;
+}
+
+// Whether there is a station board where the ship is and the crew is too
+// hurt to field a full squad of the fit for it (tripSquad).
+export function unfitForWork(campaign, rules) {
+  return stationBoard(campaign, rules).length > 0 && tripSquad(campaign, rules).length < Math.min(rules.balance.squadSize, campaign.crew.length);
 }
 
 // What a station job is worth to the careful player (M38c): done, its pay
@@ -320,7 +326,7 @@ function fitOrder(rules, a, b) {
 // price and a transponder swap's, as a weapon off a rack does (M37): { slot,
 // part, price } or null.
 export function yardBuy(campaign, rules) {
-  const reserve = supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice + swapPriceOf(campaign, rules);
+  const reserve = Math.max(supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice, foodReserve(campaign, rules)) + swapPriceOf(campaign, rules);
   const items = yardHere(campaign, rules)
     .filter((item) => campaign.credits - item.price >= reserve && wouldFit(campaign, rules, item.part))
     .sort((a, b) => fitOrder(rules, a.part, b.part) || a.slot - b.slot);
@@ -383,6 +389,21 @@ function suppliesWorth(campaign, rules, change) {
   return to > from ? worth : -worth;
 }
 
+// What a change in credits is worth: its face value, but in act 2 those
+// below the food to the system (foodReserve) at WORTH.short each, as the
+// supplies they buy (M40): an event's bribe spent a run's last 20 credits,
+// and it came into the system hungry.
+function creditsWorth(campaign, rules, change) {
+  const reserve = foodReserve(campaign, rules);
+  if (!change || !reserve) return change;
+  const from = campaign.credits;
+  const to = Math.max(0, from + change);
+  const [low, high] = to > from ? [from, to] : [to, from];
+  const short = Math.max(0, Math.min(high, reserve) - Math.min(low, reserve));
+  const worth = (short * WORTH.short) / rules.balance.supplyPrice + (high - low - short);
+  return to > from ? worth : -worth;
+}
+
 // What a point of heat is worth to the player: nothing ignoring it;
 // managing it, WORTH.hot from HIDE_FROM, where it starts to tell, and
 // WORTH.heat below.
@@ -394,7 +415,7 @@ export function heatWorth(campaign, heat = 'manage') {
 // What an outcome's effects are worth to the player, in credits, for the
 // campaign as it stands.
 export function effectsWorth(campaign, rules, effects, heat = 'manage') {
-  let worth = effects.credits ?? 0;
+  let worth = creditsWorth(campaign, rules, effects.credits ?? 0);
   if (effects.supplies) worth += suppliesWorth(campaign, rules, effects.supplies);
   worth -= heatWorth(campaign, heat) * (effects.heat ?? 0);
   const { huntHeat } = rules.balance;
@@ -774,11 +795,27 @@ export function nextJump(campaign, rules, policy, { heat = 'manage', from = LONG
 
 // Whether the managing player swaps the transponder where the ship is: at
 // a station, heat at SWAP_FROM or more, and the credits covering it beyond
-// half a holdful's price.
+// half a holdful's price, or in act 2 the food to the system (foodReserve)
+// if that is more.
 export function swapNow(campaign, rules, heat) {
   if (heat !== 'manage' || campaign.heat < SWAP_FROM) return false;
   const plan = swapPlan(campaign, rules);
-  return plan.ok && campaign.credits - plan.price >= (supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice) / 2;
+  return plan.ok && campaign.credits - plan.price >= Math.max((supplyCapacity(campaign.ship, rules, campaign.crew) * rules.balance.supplyPrice) / 2, foodReserve(campaign, rules));
+}
+
+// The credits the food to the system past the charts still takes, in act
+// 2's charted sectors (M40): what the jumps left there eat (run.js
+// SECTOR_JUMPS a sector, this one's at half, and BUFFER_JUMPS over) and the
+// system's needs (travel.js systemNeeds), less what the holds carry, at
+// the supply price; 0 anywhere else. No station lies past the charts, and
+// the voyages that came into the system hungry had spent their food's
+// credits on swaps, parts and patching on the way.
+export function foodReserve(campaign, rules) {
+  const act = actOf(campaign, rules);
+  if (act?.hub !== 'ship' || !campaign.run || campaign.run.sector.system) return 0;
+  const jumps = SECTOR_JUMPS * (act.sectors - campaign.run.sector.index) + SECTOR_JUMPS / 2 + BUFFER_JUMPS;
+  const food = Math.ceil(jumps * jumpSupplies(campaign, rules)) + systemNeeds(campaign, rules) - campaign.supplies;
+  return Math.max(0, food) * rules.balance.supplyPrice;
 }
 
 // Whether the player scans where a scan would show something ahead:

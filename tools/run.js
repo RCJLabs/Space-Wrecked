@@ -100,6 +100,14 @@ const TWIST_ODDS = { overtime: 0.6, cavein: 0.75, hazard: 0.75, rush: 0.75, ligh
 const HEAT_POLICIES = ['raids', 'hunters', 'never'];
 const MAX_ROUNDS = 60; // a fight still going after this many stops the run
 const MAX_JOBS = 30; // a run not at launch after this many stops
+// Jumps a sector of act 2 takes the careful player, about (M40: the median
+// over 36 voyages, tools/voyage.js).
+export const SECTOR_JUMPS = 7;
+// The most jobs a ship ready to launch takes for act 2's food (launchFood),
+// and the jumps' food over the median the launch keeps (voyagePlan.js
+// BUFFER_JUMPS).
+const FOOD_JOBS = 3;
+const LAUNCH_BUFFER = 4;
 
 // The ship with a part of `type` fitted where the builder's rules allow it
 // and the layout stays whole (every part joined to the bridge, every
@@ -128,6 +136,20 @@ export function fitPart(ship, defs, type) {
     }
   }
   return best && { ship: best.ship, at: best.at };
+}
+
+// The credits a launch keeps for act 2 (M40): its food from launch to the
+// system past the charts, what the jumps there eat (SECTOR_JUMPS a sector,
+// the first at half, and LAUNCH_BUFFER over) and the system's survey and
+// jump on, less the holds the run sets out with full, at the supply price,
+// as the voyage's test player keeps (voyagePlan.js foodReserve); and the
+// first transponder swap's price, which nearly every voyage pays. 123 for a
+// crew of three in the start ship.
+export function launchFood(campaign, defs) {
+  const sectors = [...defs.acts.values()].find((act) => act.hub === 'ship')?.sectors ?? 0;
+  const each = defs.balance.jumpSupplies * campaign.crew.length;
+  const food = Math.ceil((SECTOR_JUMPS * sectors - SECTOR_JUMPS / 2 + LAUNCH_BUFFER) * each) + 2 * each - supplyCapacity(campaign.ship, defs, campaign.crew);
+  return Math.max(0, food) * defs.balance.supplyPrice + defs.balance.swapPrice;
 }
 
 // What a job on the board is worth to the run: its pay, with what its
@@ -304,12 +326,19 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
     if (Object.keys(needed).some((type) => have(type)) || helping(partsNeeded(campaign, defs))) atHub();
   };
 
-  // Ready to launch, the run goes on until the thread's job is done (M33b).
+  // Ready to launch, the run goes on until the thread's job is done (M33b),
+  // and from M40 while the credits fall short of act 2's food (launchFood),
+  // for FOOD_JOBS jobs at most: the voyages that left act 1 with 10 to 35
+  // credits came into the system hungry.
   const threadOpen = () => questJobs(campaign, defs).length > 0;
-  while (!canLaunch(shipChecklist(campaign, defs)) || threadOpen()) {
+  let foodJobs = 0;
+  const short = () => foodJobs < FOOD_JOBS && campaign.credits < launchFood(campaign, defs);
+  while (!canLaunch(shipChecklist(campaign, defs)) || threadOpen() || short()) {
     atHub();
     const ready = canLaunch(shipChecklist(campaign, defs));
-    if (tally.stuck || (ready && !threadOpen())) break;
+    if (tally.stuck || (ready && !threadOpen() && !short())) break;
+    const forFood = ready && !threadOpen();
+    if (forFood) foodJobs += 1;
     if (tally.jobs >= MAX_JOBS) {
       tally.stuck = `not at launch after ${MAX_JOBS} jobs`;
       break;
@@ -337,7 +366,7 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
     }
     const needed = partsNeeded(campaign, defs);
     const quests = questJobs(campaign, defs);
-    const offers = ready ? quests : [...quests, ...campaign.board];
+    const offers = ready && quests.length ? quests : [...quests, ...campaign.board];
     const worth = offers.map((job) => jobWorth(job, campaign, defs, needed));
     const index = worth.indexOf(Math.max(...worth));
     const job = offers[index];
@@ -347,7 +376,7 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
     tally.jobs += 1;
     if (job.quest) tally.questJobs += 1;
     const quest = job.quest ? `, ${defs.quests.get(job.quest).name.toLowerCase()}${ready ? ' before launching' : ''}` : '';
-    say(`${tally.jobs}. ${words.title} (${words.mission}${words.twist ? `, ${words.twist.name}` : ''}${quest}): ${words.pay}, ${words.heat}.`);
+    say(`${tally.jobs}. ${words.title} (${words.mission}${words.twist ? `, ${words.twist.name}` : ''}${quest}${forFood ? ", for the voyage's food" : ''}): ${words.pay}, ${words.heat}.`);
     const armed = armFor(campaign, defs, 'ground');
     const taken = job.quest ? takeQuestJob(armed, defs, job.quest, { difficulty }) : takeJob(armed, defs, index - quests.length, { difficulty });
     if (!taken.ok) {
@@ -393,6 +422,7 @@ export function manyRuns(defs, runs, options = {}) {
     `Minutes, quick: ${spread(launched.map((r) => r.minutes[0]))}; slow: ${spread(launched.map((r) => r.minutes[1]))}. The median, then the least and most.`,
     `The thread's job (M33b): done in ${launched.filter((r) => r.threadDone).length} of ${launched.length} launched, at job ${spread(launched.filter((r) => r.tally.questAt).map((r) => r.tally.questAt))}, in ${spread(launched.map((r) => r.tally.questJobs))} tries; taken before launching in ${launched.filter((r) => r.lines.some((line) => / before launching\)/.test(line))).length}.`,
     `Weapons (M37): ${sum(results, 'armsBought')} bought, in ${results.filter((r) => r.tally.armsBought).length} runs.`,
+    `For the voyage's food (M40): ${launched.filter((r) => r.lines.some((line) => /, for the voyage's food\)/.test(line))).length} runs took jobs once ready; credits at launch ${spread(launched.map((r) => r.campaign.credits))}.`,
     ...results.filter((r) => !r.launched).map((r) => `Seed ${r.seed}: ${r.lines.at(-1)}`),
   ];
   return { lines, results };

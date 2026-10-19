@@ -159,7 +159,7 @@ import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
 import { withPart } from './startShip.js';
-import { backCrew, bestChoice, boardIt, HEAT_POLICIES, hireWho, homeBuild, homeNow, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, settleMove, STOCK_DAYS, STOCK_SHARE, stationJobPick, stockFor, swapNow, systemMove, tradeHere, tripSquad, voyageCrew, worldScore, yardBuy } from './voyagePlan.js';
+import { backCrew, bestChoice, boardIt, foodReserve, HEAT_POLICIES, hireWho, homeBuild, homeNow, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, settleMove, STOCK_DAYS, STOCK_SHARE, stationJobPick, stockFor, swapNow, systemMove, tradeHere, tripSquad, voyageCrew, worldScore, yardBuy } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
@@ -704,8 +704,10 @@ export function voyageFrom(defs, launched, { long: longPolicy = 'heat', scans = 
       tally.swapCredits += before.credits - campaign.credits;
       lines.push(`   Swapped the transponder for ${before.credits - campaign.credits} credits${logged(step)}: ${hold()}.`);
     }
-    // Patching up, then repairs, with what is left beyond a holdful's price.
-    const reserve = supplyCapacity(campaign.ship, defs, campaign.crew) * defs.balance.supplyPrice;
+    // Patching up, then repairs, with what is left beyond a holdful's price,
+    // or in act 2 the food to the system (voyagePlan.js foodReserve) if
+    // that is more.
+    const reserve = Math.max(supplyCapacity(campaign.ship, defs, campaign.crew) * defs.balance.supplyPrice, foodReserve(campaign, defs));
     const patched = trading && campaign.credits > reserve ? patchCrew({ ...campaign, credits: campaign.credits - reserve }, defs) : { ok: false };
     if (patched.ok) {
       const before = campaign;

@@ -10,7 +10,7 @@
 // under 10%: a medic in cover kept taking 20% shots at a brute who
 // couldn't hit back, and missed for 20 rounds.) A fight still going after
 // MAX_ROUNDS has stalled. Pure.
-import { aiAction } from './ai.js';
+import { aiAction, planAction, plansFor } from './ai.js';
 import { playFrom } from './autoplay.js';
 import { reachable, stepsFrom } from './moves.js';
 import { shotOdds } from './odds.js';
@@ -41,15 +41,29 @@ export function playOn(battle, rules, players, { maxRounds = MAX_ROUNDS } = {}) 
 // sight, to the nearest tile with one in sight, where there is one; and
 // from M37 a move that ends no nearer the enemy gives way to a step nearer
 // (a torch's reach short of the enemy, the AI stepped out and back each
-// turn, and so did the raiders it faced, for good).
+// turn, and so did the raiders it faced, for good). From M40, with no step
+// nearer, such a move or overwatch gives way to its best shot from where
+// it stands (shotHere): a pilot and a brute, their fallen on the tiles
+// between them, each stepped into the other's sight and back out of it,
+// turn after turn.
 function charge(battle, rules) {
   const action = pressAction(battle, rules);
   const unit = battle.units.find((u) => u.id === action.unit);
-  if (action.type === 'move') return nearer(battle, unit, action.to, rules) ? action : (advance(battle, unit, rules) ?? action);
+  if (action.type === 'move') return nearer(battle, unit, action.to, rules) ? action : (advance(battle, unit, rules) ?? shotHere(battle, unit, rules) ?? action);
   if (action.type !== 'shoot' && action.type !== 'overwatch') return action;
   const target = action.type === 'shoot' ? battle.units.find((u) => u.id === action.target) : null;
   if (target && shotOdds(battle, unit, target, rules).hit >= LONG_SHOT) return action;
-  return advance(battle, unit, rules) ?? (target ? null : intoSight(battle, unit, rules)) ?? action;
+  if (target) return advance(battle, unit, rules) ?? action;
+  return advance(battle, unit, rules) ?? intoSight(battle, unit, rules) ?? shotHere(battle, unit, rules) ?? action;
+}
+
+// The unit's best shot from where it stands, as the AI weighs them (ai.js
+// plansFor), as an action; or null with no one to shoot, or nothing to
+// shoot with.
+function shotHere(battle, unit, rules) {
+  if (unit.ammo < 1) return null;
+  const shots = plansFor(battle, unit, rules).filter((plan) => plan.ap === 0 && !plan.open && plan.then?.type === 'shoot');
+  return shots.length ? planAction(unit, shots.reduce((best, plan) => (plan.attack > best.attack ? plan : best))) : null;
 }
 
 // Whether tile `to` is fewer steps from the nearest enemy than where the
