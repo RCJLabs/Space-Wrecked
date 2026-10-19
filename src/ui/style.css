@@ -5028,3 +5028,42 @@ textarea {
 #ui .cln-parts .sct-choice[data-armed='true'] {
   background: var(--c-accent);
 }
+
+/* Bigger text (M42, Settings' Text size): lines that would be cut short
+   with an ellipsis wrap instead, and the builder's part tiles grow taller
+   to hold their names (the drawer scrolls). */
+:root[data-text='115'] .hgr-name > *,
+:root[data-text='130'] .hgr-name > *,
+:root[data-text='115'] .jobs-pick span,
+:root[data-text='130'] .jobs-pick span,
+:root[data-text='115'] .shop-pick span,
+:root[data-text='130'] .shop-pick span,
+:root[data-text='115'] .cln .hgr-home,
+:root[data-text='130'] .cln .hgr-home {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+:root[data-text='115'] .jobs-pick .jobs-top,
+:root[data-text='130'] .jobs-pick .jobs-top,
+:root[data-text='115'] .shop-pick .shop-top,
+:root[data-text='130'] .shop-pick .shop-top {
+  flex-wrap: wrap;
+}
+
+:root[data-text='115'] .bld-palette,
+:root[data-text='130'] .bld-palette,
+:root[data-text='115'] .bld-look-tiles,
+:root[data-text='130'] .bld-look-tiles {
+  grid-auto-rows: minmax(var(--tile), auto);
+}
+
+:root[data-text='115'] #ui .bld-part,
+:root[data-text='130'] #ui .bld-part,
+:root[data-text='115'] #ui .bld-look-tile,
+:root[data-text='130'] #ui .bld-look-tile {
+  overflow: visible;
+  overflow-wrap: normal;
+  hyphens: auto;
+}
