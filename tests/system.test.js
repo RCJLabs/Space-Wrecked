@@ -87,7 +87,7 @@ test("Jump on from the act's last jump point reaches the system, rolled from the
   const exit = atLastExit({ heat: 10 });
   assert.deepEqual(campaignProblems(exit), []);
   const plan = leavePlan(exit, rules);
-  assert.deepEqual(plan, { ok: true, kind: 'system', supplies: 3, left: 0, heat: balance.jumpHeat, hungry: false, heal: 0, fixes: [], hunt: { chance: 0, ship: null, why: null }, cold: [] });
+  assert.deepEqual(plan, { ok: true, kind: 'system', supplies: 3, grows: 0, left: 0, heat: balance.jumpHeat, hungry: false, heal: 0, fixes: [], hunt: { chance: 0, ship: null, why: null }, cold: [] });
   const { campaign } = leaveSector(exit, rules);
   const { run } = campaign;
   assert.deepEqual(run.sector, generateSystem(rules, int(exit.rng, 0, 0xffffffff).value, SECTORS + 1));

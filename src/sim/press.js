@@ -10,6 +10,7 @@
 // bridge (ROADMAP §8). A raid's raiders press on (raid.js), and so does
 // the crew the tools send on jobs (jobAi.js).
 import { aiAction } from './ai.js';
+import { isMachine } from './battle.js';
 import { SIDES } from './grid.js';
 import { reachable, stepsFrom } from './moves.js';
 import { canSee } from './sight.js';
@@ -25,8 +26,10 @@ export function pressAction(battle, rules, goals = null) {
 
 // The unit's step on: a move toward the nearest of `goals` (the enemy's
 // tiles, unless given), as far as one action takes it, or with nowhere
-// nearer, opening a closed door beside it. Null with neither.
+// nearer, opening a closed door beside it. Null with neither, and for a
+// machine (M39), which holds its place.
 export function advance(battle, unit, rules, goals = null) {
+  if (isMachine(unit, rules)) return null;
   const foes = battle.units.filter((u) => u.side !== unit.side && u.status === 'active');
   const away = stepsFrom(battle, goals ?? foes.map((u) => [u.x, u.y]), rules);
   let best = { d: away.get(`${unit.x},${unit.y}`) ?? Infinity, cost: 0, x: unit.x, y: unit.y };

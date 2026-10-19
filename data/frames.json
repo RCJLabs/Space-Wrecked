@@ -7,7 +7,61 @@
       "height": 14,
       "maxModules": 40,
       "maxStyling": 24,
-      "minThrustToMass": 0.5
+      "minThrustToMass": 0.5,
+      "cost": 500
+    },
+    {
+      "id": "courier",
+      "name": "Courier frame",
+      "width": 18,
+      "height": 10,
+      "maxModules": 24,
+      "maxStyling": 16,
+      "minThrustToMass": 0.3,
+      "cost": 600,
+      "traits": { "evasion": 10 }
+    },
+    {
+      "id": "gunship",
+      "name": "Gunship frame",
+      "width": 28,
+      "height": 14,
+      "maxModules": 48,
+      "maxStyling": 28,
+      "minThrustToMass": 0.5,
+      "cost": 1000,
+      "traits": { "gunnery": 10 }
+    },
+    {
+      "id": "freighter",
+      "name": "Freighter frame",
+      "width": 30,
+      "height": 16,
+      "maxModules": 56,
+      "maxStyling": 32,
+      "minThrustToMass": 0.6,
+      "cost": 1200,
+      "traits": { "lockers": 20 }
+    },
+    {
+      "id": "patrolhull",
+      "name": "Patrol hull",
+      "width": 30,
+      "height": 16,
+      "maxModules": 56,
+      "maxStyling": 32,
+      "minThrustToMass": 0.5,
+      "enemy": true
+    },
+    {
+      "id": "smallcraft",
+      "name": "Small-craft hull",
+      "width": 16,
+      "height": 9,
+      "maxModules": 20,
+      "maxStyling": 16,
+      "minThrustToMass": 0.5,
+      "enemy": true
     }
   ]
 }

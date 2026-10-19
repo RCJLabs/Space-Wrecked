@@ -23,7 +23,7 @@ import { footprint, hasTag, interiorRows, placedCells } from '../modules.js';
 import { layOutShip, roomsOnFoot } from './layout.js';
 import { dressShip } from './look.js';
 
-const ATTEMPTS = 20; // layouts tried before the preset is given up on
+const ATTEMPTS = 40; // layouts tried before the preset is given up on
 
 // Returns { ok: true, ship, preset, crew, wrecked } or { ok: false, error }.
 // The ship is plain ship data (builder.js) in the middle of its frame, its

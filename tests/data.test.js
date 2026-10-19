@@ -9,7 +9,7 @@ test('the shipped data is valid', () => {
   assert.deepEqual(validateData(readData()), []);
 });
 
-test("the shipped data has the 12 v0.1 module types, first, then M23e's nine, then Bastion's version of each (M23g), Kestrel's of each that weighs 2 or more but the reactor, and Scrapline's of each (M31)", () => {
+test("the shipped data has the 12 v0.1 module types, first, then M23e's nine, then M39's nineteen, then Bastion's version of each (M23g), Kestrel's of each that weighs 2 or more but the reactors, and Scrapline's of each (M31)", () => {
   const modules = readData().modules.modules;
   const ids = modules.map((m) => m.id);
   assert.deepEqual(ids.slice(0, 12).sort(), [
@@ -20,17 +20,29 @@ test("the shipped data has the 12 v0.1 module types, first, then M23e's nine, th
     'bunks', 'cannon', 'heavyengine', 'largehold', 'lightengine',
     'pointdefense', 'shieldarray', 'smallreactor', 'surgery',
   ]);
-  const heavy = modules.slice(0, 21).filter((m) => m.stats.mass >= 2 && m.id !== 'reactor').map((m) => m.id);
-  const lines = [['bastion', 'Bastion', ids.slice(0, 21)], ['kestrel', 'Kestrel', heavy], ['scrapline', 'Scrapline', ids.slice(0, 21)]];
-  let at = 21;
+  // M39's (Evan's pick, 2026-10-19): five doing a job's ship effect, five
+  // with rules of their own, and nine versions of parts already there.
+  assert.deepEqual(ids.slice(21, 40).sort(), [
+    'airrecycler', 'baffles', 'cargopod', 'cockpit', 'dormitory', 'ecm', 'emitter', 'firecontrol', 'flak', 'grapple',
+    'hydroponics', 'largereactor', 'railgun', 'scanner', 'surveylab', 'thruster', 'torpedobay', 'turret', 'workshop',
+  ]);
+  // Kestrel makes no reactor but the small one (Evan's call, 2026-10-15; the
+  // large reactor too, M39).
+  const heavy = modules.slice(0, 40).filter((m) => m.stats.mass >= 2 && !['reactor', 'largereactor'].includes(m.id)).map((m) => m.id);
+  const parts = ids.slice(0, 40);
+  // Each maker's versions in the order of its base parts: those of M23e's
+  // and before first, then M39's.
+  const inOrder = (bases) => [...bases.filter((id) => parts.indexOf(id) < 21), ...bases.filter((id) => parts.indexOf(id) >= 21)];
+  const lines = [['bastion', 'Bastion', parts], ['kestrel', 'Kestrel', heavy], ['scrapline', 'Scrapline', parts]];
+  let at = 40;
   for (const [maker, name, bases] of lines) {
     const made = modules.slice(at, at + bases.length);
-    assert.deepEqual(made.map((m) => m.base), bases, `${maker}: every part it makes, M23e's included, in the same order`);
+    assert.deepEqual(made.map((m) => m.base), inOrder(bases), `${maker}: every part it makes, M23e's and M39's included, in the same order`);
     for (const m of made) assert.ok(m.manufacturer === maker && m.id === `${maker}-${m.base}` && m.name.startsWith(`${name} `), m.id);
     at += bases.length;
   }
   assert.equal(at, modules.length);
-  assert.equal(heavy.length, 16, 'all but the four that weigh 1, and the reactor');
+  assert.equal(heavy.length, 27, 'all but the eleven that weigh 1, and the reactors but the small one');
 });
 
 // Each case breaks one thing in a copy of the real data and expects the
@@ -116,14 +128,15 @@ const cases = [
   ['encounter with a crew job for an enemy', (d) => (d.encounters.encounters[0].enemies[0] = 'medic'), /unknown enemy "medic"/],
   ['encounter with no enemies', (d) => (d.encounters.encounters[0].enemies = []), /enemies must be a list of 1 to 8/],
   ['misspelled encounter field', (d) => (d.encounters.encounters[0].enemy = ['pirate']), /unknown field "enemy"/],
-  ['ship preset with an unknown part', (d) => (d.ships.ships[0].parts.railgun = 2), /parts: unknown module "railgun"/],
+  ['ship preset with an unknown part', (d) => (d.ships.ships[0].parts.warpcore = 2), /parts: unknown module "warpcore"/],
   ['ship preset count back to front', (d) => (d.ships.ships[0].parts.engine = [3, 2]), /parts\.engine must be a whole number, or \[least, most\]/],
   ['ship preset on an unknown frame', (d) => (d.ships.ships[0].frame = 'barge'), /unknown frame "barge"/],
   ['ship preset with no crew', (d) => (d.ships.ships[0].crew = 0), /crew must be a whole number from 1/],
-  ['ship preset wider than its frame', (d) => (d.ships.ships[0].beam = [4, 30]), /beam must be \[least, most\] cells across, from 1 to 14/],
+  // The cutter flies the small-craft hull (M39), 9 cells high.
+  ['ship preset wider than its frame', (d) => (d.ships.ships[0].beam = [4, 30]), /beam must be \[least, most\] cells across, from 1 to 9/],
   ['ship preset half symmetric', (d) => (d.ships.ships[0].symmetric = 'yes'), /symmetric must be true or false/],
   ['ship preset wrecks back to front', (d) => (d.ships.ships[0].wrecks = [3, 1]), /wrecks must be \[least, most\] rooms/],
-  ['ship preset past its frame\'s cap', (d) => (d.ships.ships[0].parts.corridor = 40), /parts: up to \d+, but the Starter hull holds at most 40/],
+  ['ship preset past its frame\'s cap', (d) => (d.ships.ships[0].parts.corridor = 40), /parts: up to \d+, but the Small-craft hull holds at most 20/],
   ['ship preset with no parts', (d) => (d.ships.ships[0].parts = {}), /parts must be an object of module types and counts/],
   ['misspelled ship preset field', (d) => (d.ships.ships[0].part = {}), /unknown field "part"/],
   ['campaign acts out of order', (d) => (d.campaign.acts[1].act = 3), /acts must be acts 1 to 3 in order/],
@@ -166,7 +179,7 @@ const cases = [
   ['misspelled launch field', (d) => (d.backgrounds.backgrounds[0].launch.escape = 'Gone.'), /launch: unknown field "escape"/],
   ['misspelled start field', (d) => (start(d).credit = 5), /start: unknown field "credit"/],
   ['start in debt', (d) => (start(d).credits = -5), /credits must be a whole number, 0 or more/],
-  ['start with an unknown part', (d) => (start(d).parts.railgun = 1), /start\.parts: unknown module "railgun"/],
+  ['start with an unknown part', (d) => (start(d).parts.warpcore = 1), /start\.parts: unknown module "warpcore"/],
   ['start with none of a part', (d) => (start(d).parts.engine = 0), /engine must be a whole number, 1 or more/],
   ['start crew with an enemy in it', (d) => (start(d).crew[0] = 'pirate'), /start\.crew: unknown job "pirate"/],
   ['start crew of six', (d) => start(d).crew.push('marine', 'marine', 'marine'), /crew must be a list of 1 to 5 crew jobs/],
@@ -288,6 +301,23 @@ const cases = [
   ['an intercept on a gun', (d) => (d.modules.modules.find((m) => m.id === 'weapon').intercept = 5), /weapon: only a part tagged "pointdefense" has intercept/],
   ['point defense with no most', (d) => delete d.balance.interceptMax, /interceptMax must be a whole number from 0 to 100/],
   ['the old gun damage left in the balance', (d) => (d.balance.gunDamage = 15), /unknown number "gunDamage"/],
+  // M39: the new parts' and frames' numbers.
+  ['a part doing an effect no job has', (d) => (d.modules.modules.find((m) => m.id === 'scanner').station = { sight: 1 }), /scanner station: unknown effect "sight"/],
+  ['a scanner past the cap', (d) => (d.modules.modules.find((m) => m.id === 'scanner').station = { scan: 4 }), /scanner station: scan must be a whole number from 1 to 3/],
+  ['a grapple on a gun', (d) => (d.modules.modules.find((m) => m.id === 'weapon').grapple = 10), /weapon: only a part tagged "grapple" has grapple/],
+  ['a grapple that pulls nothing', (d) => (d.modules.modules.find((m) => m.id === 'grapple').grapple = 0), /grapple: grapple must be a whole number from 1 to 50/],
+  ['a turret with no unit', (d) => delete d.modules.modules.find((m) => m.id === 'turret').unit, /turret: a part tagged "turret", and only one, has a unit/],
+  ['a unit on a part that is no turret', (d) => (d.modules.modules.find((m) => m.id === 'armory').unit = { ...d.modules.modules.find((m) => m.id === 'turret').unit }), /armory: a part tagged "turret", and only one, has a unit/],
+  ['a turret that walks', (d) => (d.modules.modules.find((m) => m.id === 'turret').unit.mobility = 2), /turret unit: mobility must be a whole number from 0 to 0/],
+  ['a turret with an unknown gun', (d) => (d.modules.modules.find((m) => m.id === 'turret').unit.weapon = 'phaser'), /turret unit: unknown weapon "phaser"/],
+  ['a turret dressed as a person', (d) => (d.modules.modules.find((m) => m.id === 'turret').unit.look = { suit: 'eva' }), /turret unit: look must be a machine's/],
+  ['a turret of an unknown machine', (d) => (d.modules.modules.find((m) => m.id === 'turret').unit.look = { machine: 'drone' }), /look\.machine must be one of turret/],
+  ['a frame with no price', (d) => delete d.frames.frames.find((f) => f.id === 'courier').cost, /courier: cost must be a whole number from 1 to 99999/],
+  ['an enemy frame for sale', (d) => (d.frames.frames.find((f) => f.id === 'patrolhull').cost = 900), /patrolhull: an enemy's frame has no cost or traits/],
+  ['a frame half an enemy', (d) => (d.frames.frames.find((f) => f.id === 'courier').enemy = false), /courier: enemy must be true or left out/],
+  ['a frame with a trait no job has', (d) => (d.frames.frames.find((f) => f.id === 'courier').traits = { luck: 5 }), /courier traits: unknown effect "luck"/],
+  ['a building with an unknown effect', (d) => (d.colony.buildings.find((b) => b.part === 'scanner').effects = { radar: 1 }), /unknown effect "radar"/],
+  ['a greenhouse that grows ore', (d) => (d.colony.buildings.find((b) => b.part === 'hydroponics').makes = { ore: 2 }), /makes/],
   // M23f: styling.
   ['a frame with no styling cap', (d) => delete d.frames.frames[0].maxStyling, /starter: maxStyling must be a whole number from 0 to 255/],
   ['a piece named like a part', (d) => (d.styling.pieces[0].id = 'engine'), /styling\.json engine: id must differ from every module's/],
@@ -523,5 +553,5 @@ test('the validator runs from the command line', () => {
   const tool = fileURLToPath(new URL('../tools/validate-data.js', import.meta.url));
   const run = spawnSync(process.execPath, [tool], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stdout + run.stderr);
-  assert.match(run.stdout, /OK \(79 modules, 1 frame, 4 manufacturers, 2 hull styles, 12 styling pieces, 15 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 20 enemies, 24 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 8 site maps, 59 job templates, 12 kinds of sector node, 5 kinds of world, 15 colony buildings, 4 colony builds, 4 kinds of place, 100 events, 4 sides, 11 quests, 4 companions, 25 sounds\)/);
+  assert.match(run.stdout, /OK \(147 modules, 6 frames, 4 manufacturers, 2 hull styles, 12 styling pieces, 15 weapons, 7 crew jobs, 20 traits, 8 recruits' backgrounds, 20 enemies, 24 encounters, 9 ship presets, 3 acts, 3 backgrounds, 3 districts, 8 site maps, 59 job templates, 12 kinds of sector node, 5 kinds of world, 28 colony buildings, 4 colony builds, 4 kinds of place, 100 events, 4 sides, 11 quests, 4 companions, 25 sounds\)/);
 });

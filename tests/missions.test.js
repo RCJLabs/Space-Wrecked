@@ -80,7 +80,7 @@ test('a ward is on the crew\'s side with no gun, and held until freed on a rescu
   // Held, they can't be shot: the pirate has a clear line, and no target.
   assert.ok(!targetsFor(battle, unit(battle, 'e1'), rules).some((t) => t.target.id === 'w1'));
   assert.deepEqual(targetsFor(battle, ward, rules), [], 'and they shoot no one');
-  assert.throws(() => start(null, [{ kind: 'ghost', x: 0, y: 0 }]), /no job, person, colonist or enemy "ghost"/);
+  assert.throws(() => start(null, [{ kind: 'ghost', x: 0, y: 0 }]), /no job, person, colonist, machine or enemy "ghost"/);
 });
 
 test('extract: a crate in hand goes out the way in, one move a turn and no dash', () => {

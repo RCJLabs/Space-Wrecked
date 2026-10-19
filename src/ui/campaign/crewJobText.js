@@ -32,6 +32,9 @@ export const STATION_WORDS = {
   scan: (n) => `a scan reaches ${n} more ${plural(n, 'link', 'links')}`,
   freeSurvey: () => 'a survey takes no day: no supplies, no heat',
   lockers: (n) => `the lockers hold ${n} more supplies`,
+  // M39's, which only parts bring: stealth baffles and hydroponics.
+  quiet: (n) => `each jump adds ${n} less heat`,
+  grows: (n) => `${n} ${plural(n, 'supply grows', 'supplies grow')} aboard each jump`,
 };
 
 // Each colony effect's words (edges.js COLONY_EFFECTS), from its number.
@@ -65,6 +68,8 @@ export const STATION_SHORT = {
   scan: (n) => `scans +${n} ${plural(n, 'link', 'links')}`,
   freeSurvey: () => 'free surveys',
   lockers: (n) => `lockers +${n}`,
+  quiet: (n) => `jumps −${n} heat`,
+  grows: (n) => `grows ${n} a jump`,
 };
 export const COLONY_SHORT = {
   heal: (n) => `infirmary +${n}`,

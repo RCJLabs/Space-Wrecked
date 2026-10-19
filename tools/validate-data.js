@@ -32,7 +32,7 @@ import { checkSoundOf, checkSounds } from './validate-sounds.js';
 
 const SIDES = ['n', 'e', 's', 'w'];
 const STATS = ['power', 'mass', 'thrust', 'berths', 'lifeSupport', 'cargo', 'hp'];
-const MODULE_KEYS = ['id', 'base', 'name', 'glyph', 'category', 'manufacturer', 'size', 'rotates', 'facesSpace', 'stats', 'tags', 'damage', 'shield', 'intercept', 'interior', 'cost', 'heal'];
+const MODULE_KEYS = ['id', 'base', 'name', 'glyph', 'category', 'manufacturer', 'size', 'rotates', 'facesSpace', 'stats', 'tags', 'damage', 'shield', 'intercept', 'grapple', 'station', 'unit', 'interior', 'cost', 'heal'];
 // A maker's version of a part (M23g) holds only what it changes; the rest
 // comes from its base part (src/sim/defs.js withBases).
 const VERSION_KEYS = ['id', 'base', 'manufacturer', 'name', 'stats', 'cost'];
@@ -47,9 +47,11 @@ const MAX_HEAL = 10;
 // that has it: a gun's damage a hit, what a shield holds a round, and what
 // point defense takes off the other ship's hit chance. Every part with the
 // tag has the number, and no other part does.
-const APPROACH_NUMBERS = { damage: ['weapon', 100], shield: ['shield', 100], intercept: ['pointdefense', 50] };
+const APPROACH_NUMBERS = { damage: ['weapon', 100], shield: ['shield', 100], intercept: ['pointdefense', 50], grapple: ['grapple', 50] };
 const CATEGORY_KEYS = ['id', 'name'];
-const FRAME_KEYS = ['id', 'name', 'width', 'height', 'shape', 'maxModules', 'maxStyling', 'minThrustToMass'];
+const FRAME_KEYS = ['id', 'name', 'width', 'height', 'shape', 'maxModules', 'maxStyling', 'minThrustToMass', 'cost', 'traits', 'enemy'];
+// A security turret's unit (M39): the numbers it fights with, and no moves.
+const UNIT_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'weapon', 'look'];
 // Styling (M23f, src/sim/styling.js): a piece's footprint is up to this many
 // cells a side, and a frame takes up to this many pieces (a blueprint code
 // counts them in a byte).
@@ -283,6 +285,9 @@ export const KNOWN_TAGS = [
   'bridge', 'reactor', 'engine', 'corridor', 'airlock', 'quarters',
   'lifesupport', 'cargo', 'medbay', 'armory', 'weapon', 'shield',
   'pointdefense',
+  // M39's parts with rules of their own, and those doing a job's ship effect.
+  'scanner', 'firecontrol', 'ecm', 'workshop', 'surveylab', 'torpedo',
+  'grapple', 'baffles', 'turret', 'hydroponics',
 ];
 
 // Returns a list of problems as "where: what" strings. Empty means valid.
@@ -332,6 +337,15 @@ export function validateData(data) {
     if (!isIntIn(frame.maxModules, 1, Infinity)) fail(where, 'maxModules must be a positive integer');
     if (!isIntIn(frame.maxStyling, 0, MAX_STYLING)) fail(where, `maxStyling must be a whole number from 0 to ${MAX_STYLING}`);
     if (frame.shape !== undefined) checkShape(frame, where, fail);
+    // M39: an enemy's frame is never sold; the player's have a price, and
+    // may have a trait, a ship effect as a job's.
+    if (frame.enemy !== undefined && frame.enemy !== true) fail(where, 'enemy must be true or left out');
+    if (frame.enemy === true) {
+      if (frame.cost !== undefined || frame.traits !== undefined) fail(where, "an enemy's frame has no cost or traits");
+    } else if (!isIntIn(frame.cost, 1, 99999)) {
+      fail(where, 'cost must be a whole number from 1 to 99999');
+    }
+    if (frame.traits !== undefined) checkEffects(frame.traits, STATION_EFFECTS, `${where} traits`, fail);
   });
 
   if (!balance || typeof balance !== 'object' || Array.isArray(balance)) {
@@ -473,6 +487,10 @@ export function validateData(data) {
     }
     if (def.facesSpace !== undefined) checkFacesSpace(def.facesSpace, where, fail);
     if (def.heal !== undefined && !isIntIn(def.heal, 1, MAX_HEAL)) fail(where, `heal must be the hit points it heals each of the wounded a jump, 1 to ${MAX_HEAL}`);
+    // M39: a part doing a job's ship effect; a turret's unit.
+    if (def.station !== undefined) checkEffects(def.station, STATION_EFFECTS, `${where} station`, fail);
+    if (Array.isArray(def.tags) && def.tags.includes('turret') !== (def.unit !== undefined)) fail(where, 'a part tagged "turret", and only one, has a unit');
+    if (def.unit !== undefined && def.base === undefined) checkTurretUnit(def.unit, `${where} unit`, weaponIds, fail);
     checkStats(def.stats, where, fail);
     if (!Array.isArray(def.tags)) {
       fail(where, 'tags must be a list');
@@ -780,6 +798,25 @@ function checkWeapon(weapon, where, soundIds, fail) {
 
 // A crew job or an enemy: what it brings to a battle, and its look. A job
 // (job: true) can also have an order, a ship effect and a colony effect.
+// A security turret's unit (M39, data/modules.json `unit`): a fighter's
+// numbers with no moves, a gun, and a machine's look.
+function checkTurretUnit(unit, where, weaponIds, fail) {
+  if (!isObject(unit)) {
+    fail(where, `must be { ${UNIT_KEYS.join(', ')} }`);
+    return;
+  }
+  knownKeys(unit, UNIT_KEYS, where, fail);
+  if (!isId(unit.id)) fail(where, 'id must be a lowercase id');
+  if (!isText(unit.name)) fail(where, 'name must be a non-empty string');
+  const ranges = { hp: [1, 99], aim: [0, 100], defense: [0, 100], mobility: [0, 0], armor: [0, 20] };
+  for (const [key, [min, max]] of Object.entries(ranges)) {
+    if (!isIntIn(unit[key], min, max)) fail(where, `${key} must be a whole number from ${min} to ${max}`);
+  }
+  if (!weaponIds.has(unit.weapon)) fail(where, `unknown weapon "${unit.weapon}"`);
+  if (unit.look?.machine === undefined) fail(where, 'look must be a machine\'s: { machine }');
+  for (const problem of lookProblems(unit.look)) fail(where, problem);
+}
+
 function checkFighter(fighter, where, weaponIds, fail, { job = false } = {}) {
   for (const key of Object.keys(fighter)) {
     if (!FIGHTER_KEYS.includes(key) && !(job && JOB_KEYS.includes(key))) fail(where, `unknown field "${key}"`);

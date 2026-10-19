@@ -18,6 +18,10 @@ import { memberJob } from './ranks.js';
 //   freeSurvey  1: a survey takes no day, eating no supplies and adding no
 //               heat (survey.js)
 //   lockers     supplies the lockers hold past balance.baseSupplies
+//   quiet       heat a jump adds that it doesn't (travel.js, M39)
+//   grows       supplies grown aboard each jump (travel.js, M39)
+// From M39 a part (`station` in data/modules.json) and a hull frame
+// (`traits` in data/frames.json) can bring them too: see shipEdge.
 export const STATION_EFFECTS = {
   heal: [1, 5],
   gunnery: [1, 50],
@@ -26,6 +30,8 @@ export const STATION_EFFECTS = {
   scan: [1, 3],
   freeSurvey: [1, 1],
   lockers: [1, 99],
+  quiet: [1, 1],
+  grows: [1, 6],
 };
 
 // Colony effects, each what it adds, how far it goes, and who brings it:
@@ -54,6 +60,23 @@ export const COLONY_EFFECTS = {
 // The best ship effect `key` among these crew members' jobs, or 0.
 export function stationEdge(members, rules, key) {
   return best(members, rules, 'station', key);
+}
+
+// Ship effect `key` as the ship stands (M39, Evan's pick): the best among
+// these crew members' jobs, and what the ship's working parts (each a
+// part's `station`; one in wrecked, { [uid]: how }, gives nothing) and its
+// hull frame's `traits` add, within the effect's cap.
+export function shipEdge(ship, crew, rules, key, wrecked = {}) {
+  return edgeWith(stationEdge(crew, rules, key), ship, rules, key, wrecked);
+}
+
+// Ship effect `key` with what the crew brings given (`crew`, stationEdge's:
+// the approach keeps it as its side's edge), and what the ship's working
+// parts and its frame add, within the effect's cap.
+export function edgeWith(crew, ship, rules, key, wrecked = {}) {
+  const parts = ship.modules.reduce((sum, module) => (String(module.uid) in wrecked ? sum : sum + (rules.modules.get(module.type)?.station?.[key] ?? 0)), 0);
+  const frame = rules.frames.get(ship.frame)?.traits?.[key] ?? 0;
+  return Math.min(STATION_EFFECTS[key][1], crew + parts + frame);
 }
 
 // The best colony effect `key` among these crew members' jobs, or 0.

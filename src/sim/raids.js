@@ -47,9 +47,8 @@ import { backAboard, colonyFood, homeFront, homeOf, withColonyFood } from './awa
 import { allColonies, backFrom, frontAt, heatAt, reachOf, thereAt, thereFrom, withNews } from './colonies.js';
 import { createBattle } from './battle.js';
 import { crewUnit, endFight } from './campaign.js';
-import { buildingOf, colonyStats } from './colony.js';
+import { buildingOf, colonyEffect, colonyStats } from './colony.js';
 import { colonyMap, raidStarts } from './colonyMap.js';
-import { colonyEdge } from './edges.js';
 import { fightOut } from './fightOut.js';
 import { tally } from './flags.js';
 import { pursuerOf, runLevel, withHeat } from './heat.js';
@@ -227,7 +226,9 @@ export function landingPlan(campaign, rules) {
 // (crew ids), citizens, guns, shots, armor, aim, hit } (see landingPlan).
 function facing(there, rules, raiders) {
   const defenders = defendersOf(there);
-  const hit = Math.min(100, rules.balance.landingHit + colonyEdge(defenders, rules, 'landing'));
+  // The defenders' sharpest eye and, from M39, the powered sensor masts and
+  // fire directors (colony.js colonyEffect).
+  const hit = Math.min(100, rules.balance.landingHit + colonyEffect(defenders, rules, 'landing', colonyStats(there, rules).effects));
   return { raiders, defenders: defenders.map((member) => member.id), citizens: colonistsOf(there, rules), ...defensesOf(there, rules), hit };
 }
 

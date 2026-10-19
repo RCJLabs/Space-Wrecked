@@ -81,7 +81,7 @@ import { BOARDINGS, enemyOrder, FACED, openingVolley, playRound } from './approa
 import { createBattle } from './battle.js';
 import { crewUnit, endFight } from './campaign.js';
 import { defaultSquad, squadMembers, squadProblem } from './crew.js';
-import { deploy } from './deploy.js';
+import { deploy, machinesOn } from './deploy.js';
 import { stationEdge } from './edges.js';
 import { tally } from './flags.js';
 import { generateShip } from './gen/ship.js';
@@ -297,18 +297,25 @@ export function beginBoarding(campaign, rules, { forgiving = false, difficulty =
   if (unknown) return { ok: false, error: `${unknown.name}'s job "${unknown.job}" is unknown.` };
   const map = mapFromShip(due.ship, rules, { wrecked: due.wrecked });
   if (!map) return { ok: false, error: 'There is no ship to fight on.' };
-  // deploy puts its first list on the bridge and its second at the hatches.
+  // The boarded ship's working turrets (M39) fight for her owner, after
+  // everyone else; deploy puts its first list on the bridge and its second
+  // at the hatches, clear of them.
+  const machines = machinesOn(map, rules, due.dir === 'you' ? 'crew' : 'enemy');
+  const held = machines.map(({ x, y }) => [x, y]);
   const jobs = members.map((member) => member.job);
-  const placed = due.dir === 'you' ? deploy(map, jobs, due.party, rules) : deploy(map, due.party, jobs, rules);
+  const placed = due.dir === 'you' ? deploy(map, jobs, due.party, rules, held) : deploy(map, due.party, jobs, rules, held);
   if (!placed.ok) return { ok: false, error: `There isn't room aboard for ${jobs.length} crew and ${due.party.length} of hers.` };
   const units = due.dir === 'you' ? placed.units : [...placed.units.slice(due.party.length), ...placed.units.slice(0, due.party.length)];
   const { value: seed, state: afterSeed } = int(campaign.rng, 0, MAX_SEED);
   const { salvage, rng } = salvageFor(campaign.run.approach, due, afterSeed, rules);
   const bonus = enemyBonus(difficulty, rules.balance);
-  const fighters = units.map((unit, i) => {
-    const member = members[i];
-    return member ? { ...unit, ...crewUnit(member, rules) } : { ...unit, bonus };
-  });
+  const fighters = [
+    ...units.map((unit, i) => {
+      const member = members[i];
+      return member ? { ...unit, ...crewUnit(member, rules) } : { ...unit, bonus };
+    }),
+    ...machines,
+  ];
   const { battle, events } = createBattle({ map, units: fighters, seed, options: { forgiving, press: due.dir === 'you' } }, rules);
   const fight = { encounter: due.preset.party, seed, crew: members.map((member) => member.id), battle, log: events, job: null, raid: false, boarding: { dir: due.dir, salvage } };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };

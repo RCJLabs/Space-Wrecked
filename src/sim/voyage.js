@@ -16,7 +16,8 @@
 // (days.js voyageDay), where a raid's lander can come down and hold the
 // ship until those at home face it (raids.js). Fly home goes from anywhere
 // on the run while nothing holds the ship: a day at the colony and a jump's
-// supplies for those aboard for each system out, with one jump's heat. A
+// supplies for those aboard for each system out (less what hydroponics grow,
+// M39), with one jump's heat (less the baffles'). A
 // lander coming down on the way stops the flight that day, as a trip's leg
 // (expeditions.js), and Fly home flies on once it is faced. Landed, the
 // crew is one again in its order and the stores one store, up to their
@@ -58,7 +59,7 @@ import { withPlaces } from './expeditions.js';
 import { tally } from './flags.js';
 import { withHeat } from './heat.js';
 import { downText, raidDown } from './raids.js';
-import { enterBeyond, holdOf, homewardDay, jumpSupplies, onTheRun, onwardCosts, supplyCapacity, waitIn } from './travel.js';
+import { enterBeyond, growsOf, holdOf, homewardDay, jumpHeatOf, jumpSupplies, onTheRun, onwardCosts, supplyCapacity, waitIn } from './travel.js';
 
 // What flying out with crew (ids) would come to: { ok, error (why the ship
 // can't fly, or null), crew (the ids aboard, in the crew's order), home
@@ -162,7 +163,7 @@ export function flightPlan(campaign, rules, id) {
     if (held) return { ok: false, error: held };
   }
   const days = voyage.homing ?? reachOf(campaign, target);
-  const heat = voyage.homing ? 0 : withHeat(campaign.heat, rules.balance.jumpHeat) - campaign.heat;
+  const heat = voyage.homing ? 0 : withHeat(campaign.heat, jumpHeatOf(campaign, rules)) - campaign.heat;
   const ahead = flyDays({ ...campaign, heat: campaign.heat + heat }, rules, target.at, days, { stop: false });
   const landed = landAt(ahead.campaign, rules, target.id);
   return {
@@ -215,7 +216,7 @@ export function flightFromPlan(campaign, rules, id, crew) {
   if (!plan.crew) return plan;
   const target = colonyById(campaign, id);
   if (!target || target === campaign.colony) return { ok: false, error: 'Fly to another of the crew\'s colonies.' };
-  const heat = withHeat(campaign.heat, rules.balance.jumpHeat) - campaign.heat;
+  const heat = withHeat(campaign.heat, jumpHeatOf(campaign, rules)) - campaign.heat;
   return { ...plan, to: target.id, days: reachOf(campaign, target), heat };
 }
 
@@ -269,7 +270,7 @@ function flyDays(campaign, rules, to, n, { stop = true } = {}) {
     if (stop && raidDown(now)) break;
     const need = jumpSupplies(now, rules);
     eats += need;
-    if (now.supplies < need) hungry += 1;
+    if (now.supplies + growsOf(now, rules) < need) hungry += 1;
     const voyage = voyageOf(now);
     const nearer = { ...now, colony: { ...now.colony, voyage: { ...voyage, at: voyage.at + Math.sign(to - voyage.at) } } };
     const day = homewardDay(nearer, rules);

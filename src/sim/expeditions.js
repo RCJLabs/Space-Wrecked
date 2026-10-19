@@ -45,7 +45,7 @@ import { int, pick } from '../core/rng.js';
 import { atColony } from './acts.js';
 import { createBattle } from './battle.js';
 import { crewUnit, endFight, shipChecklist } from './campaign.js';
-import { storesOf } from './colony.js';
+import { builtEffects, colonyEffect, storesOf } from './colony.js';
 import { squadMembers, squadProblem } from './crew.js';
 import { passDay } from './days.js';
 import { deploy } from './deploy.js';
@@ -107,7 +107,9 @@ export function rollPlaces(campaign, rules) {
   const taken = new Set();
   const left = (kind) => (kind.worlds ? worlds : spec.names[kind.id] ?? []).filter((name) => !taken.has(name));
   const places = [];
-  const count = Math.min(MAX_PLACES - questRoom(campaign, rules), (spec?.places ?? 0) + colonyEdge(campaign.crew, rules, 'places'));
+  // A scout anywhere in the crew and, from M39, a powered field station
+  // (colony.js colonyEffect) put more places within reach.
+  const count = Math.min(MAX_PLACES - questRoom(campaign, rules), (spec?.places ?? 0) + colonyEffect(campaign.crew, rules, 'places', builtEffects(campaign, rules)));
   for (let n = 0; n < count; n++) {
     const table = Object.fromEntries([...spec.kinds.values()].filter((kind) => left(kind).length).map((kind) => [kind.id, kind.weight]));
     if (!Object.keys(table).length) break;

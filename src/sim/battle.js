@@ -97,10 +97,15 @@ import { armorAgainst, outOfReach, shotsOf, withinReach } from './weapons.js';
 // data/contracts.json, M38): a ward, on the crew's side with no weapon, id
 // w1, w2..., held if `held` (a rescue's captive); or from M38f a colonist
 // (data/colony.json citizen): a citizen standing in a raid, on the crew's
-// side with its weapon, `citizen: true`, and no crew member.
+// side with its weapon, `citizen: true`, and no crew member. From M39 a
+// kind can be a machine (rules.machines, a part's `unit`: a ship's security
+// turret), on the side given as `side` (its ship's owner's), with no moves:
+// it only shoots, watches and reloads, and at 0 hit points it is wrecked
+// (dead) on either side. A machine is known by its kind, so a save needs
+// nothing new for one.
 // bonus adds to its kind's numbers: { hp, aim, defense, mobility, armor },
 // each optional (a captain's traits, the difficulty), with at least 1 hit
-// point and 1 of mobility left. rank is a crew member's job rank (ranks.js,
+// point and 1 of mobility left (a machine's mobility stays 0). rank is a crew member's job rank (ranks.js,
 // M32b): their order is the rank's, and a unit above rank 0 keeps it as
 // `rank`. talent is a loyal companion's id (M33c, talents.js): their order is
 // their talent, past rank 2, and the unit keeps it as `talent`. weapon is
@@ -116,18 +121,20 @@ export function createBattle({ map, units, seed, first = 'crew', options = {}, o
   const counts = { crew: 0, enemy: 0, ward: 0 };
   const battle = {
     map,
-    units: units.map(({ kind, x, y, name, hp: wounded, bonus = {}, rank = 0, talent = null, weapon: carried = null, held = false }) => {
+    units: units.map(({ kind, x, y, name, hp: wounded, bonus = {}, rank = 0, talent = null, weapon: carried = null, held = false, side: owner = null }) => {
       const job = rules.jobs.get(kind);
       const person = job ? null : rules.people?.get(kind) ?? null;
       const colonist = job || person || rules.colony?.citizen?.id !== kind ? null : rules.colony.citizen;
-      const template = job ?? person ?? colonist ?? rules.enemies.get(kind);
-      if (!template) throw new Error(`createBattle: no job, person, colonist or enemy "${kind}"`);
-      const side = job || person || colonist ? 'crew' : 'enemy';
+      const machine = job || person || colonist ? null : rules.machines?.get(kind) ?? null;
+      const template = job ?? person ?? colonist ?? machine ?? rules.enemies.get(kind);
+      if (!template) throw new Error(`createBattle: no job, person, colonist, machine or enemy "${kind}"`);
+      if (machine && owner !== 'crew' && owner !== 'enemy') throw new Error(`createBattle: a ${template.name.toLowerCase()} needs a side, "crew" or "enemy"`);
+      const side = machine ? owner : job || person || colonist ? 'crew' : 'enemy';
       const team = person ? 'ward' : side;
       counts[team] += 1;
       const add = (key) => (template[key] ?? 0) + (bonus[key] ?? 0);
       const hp = Math.max(1, add('hp'));
-      const [aim, defense, mobility, armor] = [add('aim'), add('defense'), Math.max(1, add('mobility')), add('armor')];
+      const [aim, defense, mobility, armor] = [add('aim'), add('defense'), machine ? 0 : Math.max(1, add('mobility')), add('armor')];
       const weapon = person ? null : carried ?? template.weapon;
       if (!person && !rules.weapons.has(weapon)) throw new Error(`createBattle: no weapon "${weapon}"`);
       if (wounded !== undefined && !(Number.isInteger(wounded) && wounded >= 1 && wounded <= hp)) {
@@ -216,6 +223,14 @@ export function playBattle(setup, actions, rules) {
   return { battle, events, error: null };
 }
 
+// What a machine (M39, a ship's turret) can do: it has a gun and no moves.
+export const MACHINE_ACTIONS = ['shoot', 'overwatch', 'reload', 'end'];
+
+// True for a machine's unit: one of a part's kind (rules.machines).
+export function isMachine(unit, rules) {
+  return Boolean(rules.machines?.has(unit.kind));
+}
+
 // The enemies a unit could shoot now, with the odds: [{ target, odds }]:
 // those it can see, within its weapon's reach. None for a ward, who has no
 // weapon.
@@ -244,6 +259,7 @@ function readyToAct(battle, unit, action) {
 // Carries out a unit's action on the draft. Returns an error, or null.
 function doAction(battle, unit, action, events, rules) {
   if (unit.ward && action.type !== 'move') return `${unit.name} has no gun: they can only move.`;
+  if (isMachine(unit, rules) && !MACHINE_ACTIONS.includes(action.type)) return `${unit.name} can only shoot, watch and reload.`;
   if (OBJECTIVE_ACTIONS.includes(action.type)) {
     const error = objectiveAction(battle, unit, action, events, rules);
     if (!error) decide(battle, events);
@@ -430,13 +446,14 @@ function spared(unit, rules) {
   return unit.side === 'crew' && godMode(rules);
 }
 
-// Takes damage off a unit. At 0, crew go down and bleed out; enemies die.
+// Takes damage off a unit. At 0, crew go down and bleed out; enemies die,
+// and so does a machine (M39) on either side: it is wrecked.
 function hurt(battle, unit, damage, events, rules) {
   unit.hp = Math.max(0, unit.hp - damage);
   if (unit.hp > 0) return;
   unit.ap = 0;
   unit.overwatch = false;
-  if (unit.side === 'crew') {
+  if (unit.side === 'crew' && !isMachine(unit, rules)) {
     unit.status = 'down';
     unit.bleed = rules.balance.bleedOutTurns;
     events.push({ type: 'down', unit: unit.id, bleed: unit.bleed });

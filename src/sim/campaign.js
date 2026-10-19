@@ -77,10 +77,10 @@ import { actOf, atColony, atHangar, atPort } from './acts.js';
 import { aboardOf, MAX_OUT } from './away.js';
 import { MAX_AT, MAX_CITIZENS, MAX_COLONIES, MAX_NEWS } from './colonies.js';
 import { battleProblem } from './battleShape.js';
-import { createBattle } from './battle.js';
+import { createBattle, isMachine } from './battle.js';
 import { buildShip, isShipData } from './builder.js';
 import { flightChecklist, partLines } from './constraints.js';
-import { deploy } from './deploy.js';
+import { deploy, machinesOn } from './deploy.js';
 import { crewLook, isLook } from './looks.js';
 import { MAX_STOCK } from './economy.js';
 import { mapFromShip, WRECKS } from './mapFromShip.js';
@@ -393,15 +393,21 @@ export function beginFight(campaign, rules, { forgiving = false, difficulty = 'n
   if (unknown) return { ok: false, error: `${unknown.name}'s job "${unknown.job}" is unknown.` };
   const map = mapFromShip(campaign.ship, rules);
   if (!map) return { ok: false, error: 'The ship has no parts yet.' };
-  const placed = deploy(map, campaign.crew.map((member) => member.job), rules.encounters.get(FIGHT_ENCOUNTER).enemies, rules);
+  // The ship's working turrets (M39) fight for the crew, after everyone
+  // else.
+  const machines = machinesOn(map, rules, 'crew');
+  const placed = deploy(map, campaign.crew.map((member) => member.job), rules.encounters.get(FIGHT_ENCOUNTER).enemies, rules, machines.map(({ x, y }) => [x, y]));
   if (!placed.ok) return placed;
   const { value: seed, state: rng } = int(campaign.rng, 0, MAX_SEED);
   // deploy lists the crew first, in the order given.
   const bonus = enemyBonus(difficulty, rules.balance);
-  const units = placed.units.map((unit, i) => {
-    const member = campaign.crew[i];
-    return member ? { ...unit, ...crewUnit(member, rules) } : { ...unit, bonus };
-  });
+  const units = [
+    ...placed.units.map((unit, i) => {
+      const member = campaign.crew[i];
+      return member ? { ...unit, ...crewUnit(member, rules) } : { ...unit, bonus };
+    }),
+    ...machines,
+  ];
   const { battle, events } = createBattle({ map, units, seed, options: { forgiving } }, rules);
   const fight = { encounter: FIGHT_ENCOUNTER, seed, crew: campaign.crew.map((member) => member.id), battle, log: events, job: null, raid: false, boarding: null };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };
@@ -427,7 +433,7 @@ export function endFight(campaign, rules) {
   const { fight } = campaign;
   if (!fight?.battle.winner) return campaign;
   const heals = actOf(campaign, rules)?.heals === true;
-  const stood = standing(fight, fight.battle);
+  const stood = standing(fight, fight.battle, rules);
   const crew = campaign.crew.flatMap((member) => {
     const unit = stood.get(member.id);
     if (unit?.status === 'dead') return [];
@@ -451,7 +457,7 @@ export function endFight(campaign, rules) {
 export function rankUps(campaign, battle, rules) {
   const { fight } = campaign;
   if (!fight || !battle?.winner) return [];
-  const stood = standing(fight, battle);
+  const stood = standing(fight, battle, rules);
   return campaign.crew.flatMap((member) => {
     const unit = stood.get(member.id);
     if (!unit || unit.status === 'dead') return [];
@@ -462,10 +468,10 @@ export function rankUps(campaign, battle, rules) {
 
 // The crew in a fight, by id: the unit each crew member is in battle
 // (fight.crew lists them in the order of its crew units; the person a job
-// brings out, M38, and a raid's colonists, M38f, are on the crew's side
-// but not of it).
-function standing(fight, battle) {
-  const units = battle.units.filter((unit) => unit.side === 'crew' && !unit.ward && !unit.citizen);
+// brings out, M38, a raid's colonists, M38f, and the ship's turrets, M39,
+// are on the crew's side but not of it).
+function standing(fight, battle, rules) {
+  const units = battle.units.filter((unit) => unit.side === 'crew' && !unit.ward && !unit.citizen && !isMachine(unit, rules));
   return new Map(fight.crew.map((id, i) => [id, units[i]]).filter(([, unit]) => unit));
 }
 
@@ -550,8 +556,10 @@ function fightProblem(fight, crew) {
   const battle = battleProblem(fight.battle);
   if (battle) return battle;
   // The person a job brings out (M38) and a raid's colonists (M38f) are on
-  // the crew's side, not of it.
-  if (fight.battle.units.filter((unit) => unit.side === 'crew' && !unit.ward && !unit.citizen).length !== fight.crew.length) return "doesn't match its crew";
+  // the crew's side, not of it. So are the ship's turrets (M39): known by
+  // their kind once content has loaded, and here, without it, as the only
+  // units with no moves (battle.js gives everyone else 1 at least).
+  if (fight.battle.units.filter((unit) => unit.side === 'crew' && !unit.ward && !unit.citizen && unit.mobility > 0).length !== fight.crew.length) return "doesn't match its crew";
   if (!Array.isArray(fight.log) || !fight.log.every((event) => isRecord(event) && typeof event.type === 'string')) return 'has an unreadable log';
   return null;
 }

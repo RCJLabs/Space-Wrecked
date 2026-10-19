@@ -306,6 +306,271 @@
       "cost": 140
     },
     {
+      "id": "scanner",
+      "name": "Scanner",
+      "glyph": "N",
+      "category": "command",
+      "manufacturer": "yard",
+      "size": [2, 1],
+      "rotates": true,
+      "stats": { "power": -1, "mass": 1, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 8 },
+      "tags": ["scanner"],
+      "station": { "scan": 1 },
+      "interior": ["c."],
+      "cost": 150
+    },
+    {
+      "id": "firecontrol",
+      "name": "Fire control",
+      "glyph": "F",
+      "category": "weapons",
+      "manufacturer": "yard",
+      "size": [2, 1],
+      "rotates": true,
+      "stats": { "power": -1, "mass": 1, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 10 },
+      "tags": ["firecontrol"],
+      "station": { "gunnery": 10 },
+      "interior": ["c."],
+      "cost": 180
+    },
+    {
+      "id": "ecm",
+      "name": "ECM suite",
+      "glyph": "J",
+      "category": "defense",
+      "manufacturer": "yard",
+      "size": [2, 1],
+      "rotates": true,
+      "stats": { "power": -2, "mass": 1, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 8 },
+      "tags": ["ecm"],
+      "station": { "evasion": 10 },
+      "interior": ["#."],
+      "cost": 190
+    },
+    {
+      "id": "workshop",
+      "name": "Workshop",
+      "glyph": "T",
+      "category": "utility",
+      "manufacturer": "yard",
+      "size": [3, 2],
+      "rotates": true,
+      "stats": { "power": -1, "mass": 3, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 15 },
+      "tags": ["workshop"],
+      "station": { "repair": 1 },
+      "interior": ["#.h", "c.."],
+      "cost": 210
+    },
+    {
+      "id": "surveylab",
+      "name": "Survey lab",
+      "glyph": "V",
+      "category": "utility",
+      "manufacturer": "yard",
+      "size": [2, 2],
+      "rotates": true,
+      "stats": { "power": -1, "mass": 2, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 10 },
+      "tags": ["surveylab"],
+      "station": { "freeSurvey": 1 },
+      "interior": ["c.", "h."],
+      "cost": 160
+    },
+    {
+      "id": "torpedobay",
+      "name": "Torpedo bay",
+      "glyph": "I",
+      "category": "weapons",
+      "manufacturer": "yard",
+      "size": [2, 2],
+      "rotates": true,
+      "facesSpace": { "side": "n", "what": "tube" },
+      "stats": { "power": -1, "mass": 3, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 15 },
+      "tags": ["weapon", "torpedo"],
+      "damage": 20,
+      "interior": ["#c", "#."],
+      "cost": 280
+    },
+    {
+      "id": "grapple",
+      "name": "Grapple",
+      "glyph": "G",
+      "category": "utility",
+      "manufacturer": "yard",
+      "size": [2, 1],
+      "rotates": true,
+      "facesSpace": { "side": "n", "what": "claw" },
+      "stats": { "power": -1, "mass": 2, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 12 },
+      "tags": ["grapple"],
+      "grapple": 15,
+      "interior": ["h#"],
+      "cost": 160
+    },
+    {
+      "id": "baffles",
+      "name": "Stealth baffles",
+      "glyph": "H",
+      "category": "defense",
+      "manufacturer": "yard",
+      "size": [2, 1],
+      "rotates": true,
+      "stats": { "power": -1, "mass": 1, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 8 },
+      "tags": ["baffles"],
+      "station": { "quiet": 1 },
+      "interior": ["h."],
+      "cost": 220
+    },
+    {
+      "id": "turret",
+      "name": "Security turret",
+      "glyph": "t",
+      "category": "defense",
+      "manufacturer": "yard",
+      "size": [2, 1],
+      "rotates": true,
+      "stats": { "power": -1, "mass": 2, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 15 },
+      "tags": ["turret"],
+      "unit": { "id": "turret", "name": "Turret", "hp": 10, "aim": 60, "defense": 10, "mobility": 0, "armor": 2, "weapon": "autogun", "look": { "machine": "turret" } },
+      "interior": [".H"],
+      "cost": 200
+    },
+    {
+      "id": "hydroponics",
+      "name": "Hydroponics",
+      "glyph": "g",
+      "category": "crew",
+      "manufacturer": "yard",
+      "size": [3, 2],
+      "rotates": true,
+      "stats": { "power": -2, "mass": 3, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 12 },
+      "tags": ["hydroponics"],
+      "station": { "grows": 2 },
+      "interior": ["h.h", "h.h"],
+      "cost": 200
+    },
+    {
+      "id": "railgun",
+      "name": "Railgun",
+      "glyph": "k",
+      "category": "weapons",
+      "manufacturer": "yard",
+      "size": [3, 1],
+      "rotates": true,
+      "facesSpace": { "side": "n", "what": "barrel" },
+      "stats": { "power": -3, "mass": 6, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 20 },
+      "tags": ["weapon"],
+      "damage": 45,
+      "interior": ["#c#"],
+      "cost": 360
+    },
+    {
+      "id": "flak",
+      "name": "Flak battery",
+      "glyph": "p",
+      "category": "weapons",
+      "manufacturer": "yard",
+      "size": [2, 1],
+      "rotates": true,
+      "facesSpace": { "side": "n", "what": "turret" },
+      "stats": { "power": -2, "mass": 2, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 15 },
+      "tags": ["pointdefense"],
+      "intercept": 20,
+      "interior": ["##"],
+      "cost": 220
+    },
+    {
+      "id": "largereactor",
+      "name": "Large reactor",
+      "glyph": "@",
+      "category": "power",
+      "manufacturer": "yard",
+      "size": [4, 3],
+      "rotates": true,
+      "stats": { "power": 14, "mass": 9, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 40 },
+      "tags": ["reactor"],
+      "interior": ["....", ".##.", "...."],
+      "cost": 380
+    },
+    {
+      "id": "thruster",
+      "name": "Thruster",
+      "glyph": "z",
+      "category": "engines",
+      "manufacturer": "yard",
+      "size": [1, 1],
+      "rotates": false,
+      "facesSpace": { "side": "w", "what": "exhaust" },
+      "stats": { "power": -1, "mass": 1, "thrust": 4, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 6 },
+      "tags": ["engine"],
+      "interior": ["H"],
+      "cost": 60
+    },
+    {
+      "id": "cockpit",
+      "name": "Cockpit",
+      "glyph": "b",
+      "category": "command",
+      "manufacturer": "yard",
+      "size": [2, 1],
+      "rotates": true,
+      "stats": { "power": -1, "mass": 2, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 10 },
+      "tags": ["bridge"],
+      "interior": ["c."],
+      "cost": 150
+    },
+    {
+      "id": "dormitory",
+      "name": "Dormitory",
+      "glyph": "d",
+      "category": "crew",
+      "manufacturer": "yard",
+      "size": [4, 2],
+      "rotates": true,
+      "stats": { "power": -2, "mass": 5, "thrust": 0, "berths": 8, "lifeSupport": 0, "cargo": 0, "hp": 20 },
+      "tags": ["quarters"],
+      "interior": ["hh.h", "...."],
+      "cost": 170
+    },
+    {
+      "id": "airrecycler",
+      "name": "Air recycler",
+      "glyph": "l",
+      "category": "crew",
+      "manufacturer": "yard",
+      "size": [2, 2],
+      "rotates": true,
+      "stats": { "power": -2, "mass": 3, "thrust": 0, "berths": 0, "lifeSupport": 8, "cargo": 0, "hp": 15 },
+      "tags": ["lifesupport"],
+      "interior": ["H.", "H."],
+      "cost": 170
+    },
+    {
+      "id": "cargopod",
+      "name": "Cargo pod",
+      "glyph": "c",
+      "category": "cargo",
+      "manufacturer": "yard",
+      "size": [2, 1],
+      "rotates": true,
+      "stats": { "power": 0, "mass": 1, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 6, "hp": 8 },
+      "tags": ["cargo"],
+      "interior": ["h."],
+      "cost": 30
+    },
+    {
+      "id": "emitter",
+      "name": "Shield emitter",
+      "glyph": "s",
+      "category": "defense",
+      "manufacturer": "yard",
+      "size": [1, 1],
+      "rotates": true,
+      "stats": { "power": -1, "mass": 1, "thrust": 0, "berths": 0, "lifeSupport": 0, "cargo": 0, "hp": 8 },
+      "tags": ["shield"],
+      "shield": 5,
+      "interior": ["."],
+      "cost": 80
+    },
+    {
       "id": "bastion-bridge",
       "base": "bridge",
       "manufacturer": "bastion",
@@ -474,6 +739,158 @@
       "cost": 155
     },
     {
+      "id": "bastion-scanner",
+      "base": "scanner",
+      "manufacturer": "bastion",
+      "name": "Bastion scanner",
+      "stats": { "mass": 2, "hp": 12 },
+      "cost": 165
+    },
+    {
+      "id": "bastion-firecontrol",
+      "base": "firecontrol",
+      "manufacturer": "bastion",
+      "name": "Bastion fire control",
+      "stats": { "mass": 2, "hp": 15 },
+      "cost": 200
+    },
+    {
+      "id": "bastion-ecm",
+      "base": "ecm",
+      "manufacturer": "bastion",
+      "name": "Bastion eCM suite",
+      "stats": { "mass": 2, "hp": 12 },
+      "cost": 210
+    },
+    {
+      "id": "bastion-workshop",
+      "base": "workshop",
+      "manufacturer": "bastion",
+      "name": "Bastion workshop",
+      "stats": { "mass": 4, "hp": 23 },
+      "cost": 230
+    },
+    {
+      "id": "bastion-surveylab",
+      "base": "surveylab",
+      "manufacturer": "bastion",
+      "name": "Bastion survey lab",
+      "stats": { "mass": 3, "hp": 15 },
+      "cost": 175
+    },
+    {
+      "id": "bastion-torpedobay",
+      "base": "torpedobay",
+      "manufacturer": "bastion",
+      "name": "Bastion torpedo bay",
+      "stats": { "mass": 4, "hp": 23 },
+      "cost": 310
+    },
+    {
+      "id": "bastion-grapple",
+      "base": "grapple",
+      "manufacturer": "bastion",
+      "name": "Bastion grapple",
+      "stats": { "mass": 3, "hp": 18 },
+      "cost": 175
+    },
+    {
+      "id": "bastion-baffles",
+      "base": "baffles",
+      "manufacturer": "bastion",
+      "name": "Bastion stealth baffles",
+      "stats": { "mass": 2, "hp": 12 },
+      "cost": 240
+    },
+    {
+      "id": "bastion-turret",
+      "base": "turret",
+      "manufacturer": "bastion",
+      "name": "Bastion security turret",
+      "stats": { "mass": 3, "hp": 23 },
+      "cost": 220
+    },
+    {
+      "id": "bastion-hydroponics",
+      "base": "hydroponics",
+      "manufacturer": "bastion",
+      "name": "Bastion hydroponics",
+      "stats": { "mass": 4, "hp": 18 },
+      "cost": 220
+    },
+    {
+      "id": "bastion-railgun",
+      "base": "railgun",
+      "manufacturer": "bastion",
+      "name": "Bastion railgun",
+      "stats": { "mass": 8, "hp": 30 },
+      "cost": 395
+    },
+    {
+      "id": "bastion-flak",
+      "base": "flak",
+      "manufacturer": "bastion",
+      "name": "Bastion flak battery",
+      "stats": { "mass": 3, "hp": 23 },
+      "cost": 240
+    },
+    {
+      "id": "bastion-largereactor",
+      "base": "largereactor",
+      "manufacturer": "bastion",
+      "name": "Bastion large reactor",
+      "stats": { "mass": 11, "hp": 60 },
+      "cost": 420
+    },
+    {
+      "id": "bastion-thruster",
+      "base": "thruster",
+      "manufacturer": "bastion",
+      "name": "Bastion thruster",
+      "stats": { "mass": 2, "hp": 9 },
+      "cost": 65
+    },
+    {
+      "id": "bastion-cockpit",
+      "base": "cockpit",
+      "manufacturer": "bastion",
+      "name": "Bastion cockpit",
+      "stats": { "mass": 3, "hp": 15 },
+      "cost": 165
+    },
+    {
+      "id": "bastion-dormitory",
+      "base": "dormitory",
+      "manufacturer": "bastion",
+      "name": "Bastion dormitory",
+      "stats": { "mass": 6, "hp": 30 },
+      "cost": 185
+    },
+    {
+      "id": "bastion-airrecycler",
+      "base": "airrecycler",
+      "manufacturer": "bastion",
+      "name": "Bastion air recycler",
+      "stats": { "mass": 4, "hp": 23 },
+      "cost": 185
+    },
+    {
+      "id": "bastion-cargopod",
+      "base": "cargopod",
+      "manufacturer": "bastion",
+      "name": "Bastion cargo pod",
+      "stats": { "mass": 2, "hp": 12 },
+      "cost": 35
+    },
+    {
+      "id": "bastion-emitter",
+      "base": "emitter",
+      "manufacturer": "bastion",
+      "name": "Bastion shield emitter",
+      "stats": { "mass": 2, "hp": 12 },
+      "cost": 90
+    },
+    {
       "id": "kestrel-bridge",
       "base": "bridge",
       "manufacturer": "kestrel",
@@ -600,6 +1017,94 @@
       "name": "Kestrel large hold",
       "stats": { "mass": 4, "hp": 15 },
       "cost": 170
+    },
+    {
+      "id": "kestrel-workshop",
+      "base": "workshop",
+      "manufacturer": "kestrel",
+      "name": "Kestrel workshop",
+      "stats": { "mass": 2, "hp": 8 },
+      "cost": 250
+    },
+    {
+      "id": "kestrel-surveylab",
+      "base": "surveylab",
+      "manufacturer": "kestrel",
+      "name": "Kestrel survey lab",
+      "stats": { "mass": 1, "hp": 5 },
+      "cost": 190
+    },
+    {
+      "id": "kestrel-torpedobay",
+      "base": "torpedobay",
+      "manufacturer": "kestrel",
+      "name": "Kestrel torpedo bay",
+      "stats": { "mass": 2, "hp": 8 },
+      "cost": 335
+    },
+    {
+      "id": "kestrel-grapple",
+      "base": "grapple",
+      "manufacturer": "kestrel",
+      "name": "Kestrel grapple",
+      "stats": { "mass": 1, "hp": 6 },
+      "cost": 190
+    },
+    {
+      "id": "kestrel-turret",
+      "base": "turret",
+      "manufacturer": "kestrel",
+      "name": "Kestrel security turret",
+      "stats": { "mass": 1, "hp": 8 },
+      "cost": 240
+    },
+    {
+      "id": "kestrel-hydroponics",
+      "base": "hydroponics",
+      "manufacturer": "kestrel",
+      "name": "Kestrel hydroponics",
+      "stats": { "mass": 2, "hp": 6 },
+      "cost": 240
+    },
+    {
+      "id": "kestrel-railgun",
+      "base": "railgun",
+      "manufacturer": "kestrel",
+      "name": "Kestrel railgun",
+      "stats": { "mass": 4, "hp": 10 },
+      "cost": 430
+    },
+    {
+      "id": "kestrel-flak",
+      "base": "flak",
+      "manufacturer": "kestrel",
+      "name": "Kestrel flak battery",
+      "stats": { "mass": 1, "hp": 8 },
+      "cost": 265
+    },
+    {
+      "id": "kestrel-cockpit",
+      "base": "cockpit",
+      "manufacturer": "kestrel",
+      "name": "Kestrel cockpit",
+      "stats": { "mass": 1, "hp": 5 },
+      "cost": 180
+    },
+    {
+      "id": "kestrel-dormitory",
+      "base": "dormitory",
+      "manufacturer": "kestrel",
+      "name": "Kestrel dormitory",
+      "stats": { "mass": 4, "hp": 10 },
+      "cost": 205
+    },
+    {
+      "id": "kestrel-airrecycler",
+      "base": "airrecycler",
+      "manufacturer": "kestrel",
+      "name": "Kestrel air recycler",
+      "stats": { "mass": 2, "hp": 8 },
+      "cost": 205
     },
     {
       "id": "scrapline-bridge",
@@ -768,6 +1273,158 @@
       "name": "Scrapline large hold",
       "stats": { "hp": 23 },
       "cost": 90
+    },
+    {
+      "id": "scrapline-scanner",
+      "base": "scanner",
+      "manufacturer": "scrapline",
+      "name": "Scrapline scanner",
+      "stats": { "hp": 6, "power": -2 },
+      "cost": 100
+    },
+    {
+      "id": "scrapline-firecontrol",
+      "base": "firecontrol",
+      "manufacturer": "scrapline",
+      "name": "Scrapline fire control",
+      "stats": { "hp": 8, "power": -2 },
+      "cost": 115
+    },
+    {
+      "id": "scrapline-ecm",
+      "base": "ecm",
+      "manufacturer": "scrapline",
+      "name": "Scrapline eCM suite",
+      "stats": { "hp": 6, "power": -3 },
+      "cost": 125
+    },
+    {
+      "id": "scrapline-workshop",
+      "base": "workshop",
+      "manufacturer": "scrapline",
+      "name": "Scrapline workshop",
+      "stats": { "hp": 11, "power": -2 },
+      "cost": 135
+    },
+    {
+      "id": "scrapline-surveylab",
+      "base": "surveylab",
+      "manufacturer": "scrapline",
+      "name": "Scrapline survey lab",
+      "stats": { "hp": 8, "power": -2 },
+      "cost": 105
+    },
+    {
+      "id": "scrapline-torpedobay",
+      "base": "torpedobay",
+      "manufacturer": "scrapline",
+      "name": "Scrapline torpedo bay",
+      "stats": { "hp": 11, "power": -2 },
+      "cost": 180
+    },
+    {
+      "id": "scrapline-grapple",
+      "base": "grapple",
+      "manufacturer": "scrapline",
+      "name": "Scrapline grapple",
+      "stats": { "hp": 9, "power": -2 },
+      "cost": 105
+    },
+    {
+      "id": "scrapline-baffles",
+      "base": "baffles",
+      "manufacturer": "scrapline",
+      "name": "Scrapline stealth baffles",
+      "stats": { "hp": 6, "power": -2 },
+      "cost": 145
+    },
+    {
+      "id": "scrapline-turret",
+      "base": "turret",
+      "manufacturer": "scrapline",
+      "name": "Scrapline security turret",
+      "stats": { "hp": 11, "power": -2 },
+      "cost": 130
+    },
+    {
+      "id": "scrapline-hydroponics",
+      "base": "hydroponics",
+      "manufacturer": "scrapline",
+      "name": "Scrapline hydroponics",
+      "stats": { "hp": 9, "power": -3 },
+      "cost": 130
+    },
+    {
+      "id": "scrapline-railgun",
+      "base": "railgun",
+      "manufacturer": "scrapline",
+      "name": "Scrapline railgun",
+      "stats": { "hp": 15, "power": -4 },
+      "cost": 235
+    },
+    {
+      "id": "scrapline-flak",
+      "base": "flak",
+      "manufacturer": "scrapline",
+      "name": "Scrapline flak battery",
+      "stats": { "hp": 11, "power": -3 },
+      "cost": 145
+    },
+    {
+      "id": "scrapline-largereactor",
+      "base": "largereactor",
+      "manufacturer": "scrapline",
+      "name": "Scrapline large reactor",
+      "stats": { "hp": 30, "power": 13 },
+      "cost": 245
+    },
+    {
+      "id": "scrapline-thruster",
+      "base": "thruster",
+      "manufacturer": "scrapline",
+      "name": "Scrapline thruster",
+      "stats": { "hp": 5, "power": -2 },
+      "cost": 40
+    },
+    {
+      "id": "scrapline-cockpit",
+      "base": "cockpit",
+      "manufacturer": "scrapline",
+      "name": "Scrapline cockpit",
+      "stats": { "hp": 8, "power": -2 },
+      "cost": 100
+    },
+    {
+      "id": "scrapline-dormitory",
+      "base": "dormitory",
+      "manufacturer": "scrapline",
+      "name": "Scrapline dormitory",
+      "stats": { "hp": 15, "power": -3 },
+      "cost": 110
+    },
+    {
+      "id": "scrapline-airrecycler",
+      "base": "airrecycler",
+      "manufacturer": "scrapline",
+      "name": "Scrapline air recycler",
+      "stats": { "hp": 11, "power": -3 },
+      "cost": 110
+    },
+    {
+      "id": "scrapline-cargopod",
+      "base": "cargopod",
+      "manufacturer": "scrapline",
+      "name": "Scrapline cargo pod",
+      "stats": { "hp": 6 },
+      "cost": 20
+    },
+    {
+      "id": "scrapline-emitter",
+      "base": "emitter",
+      "manufacturer": "scrapline",
+      "name": "Scrapline shield emitter",
+      "stats": { "hp": 6, "power": -2 },
+      "cost": 50
     }
   ]
 }

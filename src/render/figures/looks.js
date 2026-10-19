@@ -25,6 +25,9 @@ export const SUITS = {
   skinsuit: { helmet: ['egg', 'fin', 'crest', 'mirror'], back: ['spine', 'jump', 'none'], marks: ['seams', 'plates'] },
 };
 export const LOOK_KEYS = ['suit', 'build', 'helmet', 'back', 'marks'];
+// A machine that fights (M39): a ship's security turret. Its look is
+// { machine }, one of MACHINES, drawn as itself rather than a suit.
+export const MACHINES = ['turret'];
 
 // A weapon in hand, in cells: its length from stock to muzzle, the height
 // of its body, the thickness of its barrel, and whether it takes one hand or
@@ -44,6 +47,10 @@ export const PLAIN_HELD = { length: 0.32, height: 0.07, bore: 0.01, hands: 2 };
 // fine).
 export function lookProblems(look) {
   if (!look || typeof look !== 'object' || Array.isArray(look)) return [`look must be { ${LOOK_KEYS.join(', ')} }`];
+  if (look.machine !== undefined) {
+    const extra = Object.keys(look).filter((key) => key !== 'machine').map((key) => `look: a machine's look has no "${key}"`);
+    return MACHINES.includes(look.machine) ? extra : [...extra, `look.machine must be one of ${MACHINES.join(', ')}`];
+  }
   const problems = [];
   for (const key of Object.keys(look)) if (!LOOK_KEYS.includes(key)) problems.push(`look: unknown field "${key}"`);
   const suit = SUITS[look.suit];

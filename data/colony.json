@@ -35,6 +35,19 @@
     { "part": "cannon", "name": "Cannon emplacement", "shots": 2, "text": "A ship's cannon dug in and aimed up. Anything coming down will think twice." },
     { "part": "pointdefense", "name": "Flak tower", "shots": 1, "text": "Point defense up a tower, for whatever falls from the sky faster than it should." },
     { "part": "shield", "name": "Shield dome", "text": "A shield generator throwing its field over the rooftops." },
-    { "part": "shieldarray", "name": "Shield array", "text": "The big shield array, with the whole colony under it." }
+    { "part": "shieldarray", "name": "Shield array", "text": "The big shield array, with the whole colony under it." },
+    { "part": "scanner", "name": "Sensor mast", "effects": { "landing": 10 }, "text": "The ship's scanner up a mast over the rooftops. A lander shows sooner, and the guns know where to point." },
+    { "part": "firecontrol", "name": "Fire director", "effects": { "landing": 10 }, "text": "The fire control set up beside the guns, laying them on whatever comes down." },
+    { "part": "workshop", "name": "Machine shop", "effects": { "mines": 1 }, "text": "The workshop on a slab by the pitheads, keeping the drills turning." },
+    { "part": "surveylab", "name": "Field station", "effects": { "places": 1 }, "text": "The survey lab set down to read the country round about. It finds somewhere new worth a trip." },
+    { "part": "hydroponics", "name": "Greenhouse", "makes": { "food": 2 }, "text": "The hydroponics racks under glass, growing whatever the ship's seed stock had." },
+    { "part": "torpedobay", "name": "Torpedo battery", "shots": 1, "text": "A torpedo tube dug in and pointed up, for a lander that comes too close." },
+    { "part": "railgun", "name": "Rail battery", "shots": 2, "text": "The railgun on a turntable, its rails singing whenever it fires." },
+    { "part": "flak", "name": "Flak battery", "shots": 2, "text": "Two flak guns in a pit, throwing up a wall of shrapnel at anything falling." },
+    { "part": "largereactor", "name": "Power station", "text": "The big reactor in a bunker of its own. More power than the colony knows what to do with." },
+    { "part": "dormitory", "name": "Longhouse", "text": "The dormitory set down whole: eight bunks in a row and a stove at the end." },
+    { "part": "airrecycler", "name": "Air works", "text": "The air recycler on a frame, its fans breathing for half a settlement." },
+    { "part": "cargopod", "name": "Store shed", "text": "A cargo pod on blocks, with a door cut in the side." },
+    { "part": "emitter", "name": "Shield post", "text": "A shield emitter on a pole, throwing a small dome over what matters most." }
   ]
 }

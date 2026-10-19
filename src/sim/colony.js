@@ -12,7 +12,12 @@
 // materials build what keeps it going alone, a solar array and shelters.
 // From M32 the crew's jobs help (edges.js): a xenobiologist at home makes
 // each farm grow more, an engineer each mine dig more, and a quartermaster
-// anywhere in the crew makes the stores keep more. From M38d the ship flies
+// anywhere in the crew makes the stores keep more. From M39 a part's
+// building can bring a colony effect too, while it is powered (its
+// `effects` in data/colony.json: a sensor mast's to hit at a lander, a
+// machine shop's materials from each mine, a field station's places), added
+// to the best job's within the effect's cap (colonyEffect); and one can
+// make food (its `makes`: hydroponics' greenhouse). From M38d the ship flies
 // out on voyages too (voyage.js): while it is away those at home are the
 // colony's crew, its quartermaster only one at home, and its stores are its
 // storehouses alone, the ship's holds being with the ship.
@@ -42,7 +47,7 @@ import { homeOf } from './away.js';
 import { applyCommand, occupancy, placeModule } from './builder.js';
 import { shipChecklist } from './campaign.js';
 import { shipStats } from './constraints.js';
-import { colonyEdge } from './edges.js';
+import { COLONY_EFFECTS, colonyEdge } from './edges.js';
 import { tally } from './flags.js';
 import { cellAt } from './grid.js';
 import { baseOf } from './makers.js';
@@ -106,11 +111,41 @@ export function makesOf(build, world, more = {}) {
   return build.makes ? { [build.makes]: yieldOf(build, world) + (more[build.makes] ?? 0) } : null;
 }
 
-// What the crew at home adds to each farm's food and each mine's materials
-// a day (edges.js): { food, materials }.
-export function crewYields(campaign, rules) {
+// What the crew at home, and from M39 the powered buildings' effects
+// (builtEffects), add to each farm's food and each mine's materials a day,
+// each within its effect's cap: { food, materials }.
+export function crewYields(campaign, rules, effects = builtEffects(campaign, rules)) {
   const home = homeCrew(campaign);
-  return { food: colonyEdge(home, rules, 'farms'), materials: colonyEdge(home, rules, 'mines') };
+  return { food: colonyEffect(home, rules, 'farms', effects), materials: colonyEffect(home, rules, 'mines', effects) };
+}
+
+// Colony effect key (edges.js COLONY_EFFECTS) as the colony stands (M39):
+// the best job's among members, and what its powered buildings bring
+// (effects, builtEffects's), within the effect's cap.
+export function colonyEffect(members, rules, key, effects = {}) {
+  return Math.min(COLONY_EFFECTS[key][1], colonyEdge(members, rules, key) + (effects[key] ?? 0));
+}
+
+// What the colony's powered buildings bring as colony effects (M39), their
+// parts' buildings' `effects` (data/colony.json) added up: { [key]: n }.
+export function builtEffects(campaign, rules) {
+  return effectsOf(poweredOf(campaign, rules).buildings, rules);
+}
+
+function effectsOf(buildings, rules) {
+  const effects = {};
+  for (const building of buildings) {
+    if (!building.powered) continue;
+    for (const [key, n] of Object.entries(buildingOf(building.type, rules)?.effects ?? {})) effects[key] = (effects[key] ?? 0) + n;
+  }
+  return effects;
+}
+
+// What a part's building makes a day (M39, its data/colony.json `makes`: a
+// greenhouse's food), or null.
+function partMakes(type, rules) {
+  const makes = buildingOf(type, rules)?.makes;
+  return makes ? { ...makes } : null;
 }
 
 // The crew at home: all but the squad on a trip, or while the ship is away
@@ -178,9 +213,11 @@ export function givesOf(def) {
 //              order, while enough is left; one it doesn't reach is dark and
 //              gives nothing. One that makes power, or needs none, is never
 //              dark, and farms and mines need none. makes is a farm's or a
-//              mine's ({ food } or { materials }: what it makes a day), else
-//              null; worked, whether a citizen works it (M38f): one to each
-//              farm and mine in the order built, for citizenWork more a day.
+//              mine's ({ food } or { materials }: what it makes a day), or
+//              from M39 a part's building's that makes food (a greenhouse),
+//              else null; worked, whether a citizen works it (M38f): one to
+//              each farm and mine in the order built, for citizenWork more a
+//              day.
 //   beds, air  from the powered buildings, one each for a crew member
 //   housed     the crew at home with a bed and air at the colony: the first
 //              of those at home, in the crew's order. The rest sleep aboard
@@ -199,32 +236,25 @@ export function givesOf(def) {
 //   defense    { damage, shield, intercept, armories } of the powered
 //              defenses (M29)
 //   infirmary  the best powered infirmary's heal, 0 without one
+//   effects    what the powered buildings bring as colony effects (M39,
+//              builtEffects): { [key]: n }
 export function colonyStats(campaign, rules) {
   const { colony } = campaign;
   const trip = colony.trip ?? null;
   // The ship away, on a trip or a voyage (M38d).
   const gone = Boolean(trip || colony.voyage);
-  const ship = gone ? 0 : Math.max(0, shipStats(campaign.ship, rules).power);
-  const more = crewYields(campaign, rules);
+  const { buildings: lighted, plants, ship, left } = poweredOf(campaign, rules);
+  const effects = effectsOf(lighted, rules);
+  const more = crewYields(campaign, rules, effects);
   // The citizens' hands (M38f): one to each farm and mine, in the order
   // built.
   const work = rules.balance.citizenWork ?? 0;
   let hands = colony.citizens ?? 0;
-  const known = colony.buildings.map((building) => {
-    const build = buildOf(building.type, rules);
-    const def = build ? null : rules.modules.get(building.type);
-    const own = build ? makesOf(build, colony.world, more) : null;
-    const worked = Boolean(own) && hands > 0;
+  const buildings = lighted.map(({ uid, type, build, gives, need, powered }) => {
+    const own = build ? makesOf(build, colony.world, more) : partMakes(type, rules);
+    const worked = Boolean(build) && Boolean(own) && hands > 0;
     if (worked) hands -= 1;
     const makes = worked ? Object.fromEntries(Object.entries(own).map(([what, n]) => [what, n + work])) : own;
-    return { ...building, makes, worked, gives: build ? buildGives(build) : def ? givesOf(def) : null };
-  });
-  const plants = known.reduce((sum, { gives }) => sum + Math.max(0, gives?.power ?? 0), 0);
-  let left = plants + ship;
-  const buildings = known.map(({ uid, type, gives, makes, worked }) => {
-    const need = Math.max(0, -(gives?.power ?? 0));
-    const powered = gives !== null && need <= left;
-    if (powered) left -= need;
     return { uid, type, name: buildingName(type, rules), need, powered, gives, makes, worked };
   });
   const lit = buildings.filter((b) => b.powered);
@@ -252,7 +282,31 @@ export function colonyStats(campaign, rules) {
     citizens: { count, housed: Math.min(count, room), free: Math.max(0, room - count), working: count - hands },
     defense: { damage: sum('damage'), shield: sum('shield'), intercept: sum('intercept'), armories: lit.filter((b) => b.gives.armory).length },
     infirmary: Math.max(0, ...lit.map((b) => b.gives.heal)),
+    effects,
   };
+}
+
+// The colony's buildings, each with what it gives and the power it takes,
+// in the order built, and whether it is powered (see colonyStats): {
+// buildings: [{ uid, type, build, gives, need, powered }], plants, ship,
+// left }.
+function poweredOf(campaign, rules) {
+  const { colony } = campaign;
+  const ship = colony.trip || colony.voyage ? 0 : Math.max(0, shipStats(campaign.ship, rules).power);
+  const known = colony.buildings.map((building) => {
+    const build = buildOf(building.type, rules);
+    const def = build ? null : rules.modules.get(building.type);
+    return { uid: building.uid, type: building.type, build, gives: build ? buildGives(build) : def ? givesOf(def) : null };
+  });
+  const plants = known.reduce((sum, { gives }) => sum + Math.max(0, gives?.power ?? 0), 0);
+  let left = plants + ship;
+  const buildings = known.map((building) => {
+    const need = Math.max(0, -(building.gives?.power ?? 0));
+    const powered = building.gives !== null && need <= left;
+    if (powered) left -= need;
+    return { ...building, need, powered };
+  });
+  return { buildings, plants, ship, left };
 }
 
 // What the colony keeps of food and of materials, each up to its stores:
