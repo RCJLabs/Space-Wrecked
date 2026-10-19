@@ -87,7 +87,7 @@ import { doOrder, endOrders, endWelds, freshOrders, wakeTurn } from './orders.js
 import { jobAtRank } from './ranks.js';
 import { talentOrder } from './talents.js';
 import { canSee } from './sight.js';
-import { hazardAt, walkable, weldedAt } from './terrain.js';
+import { hazardAt, tileRule, walkable, weldedAt } from './terrain.js';
 import { armorAgainst, outOfReach, shotsOf, withinReach } from './weapons.js';
 
 // setup: { map, units: [{ kind, x, y, name?, hp?, bonus?, rank?, talent?,
@@ -180,7 +180,10 @@ export function createBattle({ map, units, seed, first = 'crew', options = {}, o
   };
   const taken = new Set();
   for (const unit of battle.units) {
-    if (!walkable(battle, unit.x, unit.y, rules)) throw new RangeError(`createBattle: ${unit.name} can't stand at (${unit.x}, ${unit.y})`);
+    // A machine (M39) may stand on its mount, a tile of full cover
+    // (deploy.js machinesOn); everyone else on a tile they can walk.
+    const mounted = isMachine(unit, rules) && tileRule(battle, unit.x, unit.y, rules).cover === 'full';
+    if (!mounted && !walkable(battle, unit.x, unit.y, rules)) throw new RangeError(`createBattle: ${unit.name} can't stand at (${unit.x}, ${unit.y})`);
     if (taken.has(`${unit.x},${unit.y}`)) throw new RangeError(`createBattle: two units at (${unit.x}, ${unit.y})`);
     taken.add(`${unit.x},${unit.y}`);
   }
@@ -262,7 +265,7 @@ function doAction(battle, unit, action, events, rules) {
   if (isMachine(unit, rules) && !MACHINE_ACTIONS.includes(action.type)) return `${unit.name} can only shoot, watch and reload.`;
   if (OBJECTIVE_ACTIONS.includes(action.type)) {
     const error = objectiveAction(battle, unit, action, events, rules);
-    if (!error) decide(battle, events);
+    if (!error) decide(battle, events, rules);
     return error;
   }
   switch (action.type) {
@@ -333,7 +336,7 @@ function move(battle, unit, to, events, rules) {
   if (unit.carrying) unit.hauled = true;
   walk(battle, unit, spot.path, events, rules);
   afterMove(battle, unit, events);
-  decide(battle, events);
+  decide(battle, events, rules);
   return null;
 }
 
@@ -461,7 +464,7 @@ function hurt(battle, unit, damage, events, rules) {
     unit.status = 'dead';
     events.push(isMachine(unit, rules) ? { type: 'dead', unit: unit.id, wrecked: true } : { type: 'dead', unit: unit.id });
   }
-  decide(battle, events);
+  decide(battle, events, rules);
 }
 
 // A side's turn ends, and with it what the other side's orders left on it
@@ -527,7 +530,7 @@ function startTurn(battle, events, rules) {
       }
     }
   }
-  decide(battle, events);
+  decide(battle, events, rules);
 }
 
 // A charge blowing by `at` (a sabotage, objectives.js): everyone standing
@@ -539,15 +542,17 @@ function blast(battle, at, events, rules) {
   for (const unit of hit) {
     if (unit.status === 'active' && damage > 0 && !spared(unit, rules)) hurt(battle, unit, damage, events, rules);
   }
-  decide(battle, events);
+  decide(battle, events, rules);
 }
 
 // The battle is over when one side has no one active left (a ward doesn't
-// count for the crew), when the ward is lost, when an enemy has broken
-// through, or when the crew has done what it came for.
-function decide(battle, events) {
+// count for the crew, nor a ship's turret for either side: M39, a side
+// whose people are down has lost, whatever its machines), when the ward is
+// lost, when an enemy has broken through, or when the crew has done what
+// it came for.
+function decide(battle, events, rules) {
   if (battle.winner) return;
-  const standing = (side) => battle.units.some((u) => u.side === side && u.status === 'active' && !u.ward);
+  const standing = (side) => battle.units.some((u) => u.side === side && u.status === 'active' && !u.ward && !isMachine(u, rules));
   if (wardLost(battle)) win(battle, 'enemy', events, 'ward');
   else if (battle.objective?.through) win(battle, 'enemy', events, 'through');
   else if (!standing('enemy')) win(battle, 'crew', events);

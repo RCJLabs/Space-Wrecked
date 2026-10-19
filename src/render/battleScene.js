@@ -27,12 +27,15 @@ const SOLID = new Set(['wall', 'hull']); // runs that go straight on without a p
 const STEP = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 const FLOOR_UNDER = { fire: 'scorch', vacuum: 'frost', rubble: 'dust' };
 
-// input: { map, skin, open, fires }: open is a battle's open doors, by edge
-// key (battle.doors); fires the tiles a weapon set burning (battle.fires).
-export function battleScene({ map, skin, open = [], fires = [] }) {
+// input: { map, skin, open, fires, mounts }: open is a battle's open
+// doors, by edge key (battle.doors); fires the tiles a weapon set burning
+// (battle.fires); mounts the tiles a ship's turrets (M39) stand on, [[x,
+// y]], drawn as a bare base plate for the turret to stand on.
+export function battleScene({ map, skin, open = [], fires = [], mounts = [] }) {
   const faces = [];
   const glows = [];
   const edge = { edge: skin.edge };
+  const mounted = new Set(mounts.map(([x, y]) => `${x},${y}`));
 
   for (let y = 0; y < map.height; y++) {
     for (let x = 0; x < map.width; x++) {
@@ -57,7 +60,8 @@ export function battleScene({ map, skin, open = [], fires = [] }) {
       const hazard = cellAt(map.hazards, x, y);
       const floor = hazard ? palette[FLOOR_UNDER[hazard]] : skin.floors[uid % skin.floors.length];
       plate(faces, [x, y], [x + 1, y + 1], 0, floor, { edge: skin.floorSeam });
-      FITTINGS[kind]?.(faces, glows, x, y, skin);
+      if (mounted.has(`${x},${y}`)) mount(faces, x, y, skin);
+      else FITTINGS[kind]?.(faces, glows, x, y, skin);
       if (hazard) HAZARDS[hazard](faces, glows, x, y, kind);
     }
   }
@@ -147,6 +151,13 @@ function collar(faces, glows, x, y, side, skin) {
 
 // What stands on a tile, by its name in the tiles legend. A name without a
 // fitting here is bare floor, so new tiles draw without an engine edit.
+// A turret's mount (M39): a low square base, bolted down, for it to stand
+// on.
+function mount(f, x, y, k) {
+  solidBox(f, [x + 0.16, y + 0.16, 0], [x + 0.84, y + 0.84, 0.04], k.dark, { edge: k.edge });
+  for (const [u, v] of [[0.24, 0.24], [0.76, 0.24], [0.24, 0.76], [0.76, 0.76]]) plate(f, [x + u - 0.03, y + v - 0.03], [x + u + 0.03, y + v + 0.03], 0.042, k.metal);
+}
+
 // Details on top are flat plates: a battle map has many tiles.
 const FITTINGS = {
   'half cover'(f, g, x, y, k) {

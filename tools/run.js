@@ -2,11 +2,15 @@
 // A test run of act 1 (M16's Done when): from New game until every line of
 // the flight checklist passes and the ship can launch. A test player does
 // what a careful player would, taking any maker's version of a part the
-// checklist asks for (M23g). At the hangar, in this order:
+// checklist asks for (M23g), or a part that does one's work (M39: a
+// thruster for an engine, a dormitory for crew quarters, a cockpit for the
+// bridge). At the hangar, in this order:
 //   - fit each part on hand the checklist needs, where it touches the most
-//     of the ship (fitPart);
+//     of the ship (fitPart), then any on hand that does a needed one's work
+//     (helps);
 //   - sell the parts on hand it doesn't need;
-//   - buy what it needs, if the shop has it and there are the credits;
+//   - buy what it needs, if the shop has it and there are the credits; with
+//     none of that bought, a part that does a needed one's work;
 //   - buy a weapon GAIN points better than anyone who could carry it has
 //     (M37, arms.js), with what the parts still needed, a holdful's price
 //     and a transponder swap's leave;
@@ -131,7 +135,7 @@ export function fitPart(ship, defs, type) {
 // needs, else what the shop would pay for it) and for a quest's job the
 // heat its step takes off (questWorth), at the test crew's odds on it.
 function jobWorth(job, campaign, defs, needed) {
-  const part = job.part ? (needOf(needed, job.part, defs) ? priceOf(job.part, defs) : sellPriceOf(job.part, defs)) ?? 0 : 0;
+  const part = job.part ? (needOf(needed, job.part, defs) || helps(campaign, defs, job.part, needed) ? priceOf(job.part, defs) : sellPriceOf(job.part, defs)) ?? 0 : 0;
   return jobOdds(job, defs) * (jobPay(campaign, defs, job) + part + questWorth(job, campaign, defs));
 }
 
@@ -158,6 +162,18 @@ function questWorth(job, campaign, defs) {
 // counting as the part (needed is partsNeeded's, by base part).
 function needOf(needed, type, defs) {
   return needed[baseOf(defs.modules.get(type) ?? { id: type })] ?? 0;
+}
+
+// True if a part of `type` the checklist doesn't name, fitted, leaves it
+// asking for fewer parts in all (M39): a thruster or a light engine with
+// the thrust an engine would bring, a dormitory with the berths, a cockpit
+// for the bridge. A part that fixes one line and breaks another (a
+// thruster's power) doesn't. needed is partsNeeded's for the campaign.
+export function helps(campaign, defs, type, needed = partsNeeded(campaign, defs)) {
+  const total = (list) => Object.values(list).reduce((sum, n) => sum + n, 0);
+  if (!defs.modules.has(type) || needOf(needed, type, defs) || !total(needed)) return false;
+  const ship = { ...campaign.ship, modules: [...campaign.ship.modules, { uid: -1000, type, x: 0, y: 0, rot: 0 }] };
+  return total(partsNeeded({ ...campaign, ship }, defs)) < total(needed);
 }
 
 // A run from New game to launch: { launched, jobs, raids, minutes: [quick,
@@ -200,14 +216,22 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
   // maker's version of a part on hand is the part.
   const count = (type) => campaign.parts[type] ?? 0;
   const have = (type) => countOfAny(defs, type, count);
+  // A part on hand that does a needed one's work, and fits (M39); noRoom:
+  // those that didn't, which are sold.
+  const noRoom = new Set();
+  const helping = (needed) => Object.keys(campaign.parts).find((type) => count(type) > 0 && !noRoom.has(type) && helps(campaign, defs, type, needed)) ?? null;
   const atHub = () => {
     for (;;) {
       const needed = partsNeeded(campaign, defs);
       const part = Object.keys(needed).find((t) => have(t));
-      if (!part) break;
-      const type = versionAtHand(defs, part, count);
+      const type = part ? versionAtHand(defs, part, count) : helping(needed);
+      if (!type) break;
       const fitted = fitPart(campaign.ship, defs, type);
       const next = fitted ? refitShip(campaign, fitted.ship, defs) : campaign;
+      if (next === campaign && !part) {
+        noRoom.add(type);
+        continue;
+      }
       if (next === campaign) {
         tally.stuck = `no room for the ${name(type)}`;
         return;
@@ -220,7 +244,7 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
     const needed = partsNeeded(campaign, defs);
     let traded = false;
     for (const [type, held] of Object.entries(campaign.parts)) {
-      if (needOf(needed, type, defs)) continue;
+      if (!held || needOf(needed, type, defs) || (!noRoom.has(type) && helps(campaign, defs, type, needed))) continue;
       for (let n = 0; n < held; n++) campaign = sellPart(campaign, defs, type).campaign;
       tally.sold += held;
       traded = true;
@@ -242,6 +266,18 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
       tally.bought += 1;
       traded = true;
       say(`   Bought the ${name(item.part)} for ${item.price}: ${campaign.credits} credits left.`);
+    }
+    // With nothing it names bought, one part that does a needed one's work
+    // (M39): once fitted, the next might not.
+    if (!Object.keys(needed).some((type) => have(type))) {
+      const index = campaign.shop.findIndex((item) => item.part && !noRoom.has(item.part) && campaign.credits >= item.price && helps(campaign, defs, item.part, needed));
+      const bought = index >= 0 ? buyPart(campaign, defs, index) : null;
+      if (bought?.ok) {
+        say(`   Bought the ${name(campaign.shop[index].part)} for ${campaign.shop[index].price}, to do a needed part's work: ${bought.campaign.credits} credits left.`);
+        campaign = bought.campaign;
+        tally.bought += 1;
+        traded = true;
+      }
     }
     // A weapon GAIN points better than anyone who could carry it has, for
     // the jobs' ground (M37), with what the parts still needed, a holdful's
@@ -265,7 +301,7 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
     const after = partsNeeded(campaign, defs);
     if (Object.keys(after).some((type) => !have(type) && campaign.credits >= (priceOf(type, defs) ?? Infinity) && !campaign.shop.some((item) => needOf({ [type]: 1 }, item.part, defs)))) tally.waited += 1;
     // What was bought goes on now.
-    if (Object.keys(needed).some((type) => have(type))) atHub();
+    if (Object.keys(needed).some((type) => have(type)) || helping(partsNeeded(campaign, defs))) atHub();
   };
 
   // Ready to launch, the run goes on until the thread's job is done (M33b).

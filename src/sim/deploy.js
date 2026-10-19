@@ -5,7 +5,7 @@
 // the same map and lists always give the same places.
 import { hasTag } from './modules.js';
 import { stepsFrom } from './moves.js';
-import { walkable } from './terrain.js';
+import { tileRule, walkable } from './terrain.js';
 
 // crew: job ids; enemies: enemy ids (data/jobs.json, data/enemies.json).
 // held: the tiles someone stands on already, [[x, y]] (a ship's turrets,
@@ -48,22 +48,34 @@ export function deploy(map, crew, enemies, rules, held = []) {
 }
 
 // The machines a ship's map holds (M39): each working part with a `unit`
-// (data/modules.json, the security turret) fights on its room's first floor
-// tile, top to bottom then left to right, for `side`, its ship's owner's.
-// A wrecked one doesn't. Named by their kind, numbered when there are two
-// or more of it. [{ kind, x, y, side, name }], in build order, ready for
-// createBattle after everyone else.
+// (data/modules.json, the security turret) fights from its mount, for
+// `side`, its ship's owner's: its room's first tile of full cover, top to
+// bottom then left to right, so it stands in no one's way (a unit there
+// sees and is seen as from any tile: sight.js), or with none its first
+// floor tile. A wrecked one doesn't. Named by their kind, numbered when
+// there are two or more of it. [{ kind, x, y, side, name }], in build
+// order, ready for createBattle after everyone else.
 export function machinesOn(map, rules, side) {
   const field = { map, doors: [], units: [] };
   const found = map.rooms.flatMap((room) => {
     const unit = room.wreck ? null : rules.modules.get(room.type)?.unit;
-    const at = unit && floorOf(field, room, rules);
+    const at = unit && (mountOf(field, room, rules) ?? floorOf(field, room, rules));
     return at ? [{ kind: unit.id, x: at[0], y: at[1], side, name: unit.name }] : [];
   });
   return found.map((machine) => {
     const same = found.filter((other) => other.kind === machine.kind);
     return same.length > 1 ? { ...machine, name: `${machine.name} ${same.indexOf(machine) + 1}` } : machine;
   });
+}
+
+// A room's first tile of full cover, or null.
+export function mountOf(field, room, rules) {
+  for (let y = room.y; y < room.y + room.h; y++) {
+    for (let x = room.x; x < room.x + room.w; x++) {
+      if (field.map.roomAt.cells[y * field.map.width + x] === room.uid && tileRule(field, x, y, rules).cover === 'full') return [x, y];
+    }
+  }
+  return null;
 }
 
 // A room's first tile a unit can stand on, or null.

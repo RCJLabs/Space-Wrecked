@@ -26,6 +26,7 @@ import { mapFromShip } from '../src/sim/mapFromShip.js';
 import { advance } from '../src/sim/press.js';
 import { landingPlan } from '../src/sim/raids.js';
 import { surveyPlan } from '../src/sim/survey.js';
+import { tileRule } from '../src/sim/terrain.js';
 import { beginRun, growsOf, jump, jumpHeatOf, jumpPlan, jumpFixes, leavePlan, linked, reach, scanReach, supplyCapacity } from '../src/sim/travel.js';
 import { stateText, unitText } from '../src/ui/fight/hints.js';
 import { launchedShip, withPart } from '../tools/startShip.js';
@@ -246,7 +247,7 @@ test('fire control and an ECM suite: +10 to hit and +10 evasion in the approach,
 });
 
 // A battle on the launched ship's map with a turret fitted: the squad on
-// the bridge, boarders at the hatches, the turret on its floor tile for the
+// the bridge, boarders at the hatches, the turret on its mount for the
 // crew.
 function turretFight(extra = []) {
   const ship = extra.reduce((s, type) => withPart(s, rules, type), withPart(launchedShip(rules), rules, 'turret'));
@@ -257,13 +258,14 @@ function turretFight(extra = []) {
   return { ship, map, machines, ...createBattle({ map, units: [...placed.units, ...machines], seed: 7 }, rules) };
 }
 
-test("a security turret stands on its room's floor tile for its ship's side; a wrecked one doesn't; two are numbered", () => {
+test("a security turret stands on its mount, its room's tile of full cover, for its ship's side; a wrecked one doesn't; two are numbered", () => {
   const { ship, map, machines, battle } = turretFight();
   const room = map.rooms.find((r) => r.type === 'turret');
   assert.equal(machines.length, 1);
   const [turret] = machines;
   assert.deepEqual({ kind: turret.kind, side: turret.side, name: turret.name }, { kind: 'turret', side: 'crew', name: 'Turret' });
   assert.ok(turret.x >= room.x && turret.x < room.x + room.w && turret.y >= room.y && turret.y < room.y + room.h);
+  assert.equal(tileRule(battle, turret.x, turret.y, rules).cover, 'full');
   const unit = battle.units.find((u) => u.kind === 'turret');
   const stats = rules.machines.get('turret');
   assert.deepEqual([unit.side, unit.mobility, unit.hp, unit.aim, unit.weapon, unit.id], ['crew', 0, stats.hp, stats.aim, stats.weapon, `c${rules.squad.length + 1}`]);
@@ -305,6 +307,36 @@ test('a turret shoots, watches and reloads, never moves or opens a door, and at 
   assert.equal(wreck.wrecked, true);
   assert.equal(describeEvent(wreck, shot.battle), `Turret ${unit.id} is wrecked.`);
   assert.equal(stateText(shot.battle.units.find((u) => u.id === unit.id), rules), 'Wrecked');
+});
+
+test("a side whose people are all down has lost, whatever its turret: the boarders win past the crew's, the crew past the enemy's", () => {
+  const { battle } = turretFight();
+  const turret = battle.units.find((u) => u.kind === 'turret');
+  const boarder = battle.units.find((u) => u.side === 'enemy');
+  const [last, ...rest] = battle.units.filter((u) => u.side === 'crew' && u !== turret);
+  // The shot that takes the last one standing down, on the first seed it does.
+  const lastShot = (state, shooter, target) => {
+    for (let seed = 0; seed < 300; seed++) {
+      const tried = act({ ...state, rng: seedFrom(seed) }, { type: 'shoot', unit: shooter.id, target: target.id }, rules);
+      if (tried.ok && tried.battle.units.find((u) => u.id === target.id).status !== 'active') return tried;
+    }
+    return null;
+  };
+  // The crew's last one beside a boarder at 1 hit point, the rest out.
+  const crewLast = { ...battle, side: 'enemy', units: battle.units.map((u) => (u === last ? { ...u, hp: 1, x: boarder.x + 1, y: boarder.y } : rest.includes(u) ? { ...u, status: 'out', hp: 0 } : u.side === 'enemy' ? { ...u, ap: 2, ammo: 9 } : u)) };
+  const lost = lastShot(crewLast, boarder, last);
+  assert.ok(lost, 'a seed where the shot takes them down');
+  assert.equal(lost.battle.units.find((u) => u.id === turret.id).status, 'active');
+  assert.equal(lost.battle.winner, 'enemy');
+  // The turret the enemy's, their last boarder at 1 hit point beside the crew.
+  const others = battle.units.filter((u) => u.side === 'enemy' && u !== boarder);
+  const theirs = { ...battle, side: 'crew', units: battle.units.map((u) => (u === turret ? { ...u, side: 'enemy' } : u === boarder ? { ...u, hp: 1, x: last.x + 1, y: last.y } : others.includes(u) ? { ...u, status: 'dead', hp: 0 } : u.side === 'crew' ? { ...u, ap: 2, ammo: 9 } : u)) };
+  const won = lastShot(theirs, last, boarder);
+  assert.ok(won, 'a seed where the shot takes the last boarder down');
+  assert.equal(won.battle.units.find((u) => u.id === turret.id).status, 'active');
+  assert.equal(won.battle.winner, 'crew');
+  // While someone stands, the turret fights on.
+  assert.equal(act(crewLast, { type: 'end' }, rules).battle.winner, null);
 });
 
 test('selected, a turret has only Shoot, Overwatch and Reload: no tiles to move to, no door, no stabilizing, and its card says so', () => {

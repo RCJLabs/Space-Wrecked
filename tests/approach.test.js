@@ -62,11 +62,8 @@ test('the odds: guns against evasion, fleeing and closing by thrust for mass, ea
   const theirs = sideStats(side(cutter.ship), rules);
   assert.equal(hitChance(theirs, false, rules), bounded(balance.gunnery - theirs.evasion));
   assert.equal(hitChance(theirs, true, rules), bounded(balance.gunnery - theirs.evasion - balance.evadeBonus));
-  // The cutter's grapple (M39) holds a ship that runs from her and pulls
-  // her in to board.
-  assert.ok(theirs.grapple > 0);
-  assert.equal(fleeChance(mine, theirs, rules), bounded(balance.fleeChance + Math.round(balance.fleePerThrust * (mine.ratio - theirs.ratio)) - theirs.grapple));
-  assert.equal(closeChance(theirs, mine, rules), bounded(balance.closeChance + Math.round(balance.closePerThrust * (theirs.ratio - mine.ratio)) + theirs.grapple));
+  assert.equal(fleeChance(mine, theirs, rules), bounded(balance.fleeChance + Math.round(balance.fleePerThrust * (mine.ratio - theirs.ratio))));
+  assert.equal(closeChance(theirs, mine, rules), bounded(balance.closeChance + Math.round(balance.closePerThrust * (theirs.ratio - mine.ratio))));
   assert.equal(hitChance({ evasion: 500, intercept: 0 }, true, rules), balance.chanceMin);
   assert.equal(hitChance({ evasion: -500, intercept: 0 }, false, rules), balance.chanceMax);
   // The choices the screen shows: fire at each kind they have, with the

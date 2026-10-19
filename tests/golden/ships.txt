@@ -1,61 +1,56 @@
-Pirate cutter, seed 1: 13 parts, 14 × 4 cells, crew 4
-EERRRRRRLQQWBB
-EERRRRRRLQQ+BB
-eeRRRRRRWQQWBB
-GG..AA........
-  1 kestrel-bridge at (13, 2), turned 1
-  2 corridor at (12, 3), turned 2
-  3 quarters at (10, 2), turned 3
-  4 kestrel-lifesupport at (9, 2), turned 3
-  5 reactor at (6, 2), turned 2
-  6 reactor at (3, 2), turned 0
-  7 kestrel-engine at (1, 2), turned 0
-  8 lightengine at (1, 4), turned 0
-  9 grapple at (1, 5), turned 2
-  10 kestrel-weapon at (12, 2), turned 0
-  11 kestrel-weapon at (12, 4), turned 2
-  12 kestrel-weapon at (9, 4), turned 2
+Pirate cutter, seed 1: 10 parts, 10 × 4 cells, crew 4
+EE.AAQQ...
+EERRRQQWBB
+eeRRRQQ+BB
+..RRRLLWBB
+  1 kestrel-bridge at (11, 3), turned 1
+  2 corridor at (10, 4), turned 0
+  3 quarters at (8, 2), turned 1
+  4 kestrel-lifesupport at (8, 5), turned 2
+  5 reactor at (5, 3), turned 0
+  6 engine at (3, 2), turned 0
+  7 lightengine at (3, 4), turned 0
+  8 kestrel-weapon at (10, 5), turned 2
+  9 weapon at (10, 3), turned 0
+  10 airlock at (6, 2), turned 0
+Wrecked: none
+
+Pirate cutter, seed 2: 11 parts, 10 × 4 cells, crew 4
+..AA..LLBB
+EERRRW++BB
+EERRRQQQBB
+eeRRRQQQW.
+  1 bridge at (11, 2), turned 1
+  2 corridor at (10, 3), turned 2
+  3 corridor at (9, 3), turned 1
+  4 quarters at (8, 4), turned 2
+  5 lifesupport at (9, 2), turned 2
+  6 reactor at (5, 3), turned 1
+  7 kestrel-engine at (3, 3), turned 0
+  8 lightengine at (3, 5), turned 0
+  9 kestrel-weapon at (11, 5), turned 1
+  10 weapon at (8, 3), turned 0
+  11 airlock at (5, 2), turned 2
+Wrecked: none
+
+Pirate cutter, seed 3: 13 parts, 11 × 4 cells, crew 4
+eeRRR.L.WBB
+eeRRR.L++BB
+EERRRQQQXBB
+EE.AAQQQXW.
+  1 kestrel-bridge at (11, 2), turned 1
+  2 corridor at (10, 3), turned 1
+  3 corridor at (9, 3), turned 0
+  4 kestrel-armory at (10, 4), turned 3
+  5 quarters at (7, 4), turned 2
+  6 kestrel-lifesupport at (8, 2), turned 1
+  7 reactor at (4, 2), turned 2
+  8 kestrel-engine at (2, 4), turned 0
+  9 lightengine at (2, 3), turned 0
+  10 lightengine at (2, 2), turned 0
+  11 kestrel-weapon at (11, 5), turned 1
+  12 kestrel-weapon at (10, 2), turned 0
   13 airlock at (5, 5), turned 0
-Wrecked: none
-
-Pirate cutter, seed 2: 12 parts, 10 × 5 cells, crew 4
-..RRR.....
-eeRRR.....
-EERRRLL.BB
-EEAQQQ++BB
-GGAQQQWWBB
-  1 bridge at (11, 4), turned 1
-  2 corridor at (10, 5), turned 2
-  3 corridor at (9, 5), turned 0
-  4 quarters at (6, 5), turned 0
-  5 lifesupport at (8, 4), turned 2
-  6 reactor at (5, 2), turned 1
-  7 kestrel-engine at (3, 4), turned 0
-  8 lightengine at (3, 3), turned 0
-  9 kestrel-grapple at (3, 6), turned 2
-  10 weapon at (9, 6), turned 2
-  11 kestrel-weapon at (10, 6), turned 2
-  12 airlock at (5, 5), turned 3
-Wrecked: none
-
-Pirate cutter, seed 3: 13 parts, 14 × 4 cells, crew 4
-EERRRRRRLQQWBB
-EERRRRRRLQQ+BB
-eeRRRRRRWQQWBB
-GG...AA.......
-  1 kestrel-bridge at (13, 2), turned 1
-  2 corridor at (12, 3), turned 0
-  3 quarters at (10, 2), turned 3
-  4 kestrel-lifesupport at (9, 2), turned 3
-  5 reactor at (6, 2), turned 2
-  6 reactor at (3, 2), turned 3
-  7 engine at (1, 2), turned 0
-  8 lightengine at (1, 4), turned 0
-  9 kestrel-grapple at (1, 5), turned 2
-  10 kestrel-weapon at (12, 2), turned 0
-  11 kestrel-weapon at (12, 4), turned 2
-  12 kestrel-weapon at (9, 4), turned 2
-  13 airlock at (6, 5), turned 2
 Wrecked: none
 
 Patrol corvette, seed 1: 29 parts, 16 × 9 cells, crew 6
@@ -293,140 +288,131 @@ EE............
   24 scrapline-airlock at (17, 8), turned 3
 Wrecked: 19 rubble, 21 rubble
 
-Con-Reg repo tug, seed 1: 12 parts, 10 × 4 cells, crew 3
-eeRRRQQXW.
+Con-Reg repo tug, seed 1: 11 parts, 10 × 5 cells, crew 3
+.EE.A.....
+.EE.AQQWBB
+eeRRRQQ+BB
 eeRRRQQXBB
-EERRRQQ+BB
-EEGGAALLBB
+..RRRLLX..
   1 bridge at (11, 3), turned 1
-  2 corridor at (10, 4), turned 0
-  3 armory at (10, 2), turned 1
-  4 quarters at (8, 2), turned 1
-  5 lifesupport at (9, 5), turned 2
-  6 reactor at (5, 2), turned 1
-  7 engine at (3, 4), turned 0
-  8 lightengine at (3, 3), turned 0
-  9 lightengine at (3, 2), turned 0
-  10 grapple at (5, 5), turned 2
-  11 weapon at (11, 2), turned 0
-  12 airlock at (7, 5), turned 0
-Wrecked: none
-
-Con-Reg repo tug, seed 2: 13 parts, 9 × 6 cells, crew 3
-.EE..QQ..
-.EEAAQQ..
-..RRRQQBB
-eeRRR++BB
-eeRRRXXBB
-GG...LLW.
-  1 bridge at (10, 3), turned 1
-  2 corridor at (9, 4), turned 2
-  3 corridor at (8, 4), turned 3
-  4 armory at (8, 5), turned 2
-  5 quarters at (8, 1), turned 3
-  6 lifesupport at (8, 6), turned 2
-  7 reactor at (5, 3), turned 0
-  8 engine at (4, 1), turned 0
+  2 corridor at (10, 4), turned 1
+  3 armory at (10, 5), turned 3
+  4 quarters at (8, 3), turned 1
+  5 lifesupport at (8, 6), turned 2
+  6 reactor at (5, 4), turned 1
+  7 engine at (4, 2), turned 0
+  8 lightengine at (3, 4), turned 0
   9 lightengine at (3, 5), turned 0
-  10 lightengine at (3, 4), turned 0
-  11 grapple at (3, 6), turned 2
-  12 weapon at (10, 6), turned 1
-  13 airlock at (6, 2), turned 0
+  10 weapon at (10, 3), turned 0
+  11 airlock at (7, 2), turned 3
 Wrecked: none
 
-Con-Reg repo tug, seed 3: 12 parts, 9 × 6 cells, crew 3
-...AAQQ..
-...EEQQW.
-...EEQQBB
-.eeRRR+BB
-.eeRRRLBB
-GG.RRRLXX
-  1 bridge at (10, 3), turned 1
-  2 corridor at (9, 4), turned 2
-  3 armory at (10, 6), turned 2
-  4 quarters at (8, 1), turned 1
-  5 lifesupport at (9, 5), turned 1
-  6 reactor at (6, 4), turned 3
-  7 engine at (6, 2), turned 0
-  8 lightengine at (4, 5), turned 0
-  9 lightengine at (4, 4), turned 0
-  10 grapple at (3, 6), turned 2
-  11 weapon at (10, 2), turned 0
-  12 airlock at (6, 1), turned 2
+Con-Reg repo tug, seed 2: 11 parts, 9 × 6 cells, crew 3
+..AAQQXW.
+..EEQQXBB
+..EEQQ+BB
+eeRRRLLBB
+eeRRR....
+..RRR....
+  1 bridge at (10, 2), turned 1
+  2 corridor at (9, 3), turned 1
+  3 armory at (9, 1), turned 1
+  4 quarters at (7, 1), turned 1
+  5 lifesupport at (8, 4), turned 0
+  6 reactor at (5, 4), turned 3
+  7 engine at (5, 2), turned 0
+  8 lightengine at (3, 5), turned 0
+  9 lightengine at (3, 4), turned 0
+  10 weapon at (10, 1), turned 1
+  11 airlock at (5, 1), turned 2
 Wrecked: none
 
-Con-Reg gunship, seed 1: 16 parts, 11 × 6 cells, crew 4
-II.........
-IIrr.AA.KKW
-EErr.LXSSBB
-EERRRLX++BB
-EERRRQQQ.BB
-EERRRQQQ..W
-  1 bastion-bridge at (15, 6), turned 1
-  2 corridor at (14, 7), turned 0
-  3 corridor at (13, 7), turned 1
-  4 shield at (13, 6), turned 0
-  5 armory at (12, 6), turned 3
-  6 bastion-quarters at (11, 8), turned 2
-  7 lifesupport at (11, 6), turned 1
-  8 reactor at (8, 7), turned 3
-  9 bastion-smallreactor at (8, 5), turned 3
-  10 engine at (6, 8), turned 0
-  11 bastion-engine at (6, 6), turned 0
-  12 bastion-torpedobay at (6, 4), turned 0
-  13 cannon at (14, 5), turned 0
-  14 weapon at (16, 9), turned 1
-  15 bastion-weapon at (16, 5), turned 1
-  16 bastion-airlock at (11, 5), turned 2
+Con-Reg repo tug, seed 3: 11 parts, 10 × 5 cells, crew 3
+...AAQQQXX
+eeRRRQQQBB
+eeRRRLL+BB
+EERRR..WBB
+EE........
+  1 bridge at (11, 3), turned 1
+  2 corridor at (10, 4), turned 2
+  3 armory at (11, 2), turned 2
+  4 quarters at (8, 2), turned 2
+  5 lifesupport at (8, 4), turned 2
+  6 reactor at (5, 3), turned 3
+  7 engine at (3, 5), turned 0
+  8 lightengine at (3, 4), turned 0
+  9 lightengine at (3, 3), turned 0
+  10 weapon at (10, 5), turned 2
+  11 airlock at (6, 2), turned 0
 Wrecked: none
 
-Con-Reg gunship, seed 2: 16 parts, 12 × 5 cells, crew 4
-..RRRQQL..W.
-EERRRQQLXXBB
-EERRRQQ+++BB
-EErr.AIISSBB
-EErr.AII...W
-  1 bastion-bridge at (16, 5), turned 1
-  2 corridor at (15, 6), turned 1
-  3 corridor at (14, 6), turned 3
-  4 bastion-corridor at (13, 6), turned 0
-  5 shield at (14, 7), turned 0
-  6 armory at (14, 5), turned 2
-  7 quarters at (11, 4), turned 1
-  8 bastion-lifesupport at (13, 4), turned 1
-  9 reactor at (8, 4), turned 1
-  10 bastion-smallreactor at (8, 7), turned 0
-  11 engine at (6, 5), turned 0
-  12 engine at (6, 7), turned 0
-  13 bastion-torpedobay at (12, 7), turned 2
-  14 bastion-weapon at (17, 8), turned 1
-  15 weapon at (16, 4), turned 0
-  16 airlock at (11, 7), turned 1
+Con-Reg gunship, seed 1: 16 parts, 14 × 6 cells, crew 4
+EE...........W
+EErrA...LLKKBB
+EErrAQQQX+++BB
+EERRRQQQX.SSBB
+..RRR......W..
+..RRR.........
+  1 bastion-bridge at (17, 5), turned 1
+  2 corridor at (16, 6), turned 2
+  3 corridor at (15, 6), turned 0
+  4 corridor at (14, 6), turned 1
+  5 shield at (15, 7), turned 0
+  6 bastion-armory at (13, 6), turned 3
+  7 quarters at (10, 6), turned 0
+  8 lifesupport at (13, 5), turned 0
+  9 bastion-reactor at (7, 7), turned 1
+  10 smallreactor at (7, 5), turned 0
+  11 bastion-engine at (5, 6), turned 0
+  12 bastion-engine at (5, 4), turned 0
+  13 cannon at (15, 5), turned 0
+  14 weapon at (16, 8), turned 1
+  15 bastion-weapon at (18, 4), turned 1
+  16 bastion-airlock at (9, 5), turned 3
 Wrecked: none
 
-Con-Reg gunship, seed 3: 15 parts, 12 × 7 cells, crew 4
-..II........
-AAII........
-.EErr..XSSBB
-.EErrWLX++BB
-.EERRRLQQQBB
-.EERRR.QQQW.
-...RRR......
+Con-Reg gunship, seed 2: 15 parts, 15 × 4 cells, crew 4
+EE.AA........WW
+EErrRRRLQQ.SSBB
+EErrRRRLQQ+++BB
+EE..RRR.QQXX.BB
+  1 bastion-bridge at (17, 6), turned 1
+  2 corridor at (16, 7), turned 0
+  3 corridor at (15, 7), turned 2
+  4 bastion-corridor at (14, 7), turned 0
+  5 shield at (15, 6), turned 0
+  6 armory at (14, 8), turned 2
+  7 quarters at (12, 6), turned 1
+  8 bastion-lifesupport at (11, 6), turned 3
+  9 reactor at (8, 6), turned 3
+  10 bastion-smallreactor at (6, 6), turned 0
+  11 engine at (4, 7), turned 0
+  12 engine at (4, 5), turned 0
+  13 bastion-weapon at (18, 5), turned 0
+  14 bastion-weapon at (17, 5), turned 0
+  15 airlock at (7, 5), turned 0
+Wrecked: none
+
+Con-Reg gunship, seed 3: 14 parts, 13 × 5 cells, crew 4
+...AA..LL....
+EErrRRRQQSSBB
+EErrRRRQQ++BB
+..EERRRQQXXBB
+..EE.......WW
   1 bridge at (16, 5), turned 1
-  2 bastion-corridor at (15, 6), turned 0
-  3 bastion-corridor at (14, 6), turned 2
+  2 bastion-corridor at (15, 6), turned 3
+  3 bastion-corridor at (14, 6), turned 0
   4 shield at (14, 5), turned 2
-  5 bastion-armory at (13, 5), turned 1
-  6 bastion-quarters at (13, 7), turned 2
-  7 bastion-lifesupport at (12, 6), turned 1
-  8 bastion-reactor at (9, 7), turned 1
-  9 bastion-smallreactor at (9, 5), turned 0
-  10 bastion-engine at (7, 5), turned 0
-  11 engine at (7, 7), turned 0
-  12 bastion-torpedobay at (8, 3), turned 1
-  13 weapon at (16, 8), turned 1
-  14 bastion-weapon at (11, 6), turned 0
-  15 airlock at (6, 4), turned 2
+  5 bastion-armory at (14, 7), turned 2
+  6 bastion-quarters at (12, 5), turned 1
+  7 bastion-lifesupport at (12, 4), turned 2
+  8 bastion-reactor at (9, 5), turned 3
+  9 bastion-smallreactor at (7, 5), turned 1
+  10 bastion-engine at (7, 7), turned 0
+  11 engine at (5, 5), turned 0
+  12 bastion-weapon at (17, 8), turned 2
+  13 weapon at (16, 8), turned 2
+  14 bastion-airlock at (8, 4), turned 0
 Wrecked: none
 
 Provost cutter, seed 1: 12 parts, 11 × 5 cells, crew 3
@@ -563,71 +549,70 @@ EERRR.QQQW.
   15 bastion-airlock at (13, 6), turned 3
 Wrecked: none
 
-Halloran runner, seed 1: 12 parts, 9 × 7 cells, crew 3
-..HRRR...
-eeHRRR..W
-..HRRR.BB
-..eeLL+BB
-..EEQQQBB
-..EEQQQXX
-...AA....
-  1 kestrel-bridge at (10, 3), turned 1
-  2 corridor at (9, 4), turned 3
-  3 kestrel-armory at (10, 6), turned 2
-  4 kestrel-quarters at (7, 5), turned 2
-  5 kestrel-lifesupport at (7, 4), turned 2
-  6 reactor at (6, 1), turned 3
-  7 baffles at (5, 1), turned 1
-  8 kestrel-engine at (5, 5), turned 0
-  9 lightengine at (5, 4), turned 0
-  10 lightengine at (3, 2), turned 0
-  11 kestrel-weapon at (11, 2), turned 0
-  12 airlock at (6, 7), turned 2
+Halloran runner, seed 1: 13 parts, 10 × 6 cells, crew 3
+..EEAQQQXX
+..EEAQQQBB
+..HRRR++BB
+eeHRRRLLBB
+..HRRR..W.
+..ee......
+  1 kestrel-bridge at (15, 5), turned 1
+  2 corridor at (14, 6), turned 2
+  3 corridor at (13, 6), turned 0
+  4 kestrel-armory at (15, 4), turned 2
+  5 kestrel-quarters at (12, 4), turned 2
+  6 kestrel-lifesupport at (13, 7), turned 2
+  7 reactor at (10, 6), turned 3
+  8 baffles at (9, 6), turned 3
+  9 kestrel-engine at (9, 4), turned 0
+  10 lightengine at (9, 9), turned 0
+  11 lightengine at (7, 7), turned 0
+  12 kestrel-weapon at (15, 8), turned 2
+  13 airlock at (11, 4), turned 3
 Wrecked: none
 
-Halloran runner, seed 2: 14 parts, 9 × 6 cells, crew 3
-..RRR....
-eeRRR.HHH
-eeRRRXXBB
-.EEL+++BB
-.EELQQQBB
-..AAQQQW.
-  1 bridge at (10, 3), turned 1
-  2 corridor at (9, 4), turned 3
-  3 corridor at (8, 4), turned 0
-  4 corridor at (7, 4), turned 2
-  5 kestrel-armory at (8, 3), turned 2
-  6 kestrel-quarters at (7, 5), turned 2
-  7 kestrel-lifesupport at (6, 4), turned 1
-  8 reactor at (5, 1), turned 0
-  9 baffles at (9, 2), turned 2
-  10 engine at (4, 4), turned 0
-  11 lightengine at (3, 2), turned 0
-  12 lightengine at (3, 3), turned 0
-  13 kestrel-weapon at (10, 6), turned 1
-  14 airlock at (5, 6), turned 0
+Halloran runner, seed 2: 12 parts, 9 × 7 cells, crew 3
+.....QQ..
+..EEAQQW.
+..EEAQQBB
+..HRRR+BB
+eeHRRRLBB
+..HRRRLX.
+..ee...X.
+  1 bridge at (14, 5), turned 1
+  2 corridor at (13, 6), turned 0
+  3 kestrel-armory at (14, 8), turned 3
+  4 kestrel-quarters at (12, 3), turned 1
+  5 kestrel-lifesupport at (13, 7), turned 1
+  6 reactor at (10, 6), turned 1
+  7 baffles at (9, 6), turned 3
+  8 kestrel-engine at (9, 4), turned 0
+  9 lightengine at (9, 9), turned 0
+  10 lightengine at (7, 7), turned 0
+  11 kestrel-weapon at (14, 4), turned 0
+  12 airlock at (11, 4), turned 3
 Wrecked: none
 
 Halloran runner, seed 3: 13 parts, 10 × 6 cells, crew 3
-..ee..QQ..
-..HRRRQQW.
-eeHRRRQQBB
+..EEAQQQXX
+..EEAQQQBB
 ..HRRR++BB
-..EEA.LXBB
-..EEA.LX..
-  1 kestrel-bridge at (11, 3), turned 1
-  2 corridor at (10, 4), turned 1
-  3 corridor at (9, 4), turned 0
-  4 kestrel-armory at (10, 5), turned 3
-  5 kestrel-quarters at (9, 1), turned 1
-  6 lifesupport at (9, 5), turned 3
-  7 reactor at (6, 2), turned 2
-  8 baffles at (5, 2), turned 3
-  9 kestrel-engine at (5, 5), turned 0
-  10 lightengine at (5, 1), turned 0
-  11 lightengine at (3, 3), turned 0
-  12 kestrel-weapon at (11, 2), turned 1
-  13 airlock at (7, 5), turned 1
+eeHRRRLLBB
+..HRRR...W
+..ee......
+  1 kestrel-bridge at (15, 5), turned 1
+  2 corridor at (14, 6), turned 1
+  3 corridor at (13, 6), turned 1
+  4 kestrel-armory at (15, 4), turned 2
+  5 kestrel-quarters at (12, 4), turned 2
+  6 lifesupport at (13, 7), turned 2
+  7 reactor at (10, 6), turned 0
+  8 baffles at (9, 6), turned 1
+  9 kestrel-engine at (9, 4), turned 0
+  10 lightengine at (9, 9), turned 0
+  11 lightengine at (7, 7), turned 0
+  12 kestrel-weapon at (16, 8), turned 1
+  13 airlock at (11, 4), turned 3
 Wrecked: none
 
 Halloran yacht, seed 1: 17 parts, 19 × 5 cells, crew 4

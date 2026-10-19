@@ -47,6 +47,9 @@
 //                                        tools/boarding.js): the squad at home
 //                                        and aboard each hostile preset's ship,
 //                                        the fights spread over the rows
+//   node tools/sim.js --boardings --fit turret   the ship at home with the
+//                                        parts fitted (M39: a security turret
+//                                        fights for it)
 //   node tools/sim.js --weapon autogun   the whole squad carries the weapon
 //                                        (M37). With --compare, the same
 //                                        fights with the squad as issued first
@@ -80,10 +83,11 @@ import { scriptedAction } from '../src/sim/scripted.js';
 import { TALENT_RANK } from '../src/sim/talents.js';
 import { exampleShipMap } from './battle-log.js';
 import { readData } from './data.js';
+import { launchedShip, withPart } from './startShip.js';
 import { validateData } from './validate-data.js';
 
 const PLAYERS = { ai: aiAction, scripted: scriptedAction };
-export const DEFAULTS = { fights: 1000, ships: null, sets: [], crew: 'ai', boarders: 'ai', rounds: 30, seed: 'balance', encounter: null, compare: false, json: false, boardings: false, squad: null, orders: 'all', rank: 0, talent: null, weapon: null, sites: false, weapons: false };
+export const DEFAULTS = { fights: 1000, ships: null, sets: [], crew: 'ai', boarders: 'ai', rounds: 30, seed: 'balance', encounter: null, compare: false, json: false, boardings: false, fit: [], squad: null, orders: 'all', rank: 0, talent: null, weapon: null, sites: false, weapons: false };
 // A job site's fight still going after this many rounds stops with no
 // winner, as act 1's test runs stop it (tools/run.js).
 const SITE_ROUNDS = 60;
@@ -116,6 +120,7 @@ export function parseArgs(argv) {
     else if (arg === '--compare') options.compare = true;
     else if (arg === '--json') options.json = true;
     else if (arg === '--boardings') options.boardings = true;
+    else if (arg === '--fit') options.fit = value().split(',').map((s) => s.trim()).filter(Boolean);
     else if (arg === '--squad') options.squad = value().split(',').map((s) => s.trim()).filter(Boolean);
     else if (arg === '--orders') options.orders = value();
     else if (arg === '--rank') options.rank = whole(value(), arg, 0);
@@ -512,7 +517,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const { boardingRows, boardingText, runBoardings } = await import('./boarding.js');
     const perRow = Math.max(1, Math.round(options.fights / boardingRows(changed.rules).length));
     const started = performance.now();
-    const rows = runBoardings(changed.rules, { fights: perRow, seed: options.seed, rounds: options.rounds });
+    // --fit: parts added to the launched ship the squad defends (M39: a
+    // turret).
+    let home;
+    try {
+      home = options.fit.reduce((ship, type) => withPart(ship, changed.rules, type), launchedShip(changed.rules));
+    } catch (err) {
+      fail(err.message);
+    }
+    const rows = runBoardings(changed.rules, { fights: perRow, seed: options.seed, rounds: options.rounds, home });
     console.log(options.json ? JSON.stringify(rows, null, 2) : boardingText(rows, options));
     if (!options.json) console.log(`\n${commas(perRow * rows.length)} fights in ${((performance.now() - started) / 1000).toFixed(1)} s.`);
     process.exit(0);

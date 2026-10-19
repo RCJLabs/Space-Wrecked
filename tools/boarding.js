@@ -14,13 +14,16 @@
 //   node tools/sim.js --boardings --set fireDamage=3
 //
 // A row is the squad (data/encounters.json), at full health, against a
-// hostile preset's party: at home on the launched start ship, boarded by
-// them; and aboard a ship of the preset, a new one each fight, boarding her.
+// hostile preset's party: at home on the launched start ship (or the ship
+// given as `home`), boarded by them; and aboard a ship of the preset, a new
+// one each fight, boarding her. A ship's security turrets (M39) fight for
+// whoever's ship it is, as in a campaign's boardings (encounter.js).
 import { aiAction } from '../src/sim/ai.js';
 import { autoplay } from '../src/sim/autoplay.js';
+import { isMachine } from '../src/sim/battle.js';
 import { saveFight } from '../src/sim/campaign.js';
 import { endJob } from '../src/sim/contracts.js';
-import { deploy } from '../src/sim/deploy.js';
+import { deploy, machinesOn } from '../src/sim/deploy.js';
 import { beginBoarding, endBoarding } from '../src/sim/encounter.js';
 import { boardPlace, endPlaceFight } from '../src/sim/expeditions.js';
 import { jobAction } from '../src/sim/jobAi.js';
@@ -136,8 +139,8 @@ export function sealedIn(battle, rules) {
 }
 
 // The harness's rows: two for each hostile preset with a party.
-export function boardingRows(rules) {
-  const home = mapFromShip(launchedShip(rules), rules);
+export function boardingRows(rules, ship = launchedShip(rules)) {
+  const home = mapFromShip(ship, rules);
   return [...rules.ships.values()]
     .filter((preset) => preset.tactics && preset.party)
     .flatMap((preset) => [
@@ -157,18 +160,21 @@ export function boardingRows(rules) {
 
 // Plays `fights` boardings a row: [{ label, preset, dir, fights, won,
 // stalled, rounds, hpLeft }], rounds and hpLeft being each fight's (hpLeft:
-// the crew's hit points standing at the end, in fights with a winner).
-export function runBoardings(rules, { fights = 200, seed = 'balance', rounds = MAX_ROUNDS } = {}) {
-  return boardingRows(rules).map((row) => {
+// the crew's hit points standing at the end, in fights with a winner, a
+// turret's not among them).
+export function runBoardings(rules, { fights = 200, seed = 'balance', rounds = MAX_ROUNDS, home = launchedShip(rules) } = {}) {
+  return boardingRows(rules, home).map((row) => {
     const party = rules.encounters.get(row.preset.party).enemies;
     const out = { label: row.label, preset: row.preset.id, dir: row.dir, fights, won: 0, stalled: 0, rounds: [], hpLeft: [] };
     for (let n = 1; n <= fights; n++) {
       const fightSeed = `${seed} ${row.dir} ${row.preset.id} ${n}`;
       const map = row.map(fightSeed);
+      const machines = machinesOn(map, rules, row.dir === 'you' ? 'crew' : 'enemy');
+      const held = machines.map(({ x, y }) => [x, y]);
       // deploy puts its first list on the bridge and its second at the hatches.
-      const placed = row.dir === 'you' ? deploy(map, rules.squad, party, rules) : deploy(map, party, rules.squad, rules);
+      const placed = row.dir === 'you' ? deploy(map, rules.squad, party, rules, held) : deploy(map, party, rules.squad, rules, held);
       if (!placed.ok) throw new Error(`${row.label}: ${placed.error}`);
-      const units = row.dir === 'you' ? placed.units : [...placed.units.slice(party.length), ...placed.units.slice(0, party.length)];
+      const units = [...(row.dir === 'you' ? placed.units : [...placed.units.slice(party.length), ...placed.units.slice(0, party.length)]), ...machines];
       const { battle } = autoplay({ map, units, seed: fightSeed, options: { press: row.dir === 'you' } }, rules, BOARDING_PLAYERS[row.dir], { maxRounds: rounds });
       if (!battle.winner) {
         out.stalled += 1;
@@ -176,7 +182,7 @@ export function runBoardings(rules, { fights = 200, seed = 'balance', rounds = M
       }
       if (battle.winner === 'crew') out.won += 1;
       out.rounds.push(battle.round);
-      out.hpLeft.push(battle.units.filter((u) => u.side === 'crew' && u.status === 'active').reduce((sum, u) => sum + u.hp, 0));
+      out.hpLeft.push(battle.units.filter((u) => u.side === 'crew' && u.status === 'active' && !isMachine(u, rules)).reduce((sum, u) => sum + u.hp, 0));
     }
     return out;
   });

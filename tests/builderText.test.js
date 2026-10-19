@@ -108,6 +108,10 @@ test("M39's parts say what they do: a torpedo bay's rounds through the shields, 
   assert.equal(lines('flak')[2], "In an approach: the other ship's guns hit 20 in 100 less, the most there is, so a second adds nothing. Their volleys at your guns hit it too.");
   // A maker's version says what its base does.
   assert.equal(cardFor(defs, defs.modules.get('bastion-grapple')).lines[2], lines('grapple')[2]);
+  // And what it brings at the colony, given as a building.
+  assert.equal(lines('scanner')[3], "At the colony, given as the sensor mast, while it has power: each defense's shot at a lander is +10 to hit.");
+  assert.equal(lines('hydroponics')[3], 'At the colony, given as the greenhouse, while it has power: it grows 2 food a day.');
+  assert.ok(!lines('reactor').some((line) => line.startsWith('At the colony')), "a part whose building only gives its numbers says nothing more");
 });
 
 test('the details card says what quarters, life support and the med bay do on the run', () => {

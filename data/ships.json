@@ -17,8 +17,7 @@
         "airlock": 1,
         "reactor": 1,
         "engine": 1,
-        "lightengine": [1, 2],
-        "grapple": 1
+        "lightengine": [1, 2]
       },
       "makers": { "kestrel": 80 },
       "tactics": { "aim": ["engines", "weapons"], "board": 2, "flee": 50 },
@@ -99,8 +98,7 @@
         "airlock": 1,
         "reactor": 1,
         "engine": 1,
-        "lightengine": 2,
-        "grapple": 1
+        "lightengine": 2
       },
       "tactics": { "aim": ["engines", "weapons"], "board": 2, "flee": 50 },
       "scrap": [15, 30],
@@ -128,8 +126,7 @@
         "airlock": 1,
         "reactor": 1,
         "smallreactor": 1,
-        "engine": 2,
-        "torpedobay": 1
+        "engine": 2
       },
       "makers": { "bastion": 50 },
       "tactics": { "aim": ["engines", "weapons"], "board": 2, "flee": 70 },
@@ -200,7 +197,7 @@
       "id": "runner",
       "name": "Halloran runner",
       "side": "hallorans",
-      "frame": "smallcraft",
+      "frame": "starter",
       "crew": 3,
       "beam": [5, 7],
       "symmetric": false,

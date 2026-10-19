@@ -451,7 +451,7 @@ export function mountFight(root, source) {
   function showBoard(fight, orders, frame) {
     const battle = frame ? frame.view : fight.battle;
     if (battle.doors !== doorsShown || battle.fires !== firesShown) {
-      mapView.setMap({ map, skin: skinOf(map, defs), open: battle.doors, fires: battle.fires ?? [] });
+      mapView.setMap({ map, skin: skinOf(map, defs), open: battle.doors, fires: battle.fires ?? [], mounts: battle.units.filter((u) => defs.machines?.has(u.kind)).map((u) => [u.x, u.y]) });
       doorsShown = battle.doors;
       firesShown = battle.fires;
     }

@@ -75,12 +75,13 @@ import { colonyStats, donate, shipParts } from '../src/sim/colony.js';
 import { outcomeFor } from '../src/sim/events.js';
 import { shipStats } from '../src/sim/constraints.js';
 import { crewRoom } from '../src/sim/crew.js';
+import { hasTag } from '../src/sim/modules.js';
 import { tripHeatOf } from '../src/sim/raids.js';
 import { feeOf } from '../src/sim/recruits.js';
 import { costAt } from '../src/sim/standing.js';
 import { voyagePlan } from '../src/sim/voyage.js';
 import { AFTER_DAYS, citizensSummary, COLONY_DAYS, FED_WITHIN, foundColony, launchedAt, manyVoyages, NEW_DAYS, outSummary, playColony, playTrips, secondSummary, SETTLE_SYSTEM, TRIP_DAYS, voyage, VOYAGE_SYSTEMS, voyagesByBackground } from '../tools/voyage.js';
-import { bestWorld, FIT_ORDER, FIT_SHARE, HOME_JUMPS, nextGift, STOCK_DAYS, systemMove } from '../tools/voyagePlan.js';
+import { bestWorld, FIT_ORDER, FIT_SHARE, HOME_JUMPS, NEVER_FIT, nextGift, STOCK_DAYS, systemMove } from '../tools/voyagePlan.js';
 import { rules } from './battleKit.js';
 
 const { balance } = rules;
@@ -548,8 +549,12 @@ test('the careful player refits at stations with what it has, every flight check
     assert.deepEqual([step.credits[1], step.supplies[1], step.heat[1], step.hp[1]], [step.credits[0], step.supplies[0], step.heat[0], step.hp[0]]);
     assert.equal(step.passes, true);
     // Only what feeds, heals, houses, guards, arms or drives the ship, and
-    // a reactor with a part the power doesn't stretch to.
-    for (const type of step.fitted) assert.ok([...FIT_ORDER, 'power'].includes(rules.modules.get(type).category), type);
+    // from M39 its systems, never a second bridge, a corridor, an airlock
+    // or an armory; and a reactor with a part the power doesn't stretch to.
+    for (const type of step.fitted) {
+      const def = rules.modules.get(type);
+      assert.ok([...FIT_ORDER, 'power'].includes(def.category) && !NEVER_FIT.some((tag) => hasTag(def, tag)), type);
+    }
   }
   // Without refits, the same seeds fly as before.
   const fedHere = refitting.filter((trip) => trip.tally.hungryJumps === 0).length;

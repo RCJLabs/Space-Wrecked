@@ -6,10 +6,11 @@
 // whether it reaches the bridge and whether it is wrecked. For a styling
 // piece (M23f), pieceCard.
 import { torpedoRounds } from '../../sim/approach.js';
+import { buildingOf } from '../../sim/colony.js';
 import { STATION_EFFECTS } from '../../sim/edges.js';
 import { footprint } from '../../sim/modules.js';
 import { pieceFootprint } from '../../sim/styling.js';
-import { STATION_WORDS } from '../campaign/crewJobText.js';
+import { COLONY_WORDS, STATION_WORDS } from '../campaign/crewJobText.js';
 
 const STATS = [
   ['power', 'Power'],
@@ -36,6 +37,7 @@ export function cardFor(defs, def, placed = null) {
       .join(' · '),
     ...approachLine(defs, def),
     ...runLine(defs, def),
+    ...colonyLine(defs, def),
     ...makerLines(defs, def),
     `Cost ${def.cost} · ${defs.manufacturers.get(def.manufacturer)?.name ?? def.manufacturer}`,
   ];
@@ -87,6 +89,18 @@ function runLine(defs, def) {
   }
   if (def.stats.berths || def.stats.lifeSupport) return ['On the run: the ship carries as many crew as its berths and life support both cover. Recruits sign on at stations.'];
   return [];
+}
+
+// What a part brings at the colony as a building (M39, data/colony.json
+// effects and makes), while it has power, as a line, or none.
+function colonyLine(defs, def) {
+  const building = defs.colony ? buildingOf(def.id, defs) : null;
+  if (!building) return [];
+  const words = [
+    ...Object.entries(building.effects ?? {}).map(([key, n]) => COLONY_WORDS[key]?.(n) ?? key),
+    ...Object.entries(building.makes ?? {}).map(([what, n]) => `it grows ${n} ${what} a day`),
+  ];
+  return words.length ? [`At the colony, given as the ${building.name.toLowerCase()}, while it has power: ${words.join('; ')}.`] : [];
 }
 
 // Its maker's word on a part (data/manufacturers.json blurb), and for a
