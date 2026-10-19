@@ -51,6 +51,7 @@ import { isMachine } from './battle.js';
 import { coverFrom } from './cover.js';
 import { blastsAt, playFor } from './objectiveAi.js';
 import { orderAction } from './orderAi.js';
+import { rescueAction } from './rescueAi.js';
 import { SIDES } from './grid.js';
 import { edgeKey, wallAt } from './mapFromShip.js';
 import { moveRange, reachable, sideToward, stepsFrom } from './moves.js';
@@ -82,6 +83,9 @@ export const RECKLESS = 3; // how much worse than holding back a shot may score 
 export function aiAction(battle, rules) {
   const unit = battle.units.find((u) => u.side === battle.side && u.status === 'active' && u.ap > 0);
   if (!unit) return { type: 'end' };
+  // Where death is permanent (M41), a downed ally first (rescueAi.js).
+  const rescue = rescueAction(battle, unit, rules);
+  if (rescue) return rescue;
   const order = orderAction(battle, unit, rules);
   if (order) return order;
   if (unit.ammo < 1) return { type: 'reload', unit: unit.id };

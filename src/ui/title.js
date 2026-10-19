@@ -12,7 +12,7 @@ import { paintCover } from '../render/scenes/paint.js';
 import { titlePicture } from '../render/scenes/scenes.js';
 import { drawStars, makeStarfield, paintBackdrop } from '../render/starfield.js';
 import { continueText } from './campaign/hubText.js';
-import { newGameDraft } from './campaign/newGame.js';
+import { clearDraft } from './campaign/newGame.js';
 import { onTap } from './gestures.js';
 import { motionReduced } from './motion.js';
 
@@ -89,7 +89,7 @@ export const titleScreen = {
       }
       armed = false;
       clearTimeout(armTimer);
-      newGameDraft.background = null;
+      clearDraft();
       game.dispatch({ type: 'screen/show', screen: 'background' });
     }
 

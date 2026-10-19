@@ -88,7 +88,9 @@ export function aimedAt(def, aim) {
 // torpedo bay fires in the odd ones, never in an opening volley (round 0);
 // with none given, every working gun counts. side.edge, where given, is {
 // gunnery, evasion }: what the crew's jobs add (edges.js; encounter.js
-// approachState, M32).
+// approachState, M32). side.aim, where given, is what the game's
+// difficulty adds to an enemy ship's gunnery (M41, difficulty.js
+// gunneryBonus), past the effect's cap.
 export function sideStats(side, rules, round = null) {
   const { balance } = rules;
   const working = side.ship.modules.filter((module) => !(module.uid in side.wrecked) && rules.modules.has(module.type)).map((module) => rules.modules.get(module.type));
@@ -113,7 +115,7 @@ export function sideStats(side, rules, round = null) {
     mass,
     ratio,
     evasion: Math.round(balance.evasionPerThrust * ratio) + edge('evasion'),
-    gunnery: edge('gunnery'),
+    gunnery: edge('gunnery') + (side.aim ?? 0),
     grapple: Math.max(0, ...working.map((def) => def.grapple ?? 0)),
     powered,
     moving,

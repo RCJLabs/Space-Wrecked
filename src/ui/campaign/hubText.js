@@ -8,6 +8,7 @@ import { launchProblem } from '../../sim/launch.js';
 import { baseOf, countOfAny } from '../../sim/makers.js';
 import { beginRaid } from '../../sim/raid.js';
 import { coldAt } from '../../sim/quests.js';
+import { recruitOffer } from '../../sim/recruits.js';
 import { gearLine } from './armsText.js';
 import { shownRank } from './crewJobText.js';
 import { coldWarning, questsText } from './questText.js';
@@ -78,7 +79,7 @@ export function hangarText(campaign, rules) {
     raid,
     shop: Boolean(shop),
     launch: { ok: !launchProblem(campaign, rules), ask: [`Lift off and end act ${campaign.act}?`, coldWarning(coldAt(campaign, rules, campaign.act), 'Launching'), `The job board${shop ? ' and the shop stay' : ' stays'} behind. Tap Launch again.`].filter(Boolean).join(' ') },
-    hint: hangarHint({ act: campaign.act, raid, ready, build, buy, heat, held, shop, pursuer: pursuerOf(campaign, rules)?.name ?? 'The pursuer' }, rules),
+    hint: hangarHint({ act: campaign.act, raid, ready, build, buy, heat, held, shop, pursuer: pursuerOf(campaign, rules)?.name ?? 'The pursuer', hire: recruitOffer(campaign, rules).length > 0 }, rules),
   };
 }
 
@@ -98,15 +99,17 @@ export function crewText(campaign, rules) {
 }
 
 // What to do next at the hangar, the most pressing first: a raid at the
-// door (unless the ship can lift off from under it), launch, parts on hand
-// to fit, the hunters on every job, a part the ship needs at the shop,
-// rumors, and otherwise where parts come from. A pursuer that takes no
-// payments (M30) leaves a raid as the one thing that brings heat down.
-function hangarHint({ act, raid, ready, build, buy, heat, held, shop, pursuer }, rules) {
+// door (unless the ship can lift off from under it), the hangar's recruit
+// filling a place the fallen left (M41), launch, parts on hand to fit, the
+// hunters on every job, a part the ship needs at the shop, rumors, and
+// otherwise where parts come from. A pursuer that takes no payments (M30)
+// leaves a raid as the one thing that brings heat down.
+function hangarHint({ act, raid, ready, build, buy, heat, held, shop, pursuer, hire }, rules) {
   const shed = heat.payment ? 'A payment buys some heat off.' : `${pursuer} takes no payments: heat only falls once a raid is faced.`;
   const warn = { tone: 'warn', text: `${heat.line} ${shed}` };
   if (raid && ready) return { tone: 'bad', text: `${raid.line} Launch, and leave them an empty hangar.` };
   if (raid) return { tone: 'bad', text: raid.ok ? `${raid.line} ${heat.payment ? `Defend the ship, or pay heat down under ${rules.balance.raidHeat}.` : 'Defend the ship.'}` : `${raid.line} ${raid.why}` };
+  if (hire) return { tone: 'good', text: 'Someone from the district is looking for a berth, to fill the place the fallen left. Tap Crew to sign them on.' };
   if (ready) return { tone: 'good', text: `Every flight check passes. Tap Launch to lift off and end act ${act}.` };
   if (build) return { tone: 'good', text: 'Your ship is half built. Tap Build to fit the parts on hand.' };
   if (heat.level === 'hunters') return warn;

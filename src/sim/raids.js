@@ -53,7 +53,7 @@ import { fightOut } from './fightOut.js';
 import { tally } from './flags.js';
 import { pursuerOf, runLevel, withHeat } from './heat.js';
 import { eased } from './quests.js';
-import { enemyBonus } from './settings.js';
+import { difficultyOf, enemyBonus, fightSetup } from './difficulty.js';
 
 const MAX_SEED = 0xffffffff;
 // The levels of heat the pursuer may find the colony at, each with its
@@ -263,9 +263,12 @@ function fireAtLander(campaign, plan) {
 // fightAway): whoever is there and, from M38f, its colonists (colonistsOf)
 // beside them in the crew's band, against the raiders left, each defender
 // with a powered shield's armor and a powered armory's aim; its seed the
-// next roll of rng. Returns { battle, events, seed, rng, members (the crew
-// fighting, in their units' order) } or { error }.
-function raidBattle(there, rules, plan, landed, rng, { forgiving = false, difficulty = 'normal' } = {}) {
+// next roll of rng. setup is difficulty.js fightSetup's: the raiders bring
+// what the campaign's difficulty adds (M41, a raid fought out too), and a
+// fight the player plays has permanent death if the campaign does.
+// Returns { battle, events, seed, rng, members (the crew fighting, in their
+// units' order) } or { error }.
+function raidBattle(there, rules, plan, landed, rng, { forgiving = false, difficulty = 'normal', permadeath = false } = {}) {
   const map = colonyMap(there.colony, rules);
   const members = defendersOf(there);
   const unknown = members.find((member) => !rules.jobs.has(member.job));
@@ -288,7 +291,7 @@ function raidBattle(there, rules, plan, landed, rng, { forgiving = false, diffic
     }),
     ...landed.map((kind, i) => ({ kind, x: starts.raiders[i][0], y: starts.raiders[i][1], bonus })),
   ];
-  const { battle, events } = createBattle({ map, units, seed: seedRoll.value, options: { forgiving, press: true } }, rules);
+  const { battle, events } = createBattle({ map, units, seed: seedRoll.value, options: { forgiving, permadeath, press: true } }, rules);
   return { battle, events, seed: seedRoll.value, rng: seedRoll.state, members };
 }
 
@@ -311,7 +314,8 @@ function lessCitizens(campaign, fell) {
 // where it stands; with nobody home and some left, it is lost; else the
 // fight begins: whoever is home against the raiders left, on the colony's
 // grid, its seed the campaign's next roll. setup is what the settings make
-// of the fight (settings.js fightSettings). While the ship is away on a
+// of the fight (settings.js fightSettings), with the campaign's difficulty
+// and permanent death (M41, difficulty.js). While the ship is away on a
 // voyage (M38d) the fight is those at home's, in play until it is over
 // (away.js homeFront); at another colony (M38e) it is theirs, on its grid,
 // the fight naming it (fight.colony), and they are in play until it is
@@ -320,7 +324,7 @@ function lessCitizens(campaign, fell) {
 // roll, hit }]), hits, landed (the raiders left) }, fight (true with the
 // fight on), taken (what a raid lost without a fight took, else null) },
 // or { ok: false, error }.
-export function faceRaid(campaign, rules, { forgiving = false, difficulty = 'normal' } = {}) {
+export function faceRaid(campaign, rules, setup = {}) {
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
   const plan = landingPlan(campaign, rules);
   if (!plan.ok) return plan;
@@ -333,7 +337,7 @@ export function faceRaid(campaign, rules, { forgiving = false, difficulty = 'nor
     return { ok: true, campaign: other ? thereFrom(rolled, settled.campaign) : settled.campaign, colony: plan.colony, landing, fight: false, won, taken: settled.taken };
   }
   const there = other ? thereAt(campaign, other) : campaign;
-  const begun = raidBattle(there, rules, plan, landed, rolled.rng, { forgiving, difficulty });
+  const begun = raidBattle(there, rules, plan, landed, rolled.rng, fightSetup(campaign, setup));
   if (begun.error) return { ok: false, error: begun.error };
   const { battle, events, seed, members } = begun;
   const fight = { encounter: colonyPursuer(campaign, rules).raiders, seed, crew: members.map((member) => member.id), battle, log: events, job: null, raid: true, boarding: null, ...(other ? { colony: other } : {}) };
@@ -346,8 +350,9 @@ export function faceRaid(campaign, rules, { forgiving = false, difficulty = 'nor
 // raiders left and anyone there, crew or citizens, they fight on its grid
 // as faceRaid's, the AI playing both sides (fightOut.js: past 40 rounds
 // both press on; still unended at 60, the raiders pull out and the colony
-// holds). Crew there come out wounded, never dead, and count the fight;
-// the colonists who fell are gone. Settled as settleRaid has it (that
+// holds), the raiders bringing what the campaign's difficulty adds (M41).
+// Crew there come out wounded, never dead, even where death is permanent,
+// and count the fight; the colonists who fell are gone. Settled as settleRaid has it (that
 // colony's heat, and lost, half its food and materials), and its news tells
 // it. campaign: the colony as it lives its day (days.js), its crew those
 // there. Returns { campaign, won, fell (the citizens lost), landing }.
@@ -358,7 +363,7 @@ export function fightAway(campaign, rules) {
   let now = rolled;
   let won = !landing.landed.length;
   let fell = 0;
-  const begun = won || (!plan.defenders.length && !plan.citizens) ? null : raidBattle(rolled, rules, plan, landing.landed, rolled.rng);
+  const begun = won || (!plan.defenders.length && !plan.citizens) ? null : raidBattle(rolled, rules, plan, landing.landed, rolled.rng, { difficulty: difficultyOf(campaign) });
   if (begun && !begun.error) {
     const { battle } = fightOut(begun.battle, rules);
     won = battle.winner !== 'enemy';

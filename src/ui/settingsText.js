@@ -1,12 +1,16 @@
 // Text for the settings screen (settings.js): each setting's choices, and
 // what the one picked does, its numbers from data/balance.json. Pure.
-import { DIFFICULTIES, enemyBonus, FPS_CAPS, MOTIONS, VOLUMES } from '../sim/settings.js';
+import { DIFFICULTIES, enemyBonus, gunneryBonus } from '../sim/difficulty.js';
+import { FPS_CAPS, MOTIONS, VOLUMES } from '../sim/settings.js';
 
-// The rows, in order: [{ key, title, choices: [{ value, label }], line }].
-// key is the setting (sim/settings.js); line says what the value picked
-// does.
-export function settingsText(settings, balance) {
-  return [
+// The rows, in order: [{ key, title, choices: [{ value, label }], value,
+// action, line }]. key is the setting (sim/settings.js); value is the one
+// picked, and a choice's tap dispatches action with its value; line says
+// what the value picked does. From M41 the difficulty is the game's: its
+// row shows with a campaign under way (not one over) and sets it
+// (campaign/difficulty).
+export function settingsText(settings, balance, campaign = null) {
+  const rows = [
     {
       key: 'sound',
       title: 'Sound',
@@ -19,12 +23,16 @@ export function settingsText(settings, balance) {
       choices: VOLUMES.map((value) => ({ value, label: `${value}%` })),
       line: settings.sound ? `Every sound at ${settings.volume}%.` : `Every sound at ${settings.volume}%, once sound is on.`,
     },
-    {
-      key: 'difficulty',
-      title: 'Difficulty',
-      choices: DIFFICULTIES.map((value) => ({ value, label: capitalize(value) })),
-      line: `${difficultyLine(settings.difficulty, balance)} From the next fight.`,
-    },
+    campaign && campaign.crew.length
+      ? {
+          key: 'difficulty',
+          title: 'Difficulty',
+          choices: DIFFICULTIES.map((value) => ({ value, label: capitalize(value) })),
+          value: campaign.difficulty,
+          action: 'campaign/difficulty',
+          line: `${difficultyLine(campaign.difficulty, balance)} This game, from the next fight.${campaign.permadeath ? ' Death is permanent in it.' : ''}`,
+        }
+      : null,
     {
       key: 'forgiving',
       title: 'Forgiving odds',
@@ -58,16 +66,20 @@ export function settingsText(settings, balance) {
         : 'No tips.',
     },
   ];
+  return rows.filter(Boolean).map((row) => ({ value: settings[row.key], action: `settings/${row.key}`, ...row }));
 }
 
-// "Enemies aim 10 worse and have 1 hit point fewer."
+// "Enemies aim 10 worse and have 1 hit point fewer; their ships' guns aim
+// 10 worse." (M41: the guns too.)
 export function difficultyLine(difficulty, balance) {
   const { aim = 0, hp = 0 } = enemyBonus(difficulty, balance);
-  if (!aim && !hp) return 'Enemies as they come.';
+  const guns = gunneryBonus(difficulty, balance);
+  if (!aim && !hp && !guns) return 'Enemies as they come.';
   const parts = [];
   if (aim) parts.push(`aim ${Math.abs(aim)} ${aim > 0 ? 'better' : 'worse'}`);
   if (hp) parts.push(`have ${Math.abs(hp)} hit point${Math.abs(hp) === 1 ? '' : 's'} ${hp > 0 ? 'more' : 'fewer'}`);
-  return `Enemies ${parts.join(' and ')}.`;
+  const ships = guns ? `; their ships' guns aim ${Math.abs(guns)} ${guns > 0 ? 'better' : 'worse'}` : '';
+  return `Enemies ${parts.join(' and ')}${ships}.`;
 }
 
 function capitalize(word) {

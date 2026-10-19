@@ -25,9 +25,9 @@ export function wholeCrew(campaign) {
 }
 
 // The id the next crew member signs on with: past everyone's, aboard, at
-// home or at another colony.
+// home or at another colony, and from M41 the fallen's.
 export function nextCrewId(campaign) {
-  return Math.max(0, ...wholeCrew(campaign).map((member) => member.id)) + 1;
+  return Math.max(0, ...wholeCrew(campaign).map((member) => member.id), ...(campaign.fallen ?? []).map((member) => member.id)) + 1;
 }
 
 // Those at home while the ship is away, in the crew's order: waiting in the

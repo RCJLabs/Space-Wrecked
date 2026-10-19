@@ -89,19 +89,21 @@ import { withHeat } from './heat.js';
 import { mapFromShip } from './mapFromShip.js';
 import { hasTag } from './modules.js';
 import { raidLoss } from './raid.js';
-import { enemyBonus } from './settings.js';
+import { difficultyOf, enemyBonus, fightSetup, gunneryBonus } from './difficulty.js';
 import { moveStanding, patrolWelcome, shipMoves } from './standing.js';
 
 const MAX_SEED = 0xffffffff;
 
 // The approach as approach.js plays it: { you, them, round, tactics }, or
 // null with none open. The player's side carries the crew's edge: the
-// gunnery and evasion their jobs add aboard (edges.js, M32).
+// gunnery and evasion their jobs add aboard (edges.js, M32); the other
+// ship's, what the game's difficulty adds to its guns (M41, difficulty.js).
 export function approachState(campaign, rules) {
   const approach = campaign.run?.approach;
   if (!approach) return null;
   const tactics = rules.ships.get(approach.enemy.ship)?.tactics ?? { aim: [] };
-  return { you: { ship: campaign.ship, ...approach.you, edge: crewEdge(campaign.crew, rules) }, them: approach.them, round: approach.round, tactics };
+  const aim = gunneryBonus(difficultyOf(campaign), rules.balance);
+  return { you: { ship: campaign.ship, ...approach.you, edge: crewEdge(campaign.crew, rules) }, them: aim ? { ...approach.them, aim } : approach.them, round: approach.round, tactics };
 }
 
 // What a crew's jobs add to its ship in the approach: { gunnery, evasion }.
@@ -205,7 +207,7 @@ export function giveOrder(campaign, rules, order) {
   const next = {
     ...approach,
     you: { damage: played.you.damage, wrecked: played.you.wrecked },
-    them: played.them,
+    them: { ship: played.them.ship, damage: played.them.damage, wrecked: played.them.wrecked },
     round: played.round,
     fired: approach.fired || played.fired,
     last: { order, intent: played.intent, events: played.events },
@@ -281,10 +283,12 @@ export function boardingDue(campaign, rules) {
 // pick, or the healthiest squadSize) against her party, on the boarded
 // ship's map with its wrecks. Its seed is the campaign's next roll, and so
 // is what a win pays. setup is what the settings make of the fight
-// (settings.js fightSettings): forgiving odds, and the difficulty; and the
-// squad picked, as crew ids, or null for the default. Returns { ok: true,
+// (settings.js fightSettings): forgiving odds (the difficulty and
+// permanent death are the campaign's, M41, difficulty.js); and the squad
+// picked, as crew ids, or null for the default. Returns { ok: true,
 // campaign } with the fight on, or { ok: false, error }.
-export function beginBoarding(campaign, rules, { forgiving = false, difficulty = 'normal', squad = null } = {}) {
+export function beginBoarding(campaign, rules, { squad = null, ...setup } = {}) {
+  const { forgiving, difficulty, permadeath } = fightSetup(campaign, setup);
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
   const due = boardingDue(campaign, rules);
   if (!due) return { ok: false, error: 'No one is boarding.' };
@@ -316,7 +320,7 @@ export function beginBoarding(campaign, rules, { forgiving = false, difficulty =
     }),
     ...machines,
   ];
-  const { battle, events } = createBattle({ map, units: fighters, seed, options: { forgiving, press: due.dir === 'you' } }, rules);
+  const { battle, events } = createBattle({ map, units: fighters, seed, options: { forgiving, permadeath, press: due.dir === 'you' } }, rules);
   const fight = { encounter: due.preset.party, seed, crew: members.map((member) => member.id), battle, log: events, job: null, raid: false, boarding: { dir: due.dir, salvage } };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };
 }

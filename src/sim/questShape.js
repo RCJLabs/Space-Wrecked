@@ -20,6 +20,16 @@ export function startingQuests(rules, background) {
   return Object.fromEntries([...(rules.quests?.values() ?? [])].filter((quest) => quest.background === background).map((quest) => [quest.id, { step: 0, state: 'open' }]));
 }
 
+// The quest gone cold where it stands, if its step is open: { campaign,
+// note }, the note what came of it (QUEST_MOVES), or null with nothing to
+// end. Here rather than in quests.js (which hands it on) so campaign.js can
+// end a fallen companion's loyalty quest (M41).
+export function endCold(campaign, id) {
+  const at = campaign.quests?.[id];
+  if (at?.state !== 'open') return { campaign, note: null };
+  return { campaign: { ...campaign, quests: { ...campaign.quests, [id]: { ...at, state: 'cold' } } }, note: { quest: id, did: 'cold', step: at.step, changes: { credits: 0, heat: 0, standing: [] } } };
+}
+
 // campaign.quests: { [id]: { step, state } }, step the index of the step
 // open (or the last one reached, once the quest is over).
 export function isQuests(value) {

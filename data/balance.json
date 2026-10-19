@@ -29,6 +29,8 @@
   "easyEnemyHp": -1,
   "hardEnemyAim": 5,
   "hardEnemyHp": 1,
+  "easyEnemyGunnery": -10,
+  "hardEnemyGunnery": 5,
   "baseSupplies": 30,
   "jumpSupplies": 1,
   "longJumpFactor": 3,

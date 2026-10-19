@@ -32,6 +32,7 @@ import { makeLoyal } from './companions.js';
 import { PAY_STEP } from './economy.js';
 import { withHeat } from './heat.js';
 import { floorOf, moveStanding, pursuerSide, standingWith } from './standing.js';
+import { endCold } from './questShape.js';
 import { MAX_PLACES } from './tripShape.js';
 
 const MAX_SEED = 0xffffffff;
@@ -137,12 +138,9 @@ export function stepDone(campaign, rules, id) {
   return { campaign: next, note: { quest: id, did: last ? 'finished' : 'done', step: index, changes } };
 }
 
-// The quest gone cold where it stands. { campaign, note }.
-export function endCold(campaign, id) {
-  const at = campaign.quests?.[id];
-  if (at?.state !== 'open') return { campaign, note: null };
-  return { campaign: { ...campaign, quests: { ...campaign.quests, [id]: { ...at, state: 'cold' } } }, note: { quest: id, did: 'cold', step: at.step, changes: { credits: 0, heat: 0, standing: [] } } };
-}
+// The quest gone cold where it stands (questShape.js, M41: a companion
+// who dies in a fight ends theirs, campaign.js endFight). { campaign, note }.
+export { endCold };
 
 // The quests whose open step is in act `act`, which go cold as it ends
 // (Launch's first tap and the last jump point's plan say so): the quests.

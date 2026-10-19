@@ -35,7 +35,15 @@
 //            loadout.js), on the ship or at the hangar
 //   captain  the id of the crew member who is the player's captain: named,
 //            with a job and CAPTAIN_TRAITS traits, when the campaign
-//            starts
+//            starts. Where death is permanent and the captain dies, whoever
+//            has stood in the most fights takes command (M41).
+//   difficulty  'easy', 'normal' or 'hard': what the enemy brings (M41,
+//            difficulty.js), picked at New game and changed in Settings
+//   permadeath  true where death is permanent (M41): someone who bleeds
+//            out in a fight dies. Picked at New game and kept for the game.
+//   fallen   [{ id, name, job, act, look }]: those who died in a fight, the
+//            oldest first (M41). With no one left aboard, the game is over
+//            (gameOver).
 //   heat     the pursuer's meter, 0 to HEAT_MAX (§4.4)
 //   standing { [side]: standing }: how each side (data/factions.json) feels
 //            about the crew, from STANDING_MIN to STANDING_MAX (standing.js,
@@ -74,7 +82,7 @@
 //            more.
 import { int, isState, pick, seedFrom } from '../core/rng.js';
 import { actOf, atColony, atHangar, atPort } from './acts.js';
-import { aboardOf, MAX_OUT } from './away.js';
+import { aboardOf, MAX_OUT, wholeCrew } from './away.js';
 import { MAX_AT, MAX_CITIZENS, MAX_COLONIES, MAX_NEWS } from './colonies.js';
 import { battleProblem } from './battleShape.js';
 import { createBattle, isMachine } from './battle.js';
@@ -86,12 +94,13 @@ import { MAX_STOCK } from './economy.js';
 import { mapFromShip, WRECKS } from './mapFromShip.js';
 import { isWorld, MAX_NODES, MAX_PLACE_NAME, runProblem } from './runShape.js';
 import { isPlace, MAX_PLACES, tripProblem } from './tripShape.js';
-import { enemyBonus } from './settings.js';
+import { DIFFICULTIES, enemyBonus, fightSetup } from './difficulty.js';
+import { tally } from './flags.js';
 import { rankOf } from './ranks.js';
-import { isQuests, startingQuests } from './questShape.js';
+import { endCold, isQuests, startingQuests } from './questShape.js';
 import { isStanding, startStanding } from './standing.js';
 import { gearWon } from './gear.js';
-import { weaponOf, withArms } from './loadout.js';
+import { handedIn, weaponOf, withArms } from './loadout.js';
 import { talentOrder, TALENT_RANK } from './talents.js';
 import { traitBonus } from './traits.js';
 
@@ -113,6 +122,8 @@ const MAX_TRAITS = 4;
 const MAX_ARMS = 999;
 // More fights than anyone stands in: a guard on what a save can hold.
 const MAX_FIGHTS = 9999;
+// The fallen a campaign keeps the names of (M41): the newest, past this.
+export const MAX_FALLEN = 99;
 export const MAX_FLAG_TEXT = 64;
 // More supplies than any ship holds: a guard on what a save can hold.
 export const MAX_SUPPLIES = 9999;
@@ -156,12 +167,15 @@ const FLAG = /^[a-zA-Z][a-zA-Z0-9]*$/;
 // job becomes the captain, named, with those traits and that look. Without
 // one, the first crew member is captain, with no traits. The rest of the
 // crew are named from data/recruits.json, and everyone without a look gets
-// one, all from the seed (startCrew).
-export function newCampaign(rules, seed, { background = firstBackground(rules), captain = null } = {}) {
+// one, all from the seed (startCrew). difficulty and permadeath are the
+// game's, picked at New game (M41): Normal, and death not permanent,
+// unless given.
+export function newCampaign(rules, seed, { background = firstBackground(rules), captain = null, difficulty = 'normal', permadeath = false } = {}) {
   const { start } = rules.backgrounds.get(background);
   const { ship } = buildShip(rules, start.ship.frame, start.ship.placements);
   const why = captain && captainProblem(captain, rules, background);
   if (why) throw new RangeError(`newCampaign: ${why}`);
+  if (!DIFFICULTIES.includes(difficulty) || typeof permadeath !== 'boolean') throw new RangeError('newCampaign: the difficulty is Easy, Normal or Hard, and permanent death on or off.');
   const at = captain ? start.crew.indexOf(captain.job) : 0;
   const crew = startCrew(rules, seed, start.crew, at, captain);
   return {
@@ -176,6 +190,9 @@ export function newCampaign(rules, seed, { background = firstBackground(rules), 
     arms: {},
     crew,
     captain: crew[at].id,
+    difficulty,
+    permadeath,
+    fallen: [],
     heat: 0,
     standing: startStanding(rules, background),
     quests: startingQuests(rules, background),
@@ -383,10 +400,12 @@ export function onHandAfter(parts, before, after) {
 
 // Starts a fight: the whole crew against the boarders, on the ship. Its
 // seed is the campaign's next roll. setup is what the settings make of it
-// (settings.js fightSettings): forgiving odds, and the difficulty. Returns
-// { ok: true, campaign } with the fight on, or { ok: false, error } saying
-// why it can't start.
-export function beginFight(campaign, rules, { forgiving = false, difficulty = 'normal' } = {}) {
+// (settings.js fightSettings): forgiving odds; the difficulty and
+// permanent death are the campaign's (M41, difficulty.js). Returns { ok:
+// true, campaign } with the fight on, or { ok: false, error } saying why it
+// can't start.
+export function beginFight(campaign, rules, setup = {}) {
+  const { forgiving, difficulty, permadeath } = fightSetup(campaign, setup);
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
   if (!campaign.crew.length) return { ok: false, error: 'There is no one aboard to fight.' };
   const unknown = campaign.crew.find((member) => !rules.jobs.has(member.job));
@@ -408,7 +427,7 @@ export function beginFight(campaign, rules, { forgiving = false, difficulty = 'n
     }),
     ...machines,
   ];
-  const { battle, events } = createBattle({ map, units, seed, options: { forgiving } }, rules);
+  const { battle, events } = createBattle({ map, units, seed, options: { forgiving, permadeath } }, rules);
   const fight = { encounter: FIGHT_ENCOUNTER, seed, crew: campaign.crew.map((member) => member.id), battle, log: events, job: null, raid: false, boarding: null };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };
 }
@@ -423,7 +442,8 @@ export function saveFight(campaign, battle, log) {
 // - each crew member keeps the hit points they ended with; anyone down,
 //   stabilized or bled out comes back with 1, badly hurt;
 // - in an act whose home heals (act 1's hangar), everyone heals fully;
-// - anyone killed (only where death is permanent) leaves the crew;
+// - anyone killed (only where death is permanent) leaves the crew, as
+//   buried has it (M41);
 // - everyone who stood in it counts it (rankUps says who reaches a rank);
 // - the flags count the fights won and lost;
 // - a won fight can leave one of the fallen enemies' weapons on hand (M37,
@@ -447,7 +467,40 @@ export function endFight(campaign, rules) {
   const gear = gearWon(fight, fight.battle, rules);
   const flags = { ...campaign.flags, [flag]: (campaign.flags[flag] ?? 0) + 1, ...(gear ? { gearWon: (campaign.flags.gearWon ?? 0) + 1 } : {}) };
   const arms = gear ? withArms(campaign.arms, gear) : campaign.arms;
-  return { ...campaign, place: 'hub', fight: null, crew, flags, arms };
+  const ended = { ...campaign, place: 'hub', fight: null, crew, flags, arms };
+  const dead = campaign.crew.filter((member) => stood.get(member.id)?.status === 'dead');
+  return dead.length ? buried(ended, rules, dead) : ended;
+}
+
+// The campaign after a fight where death is permanent (M41), with those
+// who died in it off the crew already: each hands in the weapon they
+// carried, as someone let go does (loadout.js handedIn); a companion's
+// loyalty quest ends (questShape.js endCold); each is named among the
+// fallen, the newest MAX_FALLEN kept; and the flags count them (crewLost).
+// A captain among them passes command to whoever has stood in the most
+// fights, the first of them in the crew's order, those in the fight's side
+// first (captainsLost); with no one left anywhere, it stays theirs, and
+// the game is over (gameOver).
+function buried(campaign, rules, dead) {
+  let next = campaign;
+  for (const member of dead) {
+    next = { ...next, arms: handedIn(next, member, rules) };
+    const loyalty = member.companion ? rules.companions?.get(member.companion)?.loyalty : null;
+    if (loyalty) next = endCold(next, loyalty).campaign;
+  }
+  const act = campaign.act;
+  const fallen = [...(campaign.fallen ?? []), ...dead.map(({ id, name, job, look }) => ({ id, name, job, act, look }))].slice(-MAX_FALLEN);
+  const lost = dead.some((member) => member.id === campaign.captain);
+  const heir = lost ? wholeCrew(next).reduce((best, member) => (!best || (member.fights ?? 0) > (best.fights ?? 0) ? member : best), null) : null;
+  const flags = tally(next.flags, { crewLost: dead.length, captainsLost: lost ? 1 : 0 });
+  return { ...next, fallen, flags, captain: heir ? heir.id : campaign.captain };
+}
+
+// True once the game is over (M41): where death is permanent, no one is
+// left aboard, and no fight is on. The screens show its end (root.js
+// campaignScreen), and New game starts another.
+export function gameOver(campaign) {
+  return campaign.permadeath === true && campaign.crew.length === 0 && !campaign.fight;
 }
 
 // Who reaches a new rank as the fight under way ends (ranks.js, M32b), by
@@ -494,7 +547,13 @@ export function campaignProblems(value) {
   if (!isRecord(value.arms) || !Object.entries(value.arms).every(([id, count]) => ID.test(id) && isInt(count, 1, MAX_ARMS))) wrong('spare weapons are unreadable');
   if (!isCrew(value.crew)) wrong('crew is unreadable');
   // While the ship is away on a voyage (M38d) the captain can be at home.
-  else if (![...value.crew, ...waitingCrew(value)].some((member) => member?.id === value.captain)) wrong("captain isn't aboard");
+  // With no one left anywhere (M41: everyone fell where death is
+  // permanent), the game is over, and the captain is the last one's.
+  else if (![...value.crew, ...waitingCrew(value)].some((member) => member?.id === value.captain) && !(value.permadeath === true && !value.crew.length)) wrong("captain isn't aboard");
+  // The game's difficulty, permanent death and the fallen (M41).
+  if (!DIFFICULTIES.includes(value.difficulty)) wrong('difficulty is invalid');
+  if (typeof value.permadeath !== 'boolean') wrong('permanent death setting is invalid');
+  if (!Array.isArray(value.fallen) || value.fallen.length > MAX_FALLEN || !value.fallen.every(isFallen)) wrong('fallen are unreadable');
   if (!isInt(value.heat, 0, HEAT_MAX)) wrong('heat is invalid');
   if (!isStanding(value.standing, MAX_SIDES)) wrong('standing with the sides is unreadable');
   if (!isQuests(value.quests)) wrong('quests are unreadable');
@@ -721,6 +780,11 @@ function isStockItem(item) {
 
 function isId(value) {
   return typeof value === 'string' && ID.test(value);
+}
+
+// One of the fallen (M41): { id, name, job, act, look }.
+function isFallen(member) {
+  return isRecord(member) && isInt(member.id, 1, Number.MAX_SAFE_INTEGER) && isName(member.name) && typeof member.job === 'string' && ID.test(member.job) && isInt(member.act, 1, ACTS) && isLook(member.look);
 }
 
 function isCrew(crew) {

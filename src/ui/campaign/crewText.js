@@ -5,8 +5,10 @@
 // squad a boarding takes, for the approach screen's picker (approach.js).
 // From M33c the crew card opens at the colony too, and a companion's row
 // has their side, past and loyalty; from M37 at the hangar too, and every
-// row says what they carry and offers the spares they could take. rules
-// are the content tables (src/sim/defs.js).
+// row says what they carry and offers the spares they could take. From M41,
+// where death is permanent, it names the fallen, and the hangar's recruit
+// is for hire while the crew is short. rules are the content tables
+// (src/sim/defs.js).
 import { crewColor } from '../../render/units.js';
 import { maxHp } from '../../sim/campaign.js';
 import { companionOf } from '../../sim/companions.js';
@@ -42,11 +44,12 @@ const STAT_NAMES = { hp: 'hit points', aim: 'aim', defense: 'defense', mobility:
 //            drawn from (faceOf); dismiss {
 //            key, ok, label, ask, text, why } at a station, null elsewhere
 //            and for the captain
-//   hire     null away from a station, else { title, line, recruits: [{
-//            key, slot, name, about, past, rank, rankLine, traits, brief,
-//            weapon, hp, max, face, ok, label, ask, text, why }] }: past is the
-//            line about their background, the label their fee; line says
-//            why no one can sign on, or that no one is left, or is null
+//   hire     null away from a station and the hangar's recruit (M41),
+//            else { title, line, recruits: [{ key, slot, name, about, past,
+//            rank, rankLine, traits, brief, weapon, hp, max, face, ok,
+//            label, ask, text, why }] }: past is the line about their
+//            background, the label their fee; line says why no one can
+//            sign on, or that no one is left, or is null
 //   hint     { tone, text } for the foot while nothing has had a first tap
 export function crewCardText(campaign, rules) {
   const room = crewRoom(campaign.ship, rules);
@@ -60,6 +63,10 @@ export function crewCardText(campaign, rules) {
   const lines = home ? ['Everyone at the colony, and what each brings to it.'] : hangar ? ['Everyone in the hangar, and what each carries.'] : [`The berths and life support carry ${room}.`, medbayLine(campaign, rules)];
   if (!atStation && where === 'chart') lines.push('Crew sign on and are let go at stations.');
   if (!campaign.fight) lines.push(sparesLine(campaign, rules));
+  if (campaign.fallen?.length) lines.push(fallenLine(campaign.fallen, rules));
+  // Where death is permanent, the hangar's recruit while the crew is short
+  // (M41, recruits.js hangarRecruit).
+  const hangarHire = hangar && recruitOffer(campaign, rules).length > 0;
   const members = campaign.crew.map((member, i) => {
     const job = jobName(member.job, rules);
     const captain = member.id === campaign.captain;
@@ -81,22 +88,23 @@ export function crewCardText(campaign, rules) {
       dismiss: atStation && !captain ? dismissText(campaign, rules, member) : null,
     };
   });
-  const recruits = atStation ? recruitOffer(campaign, rules).map((recruit, i) => recruitText(campaign, rules, recruit, campaign.crew.length + i)) : [];
+  const recruits = atStation || hangarHire ? recruitOffer(campaign, rules).map((recruit, i) => recruitText(campaign, rules, recruit, campaign.crew.length + i)) : [];
   const line = !recruits.length ? 'No one else is for hire here.' : (recruits.find((recruit) => !recruit.ok)?.why ?? null);
   return {
     title: home ? `Crew · ${campaign.crew.length} at the colony` : hangar ? `Crew · ${campaign.crew.length} in the hangar` : `Crew · ${campaign.crew.length} aboard, room for ${room}`,
     text: lines.join(' '),
     members,
-    hire: atStation ? { title: `For hire at ${hereOf(campaign).name}`, line, recruits } : null,
-    hint: cardHint(atStation, recruits, members, where),
+    hire: atStation ? { title: `For hire at ${hereOf(campaign).name}`, line, recruits } : hangarHire ? { title: 'Looking for a berth', line, recruits } : null,
+    hint: cardHint(atStation || hangarHire, recruits, members, where),
   };
 }
 
 // The crew panel's heading: { text, hire }: "Crew", and at a station with
-// recruits for hire and room for them, how many (hire).
+// recruits for hire and room for them, or the hangar with its recruit (M41,
+// needing no room), how many (hire).
 export function crewHeading(campaign, rules) {
   const offer = recruitOffer(campaign, rules);
-  const hire = offer.length > 0 && campaign.crew.length < crewRoom(campaign.ship, rules);
+  const hire = offer.length > 0 && (campaign.act === 1 || campaign.crew.length < crewRoom(campaign.ship, rules));
   return { text: hire ? `Crew · ${offer.length} for hire` : 'Crew', hire };
 }
 
@@ -159,6 +167,8 @@ function recruitText(campaign, rules, recruit, place) {
   const plan = hirePlan(campaign, rules, recruit.slot);
   const { fee } = recruit;
   const crew = campaign.crew.length + 1;
+  // The hangar's (M41): a green hand from the district, for nothing.
+  const hangar = plan.hangar === true || (campaign.act === 1 && !fee);
   const each = rules.balance.jumpSupplies * crew;
   const jumps = Math.floor(supplyCapacity(campaign.ship, rules, [...campaign.crew, recruit]) / Math.max(1, each));
   const past = pastOf(recruit, rules);
@@ -177,9 +187,11 @@ function recruitText(campaign, rules, recruit, place) {
     max: recruit.hp,
     face: faceOf(recruit, rules, place),
     ok: plan.ok,
-    label: `Sign on · ${fee}`,
-    ask: `Sign on for ${fee}?`,
-    text: `Sign ${recruit.name} on for ${fee} credits.${dockSaid(campaign, rules, plan.dock)} A crew of ${crew} eats ${each} supplies a jump, and full holds last ${jumps} jumps. Tap again to sign on.`,
+    label: hangar ? 'Sign on' : `Sign on · ${fee}`,
+    ask: hangar ? 'Sign on?' : `Sign on for ${fee}?`,
+    text: hangar
+      ? `Sign ${recruit.name} on, a green ${jobName(recruit.job, rules).toLowerCase()} from the district, for a bunk and a share: a crew of ${crew}. Tap again to sign on.`
+      : `Sign ${recruit.name} on for ${fee} credits.${dockSaid(campaign, rules, plan.dock)} A crew of ${crew} eats ${each} supplies a jump, and full holds last ${jumps} jumps. Tap again to sign on.`,
     why: plan.ok ? null : plan.error,
   };
 }
@@ -198,11 +210,13 @@ function dismissText(campaign, rules, member) {
 }
 
 // What the foot says while the card is open and nothing has had a tap
-// (where: 'chart', 'colony' or 'hangar'): away from a station, a spare
-// weapon someone could take (M37) first.
+// (where: 'chart', 'colony' or 'hangar'): the hangar's recruit (M41) first;
+// away from a station, a spare weapon someone could take (M37). atStation
+// is true where recruits are for hire, the hangar's among them.
 function cardHint(atStation, recruits, members, where) {
   const swap = members.some((member) => member.weapon?.swaps.some((entry) => entry.ok));
   const done = `Tap Done for the ${where}.`;
+  if (where === 'hangar' && recruits.some((recruit) => recruit.ok)) return { tone: 'good', text: `Someone is looking for a berth: tap Sign on to see who, and again to sign them on. ${done}` };
   if (swap && !atStation) return { tone: 'good', text: `Tap a spare weapon under someone to see what it does, and again to swap. ${done}` };
   if (where !== 'chart') return { tone: 'info', text: done };
   if (!atStation) return { tone: 'info', text: 'Crew sign on and are let go at stations. Tap Done for the chart.' };
@@ -210,6 +224,15 @@ function cardHint(atStation, recruits, members, where) {
   if (members.some((member) => member.dismiss?.ok)) return { tone: 'info', text: 'Tap Let go to see what it leaves, and again to let them go.' };
   if (swap) return { tone: 'good', text: 'Tap a spare weapon under someone to see what it does, and again to swap.' };
   return { tone: 'info', text: 'Tap Done for the chart.' };
+}
+
+// The fallen (M41), newest last: "Lost: Ada Grieve (marine, act 1) and
+// Bram Mbeki (engineer, act 2)." The last FALLEN_SHOWN, with how many more.
+const FALLEN_SHOWN = 4;
+export function fallenLine(fallen, rules) {
+  const shown = fallen.slice(-FALLEN_SHOWN).map((member) => `${member.name} (${jobName(member.job, rules).toLowerCase()}, act ${member.act})`);
+  const more = fallen.length - shown.length;
+  return `Lost: ${listed(more ? [`${more} more`, ...shown] : shown)}.`;
 }
 
 // "A", "A and B", "A, B and C".

@@ -2000,6 +2000,62 @@ textarea {
   color: var(--c-ink-dim);
 }
 
+/* The game's end (M41): the fallen and the game's record side by side,
+   as a new game's last screen lays its rows out. */
+.ovr {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 8px 12px 10px;
+}
+
+.ovr-fallen {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ovr-fallen li {
+  margin: 2px 0;
+}
+
+.ovr-fallen span {
+  color: var(--c-ink-dim);
+}
+
+/* A new game's last screen (M41): how hard the game is and whether death
+   is permanent, side by side (one above the other on the unfolded
+   screen), with Back, the hint and Start along the bottom, as on the
+   captain's screen. */
+.sta {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 8px 12px 10px;
+}
+
+.sta-rows {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  align-content: start;
+  gap: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+}
+
+@media (max-aspect-ratio: 3 / 2) {
+  .sta-rows {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Picking a background (M30): a card each down the left, the one picked
    in full beside them, scrolling if it has to, and Title, the hint and
    Next along the bottom, as on the captain's screen. */

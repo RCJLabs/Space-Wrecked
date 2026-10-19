@@ -10,6 +10,7 @@
 // bridge (ROADMAP §8). A raid's raiders press on (raid.js), and so does
 // the crew the tools send on jobs (jobAi.js).
 import { aiAction } from './ai.js';
+import { rescueAction } from './rescueAi.js';
 import { isMachine } from './battle.js';
 import { SIDES } from './grid.js';
 import { reachable, stepsFrom } from './moves.js';
@@ -19,6 +20,9 @@ import { shutDoor } from './terrain.js';
 export function pressAction(battle, rules, goals = null) {
   const unit = battle.units.find((u) => u.side === battle.side && u.status === 'active' && u.ap > 0);
   if (!unit) return { type: 'end' };
+  // Where death is permanent (M41), a downed ally first (rescueAi.js).
+  const rescue = rescueAction(battle, unit, rules);
+  if (rescue) return rescue;
   if (people(battle, unit, rules).some((u) => canSee(battle, [unit.x, unit.y], [u.x, u.y], rules))) return aiAction(battle, rules);
   return advance(battle, unit, rules, goals) ?? aiAction(battle, rules);
 }

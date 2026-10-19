@@ -19,7 +19,7 @@ test('making a captain: the background, the jobs with their numbers, and every t
 test("the captain's numbers follow the traits, and the hint says what is left", () => {
   const text = captainText(rules, { name: ' Rosa Vint ', job: 'medic', traits: ['quick', 'thick-skull'] });
   assert.equal(text.captain, '10 hit points · aim 60 · defense 10 · moves 6 · armor 0 · Pistol');
-  assert.deepEqual(text.hint, { tone: 'good', text: 'Rosa Vint, medic: Quick feet and Thick skull. Tap Start.' });
+  assert.deepEqual(text.hint, { tone: 'good', text: 'Rosa Vint, medic: Quick feet and Thick skull. Tap Next.' });
   assert.equal(text.ready, true);
   assert.deepEqual(captainText(rules, { name: 'Rosa', job: 'medic', traits: ['quick'] }).hint.text, 'Pick 2 traits: 1 to go.');
   assert.deepEqual(captainText(rules, { name: '', job: 'medic', traits: ['quick', 'patched'] }).hint.text, 'Give your captain a name.');

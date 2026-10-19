@@ -14,7 +14,7 @@ import { crewUnit, endFight } from './campaign.js';
 import { PAY_STEP } from './economy.js';
 import { hangarDoors, hangarMap, waysIn } from './hangarMap.js';
 import { pursuerOf, raidDue } from './heat.js';
-import { enemyBonus } from './settings.js';
+import { enemyBonus, fightSetup } from './difficulty.js';
 import { hasTag } from './modules.js';
 import { stepsFrom } from './moves.js';
 import { walkable } from './terrain.js';
@@ -23,10 +23,12 @@ const MAX_SEED = 0xffffffff;
 
 // Starts the raid that is due: the whole crew against the raiders, on the
 // hangar map. Its seed is the campaign's next roll. setup is what the
-// settings make of the fight (settings.js fightSettings): forgiving odds,
-// and the difficulty. Returns { ok: true, campaign } with the fight on, or
-// { ok: false, error } saying why it can't start.
-export function beginRaid(campaign, rules, { forgiving = false, difficulty = 'normal' } = {}) {
+// settings make of the fight (settings.js fightSettings): forgiving odds;
+// the difficulty and permanent death are the campaign's (M41,
+// difficulty.js). Returns { ok: true, campaign } with the fight on, or {
+// ok: false, error } saying why it can't start.
+export function beginRaid(campaign, rules, setup = {}) {
+  const { forgiving, difficulty, permadeath } = fightSetup(campaign, setup);
   if (campaign.fight) return { ok: false, error: 'A fight is on already.' };
   if (!raidDue(campaign, rules)) return { ok: false, error: 'No one is raiding the hangar.' };
   const pursuer = pursuerOf(campaign, rules);
@@ -50,7 +52,7 @@ export function beginRaid(campaign, rules, { forgiving = false, difficulty = 'no
     ...raiders.map((kind, i) => ({ kind, x: placed.raiders[i][0], y: placed.raiders[i][1], bonus })),
     ...machines,
   ];
-  const { battle, events } = createBattle({ map, units, seed, options: { forgiving, press: true } }, rules);
+  const { battle, events } = createBattle({ map, units, seed, options: { forgiving, permadeath, press: true } }, rules);
   const fight = { encounter: pursuer.raiders, seed, crew: campaign.crew.map((member) => member.id), battle, log: events, job: null, raid: true, boarding: null };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };
 }

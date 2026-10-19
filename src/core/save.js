@@ -105,7 +105,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      ship is along that line and the colony it flies to (M38e)
 //  38  citizens: every colony its citizens, the days toward the next and
 //      its news; a raid's fight can hold colonists (M38f)
-export const SAVE_VERSION = 38;
+//  39  the difficulty is the game's: the campaign keeps it, with permanent
+//      death and the fallen, and the settings keep none (M41)
+export const SAVE_VERSION = 39;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -527,6 +529,19 @@ export const MIGRATIONS = [
       if (isObject(colony)) campaign.colony = fresh(colony);
       if (Array.isArray(colonies)) campaign.colonies = colonies.map(fresh);
       return { ...data, campaign };
+    },
+  },
+  // The difficulty becomes the game's (M41): a campaign takes the
+  // settings' difficulty as its own, with death not permanent and no one
+  // fallen, and the settings keep none.
+  {
+    from: 38,
+    up: (data) => {
+      if (!isObject(data)) return data;
+      const { difficulty, ...settings } = isObject(data.settings) ? data.settings : {};
+      const kept = ['easy', 'normal', 'hard'].includes(difficulty) ? difficulty : 'normal';
+      const campaign = isObject(data.campaign) ? { ...data.campaign, difficulty: kept, permadeath: false, fallen: [] } : data.campaign;
+      return { ...data, ...(isObject(data.settings) ? { settings } : {}), campaign };
     },
   },
 ];

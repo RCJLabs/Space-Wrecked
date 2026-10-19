@@ -135,7 +135,7 @@ export const hangarScreen = {
       // The crew card, over the goal and the ship, which take no taps under
       // it.
       const crew = crewOpen ? crewCardText(campaign, defs) : null;
-      const swapping = typeof armed === 'string' && armed.startsWith('arm:');
+      const swapping = typeof armed === 'string' && (armed.startsWith('arm:') || armed.startsWith('hire:'));
       const crewAsk = swapping ? crewSaid(crew, armed) : null;
       if (swapping && !crewAsk) disarm();
       crewCard.show(crew, armed);
@@ -214,8 +214,9 @@ export const hangarScreen = {
       rerender();
     }
 
-    // A spare weapon's button on the crew card: the first tap says what the
-    // swap does, the second makes it.
+    // A spare weapon's button on the crew card, or from M41 the hangar's
+    // recruit's: the first tap says what the swap or the signing on does,
+    // the second makes it.
     function tapCrew(key) {
       if (!defs) return;
       if (armed !== key) {
@@ -229,8 +230,9 @@ export const hangarScreen = {
         return;
       }
       disarm();
-      const [, id, weapon] = key.split(':');
-      game.dispatch({ type: 'campaign/arms/swap', id: Number(id), weapon, rules: defs });
+      const [kind, id, weapon] = key.split(':');
+      if (kind === 'hire') game.dispatch({ type: 'campaign/hire', slot: Number(id), rules: defs });
+      else game.dispatch({ type: 'campaign/arms/swap', id: Number(id), weapon, rules: defs });
       if (alive) rerender();
     }
 

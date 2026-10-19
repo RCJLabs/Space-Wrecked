@@ -99,12 +99,15 @@ const BALANCE = {
   // sell.
   buyPercent: [1, 1000],
   sellPercent: [0, 100],
-  // Difficulty (src/sim/settings.js): what each enemy brings on easy and on
-  // hard, added to its aim and hit points. Normal adds nothing.
+  // Difficulty (src/sim/difficulty.js): what each enemy brings on easy and
+  // on hard, added to its aim and hit points in a fight, and from M41 to an
+  // enemy ship's gunnery in an approach. Normal adds nothing.
   easyEnemyAim: [-50, 0],
   easyEnemyHp: [-5, 0],
   hardEnemyAim: [0, 50],
   hardEnemyHp: [0, 10],
+  easyEnemyGunnery: [-50, 0],
+  hardEnemyGunnery: [0, 50],
   // The run (src/sim/run.js): the supplies a ship carries without a cargo
   // hold, what a crew member eats in a jump, a long jump's cost in jumps,
   // the price of one, the hit points a jump short of them costs, and the

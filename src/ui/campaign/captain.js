@@ -6,9 +6,10 @@
 // The name comes filled in from the background's list, to keep or change;
 // the job is one of the start crew's; and two traits are picked from
 // data/traits.json (20 since M32b, scrolling in their panel), each tap
-// showing what the trait is, and a third tap dropping the first. Start begins the campaign, in place of any under way
-// (the title asked first); Back goes back to the backgrounds with nothing
-// changed.
+// showing what the trait is, and a third tap dropping the first. Next goes
+// on to how hard the game is (startGame.js, M41), the captain kept in the
+// draft (newGame.js) and made again from it on coming back; Back goes back
+// to the backgrounds with nothing changed.
 import { seedFrom } from '../../core/rng.js';
 import { loadContent } from '../../platform/content.js';
 import { drawStars, makeStarfield, paintBackdrop } from '../../render/starfield.js';
@@ -50,7 +51,7 @@ export const captainScreen = {
     const foot = node('footer', 'cap-foot');
     const backButton = toolButton('cap-back', icons.prev, 'Back');
     const hint = node('p', 'cap-hint', 'Loading…');
-    const startButton = toolButton('cap-start', icons.next, 'Start');
+    const startButton = toolButton('cap-start', icons.next, 'Next');
     startButton.disabled = true;
     foot.append(backButton, hint, startButton);
     // The 20 traits scroll in their panel, with the last one tapped in words
@@ -91,11 +92,17 @@ export const captainScreen = {
         defs = content;
         background = defs.backgrounds.has(newGameDraft.background) ? newGameDraft.background : firstBackground(defs);
         const { captains, start } = defs.backgrounds.get(background);
-        // A name from the background's list, picked by the game's RNG state
-        // as it stands (nothing is rolled).
-        draft.name = captains[game.getState().rng % captains.length];
-        draft.job = start.crew[0];
-        roll();
+        const kept = newGameDraft.captain;
+        if (kept && start.crew.includes(kept.job)) {
+          // Back from how hard the game is (M41): the captain as made.
+          Object.assign(draft, { name: kept.name, job: kept.job, traits: [...kept.traits], look: { ...kept.look } });
+        } else {
+          // A name from the background's list, picked by the game's RNG
+          // state as it stands (nothing is rolled).
+          draft.name = captains[game.getState().rng % captains.length];
+          draft.job = start.crew[0];
+          roll();
+        }
         nameInput.value = draft.name;
         build();
         render();
@@ -167,8 +174,7 @@ export const captainScreen = {
       setText(numbers, text.captain);
       if (does.textContent !== text.does.join('')) does.replaceChildren(...text.does.map((line) => node('p', null, line)));
       startButton.disabled = !text.ready;
-      const replaces = text.ready && game.getState().campaign ? ' This replaces the campaign under way.' : '';
-      setText(hint, text.hint.text + replaces);
+      setText(hint, text.hint.text);
       hint.dataset.tone = text.hint.tone;
     }
 
@@ -192,9 +198,11 @@ export const captainScreen = {
       render();
     }
 
+    // On to how hard the game is (M41), the captain kept in the draft.
     function start() {
       if (!defs || startButton.disabled) return;
-      game.dispatch({ type: 'campaign/new', rules: defs, background, captain: { ...draft, name: draft.name.trim() } });
+      newGameDraft.captain = { ...draft, traits: [...draft.traits], look: { ...draft.look }, name: draft.name.trim() };
+      game.dispatch({ type: 'screen/show', screen: 'start' });
     }
 
     let backdrop = null;

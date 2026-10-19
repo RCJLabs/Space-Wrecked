@@ -14,6 +14,9 @@
 //   - buy a weapon GAIN points better than anyone who could carry it has
 //     (M37, arms.js), with what the parts still needed, a holdful's price
 //     and a transponder swap's leave;
+//   - where death is permanent (M41), sign on the hangar's recruit while
+//     the crew is short of the start's (recruits.js hangarRecruit), if the
+//     credits cover the fee;
 //   - face a raid that is due, unless a payment heads it off;
 //   - pay heat down when the next job would bring the hunters (or, with
 //     --heat, only before a raid, or never);
@@ -27,7 +30,9 @@
 // In a fight the crew is played by the job player (src/sim/jobAi.js), or
 // in a raid by the AI; the enemy by the AI, pressing on in a raid. Each
 // goes in with the best weapon on hand of their job's kinds (M37): for the
-// ground on a job, for a fight aboard the ship in a raid.
+// ground on a job, for a fight aboard the ship in a raid. Where death is
+// permanent (M41) the crew stabilizes the downed (src/sim/rescueAi.js), and
+// with no one left the run stops: the game is over.
 //
 // Time on the phone is an estimate from what the run did, at the pace in
 // PACE: seconds for an order in a fight, watching an enemy turn, reading
@@ -40,14 +45,15 @@
 //   node tools/run.js --runs 20      seeds 1 to 20, summed up
 //   node tools/run.js --heat raids   pay heat down only before a raid
 //   node tools/run.js --heat never   never pay
-//   node tools/run.js --difficulty easy   (or hard) the enemy as the
-//                                    difficulty setting has it
+//   node tools/run.js --difficulty easy   (or hard) the game's difficulty
+//                                    (M41: the campaign's, difficulty.js)
+//   node tools/run.js --permadeath on   death permanent (M41)
 //   node tools/run.js --background deserter   from another background's
 //                                    start (M30; data/backgrounds.json)
 import { pathToFileURL } from 'node:url';
 import { aiAction } from '../src/sim/ai.js';
 import { applyCommand, layoutProblems, occupancy } from '../src/sim/builder.js';
-import { firstBackground, newCampaign, partsNeeded, refitShip, shipChecklist } from '../src/sim/campaign.js';
+import { firstBackground, gameOver, newCampaign, partsNeeded, refitShip, shipChecklist } from '../src/sim/campaign.js';
 import { canLaunch } from '../src/sim/constraints.js';
 import { endJob, takeJob, takeQuestJob, withBoard } from '../src/sim/contracts.js';
 import { indexDefs } from '../src/sim/defs.js';
@@ -60,7 +66,8 @@ import { placedCells } from '../src/sim/modules.js';
 import { pressAction } from '../src/sim/press.js';
 import { questJobs, threadOf } from '../src/sim/quests.js';
 import { beginRaid, endRaid } from '../src/sim/raid.js';
-import { DIFFICULTIES } from '../src/sim/settings.js';
+import { DIFFICULTIES } from '../src/sim/difficulty.js';
+import { hireRecruit, recruitOffer } from '../src/sim/recruits.js';
 import { jobPay } from '../src/sim/standing.js';
 import { supplyCapacity } from '../src/sim/travel.js';
 import { jobText } from '../src/ui/campaign/jobText.js';
@@ -199,15 +206,16 @@ export function helps(campaign, defs, type, needed = partsNeeded(campaign, defs)
   return total(partsNeeded({ ...campaign, ship }, defs)) < total(needed);
 }
 
-// A run from New game to launch: { launched, jobs, raids, minutes: [quick,
-// slow], tally, lines, campaign }. tally counts what the run did; lines say
-// it step by step; campaign is where it ended, ready to launch if it got
-// there.
-export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal', background = firstBackground(defs) } = {}) {
+// A run from New game to launch: { launched, over, jobs, raids, minutes:
+// [quick, slow], tally, lines, campaign }. tally counts what the run did;
+// lines say it step by step; campaign is where it ended, ready to launch
+// if it got there; over is true once no one is left (M41: the game is
+// over).
+export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal', permadeath = false, background = firstBackground(defs) } = {}) {
   if (!HEAT_POLICIES.includes(heat)) throw new Error(`--heat is one of ${HEAT_POLICIES.join(', ')}`);
   if (!DIFFICULTIES.includes(difficulty)) throw new Error(`--difficulty is one of ${DIFFICULTIES.join(', ')}`);
   if (!defs.backgrounds.has(background)) throw new Error(`--background is one of ${[...defs.backgrounds.keys()].join(', ')}`);
-  let campaign = withBoard(newCampaign(defs, seed, { background }), defs);
+  let campaign = withBoard(newCampaign(defs, seed, { background, difficulty, permadeath }), defs);
   const lines = [`Campaign seed ${seed}, ${defs.backgrounds.get(background).name.toLowerCase()}, paying heat down ${{ raids: 'before a raid', hunters: 'before the hunters', never: 'never' }[heat]}:`];
   const say = (text) => lines.push(text);
   const name = (type) => defs.modules.get(type)?.name ?? type;
@@ -216,7 +224,8 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
   // questJobs: the thread's jobs taken (M33b); questAt: the job that did
   // its step, or null.
   // armsBought: weapons bought (M37).
-  const tally = { jobs: 0, done: 0, lost: 0, raids: 0, raidsLost: 0, orders: 0, rounds: 0, fits: 0, shopVisits: 0, payments: 0, bought: 0, sold: 0, waited: 0, armsBought: 0, questJobs: 0, questAt: null, stuck: null };
+  // hired: recruits signed on at the hangar, and died: the crew lost (M41).
+  const tally = { jobs: 0, done: 0, lost: 0, raids: 0, raidsLost: 0, orders: 0, rounds: 0, fits: 0, shopVisits: 0, payments: 0, bought: 0, sold: 0, waited: 0, armsBought: 0, questJobs: 0, questAt: null, hired: 0, died: 0, stuck: null };
 
   const fightOut = (started, players) => {
     const { fight } = started;
@@ -227,6 +236,25 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
     tally.orders += actions.filter((action) => action.unit && sides.get(action.unit) === 'crew').length;
     tally.rounds += battle.round;
     return { battle, events, campaign: { ...started, fight: { ...fight, battle, log: [...fight.log, ...events] } } };
+  };
+  // Who died in the fight just ended (M41), said and counted; and, with
+  // no one left, the run stops there.
+  const buried = (before) => {
+    const dead = before.crew.filter((member) => !campaign.crew.some((m) => m.id === member.id));
+    if (!dead.length) return;
+    tally.died += dead.length;
+    say(`   ${dead.map((member) => member.name).join(' and ')} died.${gameOver(campaign) ? ' No one is left: the game is over.' : ''}`);
+    if (gameOver(campaign)) tally.stuck = 'no one is left: the game is over';
+  };
+  // The hangar's recruit signed on while the crew is short (M41).
+  const signOn = () => {
+    for (let recruit = recruitOffer(campaign, defs)[0]; recruit && campaign.credits >= recruit.fee; recruit = recruitOffer(campaign, defs)[0]) {
+      const signed = hireRecruit(campaign, defs, recruit.slot);
+      if (!signed.ok) return;
+      campaign = signed.campaign;
+      tally.hired += 1;
+      say(`   Signed on ${recruit.name}, ${defs.jobs.get(recruit.job)?.name.toLowerCase() ?? recruit.job}, for ${recruit.fee}: ${campaign.credits} credits left.`);
+    }
   };
   const pay = (why) => {
     const before = campaign.heat;
@@ -335,6 +363,7 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
   let foodJobs = 0;
   const short = () => foodJobs < FOOD_JOBS && campaign.credits < launchFood(campaign, defs);
   while (!canLaunch(shipChecklist(campaign, defs)) || threadOpen() || short()) {
+    signOn();
     atHub();
     const ready = canLaunch(shipChecklist(campaign, defs));
     if (tally.stuck || (ready && !threadOpen() && !short())) break;
@@ -346,7 +375,7 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
     }
     while (raidDue(campaign, defs) && heat !== 'never' && paymentFor(campaign, defs).ok) pay('to head off the raid');
     if (raidDue(campaign, defs)) {
-      const begun = beginRaid(armFor(campaign, defs, 'ship'), defs, { difficulty });
+      const begun = beginRaid(armFor(campaign, defs, 'ship'), defs);
       if (!begun.ok) {
         tally.stuck = `the raid can't start: ${begun.error}`;
         break;
@@ -357,12 +386,14 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
         tally.stuck = `a raid with no winner after ${MAX_ROUNDS} rounds`;
         break;
       }
-      const before = { credits: fought.credits, parts: fought.parts };
+      const before = { credits: fought.credits, parts: fought.parts, crew: fought.crew };
       campaign = endRaid(fought, defs);
       if (battle.winner !== 'crew') tally.raidsLost += 1;
       const took = Object.keys(before.parts).find((type) => (campaign.parts[type] ?? 0) < before.parts[type]);
       const lost = took ? `they took the ${name(took)}` : before.credits > campaign.credits ? `they took ${before.credits - campaign.credits} credits` : 'there was nothing to take';
       say(`   Raid: ${battle.winner === 'crew' ? 'held' : `lost, ${lost}`}, in round ${battle.round}. Heat ${campaign.heat}.`);
+      buried(before);
+      if (tally.stuck) break;
       continue;
     }
     const needed = partsNeeded(campaign, defs);
@@ -379,7 +410,7 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
     const quest = job.quest ? `, ${defs.quests.get(job.quest).name.toLowerCase()}${ready ? ' before launching' : ''}` : '';
     say(`${tally.jobs}. ${words.title} (${words.mission}${words.twist ? `, ${words.twist.name}` : ''}${quest}${forFood ? ", for the voyage's food" : ''}): ${words.pay}, ${words.heat}.`);
     const armed = armFor(campaign, defs, 'ground');
-    const taken = job.quest ? takeQuestJob(armed, defs, job.quest, { difficulty }) : takeJob(armed, defs, index - quests.length, { difficulty });
+    const taken = job.quest ? takeQuestJob(armed, defs, job.quest) : takeJob(armed, defs, index - quests.length);
     if (!taken.ok) {
       tally.stuck = `the job can't start: ${taken.error}`;
       break;
@@ -393,6 +424,8 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
     tally[battle.winner === 'crew' ? 'done' : 'lost'] += 1;
     if (job.quest && battle.winner === 'crew') tally.questAt = tally.jobs;
     say(`   ${battle.winner === 'crew' ? 'Done' : 'Lost'} in round ${battle.round}: ${campaign.credits} credits, heat ${campaign.heat}.`);
+    buried(fought);
+    if (tally.stuck) break;
   }
   const launched = canLaunch(shipChecklist(campaign, defs));
   // The thread's act 1 step done, or none to do (M33b).
@@ -404,7 +437,7 @@ export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal
   say(launched
     ? `Ready to launch after ${tally.jobs} jobs (${tally.done} done, ${tally.lost} lost) and ${tally.raids} raid${tally.raids === 1 ? '' : 's'}: ${tally.orders} orders over ${tally.rounds} rounds, ${tally.fits} parts fitted, ${tally.bought} bought, ${tally.sold} sold, ${tally.payments} payments. ${thread ? `${thread.name}'s job ${threadDone ? `done at job ${tally.questAt}` : 'not done'}, in ${tally.questJobs} tr${tally.questJobs === 1 ? 'y' : 'ies'}. ` : ''}About ${minutes[0]} to ${minutes[1]} minutes.`
     : `Stopped short of launch: ${tally.stuck}.`);
-  return { launched, jobs: tally.jobs, raids: tally.raids, minutes, threadDone, tally, lines, campaign };
+  return { launched, over: gameOver(campaign), jobs: tally.jobs, raids: tally.raids, minutes, threadDone, tally, lines, campaign };
 }
 
 // Runs from seeds 1 to `runs`, summed up: { lines, results }.
@@ -436,7 +469,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     return i >= 0 ? args[i + 1] : fallback;
   };
   const defs = indexDefs(readData());
-  const options = { heat: value('--heat', 'hunters'), difficulty: value('--difficulty', 'normal'), background: value('--background', undefined) };
+  const options = { heat: value('--heat', 'hunters'), difficulty: value('--difficulty', 'normal'), permadeath: value('--permadeath', 'off') === 'on', background: value('--background', undefined) };
   const runs = Number(value('--runs', 0));
   console.log((runs ? manyRuns(defs, runs, options) : runToLaunch(defs, Number(value('--seed', 1)), options)).lines.join('\n'));
 }

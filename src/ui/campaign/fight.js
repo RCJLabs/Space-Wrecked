@@ -12,6 +12,7 @@
 // settling at the colony (M38f). Title leaves it as it is, for Continue; once it is won or
 // lost, Continue takes the crew home, or back to the run. The board is
 // ../fight/view.js's.
+import { isMachine } from '../../sim/battle.js';
 import { rankUps } from '../../sim/campaign.js';
 import { gearWon } from '../../sim/gear.js';
 import { endingFor } from '../fight/hints.js';
@@ -79,7 +80,7 @@ export const campaignFightScreen = {
         const gear = gearWon(fightOn(), battle, defs);
         const left = gear ? [`Left behind: ${aWeapon(gear, defs)}, on hand to swap in on the crew card.`] : [];
         const settled = job() ? settledLine(battle, campaign, defs) : null;
-        const sides = [...left, ...(settled ? [settled] : []), ...quests, ...(job() ? jobEndLines(campaign, defs, job(), won) : [])];
+        const sides = [...deathLines(battle, campaign, defs), ...left, ...(settled ? [settled] : []), ...quests, ...(job() ? jobEndLines(campaign, defs, job(), won) : [])];
         return { ...endedAs(battle, log, campaign), ranks, sides };
       },
       onChange(fight, prev) {
@@ -91,6 +92,17 @@ export const campaignFightScreen = {
     });
   },
 };
+
+// Who died in the fight, where death is permanent (M41): "Ada Grieve
+// died." And with no one left aboard, the game is over (campaign.js
+// gameOver), unless they were those at home while the ship is away.
+function deathLines(battle, campaign, rules) {
+  const dead = battle.units.filter((unit) => unit.side === 'crew' && unit.status === 'dead' && !unit.ward && !unit.citizen && !isMachine(unit, rules));
+  if (!dead.length) return [];
+  const names = dead.map((unit) => unit.name);
+  const last = dead.length >= campaign.crew.length && !campaign.colony?.voyage;
+  return [`${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]} died.${last ? ' No one is left aboard: the game is over.' : ''}`];
+}
 
 // True before the crew's first order: round 1, the crew's turn, every one
 // of them with every action left.
