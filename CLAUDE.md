@@ -110,7 +110,7 @@ PROGRESS.md
 - GitHub Pages serves `main`, published by `.github/workflows/pages.yml` (Pages source: GitHub Actions).
 - Use relative URLs everywhere (`./`), so the game runs at any address.
 - The game lives at `spacewrecked.rcjlabs.com`, set under Settings → Pages. With the Actions deploy GitHub ignores the `CNAME` file; it stays in the repo as a record. Never move the domain once players have saves: storage belongs to the origin.
-- The TWA setup follows Dirtbag. Stay on the TWA until feature-complete; the Capacitor conversion is Phase 9.
+- The TWA setup follows Dirtbag. Stay on the TWA until feature-complete; the Capacitor conversion is Phase 10.
 
 ## Licensing hygiene
 
