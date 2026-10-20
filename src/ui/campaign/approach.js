@@ -164,6 +164,8 @@ export const approachScreen = {
       setText(actLine, text.act);
       setText(whereLine, text.where);
       setText(roundLine, playing ? `Round ${playing.round}` : text.round);
+      // Tips wait while a round plays (tipSteps.js, M43).
+      el.dataset.playing = String(Boolean(playing));
       heat.show(text.heat);
 
       // Their order, and the player's.

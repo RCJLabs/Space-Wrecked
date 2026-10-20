@@ -266,7 +266,9 @@ function hintFor(approach, outcome, campaign, rules) {
   if (outcome) return outcomeHint(outcome);
   if (approach.ambush && (!approach.last || approach.last.order === null)) return trapHint(approach, rules);
   if (approach.last?.order === null) return patrolHint(approach, rules);
-  return approach.last ? { tone: 'info', text: '' } : openingHint(approach, campaign, rules);
+  // Past the first round the column shows what happened; a short line
+  // still says what's next (M43).
+  return approach.last ? { tone: 'info', text: 'Next round: tap an order to see its odds.' } : openingHint(approach, campaign, rules);
 }
 
 // A side's patrol that opened fire before the first round (M33): its words,

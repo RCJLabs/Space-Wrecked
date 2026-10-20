@@ -258,7 +258,7 @@ export const colonyScreen = {
         : (tripArmed ? trips.hint(campaign) : null) ?? said ?? (down ? raidHint(campaign, defs) : null) ?? voyages.hint(campaign) ?? trips.hint(campaign) ?? (plan?.same ? { text: `Tap the grid where the ${lowerFirst(buildingName(mode.type, defs))} should go, or turn it.`, tone: 'info' }
           : plan ? placeText(plan, { moving: mode.uid !== null })
           : mode.kind === 'look' ? buildingInfo(text.buildings.find((b) => b.uid === mode.uid))
-          : raidHint(campaign, defs) ?? text.news ?? { text: text.ahead, tone: 'info' });
+          : raidHint(campaign, defs) ?? text.news ?? text.next);
       setText(hint, words.text);
       hint.dataset.tone = words.tone;
 
@@ -357,10 +357,18 @@ export const colonyScreen = {
         );
         return;
       }
-      const sections = [...voyages.section(campaign), ...trips.placesSection(campaign), node('h2', null, 'Build'), list(text.builds.map((row) => rowButton(row.name, row.ok ? `${row.cost} materials · ${row.makes}` : row.why, row.ok, () => tapRow(row, 'build'))))];
+      // Build first, the colony's first work (M43); then the places and the
+      // voyage out.
+      const sections = [node('h2', null, 'Build'), list(text.builds.map((row) => rowButton(row.name, row.ok ? `${row.cost} materials · ${row.makes}` : row.why, row.ok, () => tapRow(row, 'build'))), 'cln-builds'), ...trips.placesSection(campaign), ...voyages.section(campaign)];
       if (text.hold.length) sections.push(node('h2', null, 'From the hold'), list(text.hold.map((row) => rowButton(row.name, row.ok ? `${row.building} · ${row.gives}` : row.why, row.ok, () => tapRow(row, 'hold'), row.count))));
       sections.push(node('h2', null, 'From the ship'), list(text.parts.map((row) => rowButton(row.name, row.ok ? `${row.building} · ${row.gives}` : row.why, row.ok, () => tapRow(row, 'ship'), row.count))));
       side.replaceChildren(...sections);
+    }
+
+    // A day's report, and what's next after it (M43): another day, unless
+    // the report says what to do.
+    function onward(report) {
+      return /\bTap\b|Defend/.test(report.text) ? report : { ...report, text: `${report.text} Tap Next day for the next.` };
     }
 
     // What the ghost costs, makes or gives, under its name.
@@ -374,8 +382,8 @@ export const colonyScreen = {
       return row?.gives ?? '';
     }
 
-    function list(items) {
-      const ul = node('ul');
+    function list(items, className = null) {
+      const ul = node('ul', className);
       ul.append(...items);
       return ul;
     }
@@ -555,7 +563,7 @@ export const colonyScreen = {
       }
       disarm();
       const result = nextDay(campaign, defs);
-      said = result.ok ? dayReport(result, defs) : { text: result.error, tone: 'bad' };
+      said = result.ok ? onward(dayReport(result, defs)) : { text: result.error, tone: 'bad' };
       game.dispatch({ type: 'campaign/day', rules: defs });
       if (alive) render(true);
     }

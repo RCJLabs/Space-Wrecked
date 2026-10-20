@@ -111,7 +111,7 @@ test('the last round, roll by roll, and the cutter closing', () => {
   const closing = closeChance(sideStats(state.them, rules), sideStats(state.you, rules), rules);
   assert.ok(text.intent.text.startsWith(`The cutter closes to board: ${closing}% to grapple on, after the volleys.`), text.intent.text);
   assert.equal(giveOrder(played, rules, { kind: 'evade' }).campaign.run.approach.last.events.find((e) => e.kind === 'close').chance, closing, 'the chance it rolls at');
-  assert.equal(text.hint.text, '', 'past the first round, the column says what happened instead');
+  assert.equal(text.hint.text, 'Next round: tap an order to see its odds.', 'past the first round, the column says what happened, and a short line what is next (M43)');
 });
 
 test('their flight, and the blow-up a last reactor risks, show their odds before the roll', () => {

@@ -62,6 +62,8 @@ import { sidesText } from './standingText.js';
 //   record      { title, lines: [[label, value]] }: how the run went (M25)
 //   news        what happened there while the ship was away (M38f,
 //               newsText.js): { text, tone }, or null with none
+//   next        what to do next (M43), for the hint when nothing else
+//               is said: { text, tone }
 //   ahead       the act's words for what is still to come
 //   text        the colony's words (data/colony.json)
 export function colonyText(campaign, rules) {
@@ -120,9 +122,18 @@ export function colonyText(campaign, rules) {
     world: { title: `${world.name} · ${kind}`, lines: [...worldSaid(world, rules, true), ...(world.surveyed ? [] : ['Settled without a survey: these are what the landing found.'])] },
     record: { title: actTitle(campaign.act - 1, rules), lines: runRecord(campaign, rules) },
     news: newsText(campaign.colony, campaign, rules),
+    next: nextHint(needs),
     ahead: actOf(campaign, rules)?.ahead ?? '',
     text: rules.colony?.text ?? '',
   };
+}
+
+// What to do next at the colony (M43): the needs not met first, then the
+// day.
+function nextHint(needs) {
+  const unmet = needs.filter((need) => need.ok === false).map((need) => need.label.toLowerCase());
+  if (unmet.length) return { tone: 'warn', text: `Not met yet, marked !: ${unmet.join(', ')}. Build for them, or give the ship's parts below. Then tap Next day.` };
+  return { tone: 'info', text: 'Every need is met. Tap Next day, or fly out to a place nearby.' };
 }
 
 // The colony's citizens, for its needs (M38f): how many and the beds they
