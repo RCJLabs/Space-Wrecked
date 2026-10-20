@@ -2,6 +2,16 @@
 
 Newest entry first.
 
+## A phase before the release (2026-10-20)
+
+Evan's call: before the launch, keep building and fine-tuning. ROADMAP.md §7 has a new **Phase 8: Build and tune** between Phase 7 (content and balance) and the release, which moves to Phase 9; Later is Phase 10, and CLAUDE.md's Capacitor line says so.
+- **Gate 7** now leads into Phase 8: v1.0's content plays on the phone, balanced from each start, with a tutorial a stranger can follow, and Evan wants to keep going. It is still Evan's call, and not yet passed.
+- **Gate 8 (draft)** leads to the release: the game plays on the phone as Evan wants it at launch, and he wants to release.
+- **Phase 8's milestones** are open: what Gate 7's play and its stranger turn up, picks from §9, and new content or systems Evan asks for. Each is added as he picks it, its Done when settled as it starts.
+- §6's v1.0 now spans Phases 7 to 9.
+
+**Next:** Gate 7 (Evan's), then Phase 8's first milestone, as Evan picks it.
+
 ## M43 Tutorial polish (2026-10-19)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met but the stranger with the phone, which is Evan's, at Gate 7. No save change: saves stay at v40.

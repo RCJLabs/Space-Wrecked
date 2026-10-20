@@ -557,7 +557,7 @@ The v1.0 column is a set of targets, not commitments.
 | v0.2 | 4 | The run: sectors, the approach phase, boarding both ways, recruits, scouting worlds |
 | v0.3 | 5 | The colony: settling, the colony builder, expeditions, raids |
 | v0.4 | 6 | Breadth: 3 backgrounds, 4 manufacturers, all jobs, factions, quests, images, audio |
-| v1.0 | 7 and 8 | Balanced, with a tutorial, released on Google Play |
+| v1.0 | 7 to 9 | Balanced, with a tutorial, built on and tuned, released on Google Play |
 
 Session estimates (mine, not measured): about 19 sessions for v0.1, 7 for v0.2, 4 for v0.3 and 6 for v0.4. v1.0 is open.
 
@@ -2292,13 +2292,24 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
     - the station's supplies hint names Buy and Fill up.
   - **The walk** is act 1 by touch to the first fight's end, then a sim-made save ready to launch, with the tips seen kept, standing in for act 1's remaining jobs and building. From there it is touch again to the colony's first day. It counts as guidance a tip, a hint naming a button, a hint saying what to tap ("tap one", "Pick 2 traits"), a scene with one way on (the lift-off, the landing), or, once the chart's tip is seen, the ringed nodes in reach.
 
-**Gate 7 (draft):** v1.0's content plays on the phone, balanced from each start, with a tutorial a stranger can follow; and Evan wants to release.
+**Gate 7 (draft):** v1.0's content plays on the phone, balanced from each start, with a tutorial a stranger can follow; and Evan wants to keep going. (Until 2026-10-20 this gate led to the release; Evan put a phase of building and fine-tuning before it.)
 
-### Phase 8: Release (v1.0)
+### Phase 8: Build and tune
+
+More building and fine-tuning before the launch (Evan's call, 2026-10-20). What it holds is open:
+- what Gate 7's play on the phone and its stranger turn up;
+- what Evan picks from §9;
+- new content or systems he asks for.
+
+No milestone is drafted yet. Each is added as Evan picks it, with its Done when settled as it starts, the same way as Phase 7's.
+
+**Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
+
+### Phase 9: Release (v1.0)
 
 TWA build, Play listing, closed test, performance on a low-end phone, offline and lost-save checks, license audit, credits screen, privacy policy.
 
-### Phase 9: Later
+### Phase 10: Later
 
 A Capacitor build; a paid version with a web demo; optional cloud saves on Base44; a daily seeded sector; online blueprint sharing.
 
@@ -2432,7 +2443,7 @@ These ideas wait until v0.4 or later:
 - the AI's out-and-back steps: in some layouts a unit steps out with one action and back with the next, turn after turn. In a raid on the colony, the raiders and a crew member with a torch out of reach did it for 20 rounds. In play the player moves the crew; the test harness makes both sides close in once a fight drags (raised in M37)
 - the worth of a weapon on the run: bought freely, the test players' weapons spent the purse that keeps the hunters off, and as many as 22 fewer voyages of 100 crossed fed. They buy only big steps up now, beyond a holdful's price and a swap's. Weapons may want to be cheaper, or the run's fights to matter more; and the table's wins are the whole squad carrying each, so what one member gains is a guess (raised in M37)
 - the new missions' balance: the still (a sabotage of two targets) wins 57% of the time, but only 10% by its objective, the rest as a clear-out; closing time (a defense of 8 rounds) wins 85%, 27% by holding. Act 1's credits at launch moved with the new jobs and the guards: the miner's up 44%, the deserter's down 9% and the smuggler's down 12%. For M40's balance runs (raised in M38)
-- the credits screen: ZzFX is the first entry in `assets/LICENSES.md`, and the screen that lists them comes with the release (Phase 8; raised in M35)
+- the credits screen: ZzFX is the first entry in `assets/LICENSES.md`, and the screen that lists them comes with the release (Phase 9; raised in M35)
 - the squad's wounds on the run: a station job costs its squad 6 to 19 hit points of 26 on average, and patching them costs 2 credits each, so work feeds the patching bill. A med bay's crew, fit more often, works more and patches more (raised in M38c)
 - a station's work on the chart: nothing says what a station posts until the ship is there. A mark for a station with work, or the count in the jump plan, would let a player plan a route for it (raised in M38c)
 - the test player's view of a job: it weighs a station job at the full-health start crews' odds and wounds (with act 1's factor for a twist), never by the squad going, so a hurt, ranked or better-armed squad weighs the same (raised in M38c)
