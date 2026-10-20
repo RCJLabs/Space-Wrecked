@@ -43,7 +43,14 @@ Newest entry first.
 - **New:** `tests/tutorial.test.js` (6).
 - **Changed on purpose:** `tests/approachText.test.js`, whose later rounds now carry a hint ("Next round: tap an order to see its odds.").
 
-**Browser checks:** REGRESS
+**Browser checks:**
+- **The walk:** above.
+- **Every earlier milestone's browser check:** passes at the three sizes, each the latest adapted copy (`m43/regress-a.sh`, `regress-b.sh`, M42's own check added). The exception is M32b's first copy, whose 2 known failures since M36 its fix copy covers.
+- **Adapted for M43:**
+  - M26's: the colony's hint says what's next, not the act's words.
+  - M27's, M28's, M38d fix's and M38e's: the colony lists Build first, then the places and the voyage out, so rows are found by their heading.
+  - M27's and M29's: a day's report ends "Tap Next day for the next.", dropped before comparing.
+  - M18's: it counts its own 11 tips, and back at the hangar allows one of M43's (heat, the shop).
 
 **Known issues:**
 - **Not a stranger:** the walk proves every stop has guidance, not that a stranger follows it. That is Evan's test at Gate 7.

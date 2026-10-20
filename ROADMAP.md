@@ -2257,7 +2257,7 @@ Detailed at the start of M36, once v0.4 was done. The rosters come first, so the
   - **The colorblind-safe set** changes `good` to blue, `bad` and `target` to magenta, `accent` to gold, and `dash`, the enemy trim and the enemy tracer; the rest are Standard's. Its least pair is 20.8 apart (deuteranopia and tritanopia); Standard's is 6.5.
   - **Reduced motion reaches every fight's playback,** the crew's own actions as well as the enemy's: every event takes no time, and the words of one tile stack rather than overlap.
   - **The colony's crew opener** lies over the whole crew list, taller than its panel at 130% on the short screens; it scrolls into view and takes a tap anywhere on the list.
-- [ ] **M43 Tutorial polish.** M18's tips cover building, the job board and the first fight. The draft:
+- [x] **M43 Tutorial polish.** M18's tips cover building, the job board and the first fight. The draft:
   - tips past the first fight, for the run and the colony (§9);
   - a stranger plays from New game to the colony unaided.
 
