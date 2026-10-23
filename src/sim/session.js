@@ -37,8 +37,17 @@
 // takes the session to the styling layer. A piece placed by a tap fits
 // itself to the hull where it can: turned the way it was, else another way
 // it takes (fitPiece), and Turn shows it the next way round.
+//
+// M44: a run of corridors laid by a drag (build/run), another maker's
+// version swapped in for a placed part (build/swap) and Suggest (the
+// fitter's spot for the armed part's ghost, build/suggest). A run and a
+// swap are one undo step each, but the log keeps their commands one by one
+// (a run's places; a swap's remove and place), so a log reads as it always
+// has.
 import { applyCommand, moduleAt, rotateModule, turnedPlacement } from './builder.js';
 import { flightChecklist } from './constraints.js';
+import { suggestSpot } from './fit.js';
+import { baseOf } from './makers.js';
 import { footprint } from './modules.js';
 import { fitPiece, nextTurn, pieceAt, pieceFootprint } from './styling.js';
 
@@ -69,7 +78,7 @@ export function partsLeft(session, type) {
 // The commands that built the current ship, oldest first (while the history
 // is under HISTORY_LIMIT).
 export function commandsOf(session) {
-  return session.past.map((entry) => entry.command);
+  return session.past.flatMap((entry) => entry.commands ?? [entry.command]);
 }
 
 export function reduceSession(session, action, defs) {
@@ -82,6 +91,12 @@ export function reduceSession(session, action, defs) {
       return tap(session, defs, action.x, action.y);
     case 'build/drop':
       return place(session, defs, action.placement);
+    case 'build/run':
+      return run(session, defs, action.cells);
+    case 'build/swap':
+      return swap(session, defs, action.uid, action.moduleType);
+    case 'build/suggest':
+      return suggest(session, defs);
     case 'build/move':
       return move(session, defs, action.uid, action.x, action.y, action.rot);
     case 'build/rotate':
@@ -262,6 +277,77 @@ function place(session, defs, placement) {
   );
 }
 
+// A run of the armed part (a corridor, M44): one placed on each cell in
+// turn, as one undo step, stopping short at the first cell that can't take
+// one or when none is left on hand. cells: [[x, y], ...] in the order the
+// finger crossed them.
+function run(session, defs, cells) {
+  const type = session.armed?.type;
+  const def = type && defs.modules.get(type);
+  if (!def || baseOf(def) !== 'corridor' || !Array.isArray(cells) || !cells.length) return session;
+  const { rot } = session.armed;
+  let ship = session.ship;
+  const commands = [];
+  let stop = null;
+  for (const [x, y] of cells) {
+    if (partsLeft({ ...session, ship }, type) < 1) {
+      stop = noneLeft(defs, type);
+      break;
+    }
+    const result = applyCommand(ship, defs, { op: 'place', type, x, y, rot });
+    if (!result.ok) {
+      stop = result.message;
+      break;
+    }
+    ship = result.ship;
+    commands.push({ op: 'place', uid: result.uid, type, x, y, rot });
+  }
+  if (!commands.length) return withNotice({ ...session, ghost: null }, 'bad', stop ?? `No ${def.name} placed.`);
+  const next = record(session, ship, commands, `place ${commands.length} × ${def.name}`);
+  const stayArmed = partsLeft(next, type) > 0;
+  const said = `Placed ${commands.length === 1 ? def.name : `${commands.length} × ${def.name}`}.`;
+  return withNotice({ ...next, armed: stayArmed ? session.armed : null, ghost: null, selected: null }, stop ? 'info' : 'good', stop ? `${said} Stopped: ${stop}` : said);
+}
+
+// Another maker's version of a placed part, on hand, swapped in where it
+// stands (M44): the same spot and turn, one undo step, the old one back on
+// hand. A wrecked part stays as it is. The log keeps a remove and a place,
+// and any styling piece the remove took off goes back on after.
+function swap(session, defs, uid, type) {
+  const item = session.ship.modules.find((m) => m.uid === uid);
+  const def = defs.modules.get(type);
+  if (!item || !def || item.type === type) return session;
+  const old = defs.modules.get(item.type);
+  if (baseOf(old) !== baseOf(def)) return withNotice(session, 'bad', `A ${def.name} can't stand in for the ${old.name}.`);
+  if (session.wrecked?.includes(uid)) return withNotice(session, 'bad', `The ${old.name} is wrecked: it can't be swapped until the station repairs it.`);
+  if (partsLeft(session, type) < 1) return withNotice(session, 'bad', noneLeft(defs, type));
+  const removed = applyCommand(session.ship, defs, { op: 'remove', uid });
+  const { x, y, rot } = item;
+  const placed = applyCommand(removed.ship, defs, { op: 'place', type, x, y, rot });
+  if (!placed.ok) return withNotice(session, 'bad', placed.message);
+  let ship = placed.ship;
+  const commands = [{ op: 'remove', uid }, { op: 'place', uid: placed.uid, type, x, y, rot }];
+  for (const piece of removed.removed ?? []) {
+    const back = applyCommand(ship, defs, { op: 'place', type: piece.type, x: piece.x, y: piece.y, rot: piece.rot });
+    if (!back.ok) continue;
+    ship = back.ship;
+    commands.push({ op: 'place', uid: back.uid, type: piece.type, x: piece.x, y: piece.y, rot: piece.rot });
+  }
+  const next = record(session, ship, commands, `swap ${old.name} for ${def.name}`);
+  return withNotice({ ...next, selected: placed.uid, ghost: null }, 'good', `Swapped the ${old.name} for a ${def.name}.`);
+}
+
+// Suggest (M44): the armed part's ghost where the fitter finds best
+// (fit.js suggestSpot), for a second tap to place.
+function suggest(session, defs) {
+  const type = session.armed?.type;
+  if (!type || !defs.modules.has(type)) return session;
+  const at = suggestSpot(session.ship, defs, type);
+  const name = nameOf(defs, type);
+  if (!at) return withNotice({ ...session, ghost: null }, 'bad', `No spot for the ${name} joins the ship as it stands.`);
+  return withNotice({ ...session, armed: { ...session.armed, rot: at.rot }, ghost: { type, ...at } }, 'info', `The ${name} fits best here: tap it to place it.`);
+}
+
 // rot: the turn it ends up with (a turned ghost's), or as it is.
 function move(session, defs, uid, x, y, rot) {
   const item = itemOf(session.ship, uid);
@@ -344,14 +430,14 @@ function remove(session, defs) {
 function undo(session) {
   const entry = session.past.at(-1);
   if (!entry) return session;
-  const next = { ...session, ship: entry.before, log: session.log.slice(0, -1), past: session.past.slice(0, -1), future: [...session.future, entry], ghost: placing(session) };
+  const next = { ...session, ship: entry.before, log: session.log.slice(0, session.log.length - (entry.commands?.length ?? 1)), past: session.past.slice(0, -1), future: [...session.future, entry], ghost: placing(session) };
   return withNotice(focus(next, entry), 'info', `Undone: ${entry.label}.`);
 }
 
 function redo(session) {
   const entry = session.future.at(-1);
   if (!entry) return session;
-  const next = { ...session, ship: entry.after, log: [...session.log, entry.command], past: [...session.past, entry], future: session.future.slice(0, -1), ghost: placing(session) };
+  const next = { ...session, ship: entry.after, log: [...session.log, ...(entry.commands ?? [entry.command])], past: [...session.past, entry], future: session.future.slice(0, -1), ghost: placing(session) };
   return withNotice(focus(next, entry), 'info', `Redone: ${entry.label}.`);
 }
 
@@ -402,10 +488,14 @@ function placing(session) {
   return session.ghost?.uid === undefined ? session.ghost : null;
 }
 
-function record(session, ship, command, label) {
-  const past = [...session.past, { before: session.ship, after: ship, command, label }];
+// One undo step. commands: the build commands it took, one or several (a
+// run, a swap); the entry's command is the last, which undo and redo focus.
+function record(session, ship, commands, label) {
+  const list = Array.isArray(commands) ? commands : [commands];
+  const entry = { before: session.ship, after: ship, command: list.at(-1), label, ...(list.length > 1 ? { commands: list } : {}) };
+  const past = [...session.past, entry];
   if (past.length > HISTORY_LIMIT) past.splice(0, past.length - HISTORY_LIMIT);
-  return { ...session, ship, log: [...session.log, command], past, future: [] };
+  return { ...session, ship, log: [...session.log, ...list], past, future: [] };
 }
 
 function withNotice(session, tone, text) {

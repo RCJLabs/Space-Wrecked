@@ -51,18 +51,16 @@
 //   node tools/run.js --background deserter   from another background's
 //                                    start (M30; data/backgrounds.json)
 import { pathToFileURL } from 'node:url';
+import { fitPart } from '../src/sim/fit.js';
 import { aiAction } from '../src/sim/ai.js';
-import { applyCommand, layoutProblems, occupancy } from '../src/sim/builder.js';
 import { firstBackground, gameOver, newCampaign, partsNeeded, refitShip, shipChecklist } from '../src/sim/campaign.js';
 import { canLaunch } from '../src/sim/constraints.js';
 import { endJob, takeJob, takeQuestJob, withBoard } from '../src/sim/contracts.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { buyPart, priceOf, sellPart, sellPriceOf } from '../src/sim/economy.js';
-import { cellAt, SIDES, step } from '../src/sim/grid.js';
 import { jobHeat, makePayment, paymentFor, pursuerOf, raidDue } from '../src/sim/heat.js';
 import { jobAction } from '../src/sim/jobAi.js';
 import { baseOf, countOfAny, versionAtHand } from '../src/sim/makers.js';
-import { placedCells } from '../src/sim/modules.js';
 import { pressAction } from '../src/sim/press.js';
 import { questJobs, threadOf } from '../src/sim/quests.js';
 import { beginRaid, endRaid } from '../src/sim/raid.js';
@@ -117,34 +115,9 @@ export const SECTOR_JUMPS = 7;
 export const FOOD_JOBS = 1;
 const LAUNCH_BUFFER = 4;
 
-// The ship with a part of `type` fitted where the builder's rules allow it
-// and the layout stays whole (every part joined to the bridge, every
-// exhaust and barrel facing space), touching as much of the ship as it
-// can; ties go to the first row, then column, then turn. Returns { ship,
-// at: { x, y, rot } }, or null if it fits nowhere. A spot is weighed before
-// it is tried: one touching nothing can't join the bridge, and one touching
-// no more than the best so far can't win, so neither is built (M23h: the
-// voyage's refits fit parts at every station).
-export function fitPart(ship, defs, type) {
-  const def = defs.modules.get(type);
-  const frame = defs.frames.get(ship.frame);
-  if (!def || !frame) return null;
-  const taken = occupancy(ship, defs);
-  const touching = (at) => placedCells(def, at).reduce((sum, [x, y]) => sum + SIDES.filter((side) => (cellAt(taken, ...step(x, y, side)) ?? null) !== null).length, 0);
-  let best = null;
-  for (const rot of def.rotates ? [0, 1, 2, 3] : [0]) {
-    for (let y = 0; y < frame.height; y++) {
-      for (let x = 0; x < frame.width; x++) {
-        const score = touching({ x, y, rot });
-        if (score === 0 || (best && score <= best.score)) continue;
-        const placed = applyCommand(ship, defs, { op: 'place', type, x, y, rot });
-        if (!placed.ok || layoutProblems(placed.ship, defs).length) continue;
-        best = { ship: placed.ship, at: { x, y, rot }, score };
-      }
-    }
-  }
-  return best && { ship: best.ship, at: best.at };
-}
+// The test players' fitter lives in the sim since M44 (fit.js), where the
+// builder's Suggest shares its search.
+export { fitPart };
 
 // The credits a launch keeps for act 2 (M40): its food from launch to the
 // system past the charts, what the jumps there eat (SECTOR_JUMPS a sector,
