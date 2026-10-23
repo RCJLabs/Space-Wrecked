@@ -23,6 +23,10 @@ export const icons = {
   reload: icon('<rect x="8" y="3" width="8" height="18" rx="2"/><path d="M8 8h8M8 13h8"/>'),
   stabilize: icon('<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/>'),
   door: icon('<path d="M3 21h18"/><path d="M6 21V3h12v18"/><path d="M14 12h.01"/>'),
+  // Doors as tactics (M45): a door swung shut onto its frame, and a
+  // padlock shut.
+  doorShut: icon('<path d="M3 21h18"/><path d="M6 21V3h12v18"/><path d="M6 3l6 2v16"/><path d="M10 12h.01"/>'),
+  lock: icon('<rect x="5" y="11" width="14" height="10" rx="1.5"/><path d="M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"/><path d="M12 15v2"/>'),
   grab: icon('<path d="m4 8.5 8-4 8 4v8l-8 4-8-4z"/><path d="m4 8.5 8 4 8-4M12 12.5v8"/>'),
   hack: icon('<rect x="3" y="4" width="18" height="13" rx="1.5"/><path d="m7 8.5 3 2.5-3 2.5M12 13.5h5"/><path d="M8 21h8M12 17v4"/>'),
   // A job's objective since M38: a padlock sprung open, to free a captive;

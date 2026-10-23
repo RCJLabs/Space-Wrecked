@@ -29,10 +29,10 @@ test('the colors and the text size take only what they can hold', () => {
 });
 
 test('save v40: a save from before has Standard colors at 100%', () => {
-  assert.equal(SAVE_VERSION, 40);
-  const { colors, textSize, ...v39 } = defaultSettings();
+  // On to the version now (v41 adds fog of war, M45).
+  const { colors, textSize, fog, ...v39 } = defaultSettings();
   const moved = migrate({ version: 39, data: { settings: v39, campaign: null } });
-  assert.equal(moved.version, 40);
+  assert.equal(moved.version, SAVE_VERSION);
   assert.deepEqual(moved.data.settings, defaultSettings());
   assert.deepEqual(migrate({ version: 39, data: { settings: null } }).data, { settings: null }, 'unreadable settings are left for validate to report');
 });

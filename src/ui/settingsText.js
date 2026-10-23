@@ -42,6 +42,14 @@ export function settingsText(settings, balance, campaign = null) {
         : 'Every shot is its odds, miss after miss. From the next fight.',
     },
     {
+      key: 'fog',
+      title: 'Fog of war',
+      choices: [{ value: false, label: 'Off' }, { value: true, label: 'On' }],
+      line: settings.fog
+        ? "In a fight, an enemy no one in the crew can see is hidden. The enemy still knows where the crew is."
+        : 'Every enemy in a fight shows, seen or not.',
+    },
+    {
       key: 'motion',
       title: 'Motion',
       choices: MOTIONS.map((value) => ({ value, label: { auto: 'As the phone', reduce: 'Reduce', full: 'Full' }[value] })),

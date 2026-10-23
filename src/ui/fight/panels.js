@@ -83,10 +83,10 @@ export function createCrewBar({ onSelect, onEnd, rules = () => null }) {
   }
 }
 
-// handlers: { shoot, overwatch, reload, job, stabilize, open, grab, hack,
-// free, plant, skip }. Stabilize, Open door, Grab, Hack, Free and Plant
-// show only when there is someone, a door, a crate, the terminal, a
-// captive or a target to do it to; the job's order (M32) only when the unit
+// handlers: { shoot, overwatch, reload, job, stabilize, open, close, lock,
+// grab, hack, free, plant, skip }. Stabilize, Open door, Close door, Lock
+// door (M45), Grab, Hack, Free and Plant show only when there is someone, a
+// door, a crate, the terminal, a captive or a target to do it to; the job's order (M32) only when the unit
 // can give it, with its name and the uses left.
 // tools: the buttons for the top of the column, made and wired by the
 // caller.
@@ -101,6 +101,8 @@ export function createActionBar(handlers, tools = []) {
     plant: toolButton('fgt-act fgt-job', icons.plant, 'Plant'),
     stabilize: toolButton('fgt-act', icons.stabilize, 'Stabilize'),
     open: toolButton('fgt-act', icons.door, 'Open door'),
+    close: toolButton('fgt-act', icons.doorShut, 'Close door'),
+    lock: toolButton('fgt-act', icons.lock, 'Lock door'),
     job: toolButton('fgt-act fgt-order', icons.shoot, 'Order'),
     shoot: toolButton('fgt-act', icons.shoot, 'Shoot'),
     overwatch: toolButton('fgt-act', icons.overwatch, 'Overwatch'),
@@ -129,6 +131,8 @@ export function createActionBar(handlers, tools = []) {
       buttons.reload.disabled = !orders?.reload;
       buttons.stabilize.hidden = playing || !orders?.stabilize;
       buttons.open.hidden = playing || !orders?.door;
+      buttons.close.hidden = playing || !orders?.close;
+      buttons.lock.hidden = playing || !orders?.lock;
       buttons.grab.hidden = playing || !orders?.grab;
       buttons.hack.hidden = playing || !orders?.hack;
       buttons.free.hidden = playing || !orders?.free;

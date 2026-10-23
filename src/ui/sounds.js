@@ -126,6 +126,10 @@ export function cueSound({ event, lands }, battle, rules) {
     case 'blast':
       return 'blast';
     case 'door':
+    case 'close':
+    case 'lock':
+    case 'unlock':
+    case 'force':
       return 'door';
     case 'reload':
       return 'reload';

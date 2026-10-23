@@ -340,7 +340,7 @@ test("a raid the player fights: the citizens stand beside the crew as colonists,
 });
 
 test('saves at v38: a colony from before has no citizens, nothing toward the next and no news, every colony; as saved they reload; unreadable ones are caught', () => {
-  assert.equal(SAVE_VERSION, 40);
+  assert.equal(SAVE_VERSION, 41);
   const step = MIGRATIONS.find((m) => m.from === 37);
   assert.equal(step, MIGRATIONS.at(-3), 'the last but M41\'s and M42\'s');
   const grown = roomy(2);

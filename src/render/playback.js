@@ -167,6 +167,22 @@ export function applyEvent(view, event) {
     case 'door':
       next.doors = [...view.doors, edgeKey(event.at[0], event.at[1], event.side)].sort();
       break;
+    // Doors as tactics (M45, locks.js).
+    case 'close':
+    case 'lock': {
+      const key = edgeKey(event.at[0], event.at[1], event.side);
+      next.doors = view.doors.filter((k) => k !== key);
+      if (event.type === 'lock') next.locks = [...(view.locks ?? []), { key, side: unit.side }];
+      break;
+    }
+    case 'unlock':
+    case 'force': {
+      const key = edgeKey(event.at[0], event.at[1], event.side);
+      next.doors = [...view.doors, key].sort();
+      next.locks = (view.locks ?? []).filter((lock) => lock.key !== key);
+      if (event.type === 'force') next.broken = [...(view.broken ?? []), key].sort();
+      break;
+    }
     case 'shot':
       unit.ammo -= 1;
       if (event.overwatch) unit.overwatch = false;

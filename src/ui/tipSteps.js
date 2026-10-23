@@ -62,6 +62,9 @@ export const TIP_STEPS = [
   { id: 'colony-build', screen: 'colony', at: '.cln-builds', done: '.cln-builds .cln-part', when: () => true },
   { id: 'colony-day', screen: 'colony', at: '.cln-day:not([disabled])', when: (state) => seen(state, 'colony-build') },
   { id: 'colony-trip', screen: 'colony', at: '.cln-places', done: '.cln-places .cln-part', when: (state) => seen(state, 'colony-day') },
+  // Doors as tactics (M45): the first time a crew member stands by a door
+  // in a fight.
+  { id: 'fight-doors', screen: 'campaign-fight', at: '.fgt-act[aria-label="Lock door"]:not([hidden])', when: (state, rules, find) => calm(find) && Boolean(find('.fgt-act[aria-label="Lock door"]:not([hidden])')) },
 ];
 
 export const TIP_IDS = TIP_STEPS.map((step) => step.id);

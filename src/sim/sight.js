@@ -55,3 +55,11 @@ export function lineOfSight(battle, [ax, ay], [bx, by], rules) {
   }
   return true;
 }
+
+// Fog of war (M45, a setting): the ids of the units not of `side` that one
+// of its own standing can see now. Only what the screen shows asks this;
+// the rules and the AI see everything as before.
+export function sightedBy(battle, side, rules) {
+  const eyes = battle.units.filter((u) => u.side === side && u.status === 'active');
+  return new Set(battle.units.filter((u) => u.side !== side && eyes.some((e) => canSee(battle, [e.x, e.y], [u.x, u.y], rules))).map((u) => u.id));
+}

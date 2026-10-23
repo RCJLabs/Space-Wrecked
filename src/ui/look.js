@@ -1,5 +1,6 @@
 // How the game looks for its player (M42): the colors (standard or
-// colorblind-safe, src/render/palette.js) and the text size. Sets the
+// colorblind-safe, src/render/palette.js) and the text size; and from M45
+// fog of war, <html data-fog="on" or "off">, which the fight reads. Sets the
 // palette, its CSS custom properties, <html style="--ts"> that every
 // font-size in style.css multiplies by (and <html data-text>, for the rules
 // bigger text needs), and the canvas's text scale; now,
@@ -9,17 +10,18 @@ import { applyCssVars, usePalette } from '../render/palette.js';
 import { setTextScale } from '../render/textScale.js';
 
 export function syncLook(store) {
-  const apply = ({ colors, textSize }) => {
+  const apply = ({ colors, textSize, fog }) => {
     usePalette(colors);
     applyCssVars();
     const root = document.documentElement;
     root.dataset.colors = colors;
     root.dataset.text = String(textSize);
+    root.dataset.fog = fog ? 'on' : 'off';
     root.style.setProperty('--ts', String(textSize / 100));
     setTextScale(textSize / 100);
   };
   apply(store.getState().settings);
   store.subscribe((state, prev) => {
-    if (state.settings.colors !== prev.settings.colors || state.settings.textSize !== prev.settings.textSize) apply(state.settings);
+    if (state.settings.colors !== prev.settings.colors || state.settings.textSize !== prev.settings.textSize || state.settings.fog !== prev.settings.fog) apply(state.settings);
   });
 }

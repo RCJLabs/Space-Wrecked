@@ -27,11 +27,12 @@ const SOLID = new Set(['wall', 'hull']); // runs that go straight on without a p
 const STEP = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 const FLOOR_UNDER = { fire: 'scorch', vacuum: 'frost', rubble: 'dust' };
 
-// input: { map, skin, open, fires, mounts }: open is a battle's open
-// doors, by edge key (battle.doors); fires the tiles a weapon set burning
+// input: { map, skin, open, locked, fires, mounts }: open is a battle's open
+// doors, by edge key (battle.doors); locked its locked ones (M45,
+// battle.locks' keys), drawn red and as tall as the walls; fires the tiles a weapon set burning
 // (battle.fires); mounts the tiles a ship's turrets (M39) stand on, [[x,
 // y]], drawn as a bare base plate for the turret to stand on.
-export function battleScene({ map, skin, open = [], fires = [], mounts = [] }) {
+export function battleScene({ map, skin, open = [], locked = [], fires = [], mounts = [] }) {
   const faces = [];
   const glows = [];
   const edge = { edge: skin.edge };
@@ -68,7 +69,7 @@ export function battleScene({ map, skin, open = [], fires = [], mounts = [] }) {
 
   // A weapon's fire (M37): flames on the tile, whatever floor is under them.
   for (const { at } of fires) HAZARDS.fire(faces, glows, at[0], at[1], 'floor');
-  walls(faces, map, skin, new Set(open));
+  walls(faces, map, skin, new Set(open), new Set(locked));
   for (const { x, y, side } of map.hatches) collar(faces, glows, x, y, side, skin);
   // A room open to space glows cold, once for the whole room.
   for (const room of map.rooms) {
@@ -94,7 +95,7 @@ export function battleBoxes(map) {
 // of wall or hull goes on through. Each piece is its top and its two long
 // sides: its ends are always against a post or the next piece. A north or
 // west edge's key is "x,y,side" (mapFromShip.js edgeKey).
-function walls(faces, map, skin, open) {
+function walls(faces, map, skin, open, locked = new Set()) {
   const posts = new Map();
   for (let vy = 0; vy <= map.height; vy++) {
     for (let vx = 0; vx <= map.width; vx++) {
@@ -132,6 +133,7 @@ function walls(faces, map, skin, open) {
         };
         if (kind === 'wall') piece(THICK.wall, WALL_H, skin.wall);
         else if (kind === 'hull') piece(THICK.hull, HULL_H, skin.hull);
+        else if (kind === 'door' && locked.has(`${x},${y},${side}`)) piece(THICK.door, WALL_H, skin.door, skin.doorLocked, true);
         else if (kind === 'door') piece(THICK.door, open.has(`${x},${y},${side}`) ? OPEN_DOOR_H : DOOR_H, skin.door, skin.doorLight, true);
         else piece(THICK.hatch, HULL_H - 0.1, skin.livery, skin.glassHi, true);
       }

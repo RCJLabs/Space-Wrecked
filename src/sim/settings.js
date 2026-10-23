@@ -9,6 +9,8 @@
 //   volume      how loud, in percent: one of VOLUMES
 //   colors      'standard', or 'safe' for colorblind-safe colors (M42)
 //   textSize    how big the text is, in percent: one of TEXT_SIZES (M42)
+//   fog         fog of war (M45): in a fight, an enemy no one in the crew
+//               can see is hidden. Only what the screen shows changes
 // The difficulty was a setting too until M41, when it became the
 // campaign's (difficulty.js).
 
@@ -27,7 +29,7 @@ export const MAX_TIPS = 64;
 const TIP_ID = /^[a-z][a-z0-9-]{0,31}$/;
 
 export function defaultSettings() {
-  return { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, colors: 'standard', textSize: 100 };
+  return { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, colors: 'standard', textSize: 100, fog: false };
 }
 
 // Actions:
@@ -41,6 +43,7 @@ export function defaultSettings() {
 //   settings/volume { value }       one of VOLUMES
 //   settings/colors { value }       standard or safe
 //   settings/textSize { value }     one of TEXT_SIZES
+//   settings/fog { value }          fog of war on or off (M45)
 export function reduceSettings(settings, action) {
   const set = (key, ok) => (!ok || action.value === settings[key] ? settings : { ...settings, [key]: action.value });
   switch (action.type) {
@@ -60,6 +63,8 @@ export function reduceSettings(settings, action) {
       return set('colors', COLORS.includes(action.value));
     case 'settings/textSize':
       return set('textSize', TEXT_SIZES.includes(action.value));
+    case 'settings/fog':
+      return set('fog', typeof action.value === 'boolean');
     case 'settings/tips/reset':
       return settings.tips && !settings.tipsSeen.length ? settings : { ...settings, tips: true, tipsSeen: [] };
     case 'settings/tip/seen':
@@ -81,6 +86,7 @@ export function settingsProblems(settings) {
   if (!VOLUMES.includes(settings.volume)) problems.push('The volume setting is invalid.');
   if (!COLORS.includes(settings.colors)) problems.push('The colors setting is invalid.');
   if (!TEXT_SIZES.includes(settings.textSize)) problems.push('The text size setting is invalid.');
+  if (typeof settings.fog !== 'boolean') problems.push('The fog of war setting is invalid.');
   const { tipsSeen } = settings;
   if (typeof settings.tips !== 'boolean' || !Array.isArray(tipsSeen) || tipsSeen.length > MAX_TIPS || !tipsSeen.every((id) => TIP_ID.test(id)) || new Set(tipsSeen).size !== tipsSeen.length) {
     problems.push('The tips settings are unreadable.');
