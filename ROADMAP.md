@@ -2333,6 +2333,23 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **A swap** re-fits the styling pieces the old part held, as a move does. Its buttons sit on the part's card, which stays open for their tap.
   - **Launch in construction mode** dispatches the campaign's own launch once the session clears it, so its refusals are the hangar's.
 
+- [ ] **M45 Doors as tactics.** Item 6 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-23, "Do recommendations"). From §9: closing and locking doors in battle (defenders sealing a breach), and fog of war.
+
+  Measured first (main after M44):
+  - **Doors in a fight today:** a door starts closed. Walking through it, or the 1-action Open door, opens it for good. Only the engineer's Weld (M32) closes one, and it gives way after its rounds. A closed door blocks sight and shots; a walk through it opens it at no extra cost.
+  - **The harness** (`node tools/sim.js --fights 400`, the squad against the boarding party on the ten ships): the crew wins 49% (44–54), the boarders 38%, and 13% reach 30 rounds with no winner. A fight is 7 rounds (5–12) and 24 shots. Weld is used 0.2 times a fight.
+  - **What the enemy can see:** every enemy is always on the board (M8), though a shot already needs the shooter's own line of sight (`src/sim/sight.js` canSee).
+
+  Done when (my recommendations, taken on Evan's word):
+  - **Close a door:** a unit beside an open door closes it, 1 action. The door button reads Close door then, and Open door beside a closed one. Walking through a closed door still opens it, as now.
+  - **Lock a door:** a crew member beside a door, open or closed, locks it, 1 action (Lock door), closing it if it was open. No one walks or sees through a locked door. The crew opens their own lock with Open door, 1 action.
+  - **Forcing a lock:** the other side forces a locked door from beside it with a whole turn (both actions). A forced door is broken: it stays open for the rest of the fight and can't be closed or locked again, so a lock can't be shut in an enemy's face turn after turn. A welded door (M32) still can't be forced until the weld gives way.
+  - **The AI forces what's in its way:** the enemy and everyone pressing on (`press.js`) head for a locked door that stands between them and the crew, and force it. They never lock or close doors themselves. No fight stalls at a lock: the harness with a crew that locks the doors beside it (a new `--doors lock` player) reports its no-winner rate against today's 13%, and a rise of more than 5 points is fixed before M45 closes.
+  - **Fog of war,** an option in Settings (Fight: Fog of war, off by default): with it on, an enemy no one in the crew can see now is hidden on the board and can't be picked. In the enemy's turn, a hidden enemy's walk isn't shown; one that shoots at the crew shows for its shot. The rules and the AI are the same either way: fog only changes what the screen shows, and the enemy still knows where the crew is. Saves go to v41 with the setting off.
+  - **A tip** the first time a crew member stands beside a door in a fight: doors close and lock, and a lock costs the enemy a turn.
+  - **Every rule tested;** every earlier milestone's check passes.
+  - **Touch, at the three sizes:** close, lock and open a door; watch the enemy force one; fog on hides an enemy out of sight and shows it once seen.
+
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
 ### Phase 9: Release (v1.0)
