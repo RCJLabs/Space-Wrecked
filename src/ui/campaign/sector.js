@@ -22,7 +22,9 @@
 // crew are let go, two taps each. At a station a tap on the ship's panel
 // is Refit: construction mode (construction.js), with the parts on hand
 // (M23h). A ship that fails a flight check there can't jump until a refit
-// fixes it, and the chart says so. Since M24 a jump's plan says the chance
+// fixes it, and the chart says so. Elsewhere on the run, with nothing to
+// deal with first, it is Rearrange (M46): the same mode, the parts aboard
+// moving and turning, and a ship whose joins fail waits for them. Since M24 a jump's plan says the chance
 // the pursuer's hunters wait where it comes out, and the nodes they may
 // wait at are ringed in red; Regroup, away from stations, rests the crew a
 // day (Hide, in a nebula, sheds heat), and at a station the transponder is
@@ -299,16 +301,16 @@ export const sectorScreen = {
       map.inert = covered;
       if (carded) disarm();
 
-      // Refit, at a station or a shipyard: the ship's panel opens
-      // construction mode.
+      // Refit, at a station or a shipyard, or Rearrange between jumps
+      // (M46): the ship's panel opens construction mode.
       const { refit: station } = text;
       const refitting = Boolean(station) && !covered;
       shipOpener.hidden = !refitting;
       shipPanel.dataset.refit = String(refitting);
       shipPanel.dataset.broken = String(Boolean(station?.broken));
       shipChevron.hidden = !refitting;
-      setText(shipHead, station ? 'Ship · Refit' : 'Ship');
-      shipOpener.setAttribute('aria-label', station ? `Refit. ${station.broken ?? station.line}` : 'Ship');
+      setText(shipHead, station ? `Ship · ${station.label}` : 'Ship');
+      shipOpener.setAttribute('aria-label', station ? `${station.label}. ${station.broken ?? station.line}` : 'Ship');
 
       // A day's rest: Regroup, or Hide in a nebula, where one can be taken.
       const { rest } = text;
@@ -562,8 +564,9 @@ export const sectorScreen = {
       for (const line of text.world ?? []) said.push(lineItem(line, 'info'));
       if (text.survey && !text.survey.ok) said.push(lineItem(text.survey.why, 'bad'));
       // The station's or yard's refits: what Refit, on the ship's panel,
-      // would fit, or the flight check that keeps the ship here.
-      if (station) said.push(lineItem(station.broken ?? station.line, station.broken ? 'bad' : station.parts ? 'good' : 'info'));
+      // would fit, or the flight check that keeps the ship here; between
+      // jumps, only the check.
+      if (station && (!station.rearrange || station.broken)) said.push(lineItem(station.broken ?? station.line, station.broken ? 'bad' : station.parts ? 'good' : 'info'));
       infoLines.replaceChildren(...said);
       buyButtons = (offer?.buys ?? []).map((entry) => {
         const button = toolButton('sct-buy', icons.supplies, armed === entry.count ? entry.ask : entry.label);
@@ -676,8 +679,9 @@ export const sectorScreen = {
       render(true);
     }
 
-    // Refit: construction mode on the ship, at a station or a shipyard.
-    // Opening it changes nothing, so it takes one tap.
+    // Refit: construction mode on the ship, at a station or a shipyard, or
+    // to rearrange it between jumps (M46). Opening it changes nothing, so
+    // it takes one tap.
     function refit() {
       const { campaign } = game.getState();
       if (!defs || !campaign || !sectorText(campaign, defs).refit) return;

@@ -110,7 +110,7 @@ function partsLine(ship, defs) {
 // exhaust and barrel facing space (the whole-layout rules from builder.js).
 // A missing bridge or airlock is the parts line's to report, so it isn't
 // repeated here.
-function layoutLine(ship, defs) {
+export function layoutLine(ship, defs) {
   const problems = layoutProblems(ship, defs);
   if (problems.some((p) => p.rule === 'bridge')) return { id: 'layout', ok: null, text: 'Joins are checked once there is a bridge', fix: null, add: null };
   const hasAirlock = ship.modules.some((m) => {

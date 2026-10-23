@@ -112,7 +112,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  41  doors as tactics: the settings keep fog of war, off (M45); a fight
 //      under way can hold locked doors and doors forced, absent until the
 //      first, so it reads as it was
-export const SAVE_VERSION = 41;
+//  42  refits on the move: a boarding fight's salvage keeps her working
+//      parts to pick from (M46); one under way offers the parts it rolled
+export const SAVE_VERSION = 42;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -556,6 +558,17 @@ export const MIGRATIONS = [
   {
     from: 40,
     up: (data) => (isObject(data) && isObject(data.settings) ? { ...data, settings: { ...data.settings, fog: false } } : data),
+  },
+  // Picking what to strip (M46). A boarding fight under way rolled its
+  // parts as it began: they are what it offers, and still what it takes.
+  {
+    from: 41,
+    up: (data) => {
+      const fight = isObject(data) && isObject(data.campaign) ? data.campaign.fight : null;
+      const salvage = isObject(fight) && isObject(fight.boarding) ? fight.boarding.salvage : null;
+      if (!isObject(salvage) || !Array.isArray(salvage.parts)) return data;
+      return { ...data, campaign: { ...data.campaign, fight: { ...fight, boarding: { ...fight.boarding, salvage: { ...salvage, pool: [...salvage.parts] } } } } };
+    },
   },
 ];
 

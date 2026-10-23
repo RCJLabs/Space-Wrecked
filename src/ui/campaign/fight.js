@@ -9,7 +9,8 @@
 // boarders'. Whatever the fight, the end panel names who reaches a rank as
 // it ends (M32b), a job's what it moves with the sides (M33), and a won
 // fight a weapon it left behind (M37), and a rescue on a voyage the captive
-// settling at the colony (M38f). Title leaves it as it is, for Continue; once it is won or
+// settling at the colony (M38f), and a won boarding the parts to strip off
+// her, picked there (M46). Title leaves it as it is, for Continue; once it is won or
 // lost, Continue takes the crew home, or back to the run. The board is
 // ../fight/view.js's.
 import { isMachine } from '../../sim/battle.js';
@@ -18,7 +19,7 @@ import { gearWon } from '../../sim/gear.js';
 import { endingFor } from '../fight/hints.js';
 import { mountFight } from '../fight/view.js';
 import { icons } from '../icons.js';
-import { boardingObjective, boardingOutcome } from './boardingText.js';
+import { boardingObjective, boardingOutcome, stripPicks } from './boardingText.js';
 import { aWeapon } from './armsText.js';
 import { rankUpLines } from './crewJobText.js';
 import { jobOutcome, objectiveText, raidObjective, raidOutcome, settledLine } from './jobText.js';
@@ -81,13 +82,13 @@ export const campaignFightScreen = {
         const left = gear ? [`Left behind: ${aWeapon(gear, defs)}, on hand to swap in on the crew card.`] : [];
         const settled = job() ? settledLine(battle, campaign, defs) : null;
         const sides = [...deathLines(battle, campaign, defs), ...left, ...(settled ? [settled] : []), ...quests, ...(job() ? jobEndLines(campaign, defs, job(), won) : [])];
-        return { ...endedAs(battle, log, campaign), ranks, sides };
+        return { ...endedAs(battle, log, campaign), ranks, sides, picks: stripPicks(battle, campaign, defs) };
       },
       onChange(fight, prev) {
         if (fight.battle !== prev.battle) game.dispatch({ type: 'campaign/fight/save', battle: fight.battle, log: fight.log });
       },
-      onOver() {
-        if (defs) game.dispatch({ type: 'campaign/fight/end', rules: defs });
+      onOver(picks) {
+        if (defs) game.dispatch({ type: 'campaign/fight/end', rules: defs, ...(picks ? { strip: picks } : {}) });
       },
     });
   },

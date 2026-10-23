@@ -87,7 +87,7 @@ test('sound and volume take only what they can hold; a save from before M35 has 
   assert.equal(reduceSettings(settings, { type: 'settings/volume', value: 70 }), settings, 'the same volume changes nothing');
   assert.deepEqual(settingsProblems({ ...settings, sound: 1, volume: 45 }), ['The sound setting is invalid.', 'The volume setting is invalid.']);
   // The migration: v29 had no sound to switch.
-  assert.equal(SAVE_VERSION, 41);
+  assert.equal(SAVE_VERSION, 42);
   const { sound, volume, ...v29 } = settings;
   const step = MIGRATIONS.find((m) => m.from === 29);
   assert.deepEqual(step.up({ settings: { ...v29, motion: 'reduce' } }).settings, { ...v29, motion: 'reduce', sound: true, volume: 70 });
@@ -95,7 +95,7 @@ test('sound and volume take only what they can hold; a save from before M35 has 
   const old = { version: 29, data: { ...saveData(initialState(5)), settings: v29 } };
   const loaded = parseSave(JSON.stringify(old));
   assert.ok(loaded.ok, loaded.error);
-  assert.equal(loaded.save.version, 41);
+  assert.equal(loaded.save.version, 42);
   assert.deepEqual([loaded.save.data.settings.sound, loaded.save.data.settings.volume], [true, 70]);
 });
 

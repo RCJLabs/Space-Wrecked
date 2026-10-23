@@ -13,6 +13,7 @@ import { repairPrice } from '../src/sim/repair.js';
 import { beginRun, jump, linked } from '../src/sim/travel.js';
 import { approachText, damageText } from '../src/ui/campaign/approachText.js';
 import { boardingObjective, boardingOutcome } from '../src/ui/campaign/boardingText.js';
+import { scrapLeft } from '../src/sim/strip.js';
 import { continueText } from '../src/ui/campaign/hubText.js';
 import { nodeText, sectorText } from '../src/ui/campaign/sectorText.js';
 import { withPart } from '../tools/startShip.js';
@@ -133,12 +134,17 @@ test('their flight, and the blow-up a last reactor risks, show their odds before
 });
 
 test('how it ended, and the boarding fight it ended in', () => {
-  const boarded = approachText(endingIn('boarded', () => ({ kind: 'fire', at: 'reactor' }), { credits: 50 }), rules);
+  const ended = endingIn('boarded', () => ({ kind: 'fire', at: 'reactor' }), { credits: 50 });
+  const boarded = approachText(ended, rules);
   const cutter = rules.ships.get('cutter');
+  // M46: the parts picked, her scrap as much as she has left working.
+  const { them } = ended.run.approach;
+  const [least, most] = cutter.scrap.map((credits) => scrapLeft(credits, them.ship, them.wrecked));
   assert.equal(boarded.outcome.title, 'The cutter is dead in space.');
   assert.equal(boarded.outcome.board, 'them');
   assert.ok(boarded.outcome.lines.includes('Her crew: Pirate ×2, Pirate gunner, Pirate brute.'), boarded.outcome.lines.join(' | '));
-  assert.ok(boarded.outcome.lines.includes(`Win aboard her: strip 1 part off her, and her scrap, ${cutter.scrap[0]} to ${cutter.scrap[1]} credits.`));
+  assert.ok(most < cutter.scrap[1], 'the volleys broke some of her');
+  assert.ok(boarded.outcome.lines.includes(`Win aboard her: strip 1 part you pick off her, and her scrap, ${least} to ${most} credits, what the volleys left of it.`), boarded.outcome.lines.join(' | '));
   assert.ok(boarded.outcome.lines.includes('Win: 30% to pick up one of their weapons.'), 'M37: what a win can leave');
   assert.ok(boarded.outcome.lines.includes('Lose: the crew is beaten back to your ship, hurt.'));
   assert.deepEqual([boarded.outcome.boarding.begin.label, boarded.outcome.boarding.leave.label, boarded.hint.text], ['Board her', 'Leave her', 'Board her, or leave her.']);
@@ -159,10 +165,10 @@ test('a boarding fight: the line under the round, how it ended, and Continue', (
   const { battle, boarding } = aboard.fight;
   assert.deepEqual(boardingObjective(battle, aboard), { title: 'Aboard the cutter', progress: '4 of hers left', done: false, deadline: null });
   assert.equal(continueText(aboard, rules), `Act 2 · Aboard the Pirate cutter, round ${battle.round}`);
-  const parts = boarding.salvage.parts.map((type) => rules.modules.get(type).name);
   const won = boardingOutcome({ ...battle, winner: 'crew' }, aboard, rules);
   assert.deepEqual([won.tone, won.title], ['good', 'The cutter is yours']);
-  assert.ok(parts.every((name) => won.text.includes(name)) && won.text.endsWith(`Scrap: ${boarding.salvage.credits} credits.`), won.text);
+  // M46: the parts to strip are picked on the end panel.
+  assert.equal(won.text, `Strip a part off her: the dearest is picked, tap to pick others. Scrap: ${boarding.salvage.credits} credits.`);
   assert.deepEqual(boardingOutcome({ ...battle, winner: 'enemy' }, aboard, rules), { tone: 'bad', title: 'Beaten back', text: 'The crew falls back to your ship, hurt. Nothing taken.' });
   const home = beginBoarding(endingIn('boardedBy', () => ({ kind: 'evade' }), { parts: { armory: 1 } }), rules).campaign;
   assert.deepEqual(boardingObjective(home.fight.battle, home), { title: 'Boarders', progress: '4 left', done: false, deadline: null });

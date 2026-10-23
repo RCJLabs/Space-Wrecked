@@ -26,7 +26,7 @@ const ALWAYS = new Set(['mass', 'hp']);
 // placed: { module, joined, wrecked } for a part on the hull, where joined
 // is true, false, or null when there is no bridge yet, and wrecked is true
 // for a part an approach wrecked, which stays on until a station repairs it
-// (M23h).
+// (M23h) or it is scrapped for a spare (M46).
 export function cardFor(defs, def, placed = null) {
   const [w, h] = footprint(def, placed?.module.rot ?? 0);
   const faces = def.facesSpace ? ` · ${def.facesSpace.what} must face space` : '';
@@ -45,7 +45,7 @@ export function cardFor(defs, def, placed = null) {
     const where = `At (${placed.module.x}, ${placed.module.y})`;
     const joined = placed.joined === null ? 'no bridge yet' : placed.joined ? 'joined to the bridge' : 'not joined to the bridge';
     lines.push(`${where} · ${joined}`);
-    if (placed.wrecked) lines.push('Wrecked in an approach: it comes off once the station repairs it, and it can still move.');
+    if (placed.wrecked) lines.push('Wrecked in an approach: it comes off once the station repairs it, or scrap it for a spare of it on hand. It can still move.');
   }
   return { title: def.name, lines };
 }

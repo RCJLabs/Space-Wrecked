@@ -6,6 +6,7 @@
 // brings materials. rules are the content tables (src/sim/defs.js).
 import { boardingDue } from '../../sim/encounter.js';
 import { raidLoss } from '../../sim/raid.js';
+import { scrapLeft } from '../../sim/strip.js';
 import { gearLine } from './armsText.js';
 
 // The boarding that is due, as the approach screen offers it, or null:
@@ -23,11 +24,15 @@ export function boardingStakes(campaign, rules) {
   const [min, max] = due.preset.scrap ?? [0, 0];
   if (due.dir === 'them') {
     const parts = due.preset.salvage ?? 0;
+    // Her scrap, as much of it as she has left working (M46).
+    const { them } = campaign.run.approach;
+    const [least, most] = [min, max].map((credits) => scrapLeft(credits, them.ship, them.wrecked));
+    const broken = most < max ? ', what the volleys left of it' : '';
     return {
       dir: 'them',
       lines: [
         `Her crew: ${crew}.`,
-        `Win aboard her: strip ${parts} part${parts === 1 ? '' : 's'} off her, and her scrap, ${min} to ${max} credits.`,
+        `Win aboard her: strip ${parts} part${parts === 1 ? '' : 's'} you pick off her, and her scrap, ${least} to ${most} credits${broken}.`,
         ...[gearLine(rules)].filter(Boolean),
         'Lose: the crew is beaten back to your ship, hurt.',
       ],
@@ -64,20 +69,36 @@ export function boardingOutcome(battle, campaign, rules) {
   const place = placeOf(campaign);
   if (place) {
     if (battle.winner !== 'crew') return { tone: 'bad', title: 'Beaten back', text: 'The squad falls back to the ship, hurt. Nothing taken.' };
-    const parts = salvage.parts.map((type) => `${article(partName(type, rules))} ${partName(type, rules)}`);
-    return { tone: 'good', title: `${place.name} is yours`, text: `${parts.length ? `Stripped: ${parts.join(', ')}. ` : ''}Materials: ${salvage.materials ?? 0}, as far as the stores take them.` };
+    return { tone: 'good', title: `${place.name} is yours`, text: `${pickLine(salvage)}Materials: ${salvage.materials ?? 0}, as far as the stores take them.` };
   }
   const name = shortName(campaign.run?.approach?.enemy.name ?? 'ship');
   const scrap = `Scrap: ${salvage.credits} credits.`;
   if (battle.winner === 'crew') {
     if (dir === 'you') return { tone: 'good', title: 'Boarders thrown off', text: `Their gear: ${salvage.credits} credits of scrap.` };
-    const parts = salvage.parts.map((type) => `${article(partName(type, rules))} ${partName(type, rules)}`);
-    return { tone: 'good', title: `The ${name} is yours`, text: `${parts.length ? `Stripped: ${parts.join(', ')}. ` : ''}${scrap}` };
+    return { tone: 'good', title: `The ${name} is yours`, text: `${pickLine(salvage)}${scrap}` };
   }
   if (dir === 'them') return { tone: 'bad', title: 'Beaten back', text: 'The crew falls back to your ship, hurt. Nothing taken.' };
   const loss = raidLoss(campaign, rules);
   const took = loss?.part ? `They took the ${partName(loss.part, rules)}.` : loss?.credits ? `They took ${loss.credits} credits.` : 'There was nothing to take.';
   return { tone: 'bad', title: 'Overrun', text: took };
+}
+
+// What the end panel says of the parts to strip (M46): how many to pick.
+function pickLine(salvage) {
+  const n = salvage.parts.length;
+  if (!n) return '';
+  return `Strip ${n === 1 ? 'a part' : `${n} parts`} off her: the dearest ${n === 1 ? 'is' : 'are'} picked, tap to pick others. `;
+}
+
+// The parts a won boarding strips off her, to pick on the end panel (M46):
+// { count, pool: [{ type, label }], start }, or null for any other end.
+export function stripPicks(battle, campaign, rules) {
+  const salvage = campaign?.fight?.boarding?.dir === 'them' && battle.winner === 'crew' ? campaign.fight.boarding.salvage : null;
+  if (!salvage?.parts.length) return null;
+  const pool = (salvage.pool ?? salvage.parts).map((type) => ({ type, label: partName(type, rules) }));
+  const start = [];
+  for (const type of salvage.parts) start.push(pool.findIndex((part, i) => part.type === type && !start.includes(i)));
+  return { count: salvage.parts.length, pool, start: start.filter((i) => i >= 0) };
 }
 
 // "Pirate ×3, Pirate brute": the party's names in order of first showing,
@@ -103,8 +124,4 @@ function placeOf(campaign) {
 // "Pirate cutter" -> "cutter".
 function shortName(name) {
   return name.split(' ').at(-1).toLowerCase();
-}
-
-function article(word) {
-  return /^[aeiou]/i.test(word) ? 'an' : 'a';
 }

@@ -164,7 +164,7 @@ test("Kestrel's and Scrapline's cards say how theirs differ: lighter, frailer an
 test("a wrecked part's card says it stays on until a station repairs it, and the run's chip says Ready to jump (M23h)", () => {
   const engine = defs.modules.get('engine');
   const card = cardFor(defs, engine, { module: { uid: 4, type: 'engine', x: 0, y: 2, rot: 0 }, joined: true, wrecked: true });
-  assert.equal(card.lines.at(-1), 'Wrecked in an approach: it comes off once the station repairs it, and it can still move.');
+  assert.equal(card.lines.at(-1), 'Wrecked in an approach: it comes off once the station repairs it, or scrap it for a spare of it on hand. It can still move.');
   assert.ok(!cardFor(defs, engine, { module: { uid: 4, type: 'engine', x: 0, y: 2, rot: 0 }, joined: true }).lines.some((line) => line.startsWith('Wrecked')));
   const ship = readyToLaunch().ship;
   const lines = flightChecklist(ship, defs, 3);
