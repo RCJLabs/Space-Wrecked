@@ -273,7 +273,7 @@ export function reach(sector, id) {
 export function failingCheck(campaign, rules) {
   const liftOff = actOf(campaign, rules)?.liftOff ?? null;
   if (atPort(campaign, rules)) return flightChecklist(campaign.ship, rules, campaign.crew.length, { liftOff }).find((line) => line.ok !== true) ?? null;
-  if (!campaign.run) return null;
+  if (!campaign.run || !onTheRun(campaign, rules)) return null;
   const joins = layoutLine(campaign.ship, rules);
   return joins.ok === true ? null : joins;
 }

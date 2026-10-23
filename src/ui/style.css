@@ -4273,15 +4273,15 @@ textarea {
   text-align: center;
 }
 
-/* A won boarding's parts to strip (M46): a row of toggles that scrolls
-   sideways when she has more than fit. A picked one is lit and ticked, so
-   it reads without its color (M42). */
+/* A won boarding's parts to strip (M46): toggles that wrap into rows, the
+   panel scrolling when she has more than fit. A picked one is lit and
+   ticked, so it reads without its color (M42). */
 .fgt-over-picks {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 6px;
   max-width: 100%;
-  overflow-x: auto;
-  overscroll-behavior: contain;
   padding: 2px;
 }
 
