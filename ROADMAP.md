@@ -2386,7 +2386,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
 
   Measured first (main after M46):
   - **Sides:** every screen with a side column puts the orders on the right and the information on the left: the fight (crew bar left, orders right), the builder (drawer left, tools right), and the hangar, chart, colony, approach and shop, as column grids. Nothing mirrors them.
-  - **Playback:** an enemy turn plays for 3.3 s at the median (p90 4.9 s, the longest 6.3 s) and a whole fight's playback for 43 s (p90 62 s): 100 AI fights on the example ship, timed by `src/render/playback.js`. The approach plays each round for 2 to 4 s. Reduced motion (M42) is the only way to shorten either, and it drops the playback altogether.
+  - **Playback:** an enemy turn plays for 3.3 s at the median (p90 4.9 s, the longest 6.3 s) and a whole fight's playback for 43 s (p90 62 s): 100 AI fights on the example ship, timed by `src/render/playback.js`. The approach plays a round for 1.0 s at the median (p90 1.5 s, the longest 2.5 s; 5,075 rounds, the harness ships against every hostile preset). Reduced motion (M42) is the only way to shorten either, and it drops the playback altogether.
   - **Confirming:** a second tap confirms on the boards (a move or shot, a part's ghost, a building's) and on 12 armed buttons (End turn, Launch, Pay, the approach's orders, the chart's jumps, the colony's, the shop's, events, New game, a save's delete, a wreck's scrap), each with its own `armed` and timeout; there is no shared helper. A hold (450 ms, `src/ui/gestures.js`) opens the info card on the boards.
   - **Vibration:** none. §9 has held "vibration on hits" since before M4.
 
