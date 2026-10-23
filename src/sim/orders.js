@@ -42,7 +42,7 @@ import { shotOdds } from './odds.js';
 import { jobAtRank } from './ranks.js';
 import { talentOrder } from './talents.js';
 import { canSee } from './sight.js';
-import { weldedAt } from './terrain.js';
+import { brokenAt, weldedAt } from './terrain.js';
 import { outOfReach, withinReach } from './weapons.js';
 
 // Each kind's numbers, with how far they go, and whom it reaches: 'enemy'
@@ -99,7 +99,8 @@ export function orderTargets(battle, unit, rules) {
     case 'self':
       return [unit.id];
     case 'door':
-      return SIDES.filter((side) => wallAt(battle.map, unit.x, unit.y, side) === 'door' && !weldedAt(battle, unit.x, unit.y, side));
+      // A forced door (locks.js, M45) stays open.
+      return SIDES.filter((side) => wallAt(battle.map, unit.x, unit.y, side) === 'door' && !weldedAt(battle, unit.x, unit.y, side) && !brokenAt(battle, unit.x, unit.y, side));
     default:
       return [];
   }
@@ -188,6 +189,7 @@ export function doOrder(battle, unit, action, events, rules) {
 function weld(battle, unit, order, side, events) {
   if (!SIDES.includes(side) || wallAt(battle.map, unit.x, unit.y, side) !== 'door') return `There's no door on that side of ${unit.name}.`;
   if (weldedAt(battle, unit.x, unit.y, side)) return 'That door is welded shut already.';
+  if (brokenAt(battle, unit.x, unit.y, side)) return 'That door was forced: it stays open.';
   const key = edgeKey(unit.x, unit.y, side);
   unit.uses -= 1;
   unit.ap -= 1;

@@ -4,7 +4,7 @@
 // it, the cover it gives a unit beside it, and whether it blocks sight. On
 // the edges, a wall, the hull or a hatch always stands in the way; a door
 // does while it is closed, and a unit walking through opens it, unless it
-// is welded shut (orders.js, M32).
+// is welded shut (orders.js, M32) or locked (locks.js, M45).
 import { cellAt } from './grid.js';
 import { edgeKey, wallAt } from './mapFromShip.js';
 
@@ -33,10 +33,23 @@ export function weldedAt(battle, x, y, side) {
   return (battle.welds ?? []).some((w) => w.key === key);
 }
 
+// The lock on the door on `side` of (x, y), { key, side } (the side that
+// locked it), or null (locks.js, M45).
+export function lockAt(battle, x, y, side) {
+  const key = edgeKey(x, y, side);
+  return (battle.locks ?? []).find((lock) => lock.key === key) ?? null;
+}
+
+// True if the door on `side` of (x, y) was forced: it stays open for the
+// rest of the fight (locks.js, M45).
+export function brokenAt(battle, x, y, side) {
+  return (battle.broken ?? []).includes(edgeKey(x, y, side));
+}
+
 // True if there is a closed door on `side` of (x, y) that a unit there can
-// open: not open already, and not welded shut.
+// open: not open already, not welded shut and not locked.
 export function shutDoor(battle, x, y, side) {
-  return wallAt(battle.map, x, y, side) === 'door' && !battle.doors.includes(edgeKey(x, y, side)) && !weldedAt(battle, x, y, side);
+  return wallAt(battle.map, x, y, side) === 'door' && !battle.doors.includes(edgeKey(x, y, side)) && !weldedAt(battle, x, y, side) && !lockAt(battle, x, y, side);
 }
 
 // The hazard on the tile at (x, y): null, 'fire', 'vacuum' or 'rubble'. A

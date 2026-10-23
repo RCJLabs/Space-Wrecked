@@ -23,6 +23,10 @@
 //            extract, and hauled is set once it has moved this turn
 //   doors    the keys of the doors opened so far (mapFromShip.js edgeKey)
 //   welds    the doors welded shut, [{ key, until }] (orders.js)
+//   locks    absent until the first lock (M45, locks.js), then the doors
+//            locked, [{ key, side }]: side is the one that locked it
+//   broken   absent until a lock is first forced (M45), then the keys of
+//            the doors forced, which stay open
 //   fires    absent until a weapon's hit sets a tile burning (weapons.js
 //            burn, M37), then [{ at: [x, y], until }]: each burns as a
 //            wrecked room's fire does through round `until`
@@ -56,7 +60,12 @@
 //   { type: 'stabilize', unit, target }  1 action: a downed ally beside it
 //                                        stops bleeding
 //   { type: 'open', unit, side }         1 action: opens the door on that
-//                                        side of its tile ('n', 'e', 's', 'w')
+//                                        side of its tile ('n', 'e', 's', 'w'),
+//                                        unlocking its own side's lock
+//   { type: 'close' | 'lock' | 'force', unit, side }   the door on that
+//                                        side: close or lock it, 1 action, or
+//                                        force the other side's lock, its
+//                                        whole turn (locks.js, M45)
 //   { type: 'grab', unit, at: [x, y] }   1 action: the crew grabs a crate of
 //                                        the objective's in its reach
 //                                        (terrain.js inReach), or on an
@@ -84,10 +93,11 @@ import { moveRange, reachable, sideToward } from './moves.js';
 import { afterMove, blastHits, breakThrough, chargesDue, holdOut, OBJECTIVE_ACTIONS, objectiveAction, objectiveDone, startObjective, steppedThrough, wardLost } from './objectives.js';
 import { shotOdds } from './odds.js';
 import { doOrder, endOrders, endWelds, freshOrders, wakeTurn } from './orders.js';
+import { doorAction, unlockDoor } from './locks.js';
 import { jobAtRank } from './ranks.js';
 import { talentOrder } from './talents.js';
 import { canSee } from './sight.js';
-import { hazardAt, tileRule, walkable, weldedAt } from './terrain.js';
+import { hazardAt, lockAt, tileRule, walkable, weldedAt } from './terrain.js';
 import { armorAgainst, outOfReach, shotsOf, withinReach } from './weapons.js';
 
 // setup: { map, units: [{ kind, x, y, name?, hp?, bonus?, rank?, talent?,
@@ -248,6 +258,8 @@ export function targetsFor(battle, unit, rules) {
 function draft(battle) {
   const copy = { ...battle, units: battle.units.map((u) => ({ ...u })), doors: [...battle.doors], welds: [...(battle.welds ?? [])], misses: { ...battle.misses } };
   if (battle.fires) copy.fires = [...battle.fires];
+  if (battle.locks) copy.locks = [...battle.locks];
+  if (battle.broken) copy.broken = [...battle.broken];
   return copy;
 }
 
@@ -312,6 +324,7 @@ function doAction(battle, unit, action, events, rules) {
       const key = edgeKey(unit.x, unit.y, action.side);
       if (battle.doors.includes(key)) return 'That door is open already.';
       if (weldedAt(battle, unit.x, unit.y, action.side)) return 'That door is welded shut.';
+      if (lockAt(battle, unit.x, unit.y, action.side)) return unlockDoor(battle, unit, action.side, events);
       unit.ap -= 1;
       battle.doors = [...battle.doors, key].sort();
       events.push({ type: 'door', unit: unit.id, at: [unit.x, unit.y], side: action.side });
@@ -319,6 +332,10 @@ function doAction(battle, unit, action, events, rules) {
     }
     case 'order':
       return doOrder(battle, unit, action, events, rules);
+    case 'close':
+    case 'lock':
+    case 'force':
+      return doorAction(battle, unit, action, events, rules);
     default:
       return `Unknown action "${action.type}".`;
   }

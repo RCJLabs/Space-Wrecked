@@ -53,6 +53,7 @@ import { blastsAt, playFor } from './objectiveAi.js';
 import { orderAction } from './orderAi.js';
 import { rescueAction } from './rescueAi.js';
 import { SIDES } from './grid.js';
+import { forceAction } from './locks.js';
 import { edgeKey, wallAt } from './mapFromShip.js';
 import { moveRange, reachable, sideToward, stepsFrom } from './moves.js';
 import { shotOdds } from './odds.js';
@@ -92,7 +93,14 @@ export function aiAction(battle, rules) {
   // A machine (M39, a ship's turret) has no moves and opens no door: it
   // shoots or watches from where it stands.
   const plans = plansFor(battle, unit, rules);
-  return planAction(unit, bestPlan(isMachine(unit, rules) ? plans.filter((plan) => !plan.open) : plans));
+  const plan = bestPlan(isMachine(unit, rules) ? plans.filter((plan) => !plan.open) : plans);
+  // With no shot to take this turn, a lock the crew shut in its way is
+  // forced (locks.js, M45): no fight waits at a locked door.
+  if (plan?.then?.type !== 'shoot' && !isMachine(unit, rules)) {
+    const force = forceAction(battle, unit, rules);
+    if (force) return force;
+  }
+  return planAction(unit, plan);
 }
 
 // The next action toward a plan of plansFor's: open the door, get there,
