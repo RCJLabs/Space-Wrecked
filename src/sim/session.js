@@ -188,6 +188,13 @@ function cancel(session) {
   return { ...session, armed: null, ghost: null, selected: null };
 }
 
+// Whether a tap at (px, py) lands on the ghost, so would put the part down or
+// move it there (M47: with holds confirming, the screen asks for a hold
+// instead).
+export function tapOnGhost(session, defs, px, py) {
+  return Boolean(session.ghost) && covers(defs, session.ghost, Math.floor(px), Math.floor(py));
+}
+
 function tap(session, defs, px, py) {
   const { ship, armed, ghost, selected } = session;
   const frame = defs.frames.get(ship.frame);

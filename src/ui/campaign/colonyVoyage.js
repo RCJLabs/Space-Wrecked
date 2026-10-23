@@ -31,6 +31,7 @@
 //                                   null
 // voyages.cancel()                  back from planning
 import { flyFrom, voyageOut, voyagePlan } from '../../sim/voyage.js';
+import { confirms } from '../confirm.js';
 import { node } from '../fight/panels.js';
 import { icons } from '../icons.js';
 import { carry, takeCarried } from './carried.js';
@@ -81,7 +82,7 @@ export function createVoyages(ctx) {
         node('h2', null, to === null ? 'Voyage' : 'Flight'),
         about,
         actionRow([
-          [to === null ? 'Fly out' : 'Fly to', icons.launch, () => tapFly(), armed() === 'voyage' ? 'cln-confirm cln-armed' : 'cln-confirm', words.ok],
+          [to === null ? 'Fly out' : 'Fly to', icons.launch, (press) => tapFly(press), armed() === 'voyage' ? 'cln-confirm cln-armed' : 'cln-confirm', words.ok],
           ['Refit', icons.build, () => game.dispatch({ type: 'screen/show', screen: 'construction' }), null, true],
           ['Back', icons.prev, () => back(), null, true],
         ]),
@@ -133,9 +134,9 @@ export function createVoyages(ctx) {
   // Fly out, or Fly to (M38e): the first tap says what it comes to; the
   // second flies, and the chart opens, or for a flight the colony it lands
   // at, or where a lander stopped it.
-  function tapFly() {
+  function tapFly(press) {
     if (!crew) return;
-    if (armed() !== 'voyage') {
+    if (!confirms(armed() === 'voyage', press)) {
       say(null);
       arm('voyage');
       return;

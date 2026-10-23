@@ -13,6 +13,7 @@ import { titlePicture } from '../render/scenes/scenes.js';
 import { drawStars, makeStarfield, paintBackdrop } from '../render/starfield.js';
 import { continueText } from './campaign/hubText.js';
 import { clearDraft } from './campaign/newGame.js';
+import { confirms, holdWords } from './confirm.js';
 import { onTap } from './gestures.js';
 import { motionReduced } from './motion.js';
 
@@ -53,7 +54,7 @@ export const titleScreen = {
     let armTimer = 0;
     const cleanups = [
       onTap(continueButton, () => game.dispatch({ type: 'campaign/continue' })),
-      onTap(newButton, newGame),
+      onTap(newButton, newGame, { confirm: true }),
       onTap(settingsButton, () => game.dispatch({ type: 'screen/show', screen: 'settings' })),
       game.subscribe(() => alive && sync()),
     ];
@@ -74,8 +75,8 @@ export const titleScreen = {
       newButton.textContent = armed ? 'Start over?' : 'New game';
     }
 
-    function newGame() {
-      if (game.getState().campaign && !armed) {
+    function newGame(press) {
+      if (game.getState().campaign && !confirms(armed, press)) {
         armed = true;
         clearTimeout(armTimer);
         armTimer = setTimeout(() => {
@@ -83,7 +84,7 @@ export const titleScreen = {
           note.textContent = '';
           if (alive) sync();
         }, ARM_MS);
-        note.textContent = 'Tap again to start a new game. The campaign under way will be lost once you start.';
+        note.textContent = holdWords('Tap again to start a new game. The campaign under way will be lost once you start.');
         sync();
         return;
       }

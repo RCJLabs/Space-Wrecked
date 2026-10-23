@@ -1,7 +1,7 @@
 // Text for the settings screen (settings.js): each setting's choices, and
 // what the one picked does, its numbers from data/balance.json. Pure.
 import { DIFFICULTIES, enemyBonus, gunneryBonus } from '../sim/difficulty.js';
-import { COLORS, FPS_CAPS, MOTIONS, TEXT_SIZES, VOLUMES } from '../sim/settings.js';
+import { COLORS, CONFIRMS, FPS_CAPS, HANDS, MOTIONS, SPEEDS, TEXT_SIZES, VOLUMES } from '../sim/settings.js';
 
 // The rows, in order: [{ key, title, choices: [{ value, label }], value,
 // action, line }]. key is the setting (sim/settings.js); value is the one
@@ -48,6 +48,32 @@ export function settingsText(settings, balance, campaign = null) {
       line: settings.fog
         ? "In a fight, an enemy no one in the crew can see is hidden. The enemy still knows where the crew is."
         : 'Every enemy in a fight shows, seen or not.',
+    },
+    {
+      key: 'hand',
+      title: 'Hand',
+      choices: HANDS.map((value) => ({ value, label: { right: 'Right hand', left: 'Left hand' }[value] })),
+      line: settings.hand === 'left' ? 'The orders and tools sit on the left, what you read on the right.' : 'The orders and tools sit on the right, what you read on the left.',
+    },
+    {
+      key: 'confirm',
+      title: 'Confirm',
+      choices: CONFIRMS.map((value) => ({ value, label: { taps: 'Two taps', hold: 'Hold' }[value] })),
+      line: settings.confirm === 'hold'
+        ? 'A tap shows what will happen; hold it to do it. On the board, hold the move, the target or the ghost shown.'
+        : 'A tap shows what will happen; tap again to do it.',
+    },
+    {
+      key: 'speed',
+      title: 'Playback speed',
+      choices: SPEEDS.map((value) => ({ value, label: `${value / 100}×` })),
+      line: settings.speed === 100 ? "Fights and the approach play out as drawn." : `The enemy's turns and the approach's rounds play ${settings.speed / 100} times as fast.`,
+    },
+    {
+      key: 'vibration',
+      title: 'Vibration',
+      choices: [{ value: false, label: 'Off' }, { value: true, label: 'On' }],
+      line: settings.vibration ? 'The phone buzzes when shots land and the ship is hit, if it can.' : 'No vibration.',
     },
     {
       key: 'motion',

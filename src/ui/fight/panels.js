@@ -10,6 +10,7 @@
 // Reload, not a job's Grab, Hack, Free or Plant. The person the crew brings
 // out (M38) has a button among the crew's, and no gun: Shoot, Overwatch and
 // Reload stay where they are, off.
+import { holdWords } from '../confirm.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { shortNames } from '../names.js';
@@ -22,7 +23,7 @@ export function createCrewBar({ onSelect, onEnd, rules = () => null }) {
   const list = node('div', 'fgt-units');
   const end = toolButton('fgt-end', icons.endTurn, 'End turn');
   el.append(list, end);
-  const cleanups = [onTap(end, onEnd)];
+  const cleanups = [onTap(end, onEnd, { confirm: true })];
   let rows = new Map(); // id -> { button, fill, state }
   let built = null; // the units and faces the buttons were made for
   return {
@@ -202,6 +203,9 @@ export function toolButton(className, icon, label) {
 }
 
 // Writes text into an element only when it changed.
+// Words set through here say "hold" for "tap again" when holds confirm
+// (M47, confirm.js holdWords).
 export function setText(el, text) {
-  if (el.textContent !== text) el.textContent = text;
+  const said = holdWords(text);
+  if (el.textContent !== said) el.textContent = said;
 }

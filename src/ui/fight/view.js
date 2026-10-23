@@ -16,6 +16,7 @@
 // the board takes the next; Skip goes to the end at once.
 import { createStore } from '../../core/store.js';
 import { cue } from '../../platform/audio.js';
+import { buzz } from '../../platform/haptics.js';
 import { loadContent } from '../../platform/content.js';
 import { battleBoxes } from '../../render/battleScene.js';
 import { createBattleBoard, FIGHT_VIEW } from '../../render/battleView.js';
@@ -27,14 +28,17 @@ import { convexHull, inside } from '../../render/pick.js';
 import { cuesBetween, frameAt, makeTimeline, poseAt } from '../../render/playback.js';
 import { crewColor, LYING_TOP, ordersScene, UNIT_TOP, unitsScene, zonesScene } from '../../render/units.js';
 import { describeEvent } from '../../sim/battleLog.js';
-import { canAct, createFight, ordersFor, reduceFight, selectedUnit } from '../../sim/fight.js';
+import { canAct, createFight, ordersFor, reduceFight, selectedUnit, tapActs } from '../../sim/fight.js';
 import { crewLook } from '../../sim/looks.js';
 import { sightedBy } from '../../sim/sight.js';
 import { tileText } from '../battle/tileText.js';
+import { again, confirms, holdMode } from '../confirm.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { playbackSpeed } from '../motion.js';
 import { cueSound, fightSounds } from '../sounds.js';
 import { machineUrl, portraitUrl } from '../portrait.js';
+import { fightBuzz } from '../vibrations.js';
 import { chipFor, endingFor, eventText, hintFor, oddsText, unitText } from './hints.js';
 import { objectiveMarks, objectiveZones } from './marks.js';
 import { createActionBar, createCrewBar, node, setText, toolButton } from './panels.js';
@@ -186,10 +190,14 @@ export function mountFight(root, source) {
         // A tile an enemy hidden in the fog of war (M45) stands on is as
         // good as empty to the screen: the tap shows nothing.
         if (at && hiddenAt(at)) return order({ type: 'fight/cancel' });
+        // With holds confirming (M47), a tap on what is shown only says so.
+        if (at && holdMode() && tapActs(store.getState(), at[0], at[1], defs)) return setStatus({ tone: 'info', text: 'Hold it to do it.' });
         order(at ? { type: 'fight/tap', x: at[0], y: at[1] } : { type: 'fight/cancel' });
       },
       longPress(x, y) {
         if (!store || busy()) return;
+        const held = tileAt(x, y);
+        if (held && holdMode() && !hiddenAt(held) && tapActs(store.getState(), held[0], held[1], defs)) return order({ type: 'fight/tap', x: held[0], y: held[1] });
         const unit = unitUnder(x, y);
         if (unit) return openCard('unit', unitText(unit, defs, store.getState().battle), x);
         const at = tileAt(x, y);
@@ -336,7 +344,8 @@ export function mountFight(root, source) {
       // With reduced motion (M42) the end shows at once, its words and
       // sounds with it, and the board is free.
       const still = document.documentElement.dataset.motion === 'reduce';
-      playing = { timeline: makeTimeline(prev.battle, fight.played, { still }), start: performance.now(), frame: null, done: false, heard: -1 };
+      // speed (M47): the playback's, kept from its start to its end.
+      playing = { timeline: makeTimeline(prev.battle, fight.played, { still }), start: performance.now(), speed: playbackSpeed(), frame: null, done: false, heard: -1 };
       closeCard();
     }
     if (fight.notice && fight.notice !== prev.notice) {
@@ -365,15 +374,15 @@ export function mountFight(root, source) {
   }
 
   // End turn takes two taps while anyone still has an action left.
-  function endTurn() {
+  function endTurn(press) {
     if (!store || busy()) return;
     const { battle } = store.getState();
     if (battle.winner || battle.side !== 'crew') return;
-    if (battle.units.some((u) => canAct(battle, u)) && !endArmed) {
+    if (battle.units.some((u) => canAct(battle, u)) && !confirms(endArmed, press)) {
       endArmed = true;
       clearTimeout(endTimer);
       endTimer = setTimeout(() => (disarmEnd(), sync()), ARM_MS);
-      setStatus({ tone: 'warn', text: 'Tap End turn again to end it: the crew still has actions left.' });
+      setStatus({ tone: 'warn', text: `${again('End turn')} to end it: the crew still has actions left.` });
       crewBar.setEnd('armed');
       return;
     }
@@ -466,9 +475,12 @@ export function mountFight(root, source) {
   // Moves a playback on to `now`, and plays the sounds of what it passed
   // (M35). After a long gap (the game away), only the last moment's.
   function advance(now) {
-    const t = Math.max(0, now - playing.start);
+    const t = Math.max(0, now - playing.start) * playing.speed;
     const heard = Math.max(playing.heard, t - SOUND_CATCH_UP);
-    for (const moment of cuesBetween(playing.timeline, heard, t)) cue(cueSound(moment, store.getState().battle, defs));
+    for (const moment of cuesBetween(playing.timeline, heard, t)) {
+      cue(cueSound(moment, store.getState().battle, defs));
+      buzz(fightBuzz(moment, store.getState().battle));
+    }
     playing.heard = t;
     const frame = frameAt(playing.timeline, t);
     const before = playing.frame;

@@ -20,3 +20,10 @@ export function syncMotion(store) {
   store.subscribe((state, prev) => state.settings.motion !== prev.settings.motion && apply());
   query?.addEventListener('change', apply);
 }
+
+// The playback's speed (M47): how many times as fast as drawn a fight's and
+// an approach's playback runs, from <html data-speed> (look.js).
+export function playbackSpeed() {
+  const speed = Number(document.documentElement.dataset.speed);
+  return speed > 0 ? speed / 100 : 1;
+}

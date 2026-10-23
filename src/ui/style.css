@@ -5148,3 +5148,86 @@ textarea {
   overflow-wrap: normal;
   hyphens: auto;
 }
+
+/* Hold to confirm (M47): a button that arms fills while it is held, and
+   acts once full (the long press, 450 ms). */
+#ui button[data-holding='true'] {
+  background-image: linear-gradient(color-mix(in srgb, var(--c-accent) 55%, transparent), color-mix(in srgb, var(--c-accent) 55%, transparent));
+  background-repeat: no-repeat;
+  background-size: 0% 100%;
+  animation: hold-fill 450ms linear forwards;
+}
+
+@keyframes hold-fill {
+  to {
+    background-size: 100% 100%;
+  }
+}
+
+:root[data-motion='reduce'] #ui button[data-holding='true'] {
+  animation: none;
+  background-size: 100% 100%;
+}
+
+/* Left hand (M47): the side columns change places, the orders and tools on
+   the left and what is read on the right. The flex screens run backwards;
+   the grid screens lay their columns right to left, their contents still
+   left to right. The boards aren't flipped. */
+:root[data-hand='left'] .fight,
+:root[data-hand='left'] .builder {
+  flex-direction: row-reverse;
+}
+
+:root[data-hand='left'] .hgr,
+:root[data-hand='left'] .shop {
+  direction: rtl;
+}
+
+:root[data-hand='left'] .hgr > *,
+:root[data-hand='left'] .shop > * {
+  direction: ltr;
+}
+
+:root[data-hand='left'] .fgt-crew {
+  padding: 8px 14px 8px 8px;
+  border-right: none;
+  border-left: 1px solid var(--c-line);
+}
+
+/* The drawer, now on the right, keeps its extra room on the right, off the
+   back-gesture edge there. */
+:root[data-hand='left'] .bld-drawer {
+  border-right: none;
+  border-left: 1px solid var(--c-line);
+}
+
+/* The board's own buttons go to its left, by the tools. */
+:root[data-hand='left'] #ui .bld-fit,
+:root[data-hand='left'] #ui .bld-hull,
+:root[data-hand='left'] #ui .bld-suggest {
+  right: auto;
+  left: 8px;
+}
+
+:root[data-hand='left'] #ui .bld-fit {
+  left: 72px;
+}
+
+/* The foot's buttons run from the left, the last (Build, Jump, Buy) under
+   the left thumb. */
+:root[data-hand='left'] .hgr-foot,
+:root[data-hand='left'] .shop-foot,
+:root[data-hand='left'] .apr-foot {
+  flex-direction: row-reverse;
+}
+
+/* The builder's layout line moves right, clear of the board's buttons. */
+:root[data-hand='left'] .bld-layout {
+  left: auto;
+  right: 8px;
+}
+
+/* With the dev menu, the crew bar on the right clears its button. */
+:root[data-hand='left'] #ui[data-dev] .fgt-crew {
+  padding-top: 58px;
+}

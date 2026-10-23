@@ -11,6 +11,10 @@
 //   textSize    how big the text is, in percent: one of TEXT_SIZES (M42)
 //   fog         fog of war (M45): in a fight, an enemy no one in the crew
 //               can see is hidden. Only what the screen shows changes
+//   hand        'right', or 'left' to mirror the side columns (M47)
+//   speed       the playback's speed, in percent: one of SPEEDS (M47)
+//   confirm     'taps' (a second tap confirms) or 'hold' (a hold does, M47)
+//   vibration   whether the phone vibrates on hits (M47)
 // The difficulty was a setting too until M41, when it became the
 // campaign's (difficulty.js).
 
@@ -24,12 +28,17 @@ export const VOLUMES = [10, 30, 50, 70, 100];
 // percent (M42).
 export const COLORS = ['standard', 'safe'];
 export const TEXT_SIZES = [100, 115, 130];
+// Controls and feel (M47): which hand the orders sit for, how fast a fight's
+// and an approach's playback runs, in percent, and what confirms.
+export const HANDS = ['right', 'left'];
+export const SPEEDS = [100, 150, 200];
+export const CONFIRMS = ['taps', 'hold'];
 // More tips than the game has: a guard on what a save can hold.
 export const MAX_TIPS = 64;
 const TIP_ID = /^[a-z][a-z0-9-]{0,31}$/;
 
 export function defaultSettings() {
-  return { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, colors: 'standard', textSize: 100, fog: false };
+  return { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, colors: 'standard', textSize: 100, fog: false, hand: 'right', speed: 100, confirm: 'taps', vibration: true };
 }
 
 // Actions:
@@ -44,6 +53,10 @@ export function defaultSettings() {
 //   settings/colors { value }       standard or safe
 //   settings/textSize { value }     one of TEXT_SIZES
 //   settings/fog { value }          fog of war on or off (M45)
+//   settings/hand { value }         right or left (M47)
+//   settings/speed { value }        one of SPEEDS (M47)
+//   settings/confirm { value }      taps or hold (M47)
+//   settings/vibration { value }    vibration on or off (M47)
 export function reduceSettings(settings, action) {
   const set = (key, ok) => (!ok || action.value === settings[key] ? settings : { ...settings, [key]: action.value });
   switch (action.type) {
@@ -65,6 +78,14 @@ export function reduceSettings(settings, action) {
       return set('textSize', TEXT_SIZES.includes(action.value));
     case 'settings/fog':
       return set('fog', typeof action.value === 'boolean');
+    case 'settings/hand':
+      return set('hand', HANDS.includes(action.value));
+    case 'settings/speed':
+      return set('speed', SPEEDS.includes(action.value));
+    case 'settings/confirm':
+      return set('confirm', CONFIRMS.includes(action.value));
+    case 'settings/vibration':
+      return set('vibration', typeof action.value === 'boolean');
     case 'settings/tips/reset':
       return settings.tips && !settings.tipsSeen.length ? settings : { ...settings, tips: true, tipsSeen: [] };
     case 'settings/tip/seen':
@@ -87,6 +108,10 @@ export function settingsProblems(settings) {
   if (!COLORS.includes(settings.colors)) problems.push('The colors setting is invalid.');
   if (!TEXT_SIZES.includes(settings.textSize)) problems.push('The text size setting is invalid.');
   if (typeof settings.fog !== 'boolean') problems.push('The fog of war setting is invalid.');
+  if (!HANDS.includes(settings.hand)) problems.push('The hand setting is invalid.');
+  if (!SPEEDS.includes(settings.speed)) problems.push('The playback speed setting is invalid.');
+  if (!CONFIRMS.includes(settings.confirm)) problems.push('The confirm setting is invalid.');
+  if (typeof settings.vibration !== 'boolean') problems.push('The vibration setting is invalid.');
   const { tipsSeen } = settings;
   if (typeof settings.tips !== 'boolean' || !Array.isArray(tipsSeen) || tipsSeen.length > MAX_TIPS || !tipsSeen.every((id) => TIP_ID.test(id)) || new Set(tipsSeen).size !== tipsSeen.length) {
     problems.push('The tips settings are unreadable.');

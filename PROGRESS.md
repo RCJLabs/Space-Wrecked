@@ -2,6 +2,66 @@
 
 Newest entry first.
 
+## M47 Controls and feel (2026-10-23)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves are at v43.
+
+**How it was picked:** item 10 of the Phase 8 brainstorm, last in my recommended order, on Evan's "Do recommendations". Measured first on main after M46:
+- **Playback:** an enemy turn played for 3.3 s at the median (p90 4.9 s), and a whole fight's playback for 43 s, over 100 AI fights. An approach round played for 1.0 s (p90 1.5 s).
+- **Confirming:** a second tap confirmed on the boards and on 12 kinds of armed button, each screen with its own arming and no shared helper.
+- **Layout and vibration:** every side column put the orders on the right, and nothing vibrated.
+
+**What shipped:** four settings, under Settings, saved at v43 (a save from before gets the defaults).
+- **Hand** (Right hand, Left hand): left swaps the side columns. The fight's orders go left and its crew bar right; the builder's tools go left and its drawer right, with Hull, Fit and Suggest by the tools. The hangar, chart, colony, approach and shop lay their columns right to left and reverse their foot rows. The boards aren't flipped. All of it is CSS on `<html data-hand>`.
+- **Playback speed** (1×, 1.5×, 2×): a fight's playback, the enemy's turns with it, and the approach's rounds run that much faster, their sounds and vibrations on the same clock (`src/ui/motion.js` playbackSpeed). Reduced motion still plays none.
+- **Confirm** (Two taps, Hold), through `src/ui/confirm.js`:
+  - with Hold, whatever a second tap did takes a hold instead: the long press, 0.45 s;
+  - a button that arms fills while it's held and acts when full, and a second tap only arms it again;
+  - on the fight's board, the builder's, the colony's and the chart, a hold on the move, target, ghost or node already shown acts, and a hold anywhere else still opens the info card;
+  - the game's "Tap again" words read "Hold";
+  - the sim says where a tap would act (`fight.js` tapActs, `session.js` tapOnGhost).
+- **Vibration** (On, Off), through `src/platform/haptics.js`, only after the first tap and only where the phone has it. In a fight a crew member hit gives a 40 ms pulse, downed 120 ms, and the crew's shot landing 15 ms, with a crit pulsing twice. In the approach the ship hit gives a pulse, and a part wrecked a long one (`src/ui/vibrations.js`, pure).
+
+**Done when** (ROADMAP.md, M47), and how each is met:
+- **The settings, save v43, the vibrations, the confirm rules and words, the boards' checks:** `tests/controls.test.js` (6).
+- **Touch, at the three sizes:** `m47/verify.mjs`, 29 of 29 at cover, tab and open (below). An enemy turn took 6.35 s at 1× and 3.05 s at 2× on the cover screen.
+- **Every rule tested;** every earlier milestone's check passes (below).
+
+**Tests:**
+- `node --test`: 1216 pass (1210 on main).
+- **New:** `tests/controls.test.js` (6).
+- **Changed on purpose:**
+  - every test pinning the save version, from 42 to 43;
+  - `tests/citizens.test.js`, which finds v38's migration sixth from the end now;
+  - the default settings in `tests/captain.test.js` and `tests/sim.test.js`.
+
+**Browser checks:**
+- **M47's own:** `m47/verify.mjs`, 29 of 29 at the three sizes:
+  - Settings has the four rows, every choice 48 px or more;
+  - right and left hand on the fight, the hangar (its columns and its foot) and the builder (the drawer, the tools, Hull and the layout line clear of it), every button 48 px or more and on the screen;
+  - with Hold, a move shown and tapped again isn't made ("Hold it to do it.") and held it is, and End turn tapped twice stays the crew's turn ("Hold End turn") but fills while held and ends it;
+  - an enemy turn at 2× under 70% of 1×;
+  - `navigator.vibrate` called with 40 when the pirate hits the marine, never with Vibration off;
+  - saved at v43; no console errors.
+- **Every earlier milestone's check,** in two chains (`m47/regress-a.sh`, M46's back to M30's; `m47/regress-b.sh`, M29's back to M8's), run one after the other, each the latest adapted copy:
+  - **Copies made for M47:** 19 checks pinned save v42 and now read v43 (M46's, M45's, M44's, M42's, M41's, M40's, M39's, M38f's, M38e's, M38d fix's, M38c's, M38b's, M35's, M34's, M31's, M30's, M29's, M28's and M27's, each `verify47.mjs`). M22's ran as its M46 copy.
+  - **M42's check adapted (`m42/verify47.mjs`):** Settings is four rows longer. At 130% text on the 821 × 283 screen, going from the list's foot back up to Export, at the top of the save column, now takes more than the 12 drags its scroller allows. The copy allows a second 12. By hand, Export scrolls into reach. The copy passes 17 of 17 at both sizes rerun (tab and cover).
+  - **All pass,** apart from M32b's first copy, the known exception from M32b's fix (its fix copy passes in its place). M40's timed out once at 905 × 370 and passed 22 of 22 on rerun. Chain B hit the two-hour limit at M23h; the rest, rerun from there, passed in full.
+
+**Known issues:**
+- **The DEV button** (`?dev=1` only) covers the drawer's Hangar tab in the builder with the left hand. The fight's crew bar is padded clear of it; the drawer isn't.
+- **The chart's, colony's, approach's and shop's mirrored layouts** are checked for buttons only through the earlier milestones' checks (right hand); M47's own check looks at the fight, the hangar and the builder with the left hand.
+- **Vibration patterns** are a first guess, and a headless browser can't feel them: whether 15, 40 and 120 ms read well is for the phone.
+- **The board doesn't fill as a hold goes in:** only the status line says to hold.
+
+**What Evan should test on the phone:**
+- **Settings → Hand → Left hand:** a fight, the builder, the hangar and the chart, with your left thumb.
+- **Settings → Confirm → Hold:** move and shoot in a fight by holding, End turn, Jump on, Launch.
+- **Settings → Playback speed → 2×:** an enemy turn and an approach round.
+- **Vibration on:** get hit in a fight; take a volley in the approach. Are the pulses too weak or too strong?
+
+**Next milestone's first task:** Evan's next pick. My recommended order through the brainstorm (6, 3 and 10) is done; Gate 7's play on the phone and its stranger are still to come.
+
 ## M46 Refits on the move (2026-10-23)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves are at v42.
