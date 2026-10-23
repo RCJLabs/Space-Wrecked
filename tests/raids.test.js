@@ -378,7 +378,7 @@ test('while the ship is away: a raid is fought out by those at home and the leg 
 test('saves: v23 for the raid coming and a leg it stopped; a v22 colony opens with none coming; broken ones are caught', () => {
   // 24 since M32's orders in a fight, 27 since M33's fix, 28 since M33b's
   // quests, 29 since M33c's companions.
-  assert.equal(SAVE_VERSION, 42);
+  assert.equal(SAVE_VERSION, 43);
   // From M38e the colony keeps a heat of its own, the ship's as v37 opens
   // it (unused while the ship is landed there).
   const placed = at(settled(), { places: [far] });

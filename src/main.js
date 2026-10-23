@@ -4,6 +4,7 @@ import { config } from './config.js';
 import { makeSave, parseSave } from './core/save.js';
 import { createStore } from './core/store.js';
 import { audioStatus, cue, startAudio } from './platform/audio.js';
+import { startHaptics } from './platform/haptics.js';
 import { lockLandscape } from './platform/orientation.js';
 import { registerServiceWorker } from './platform/serviceWorker.js';
 import * as storage from './platform/storage.js';
@@ -44,6 +45,7 @@ syncMotion(store);
 syncLook(store);
 // Sound (M35): from the first tap, at the settings' volume.
 startAudio(store);
+startHaptics();
 store.subscribe((state, prev, action) => gameSounds(state, prev, action).forEach(cue));
 
 // Screens and the render loop.

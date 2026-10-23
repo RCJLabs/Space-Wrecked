@@ -23,6 +23,7 @@
 // ships, to pick who goes; the healthiest go unless the player picks.
 // Every round is saved as it is played.
 import { cue } from '../../platform/audio.js';
+import { buzz } from '../../platform/haptics.js';
 import { loadContent } from '../../platform/content.js';
 import { frameAt, restingPose, roundCues, roundTimeline, shipGeometry } from '../../render/approachPlayback.js';
 import { createApproachView } from '../../render/approachView.js';
@@ -34,8 +35,9 @@ import { squadProblem } from '../../sim/crew.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
-import { motionReduced } from '../motion.js';
+import { motionReduced, playbackSpeed } from '../motion.js';
 import { roundSounds } from '../sounds.js';
+import { roundBuzz, roundBuzzes } from '../vibrations.js';
 import { approachText } from './approachText.js';
 import { squadText } from './crewText.js';
 import { heatChip } from './hubParts.js';
@@ -229,11 +231,12 @@ export const approachScreen = {
       if (!was || !last || last === was.last || last.order === null || was.node !== approach.node) return;
       if (motionReduced(game.getState().settings ?? {})) {
         roundSounds(last).forEach(cue);
+        buzz(roundBuzz(last));
         return;
       }
       const geometry = Object.fromEntries(SIDES.map((side) => [side, shipGeometry({ ship: ships[side].ship, defs, hull: ships[side].hull, wrecked: was[side].wrecked })]));
       const timeline = roundTimeline({ events: last.events, before: { you: was.you, them: was.them }, outcome: approach.outcome, geometry });
-      playing = { timeline, start: now(), heard: -1, lines: 0, round: was.round };
+      playing = { timeline, start: now(), speed: playbackSpeed(), heard: -1, lines: 0, round: was.round };
       disarm();
       squadOpen = false;
     }
@@ -386,9 +389,10 @@ export const approachScreen = {
         dirty = false;
         let frame = resting;
         if (playing) {
-          const t = now() - playing.start;
+          const t = (now() - playing.start) * playing.speed;
           frame = frameAt(playing.timeline, t);
           roundCues(playing.timeline, playing.heard, t).forEach(cue);
+          roundBuzzes(playing.timeline, playing.heard, t).forEach(buzz);
           playing.heard = t;
           picture.setMarks('you', frame.marks.you);
           picture.setMarks('them', frame.marks.them);

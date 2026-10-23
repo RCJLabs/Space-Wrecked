@@ -16,6 +16,7 @@
 // the board takes the next; Skip goes to the end at once.
 import { createStore } from '../../core/store.js';
 import { cue } from '../../platform/audio.js';
+import { buzz } from '../../platform/haptics.js';
 import { loadContent } from '../../platform/content.js';
 import { battleBoxes } from '../../render/battleScene.js';
 import { createBattleBoard, FIGHT_VIEW } from '../../render/battleView.js';
@@ -33,8 +34,10 @@ import { sightedBy } from '../../sim/sight.js';
 import { tileText } from '../battle/tileText.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { playbackSpeed } from '../motion.js';
 import { cueSound, fightSounds } from '../sounds.js';
 import { machineUrl, portraitUrl } from '../portrait.js';
+import { fightBuzz } from '../vibrations.js';
 import { chipFor, endingFor, eventText, hintFor, oddsText, unitText } from './hints.js';
 import { objectiveMarks, objectiveZones } from './marks.js';
 import { createActionBar, createCrewBar, node, setText, toolButton } from './panels.js';
@@ -336,7 +339,8 @@ export function mountFight(root, source) {
       // With reduced motion (M42) the end shows at once, its words and
       // sounds with it, and the board is free.
       const still = document.documentElement.dataset.motion === 'reduce';
-      playing = { timeline: makeTimeline(prev.battle, fight.played, { still }), start: performance.now(), frame: null, done: false, heard: -1 };
+      // speed (M47): the playback's, kept from its start to its end.
+      playing = { timeline: makeTimeline(prev.battle, fight.played, { still }), start: performance.now(), speed: playbackSpeed(), frame: null, done: false, heard: -1 };
       closeCard();
     }
     if (fight.notice && fight.notice !== prev.notice) {
@@ -466,9 +470,12 @@ export function mountFight(root, source) {
   // Moves a playback on to `now`, and plays the sounds of what it passed
   // (M35). After a long gap (the game away), only the last moment's.
   function advance(now) {
-    const t = Math.max(0, now - playing.start);
+    const t = Math.max(0, now - playing.start) * playing.speed;
     const heard = Math.max(playing.heard, t - SOUND_CATCH_UP);
-    for (const moment of cuesBetween(playing.timeline, heard, t)) cue(cueSound(moment, store.getState().battle, defs));
+    for (const moment of cuesBetween(playing.timeline, heard, t)) {
+      cue(cueSound(moment, store.getState().battle, defs));
+      buzz(fightBuzz(moment, store.getState().battle));
+    }
     playing.heard = t;
     const frame = frameAt(playing.timeline, t);
     const before = playing.frame;

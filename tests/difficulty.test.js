@@ -100,11 +100,11 @@ test("an enemy ship's guns aim with the difficulty, in the odds shown and the od
 });
 
 test('save v39: a save from before takes its settings\' difficulty as its campaign\'s, death not permanent and no one fallen', () => {
-  assert.equal(SAVE_VERSION, 42);
+  assert.equal(SAVE_VERSION, 43);
   const campaign = { crew: [], fight: null, colonies: [] };
   const old = { settings: { ...defaultSettings(), difficulty: 'hard' }, campaign };
   const moved = migrate({ version: 38, data: old });
-  assert.equal(moved.version, 42);
+  assert.equal(moved.version, 43);
   assert.deepEqual(moved.data.settings, defaultSettings(), 'the settings keep none');
   assert.deepEqual(moved.data.campaign, { ...campaign, difficulty: 'hard', permadeath: false, fallen: [] });
   const none = migrate({ version: 38, data: { settings: { ...defaultSettings(), difficulty: 'odd' }, campaign: null } });
