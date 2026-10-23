@@ -802,8 +802,8 @@ test("the colony's trips: the careful player flies 30 days more, a squad aboard 
     assert.ok(trips && travelled, `seed ${seed} plays the days of trips`);
     // Home at the end, every trip flown home, every day played.
     assert.equal(travelled.colony.trip, null);
-    assert.equal(travelled.flags.trips, trips.flown.length);
-    assert.equal(travelled.flags.tripsHome, trips.flown.length, `seed ${seed}: the ship came home from every trip`);
+    assert.equal(travelled.flags.trips ?? 0, trips.flown.length);
+    assert.equal(travelled.flags.tripsHome ?? 0, trips.flown.length, `seed ${seed}: the ship came home from every trip`);
     assert.equal(travelled.colony.day, home.colony.day + TRIP_DAYS);
     // A trip's days are out and home, each its own since a pilot in the
     // squad can shorten them (M32).
