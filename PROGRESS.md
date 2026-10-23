@@ -55,7 +55,12 @@ Newest entry first.
   - locked, End turn, and the pirate forces it: broken open, no Close or Lock after;
   - fog off, a tap on the hidden pirate says the marine can't see it; fog on, the same tap shows nothing; the door opened, the pirate shows and a tap aims at it;
   - the doors tip; saved at v41; no console errors.
-- REGRESS
+- **Every earlier milestone's check,** in two chains (`m45/regress-a.sh`, M44's back to M30's; `m45/regress-b.sh`, M29's back to M8's), each the latest adapted copy:
+  - **Copies made for M45:** 17 checks pinned save v40 and now read v41 (M44's, M42's, M41's, M40's, M39's, M38f's, M38e's, M38d fix's, M38c's, M38b's, M35's, M34's, M31's, M30's, M29's, M28's and M27's, each `verify45.mjs`). M17's and M13's ran as their M44 copies.
+  - **M18's check adapted (`m18/verify45.mjs`):** it plays its first fight to the end expecting no tip in the way, and M45's doors tip now shows once when a crew member stands by a door, over the board at 821 × 283. The copy taps Got it when it shows. The old copy failed 2 of 3 runs at that size and passed 3 of 3 against main; the new one passes 43 of 43 at the three sizes, 3 of 3 at 821 × 283.
+  - **All pass,** apart from two cases:
+    - M32b's first copy, the known exception from M32b's fix (its fix copy passes in its place).
+    - M14's check at 905 × 370 failed once on the pay it reads. The jobs it wins differ from run to run, and when enough are won the union's standing adds 10% to the pay. The rerun passed 41 of 41.
 
 **Known issues:**
 - **Fog can be read from the move overlay:** the tile a hidden enemy stands on is left out of where the crew can walk.
