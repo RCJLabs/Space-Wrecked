@@ -2357,6 +2357,24 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Fog of war** hides an enemy from the board, its bars and taps, and a tap on its tile shows nothing. While it walks out of sight the status line says "Something moves out of sight." `src/sim/sight.js` sightedBy says who is seen; the screen reads the setting from `<html data-fog>`.
   - **The tip** comes last of the tips, the first time a crew member stands by a door.
 
+- [ ] **M46 Refits on the move.** Item 3 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-23, "Do recommendations"). From §9: refits away from stations (raised in M23h), scrapping a wrecked part to fit a spare (M23h), picking what to strip (M22) and scrap by what is left (M21).
+
+  Measured first (main after M45, `node tools/voyage.js --runs 100` and the approach harness):
+  - **Refits:** only at stations, shipyards, the hangar and the colony. Over 100 voyages the test player refits 142 times and fits 190 parts. Between stations the ship's parts can't even be moved.
+  - **Wrecks:** a wrecked part stays aboard until a station repairs it (4 repairs in 100 voyages, 130 credits). It can move, but never comes off, even with a working spare of it on hand.
+  - **Stripping:** a won boarding aboard her strips the preset's count of her working parts (1 or 2) by a roll, a bridge or an airlock as likely as a weapon mount. The 100 voyages win 20 boardings aboard her and strip 20 parts, 670 credits of scrap with them. M28's derelicts at the colony strip the same way (113 won in the 100 voyages' trips).
+  - **Scrap:** a boarded ship pays the preset's scrap in full, whatever the volleys broke. When she can be boarded, 73% to 93% of her parts still work (median 91%, over 485 boardings: the ten harness ships against every hostile preset, 60 seeds each).
+
+  Done when (my recommendations, taken on Evan's word):
+  - **Move and turn between jumps:** anywhere on the run (act 2, and a voyage from the colony) with nothing waiting (no approach, event or fight), the ship's panel opens Rearrange: construction mode where the parts aboard move and turn and the Look can change, but none comes off and none goes on. Delete says why, and the parts on hand aren't offered. Stations and shipyards keep the full Refit.
+  - **Joins hold the ship anywhere:** a move that leaves the joins check failing (constraints.js's layout line) keeps the ship from jumping until it's fixed, as a failing check does at a station. Away from stations only that line holds it: it is the only one a move can change.
+  - **Scrap a wreck for a spare:** in a full refit, a wrecked part's card offers each version on hand of the same part (any maker's). A tap scraps the wreck and puts the spare in its place, the same spot and turn, as one undo step. The wreck is gone, not on hand, and nothing is paid. The ship is never without that part in between, so no one is stranded by it. A station's Repair stays the other way.
+  - **Pick what to strip:** a won boarding aboard her, and a won derelict at a place on a trip from the colony, strip as many parts as now (the preset's salvage, as far as her working parts go), but the player picks them on the end panel, from her working parts (never corridors, never wrecked), with the dearest picked to start with. Continue takes the picks. The test players take the dearest. Saves go to v42: a fight saved mid-boarding offers the parts it had rolled.
+  - **Scrap by what is left:** a won boarding aboard her pays her scrap scaled by the share of her parts still working, rounded, and the approach screen's stakes say so. A ship blown up pays as now.
+  - **Measured:** 100 voyages against main's: what stripping takes (parts and their worth) and the scrap paid; the voyage tests stay within main's margins (`MAIN`).
+  - **Every rule tested;** every earlier milestone's check passes.
+  - **Touch, at the three sizes:** a part moved and turned between jumps (Delete refused); a jump refused while the joins fail and allowed once fixed; a wreck scrapped for a spare at a station; a part picked on a won boarding's end panel, every new button 48 px or more.
+
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
 ### Phase 9: Release (v1.0)
