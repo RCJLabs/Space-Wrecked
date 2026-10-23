@@ -37,7 +37,7 @@ Newest entry first.
 - **Every rule tested;** every earlier milestone's check passes (below).
 
 **Tests:**
-- `node --test`: TESTS
+- `node --test`: 1210 pass (1199 on main).
 - **New:** `tests/rearrange.test.js` (6), `tests/strip.test.js` (5).
 - **Changed on purpose:**
   - every test pinning the save version, from 41 to 42, and `tests/citizens.test.js`, which finds v38's migration fifth from the end now;
