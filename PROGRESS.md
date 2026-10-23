@@ -28,7 +28,7 @@ Newest entry first.
 - **Every rule tested;** every earlier milestone's check passes (below).
 
 **Tests:**
-- `node --test`: TESTS
+- `node --test`: 1216 pass (1210 on main).
 - **New:** `tests/controls.test.js` (6).
 - **Changed on purpose:**
   - every test pinning the save version, from 42 to 43;
