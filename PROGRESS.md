@@ -41,7 +41,12 @@ Newest entry first.
 - **New:** `tests/builderErgonomics.test.js` (8).
 - **Changed on purpose:** `tests/hubText.test.js`, whose goal lines now carry `add`, the part when one is on hand.
 
-**Browser checks:** REGRESS
+**Browser checks:**
+- **M44's own:** `m44/verify.mjs`, 29 of 29 at cover, tab and open (above).
+- **Every earlier milestone's browser check:** passes at the three sizes, each the latest adapted copy (`m44/regress-a.sh` and `regress-b.sh`), with M43's walk added (cover 171 of 171, tab 169 of 169, open 171 of 171). The exception is M32b's first copy, whose 2 known failures since M36 its fix copy covers.
+- **Adapted for M44:**
+  - M17's: construction mode's ready hint now names Launch in the Ship tab, or Hangar.
+  - M13's: construction mode in act 1 has Launch (locked until every check passes); it still has no Saves tab.
 
 **Known issues:**
 - **Suggest's icon is the wrench Build uses.** Its label tells them apart.
