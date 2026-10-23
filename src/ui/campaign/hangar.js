@@ -19,6 +19,7 @@ import { loadContent } from '../../platform/content.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
+import { buildWith } from './construction.js';
 import { createCrewCard } from './crewCard.js';
 import { crewCardText, crewSaid } from './crewText.js';
 import { createShipStand, crewRows, heatChip, listRows, panel, questRows, sideRows } from './hubParts.js';
@@ -123,11 +124,19 @@ export const hangarScreen = {
       setText(actLine, text.act);
       setText(homeLine, text.home);
       goalLines.replaceChildren(
-        ...text.goal.lines.map(({ ok, text: line, fix }) => {
+        ...text.goal.lines.map(({ ok, text: line, fix, add }) => {
           const item = node('li');
           item.dataset.ok = String(ok);
-          item.append(node('span', 'hgr-line', line));
-          if (fix) item.append(node('span', 'hgr-fix', fix));
+          // A line whose part is on hand is a shortcut (M44): the builder
+          // with that part armed, its ghost where it fits best.
+          const body = add ? node('button', 'btn hgr-add') : item;
+          body.append(node('span', 'hgr-line', line));
+          if (fix) body.append(node('span', 'hgr-fix', fix));
+          if (add) {
+            body.type = 'button';
+            onTap(body, () => buildWith(game, add));
+            item.append(body);
+          }
           return item;
         }),
       );

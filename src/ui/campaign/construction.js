@@ -7,7 +7,7 @@
 // stay on until the station repairs them: they move and turn with their
 // damage, and the plans mark them. The way out, at the end of the drawer's
 // tabs, goes home: Hangar to the hangar, where Launch is once every flight
-// check passes; Map to the sector map, where the ship can't jump until they
+// check passes (and in the Ship tab here too, M44); Map to the sector map, where the ship can't jump until they
 // all do; or Colony to the colony, the flight checks counting a full squad
 // aboard (M28: what a trip needs, berths and air for each). The board is
 // ../builder/view.js's.
@@ -19,6 +19,15 @@ import { icons } from '../icons.js';
 // home and coming back keeps the undo history, while the ship, the parts
 // and the wrecks are still the campaign's.
 let kept = null;
+// A part to arm on the way in: a checklist line tapped at the hangar (M44).
+let pick = null;
+
+// Opens construction mode with a part of `type` armed, its ghost where it
+// fits best.
+export function buildWith(game, type) {
+  pick = type;
+  game.dispatch({ type: 'screen/show', screen: 'construction' });
+}
 
 export const constructionScreen = {
   mount(root, { store: game }) {
@@ -35,9 +44,11 @@ export const constructionScreen = {
       colony: { icon: icons.settle, label: 'Colony', screen: 'colony' },
     }[home];
     return mountBuilder(root, {
-      launch: false,
+      // In act 1, Launch in the Ship tab too (M44), two taps as at the
+      // hangar.
+      launch: home === 'hangar' && (() => game.dispatch({ type: 'campaign/launch', rules: defs })),
       ready: {
-        hangar: 'Every flight check passes. Launch is at the hangar: tap Hangar.',
+        hangar: 'Every flight check passes: tap Launch in the Ship tab, or Hangar.',
         run: 'Every flight check passes: the ship can jump. Tap Map.',
         colony: 'Every flight check passes with a full squad aboard: the ship can fly out. Tap Colony.',
       }[home],
@@ -61,8 +72,10 @@ export const constructionScreen = {
         if (!campaign || !canRefit(campaign, content)) return null;
         const stock = stockOf(campaign);
         const wrecked = wreckedUids(campaign);
-        if (kept?.ship === campaign.ship && sameStock(kept.stock, stock) && sameList(kept.wrecked, wrecked)) return { session: kept };
-        return { ship: campaign.ship, log: [], stock, wrecked };
+        const picked = pick;
+        pick = null;
+        if (kept?.ship === campaign.ship && sameStock(kept.stock, stock) && sameList(kept.wrecked, wrecked)) return { session: kept, pick: picked };
+        return { ship: campaign.ship, log: [], stock, wrecked, pick: picked };
       },
       onSession(session, prev) {
         kept = session;

@@ -92,8 +92,18 @@ function makerAt(ship, defs) {
 // A part being placed, drawn apart from the ship so a drag rebuilds only
 // this. input: { ship, defs, ghost: { placement, ok, blockers: [uid] } }.
 // Returns { model, label }.
-export function ghostScene({ ship, defs, ghost: { placement, ok, blockers = [] } }) {
+export function ghostScene({ ship, defs, ghost: { placement, ok, blockers = [], run = null } }) {
   const model = createModel();
+  // A run of corridors being dragged (M44): a ghost on each cell, each one
+  // that can't take one crossed, and the count over the last.
+  if (run?.length > 1) {
+    for (const cell of run) floating(model, defs, cell.placement, cell.ok);
+    const fits = run.filter((cell) => cell.ok).length;
+    const name = defs.modules.get(placement.type)?.name ?? placement.type;
+    const last = run.at(-1).placement;
+    const [w, h] = footprint(defs.modules.get(last.type), last.rot);
+    return { model, label: { at: [last.x + w / 2, last.y + h / 2, HOVER + WALL], text: `${fits} × ${name}`, tone: fits ? 'good' : 'bad' } };
+  }
   for (const uid of blockers) {
     const module = ship.modules.find((m) => m.uid === uid);
     const def = module && defs.modules.get(module.type);

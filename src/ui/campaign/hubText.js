@@ -22,9 +22,11 @@ export const RUN_LEVEL_NAMES = { calm: 'Calm', rumors: 'Rumors', hunters: 'Hunte
 // What the hangar shows:
 //   act, home   "Act 1 · Homeworld", "The hangar"
 //   goal        { ready, lines }: the flight checklist, act 1's goal. Each
-//               line is { ok, text, fix }, and a fix that adds a part says
-//               how many are on hand, and the shop's price if it has one;
-//               any maker's version of the part counts (M23g).
+//               line is { ok, text, fix, add }, and a fix that adds a part
+//               says how many are on hand, and the shop's price if it has
+//               one; any maker's version of the part counts (M23g). add is
+//               that part when one is on hand, else null (M44: the line
+//               opens the builder with it armed).
 //   crew        [{ name, job, hp, max }]: job is blank when it is the name
 //   sides       each side and the crew's standing with it (M33:
 //               standingText.js sidesText)
@@ -51,6 +53,9 @@ export function hangarText(campaign, rules) {
   const lines = checklist.map((line) => ({
     ok: line.ok === true,
     text: line.text,
+    // The part to fit, when one is on hand: the line opens the builder
+    // with it armed (M44).
+    add: line.ok !== true && line.add && onHand(line.add) > 0 ? line.add : null,
     fix: line.ok === true || !line.fix ? null : line.add ? `${line.fix}: ${[onHand(line.add) ? `${onHand(line.add)} on hand` : 'none on hand', offerText(campaign, rules, line.add)].filter(Boolean).join(', ')}` : line.fix,
   }));
   const ready = canLaunch(checklist);
