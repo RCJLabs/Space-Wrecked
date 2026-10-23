@@ -2382,6 +2382,23 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Measured:** the test player, taking the dearest, strips a reactor from nearly every ship it wins: 1,920 credits of parts at sell price in 100 voyages against main's 1,010 rolled, with her scrap 296 against 372.
   - **Voyage tests:** "every run flies a trip" (seeds 1 to 30) is now a 100-seed rate within main's margin, and M40's bar of none hungry in the system is now 2 or fewer of 100 (Evan's call, 2026-10-23), after the rerolled voyages left the deserter's seed 73 hungry there.
 
+- [ ] **M47 Controls and feel.** Item 10 of the Phase 8 brainstorm, last in my recommended order, taken on Evan's word (2026-10-23, "Do recommendations"): a left-handed layout, the playback's speed, hold to confirm, and vibration on hits (§9).
+
+  Measured first (main after M46):
+  - **Sides:** every screen with a side column puts the orders on the right and the information on the left: the fight (crew bar left, orders right), the builder (drawer left, tools right), and the hangar, chart, colony, approach and shop, as column grids. Nothing mirrors them.
+  - **Playback:** an enemy turn plays for 3.3 s at the median (p90 4.9 s, the longest 6.3 s) and a whole fight's playback for 43 s (p90 62 s): 100 AI fights on the example ship, timed by `src/render/playback.js`. The approach plays each round for 2 to 4 s. Reduced motion (M42) is the only way to shorten either, and it drops the playback altogether.
+  - **Confirming:** a second tap confirms on the boards (a move or shot, a part's ghost, a building's) and on 12 armed buttons (End turn, Launch, Pay, the approach's orders, the chart's jumps, the colony's, the shop's, events, New game, a save's delete, a wreck's scrap), each with its own `armed` and timeout; there is no shared helper. A hold (450 ms, `src/ui/gestures.js`) opens the info card on the boards.
+  - **Vibration:** none. §9 has held "vibration on hits" since before M4.
+
+  Done when (my recommendations, taken on Evan's word):
+  - **Hand,** a setting (Controls: Right hand, Left hand; right by default): left mirrors where the columns sit, the orders on the left and the information on the right, in the fight, the builder (the drawer and tools change sides, with the buttons on the board), and the hangar, chart, colony, approach and shop. The boards themselves aren't flipped.
+  - **Playback speed,** a setting (1×, 1.5×, 2×; 1× by default): the fight's playback, the enemy's turns among it, and the approach's rounds play that much faster, their sounds with them. At 2× the median enemy turn is 1.65 s. Reduced motion still plays none. The lift-off and the landing keep their pace (Skip already ends them).
+  - **Confirm,** a setting (Two taps, Hold; two taps by default): with Hold, everything a second tap confirms takes a hold of 0.5 s instead, the button or the ghost filling as it's held. A first tap still arms and previews as now, and says "Hold to confirm". On a board a hold on the tile already shown (the move, the target, the ghost) confirms it; a hold anywhere else still opens the info card. One helper (`src/ui/confirm.js`) serves every place.
+  - **Vibration,** a setting (On, Off; on by default), through `src/platform/haptics.js`, only after the first tap and only where the phone has it. In a fight: a crew member hit, a short pulse; downed, a long one; the crew's shot landing, a light one; a crit, a second pulse. In the approach: the ship hit, a pulse; a part wrecked, a long one. It follows the playback's clock, so speed and Skip treat it as they treat the sounds.
+  - **Saves go to v43** with the four settings at their defaults.
+  - **Every rule tested;** every earlier milestone's check passes.
+  - **Touch, at the three sizes:** the fight and builder mirrored with every button still 48 px or more and none off the screen; an enemy turn timed at 2× against 1×; End turn and a move confirmed by a hold; vibrations recorded on a hit.
+
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
 ### Phase 9: Release (v1.0)
