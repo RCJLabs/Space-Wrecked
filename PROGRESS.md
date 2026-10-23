@@ -43,7 +43,10 @@ Newest entry first.
   - an enemy turn at 2× under 70% of 1×;
   - `navigator.vibrate` called with 40 when the pirate hits the marine, never with Vibration off;
   - saved at v43; no console errors.
-- REGRESS
+- **Every earlier milestone's check,** in two chains (`m47/regress-a.sh`, M46's back to M30's; `m47/regress-b.sh`, M29's back to M8's), run one after the other, each the latest adapted copy:
+  - **Copies made for M47:** 19 checks pinned save v42 and now read v43 (M46's, M45's, M44's, M42's, M41's, M40's, M39's, M38f's, M38e's, M38d fix's, M38c's, M38b's, M35's, M34's, M31's, M30's, M29's, M28's and M27's, each `verify47.mjs`). M22's ran as its M46 copy.
+  - **M42's check adapted (`m42/verify47.mjs`):** Settings is four rows longer. At 130% text on the 821 × 283 screen, going from the list's foot back up to Export, at the top of the save column, now takes more than the 12 drags its scroller allows. The copy allows a second 12. By hand, Export scrolls into reach. The copy passes 17 of 17 at both sizes rerun (tab and cover).
+  - **All pass,** apart from M32b's first copy, the known exception from M32b's fix (its fix copy passes in its place). M40's timed out once at 905 × 370 and passed 22 of 22 on rerun. Chain B hit the two-hour limit at M23h; the rest, rerun from there, passed in full.
 
 **Known issues:**
 - **The DEV button** (`?dev=1` only) covers the drawer's Hangar tab in the builder with the left hand. The fight's crew bar is padded clear of it; the drawer isn't.
