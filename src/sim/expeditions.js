@@ -41,7 +41,7 @@
 // The flags count the trips, the days away and the trips home, the events
 // decided and the fights won and lost at places, and what trips brought:
 // parts, materials and food.
-import { int, pick } from '../core/rng.js';
+import { int } from '../core/rng.js';
 import { atColony } from './acts.js';
 import { createBattle } from './battle.js';
 import { crewUnit, endFight, shipChecklist } from './campaign.js';
@@ -57,10 +57,10 @@ import { tally } from './flags.js';
 import { generateShip } from './gen/ship.js';
 import { withHeat } from './heat.js';
 import { mapFromShip } from './mapFromShip.js';
-import { hasTag } from './modules.js';
 import { heldBy, stepDone, withQuestPlaces } from './quests.js';
 import { downText, raidDown, tripHeatOf } from './raids.js';
 import { enemyBonus, fightSetup } from './difficulty.js';
+import { salvageOffer, strippedParts } from './strip.js';
 import { MAX_PLACES } from './tripShape.js';
 
 const MAX_SEED = 0xffffffff;
@@ -332,14 +332,8 @@ export function boardPlace(campaign, rules, setup = {}) {
   const units = [...placed.units.slice(due.party.length), ...placed.units.slice(0, due.party.length)];
   const { value: seed, state: afterSeed } = int(campaign.rng, 0, MAX_SEED);
   let rng = afterSeed;
-  let pool = her.ship.modules.filter((module) => !(module.uid in her.wrecked) && rules.modules.has(module.type) && !hasTag(rules.modules.get(module.type), 'corridor'));
-  const parts = [];
-  for (let n = 0; n < due.salvage && pool.length; n++) {
-    const part = pick(rng, pool);
-    rng = part.state;
-    parts.push(part.value.type);
-    pool = pool.filter((module) => module !== part.value);
-  }
+  // Her working parts to pick from, the dearest that many (strip.js, M46).
+  const offer = salvageOffer(her.ship, her.wrecked, due.salvage, rules);
   const materials = int(rng, due.materials[0], due.materials[1]);
   rng = materials.state;
   const bonus = enemyBonus(difficulty, rules.balance);
@@ -349,34 +343,36 @@ export function boardPlace(campaign, rules, setup = {}) {
   });
   const { battle, events } = createBattle({ map, units: fighters, seed, options: { forgiving, permadeath, press: false } }, rules);
   const { encounter } = due;
-  const fight = { encounter, seed, crew: members.map((member) => member.id), battle, log: events, job: null, raid: false, boarding: { dir: 'them', salvage: { parts, credits: 0, materials: materials.value } } };
+  const fight = { encounter, seed, crew: members.map((member) => member.id), battle, log: events, job: null, raid: false, boarding: { dir: 'them', salvage: { ...offer, credits: 0, materials: materials.value } } };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };
 }
 
 // After the fight at a place, once it is won or lost (campaign.js
 // endFight: wounds kept, the fights counted): a win brings her salvage
-// home, her parts into the hold and her materials into the colony's stores
+// home, the parts picked off her (strip.js strippedParts, M46: picks, or
+// null for the dearest) into the hold and her materials into the colony's stores
 // as far as they go, and at a quest's place does its step (M33b,
 // quests.js stepDone; the result keeps what came of it, as quest); a loss
 // brings the squad back hurt with nothing, and a quest's place stays on
 // the list. The trip is done either way. Any other fight is left as it is.
-export function endPlaceFight(campaign, rules) {
+export function endPlaceFight(campaign, rules, picks = null) {
   const { fight } = campaign;
   if (!fight?.boarding || !campaign.colony?.trip) return campaign;
   const after = endFight(campaign, rules);
   if (after === campaign) return campaign;
   const won = fight.battle.winner === 'crew';
   const { salvage } = fight.boarding;
+  const taken = won ? strippedParts(salvage, picks) : [];
   const parts = { ...after.parts };
   let materials = 0;
   if (won) {
-    for (const type of salvage.parts) parts[type] = (parts[type] ?? 0) + 1;
+    for (const type of taken) parts[type] = (parts[type] ?? 0) + 1;
     const room = Math.max(0, storesOf(after, rules).total - after.colony.materials);
     materials = Math.min(salvage.materials ?? 0, room);
   }
   const quested = won && after.colony.trip.place.quest ? stepDone(after, rules, after.colony.trip.place.quest) : { campaign: after, note: null };
   const ended = quested.campaign;
-  const result = { won, parts: won ? [...salvage.parts] : [], materials, ...(quested.note ? { quest: quested.note } : {}) };
+  const result = { won, parts: taken, materials, ...(quested.note ? { quest: quested.note } : {}) };
   const ids = new Set(ended.crew.map((member) => member.id));
   const trip = { ...ended.colony.trip, squad: ended.colony.trip.squad.filter((id) => ids.has(id)), done: true, result };
   const flags = tally(ended.flags, { [won ? 'placeFightsWon' : 'placeFightsLost']: 1, tripParts: result.parts.length, tripMaterials: materials });

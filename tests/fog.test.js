@@ -34,11 +34,11 @@ test('the setting: off for a new game, on and off, checked in a save, and on the
   assert.match(row.line, /enemy still knows where the crew is/);
 });
 
-test('save v41: a save from before has fog of war off', () => {
-  assert.equal(SAVE_VERSION, 41);
+test('save v41: a save from before has fog of war off (and moves on to the current version)', () => {
+  assert.equal(SAVE_VERSION, 42);
   const { fog, ...v40 } = defaultSettings();
   const moved = migrate({ version: 40, data: { settings: v40, campaign: null } });
-  assert.equal(moved.version, 41);
+  assert.equal(moved.version, 42);
   assert.deepEqual(moved.data.settings, defaultSettings());
 });
 

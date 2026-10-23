@@ -3513,6 +3513,13 @@ textarea {
   margin-top: 8px;
 }
 
+/* A wreck scrapped for a spare (M46): it can't be undone, so its first tap
+   asks, in the accent color. */
+.bld-card .bld-scrap[data-armed='true'] {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+
 /* The part under the finger while it is dragged off the hull. */
 .bld-drag {
   position: fixed;
@@ -4264,6 +4271,44 @@ textarea {
   font-size: calc(13px * var(--ts, 1));
   line-height: 1.35;
   text-align: center;
+}
+
+/* A won boarding's parts to strip (M46): toggles that wrap into rows, the
+   panel scrolling when she has more than fit. A picked one is lit and
+   ticked, so it reads without its color (M42). */
+.fgt-over-picks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 2px;
+}
+
+.fgt-over-picks[hidden] {
+  display: none;
+}
+
+.fgt-pick {
+  flex: 0 0 auto;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--c-line);
+  border-radius: 10px;
+  background: var(--c-panel);
+  color: var(--c-ink);
+  font-size: calc(13px * var(--ts, 1));
+}
+
+.fgt-pick[aria-pressed='true'] {
+  border-color: var(--c-good);
+  color: var(--c-good);
+  font-weight: 700;
+}
+
+.fgt-pick[aria-pressed='true']::before {
+  content: '✓ ';
 }
 
 /* Update prompt */

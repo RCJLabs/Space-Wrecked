@@ -119,10 +119,13 @@ const MARGIN = 15;
 const MARGIN_RARE = 5;
 // M40's bars (Evan's picks, 2026-10-19), over RATE_RUNS voyages from each
 // start: the hunters met in at most `met` (the sectors and the system
-// together), fed all the way in `fed` or more, hungry in the system in none.
-const BARS = { met: 25, fed: 80, systemHungry: 0 };
+// together), fed all the way in `fed` or more, hungry in the system in
+// `systemHungry` or fewer: none until M46, when its rerolled boardings left
+// the deserter's seed 73 broke from sector 2 and hungry there (main itself
+// comes in hungry on seed 300 of 300), so 2 (Evan's call, 2026-10-23).
+const BARS = { met: 25, fed: 80, systemHungry: 2 };
 const MAIN = {
-  miner: { metSectors: 11, ignoringMet: 100, fed: 98, metAny: 11, lost: 13, systemHungry: 0, shortOfAir: 0, surveyed: 96, housed: 55, noScan: 2, medbayFed: 96, surgeryFed: 95, signed: 72, settledSurveyed: 95, carefulFed: 94, refitRuns: 84, cargoFed: 97, bunksFed: 94, largeholdFed: 99 },
+  miner: { metSectors: 11, ignoringMet: 100, fed: 98, metAny: 11, lost: 13, systemHungry: 0, shortOfAir: 0, surveyed: 96, housed: 55, noScan: 2, medbayFed: 96, surgeryFed: 95, signed: 72, settledSurveyed: 95, carefulFed: 94, refitRuns: 84, cargoFed: 97, bunksFed: 94, largeholdFed: 99, tripsFlown: 100 },
   deserter: { fed: 93, metAny: 21, lost: 11 },
   smuggler: { fed: 97, metAny: 6, lost: 4 },
 };
@@ -296,7 +299,8 @@ function checkStep(step, capacity, kinds) {
     // Won: the salvage rolled as it began. Lost at home: what a raid takes. Wounds either way, never the last hit point.
     const preset = rules.ships.get(step.ship);
     const { salvage } = step;
-    assert.ok(salvage.credits >= preset.scrap[0] && salvage.credits <= preset.scrap[1]);
+    // Aboard her, her scrap as much as she has left working (M46).
+    assert.ok(salvage.credits >= (step.dir === 'them' ? 0 : preset.scrap[0]) && salvage.credits <= preset.scrap[1], `scrap ${salvage.credits}`);
     assert.ok(step.dir === 'them' ? salvage.parts.length <= preset.salvage : salvage.parts.length === 0, `salvage ${salvage.parts}`);
     const lostPart = step.lost?.part ? 1 : 0;
     assert.equal(step.credits[1] - step.credits[0], step.won ? salvage.credits : 0 - (step.lost?.credits ?? 0));
@@ -782,19 +786,24 @@ test("the colony's days: the careful player plays 30, building farms and mines b
   assert.match(summary, /The colony's first 30 days: its farms feed the crew within 15 days of the landing in 2 of 2, from day \d+ /);
 });
 
-test("the colony's trips: the careful player flies 30 days more, a squad aboard with berths and air, and in every run it flies at least one trip and the ship comes home from every one (M28)", () => {
+// Every run flew a trip on seeds 1 to 30 until M46, whose picked strips
+// and scrap left changed how the voyages roll out: seed 24 settled a world
+// that ran out of food, and flew none. So it holds main's rate over 100
+// seeds, as CLAUDE.md says (main: 100 of 100).
+test("the colony's trips: the careful player flies 30 days more, a squad aboard with berths and air, flies a trip in as many runs as main does, and the ship comes home from every one (M28)", () => {
   assert.equal(TRIP_DAYS, 30);
+  const flewAny = refittingAll.filter((r) => r.tally.trips?.flown.length >= 1).length;
+  assert.ok(flewAny >= MAIN.miner.tripsFlown - MARGIN_RARE, `a trip flown in ${flewAny} of ${RATE_RUNS}`);
   let fought = 0;
   for (const [i, trip] of refitting.entries()) {
     const seed = i + 1;
     const { trips } = trip.tally;
     const { home, travelled } = trip;
     assert.ok(trips && travelled, `seed ${seed} plays the days of trips`);
-    assert.ok(trips.flown.length >= 1, `seed ${seed} flies a trip`);
     // Home at the end, every trip flown home, every day played.
     assert.equal(travelled.colony.trip, null);
-    assert.equal(travelled.flags.trips, trips.flown.length);
-    assert.equal(travelled.flags.tripsHome, trips.flown.length, `seed ${seed}: the ship came home from every trip`);
+    assert.equal(travelled.flags.trips ?? 0, trips.flown.length);
+    assert.equal(travelled.flags.tripsHome ?? 0, trips.flown.length, `seed ${seed}: the ship came home from every trip`);
     assert.equal(travelled.colony.day, home.colony.day + TRIP_DAYS);
     // A trip's days are out and home, each its own since a pilot in the
     // squad can shorten them (M32).
@@ -811,7 +820,7 @@ test("the colony's trips: the careful player flies 30 days more, a squad aboard 
     // The report says the trips, the days away, what they brought, the
     // boardings and the hungry days.
     assert.ok(
-      trip.lines.some((line) => /^   30 days of trips: \d+ trips?, \d+ days away: .+\. Brought \d+ parts?, \d+ materials and \d+ food; boardings won \d+, lost \d+, left \d+; built .+; refitted .+ aboard; \d+ hungry days?\.$/.test(line)),
+      trip.lines.some((line) => /^   30 days of trips: \d+ trips?, \d+ days away(: .+)?\. Brought \d+ parts?, \d+ materials and \d+ food; boardings won \d+, lost \d+, left \d+; built .+; refitted .+ aboard; \d+ hungry days?\.$/.test(line)),
       `seed ${seed} reports its trips`,
     );
   }
@@ -904,7 +913,7 @@ test("from each background's start, the careful player crosses fed, meets the hu
 // 100: only the task force past the charts, swaps dearer each time, and the
 // test player keeping the food to the system in hand); is fed all the way in
 // BARS.fed or more; and comes into the system hungry in none.
-test("from each start, over 100 voyages, the hunters met in 25 runs or fewer, fed all the way in 80 or more, and hungry in the system in none (M40)", () => {
+test("from each start, over 100 voyages, the hunters met in 25 runs or fewer, fed all the way in 80 or more, and hungry in the system in 2 or fewer (M40, M46)", () => {
   for (const [id, all] of [['miner', refittingAll], ['deserter', desertersAll], ['smuggler', smugglersAll]]) {
     const met = all.filter((r) => r.tally.hunts > 0).length;
     const fed = all.filter((r) => r.tally.hungryJumps === 0).length;

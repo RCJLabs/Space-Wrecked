@@ -53,9 +53,10 @@ const PICK = 56; // the Parts tab's picker row and the space over it
 // Mounts the builder in root and returns the screen's handle (resize, draw,
 // unmount, frameStats). source:
 //   open(defs)          once the content has loaded, what to build:
-//                       { ship, log, stock, wrecked } (stock as in
-//                       session.js, or null for endless parts; wrecked, the
-//                       uids of parts that can't come off, as there), or
+//                       { ship, log, stock, wrecked, rearrange? } (stock
+//                       as in session.js, or null for endless parts;
+//                       wrecked, the uids of parts that can't come off, as
+//                       there; rearrange, true between jumps, M46), or
 //                       { session } to pick up a session from an earlier
 //                       visit; null if there is nothing to build. Either
 //                       may carry pick: a part to arm, its ghost at the
@@ -142,7 +143,7 @@ export function mountBuilder(root, source) {
         return;
       }
       useFrame((opened.session ?? opened).ship.frame);
-      store = createStore((session, action) => reduceSession(session, action, defs), opened.session ?? createSession(opened.ship, opened.log, opened.stock, opened.wrecked));
+      store = createStore((session, action) => reduceSession(session, action, defs), opened.session ?? createSession(opened.ship, opened.log, opened.stock, opened.wrecked, { rearrange: Boolean(opened.rearrange) }));
       // Opened for one part (a checklist line at the hangar, M44): that
       // part armed, any maker's on hand, and its ghost at the suggested
       // spot.
@@ -837,18 +838,27 @@ export function mountBuilder(root, source) {
     const noBridge = derived.problems.some((p) => p.rule === 'bridge');
     const joined = noBridge ? null : !derived.loose.has(uid);
     const wrecked = Boolean(session.wrecked?.includes(uid));
-    openCard(cardFor(defs, defs.modules.get(module.type), { module, joined, wrecked }), side, wrecked ? [] : swapsFor(session, module));
+    openCard(cardFor(defs, defs.modules.get(module.type), { module, joined, wrecked }), side, session.rearrange ? [] : swapsFor(session, module, wrecked));
   }
 
   // Each other maker's version of a placed part with one on hand (M44): a
-  // tap swaps it in where the part stands.
-  function swapsFor(session, module) {
+  // tap swaps it in where the part stands. A wrecked part is scrapped for
+  // any version on hand, its own too (M46): that can't be undone, so the
+  // first tap asks and the second scraps it.
+  function swapsFor(session, module, wrecked) {
     return versionsOf(defs, module.type)
-      .filter((type) => type !== module.type && partsLeft(session, type) > 0)
+      .filter((type) => (wrecked || type !== module.type) && partsLeft(session, type) > 0)
       .map((type) => {
-        const button = node('button', 'btn bld-swap', `Swap for ${defs.modules.get(type).name}`);
+        const name = defs.modules.get(type).name;
+        const label = wrecked ? `Scrap for ${name}` : `Swap for ${name}`;
+        const button = node('button', `btn bld-swap${wrecked ? ' bld-scrap' : ''}`, label);
         button.type = 'button';
         onTap(button, () => {
+          if (wrecked && button.dataset.armed !== 'true') {
+            button.dataset.armed = 'true';
+            button.textContent = `Scrap the wreck? Tap again for the ${name}`;
+            return;
+          }
           closeCard();
           if (ready()) act({ type: 'build/swap', uid: module.uid, moduleType: type });
         });

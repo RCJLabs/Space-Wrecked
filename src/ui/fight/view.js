@@ -64,7 +64,9 @@ const SOUND_CATCH_UP = 250; // ms of a playback's sounds played after a gap
 //              why there is none with fights.stop(why); may return a
 //              cleanup
 //   onChange(fight, prev)   after every change to the fight
-//   onOver()   the end panel's button was tapped
+//   onOver(picks)   the end panel's button was tapped; picks: the part
+//              types picked to strip (M46), or null where the ending had
+//              none
 //   objective(battle)   optional: the objective's line under the round,
 //              { title, progress, deadline, done }, or null for none
 //   ending(battle, log)   optional: how the fight ended, { tone, title,
@@ -72,7 +74,10 @@ const SOUND_CATCH_UP = 250; // ms of a playback's sounds played after a gap
 //              boarders' words if not given. ranks: lines naming who
 //              reached a rank (M32b), under the text; sides: lines saying
 //              what the fight did to a quest (M33b) and what a job's end
-//              moved with the sides (M33), under them
+//              moved with the sides (M33), under them; picks: a won
+//              boarding's parts to strip (M46), { count, pool: [{ type,
+//              label }], start: [pool indices picked to start] }, as
+//              toggles under them
 //   lookOf(unit, index)   optional: the look (src/sim/looks.js) of the
 //              crew unit at `index` among the crew, for its portrait; one
 //              is rolled if not given
@@ -91,8 +96,15 @@ export function mountFight(root, source) {
   const overNote = node('p', 'fgt-over-note');
   const overRanks = node('ul', 'fgt-over-ranks');
   const overSides = node('ul', 'fgt-over-sides');
+  // A won boarding's parts to strip (M46): a row of toggles, the ending's
+  // own picked to start with.
+  const overPicks = node('div', 'fgt-over-picks');
+  overPicks.setAttribute('role', 'group');
+  overPicks.hidden = true;
+  let picks = null;
+  let picked = [];
   const overButton = toolButton('fgt-again', source.over.icon, source.over.label);
-  over.append(overText, overNote, overRanks, overSides, overButton);
+  over.append(overText, overNote, overRanks, overSides, overPicks, overButton);
   const logButton = toolButton('fgt-tool', icons.log, 'Log');
   const fitButton = toolButton('fgt-tool', icons.fit, 'Fit');
   const extraTools = (source.tools ?? []).map((tool) => ({ ...tool, button: toolButton('fgt-tool', tool.icon, tool.label) }));
@@ -228,7 +240,7 @@ export function mountFight(root, source) {
   cleanups.push(() => removeEventListener('keydown', onKey));
 
   cleanups.push(
-    onTap(overButton, () => store && !busy() && source.onOver()),
+    onTap(overButton, () => store && !busy() && source.onOver(picks ? picked.map((i) => picks.pool[i].type) : null)),
     onTap(fitButton, () => fit && setCamera(fit)),
     onTap(logButton, () => (cardKind === 'log' ? closeCard() : store && openLog())),
     ...extraTools.map((tool) => onTap(tool.button, tool.onTap)),
@@ -408,9 +420,40 @@ export function mountFight(root, source) {
       const sides = ending.sides ?? [];
       if (overSides.textContent !== sides.join('')) overSides.replaceChildren(...sides.map((line) => node('li', null, line)));
       overSides.hidden = !sides.length;
+      showPicks(ending.picks ?? null);
       over.dataset.tone = ending.tone;
     }
     if (!busy()) showBoard(fight, orders, playing?.frame ?? null);
+  }
+
+  // The parts a won boarding strips (M46): { count, pool: [{ type,
+  // label }], start: [indices] }, a toggle each; a tap picks or drops one,
+  // and past count drops the first picked. Kept as they are while the same
+  // pool shows.
+  function showPicks(next) {
+    const same = picks && next && picks.count === next.count && picks.pool.map((p) => p.type).join() === next.pool.map((p) => p.type).join();
+    if (!same) {
+      picks = next;
+      picked = next ? [...next.start] : [];
+      overPicks.replaceChildren(
+        ...(next?.pool ?? []).map((part, i) => {
+          const button = node('button', 'btn fgt-pick', part.label);
+          button.type = 'button';
+          cleanups.push(onTap(button, () => togglePick(i)));
+          return button;
+        }),
+      );
+    }
+    overPicks.hidden = !picks;
+    if (!picks) return;
+    overPicks.setAttribute('aria-label', `Strip ${picks.count} of her parts`);
+    [...overPicks.children].forEach((button, i) => button.setAttribute('aria-pressed', String(picked.includes(i))));
+  }
+
+  function togglePick(i) {
+    if (!picks) return;
+    picked = picked.includes(i) ? picked.filter((p) => p !== i) : [...picked, i].slice(-picks.count);
+    showPicks(picks);
   }
 
   // The objective's line under the round, as the battle shown stands.

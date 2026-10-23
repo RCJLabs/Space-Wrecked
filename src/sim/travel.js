@@ -88,7 +88,7 @@ import { int } from '../core/rng.js';
 import { actOf, atPort, outOnRun } from './acts.js';
 import { MAX_OUT } from './away.js';
 import { allColonies } from './colonies.js';
-import { flightChecklist, shipStats } from './constraints.js';
+import { flightChecklist, layoutLine, shipStats } from './constraints.js';
 import { voyageDay } from './days.js';
 import { openApproach } from './encounter.js';
 import { tally } from './flags.js';
@@ -266,18 +266,22 @@ export function reach(sector, id) {
 
 // The flight check that keeps the ship at a station or a shipyard (M37b),
 // or null: the first line of its checklist (constraints.js) that doesn't
-// pass, for the crew aboard, once a refit has left one failing. Only a
-// refit changes the ship, and only at one of those, so away from them
-// nothing holds it.
+// pass, for the crew aboard, once a refit has left one failing. Away from
+// them (M46), the joins alone: rearranging between jumps (rearrange.js)
+// moves parts but never adds or takes one off, so only where they stand
+// can change.
 export function failingCheck(campaign, rules) {
-  if (!atPort(campaign, rules)) return null;
   const liftOff = actOf(campaign, rules)?.liftOff ?? null;
-  return flightChecklist(campaign.ship, rules, campaign.crew.length, { liftOff }).find((line) => line.ok !== true) ?? null;
+  if (atPort(campaign, rules)) return flightChecklist(campaign.ship, rules, campaign.crew.length, { liftOff }).find((line) => line.ok !== true) ?? null;
+  if (!campaign.run || !onTheRun(campaign, rules)) return null;
+  const joins = layoutLine(campaign.ship, rules);
+  return joins.ok === true ? null : joins;
 }
 
-// The words for a ship a flight check keeps at the station.
-export function brokenWhy(line) {
-  return `The ship can't leave until every flight check passes: ${line.text.charAt(0).toLowerCase()}${line.text.slice(1)}. Refit to fix it.`;
+// The words for a ship a flight check keeps where it is: Refit fixes it at
+// a station, Rearrange away from one (M46).
+export function brokenWhy(line, port = true) {
+  return `The ship can't leave until every flight check passes: ${line.text.charAt(0).toLowerCase()}${line.text.slice(1)}. ${port ? 'Refit' : 'Rearrange'} to fix it.`;
 }
 
 // The supplies past what the holds take, after a refit took a hold off (or
@@ -309,7 +313,7 @@ export function jumpPlan(campaign, rules, to) {
   const held = holdOf(campaign, rules);
   if (held) return { ok: false, error: held };
   const check = failingCheck(campaign, rules);
-  if (check) return { ok: false, error: brokenWhy(check), check };
+  if (check) return { ok: false, error: brokenWhy(check, atPort(campaign, rules)), check };
   const node = run.sector.nodes[to];
   if (!node) return { ok: false, error: 'There is no such place on the map.' };
   if (to === run.at) return { ok: false, error: `The ship is at ${node.name}.` };
@@ -410,7 +414,7 @@ export function leavePlan(campaign, rules) {
   if (voyage && voyage.out >= MAX_OUT) return { ok: false, error: 'No chart the crew has reaches farther.' };
   const last = !voyage && run.sector.index >= (actOf(campaign, rules)?.sectors ?? 0);
   const check = failingCheck(campaign, rules);
-  if (check) return { ok: false, error: brokenWhy(check), check };
+  if (check) return { ok: false, error: brokenWhy(check, atPort(campaign, rules)), check };
   // Leaving the last sector, the quests whose step is on the run go cold
   // (M33b): their ids, for the plan to say so first.
   const cold = last ? coldAt(campaign, rules, 2).map((quest) => quest.id) : [];

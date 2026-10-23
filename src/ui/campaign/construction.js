@@ -5,13 +5,17 @@
 // goes back, for nothing (campaign.js refitShip). Every change is saved
 // through the campaign at once. On the run, the parts an approach wrecked
 // stay on until the station repairs them: they move and turn with their
-// damage, and the plans mark them. The way out, at the end of the drawer's
+// damage, and the plans mark them; or one is scrapped for a spare on hand
+// in its place (M46), on its card. Between jumps (M46, rearrange.js) the
+// mode opens on the parts aboard alone, which move and turn but don't come
+// off. The way out, at the end of the drawer's
 // tabs, goes home: Hangar to the hangar, where Launch is once every flight
 // check passes (and in the Ship tab here too, M44); Map to the sector map, where the ship can't jump until they
 // all do; or Colony to the colony, the flight checks counting a full squad
 // aboard (M28: what a trip needs, berths and air for each). The board is
 // ../builder/view.js's.
 import { actOf, canRefit, crewAboard, fullSquad, stockOf, wreckedUids } from '../../sim/campaign.js';
+import { canRearrange } from '../../sim/rearrange.js';
 import { mountBuilder } from '../builder/view.js';
 import { icons } from '../icons.js';
 
@@ -69,13 +73,16 @@ export const constructionScreen = {
       open(content) {
         defs = content;
         const { campaign } = game.getState();
-        if (!campaign || !canRefit(campaign, content)) return null;
-        const stock = stockOf(campaign);
+        // Between jumps (M46) the stock is the parts aboard alone: they move
+        // and turn, and none comes off.
+        const rearrange = Boolean(campaign) && canRearrange(campaign, content);
+        if (!campaign || (!rearrange && !canRefit(campaign, content))) return null;
+        const stock = rearrange ? aboard(campaign.ship) : stockOf(campaign);
         const wrecked = wreckedUids(campaign);
-        const picked = pick;
+        const picked = rearrange ? null : pick;
         pick = null;
-        if (kept?.ship === campaign.ship && sameStock(kept.stock, stock) && sameList(kept.wrecked, wrecked)) return { session: kept, pick: picked };
-        return { ship: campaign.ship, log: [], stock, wrecked, pick: picked };
+        if (kept?.ship === campaign.ship && Boolean(kept.rearrange) === rearrange && sameStock(kept.stock, stock) && sameList(kept.wrecked, wrecked)) return { session: kept, pick: picked };
+        return { ship: campaign.ship, log: [], stock, wrecked, rearrange, pick: picked };
       },
       onSession(session, prev) {
         kept = session;
@@ -84,6 +91,13 @@ export const constructionScreen = {
     });
   },
 };
+
+// { [type]: count } of the parts on `ship`.
+function aboard(ship) {
+  const stock = {};
+  for (const module of ship.modules) stock[module.type] = (stock[module.type] ?? 0) + 1;
+  return stock;
+}
 
 function sameStock(a, b) {
   const keys = new Set([...Object.keys(a ?? {}), ...Object.keys(b)]);

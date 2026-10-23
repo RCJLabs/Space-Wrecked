@@ -42,7 +42,9 @@
 // raid's raiders do. Whoever wins (endBoarding), the crew keeps its wounds
 // (campaign.js endFight), and:
 //   - won aboard her: the crew strips her salvage (the preset's count of
-//     working parts, by rolls, never corridors) and takes her scrap;
+//     her working parts, never corridors, picked by the player on the end
+//     panel, the dearest unless they pick others: strip.js, M46) and takes
+//     her scrap, as much of it as she has left working;
 //   - won at home: her boarders' gear, her scrap's worth in credits;
 //   - lost at home: her crew takes what a lost raid takes (raid.js
 //     raidLoss): the dearest part on hand, or half the credits;
@@ -75,8 +77,8 @@
 //            and losses are in changes.)
 // campaign.fight.boarding, during a boarding fight: { dir: 'them' (the
 // crew boarded her) | 'you' (she boarded the player's ship), salvage:
-// { parts, credits } (what a win pays) }.
-import { int, pick } from '../core/rng.js';
+// { pool, parts, credits } (what a win pays: strip.js) }.
+import { int } from '../core/rng.js';
 import { BOARDINGS, enemyOrder, FACED, openingVolley, playRound } from './approach.js';
 import { createBattle } from './battle.js';
 import { crewUnit, endFight } from './campaign.js';
@@ -91,6 +93,7 @@ import { hasTag } from './modules.js';
 import { raidLoss } from './raid.js';
 import { difficultyOf, enemyBonus, fightSetup, gunneryBonus } from './difficulty.js';
 import { moveStanding, patrolWelcome, shipMoves } from './standing.js';
+import { salvageOffer, scrapLeft, strippedParts } from './strip.js';
 
 const MAX_SEED = 0xffffffff;
 
@@ -325,36 +328,32 @@ export function beginBoarding(campaign, rules, { squad = null, ...setup } = {}) 
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };
 }
 
-// What winning the boarding pays, rolled: aboard her, her salvage (that
-// many of her working parts, never corridors, none twice) and her scrap; at
-// home, her scrap alone. Returns { salvage: { parts, credits }, rng }.
+// What winning the boarding pays: aboard her, her salvage (strip.js: her
+// working parts to pick from, never corridors, and the dearest that many,
+// M46) and her scrap, rolled and scaled by how much of her still works; at
+// home, her boarders' scrap alone, rolled. Returns { salvage: { pool,
+// parts, credits }, rng }.
 function salvageFor(approach, due, rng, rules) {
+  const { them } = approach;
+  const offer = due.dir === 'them' ? salvageOffer(them.ship, them.wrecked, due.preset.salvage ?? 0, rules) : { pool: [], parts: [] };
   let r = rng;
-  const parts = [];
-  if (due.dir === 'them') {
-    let pool = approach.them.ship.modules.filter((module) => !(module.uid in approach.them.wrecked) && rules.modules.has(module.type) && !hasTag(rules.modules.get(module.type), 'corridor'));
-    for (let n = 0; n < (due.preset.salvage ?? 0) && pool.length; n++) {
-      const part = pick(r, pool);
-      r = part.state;
-      parts.push(part.value.type);
-      pool = pool.filter((module) => module !== part.value);
-    }
-  }
   let credits = 0;
   if (due.preset.scrap) {
     const scrap = int(r, ...due.preset.scrap);
     r = scrap.state;
-    credits = scrap.value;
+    credits = due.dir === 'them' ? scrapLeft(scrap.value, them.ship, them.wrecked) : scrap.value;
   }
-  return { salvage: { parts, credits }, rng: r };
+  return { salvage: { ...offer, credits }, rng: r };
 }
 
 // After a boarding fight with a winner, back to the run (campaign.js
 // endFight: wounds, the fights counted) with what it came to (see the top
 // of the file), the boarding counted in the flags (boardingsWon or
-// boardingsLost), and the approach put away. Any other fight is left to
+// boardingsLost), and the approach put away. picks: the parts the player
+// picked to strip off her (strip.js strippedParts), or null for the
+// dearest. Any other fight is left to
 // endFight as it is.
-export function endBoarding(campaign, rules) {
+export function endBoarding(campaign, rules, picks = null) {
   const { fight } = campaign;
   const after = endFight(campaign, rules);
   if (after === campaign || !fight.boarding) return after;
@@ -363,7 +362,7 @@ export function endBoarding(campaign, rules) {
   const parts = { ...after.parts };
   let { credits } = after;
   if (won) {
-    for (const type of salvage.parts) parts[type] = (parts[type] ?? 0) + 1;
+    for (const type of strippedParts(salvage, picks)) parts[type] = (parts[type] ?? 0) + 1;
     credits += salvage.credits;
   } else if (dir === 'you') {
     const loss = raidLoss(campaign, rules);

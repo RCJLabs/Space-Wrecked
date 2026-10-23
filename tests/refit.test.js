@@ -126,10 +126,11 @@ test('the ship can not jump from the station while a flight check fails, and the
   const fixed = refitShip(broken, campaign.ship, rules);
   assert.equal(failingCheck(fixed, rules), null);
   assert.equal(jump(fixed, rules, near).ok, true);
-  // Away from a station nothing holds it: only a refit changes the ship, and
-  // only at a station.
+  // Away from a station only the joins hold it (M46): a move between jumps
+  // can't add the reactor back, but it can split the ship, as taking the
+  // reactor off did here.
   const away = { ...broken, run: { ...broken.run, at: near } };
-  assert.equal(failingCheck(away, rules), null);
+  assert.equal(failingCheck(away, rules).id, 'layout');
 });
 
 test('supplies past what the holds take after a refit stay behind at the next jump, said before it', () => {

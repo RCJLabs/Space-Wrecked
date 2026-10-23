@@ -91,6 +91,7 @@ import { flightChecklist, partLines } from './constraints.js';
 import { deploy, machinesOn } from './deploy.js';
 import { crewLook, isLook } from './looks.js';
 import { MAX_STOCK } from './economy.js';
+import { baseOf } from './makers.js';
 import { mapFromShip, WRECKS } from './mapFromShip.js';
 import { isWorld, MAX_NODES, MAX_PLACE_NAME, runProblem } from './runShape.js';
 import { isPlace, MAX_PLACES, tripProblem } from './tripShape.js';
@@ -142,6 +143,8 @@ const MAX_NEEDED = 40;
 // More parts than a boarding crew strips off a ship: a guard on what a save
 // can hold.
 const MAX_SALVAGE = 20;
+// More parts than any ship has: a guard on the parts a boarding offers.
+const MAX_POOL = 200;
 // More buildings than the biggest colony grid has cells (40 x 30,
 // tools/validate-colony.js): a guard on what a save can hold.
 const MAX_BUILDINGS = 1200;
@@ -355,13 +358,24 @@ export function stockOf(campaign) {
 // hangar (act 1), at a station on the run (act 2) or at the colony (act 3,
 // M27), on the same frame, and only with the parts the campaign has. A wrecked part stays aboard, as
 // the same part, until a station repairs it (repair.js): it can move, and
-// its damage moves with it, but it can't come off. A refit is free.
+// its damage moves with it, but it can't come off, except as scrap (M46):
+// with a spare of the same part (any maker's) fitted in its place, the
+// wreck is gone, not on hand, and its damage with it. A refit is free.
 // Otherwise the campaign is left as it was.
 export function refitShip(campaign, ship, rules) {
   if (!canRefit(campaign, rules) || ship === campaign.ship || !isShipData(ship) || ship.frame !== campaign.ship.frame) return campaign;
-  if (!keepsWrecks(campaign, ship)) return campaign;
+  const scrapped = scrappedWrecks(campaign, ship, rules);
+  if (!scrapped) return campaign;
   const parts = onHandAfter(campaign.parts, campaign.ship, ship);
-  return parts ? { ...campaign, ship, parts } : campaign;
+  if (!parts) return campaign;
+  for (const { type } of scrapped) {
+    parts[type] -= 1;
+    if (!parts[type]) delete parts[type];
+  }
+  if (!scrapped.length) return { ...campaign, ship, parts };
+  const gone = new Set(scrapped.map(({ uid }) => String(uid)));
+  const wrecks = Object.fromEntries(Object.entries(campaign.wrecks ?? {}).filter(([uid]) => !gone.has(uid)));
+  return { ...campaign, ship, parts, wrecks };
 }
 
 // True where the ship can be refitted: at the hangar, at a station or a
@@ -377,12 +391,18 @@ export function wreckedUids(campaign) {
   return Object.keys(campaign.wrecks ?? {}).map(Number).filter((uid) => uids.has(uid));
 }
 
-// True when every wrecked part is still on `ship`, as the part it was.
-function keepsWrecks(campaign, ship) {
-  return wreckedUids(campaign).every((uid) => {
+// The wrecked parts `ship` scraps, [{ uid, type }], or null if it drops
+// one without a spare in its place: each wrecked part not on `ship` as the
+// part it was must leave as many of that part (any maker's) aboard as
+// before.
+function scrappedWrecks(campaign, ship, rules) {
+  const scrapped = wreckedUids(campaign).flatMap((uid) => {
     const before = campaign.ship.modules.find((module) => module.uid === uid);
-    return ship.modules.some((module) => module.uid === uid && module.type === before.type);
+    return ship.modules.some((module) => module.uid === uid && module.type === before.type) ? [] : [{ uid, type: before.type }];
   });
+  const base = (type) => baseOf(rules.modules.get(type) ?? { id: type });
+  const count = (modules, of) => modules.filter((module) => base(module.type) === of).length;
+  return scrapped.every(({ type }) => count(ship.modules, base(type)) >= count(campaign.ship.modules, base(type))) ? scrapped : null;
 }
 
 // The parts on hand once ship `before` becomes `after`, or null if `after`
@@ -751,13 +771,15 @@ function isWrecks(wrecks, ship) {
 }
 
 // A boarding fight's (encounter.js): which way it goes, and what a win
-// pays, rolled as it began: her parts and credits, and at a place the
+// pays, set as it began: her working parts to pick from (M46, strip.js),
+// the dearest of them as many as she gives, and credits, and at a place the
 // scavengers hold (M28, expeditions.js) materials.
 function isBoarding(boarding) {
   const { salvage } = boarding ?? {};
   return (
     isRecord(boarding) && (boarding.dir === 'them' || boarding.dir === 'you') && isRecord(salvage) &&
-    Array.isArray(salvage.parts) && salvage.parts.length <= MAX_SALVAGE && salvage.parts.every(isId) && isInt(salvage.credits, 0, Number.MAX_SAFE_INTEGER) &&
+    Array.isArray(salvage.pool) && salvage.pool.length <= MAX_POOL && salvage.pool.every(isId) &&
+    Array.isArray(salvage.parts) && salvage.parts.length <= MAX_SALVAGE && salvage.parts.every((type) => salvage.pool.includes(type)) && isInt(salvage.credits, 0, Number.MAX_SAFE_INTEGER) &&
     (salvage.materials === undefined || isInt(salvage.materials, 0, MAX_MATERIALS))
   );
 }

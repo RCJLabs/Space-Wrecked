@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { donate } from '../src/sim/colony.js';
 import { boardPlace, chooseAtPlace, endPlaceFight, flyHome, flyOut, tripPlan, withPlaces } from '../src/sim/expeditions.js';
-import { boardingObjective, boardingOutcome } from '../src/ui/campaign/boardingText.js';
+import { boardingObjective, boardingOutcome, stripPicks } from '../src/ui/campaign/boardingText.js';
 import { colonyText } from '../src/ui/campaign/colonyText.js';
 import { awayText, legReport, placesText, planText, squadRows } from '../src/ui/campaign/tripText.js';
 import { rules } from './battleKit.js';
@@ -99,9 +99,13 @@ test("a held derelict: who holds her, what a win brings, Board her's ask; the fi
   const { battle } = fight.fight;
   assert.deepEqual(boardingObjective(battle, fight), { title: 'Aboard Long Haul', progress: '3 squatters left', done: false, deadline: null });
   const salvage = fight.fight.boarding.salvage;
-  const names = salvage.parts.map((type) => rules.modules.get(type).name);
   assert.equal(boardingOutcome({ ...battle, winner: 'crew' }, fight, rules).title, 'Long Haul is yours');
-  assert.match(boardingOutcome({ ...battle, winner: 'crew' }, fight, rules).text, new RegExp(`^Stripped: an? ${names[0]}, an? ${names[1]}\\. Materials: ${salvage.materials}, as far as the stores take them\\.$`));
+  // M46: the parts to strip are picked on the end panel, the dearest to start.
+  assert.equal(boardingOutcome({ ...battle, winner: 'crew' }, fight, rules).text, `Strip 2 parts off her: the dearest are picked, tap to pick others. Materials: ${salvage.materials}, as far as the stores take them.`);
+  const picks = stripPicks({ ...battle, winner: 'crew' }, fight, rules);
+  assert.deepEqual([picks.count, picks.pool.map((p) => p.type), picks.start], [2, salvage.pool, [0, 1]]);
+  assert.equal(picks.pool[0].label, rules.modules.get(salvage.pool[0]).name);
+  assert.equal(stripPicks({ ...battle, winner: 'enemy' }, fight, rules), null);
   assert.deepEqual(boardingOutcome({ ...battle, winner: 'enemy' }, fight, rules), { tone: 'bad', title: 'Beaten back', text: 'The squad falls back to the ship, hurt. Nothing taken.' });
   const won = endPlaceFight({ ...fight, fight: { ...fight.fight, battle: { ...battle, winner: 'crew' } } }, rules);
   assert.equal(awayText(won, rules).result.title, 'Boarded and won');

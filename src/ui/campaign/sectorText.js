@@ -19,8 +19,9 @@
 // event card's words are eventText.js's, and the
 // approach screen's approachText.js's. rules are the content tables
 // (src/sim/defs.js).
-import { atYard } from '../../sim/acts.js';
+import { atPort, atYard } from '../../sim/acts.js';
 import { actOf, canRefit } from '../../sim/campaign.js';
+import { canRearrange } from '../../sim/rearrange.js';
 import { MAX_RATING, RATINGS } from '../../sim/gen/system.js';
 import { withHeat } from '../../sim/heat.js';
 import { maxHp } from '../../sim/campaign.js';
@@ -80,10 +81,12 @@ import { dockSaid, sideColor, sideIs, sideName, sidesText, stationText } from '.
 //                aboard, if any
 //   offer        what the station sells, or null away from one: { line,
 //                why, buys: [{ count, label, ask, text }] }
-//   refit        the station's or shipyard's refits, or null away from
-//                both: { label, parts (how many on hand), line, broken (the
-//                words for a flight check that keeps the ship here, or
-//                null) }
+//   refit        the station's or shipyard's refits, or between jumps
+//                (M46) rearranging, or null where neither can be made:
+//                { label ('Refit' or 'Rearrange'), parts (how many on
+//                hand), line, broken (the words for a flight check that
+//                keeps the ship here, or null), rearrange (true between
+//                jumps) }
 //   yard         the shipyard the ship is at (M37b), or null away from one:
 //                { label, line, parts (how many it has left for sale) };
 //                Yard opens the shop screen on its stock
@@ -306,11 +309,18 @@ function suppliesRow(campaign, rules) {
 }
 
 // The station's or shipyard's refits: Refit opens construction mode on the
-// ship, with the parts on hand, for nothing. null away from both.
+// ship, with the parts on hand, for nothing. Between jumps (M46,
+// rearrange.js) Rearrange opens it with the parts aboard only, to move and
+// turn. null where neither can be made (an event or a ship to deal with
+// first).
 function refitText(campaign, rules) {
-  if (!campaign.run || !canRefit(campaign, rules)) return null;
-  const parts = Object.values(campaign.parts).reduce((sum, count) => sum + count, 0);
+  if (!campaign.run) return null;
   const check = failingCheck(campaign, rules);
+  if (canRearrange(campaign, rules)) {
+    return { label: 'Rearrange', parts: 0, line: "Rearrange moves and turns the ship's parts, free. Parts come on and off at a station or a shipyard.", broken: check ? brokenWhy(check, false) : null, rearrange: true };
+  }
+  if (!canRefit(campaign, rules)) return null;
+  const parts = Object.values(campaign.parts).reduce((sum, count) => sum + count, 0);
   const line = parts ? `${parts === 1 ? 'A part' : `${parts} parts`} on hand: Refit fits ${parts === 1 ? 'it' : 'them'}, free.` : 'Refit moves and turns the ship\'s parts, free.';
   return { label: 'Refit', parts, line, broken: check ? brokenWhy(check) : null };
 }
@@ -650,7 +660,7 @@ function sectorHint(campaign, rules, { each, offer, leave, known, yard }) {
   const coming = landerComing(campaign, rules);
   if (coming) return coming;
   const check = failingCheck(campaign, rules);
-  if (check) return { tone: 'bad', text: brokenWhy(check) };
+  if (check) return { tone: 'bad', text: brokenWhy(check, atPort(campaign, rules)) };
   const over = offer.ok || yard ? suppliesOver(campaign, rules) : 0;
   if (over) return { tone: 'warn', text: `The holds take ${supplyCapacity(campaign.ship, rules, campaign.crew)} now: ${over} supplies stay behind at the next jump. Refit a hold back on to keep them.` };
   // The hunters out: what sheds heat here, or anywhere.

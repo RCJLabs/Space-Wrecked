@@ -62,9 +62,11 @@ export const PIECE_REACH = 1;
 // log: the commands that built `ship` from an empty frame (see replay.js).
 // stock: { [type]: count } of every part there is, on the ship or on hand,
 // or null for no limit. wrecked: the uids of the parts that can't come off
-// (wrecked, until a station repairs them).
-export function createSession(ship, log = [], stock = null, wrecked = []) {
-  return { ship, log, stock, wrecked, layer: 'rooms', past: [], future: [], selected: null, armed: null, ghost: null, notice: null };
+// (wrecked, until a station repairs them, or scrapped for a spare: swap).
+// rearrange: true between jumps (M46, rearrange.js): parts move and turn,
+// but none comes off.
+export function createSession(ship, log = [], stock = null, wrecked = [], { rearrange = false } = {}) {
+  return { ship, log, stock, wrecked, ...(rearrange ? { rearrange } : {}), layer: 'rooms', past: [], future: [], selected: null, armed: null, ghost: null, notice: null };
 }
 
 // How many of a part are on hand to put on the ship: Infinity without a
@@ -311,15 +313,20 @@ function run(session, defs, cells) {
 
 // Another maker's version of a placed part, on hand, swapped in where it
 // stands (M44): the same spot and turn, one undo step, the old one back on
-// hand. A wrecked part stays as it is. The log keeps a remove and a place,
-// and any styling piece the remove took off goes back on after.
+// hand. The log keeps a remove and a place, and any styling piece the
+// remove took off goes back on after. A wrecked part is scrapped for the
+// spare (M46), any maker's version of it, the same one too: the wreck is
+// gone, not back on hand, and as that can't be taken back (the campaign
+// keeps no wreck to return), the history starts over. Between jumps
+// nothing is swapped.
 function swap(session, defs, uid, type) {
   const item = session.ship.modules.find((m) => m.uid === uid);
   const def = defs.modules.get(type);
-  if (!item || !def || item.type === type) return session;
+  const wrecked = Boolean(session.wrecked?.includes(uid));
+  if (!item || !def || (item.type === type && !wrecked)) return session;
   const old = defs.modules.get(item.type);
+  if (session.rearrange) return withNotice(session, 'bad', `Between jumps parts only move and turn: swap the ${old.name} at a station or a shipyard.`);
   if (baseOf(old) !== baseOf(def)) return withNotice(session, 'bad', `A ${def.name} can't stand in for the ${old.name}.`);
-  if (session.wrecked?.includes(uid)) return withNotice(session, 'bad', `The ${old.name} is wrecked: it can't be swapped until the station repairs it.`);
   if (partsLeft(session, type) < 1) return withNotice(session, 'bad', noneLeft(defs, type));
   const removed = applyCommand(session.ship, defs, { op: 'remove', uid });
   const { x, y, rot } = item;
@@ -332,6 +339,12 @@ function swap(session, defs, uid, type) {
     if (!back.ok) continue;
     ship = back.ship;
     commands.push({ op: 'place', uid: back.uid, type: piece.type, x: piece.x, y: piece.y, rot: piece.rot });
+  }
+  if (wrecked) {
+    const stock = { ...session.stock, [item.type]: (session.stock?.[item.type] ?? 1) - 1 };
+    if (!stock[item.type]) delete stock[item.type];
+    const scrapped = { ...record(session, ship, commands, `scrap ${old.name} for ${def.name}`), stock, wrecked: session.wrecked.filter((w) => w !== uid), past: [], future: [] };
+    return withNotice({ ...scrapped, selected: placed.uid, ghost: null }, 'good', `Scrapped the wrecked ${old.name}: a ${def.name} in its place. A scrap can't be undone.`);
   }
   const next = record(session, ship, commands, `swap ${old.name} for ${def.name}`);
   return withNotice({ ...next, selected: placed.uid, ghost: null }, 'good', `Swapped the ${old.name} for a ${def.name}.`);
@@ -421,7 +434,8 @@ function remove(session, defs) {
   const item = itemOf(session.ship, session.selected);
   if (!item) return session;
   const name = nameOf(defs, item.type);
-  if (session.wrecked?.includes(item.uid)) return withNotice(session, 'bad', `The ${name} is wrecked: it comes off once the station repairs it. It can still move.`);
+  if (session.rearrange && session.ship.modules.includes(item)) return withNotice(session, 'bad', `Between jumps parts only move and turn: the ${name} comes off at a station or a shipyard.`);
+  if (session.wrecked?.includes(item.uid)) return withNotice(session, 'bad', `The ${name} is wrecked: it comes off once the station repairs it, or scrap it for a spare on hand. It can still move.`);
   const result = applyCommand(session.ship, defs, { op: 'remove', uid: item.uid });
   const next = record(session, result.ship, { op: 'remove', uid: item.uid }, `remove ${name}`);
   return withNotice({ ...next, selected: null, ghost: null }, 'info', `Removed ${name}.${cameOff(defs, result.removed)}`);

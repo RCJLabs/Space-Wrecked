@@ -12,6 +12,7 @@ import { DIFFICULTIES, setDifficulty } from './difficulty.js';
 import { endJob, takeJob, takeQuestJob, withBoard } from './contracts.js';
 import { buyPart, sellPart, sellWeapon } from './economy.js';
 import { beginBoarding, closeApproach, endBoarding, giveOrder } from './encounter.js';
+import { canRearrange, rearrangeShip } from './rearrange.js';
 import { chooseEvent } from './events.js';
 import { boardPlace, chooseAtPlace, endPlaceFight, flyHome, flyOn, flyOut, withPlaces } from './expeditions.js';
 import { makePayment } from './heat.js';
@@ -92,7 +93,8 @@ export function initialState(seed) {
 //                                  before there were jobs or a shop)
 //   campaign/ship { ship, rules }  the ship refitted at the hangar, or at
 //                                  a station on the run (campaign.js
-//                                  refitShip)
+//                                  refitShip); between jumps, rearranged
+//                                  (M46, rearrange.js)
 //   campaign/pay { rules }         a payment on the debt: credits for heat
 //   campaign/buy { index, rules }  the part at index in the shop's stock,
 //                                  bought
@@ -205,12 +207,14 @@ export function initialState(seed) {
 //   campaign/fight/begin { rules } the crew fights boarders at home (M15's
 //                                  raids will)
 //   campaign/fight/save { battle, log }   the fight after an order
-//   campaign/fight/end { rules }   back to the hub (or the run) once the
+//   campaign/fight/end { rules, strip? }   back to the hub (or the run) once the
 //                                  fight is won or lost: a job's pay and
 //                                  heat, and a new board; what a raid cost;
 //                                  or what a boarding came to, on the run
-//                                  or at a place on a trip (M28); or what
-//                                  a raid on the colony came to (M29)
+//                                  or at a place on a trip (M28), with
+//                                  strip, the parts picked off her (M46);
+//                                  or what a raid on the colony came to
+//                                  (M29)
 //   dev/cheat { cheat, rules }     a cheat from the ?dev=1 menu (dev.js),
 //                                  where the campaign is; the screen stays
 export function reduce(state, action) {
@@ -250,7 +254,7 @@ export function reduce(state, action) {
     case 'campaign/places':
       return withCampaign(state, state.campaign && withPlaces(state.campaign, action.rules));
     case 'campaign/ship':
-      return withCampaign(state, state.campaign && refitShip(state.campaign, action.ship, action.rules));
+      return withCampaign(state, state.campaign && (canRearrange(state.campaign, action.rules) ? rearrangeShip : refitShip)(state.campaign, action.ship, action.rules));
     case 'campaign/pay':
     case 'campaign/buy':
     case 'campaign/sell':
@@ -295,7 +299,7 @@ export function reduce(state, action) {
     case 'campaign/fight/end': {
       const fight = state.campaign?.fight;
       const end = fight?.raid ? (state.campaign.colony ? endColonyRaid : endRaid) : fight?.boarding ? (state.campaign.colony?.trip ? endPlaceFight : endBoarding) : endJob;
-      const next = withCampaign(state, state.campaign && end(state.campaign, action.rules));
+      const next = withCampaign(state, state.campaign && end(state.campaign, action.rules, action.strip ?? null));
       return next === state ? state : { ...next, screen: campaignScreen(next.campaign) };
     }
     case 'campaign/launch': {
