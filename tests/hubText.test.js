@@ -17,12 +17,14 @@ test('the hangar shows the act, its goal with what is on hand, the crew and the 
   assert.deepEqual(text.goal, {
     ready: false,
     lines: [
-      { ok: true, text: 'Power +6 (8 made, 2 used)', fix: null },
-      { ok: false, text: 'No thrust', fix: 'Add 2 × Engine (+12 thrust each): none on hand' },
-      { ok: false, text: 'Berths 0 of 3 crew', fix: 'Add Crew quarters (+4 berths): 1 on hand' },
-      { ok: false, text: 'Life support 0 of 3 crew', fix: 'Add Life support (+4 crew): 1 on hand' },
-      { ok: false, text: 'Missing engine', fix: 'Add Engine: none on hand' },
-      { ok: true, text: 'Every part joined to the bridge, airlock on the hull edge', fix: null },
+      // A line with its part on hand names it (M44: the line opens the
+      // builder with it armed); one with none on hand stays text.
+      { ok: true, text: 'Power +6 (8 made, 2 used)', fix: null, add: null },
+      { ok: false, text: 'No thrust', fix: 'Add 2 × Engine (+12 thrust each): none on hand', add: null },
+      { ok: false, text: 'Berths 0 of 3 crew', fix: 'Add Crew quarters (+4 berths): 1 on hand', add: 'quarters' },
+      { ok: false, text: 'Life support 0 of 3 crew', fix: 'Add Life support (+4 crew): 1 on hand', add: 'lifesupport' },
+      { ok: false, text: 'Missing engine', fix: 'Add Engine: none on hand', add: null },
+      { ok: true, text: 'Every part joined to the bridge, airlock on the hull edge', fix: null, add: null },
     ],
   });
   assert.deepEqual(text.crew, [
