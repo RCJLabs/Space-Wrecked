@@ -29,6 +29,7 @@ import { crewColor, LYING_TOP, ordersScene, UNIT_TOP, unitsScene, zonesScene } f
 import { describeEvent } from '../../sim/battleLog.js';
 import { canAct, createFight, ordersFor, reduceFight, selectedUnit } from '../../sim/fight.js';
 import { crewLook } from '../../sim/looks.js';
+import { sightedBy } from '../../sim/sight.js';
 import { tileText } from '../battle/tileText.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
@@ -108,6 +109,8 @@ export function mountFight(root, source) {
       reload: () => order({ type: 'fight/reload' }),
       stabilize: () => order({ type: 'fight/stabilize' }),
       open: () => order({ type: 'fight/open' }),
+      close: () => order({ type: 'fight/close' }),
+      lock: () => order({ type: 'fight/lock' }),
       job: () => order({ type: 'fight/order' }),
       grab: () => order({ type: 'fight/grab' }),
       hack: () => order({ type: 'fight/hack' }),
@@ -139,6 +142,7 @@ export function mountFight(root, source) {
   let labels = {}; // what paintFightLabels draws over the board
   let doorsShown = null; // the open doors the map was last drawn with
   let firesShown = null; // and the tiles a weapon set burning (M37)
+  let locksShown = null; // and the locked doors (M45)
   let actorsKey = null; // what the figures and marks on the board were made from
   let flash = null; // a notice shown for NOTICE_MS
   let flashTimer = 0;
@@ -167,6 +171,9 @@ export function mountFight(root, source) {
       tap(x, y) {
         if (busy()) return;
         const at = tileAt(x, y);
+        // A tile an enemy hidden in the fog of war (M45) stands on is as
+        // good as empty to the screen: the tap shows nothing.
+        if (at && hiddenAt(at)) return order({ type: 'fight/cancel' });
         order(at ? { type: 'fight/tap', x: at[0], y: at[1] } : { type: 'fight/cancel' });
       },
       longPress(x, y) {
@@ -268,6 +275,7 @@ export function mountFight(root, source) {
     playing = null;
     doorsShown = null;
     firesShown = null;
+    locksShown = null;
     disarmEnd();
     closeCard();
     if (store) {
@@ -441,7 +449,9 @@ export function mountFight(root, source) {
       showGoal(frame.view);
     }
     if (frame.event && frame.event !== before?.event) {
-      setStatus(eventText(frame.event, frame.view));
+      // An enemy hidden in the fog of war (M45) isn't named.
+      const unseen = frame.event.unit && fogged(frame.view, frame).has(frame.event.unit);
+      setStatus(unseen ? { tone: 'info', text: 'Something moves out of sight.' } : eventText(frame.event, frame.view));
       // A new turn shows as its banner goes up.
       const { side, round } = frame.event.type === 'turn' ? frame.event : frame.view;
       setLine(chip, chipFor({ ...frame.view, side, round }));
@@ -453,12 +463,17 @@ export function mountFight(root, source) {
   // orders, and what goes over them.
   function showBoard(fight, orders, frame) {
     const battle = frame ? frame.view : fight.battle;
-    if (battle.doors !== doorsShown || battle.fires !== firesShown) {
-      mapView.setMap({ map, skin: skinOf(map, defs), open: battle.doors, fires: battle.fires ?? [], mounts: battle.units.filter((u) => defs.machines?.has(u.kind)).map((u) => [u.x, u.y]) });
+    if (battle.doors !== doorsShown || battle.fires !== firesShown || battle.locks !== locksShown) {
+      const locked = (battle.locks ?? []).map((lock) => lock.key);
+      mapView.setMap({ map, skin: skinOf(map, defs), open: battle.doors, locked, fires: battle.fires ?? [], mounts: battle.units.filter((u) => defs.machines?.has(u.kind)).map((u) => [u.x, u.y]) });
       doorsShown = battle.doors;
       firesShown = battle.fires;
+      locksShown = battle.locks;
     }
-    const figures = battle.units.map((u) => figure(u, battle, frame));
+    // With fog of war on (M45), only the enemies the crew can see are drawn.
+    const hidden = fogged(battle, frame);
+    const units = hidden.size ? battle.units.filter((u) => !hidden.has(u.id)) : battle.units;
+    const figures = units.map((u) => figure(u, battle, frame));
     const { preview } = fight;
     const aimed = preview?.type === 'shoot' ? battle.units.find((u) => u.id === preview.target) : null;
     // An order shown (M32): the unit it reaches, or the door it welds.
@@ -467,7 +482,7 @@ export function mountFight(root, source) {
     // The figures and marks are made again only when something in them
     // changed: a banner or words rising leave the board's last frame as
     // it was.
-    const key = [battle, orders ? fight : null, frame?.moving?.id, ...(frame?.moving?.at ?? []), frame?.shot?.shooter, frame?.shot?.target, frame?.hit, ...figures.map((f) => `${f.pose.aim},${f.pose.fall}`)];
+    const key = [battle, orders ? fight : null, units.length, frame?.moving?.id, ...(frame?.moving?.at ?? []), frame?.shot?.shooter, frame?.shot?.target, frame?.hit, ...figures.map((f) => `${f.pose.aim},${f.pose.fall}`)];
     if (!actorsKey || key.length !== actorsKey.length || key.some((value, i) => value !== actorsKey[i])) {
       actorsKey = key;
       const marks = orders
@@ -486,7 +501,7 @@ export function mountFight(root, source) {
       mapView.setActors({ faces: [...zonesScene(objectiveZones(battle.objective)), ...marks.faces], glows: [], figures: unitsScene(figures).figures });
     }
     labels = {
-      units: battle.units.map((u, i) => ({ at: figures[i].at, status: u.status, hp: u.hp, maxHp: u.maxHp, color: colors.get(u.id) ?? palette.enemyTrim, initial: colors.has(u.id) ? (u.name?.[0] ?? null) : null, overwatch: u.overwatch, bleed: u.bleed, selected: u.id === orders?.unit.id, marked: Boolean(u.mark), suppressed: Boolean(u.suppressed), asleep: u.asleep, carrying: Boolean(u.carrying) })),
+      units: units.map((u, i) => ({ at: figures[i].at, status: u.status, hp: u.hp, maxHp: u.maxHp, color: colors.get(u.id) ?? palette.enemyTrim, initial: colors.has(u.id) ? (u.name?.[0] ?? null) : null, overwatch: u.overwatch, bleed: u.bleed, selected: u.id === orders?.unit.id, marked: Boolean(u.mark), suppressed: Boolean(u.suppressed), asleep: u.asleep, carrying: Boolean(u.carrying) })),
       badges: [
         ...(orders?.targets ?? []).filter(({ target }) => target.id !== ordered?.id).map(({ target, odds }) => ({ at: [target.x, target.y], text: `${odds.hit}%`, strong: target.id === aimed?.id })),
         ...orderBadge(preview, orders, ordered),
@@ -558,13 +573,33 @@ export function mountFight(root, source) {
     return tx >= 0 && ty >= 0 && tx < map.width && ty < map.height ? [tx, ty] : null;
   }
 
+  // Fog of war (M45, <html data-fog>): the enemies hidden now, those no one
+  // in the crew can see. One that fires shows for its shot, as the frame
+  // plays it. Empty with the setting off.
+  function fogged(battle, frame = null) {
+    if (document.documentElement.dataset.fog !== 'on') return new Set();
+    const seen = sightedBy(battle, 'crew', defs);
+    const shooter = frame?.shot?.shooter;
+    return new Set(battle.units.filter((u) => u.side !== 'crew' && !seen.has(u.id) && u.id !== shooter).map((u) => u.id));
+  }
+
+  // True if an enemy hidden in the fog of war stands on tile `at`.
+  function hiddenAt([x, y]) {
+    const { battle } = store.getState();
+    const hidden = fogged(battle);
+    return battle.units.some((u) => hidden.has(u.id) && u.status !== 'dead' && u.x === x && u.y === y);
+  }
+
   // The front-most unit (not dead) under screen point (sx, sy), or null.
+  // An enemy hidden in the fog of war (M45) is never under it.
   function unitUnder(sx, sy) {
     if (!store || !camera) return null;
     let best = null;
     let nearest = Infinity;
-    for (const u of store.getState().battle.units) {
-      if (u.status === 'dead') continue;
+    const { battle } = store.getState();
+    const hidden = fogged(battle);
+    for (const u of battle.units) {
+      if (u.status === 'dead' || hidden.has(u.id)) continue;
       const corners = [];
       const top = u.status === 'active' || u.status === 'held' ? UNIT_TOP : LYING_TOP;
       for (const x of [u.x + 0.22, u.x + 0.78]) for (const y of [u.y + 0.22, u.y + 0.78]) for (const z of [0, top]) corners.push(project(camera, x, y, z));

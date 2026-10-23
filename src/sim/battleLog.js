@@ -20,6 +20,15 @@ export function describeEvent(event, battle) {
       return `${who} moves ${event.path.map(([x, y]) => `(${x}, ${y})`).join(' to ')}.`;
     case 'door':
       return `${who} opens the door on the ${SIDE_NAME[event.side]} side of (${event.at[0]}, ${event.at[1]}).`;
+    // Doors as tactics (M45, locks.js).
+    case 'close':
+    case 'lock':
+    case 'unlock':
+    case 'force': {
+      const verb = { close: 'shuts', lock: 'locks', unlock: 'unlocks and opens', force: 'forces' }[event.type];
+      const after = event.type === 'force' ? ': it stays open' : '';
+      return `${who} ${verb} the door on the ${SIDE_NAME[event.side]} side of (${event.at[0]}, ${event.at[1]})${after}.`;
+    }
     case 'shot': {
       // A burst's shots say their place in it (weapons.js, M37).
       const burst = event.burst ? ` (burst, shot ${event.burst})` : '';

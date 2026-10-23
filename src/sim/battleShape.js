@@ -27,6 +27,9 @@ export function battleProblem(value) {
   }
   if (!Array.isArray(value.doors) || !value.doors.every((key) => typeof key === 'string')) return 'has unreadable doors';
   if (!Array.isArray(value.welds) || !value.welds.every((weld) => isRecord(weld) && typeof weld.key === 'string' && isInt(weld.until, 1, MAX))) return 'has unreadable welds';
+  // Locks and doors forced (M45): absent until the first.
+  if (value.locks !== undefined && !(Array.isArray(value.locks) && value.locks.every((lock) => isRecord(lock) && typeof lock.key === 'string' && TEAMS.includes(lock.side)))) return 'has unreadable locks';
+  if (value.broken !== undefined && !(Array.isArray(value.broken) && value.broken.every((key) => typeof key === 'string'))) return 'has unreadable doors forced';
   // Fires a weapon set (M37): absent until the first.
   const onMap = (at) => Array.isArray(at) && at.length === 2 && isInt(at[0], 0, map.width - 1) && isInt(at[1], 0, map.height - 1);
   if (value.fires !== undefined && !(Array.isArray(value.fires) && value.fires.every((fire) => isRecord(fire) && onMap(fire.at) && isInt(fire.until, 1, MAX)))) return 'has unreadable fires';

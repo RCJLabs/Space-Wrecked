@@ -46,9 +46,12 @@
 //   fight/confirm            makes the move or takes the shot shown
 //   fight/cancel             drops the move or shot shown
 //   fight/overwatch, fight/reload, fight/stabilize, fight/open,
-//   fight/grab, fight/hack, fight/free, fight/plant   the selected unit's
+//   fight/grab, fight/hack, fight/free, fight/plant, fight/close,
+//   fight/lock               the selected unit's
 //                            other orders: stabilize the ally down beside
-//                            it, open the door beside it, and a job's
+//                            it, open, close or lock the door beside it
+//                            (M45; the first, north, east, south, west, as
+//                            ordersFor has it), and a job's
 //                            objective (objectives.js): grab or pick up a
 //                            crate in its reach, work the terminal, free
 //                            the captive, set a charge by a target
@@ -64,6 +67,7 @@ import { dartOdds, ORDER_KINDS, orderOf, orderTargets } from './orders.js';
 import { canSee } from './sight.js';
 import { outOfReach, withinReach } from './weapons.js';
 import { SIDES } from './grid.js';
+import { closable, lockable, ownLocks } from './locks.js';
 import { moveRange, reachable } from './moves.js';
 import { pressAction } from './press.js';
 import { inReach, shutDoor, walkable } from './terrain.js';
@@ -107,6 +111,14 @@ export function reduceFight(fight, action, rules) {
       const side = unit && doorBeside(fight.battle, unit);
       return side ? play(fight, { type: 'open', unit: unit.id, side }, rules) : fight;
     }
+    case 'fight/close': {
+      const side = unit && closable(fight.battle, unit)[0];
+      return side ? play(fight, { type: 'close', unit: unit.id, side }, rules) : fight;
+    }
+    case 'fight/lock': {
+      const side = unit && lockable(fight.battle, unit)[0];
+      return side ? play(fight, { type: 'lock', unit: unit.id, side }, rules) : fight;
+    }
     case 'fight/grab': {
       const at = unit && crateInReach(fight.battle, unit);
       return at ? play(fight, { type: 'grab', unit: unit.id, at }, rules) : fight;
@@ -144,7 +156,10 @@ export function canAct(battle, unit) {
 //              first (then the fewest hit points)
 //   reload, overwatch   whether it can
 //   stabilize  the ally down beside it, or null
-//   door       the side of a closed door beside it, or null
+//   door       the side of a closed door beside it it can open (its own
+//              side's lock among them, M45), or null
+//   close      the side of an open door beside it it can close, or null
+//   lock       the side of a door beside it it can lock, or null (M45)
 //   grab       the [x, y] of a crate to grab in its reach, or null: on an
 //              extract, one to pick up or a fallen carrier's to take
 //   hack       whether it can work the terminal now: in its reach, and not
@@ -161,7 +176,7 @@ export function ordersFor(fight, rules) {
   if (!unit || !canAct(fight.battle, unit)) return null;
   const { battle } = fight;
   const reach = reachOf(battle, unit, rules);
-  const none = { stabilize: null, door: null, grab: null, hack: false, free: false, plant: null, order: null };
+  const none = { stabilize: null, door: null, close: null, lock: null, grab: null, hack: false, free: false, plant: null, order: null };
   if (unit.ward) return { unit, reach, targets: [], reload: false, overwatch: false, ...none };
   const clip = rules.weapons.get(unit.weapon).clip;
   if (isMachine(unit, rules)) return { unit, reach: new Map(), targets: unit.ammo > 0 ? sortedTargets(battle, unit, rules) : [], reload: unit.ammo < clip, overwatch: unit.ammo > 0, ...none };
@@ -173,6 +188,8 @@ export function ordersFor(fight, rules) {
     overwatch: unit.ammo > 0,
     stabilize: downBeside(battle, unit),
     door: doorBeside(battle, unit),
+    close: closable(battle, unit)[0] ?? null,
+    lock: lockable(battle, unit)[0] ?? null,
     grab: crateInReach(battle, unit),
     hack: terminalInReach(battle, unit) && battle.objective.worked !== battle.round,
     free: captiveInReach(battle, unit),
@@ -410,7 +427,7 @@ function terminalInReach(battle, unit) {
 }
 
 function doorBeside(battle, unit) {
-  return SIDES.find((side) => shutDoor(battle, unit.x, unit.y, side)) ?? null;
+  return SIDES.find((side) => shutDoor(battle, unit.x, unit.y, side)) ?? ownLocks(battle, unit)[0] ?? null;
 }
 
 function withNotice(fight, tone, text) {

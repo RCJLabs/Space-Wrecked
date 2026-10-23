@@ -31,6 +31,7 @@
     { "id": "colony-needs", "text": "What the colony needs to live. A line marked ! is not met yet: build to meet it." },
     { "id": "colony-build", "text": "Buildings cost materials. Tap one to see where it goes as a ghost, then tap the ghost to build it." },
     { "id": "colony-day", "text": "Next day: the colony makes and eats, and the crew heals. Plan, then tap it." },
-    { "id": "colony-trip", "text": "Places within reach. A trip flies a squad out for days, for materials and finds, and leaves the colony without the ship." }
+    { "id": "colony-trip", "text": "Places within reach. A trip flies a squad out for days, for materials and finds, and leaves the colony without the ship." },
+    { "id": "fight-doors", "text": "Doors close and lock. A locked door stops a walk and a shot; forcing it costs the enemy a whole turn, and leaves it open." }
   ]
 }

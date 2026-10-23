@@ -4,12 +4,14 @@
 // - with an enemy in its sight, it plays as the AI would;
 // - with no one in sight, it walks toward the nearest of `goals` ([x, y]
 //   tiles; the enemy's own, unless given), as far as one action takes it;
-// - with nowhere nearer, it opens a closed door beside it.
+// - with nowhere nearer, it forces a lock in its way (locks.js, M45), or
+//   opens a closed door beside it.
 // Left to the AI alone, two sides either side of a closed door each wait
 // for the other to open it, and boarders hold back from a crew on its
 // bridge (ROADMAP §8). A raid's raiders press on (raid.js), and so does
 // the crew the tools send on jobs (jobAi.js).
 import { aiAction } from './ai.js';
+import { forceAction } from './locks.js';
 import { rescueAction } from './rescueAi.js';
 import { isMachine } from './battle.js';
 import { SIDES } from './grid.js';
@@ -49,6 +51,8 @@ export function advance(battle, unit, rules, goals = null) {
     if (d < best.d || (d === best.d && spot.cost < best.cost)) best = { d, cost: spot.cost, x: spot.x, y: spot.y };
   }
   if (best.x !== unit.x || best.y !== unit.y) return { type: 'move', unit: unit.id, to: [best.x, best.y] };
+  const force = forceAction(battle, unit, rules, goals);
+  if (force) return force;
   const door = SIDES.find((side) => shutDoor(battle, unit.x, unit.y, side));
   return door ? { type: 'open', unit: unit.id, side: door } : null;
 }

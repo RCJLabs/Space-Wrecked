@@ -129,6 +129,8 @@ export const skins = {
     wall: '#6a7da3',
     door: '#e3b341',
     doorLight: '#ffe39a',
+    // A locked door (M45): red, and as tall as the walls.
+    doorLocked: '#ff6b6b',
     screen: '#7fe0ff',
   },
 };

@@ -39,6 +39,11 @@
 //                                        have the job (--squad). With
 //                                        --compare, the same fights all at
 //                                        rank 2 first
+//   node tools/sim.js --doors lock       the crew locks the doors beside it
+//                                        that lead away from its own, with no
+//                                        shot to take (M45); the boarders
+//                                        force them. With --compare, the same
+//                                        fights with no locks first
 //   node tools/sim.js --rounds 30        fights still going after this many
 //                                        rounds stop with no winner
 //   node tools/sim.js --seed balance     the seed every fight's seeds come from
@@ -71,13 +76,16 @@ import { pathToFileURL } from 'node:url';
 import { decodeBlueprint } from '../src/core/blueprint.js';
 import { aiAction } from '../src/sim/ai.js';
 import { autoplay, playFrom } from '../src/sim/autoplay.js';
+import { targetsFor } from '../src/sim/battle.js';
 import { buildShip, layoutProblems } from '../src/sim/builder.js';
 import { newCampaign } from '../src/sim/campaign.js';
 import { takeJob, withBoard } from '../src/sim/contracts.js';
 import { indexDefs } from '../src/sim/defs.js';
 import { deploy } from '../src/sim/deploy.js';
 import { generateShip } from '../src/sim/gen/ship.js';
+import { step } from '../src/sim/grid.js';
 import { jobAction } from '../src/sim/jobAi.js';
+import { lockable } from '../src/sim/locks.js';
 import { mapFromShip } from '../src/sim/mapFromShip.js';
 import { scriptedAction } from '../src/sim/scripted.js';
 import { TALENT_RANK } from '../src/sim/talents.js';
@@ -87,7 +95,27 @@ import { launchedShip, withPart } from './startShip.js';
 import { validateData } from './validate-data.js';
 
 const PLAYERS = { ai: aiAction, scripted: scriptedAction };
-export const DEFAULTS = { fights: 1000, ships: null, sets: [], crew: 'ai', boarders: 'ai', rounds: 30, seed: 'balance', encounter: null, compare: false, json: false, boardings: false, fit: [], squad: null, orders: 'all', rank: 0, talent: null, weapon: null, sites: false, weapons: false };
+
+// --doors (M45): 'none', or 'lock'.
+function doorsArg(text, arg) {
+  if (text !== 'none' && text !== 'lock') throw new Error(`${arg} takes none or lock, not "${text}".`);
+  return text;
+}
+
+// A crew player that locks doors (M45): a crew member with no shot to take
+// locks the first door beside it whose far side none of its own stands
+// on, then plays on as `player` does.
+export function locking(player) {
+  return (battle, rules) => {
+    const unit = battle.units.find((u) => u.side === battle.side && u.status === 'active' && u.ap > 0);
+    if (!unit || unit.ward || rules.machines?.has(unit.kind) || targetsFor(battle, unit, rules).length) return player(battle, rules);
+    const ownAt = (x, y) => battle.units.some((u) => u.side === unit.side && u.status !== 'dead' && u.x === x && u.y === y);
+    const side = lockable(battle, unit).find((s) => !ownAt(...step(unit.x, unit.y, s)));
+    return side ? { type: 'lock', unit: unit.id, side } : player(battle, rules);
+  };
+}
+
+export const DEFAULTS = { fights: 1000, ships: null, sets: [], crew: 'ai', boarders: 'ai', rounds: 30, seed: 'balance', encounter: null, compare: false, json: false, boardings: false, fit: [], squad: null, orders: 'all', doors: 'none', rank: 0, talent: null, weapon: null, sites: false, weapons: false };
 // A job site's fight still going after this many rounds stops with no
 // winner, as act 1's test runs stop it (tools/run.js).
 const SITE_ROUNDS = 60;
@@ -123,6 +151,7 @@ export function parseArgs(argv) {
     else if (arg === '--fit') options.fit = value().split(',').map((s) => s.trim()).filter(Boolean);
     else if (arg === '--squad') options.squad = value().split(',').map((s) => s.trim()).filter(Boolean);
     else if (arg === '--orders') options.orders = value();
+    else if (arg === '--doors') options.doors = doorsArg(value(), arg);
     else if (arg === '--rank') options.rank = whole(value(), arg, 0);
     else if (arg === '--talent') options.talent = value();
     else if (arg === '--weapon') options.weapon = value();
@@ -131,7 +160,7 @@ export function parseArgs(argv) {
     else throw new Error(`Unknown option "${arg}".`);
   }
   if (options.talent) options.rank = TALENT_BELOW;
-  if (options.compare && !options.sets.length && options.orders === 'all' && !options.rank && !options.weapon) throw new Error('--compare needs a --set, --orders, --rank, --talent or --weapon to compare with.');
+  if (options.compare && !options.sets.length && options.orders === 'all' && !options.rank && !options.weapon && options.doors === 'none') throw new Error('--compare needs a --set, --orders, --rank, --talent, --weapon or --doors to compare with.');
   return options;
 }
 
@@ -221,11 +250,11 @@ export function shipsFor(names, rules) {
 // orders count each side's actions; given, the crew's job orders by kind
 // (M32); shots are { side, chance, hit, overwatch, crit, damage }; downs,
 // outs and deaths count crew downed, crew bled out and boarders killed.
-export function runFights(rules, { ships, fights, seed, crew, boarders, rounds, encounter, rank = 0, talent = null, weapon = null }) {
+export function runFights(rules, { ships, fights, seed, crew, boarders, rounds, encounter, rank = 0, talent = null, weapon = null, doors = 'none' }) {
   const party = encounter ? rules.encounters.get(encounter) : rules.encounters.values().next().value;
   if (!party) throw new Error(`No encounter "${encounter}" in data/encounters.json.`);
   const talentJob = talent ? talentJobOf(rules, talent) : null;
-  const players = { crew: PLAYERS[crew], enemy: PLAYERS[boarders] };
+  const players = { crew: doors === 'lock' ? locking(PLAYERS[crew]) : PLAYERS[crew], enemy: PLAYERS[boarders] };
   const records = [];
   for (let i = 0; i < fights; i++) {
     const source = ships[i % ships.length];
@@ -337,11 +366,13 @@ function record(ship, { battle, actions, events }) {
   for (const action of actions) if (action.unit) orders[sideOf(action.unit)] += 1;
   const shots = [];
   const given = {};
+  const doorsUsed = { lock: 0, force: 0 };
   let downs = 0;
   let outs = 0;
   let deaths = 0;
   for (const event of events) {
     if (event.type === 'order') given[event.order] = (given[event.order] ?? 0) + 1;
+    if (event.type === 'lock' || event.type === 'force') doorsUsed[event.type] += 1;
     if (event.type === 'shot') {
       shots.push({ side: sideOf(event.unit), chance: event.chance, hit: event.hit, overwatch: event.overwatch, crit: Boolean(event.crit), damage: event.damage ?? 0 });
     } else if (event.type === 'down') downs++;
@@ -349,7 +380,7 @@ function record(ship, { battle, actions, events }) {
     else if (event.type === 'dead' && sideOf(event.unit) === 'enemy') deaths++;
   }
   // A battle that ran out of rounds stopped one round past the limit.
-  return { ship, winner: battle.winner, rounds: battle.winner ? battle.round : battle.round - 1, orders, given, shots, downs, outs, deaths };
+  return { ship, winner: battle.winner, rounds: battle.winner ? battle.round : battle.round - 1, orders, given, doors: doorsUsed, shots, downs, outs, deaths };
 }
 
 // The records summed up: overall and ship by ship, the winners (with a 95%
@@ -381,6 +412,8 @@ export function summarize(records) {
       downs: mean(records.map((r) => r.downs)),
       outs: mean(records.map((r) => r.outs)),
       deaths: mean(records.map((r) => r.deaths)),
+      locks: mean(records.map((r) => r.doors?.lock ?? 0)),
+      forces: mean(records.map((r) => r.doors?.force ?? 0)),
     },
     given: Object.fromEntries([...new Set(records.flatMap((r) => Object.keys(r.given ?? {})))].sort().map((kind) => [kind, mean(records.map((r) => r.given?.[kind] ?? 0))])),
   };
@@ -460,6 +493,7 @@ export function reportText(summary, setup, before = null) {
   const f = summary.perFight;
   const g = before?.perFight;
   lines.push(`A fight: ${two(g?.downs, f.downs, (v) => v.toFixed(1))} crew go down, ${two(g?.outs, f.outs, (v) => v.toFixed(1))} bleed out, ${two(g?.deaths, f.deaths, (v) => v.toFixed(1))} boarders die.`);
+  if (f.locks || g?.locks) lines.push(`Doors a fight: ${two(g?.locks, f.locks, (v) => v.toFixed(1))} locked by the crew, ${two(g?.forces, f.forces, (v) => v.toFixed(1))} forced by the boarders.`);
   const kinds = [...new Set([...Object.keys(summary.given ?? {}), ...Object.keys(before?.given ?? {})])].sort();
   if (kinds.length) lines.push(`Job orders a fight: ${kinds.map((kind) => `${kind} ${two(before?.given?.[kind] ?? 0, summary.given?.[kind] ?? 0, (v) => v.toFixed(1))}`).join(', ')}.`);
   return lines.join('\n');
@@ -562,7 +596,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const summary = summarize(runFights(changed.rules, { ...options, ships }));
   const plain = () => rulesFor(rulesWith(data, []).rules, { squad: options.squad }).rules;
   // A talent (M33c) compares with the same fights all at rank 2.
-  const before = options.compare ? summarize(runFights(options.rank ? changed.rules : plain(), { ...options, ships, rank: options.talent ? options.rank : 0, talent: null, weapon: null })) : null;
+  const before = options.compare ? summarize(runFights(options.rank ? changed.rules : plain(), { ...options, ships, rank: options.talent ? options.rank : 0, talent: null, weapon: null, doors: 'none' })) : null;
   const seconds = (performance.now() - started) / 1000;
   if (options.json) {
     console.log(JSON.stringify(before ? { before, after: summary } : summary, null, 2));

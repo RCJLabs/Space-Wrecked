@@ -2333,6 +2333,30 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **A swap** re-fits the styling pieces the old part held, as a move does. Its buttons sit on the part's card, which stays open for their tap.
   - **Launch in construction mode** dispatches the campaign's own launch once the session clears it, so its refusals are the hangar's.
 
+- [x] **M45 Doors as tactics.** Item 6 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-23, "Do recommendations"). From §9: closing and locking doors in battle (defenders sealing a breach), and fog of war.
+
+  Measured first (main after M44):
+  - **Doors in a fight today:** a door starts closed. Walking through it, or the 1-action Open door, opens it for good. Only the engineer's Weld (M32) closes one, and it gives way after its rounds. A closed door blocks sight and shots; a walk through it opens it at no extra cost.
+  - **The harness** (`node tools/sim.js --fights 400`, the squad against the boarding party on the ten ships): the crew wins 49% (44–54), the boarders 38%, and 13% reach 30 rounds with no winner. A fight is 7 rounds (5–12) and 24 shots. Weld is used 0.2 times a fight.
+  - **What the enemy can see:** every enemy is always on the board (M8), though a shot already needs the shooter's own line of sight (`src/sim/sight.js` canSee).
+
+  Done when (my recommendations, taken on Evan's word):
+  - **Close a door:** a unit beside an open door closes it, 1 action. The door button reads Close door then, and Open door beside a closed one. Walking through a closed door still opens it, as now.
+  - **Lock a door:** a crew member beside a door, open or closed, locks it, 1 action (Lock door), closing it if it was open. No one walks or sees through a locked door. The crew opens their own lock with Open door, 1 action.
+  - **Forcing a lock:** the other side forces a locked door from beside it with a whole turn (both actions). A forced door is broken: it stays open for the rest of the fight and can't be closed or locked again, so a lock can't be shut in an enemy's face turn after turn. A welded door (M32) still can't be forced until the weld gives way.
+  - **The AI forces what's in its way:** the enemy and everyone pressing on (`press.js`) head for a locked door that stands between them and the crew, and force it. They never lock or close doors themselves. No fight stalls at a lock: the harness with a crew that locks the doors beside it (a new `--doors lock` player) reports its no-winner rate against today's 13%, and a rise of more than 5 points is fixed before M45 closes.
+  - **Fog of war,** an option in Settings (Fight: Fog of war, off by default): with it on, an enemy no one in the crew can see now is hidden on the board and can't be picked. In the enemy's turn, a hidden enemy's walk isn't shown; one that shoots at the crew shows for its shot. The rules and the AI are the same either way: fog only changes what the screen shows, and the enemy still knows where the crew is. Saves go to v41 with the setting off.
+  - **A tip** the first time a crew member stands beside a door in a fight: doors close and lock, and a lock costs the enemy a turn.
+  - **Every rule tested;** every earlier milestone's check passes.
+  - **Touch, at the three sizes:** close, lock and open a door; watch the enemy force one; fog on hides an enemy out of sight and shows it once seen.
+
+  As built (2026-10-23), where it differs from the above or adds to it:
+  - **The door buttons:** Close door has a button of its own beside Open door, not a relabelled one, each with its own icon (a door swung shut, a padlock for Lock door). With doors on more than one side of a tile, each acts on the first, north, east, south, west, as Open door and Weld always have.
+  - **Measured:** with `--doors lock` (400 fights, the ten ships), no winner 13% to 17%, inside the 5-point bar. The crew wins 49% to 31% and the boarders 38% to 52%: the test player locks every door beside it, even ones that shut it in, so this is a check that locks can't stall a fight, not a measure of good play. A fight locks 3.9 doors and forces 1.1. With no locks the harness gives today's figures exactly: the AI is unchanged until a door is locked.
+  - **A locked door** is drawn red and as tall as the walls, so its shape tells it apart as well as its color (M42).
+  - **Fog of war** hides an enemy from the board, its bars and taps, and a tap on its tile shows nothing. While it walks out of sight the status line says "Something moves out of sight." `src/sim/sight.js` sightedBy says who is seen; the screen reads the setting from `<html data-fog>`.
+  - **The tip** comes last of the tips, the first time a crew member stands by a door.
+
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
 ### Phase 9: Release (v1.0)
@@ -2374,8 +2398,8 @@ These ideas wait until v0.4 or later:
 - a daily anomaly and a blueprint gallery
 - decals: a name or a number on the hull, and a side's emblem. M23f brought paint and trim (raised before M4; narrowed in M23f)
 - vibration on hits
-- closing doors in battle, and locked doors: since M7 a unit can open a door beside it, but not shut one (raised in M7: defenders sealing a breach)
-- fog of war: since M8 every enemy is always shown; hiding those no one in the crew can see would make scouting matter (raised in M7, decided against for now in M8)
+- closing doors in battle, and locked doors: since M7 a unit can open a door beside it, but not shut one (raised in M7: defenders sealing a breach); done in M45 (close, lock, force)
+- fog of war: since M8 every enemy is always shown; hiding those no one in the crew can see would make scouting matter (raised in M7, decided against for now in M8); done in M45, as a setting off by default
 - the camera following the action in an enemy turn: on a ship too big for the screen, part of a turn can play out of view (raised in M8)
 - the lift-off's and the landing's backdrop as layers the compositor moves, under a canvas of the ship's own: no backdrop drawing in a frame at all, if the phone stutters unfolded where this machine's processor-drawn canvas spends 2.8 to 3.6 ms on it (raised in M34)
 - dragging to lay a run of corridor in one go: since M5b a corridor is one cell, so a long one takes two taps a cell (raised in M5b; could come sooner if Gate 1 finds it tedious)

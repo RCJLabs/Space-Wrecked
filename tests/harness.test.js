@@ -32,11 +32,25 @@ test('the command line: defaults, every option, and what is wrong with a bad one
     [['--fights'], /--fights needs a value/],
     [['--set', 'halfCover'], /--set needs name=number/],
     [['--boarders', 'human'], /--boarders is played by ai or scripted/],
-    [['--compare'], /--compare needs a --set, --orders, --rank, --talent or --weapon/],
+    [['--compare'], /--compare needs a --set, --orders, --rank, --talent, --weapon or --doors/],
+    [['--doors', 'weld'], /--doors takes none or lock/],
     [['--rank', 'one'], /--rank needs a whole number, 0 or more/],
     [['--bogus'], /Unknown option "--bogus"/],
   ];
   for (const [argv, message] of wrong) assert.throws(() => parseArgs(argv), message, argv.join(' '));
+  assert.deepEqual(parseArgs(['--doors', 'lock', '--compare']), { ...DEFAULTS, doors: 'lock', compare: true });
+});
+
+// M45: a crew that locks doors. The boarders force the locks in their way,
+// and the fights still end as often (measured over 400 fights: no winner
+// 13% to 17%, ROADMAP.md M45).
+test('a crew that locks its doors: the boarders force them, and the fights still end', () => {
+  const ships = shipsFor(['example', 'hauler'], rules);
+  const records = runFights(rules, { ...DEFAULTS, ships, fights: 40, doors: 'lock' });
+  const total = (key) => records.reduce((sum, r) => sum + r.doors[key], 0);
+  assert.ok(total('lock') > 0 && total('force') > 0, `locks ${total('lock')}, forces ${total('force')}`);
+  const stalled = records.filter((r) => !r.winner).length;
+  assert.ok(stalled <= 10, `${stalled} of 40 with no winner`);
 });
 
 test('a balance number can change for a run, checked like the data, the file left alone', () => {

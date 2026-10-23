@@ -1,14 +1,14 @@
 // Where a unit can walk on a battle map: four-way steps between tiles units
 // stand on (data/tiles.json). A wall, the hull or a hatch is in the way; a
 // door isn't, open or closed, since walking through one opens it, unless it
-// is welded shut (orders.js). A step
+// is welded shut (orders.js) or locked (locks.js, M45). A step
 // costs 1, or balance.rubbleMoveCost onto rubble. A unit can pass through
 // its own side's units but not the other side's, and can't stop on anyone
 // still in the fight or lying hurt. Paths of equal cost always tie the same
 // way: the first found, trying north, east, south, west.
 import { SIDES, step } from './grid.js';
 import { wallAt } from './mapFromShip.js';
-import { hazardAt, walkable, weldedAt } from './terrain.js';
+import { hazardAt, lockAt, walkable, weldedAt } from './terrain.js';
 
 // How far a unit can walk on the actions it has left: its mobility on one,
 // twice that on both (a dash). A carrier on an extract (objectives.js, M38)
@@ -53,23 +53,26 @@ export function reachable(battle, unit, budget, rules) {
 }
 
 // What a unit can walk through: anything but these (doors open), and a
-// door welded shut.
+// door welded shut or locked. Through locks, a lock is no bar: a way that
+// leads to one, to be forced (locks.js).
 const BLOCKS = new Set(['wall', 'hull', 'hatch']);
 
-function blocked(battle, x, y, side) {
+function blocked(battle, x, y, side, throughLocks = false) {
   const edge = wallAt(battle.map, x, y, side);
-  return BLOCKS.has(edge) || (edge === 'door' && weldedAt(battle, x, y, side));
+  return BLOCKS.has(edge) || (edge === 'door' && (weldedAt(battle, x, y, side) || (!throughLocks && Boolean(lockAt(battle, x, y, side)))));
 }
 
 // Steps from the nearest of `from` ([x, y] tiles) to every tile units can
 // get to, walking through doors and past anyone: a Map from "x,y" to steps.
+// A locked door counts as a way through (M45): those heading somewhere
+// walk up to it and force it.
 export function stepsFrom(battle, from, rules) {
   const away = new Map(from.map(([x, y]) => [`${x},${y}`, 0]));
   const queue = from.map(([x, y]) => [x, y]);
   for (let i = 0; i < queue.length; i++) {
     const [x, y] = queue[i];
     for (const side of SIDES) {
-      if (blocked(battle, x, y, side)) continue;
+      if (blocked(battle, x, y, side, true)) continue;
       const [nx, ny] = step(x, y, side);
       if (!walkable(battle, nx, ny, rules) || away.has(`${nx},${ny}`)) continue;
       away.set(`${nx},${ny}`, away.get(`${x},${y}`) + 1);

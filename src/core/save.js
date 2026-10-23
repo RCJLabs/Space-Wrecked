@@ -109,7 +109,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      death and the fallen, and the settings keep none (M41)
 //  40  accessibility: the settings keep the colors (standard or
 //      colorblind-safe) and the text size (M42)
-export const SAVE_VERSION = 40;
+//  41  doors as tactics: the settings keep fog of war, off (M45); a fight
+//      under way can hold locked doors and doors forced, absent until the
+//      first, so it reads as it was
+export const SAVE_VERSION = 41;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -549,6 +552,10 @@ export const MIGRATIONS = [
   {
     from: 39,
     up: (data) => (isObject(data) && isObject(data.settings) ? { ...data, settings: { ...data.settings, colors: 'standard', textSize: 100 } } : data),
+  },
+  {
+    from: 40,
+    up: (data) => (isObject(data) && isObject(data.settings) ? { ...data, settings: { ...data.settings, fog: false } } : data),
   },
 ];
 
