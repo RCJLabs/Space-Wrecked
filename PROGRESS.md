@@ -53,7 +53,10 @@ Newest entry first.
   - at a station a wreck's card offers Scrap for the Kestrel mount; the first tap asks, the second scraps it into its spot;
   - a won boarding's end panel: the dearest picked, a tap picks the cheapest, Continue strips it;
   - every new button 48 px or more; saved at v42; no console errors.
-- REGRESS
+- **Every earlier milestone's check,** in two chains (`m46/regress-a.sh`, M45's back to M30's; `m46/regress-b.sh`, M29's back to M8's), each the latest adapted copy:
+  - **Copies made for M46:** 18 checks pinned save v41 and now read v42 (M45's, M44's, M42's, M41's, M40's, M39's, M38f's, M38e's, M38d fix's, M38c's, M38b's, M35's, M34's, M31's, M30's, M29's, M28's and M27's, each `verify46.mjs`).
+  - **M22's check adapted (`m22/verify46.mjs`):** the boarding stakes now read "strip 1 part you pick off her", and the won panel offers the picks ("Strip a part off her: the dearest is picked, tap to pick others.") where it listed what was stripped. It passes 35 of 35 at the three sizes.
+  - **All pass,** apart from M32b's first copy, the known exception from M32b's fix (its fix copy passes in its place). The two chains first ran side by side and some checks collided on the server's port or ran out of time (M38e's, M44's, M17's, M18's, M23b's and M25's at some sizes). Rerun one after another, each passed in full.
 
 **Known issues:**
 - **The dearest is always a reactor:** every boarding ship carries one, so Continue alone takes a reactor each time. The end panel shows the rest to choose from.
