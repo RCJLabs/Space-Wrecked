@@ -171,6 +171,9 @@ export function mountFight(root, source) {
       tap(x, y) {
         if (busy()) return;
         const at = tileAt(x, y);
+        // A tile an enemy hidden in the fog of war (M45) stands on is as
+        // good as empty to the screen: the tap shows nothing.
+        if (at && hiddenAt(at)) return order({ type: 'fight/cancel' });
         order(at ? { type: 'fight/tap', x: at[0], y: at[1] } : { type: 'fight/cancel' });
       },
       longPress(x, y) {
@@ -578,6 +581,13 @@ export function mountFight(root, source) {
     const seen = sightedBy(battle, 'crew', defs);
     const shooter = frame?.shot?.shooter;
     return new Set(battle.units.filter((u) => u.side !== 'crew' && !seen.has(u.id) && u.id !== shooter).map((u) => u.id));
+  }
+
+  // True if an enemy hidden in the fog of war stands on tile `at`.
+  function hiddenAt([x, y]) {
+    const { battle } = store.getState();
+    const hidden = fogged(battle);
+    return battle.units.some((u) => hidden.has(u.id) && u.status !== 'dead' && u.x === x && u.y === y);
   }
 
   // The front-most unit (not dead) under screen point (sx, sy), or null.
