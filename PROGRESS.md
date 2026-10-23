@@ -2,6 +2,75 @@
 
 Newest entry first.
 
+## M45 Doors as tactics (2026-10-23)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves are at v41.
+
+**How it was picked:** item 6 of the Phase 8 brainstorm, next in my recommended order, on Evan's "Do recommendations". From §9: closing and locking doors (defenders sealing a breach), and fog of war. Measured first on main after M44:
+- A door opened by a walk or Open door stayed open. Only the engineer's Weld could shut one.
+- The harness: 400 fights, crew wins 49%, boarders 38%, no winner 13%.
+- Every enemy always showed on the board.
+
+**What shipped:**
+- **Close door** (1 action) on an open door beside a crew member. A walk through still opens it.
+- **Lock door** (1 action), closing it if open. No one walks or sees through a locked door. The crew's Open door unlocks it, 1 action.
+- **Forcing:** the other side breaks a lock from beside it with a whole turn. The door is broken: open for the rest of the fight, with no Close, Lock or Weld for it, so a lock can't be shut in an enemy's face turn after turn. A welded door can't be locked or forced until the weld gives way.
+- **The AI forces what's in its way:** distance maps count a lock as a way through, so the enemy and everyone pressing on (`press.js`) walk up to it. With a whole turn and no shot to take, they force it. They never close or lock a door themselves (`src/sim/locks.js`).
+- **On the board:** a locked door is red and wall-high, a second cue besides its color. The fight log tells each door event in words, and each plays the door sound.
+- **Fog of war,** a setting (Settings: Fog of war, off by default), save v41. With it on, an enemy no one in the crew can see is hidden on the board and can't be tapped. A tap on its tile shows nothing, and while it walks unseen the status line says only that something moves. One that fires shows for its shot. The rules and the AI are the same either way (`sight.js` sightedBy).
+- **A tip** the first time a crew member stands by a door.
+- **The harness:** `node tools/sim.js --doors lock` plays a crew that locks the doors beside it; with `--compare`, against the same fights with no locks.
+
+**Done when** (ROADMAP.md, M45), and how each is met:
+- **Close, lock, force, broken, the AI forcing, the log:** `tests/locks.test.js` (7). Fog, the setting, save v41 and the board's playback of door events: `tests/fog.test.js` (4). The harness: `tests/harness.test.js` (a locking crew's boarders force their way, and the fights end).
+- **No fight stalls at a lock:** `--doors lock --compare` over 400 fights:
+
+  | | No locks | Locking crew |
+  | --- | --- | --- |
+  | Crew wins | 49% | 31% |
+  | Boarders win | 38% | 52% |
+  | No winner | 13% | 17% |
+  | Rounds | 7 (5–12) | 9 (6–13) |
+  | Doors locked / forced a fight | 0 / 0 | 3.9 / 1.1 |
+
+  No winner rises 4 points, inside the 5-point bar. The locking player locks every door it can, even ones that shut it in, so its win rate is no guide to locking well.
+- **Fog is display only:** the harness's no-lock run reproduces main's numbers exactly. The fog changes no rule.
+- **Touch, at the three sizes:** `m45/verify.mjs`, 19 of 19 at cover, tab and open (below).
+- **Every rule tested;** every earlier milestone's check passes (below).
+
+**Tests:**
+- `node --test`: TESTS.
+- **New:** `tests/locks.test.js` (7), `tests/fog.test.js` (4), and one more in `tests/harness.test.js`.
+- **Changed on purpose:**
+  - every test pinning the save version, from 40 to 41;
+  - `tests/accessibility.test.js`, whose v40 migration now ends at the current version;
+  - `tests/captain.test.js` and `tests/sim.test.js`, whose settings carry `fog`;
+  - `tests/harness.test.js`, whose `--compare` message names `--doors`.
+
+**Browser checks:**
+- **M45's own:** `m45/verify.mjs`, 19 of 19 at the three sizes:
+  - beside a closed door, Open door and Lock door (48 px or more);
+  - Open, then Close, by touch;
+  - Lock, then Open door unlocks it;
+  - locked, End turn, and the pirate forces it: broken open, no Close or Lock after;
+  - fog off, a tap on the hidden pirate says the marine can't see it; fog on, the same tap shows nothing; the door opened, the pirate shows and a tap aims at it;
+  - the doors tip; saved at v41; no console errors.
+- REGRESS
+
+**Known issues:**
+- **Fog can be read from the move overlay:** the tile a hidden enemy stands on is left out of where the crew can walk.
+- **The enemy is not fogged:** it knows where the crew is, as before. Fog is the player's view only.
+- **Two doors by one tile:** Close, Lock and Open act on the first (north, east, south, west), as Open door and Weld always have.
+- **The AI never locks a door.**
+
+**What Evan should test on the phone:**
+- **In a fight, a crew member by a door:** Lock door (it goes red and tall), then End turn. If the enemy is across it, they spend a turn forcing it, and it stays open.
+- **Open door on your own lock;** Close door on an open one.
+- **Settings, Fog of war On:** in a boarding or a raid, enemies out of sight vanish and come back when seen.
+- **The doors tip,** the first time a crew member stands by a door.
+
+**Next milestone's first task:** M46, item 3 of the brainstorm, refits on the move: study and measure, then settle its Done when on my recommendations.
+
 ## M44 Builder ergonomics (2026-10-23)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. No save change: saves stay at v40, and blueprint codes are unchanged.
