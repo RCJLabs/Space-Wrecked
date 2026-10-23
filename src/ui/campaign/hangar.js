@@ -17,6 +17,7 @@
 // the hangar reopens as it was left.
 import { loadContent } from '../../platform/content.js';
 import { node, setText, toolButton } from '../fight/panels.js';
+import { confirms } from '../confirm.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { buildWith } from './construction.js';
@@ -89,8 +90,8 @@ export const hangarScreen = {
         if (hangarText(campaign, defs).raid) game.dispatch({ type: 'campaign/raid/begin', rules: defs });
         else game.dispatch({ type: 'screen/show', screen: 'jobs' });
       }),
-      onTap(payButton, () => twoTaps('pay', payButton, () => game.dispatch({ type: 'campaign/pay', rules: defs }))),
-      onTap(launchButton, () => twoTaps('launch', launchButton, () => game.dispatch({ type: 'campaign/launch', rules: defs }))),
+      onTap(payButton, (press) => twoTaps('pay', payButton, () => game.dispatch({ type: 'campaign/pay', rules: defs }), press), { confirm: true }),
+      onTap(launchButton, (press) => twoTaps('launch', launchButton, () => game.dispatch({ type: 'campaign/launch', rules: defs }), press), { confirm: true }),
       onTap(shopButton, () => game.dispatch({ type: 'screen/show', screen: 'shop' })),
       onTap(crewOpener, () => toggleCrew(!crewOpen)),
       () => crewCard.detach(),
@@ -193,9 +194,9 @@ export const hangarScreen = {
     }
 
     // Pay and Launch: the first tap says what it does, the second does it.
-    function twoTaps(which, button, act) {
+    function twoTaps(which, button, act, press) {
       if (!defs || button.disabled || button.hidden) return;
-      if (armed !== which) {
+      if (!confirms(armed === which, press)) {
         armed = which;
         clearTimeout(armTimer);
         armTimer = setTimeout(() => {
@@ -226,9 +227,9 @@ export const hangarScreen = {
     // A spare weapon's button on the crew card, or from M41 the hangar's
     // recruit's: the first tap says what the swap or the signing on does,
     // the second makes it.
-    function tapCrew(key) {
+    function tapCrew(key, press) {
       if (!defs) return;
-      if (armed !== key) {
+      if (!confirms(armed === key, press)) {
         armed = key;
         clearTimeout(armTimer);
         armTimer = setTimeout(() => {

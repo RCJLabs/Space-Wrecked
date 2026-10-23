@@ -16,7 +16,8 @@ import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { faceUrl, portraitImg, withRank } from '../portrait.js';
 
-// tap(key): a Sign on, Let go or spare weapon button's tap; done(): Done.
+// tap(key, press): a Sign on, Let go or spare weapon button's tap (press:
+// { held }, M47); done(): Done.
 export function createCrewCard({ tap, done }) {
   const el = node('section', 'sct-crew');
   el.setAttribute('aria-label', 'Crew');
@@ -109,7 +110,7 @@ export function createCrewCard({ tap, done }) {
       button.disabled = !action.ok;
       button.dataset.armed = String(on);
       button.setAttribute('aria-label', action.ok ? `${name}: ${on ? action.ask : action.label}` : `${name}: ${action.why}`);
-      buttons.push({ detach: onTap(button, () => tap(action.key)) });
+      buttons.push({ detach: onTap(button, (press) => tap(action.key, press), { confirm: true }) });
       item.append(button);
     }
     if (weapon?.swaps.length) {
@@ -122,7 +123,7 @@ export function createCrewCard({ tap, done }) {
         button.disabled = !swap.ok;
         button.dataset.armed = String(on);
         button.setAttribute('aria-label', swap.ok ? `${name}: swap for the ${swap.label.toLowerCase()}` : `${name}: ${swap.why}`);
-        buttons.push({ detach: onTap(button, () => tap(swap.key)) });
+        buttons.push({ detach: onTap(button, (press) => tap(swap.key, press), { confirm: true }) });
         swaps.append(button);
       }
       item.append(swaps);

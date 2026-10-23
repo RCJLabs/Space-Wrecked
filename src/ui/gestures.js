@@ -18,6 +18,7 @@
 // direction from the first finger to the second, in radians, growing
 // clockwise on screen.
 import { cue } from '../platform/audio.js';
+import { holdMode } from './confirm.js';
 
 export const SLOP = 10;
 export const LONG_PRESS = 450;
@@ -130,19 +131,47 @@ export function createRecognizer(handlers) {
 // activation still arrives as a click. A tap sounds (M35): its own sound,
 // unless what it did makes another (audio.js cue), and a button that
 // can't be used now refuses. Returns a function that detaches.
-export function onTap(button, handler) {
-  const press = () => {
+//
+// confirm (M47): the button arms on a first tap and acts on a second. With
+// holds confirming (confirm.js), a hold acts too, the button filling while
+// it is held (<button data-holding>), and the handler is told which:
+// handler({ held }).
+export function onTap(button, handler, { confirm = false } = {}) {
+  const press = (held = false) => {
     if (button.disabled) return cue('refuse');
     cue('tap');
-    handler();
+    if (confirm) handler({ held });
+    else handler();
   };
-  const detach = attachGestures(button, { tap: press });
+  const holding = (on) => {
+    if (on) button.dataset.holding = 'true';
+    else delete button.dataset.holding;
+  };
+  const holds = () => confirm && holdMode() && !button.disabled;
+  const detach = attachGestures(button, {
+    tap: () => (holding(false), press()),
+    longPress: () => {
+      if (!holds()) return;
+      holding(false);
+      press(true);
+    },
+  });
+  const onDown = () => holds() && holding(true);
+  const onEnd = () => holding(false);
   const onKeyClick = (event) => {
     if (event.detail === 0) press();
   };
+  button.addEventListener('pointerdown', onDown);
+  button.addEventListener('pointerup', onEnd);
+  button.addEventListener('pointercancel', onEnd);
+  button.addEventListener('pointerleave', onEnd);
   button.addEventListener('click', onKeyClick);
   return () => {
     detach();
+    button.removeEventListener('pointerdown', onDown);
+    button.removeEventListener('pointerup', onEnd);
+    button.removeEventListener('pointercancel', onEnd);
+    button.removeEventListener('pointerleave', onEnd);
     button.removeEventListener('click', onKeyClick);
   };
 }

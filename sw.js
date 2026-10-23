@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "085fd4d00514";
+const VERSION = "665ea9aa8d3f";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -281,6 +281,7 @@ const FILES = [
   "src/ui/campaign/voyageText.js",
   "src/ui/campaign/yardText.js",
   "src/ui/clipboard.js",
+  "src/ui/confirm.js",
   "src/ui/dev/cheats.js",
   "src/ui/dev/dom.js",
   "src/ui/dev/fps.js",

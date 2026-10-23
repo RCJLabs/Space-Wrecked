@@ -42,6 +42,7 @@ import { faceRaid, raidDown } from '../../sim/raids.js';
 import { fightSettings } from '../../sim/settings.js';
 import { footprint } from '../../sim/modules.js';
 import { node, setText, toolButton } from '../fight/panels.js';
+import { confirms, holdMode } from '../confirm.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { buildingInfo, builtText, colonyText, dayReport, dayText, givenText, placeText, takeDownText, takenText, whyNotText } from './colonyText.js';
@@ -153,12 +154,12 @@ export const colonyScreen = {
       refresh: () => alive && render(true),
       cancelTrips: () => trips.cancel(),
     });
-    const stand = createStand(sceneArea, { onTap: tapScene });
+    const stand = createStand(sceneArea, { onTap: tapScene, onHold: holdScene });
     const cleanups = [
       onTap(titleButton, () => game.dispatch({ type: 'screen/show', screen: 'title' })),
       onTap(refitButton, () => game.dispatch({ type: 'screen/show', screen: 'construction' })),
-      onTap(dayButton, tapDay),
-      onTap(defendButton, tapDefend),
+      onTap(dayButton, tapDay, { confirm: true }),
+      onTap(defendButton, tapDefend, { confirm: true }),
       onTap(crewOpener, () => toggleCrew(!crewOpen)),
       () => crewCard.detach(),
       () => clearTimeout(armTimer),
@@ -282,9 +283,9 @@ export const colonyScreen = {
 
     // A spare weapon's button on the crew card (M37): the first tap says
     // what the swap does, the second makes it.
-    function tapCrew(key) {
+    function tapCrew(key, press) {
       if (!defs) return;
-      if (armed !== key) {
+      if (!confirms(armed === key, press)) {
         said = null;
         arm(key);
         return;
@@ -411,7 +412,8 @@ export const colonyScreen = {
       for (const [label, icon, handler, className, enabled] of actions) {
         const button = toolButton(`hgr-tool cln-act${className ? ` ${className}` : ''}`, icon, label);
         button.disabled = !enabled;
-        rowButtons.push(onTap(button, handler));
+        // A handler that takes the press arms on its first tap (M47).
+        rowButtons.push(onTap(button, handler, { confirm: handler.length > 0 }));
         row.append(button);
       }
       return row;
@@ -452,7 +454,12 @@ export const colonyScreen = {
       trips.cancel();
       voyages.cancel();
       if (mode.kind === 'place') {
-        if (stand.onGhost(x, y)) return confirmPlace();
+        if (stand.onGhost(x, y)) {
+          if (!holdMode()) return confirmPlace();
+          said = { text: 'Hold the ghost to put it there.', tone: 'info' };
+          render(true);
+          return;
+        }
         const cell = stand.cellAt(x, y);
         if (!cell) said = { text: "Tap the colony's grid where it should go.", tone: 'warn' };
         else mode = { ...mode, placement: centered(mode.type, cell, mode.placement.rot) };
@@ -462,6 +469,14 @@ export const colonyScreen = {
       const uid = stand.buildingAt(x, y);
       mode = uid === null ? { kind: 'browse' } : { kind: 'look', uid };
       render(true);
+    }
+
+    // A hold on the colony (M47): with holds confirming, one on the ghost
+    // builds it, as a second tap does otherwise.
+    function holdScene(x, y) {
+      const { campaign } = game.getState();
+      if (!defs || !campaign || campaign.colony?.trip || !holdMode()) return;
+      if (mode.kind === 'place' && stand.onGhost(x, y)) confirmPlace();
     }
 
     // The placement with a building of type centered on cell [i, j], kept
@@ -535,10 +550,10 @@ export const colonyScreen = {
 
     // Take down: the first tap says what comes back and what goes dark;
     // the second takes it down.
-    function tapDown() {
+    function tapDown(press) {
       const { campaign } = game.getState();
       if (!defs || !campaign || mode.kind !== 'look') return;
-      if (armed !== 'down') {
+      if (!confirms(armed === 'down', press)) {
         arm('down');
         return;
       }
@@ -553,10 +568,10 @@ export const colonyScreen = {
 
     // Next day: the first tap says what the day will bring; the second
     // passes it, and the hint gives the day's report.
-    function tapDay() {
+    function tapDay(press) {
       const { campaign } = game.getState();
       if (!defs || !campaign || campaign.colony?.trip) return;
-      if (armed !== 'day') {
+      if (!confirms(armed === 'day', press)) {
         said = null;
         arm('day');
         return;
@@ -572,10 +587,10 @@ export const colonyScreen = {
     // guns will fire, at what odds, and who fights; the second fires them.
     // With raiders left and someone home, the fight's screen opens;
     // otherwise the hint says what came of the landing.
-    function tapDefend() {
+    function tapDefend(press) {
       const { campaign } = game.getState();
       if (!defs || !campaign || !raidDown(campaign)) return;
-      if (armed !== 'defend') {
+      if (!confirms(armed === 'defend', press)) {
         said = null;
         trips.cancel();
         voyages.cancel();

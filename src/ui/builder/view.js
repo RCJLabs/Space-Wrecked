@@ -27,8 +27,9 @@ import { applyCommand, layoutProblems, openings, placementError, removeModule } 
 import { canLaunch, flightChecklist, shipStats } from '../../sim/constraints.js';
 import { baseOf, countOfAny, versionAtHand, versionsOf } from '../../sim/makers.js';
 import { replay } from '../../sim/replay.js';
-import { createSession, partsLeft, reduceSession, sizeOf, snapPiece, snapPlacement } from '../../sim/session.js';
+import { createSession, partsLeft, reduceSession, sizeOf, snapPiece, snapPlacement, tapOnGhost } from '../../sim/session.js';
 import { hullSite, pieceError } from '../../sim/styling.js';
+import { confirms, holdMode } from '../confirm.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { builderSounds } from '../sounds.js';
@@ -233,10 +234,16 @@ export function mountBuilder(root, source) {
       tap(x, y) {
         if (stopReplay() || !ready()) return;
         const point = pointAt(x, y);
-        if (point) act({ type: 'build/tap', x: point[0], y: point[1] });
+        if (!point) return;
+        // With holds confirming (M47), a tap on the ghost only says so.
+        if (holdMode() && tapOnGhost(store.getState(), defs, point[0], point[1])) return setStatus({ tone: 'info', text: 'Hold the ghost to put it down.' });
+        act({ type: 'build/tap', x: point[0], y: point[1] });
       },
       longPress(x, y) {
-        if (!stopReplay() && ready()) openCardAt(x, y);
+        if (stopReplay() || !ready()) return;
+        const point = pointAt(x, y);
+        if (holdMode() && point && tapOnGhost(store.getState(), defs, point[0], point[1])) return act({ type: 'build/tap', x: point[0], y: point[1] });
+        openCardAt(x, y);
       },
       dragStart(x0, y0) {
         if (stopReplay() || !ready()) return false;
@@ -853,15 +860,19 @@ export function mountBuilder(root, source) {
         const label = wrecked ? `Scrap for ${name}` : `Swap for ${name}`;
         const button = node('button', `btn bld-swap${wrecked ? ' bld-scrap' : ''}`, label);
         button.type = 'button';
-        onTap(button, () => {
-          if (wrecked && button.dataset.armed !== 'true') {
-            button.dataset.armed = 'true';
-            button.textContent = `Scrap the wreck? Tap again for the ${name}`;
-            return;
-          }
-          closeCard();
-          if (ready()) act({ type: 'build/swap', uid: module.uid, moduleType: type });
-        });
+        onTap(
+          button,
+          (press) => {
+            if (wrecked && !confirms(button.dataset.armed === 'true', press)) {
+              button.dataset.armed = 'true';
+              button.textContent = `Scrap the wreck? ${holdMode() ? 'Hold' : 'Tap again'} for the ${name}`;
+              return;
+            }
+            closeCard();
+            if (ready()) act({ type: 'build/swap', uid: module.uid, moduleType: type });
+          },
+          { confirm: wrecked },
+        );
         return button;
       });
   }

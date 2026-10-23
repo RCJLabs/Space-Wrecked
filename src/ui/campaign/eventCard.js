@@ -12,6 +12,7 @@
 //   card.disarm()              puts a first tap down
 //   card.detach()              lets go of the buttons and the timer
 import { node, setText, toolButton } from '../fight/panels.js';
+import { confirms } from '../confirm.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { faceUrl, portraitImg } from '../portrait.js';
@@ -90,7 +91,7 @@ export function createEventCard({ choose, close }) {
       const small = choice.why ?? [choice.taker, choice.odds, choice.berth].filter(Boolean).join(' · ');
       if (small) button.append(node('small', null, small));
       button.setAttribute('aria-label', choice.ok ? `${choice.label}${choice.taker ? `, ${choice.taker} takes it` : ''}. ${choice.outcomes.map((o) => `${o.chance}%: ${o.says}`).join('. ')}` : `${choice.label}. ${choice.why}`);
-      return { button, detach: onTap(button, () => tap(choice)) };
+      return { button, detach: onTap(button, (press) => tap(choice, press), { confirm: true }) };
     });
     choices.replaceChildren(...buttons.map((entry) => entry.button));
     // A first tap's odds, last in the words, always in view.
@@ -136,9 +137,9 @@ export function createEventCard({ choose, close }) {
   }
 
   // The first tap shows the odds; the second chooses.
-  function tap(choice) {
+  function tap(choice, press) {
     if (!choice.ok) return;
-    if (armed !== choice.id) {
+    if (!confirms(armed === choice.id, press)) {
       armed = choice.id;
       clearTimeout(timer);
       timer = setTimeout(() => {

@@ -76,6 +76,13 @@ import { inReach, shutDoor, walkable } from './terrain.js';
 // player ever stall.
 const MAX_TURN_ACTIONS = 100;
 
+// Whether a tap on the board's tile (x, y) would act, not only show: the move,
+// shot or order already shown there, taken (M47: with holds confirming, the
+// screen asks for a hold instead).
+export function tapActs(fight, x, y, rules) {
+  return reduceFight(fight, { type: 'fight/tap', x, y }, rules).battle !== fight.battle;
+}
+
 export function createFight(battle, rules, events = []) {
   return focus({ battle, selected: null, preview: null, played: [], log: events, notice: null }, null, rules);
 }

@@ -98,3 +98,43 @@ test("an approach's vibrations: the ship hit as each shot lands, a wreck the lon
   assert.equal(roundBuzz({ events: events.slice(0, 1) }), null, 'only ours: nothing');
   assert.equal(roundBuzz(null), null);
 });
+
+test('hold to confirm: a hold acts at once, a tap only on an armed button and only with taps confirming', async () => {
+  const { again, confirms, holdWords } = await import('../src/ui/confirm.js');
+  assert.deepEqual([confirms(false, { held: false }, false), confirms(true, { held: false }, false), confirms(true, undefined, false)], [false, true, true], 'two taps');
+  assert.deepEqual([confirms(false, { held: false }, true), confirms(true, { held: false }, true), confirms(false, { held: true }, true)], [false, false, true], 'holds');
+  assert.equal(again('End turn', false), 'Tap End turn again');
+  assert.equal(again('End turn', true), 'Hold End turn');
+  const said = (text) => holdWords(text, true);
+  assert.equal(said('Fly home: 2 days back. Tap again to fly.'), 'Fly home: 2 days back. Hold to fly.');
+  assert.equal(said('Lift off? Tap Launch again.'), 'Lift off? Hold Launch.');
+  assert.equal(said('The hunters will be waiting there. Tap Jump on again.'), 'The hunters will be waiting there. Hold Jump on.');
+  assert.equal(said('Tap an order to see its odds; tap it again to give it.'), 'Tap an order to see its odds; hold it to give it.');
+  assert.equal(said('Tap it again, or Jump, to go.'), 'Hold it, or Jump, to go.');
+  assert.equal(said('Tap Sign on to see what a recruit takes, and again to sign them on.'), 'Tap Sign on to see what a recruit takes, and hold to sign them on.');
+  assert.equal(said('A farm here: tap it again to build it.'), 'A farm here: hold it to build it.');
+  assert.equal(said('No second step here.'), 'No second step here.');
+  assert.equal(holdWords('Tap again to fly.', false), 'Tap again to fly.', 'with taps, as written');
+});
+
+test("the boards: whether a tap acts (the fight's shown move, the builder's ghost) or only shows", async () => {
+  const { createFight, reduceFight, tapActs } = await import('../src/sim/fight.js');
+  const battle = createBattle({ map: openMap(6, 1), units: [{ kind: 'marine', x: 0, y: 0 }, { kind: 'pirate', x: 5, y: 0 }], seed: 3 }, rules).battle;
+  let fight = createFight(battle, rules);
+  fight = reduceFight(fight, { type: 'fight/select', unit: 'c1' }, rules);
+  assert.equal(tapActs(fight, 2, 0, rules), false, 'the first tap shows the move');
+  const shown = reduceFight(fight, { type: 'fight/tap', x: 2, y: 0 }, rules);
+  assert.equal(shown.preview?.type, 'move');
+  assert.equal(tapActs(shown, 2, 0, rules), true, 'the second acts');
+  assert.equal(tapActs(shown, 3, 0, rules), false, 'elsewhere it shows another');
+  const { createSession, reduceSession, tapOnGhost } = await import('../src/sim/session.js');
+  const { readyToLaunch } = await import('./launchKit.js');
+  const ship = readyToLaunch().ship;
+  let session = createSession(ship, [], { cargo: 1 }, []);
+  session = reduceSession(session, { type: 'build/arm', moduleType: 'cargo' }, rules);
+  assert.equal(tapOnGhost(session, rules, 0, 0), false, 'no ghost yet');
+  for (let y = -6; y < 12 && !session.ghost; y++) for (let x = -6; x < 16 && !session.ghost; x++) session = reduceSession(session, { type: 'build/tap', x: x + 0.5, y: y + 0.5 }, rules);
+  assert.ok(session.ghost, 'a ghost somewhere');
+  assert.equal(tapOnGhost(session, rules, session.ghost.x + 0.5, session.ghost.y + 0.5), true);
+  assert.equal(tapOnGhost(session, rules, session.ghost.x - 20, session.ghost.y), false);
+});

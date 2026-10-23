@@ -57,6 +57,7 @@ import { faceRaid } from '../../sim/raids.js';
 import { fightSettings } from '../../sim/settings.js';
 import { flyTo, voyageHome } from '../../sim/voyage.js';
 import { node, setText, toolButton } from '../fight/panels.js';
+import { confirms } from '../confirm.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { createCrewCard } from './crewCard.js';
@@ -190,7 +191,7 @@ export const sectorScreen = {
       },
     });
     const crewCard = createCrewCard({
-      tap: (key) => twoTaps(key, () => crewOrder(key)),
+      tap: (key, press) => twoTaps(key, () => crewOrder(key), press),
       done: () => toggleCrew(false),
     });
     el.append(head, info, map, side, card.el, crewCard.el, foot);
@@ -216,15 +217,15 @@ export const sectorScreen = {
     const cleanups = [
       onTap(titleButton, () => game.dispatch({ type: 'screen/show', screen: 'title' })),
       onTap(jumpButton, makeJump),
-      onTap(onButton, () => twoTaps('on', () => game.dispatch({ type: 'campaign/sector/leave', rules: defs }))),
-      onTap(scanButton, () => twoTaps('scan', () => game.dispatch({ type: 'campaign/scan', rules: defs }))),
-      onTap(restButton, () => twoTaps('rest', () => game.dispatch({ type: 'campaign/regroup', rules: defs }))),
-      onTap(swapButton, () => twoTaps('swap', () => game.dispatch({ type: 'campaign/swap', rules: defs }))),
+      onTap(onButton, (press) => twoTaps('on', () => game.dispatch({ type: 'campaign/sector/leave', rules: defs }), press), { confirm: true }),
+      onTap(scanButton, (press) => twoTaps('scan', () => game.dispatch({ type: 'campaign/scan', rules: defs }), press), { confirm: true }),
+      onTap(restButton, (press) => twoTaps('rest', () => game.dispatch({ type: 'campaign/regroup', rules: defs }), press), { confirm: true }),
+      onTap(swapButton, (press) => twoTaps('swap', () => game.dispatch({ type: 'campaign/swap', rules: defs }), press), { confirm: true }),
       onTap(jobsButton, openJobs),
-      onTap(surveyButton, () => twoTaps('survey', () => game.dispatch({ type: 'campaign/survey', rules: defs }))),
-      onTap(settleButton, () => twoTaps('settle', () => game.dispatch({ type: 'campaign/settle', rules: defs }))),
-      onTap(homeButton, () => twoTaps('home', flyHome)),
-      onTap(defendButton, () => twoTaps('defend', defend)),
+      onTap(surveyButton, (press) => twoTaps('survey', () => game.dispatch({ type: 'campaign/survey', rules: defs }), press), { confirm: true }),
+      onTap(settleButton, (press) => twoTaps('settle', () => game.dispatch({ type: 'campaign/settle', rules: defs }), press), { confirm: true }),
+      onTap(homeButton, (press) => twoTaps('home', flyHome, press), { confirm: true }),
+      onTap(defendButton, (press) => twoTaps('defend', defend, press), { confirm: true }),
       onTap(crewOpener, () => toggleCrew(!crewOpen)),
       onTap(shipOpener, refit),
       () => clearTimeout(armTimer),
@@ -490,7 +491,7 @@ export const sectorScreen = {
             Object.assign(label.style, { left: dot.style.left, top: dot.style.top });
             button.append(label);
           }
-          return { id: n.id, button, dot, detach: onTap(button, () => tapNode(n.id)) };
+          return { id: n.id, button, dot, detach: onTap(button, (press) => tapNode(n.id, press), { confirm: true }) };
         });
         map.replaceChildren(links, ...nodeButtons.map((entry) => entry.button), ship);
       }
@@ -572,7 +573,7 @@ export const sectorScreen = {
         const button = toolButton('sct-buy', icons.supplies, armed === entry.count ? entry.ask : entry.label);
         button.dataset.armed = String(armed === entry.count);
         button.setAttribute('aria-label', `Buy ${entry.count} supplies`);
-        return { button, detach: onTap(button, () => twoTaps(entry.count, () => game.dispatch({ type: 'campaign/supplies', count: entry.count, rules: defs }))) };
+        return { button, detach: onTap(button, (press) => twoTaps(entry.count, () => game.dispatch({ type: 'campaign/supplies', count: entry.count, rules: defs }), press), { confirm: true }) };
       });
       // A shipyard's Yard (M37b): the shop screen on its parts. Opening it
       // changes nothing, so it takes one tap.
@@ -588,7 +589,7 @@ export const sectorScreen = {
         button.dataset.armed = String(armed === 'repair');
         button.disabled = !repair.ok;
         button.setAttribute('aria-label', repair.ok ? repair.text.replace(' Tap again to repair.', '') : repair.why);
-        buyButtons.push({ button, detach: onTap(button, () => twoTaps('repair', () => game.dispatch({ type: 'campaign/repair', rules: defs }))) });
+        buyButtons.push({ button, detach: onTap(button, (press) => twoTaps('repair', () => game.dispatch({ type: 'campaign/repair', rules: defs }), press), { confirm: true }) });
         if (!repair.ok) infoLines.append(lineItem(repair.why, 'bad'));
       }
       // The station's job board (M38c): in this panel, over the swap.
@@ -615,7 +616,7 @@ export const sectorScreen = {
         button.dataset.armed = String(armed === 'patch');
         button.disabled = !patch.ok;
         button.setAttribute('aria-label', patch.ok ? patch.text.replace(' Tap again to patch up.', '') : patch.why);
-        buyButtons.push({ button, detach: onTap(button, () => twoTaps('patch', () => game.dispatch({ type: 'campaign/patch', rules: defs }))) });
+        buyButtons.push({ button, detach: onTap(button, (press) => twoTaps('patch', () => game.dispatch({ type: 'campaign/patch', rules: defs }), press), { confirm: true }) });
         if (!patch.ok) infoLines.append(lineItem(patch.why, 'bad'));
       }
       // The weapons rack (M37): each weapon on it, put on hand. In this
@@ -629,7 +630,7 @@ export const sectorScreen = {
         button.setAttribute('aria-label', item.ok ? `Buy the ${item.name.toLowerCase()}: ${item.label.split(' · ').at(-1)} credits` : item.why);
         const facts = armed === item.key ? node('ul', 'sct-lines sct-rack-facts') : null;
         facts?.append(...item.facts.map((fact) => node('li', null, fact)));
-        return { button, facts, detach: onTap(button, () => twoTaps(item.key, () => game.dispatch({ type: 'campaign/arms/rack', slot: item.slot, rules: defs }))) };
+        return { button, facts, detach: onTap(button, (press) => twoTaps(item.key, () => game.dispatch({ type: 'campaign/arms/rack', slot: item.slot, rules: defs }), press), { confirm: true }) };
       });
       buys.replaceChildren(...buyButtons.map((entry) => entry.button));
       buys.hidden = !buyButtons.length;
@@ -657,11 +658,13 @@ export const sectorScreen = {
 
     // A tap on a node picks it, showing its jump; a second tap on it jumps.
     // A tap on the ship's own node puts the pick down.
-    function tapNode(id) {
+    // A second tap on the node picked jumps there; with holds confirming
+    // (M47), a hold on it does, and a tap only picks it.
+    function tapNode(id, press) {
       const campaign = game.getState().campaign;
       if (!defs || !campaign?.run) return;
       disarm();
-      if (id === picked) {
+      if (id === picked && confirms(true, press)) {
         makeJump();
         return;
       }
@@ -732,7 +735,7 @@ export const sectorScreen = {
           const box = node('section', 'hgr-panel sct-colony-panel sct-other');
           box.dataset.colony = String(colony.id);
           box.append(title, rows, line, button);
-          return [colony.id, { panel: box, title, rows, line, button, detach: onTap(button, () => twoTaps(`fly:${colony.id}`, () => flyThere(colony.id))) }];
+          return [colony.id, { panel: box, title, rows, line, button, detach: onTap(button, (press) => twoTaps(`fly:${colony.id}`, () => flyThere(colony.id), press), { confirm: true }) }];
         }));
         othersBox.replaceChildren(...[...others.values()].map((entry) => entry.panel));
         othersShown = ids;
@@ -797,9 +800,9 @@ export const sectorScreen = {
 
     // Jump on, Buy and the crew card's buttons: the first tap says what it
     // costs, the second does it.
-    function twoTaps(which, act) {
+    function twoTaps(which, act, press) {
       if (!defs) return;
-      if (armed !== which) {
+      if (!confirms(armed === which, press)) {
         armed = which;
         picked = null;
         clearTimeout(armTimer);

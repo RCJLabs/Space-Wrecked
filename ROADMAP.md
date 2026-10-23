@@ -2382,7 +2382,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Measured:** the test player, taking the dearest, strips a reactor from nearly every ship it wins: 1,920 credits of parts at sell price in 100 voyages against main's 1,010 rolled, with her scrap 296 against 372.
   - **Voyage tests:** "every run flies a trip" (seeds 1 to 30) is now a 100-seed rate within main's margin, and M40's bar of none hungry in the system is now 2 or fewer of 100 (Evan's call, 2026-10-23), after the rerolled voyages left the deserter's seed 73 hungry there.
 
-- [ ] **M47 Controls and feel.** Item 10 of the Phase 8 brainstorm, last in my recommended order, taken on Evan's word (2026-10-23, "Do recommendations"): a left-handed layout, the playback's speed, hold to confirm, and vibration on hits (§9).
+- [x] **M47 Controls and feel.** Item 10 of the Phase 8 brainstorm, last in my recommended order, taken on Evan's word (2026-10-23, "Do recommendations"): a left-handed layout, the playback's speed, hold to confirm, and vibration on hits (§9).
 
   Measured first (main after M46):
   - **Sides:** every screen with a side column puts the orders on the right and the information on the left: the fight (crew bar left, orders right), the builder (drawer left, tools right), and the hangar, chart, colony, approach and shop, as column grids. Nothing mirrors them.
@@ -2398,6 +2398,14 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Saves go to v43** with the four settings at their defaults.
   - **Every rule tested;** every earlier milestone's check passes.
   - **Touch, at the three sizes:** the fight and builder mirrored with every button still 48 px or more and none off the screen; an enemy turn timed at 2× against 1×; End turn and a move confirmed by a hold; vibrations recorded on a hit.
+
+  As built (2026-10-23), where it differs from the above or adds to it:
+  - **The hold is the long press,** 0.45 s, not 0.5 s: one gesture threshold for the whole game. On a button, a hold acts even unarmed (the button names what it does). On a board and a chart node it acts only on what a first tap has shown; a hold anywhere else still opens the info card.
+  - **The words follow the setting:** every "Tap again" in the game's text reads "Hold" with Hold picked ("Hold to fly.", "Hold Launch."), rewritten as the words are shown (`confirm.js` holdWords), so the text modules are unchanged.
+  - **Where a tap would act** is asked of the sim: `fight.js` tapActs (the battle would change) and `session.js` tapOnGhost.
+  - **The fill** shows on buttons only; on the boards the status line says "Hold it to do it." and "Hold the ghost to put it down."
+  - **Left hand** also reverses the foot rows (the hangar's, the chart's, the colony's, the approach's and the shop's), so Build, Jump and Buy sit under the left thumb, and moves the builder's layout line to the right, clear of Hull.
+  - **Measured in the browser:** an enemy turn 6.35 s at 1× and 3.05 s at 2× (the same turn, cover screen).
 
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
@@ -2439,7 +2447,7 @@ These ideas wait until v0.4 or later:
 - black box derelicts and zero-g drift
 - a daily anomaly and a blueprint gallery
 - decals: a name or a number on the hull, and a side's emblem. M23f brought paint and trim (raised before M4; narrowed in M23f)
-- vibration on hits
+- vibration on hits; done in M47, as a setting with a left-handed layout, the playback's speed and hold to confirm
 - closing doors in battle, and locked doors: since M7 a unit can open a door beside it, but not shut one (raised in M7: defenders sealing a breach); done in M45 (close, lock, force)
 - fog of war: since M8 every enemy is always shown; hiding those no one in the crew can see would make scouting matter (raised in M7, decided against for now in M8); done in M45, as a setting off by default
 - the camera following the action in an enemy turn: on a ship too big for the screen, part of a turn can play out of view (raised in M8)

@@ -7,6 +7,7 @@
 // ARM_MS launches. Construction mode has Launch only in act 1, as the
 // hangar does (M44): launching ends the act. Under the totals, the hull frame and what
 // its trait does (M39).
+import { confirms, holdMode } from '../confirm.js';
 import { onTap } from '../gestures.js';
 import { traitText } from './card.js';
 
@@ -50,10 +51,10 @@ export function createShipPanel({ onLaunch, onFix }) {
 
   let onHand = () => Infinity;
 
-  const detachLaunch = onTap(launch, () => {
+  const detachLaunch = onTap(launch, (press) => {
     if (!onLaunch) return;
     if (open) return onLaunch(); // locked: the session refuses and names a fix
-    if (performance.now() < armedUntil) {
+    if (confirms(performance.now() < armedUntil, press)) {
       disarm();
       onLaunch();
       return;
@@ -62,7 +63,7 @@ export function createShipPanel({ onLaunch, onFix }) {
     clearTimeout(timer);
     timer = setTimeout(disarm, ARM_MS);
     setLaunchFace();
-  });
+  }, { confirm: true });
 
   function disarm() {
     clearTimeout(timer);
@@ -75,7 +76,7 @@ export function createShipPanel({ onLaunch, onFix }) {
     launch.dataset.state = open ? 'locked' : armed ? 'armed' : 'ready';
     launch.setAttribute('aria-disabled', String(Boolean(open)));
     launch.replaceChildren(
-      node('span', null, armed ? 'Tap again to launch' : 'Launch'),
+      node('span', null, armed ? (holdMode() ? 'Hold to launch' : 'Tap again to launch') : 'Launch'),
       ...(open ? [node('small', null, `${open} check${open === 1 ? '' : 's'} to pass`)] : []),
     );
   }

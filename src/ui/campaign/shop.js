@@ -16,6 +16,7 @@
 import { loadContent } from '../../platform/content.js';
 import { palette } from '../../render/palette.js';
 import { node, setText, toolButton } from '../fight/panels.js';
+import { confirms } from '../confirm.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { shopText } from './shopText.js';
@@ -57,7 +58,7 @@ export const shopScreen = {
     let backTo = 'hub';
     const cleanups = [
       onTap(backButton, () => game.dispatch({ type: 'screen/show', screen: backTo })),
-      onTap(tradeButton, trade),
+      onTap(tradeButton, trade, { confirm: true }),
       () => clearTimeout(armTimer),
       game.subscribe((state) => alive && render(state.campaign)),
       () => rows.forEach((row) => row.detach()),
@@ -208,9 +209,9 @@ export const shopScreen = {
     }
 
     // Buy or Sell: the first tap shows the price, the second trades.
-    function trade() {
+    function trade(press) {
       if (!defs || !picked || tradeButton.disabled) return;
-      if (!armed) {
+      if (!confirms(armed, press)) {
         armed = true;
         clearTimeout(armTimer);
         armTimer = setTimeout(() => {

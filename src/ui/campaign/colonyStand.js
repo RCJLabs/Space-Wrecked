@@ -36,8 +36,9 @@ const MAX_ZOOM = 4;
 const TURN_SLOP = 0.17; // radians of twist before a pinch turns the view
 const GHOST_TALL = 1.5; // how high a tap on the ghost still finds it
 
-// onTap(x, y): a tap on the colony, in screen pixels.
-export function createStand(area, { onTap }) {
+// onTap(x, y): a tap on the colony, in screen pixels; onHold(x, y), a hold
+// (M47: with holds confirming, one on the ghost builds it).
+export function createStand(area, { onTap, onHold = null }) {
   let scene = null;
   let built = null;
   let box = null;
@@ -61,6 +62,9 @@ export function createStand(area, { onTap }) {
   const detach = attachGestures(area, {
     tap(x, y) {
       if (camera) onTap(x, y);
+    },
+    longPress(x, y) {
+      if (camera) onHold?.(x, y);
     },
     dragStart(x, y) {
       if (!camera) return false;

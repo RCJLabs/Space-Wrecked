@@ -29,6 +29,7 @@
 import { defaultSquad } from '../../sim/crew.js';
 import { chooseAtPlace, flyHome, flyOn, flyOut, tripPlan } from '../../sim/expeditions.js';
 import { node } from '../fight/panels.js';
+import { confirms } from '../confirm.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { shortNames } from '../names.js';
@@ -69,7 +70,7 @@ export function createTrips(ctx) {
         node('h2', null, 'Fly out'),
         about,
         actionRow([
-          ['Fly out', icons.launch, () => tapFly(campaign), armed() === 'fly' ? 'cln-confirm cln-armed' : 'cln-confirm', plan.ok],
+          ['Fly out', icons.launch, (press) => tapFly(campaign, press), armed() === 'fly' ? 'cln-confirm cln-armed' : 'cln-confirm', plan.ok],
           ['Refit', icons.build, () => game.dispatch({ type: 'screen/show', screen: 'construction' }), null, true],
           ['Back', icons.prev, () => back(), null, true],
         ]),
@@ -91,7 +92,7 @@ export function createTrips(ctx) {
           result.append(node('small', null, away.result.text));
           nodes.push(result);
         }
-        nodes.push(actionRow([['Fly on', away.leg.dir === 'out' ? icons.launch : icons.home, () => tapOn(), armed() === 'on' ? 'cln-confirm cln-armed' : 'cln-confirm', away.on.ok]]));
+        nodes.push(actionRow([['Fly on', away.leg.dir === 'out' ? icons.launch : icons.home, (press) => tapOn(press), armed() === 'on' ? 'cln-confirm cln-armed' : 'cln-confirm', away.on.ok]]));
         return nodes;
       }
       if (away.event) {
@@ -110,8 +111,8 @@ export function createTrips(ctx) {
         nodes.push(result);
       }
       const actions = [];
-      if (away.held) actions.push(['Board her', icons.door, () => tapBoard(campaign), armed() === 'board' ? 'cln-confirm cln-armed' : 'cln-confirm', true]);
-      actions.push(['Fly home', icons.home, () => tapHome(campaign), armed() === 'home' ? 'cln-armed' : null, away.home.ok]);
+      if (away.held) actions.push(['Board her', icons.door, (press) => tapBoard(press), armed() === 'board' ? 'cln-confirm cln-armed' : 'cln-confirm', true]);
+      actions.push(['Fly home', icons.home, (press) => tapHome(campaign, press), armed() === 'home' ? 'cln-armed' : null, away.home.ok]);
       nodes.push(actionRow(actions));
       return nodes;
     },
@@ -180,9 +181,9 @@ export function createTrips(ctx) {
   }
 
   // Fly out: the first tap says what the trip comes to; the second flies.
-  function tapFly(campaign) {
+  function tapFly(campaign, press) {
     if (!pick) return;
-    if (armed() !== 'fly') {
+    if (!confirms(armed() === 'fly', press)) {
       say(null);
       arm('fly');
       return;
@@ -210,15 +211,15 @@ export function createTrips(ctx) {
     const small = choice.why ?? [choice.taker, choice.odds].filter(Boolean).join(' · ');
     if (small) button.append(node('small', null, small));
     button.setAttribute('aria-label', choice.ok ? choice.ask.replace(' Tap again to choose.', '') : `${choice.label}. ${choice.why}`);
-    ctx.keep(onTap(button, () => tapChoice(choice, key)));
+    ctx.keep(onTap(button, (press) => tapChoice(choice, key, press), { confirm: true }));
     item.append(button);
     return item;
   }
 
-  function tapChoice(choice, key) {
+  function tapChoice(choice, key, press) {
     const { campaign } = game.getState();
     if (!campaign || !choice.ok) return;
-    if (armed() !== key) {
+    if (!confirms(armed() === key, press)) {
       say(null);
       arm(key);
       return;
@@ -234,8 +235,8 @@ export function createTrips(ctx) {
   }
 
   // Board her: two taps, then the fight's screen.
-  function tapBoard() {
-    if (armed() !== 'board') {
+  function tapBoard(press) {
+    if (!confirms(armed() === 'board', press)) {
       say(null);
       arm('board');
       return;
@@ -247,8 +248,8 @@ export function createTrips(ctx) {
 
   // Fly on, with the leg a raid stopped: the first tap says the days still
   // to fly and what they eat; the second flies them.
-  function tapOn() {
-    if (armed() !== 'on') {
+  function tapOn(press) {
+    if (!confirms(armed() === 'on', press)) {
       say(null);
       arm('on');
       return;
@@ -263,8 +264,8 @@ export function createTrips(ctx) {
   }
 
   // Fly home: the first tap says what the days back eat; the second flies.
-  function tapHome(campaign) {
-    if (armed() !== 'home') {
+  function tapHome(campaign, press) {
+    if (!confirms(armed() === 'home', press)) {
       say(null);
       arm('home');
       return;

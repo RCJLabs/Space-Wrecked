@@ -3,6 +3,7 @@
 // new one is safe at a tap (nothing is lost: every slot is saved); deleting
 // takes a second tap within ARM_MS.
 import { MAX_SLOTS } from '../../sim/builds.js';
+import { confirms, holdMode } from '../confirm.js';
 import { onTap } from '../gestures.js';
 
 const ARM_MS = 3000;
@@ -67,8 +68,8 @@ export function createSavesPanel({ onOpen, onNew, onCopy, onPaste, onReplay, onD
         say(pasteNote, 'bad', result.error);
       }
     }),
-    onTap(remove, () => {
-      if (performance.now() < armedUntil) {
+    onTap(remove, (press) => {
+      if (confirms(performance.now() < armedUntil, press)) {
         disarm();
         onDelete();
         return;
@@ -76,9 +77,9 @@ export function createSavesPanel({ onOpen, onNew, onCopy, onPaste, onReplay, onD
       armedUntil = performance.now() + ARM_MS;
       clearTimeout(timer);
       timer = setTimeout(disarm, ARM_MS);
-      remove.textContent = 'Tap again to delete';
+      remove.textContent = holdMode() ? 'Hold to delete' : 'Tap again to delete';
       remove.dataset.state = 'armed';
-    }),
+    }, { confirm: true }),
   ];
 
   function disarm() {

@@ -28,10 +28,11 @@ import { convexHull, inside } from '../../render/pick.js';
 import { cuesBetween, frameAt, makeTimeline, poseAt } from '../../render/playback.js';
 import { crewColor, LYING_TOP, ordersScene, UNIT_TOP, unitsScene, zonesScene } from '../../render/units.js';
 import { describeEvent } from '../../sim/battleLog.js';
-import { canAct, createFight, ordersFor, reduceFight, selectedUnit } from '../../sim/fight.js';
+import { canAct, createFight, ordersFor, reduceFight, selectedUnit, tapActs } from '../../sim/fight.js';
 import { crewLook } from '../../sim/looks.js';
 import { sightedBy } from '../../sim/sight.js';
 import { tileText } from '../battle/tileText.js';
+import { again, confirms, holdMode } from '../confirm.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { playbackSpeed } from '../motion.js';
@@ -189,10 +190,14 @@ export function mountFight(root, source) {
         // A tile an enemy hidden in the fog of war (M45) stands on is as
         // good as empty to the screen: the tap shows nothing.
         if (at && hiddenAt(at)) return order({ type: 'fight/cancel' });
+        // With holds confirming (M47), a tap on what is shown only says so.
+        if (at && holdMode() && tapActs(store.getState(), at[0], at[1], defs)) return setStatus({ tone: 'info', text: 'Hold it to do it.' });
         order(at ? { type: 'fight/tap', x: at[0], y: at[1] } : { type: 'fight/cancel' });
       },
       longPress(x, y) {
         if (!store || busy()) return;
+        const held = tileAt(x, y);
+        if (held && holdMode() && !hiddenAt(held) && tapActs(store.getState(), held[0], held[1], defs)) return order({ type: 'fight/tap', x: held[0], y: held[1] });
         const unit = unitUnder(x, y);
         if (unit) return openCard('unit', unitText(unit, defs, store.getState().battle), x);
         const at = tileAt(x, y);
@@ -369,15 +374,15 @@ export function mountFight(root, source) {
   }
 
   // End turn takes two taps while anyone still has an action left.
-  function endTurn() {
+  function endTurn(press) {
     if (!store || busy()) return;
     const { battle } = store.getState();
     if (battle.winner || battle.side !== 'crew') return;
-    if (battle.units.some((u) => canAct(battle, u)) && !endArmed) {
+    if (battle.units.some((u) => canAct(battle, u)) && !confirms(endArmed, press)) {
       endArmed = true;
       clearTimeout(endTimer);
       endTimer = setTimeout(() => (disarmEnd(), sync()), ARM_MS);
-      setStatus({ tone: 'warn', text: 'Tap End turn again to end it: the crew still has actions left.' });
+      setStatus({ tone: 'warn', text: `${again('End turn')} to end it: the crew still has actions left.` });
       crewBar.setEnd('armed');
       return;
     }

@@ -33,6 +33,7 @@ import { skinFor } from '../../render/palette.js';
 import { BOARD_VIEW, boardBox } from '../../render/shipView.js';
 import { squadProblem } from '../../sim/crew.js';
 import { node, setText, toolButton } from '../fight/panels.js';
+import { confirms } from '../confirm.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { motionReduced, playbackSpeed } from '../motion.js';
@@ -125,8 +126,8 @@ export const approachScreen = {
       onTap(titleButton, () => game.dispatch({ type: 'screen/show', screen: 'title' })),
       onTap(carryButton, () => game.dispatch({ type: 'campaign/approach/close' })),
       onTap(squadButton, () => openSquad(!squadOpen)),
-      onTap(boardButton, () => decide('board', () => game.dispatch({ type: 'campaign/boarding/begin', rules: defs, squad }))),
-      onTap(leaveButton, () => decide('leave', () => game.dispatch({ type: 'campaign/approach/close' }))),
+      onTap(boardButton, (press) => decide('board', () => game.dispatch({ type: 'campaign/boarding/begin', rules: defs, squad }), press), { confirm: true }),
+      onTap(leaveButton, (press) => decide('leave', () => game.dispatch({ type: 'campaign/approach/close' }), press), { confirm: true }),
       ...SIDES.map((side) => attachGestures(ships[side].area, { tap: skip })),
       () => clearTimeout(armTimer),
       () => buttons.forEach((entry) => entry.detach()),
@@ -277,13 +278,13 @@ export const approachScreen = {
 
     // Board her or leave her: the first tap says what it means, the second
     // does it. With no choice (she is boarding), one tap begins the fight.
-    function decide(key, act) {
+    function decide(key, act, press) {
       if (!defs || !stakes || skip()) return;
       if (key === 'board' && !stakes.leave) {
         act();
         return;
       }
-      if (armed !== key) {
+      if (!confirms(armed === key, press)) {
         armed = key;
         clearTimeout(armTimer);
         armTimer = setTimeout(() => {
@@ -323,7 +324,7 @@ export const approachScreen = {
         button.append(node('span', null, armed === order.key ? order.ask : order.label));
         if (order.small) button.append(node('small', null, order.small));
         button.setAttribute('aria-label', order.ok ? order.text.replace(' Tap again to fire.', '') : `${order.label}: ${order.why}`);
-        return { button, detach: onTap(button, () => tap(order)) };
+        return { button, detach: onTap(button, (press) => tap(order, press), { confirm: true }) };
       });
       const isFire = (entry) => entry.button.dataset.key.startsWith('fire-');
       fire.replaceChildren(...buttons.filter(isFire).map((entry) => entry.button));
@@ -332,7 +333,7 @@ export const approachScreen = {
 
     // The first tap shows what an order does; the second gives it. One that
     // can't be given says why. A tap while a round plays skips it.
-    function tap(order) {
+    function tap(order, press) {
       if (!defs || skip()) return;
       if (!order.ok) {
         disarm();
@@ -341,7 +342,7 @@ export const approachScreen = {
         hint.hidden = false;
         return;
       }
-      if (armed !== order.key) {
+      if (!confirms(armed === order.key, press)) {
         armed = order.key;
         clearTimeout(armTimer);
         armTimer = setTimeout(() => {
