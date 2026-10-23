@@ -4,8 +4,8 @@
 // that picks that part, unless there is none on hand (construction mode).
 // Launch is locked while any line is open: a tap on it then just says what
 // to fix. When it is ready, the first tap arms it and a second tap within
-// ARM_MS launches. Construction mode has no Launch: launching ends act 1,
-// and the hangar has it (M17). Under the totals, the hull frame and what
+// ARM_MS launches. Construction mode has Launch only in act 1, as the
+// hangar does (M44): launching ends the act. Under the totals, the hull frame and what
 // its trait does (M39).
 import { onTap } from '../gestures.js';
 import { traitText } from './card.js';

@@ -23,9 +23,9 @@ import { partIconSvg } from '../../render/parts/blueprint.js';
 import { hitsGhost, pickBox, pickModule } from '../../render/pick.js';
 import { pieceIconSvg } from '../../render/pieces.js';
 import { BOARD_VIEW, boardBox, createBoard, yardBox } from '../../render/shipView.js';
-import { layoutProblems, openings, placementError, removeModule } from '../../sim/builder.js';
+import { applyCommand, layoutProblems, openings, placementError, removeModule } from '../../sim/builder.js';
 import { canLaunch, flightChecklist, shipStats } from '../../sim/constraints.js';
-import { countOfAny, versionAtHand } from '../../sim/makers.js';
+import { baseOf, countOfAny, versionAtHand, versionsOf } from '../../sim/makers.js';
 import { replay } from '../../sim/replay.js';
 import { createSession, partsLeft, reduceSession, sizeOf, snapPiece, snapPlacement } from '../../sim/session.js';
 import { hullSite, pieceError } from '../../sim/styling.js';
@@ -57,12 +57,16 @@ const PICK = 56; // the Parts tab's picker row and the space over it
 //                       session.js, or null for endless parts; wrecked, the
 //                       uids of parts that can't come off, as there), or
 //                       { session } to pick up a session from an earlier
-//                       visit; null if there is nothing to build
+//                       visit; null if there is nothing to build. Either
+//                       may carry pick: a part to arm, its ghost at the
+//                       suggested spot (M44)
 //   onSession(session, prev)   after every change to the session
 //   crew()              the crew the flight checklist counts
 //   liftOff()           optional: the thrust for each unit of mass lifting
 //                       off takes (a campaign's act on a planet), or null
-//   launch              true if the Ship tab has Launch
+//   launch              true if the Ship tab has Launch, or what to do
+//                       once the session clears it (construction mode in
+//                       act 1, M44: the campaign launches)
 //   ready               optional: what the hint says once every flight
 //                       check passes, for a builder without Launch
 //   cleared             optional: what the chip on the board says then
@@ -85,8 +89,10 @@ export function mountBuilder(root, source) {
   const fitButton = toolButton('bld-fit', icons.fit, null, 'Reset the view');
   const hullButton = toolButton('bld-hull', icons.hull, 'Hull', 'Show the ship from outside');
   hullButton.setAttribute('aria-pressed', 'false');
-  layoutChip.hidden = card.hidden = fitButton.hidden = true;
-  board.append(layoutChip, card, status, fitButton, hullButton);
+  // Suggest (M44): with a part armed, its ghost where it fits best.
+  const suggestButton = toolButton('bld-suggest', icons.build, 'Suggest', 'Show where the part fits best');
+  layoutChip.hidden = card.hidden = fitButton.hidden = suggestButton.hidden = true;
+  board.append(layoutChip, card, status, fitButton, hullButton, suggestButton);
   const tools = node('div', 'bld-tools');
   const undoButton = toolButton('bld-tool', icons.undo, 'Undo');
   const redoButton = toolButton('bld-tool', icons.redo, 'Redo');
@@ -114,7 +120,7 @@ export function mountBuilder(root, source) {
   let fit = null; // the view Fit returns to: the ship, refitted as it changes
   let limits = null;
   let camera = null;
-  let drag = null; // { kind: 'part' | 'ghost' | 'placed' | 'pan', piece?, ... }
+  let drag = null; // { kind: 'part' | 'ghost' | 'placed' | 'run' | 'pan', piece?, ... }
   let pinch = null;
   let dirty = true;
   let alive = true;
@@ -137,6 +143,14 @@ export function mountBuilder(root, source) {
       }
       useFrame((opened.session ?? opened).ship.frame);
       store = createStore((session, action) => reduceSession(session, action, defs), opened.session ?? createSession(opened.ship, opened.log, opened.stock, opened.wrecked));
+      // Opened for one part (a checklist line at the hangar, M44): that
+      // part armed, any maker's on hand, and its ghost at the suggested
+      // spot.
+      if (opened.pick) {
+        const session = store.getState();
+        store.dispatch({ type: 'build/arm', moduleType: versionAtHand(defs, opened.pick, session.stock && ((version) => partsLeft(session, version))), toggle: false });
+        store.dispatch({ type: 'build/suggest' });
+      }
       derived = derive(store.getState().ship);
       store.subscribe(onSession);
       const api = {
@@ -185,7 +199,12 @@ export function mountBuilder(root, source) {
           onTrim: (color) => act({ type: 'build/trim', color }),
           onStyle: (style) => act({ type: 'build/hull', style }),
         },
-        onLaunch: source.launch ? () => act({ type: 'build/launch', crew: crew() }) : null,
+        onLaunch: source.launch
+          ? () => {
+              act({ type: 'build/launch', crew: crew() });
+              if (typeof source.launch === 'function' && store.getState().notice?.tone === 'good') source.launch();
+            }
+          : null,
         // A fix asks for a part, and any maker's version on hand will do.
         onFix: (type) => {
           drawer.show('parts');
@@ -255,10 +274,19 @@ export function mountBuilder(root, source) {
     onTap(deleteButton, () => act({ type: deleteMode === 'done' ? 'build/cancel' : 'build/delete' })),
     onTap(fitButton, () => ready() && setCamera(fit)),
     onTap(hullButton, () => ready() && setLook(look === 'hull' ? 'plans' : 'hull')),
+    onTap(suggestButton, () => {
+      if (!ready()) return;
+      setLook('plans');
+      act({ type: 'build/suggest' });
+    }),
   );
   // The next touch anywhere closes the card, and still does its own job.
   // (Not a click: lifting the finger after the long press must not.)
-  const closeOnTouch = () => closeCard();
+  // A touch on the card's own buttons (a maker's swap, M44) leaves it open
+  // until the button's tap.
+  const closeOnTouch = (event) => {
+    if (!event.target.closest?.('.bld-card button')) closeCard();
+  };
   el.addEventListener('pointerdown', closeOnTouch, true);
 
   // Keys, for testing on a desktop.
@@ -361,6 +389,7 @@ export function mountBuilder(root, source) {
     if (!store) return;
     const session = store.getState();
     drawer.setArmed(session.armed?.type ?? null);
+    suggestButton.hidden = !session.armed || !defs.modules.has(session.armed.type);
     undoButton.disabled = !session.past.length;
     redoButton.disabled = !session.future.length;
     const target = session.armed?.type ?? selectedOf(session)?.type;
@@ -497,6 +526,10 @@ export function mountBuilder(root, source) {
   // The part or piece being placed or moved: the drag's, or the session's
   // ghost.
   function ghostOf(session) {
+    if (drag?.kind === 'run') {
+      const last = drag.run.at(-1);
+      return { placement: last.placement, ok: last.ok, blockers: [], run: drag.run };
+    }
     if (drag && drag.kind !== 'pan') {
       return drag.placement ? { placement: drag.placement, ok: !drag.error, blockers: drag.blockers } : null;
     }
@@ -642,6 +675,8 @@ export function mountBuilder(root, source) {
       const grab = [deck[0] - ghost.x, deck[1] - ghost.y];
       // A part being moved: dragging its ghost moves the part, turned as the ghost is.
       if (ghost.uid !== undefined) return { kind: 'placed', uid: ghost.uid, type: ghost.type, rot: ghost.rot, grab, placement: null };
+      // A corridor's ghost (M44): a drag from it lays a run, one a cell.
+      if (session.armed?.type === ghost.type && baseOf(defs.modules.get(ghost.type)) === 'corridor') return startRun(session, ghost);
       return { kind: 'ghost', type: ghost.type, rot: ghost.rot, grab, placement: null };
     }
     const module = selectedOf(session);
@@ -666,8 +701,61 @@ export function mountBuilder(root, source) {
     moveDrag(x, y);
   }
 
+  // A run of corridors from the ghost's cell (M44): the cells the finger
+  // crosses, one grid step at a time, each checked as if the ones before
+  // it were placed, with the corridors on hand counted down.
+  function startRun(session, ghost) {
+    const run = { kind: 'run', type: ghost.type, rot: ghost.rot, cells: [[ghost.x, ghost.y]] };
+    return { ...run, run: checkRun(session, run) };
+  }
+
+  function stepRun(x, y) {
+    const deck = deckAt(x, y);
+    if (!deck) return;
+    const target = [Math.floor(deck[0]), Math.floor(deck[1])];
+    let changed = false;
+    for (let guard = 0; guard < 64; guard++) {
+      const [lx, ly] = drag.cells.at(-1);
+      const [dx, dy] = [target[0] - lx, target[1] - ly];
+      if (!dx && !dy) break;
+      const next = Math.abs(dx) >= Math.abs(dy) ? [lx + Math.sign(dx), ly] : [lx, ly + Math.sign(dy)];
+      if (next[0] < 0 || next[1] < 0 || next[0] >= frame.width || next[1] >= frame.height) break;
+      // Back over the cell before: the run gives the last one back.
+      const before = drag.cells.at(-2);
+      if (before && before[0] === next[0] && before[1] === next[1]) drag.cells.pop();
+      else drag.cells.push(next);
+      changed = true;
+    }
+    if (!changed) return;
+    drag.run = checkRun(store.getState(), drag);
+    sync();
+  }
+
+  function checkRun(session, run) {
+    let ship = session.ship;
+    let left = partsLeft(session, run.type);
+    let going = true;
+    return run.cells.map(([cx, cy]) => {
+      const placement = { type: run.type, x: cx, y: cy, rot: run.rot };
+      if (going && left > 0) {
+        const result = applyCommand(ship, defs, { op: 'place', ...placement });
+        if (result.ok) {
+          ship = result.ship;
+          left -= 1;
+          return { placement, ok: true };
+        }
+      }
+      going = false;
+      return { placement, ok: false };
+    });
+  }
+
   function moveDrag(x, y) {
     if (!drag) return;
+    if (drag.kind === 'run') {
+      stepRun(x, y);
+      return;
+    }
     if (drag.kind === 'pan') {
       setCamera(panOrbit(camera, x - drag.x, y - drag.y));
       drag.x = x;
@@ -704,6 +792,11 @@ export function mountBuilder(root, source) {
     drag = null;
     dragChip.hidden = true;
     sync();
+    // A run lifted where it started is the ghost let go where it was.
+    if (ended.kind === 'run') {
+      if (ended.cells.length > 1) act({ type: 'build/run', cells: ended.cells });
+      return;
+    }
     if (ended.kind === 'pan' || !ended.placement) return;
     // A piece may have turned to fit where it was let go.
     const { x: px, y: py, rot } = ended.placement;
@@ -744,11 +837,27 @@ export function mountBuilder(root, source) {
     const noBridge = derived.problems.some((p) => p.rule === 'bridge');
     const joined = noBridge ? null : !derived.loose.has(uid);
     const wrecked = Boolean(session.wrecked?.includes(uid));
-    openCard(cardFor(defs, defs.modules.get(module.type), { module, joined, wrecked }), side);
+    openCard(cardFor(defs, defs.modules.get(module.type), { module, joined, wrecked }), side, wrecked ? [] : swapsFor(session, module));
   }
 
-  function openCard({ title, lines }, side) {
-    card.replaceChildren(node('h3', null, title), ...lines.map((line) => node('p', null, line)));
+  // Each other maker's version of a placed part with one on hand (M44): a
+  // tap swaps it in where the part stands.
+  function swapsFor(session, module) {
+    return versionsOf(defs, module.type)
+      .filter((type) => type !== module.type && partsLeft(session, type) > 0)
+      .map((type) => {
+        const button = node('button', 'btn bld-swap', `Swap for ${defs.modules.get(type).name}`);
+        button.type = 'button';
+        onTap(button, () => {
+          closeCard();
+          if (ready()) act({ type: 'build/swap', uid: module.uid, moduleType: type });
+        });
+        return button;
+      });
+  }
+
+  function openCard({ title, lines }, side, buttons = []) {
+    card.replaceChildren(node('h3', null, title), ...lines.map((line) => node('p', null, line)), ...buttons);
     card.dataset.side = side;
     card.hidden = false;
   }
