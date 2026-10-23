@@ -2,6 +2,61 @@
 
 Newest entry first.
 
+## M44 Builder ergonomics (2026-10-23)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. No save change: saves stay at v40, and blueprint codes are unchanged.
+
+**How it was picked:** Evan's "Do 1 now" from the Phase 8 brainstorm. M44 measured the builder's everyday chores in taps first (main after M43). My recommendations, taken on Evan's word, are ROADMAP.md's M44 Done when.
+
+**What shipped:**
+- **Drag a run:** with any maker's corridor armed, a drag from its ghost lays one on each cell the finger passes, in straight grid steps. Going back over a cell takes it off the run. It shows as ghosts while dragging, with blocked cells crossed and a count on the last. It goes on as one undo step and stops at the first cell that can't take one, or when the corridors on hand run out; the hint says so ("Placed 3 × Corridor. Stopped: …"). A tap on the ghost still places one.
+- **Suggest:** with a part armed, a button on the board puts its ghost where it fits best; a tap on the ghost places it. With no spot, the hint says so. It uses `src/sim/fit.js`, the test players' fitter moved there from `tools/run.js`. On a ship still being built, a spot only has to add no layout problem of its own.
+- **Swap a maker in place:** a placed part's card (long press) has a button for each other maker's version on hand. A tap swaps it, keeping the spot, the turn and its styling pieces, as one undo step, and the old part goes back on hand. A wrecked part has no swap buttons. The build log keeps a remove and a place.
+- **Checklist lines as shortcuts:** at the hangar, a goal line whose part is on hand is a button. A tap opens the builder with that part armed (any maker's on hand) and its ghost at the suggested spot. A line with none on hand stays text.
+- **Launch in the builder:** in act 1, the Ship tab has Launch in construction mode too, two taps, and it launches the campaign as the hangar's does. On the run and at the colony, construction mode still has none.
+
+**Done when** (ROADMAP.md, M44), and how each is met:
+- **Each rule tested:** `tests/builderErgonomics.test.js` (8 tests):
+  - a run as one undo step, with undo and redo;
+  - its two stops (a taken cell; none left on hand);
+  - only corridors run;
+  - Suggest on a half-built ship, and Suggest equal to the fitter on a whole one;
+  - an empty frame says there is no spot;
+  - a swap and its refusals (another part, none on hand, wrecked);
+  - a log with a swap and a run plays back to the same ship.
+- **Touch, at the three sizes:** `m44/verify.mjs`, 29 of 29 at cover, tab and open. Gestures, against the counts measured on main:
+
+  | Chore | M44 | Main |
+  | --- | --- | --- |
+  | Checklist line to the part placed | 2 | 5 or more |
+  | Four corridors in a row | 3 | 9 |
+  | Another maker's version | 2 | 4, and two undo steps |
+  | Launch with the last part fitted | 3 (Ship tab, Launch twice) | Back, then Launch twice |
+
+  Suggest's ghost lands on the fitter's spot and a tap places it there. Every new button is 48 px or more and reachable. The checklist shortcut works offline, with no console errors.
+- **No save change:** saves stay at v40, codes unchanged.
+
+**Tests:**
+- `node --test`: 1187 pass (1179 on main).
+- **New:** `tests/builderErgonomics.test.js` (8).
+- **Changed on purpose:** `tests/hubText.test.js`, whose goal lines now carry `add`, the part when one is on hand.
+
+**Browser checks:** REGRESS
+
+**Known issues:**
+- **Suggest's icon is the wrench Build uses.** Its label tells them apart.
+- **A run is corridors only,** as the Done when says. Other one-cell parts aren't laid by a drag.
+- **Suggest picks the spot touching most of the ship,** as the test players' fitter does, not the one that best serves the layout's flow.
+
+**What Evan should test on the phone:**
+- **At the hangar on a new game:** tap "Berths 0 of 3 crew". The builder opens with the quarters' ghost on the hull; tap it to place it.
+- **A corridor run:** arm a corridor, tap a cell beside the ship, then drag from the ghost along a row. Check that one Undo takes the run back.
+- **Suggest:** arm any part and tap Suggest.
+- **A maker swap:** with a Bastion corridor on hand (from the shop), long-press a corridor and tap "Swap for Bastion corridor".
+- **With every check passing in act 1:** in the builder, open the Ship tab and tap Launch twice.
+
+**Next milestone's first task:** Evan's next pick from the Phase 8 brainstorm. My recommended order after this one is 6, then 3, then 10.
+
 ## Phase 8 started (2026-10-23)
 
 Evan's call: "Do 1 now", picking the builder's ergonomics from the Phase 8 brainstorm. Phase 8 starts with it (M44). Gate 7's play on the phone and its stranger test are still to come. Whatever they turn up becomes Phase 8 milestones, and Gate 8 still guards the release.

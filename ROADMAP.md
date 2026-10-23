@@ -2303,7 +2303,7 @@ More building and fine-tuning before the launch (Evan's call, 2026-10-20). What 
 
 Each milestone is added as Evan picks it, with its Done when settled as it starts, the same way as Phase 7's. Evan started the phase on 2026-10-23 ("Do 1 now", picking M44 from the brainstorm). Gate 7's play on the phone and its stranger are still to come, and what they find becomes milestones here.
 
-- [ ] **M44 Builder ergonomics.** Evan's pick from the Phase 8 brainstorm (2026-10-23): the builder's everyday chores, from §9.
+- [x] **M44 Builder ergonomics.** Evan's pick from the Phase 8 brainstorm (2026-10-23): the builder's everyday chores, from §9.
 
   Measured first (main after M43), by taps on the cover screen:
   - **A corridor run:** 2 taps a cell; nothing lays more than one part at a time.
@@ -2320,6 +2320,18 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Launch in the builder:** in act 1, with every flight check passing, the Ship tab's Launch shows in construction mode too (two taps), as at the hangar.
   - **No save change**, every rule tested, every earlier milestone's check passes.
   - **Touch, at the three sizes:** each of the five, in taps, against the counts above.
+
+  As built (2026-10-23), where it differs from the above or adds to it:
+  - **Taps on the cover screen, by touch** (`m44/verify.mjs`, the same at all three sizes):
+    - a checklist line to the part placed: 2 (was 5 or more);
+    - four corridors in a row: 3 gestures, arm, tap, drag (was 9);
+    - a maker swap: 2, a long press and Swap (was 4);
+    - Launch from the builder: 3, the Ship tab and Launch twice (was Back, then Launch twice).
+  - **The fitter moved** from `tools/run.js` to `src/sim/fit.js`, which `tools/run.js` re-exports. Suggest uses the same search, with one rule eased: on a ship still being built a spot only has to add no layout problem of its own, as the fitter wants a whole ship.
+  - **A run and a swap** are one undo step each, but several commands in the build log (a place a cell; a remove and a place), so the log, saves and codes are unchanged.
+  - **Suggest sits on the board,** under Hull, rather than in the tools column, which is full at the 283 px height. It shows only while a part is armed.
+  - **A swap** re-fits the styling pieces the old part held, as a move does. Its buttons sit on the part's card, which stays open for their tap.
+  - **Launch in construction mode** dispatches the campaign's own launch once the session clears it, so its refusals are the hangar's.
 
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
