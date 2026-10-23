@@ -2301,7 +2301,25 @@ More building and fine-tuning before the launch (Evan's call, 2026-10-20). What 
 - what Evan picks from §9;
 - new content or systems he asks for.
 
-No milestone is drafted yet. Each is added as Evan picks it, with its Done when settled as it starts, the same way as Phase 7's.
+Each milestone is added as Evan picks it, with its Done when settled as it starts, the same way as Phase 7's. Evan started the phase on 2026-10-23 ("Do 1 now", picking M44 from the brainstorm). Gate 7's play on the phone and its stranger are still to come, and what they find becomes milestones here.
+
+- [ ] **M44 Builder ergonomics.** Evan's pick from the Phase 8 brainstorm (2026-10-23): the builder's everyday chores, from §9.
+
+  Measured first (main after M43), by taps on the cover screen:
+  - **A corridor run:** 2 taps a cell; nothing lays more than one part at a time.
+  - **A checklist line:** the hangar's goal lines are plain text. Fixing one takes Build, find the part's tile, tap it, then 2 taps on the board, 5 or more in all.
+  - **Where a part goes:** the player finds a spot by trying cells. The test players' fitter (`tools/run.js` fitPart) is pure and finds one for any part.
+  - **Another maker's version:** delete the part, tap the other version, then 2 taps to place it. That is 4 taps and two undo steps, and the delete gives the part back to the stock first.
+  - **Launch:** only at the hangar. With the last part fitted, Back, then Launch twice.
+
+  Done when (my recommendations, taken on Evan's word, 2026-10-23):
+  - **Drag a run:** with a corridor armed (any maker's), dragging from its ghost lays a corridor on each cell the finger passes, in straight steps along the grid. It shows as ghosts while dragging, each blocked cell crossed. The run is placed where it lifts, as one undo step, and stops short at the first cell that can't take one or when the corridors on hand run out. A tap on the ghost still places one.
+  - **Checklist lines as shortcuts:** at the hangar, a goal line whose part is on hand is a button (48 px or more). A tap opens the builder with that part armed, its ghost at the suggested spot. A line with no part on hand stays text.
+  - **Suggest a spot:** with a part armed, a Suggest button in the builder's tools puts its ghost where the fitter finds best (`src/sim/fit.js`, the test players' fitter moved there). A second tap on the ghost places it. With no spot anywhere, the button says so.
+  - **Swap a maker in place:** a placed part's card offers each other maker's version on hand of the same part. A tap swaps it, keeping the spot and the turn, as one undo step, and returns the old one to the stock. A wrecked part can't be swapped. The build log keeps it as a remove and a place, so saves and codes don't change.
+  - **Launch in the builder:** in act 1, with every flight check passing, the Ship tab's Launch shows in construction mode too (two taps), as at the hangar.
+  - **No save change**, every rule tested, every earlier milestone's check passes.
+  - **Touch, at the three sizes:** each of the five, in taps, against the counts above.
 
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 

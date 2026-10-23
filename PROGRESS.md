@@ -2,6 +2,10 @@
 
 Newest entry first.
 
+## Phase 8 started (2026-10-23)
+
+Evan's call: "Do 1 now", picking the builder's ergonomics from the Phase 8 brainstorm. Phase 8 starts with it (M44). Gate 7's play on the phone and its stranger test are still to come. Whatever they turn up becomes Phase 8 milestones, and Gate 8 still guards the release.
+
 ## A phase before the release (2026-10-20)
 
 Evan's call: before the launch, keep building and fine-tuning. ROADMAP.md §7 has a new **Phase 8: Build and tune** between Phase 7 (content and balance) and the release, which moves to Phase 9; Later is Phase 10, and CLAUDE.md's Capacitor line says so.
