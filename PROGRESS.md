@@ -2,6 +2,70 @@
 
 Newest entry first.
 
+## M46 Refits on the move (2026-10-23)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves are at v42.
+
+**How it was picked:** item 3 of the Phase 8 brainstorm, next in my recommended order, on Evan's "Do recommendations". From §9: refits away from stations, scrapping a wrecked part for a spare, picking what to strip, and scrap by what is left. Measured first on main after M45 (100 voyages, and the approach harness):
+- Parts moved only at a port. A wreck stayed on until a station repaired it (4 repairs in 100 voyages).
+- A won boarding stripped 1 or 2 of her working parts by a roll: 20 parts in 100 voyages, a bridge or an airlock as likely as a gun.
+- Her scrap came in full, though 73% to 93% of her parts still work when she can be boarded (median 91%).
+
+**What shipped:**
+- **Rearrange between jumps** (`src/sim/rearrange.js`): on the run away from a port, with nothing to deal with first, the ship's panel says Rearrange and opens construction mode on the parts aboard alone. They move and turn, and the look can change, but none comes off or goes on: Delete and Swap say so.
+- **Joins hold the ship on the run** (`travel.js` failingCheck): a move that splits the joins keeps the ship from jumping, anywhere on the run, and the chart says Rearrange fixes it. Away from a port no other line holds it, as a move can't change them. At the colony nothing changes.
+- **Scrap a wreck for a spare** (`campaign.js` refitShip, `session.js` swap): in a full refit, a wrecked part's card offers Scrap for each version of it on hand, its own too. The first tap asks; the second puts the spare in the wreck's spot and turn. The wreck is gone, its damage with it, nothing on hand, and the history starts over, since a scrap can't be undone. The ship is never without that part in between.
+- **Pick what to strip** (`src/sim/strip.js`): a won boarding aboard her, and a derelict won on a trip from the colony, offer her working parts on the end panel as toggles, with the dearest picked to start. Continue strips the picks. Save v42 keeps her pool; a fight saved before offers what it had rolled.
+- **Scrap by what is left:** a boarding's scrap is scaled by the share of her parts still working. The approach screen's stakes give that range ("what the volleys left of it"). A ship blown up pays as before.
+
+**Done when** (ROADMAP.md, M46), and how each is met:
+- **Rearrange, the joins' hold, the scrap, the chart's words:** `tests/rearrange.test.js` (6). The picks, the scrap left and save v42: `tests/strip.test.js` (5). The end panel's words and picks: `tests/tripText.test.js`, `tests/approachText.test.js`.
+- **Measured** (100 voyages, the test player taking the dearest, against main's):
+
+  | | Main | M46 |
+  | --- | --- | --- |
+  | Won boardings aboard her | 20 | 19 |
+  | Parts stripped | 20 | 19 (18 reactors, 1 Kestrel engine) |
+  | Their worth at sell price | 1,010 | 1,920 |
+  | Her scrap | 372 | 296 |
+  | Fed all the way | 98 | 97 |
+  | A trip flown from the colony | 100 | 99 |
+
+  The test player picks the dearest every time, which is a reactor on every boarding ship, so these are the most a strip can be worth. A player choosing for the ship will often take less.
+- **The voyage tests stay within main's margins:** they pass. Two moved on purpose (below).
+- **Touch, at the three sizes:** `m46/verify.mjs`, 23 of 23 at cover, tab and open (below).
+- **Every rule tested;** every earlier milestone's check passes (below).
+
+**Tests:**
+- `node --test`: TESTS
+- **New:** `tests/rearrange.test.js` (6), `tests/strip.test.js` (5).
+- **Changed on purpose:**
+  - every test pinning the save version, from 41 to 42, and `tests/citizens.test.js`, which finds v38's migration fifth from the end now;
+  - `tests/refit.test.js`: away from a station, the joins now hold a ship whose reactor came off and split it;
+  - `tests/builderText.test.js`: a wreck's card line names the scrap;
+  - `tests/tripText.test.js`, `tests/approachText.test.js`: the end panel's and the stakes' words;
+  - `tests/voyage.test.js`: a boarding's scrap may be below the preset's least, as much as she has left. "Every run flies a trip" on seeds 1 to 30 broke when seed 24 settled a world that ran short of food. As CLAUDE.md says, it is now a rate over 100 seeds within main's margin (99 of 100; main 100). M40's bar of none of 100 hungry in the system is now 2 or fewer (Evan's call). The deserter's seed 73 came in hungry, broke from sector 2. Main misses the bar too past 100 seeds (seed 300 of 300).
+
+**Browser checks:**
+- **M46's own:** `m46/verify.mjs`, 23 of 23 at the three sizes:
+  - between jumps the panel says Rearrange; its card offers no swap; Delete says why; a drag moves the gun, the parts on hand untouched;
+  - a move that splits the joins: the chart says Rearrange fixes it; Undo, the session kept, moves it back;
+  - at a station a wreck's card offers Scrap for the Kestrel mount; the first tap asks, the second scraps it into its spot;
+  - a won boarding's end panel: the dearest picked, a tap picks the cheapest, Continue strips it;
+  - every new button 48 px or more; saved at v42; no console errors.
+- REGRESS
+
+**Known issues:**
+- **The dearest is always a reactor:** every boarding ship carries one, so Continue alone takes a reactor each time. The end panel shows the rest to choose from.
+- **The test player never rearranges or scraps a wreck:** it repairs at stations as before, so neither is measured in the voyages.
+
+**What Evan should test on the phone:**
+- **Between jumps,** tap the ship's panel (Rearrange): move a part, see Delete refuse. Split the ship and try to jump: the chart says why.
+- **At a station with a wreck** and a spare of it on hand: long-press the wreck, Scrap for the spare, twice.
+- **Win a boarding aboard her:** pick the part you want on the end panel, then Continue.
+
+**Next milestone's first task:** M47, item 10 of the brainstorm, controls and feel: study and measure, then settle its Done when on my recommendations.
+
 ## M45 Doors as tactics (2026-10-23)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves are at v41.

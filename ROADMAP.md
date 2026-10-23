@@ -2357,7 +2357,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Fog of war** hides an enemy from the board, its bars and taps, and a tap on its tile shows nothing. While it walks out of sight the status line says "Something moves out of sight." `src/sim/sight.js` sightedBy says who is seen; the screen reads the setting from `<html data-fog>`.
   - **The tip** comes last of the tips, the first time a crew member stands by a door.
 
-- [ ] **M46 Refits on the move.** Item 3 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-23, "Do recommendations"). From §9: refits away from stations (raised in M23h), scrapping a wrecked part to fit a spare (M23h), picking what to strip (M22) and scrap by what is left (M21).
+- [x] **M46 Refits on the move.** Item 3 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-23, "Do recommendations"). From §9: refits away from stations (raised in M23h), scrapping a wrecked part to fit a spare (M23h), picking what to strip (M22) and scrap by what is left (M21).
 
   Measured first (main after M45, `node tools/voyage.js --runs 100` and the approach harness):
   - **Refits:** only at stations, shipyards, the hangar and the colony. Over 100 voyages the test player refits 142 times and fits 190 parts. Between stations the ship's parts can't even be moved.
@@ -2374,6 +2374,13 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Measured:** 100 voyages against main's: what stripping takes (parts and their worth) and the scrap paid; the voyage tests stay within main's margins (`MAIN`).
   - **Every rule tested;** every earlier milestone's check passes.
   - **Touch, at the three sizes:** a part moved and turned between jumps (Delete refused); a jump refused while the joins fail and allowed once fixed; a wreck scrapped for a spare at a station; a part picked on a won boarding's end panel, every new button 48 px or more.
+
+  As built (2026-10-23), where it differs from the above or adds to it:
+  - **The joins hold the ship on the run only:** at the colony, where the run's record stays, nothing holds it, as before.
+  - **A scrap clears the undo history:** the campaign keeps no wreck to give back, so it can't be undone, and the card's first tap asks.
+  - **The picks wrap into rows** on the end panel, which scrolls when she has more than fit, rather than a row that scrolls sideways.
+  - **Measured:** the test player, taking the dearest, strips a reactor from nearly every ship it wins: 1,920 credits of parts at sell price in 100 voyages against main's 1,010 rolled, with her scrap 296 against 372.
+  - **Voyage tests:** "every run flies a trip" (seeds 1 to 30) is now a 100-seed rate within main's margin, and M40's bar of none hungry in the system is now 2 or fewer of 100 (Evan's call, 2026-10-23), after the rerolled voyages left the deserter's seed 73 hungry there.
 
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
@@ -2443,10 +2450,10 @@ These ideas wait until v0.4 or later:
 - events that start a fight: M20's events settle with a roll. M21 put hostile ships on nodes of their own; a distress call that turns out to be a trap would join the two (raised in M20)
 - shots in the approach: M21 shows a hit as the wrecked room's hazard and a line in the log. Tracers, a flash on the module hit and a shudder would make a round read at a glance (raised in M21)
 - an answer to the corvette besides running: the start ship never boards one, with or without a part (M21). M22's Board order closes on one, but the start crew beats a patrol's three only 32% of the time aboard her, played by the AI; a toll to pay a patrol off is another. M24's gunship is the same, and worse: its shield leaves the start ship's one gun 5 a hit, and the start crew beats its party 9% of the time at home (raised in M21)
-- scrap by what is left: a boarded ship pays its preset's scrap whatever the volleys broke (raised in M21)
+- scrap by what is left: a boarded ship pays its preset's scrap whatever the volleys broke (raised in M21); done in M46
 - repairs away from stations: an engineer patching a wreck between jumps, or salvage as the stock repairs use (§4.6) (raised in M21)
 - a test captain that boards: M22's test player never closes to board and in 30 runs disabled no ship, so its voyages measure only boardings by them. A captain that weighs Board, and a harness row for Board then the fight, would say what boarding is worth (raised in M22)
-- picking what to strip: a won boarding strips parts by a roll among her working ones, a bridge included. Choosing, or an engineer's pick, would make it a decision. M28's derelicts at the colony strip the same way, and a bridge, an engine or an airlock is of no use there except as a spare for the ship (raised in M22)
+- picking what to strip: a won boarding strips parts by a roll among her working ones, a bridge included. Choosing, or an engineer's pick, would make it a decision. M28's derelicts at the colony strip the same way, and a bridge, an engine or an airlock is of no use there except as a spare for the ship (raised in M22); done in M46 (picked on the end panel)
 - starting clear of hazards: deployment takes the tiles nearest the bridge or the hatches whatever is on them, so a crew member can start a boarding fight in a burning room and burn on the first turn (raised in M22)
 - scars and implants earned in play (§4.5): a crew member who goes down could come back scarred, and a med bay or a trader could fit an implant. M23c draws marks as layers of the look, so this needs only the rule and when it happens (Evan's call in M23c: later)
 - the crew card on the cover screen: past three aboard, its lists scroll under the head. A tighter row, or the head's words in the foot, would show four at once (raised in M23)
@@ -2465,8 +2472,8 @@ These ideas wait until v0.4 or later:
 - parts that hang off the life support: the voyage test player's refits on the run can fit a part joined to the bridge only through the life support or the quarters, which then can't go to the colony without cutting it off. Over 100 seeds, the deserter's colonies fell short of air for it in 3 before M31, 7 after it and 15 by M39 (16 in M40), the miner's in 0 to 1. Refitting at the colony to move the part first, or fitting it where it touches a corridor, would free them (raised in M31)
 - Kestrel's mark: two narrow coral stripes along a part's roof read as a coral edge on the folded screen (a few pixels at 821 × 283). Wider stripes, or one down the middle, would read sooner (raised in M31)
 - a parts dealer at stations: a few parts for sale, the same on every visit, and spares bought back at half price. Refits use what the run finds until then; the dealer needs a save bump for what has been bought (Evan's call in M23h: later)
-- scrapping a wrecked part in a refit, to fit a spare in its place without paying for the repair. Without a dealer to replace it, a ship that scraps its only engine would be stranded at the station (raised in M23h)
-- refits away from stations: moving and turning what is aboard between jumps, with fitting and taking off still at stations (raised in M23h)
+- scrapping a wrecked part in a refit, to fit a spare in its place without paying for the repair. Without a dealer to replace it, a ship that scraps its only engine would be stranded at the station (raised in M23h); done in M46, for a spare of the same part in its place
+- refits away from stations: moving and turning what is aboard between jumps, with fitting and taking off still at stations (raised in M23h); done in M46 (Rearrange)
 - the station's foot: Buy, Repair and Patch up crowd it at 821 × 283, which is why Refit is the ship's panel, as the crew's opens the crew card, and M24's transponder swap is in the left panel. A station menu could hold them all (raised in M23h)
 - the rest of §4.4's act 2 heat: payments on the debt at stations, as in act 1 (Evan's call in M24: not now), agents at stations from heat 25, and bribes (raised in M24; docking came in M33)
 - what Regroup is worth to a careful player: the test player managing heat is written never to regroup (a day's 3 hit points each costs 5 heat and, from 50, a hunters' roll; it patches up at stations instead), so the voyages don't say. The test player ignoring heat regroups 7 times a run at the median. A test player that weighs it would (raised in M24)

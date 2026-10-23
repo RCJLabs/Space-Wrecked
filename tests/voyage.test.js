@@ -119,8 +119,11 @@ const MARGIN = 15;
 const MARGIN_RARE = 5;
 // M40's bars (Evan's picks, 2026-10-19), over RATE_RUNS voyages from each
 // start: the hunters met in at most `met` (the sectors and the system
-// together), fed all the way in `fed` or more, hungry in the system in none.
-const BARS = { met: 25, fed: 80, systemHungry: 0 };
+// together), fed all the way in `fed` or more, hungry in the system in
+// `systemHungry` or fewer: none until M46, when its rerolled boardings left
+// the deserter's seed 73 broke from sector 2 and hungry there (main itself
+// comes in hungry on seed 300 of 300), so 2 (Evan's call, 2026-10-23).
+const BARS = { met: 25, fed: 80, systemHungry: 2 };
 const MAIN = {
   miner: { metSectors: 11, ignoringMet: 100, fed: 98, metAny: 11, lost: 13, systemHungry: 0, shortOfAir: 0, surveyed: 96, housed: 55, noScan: 2, medbayFed: 96, surgeryFed: 95, signed: 72, settledSurveyed: 95, carefulFed: 94, refitRuns: 84, cargoFed: 97, bunksFed: 94, largeholdFed: 99, tripsFlown: 100 },
   deserter: { fed: 93, metAny: 21, lost: 11 },
@@ -910,7 +913,7 @@ test("from each background's start, the careful player crosses fed, meets the hu
 // 100: only the task force past the charts, swaps dearer each time, and the
 // test player keeping the food to the system in hand); is fed all the way in
 // BARS.fed or more; and comes into the system hungry in none.
-test("from each start, over 100 voyages, the hunters met in 25 runs or fewer, fed all the way in 80 or more, and hungry in the system in none (M40)", () => {
+test("from each start, over 100 voyages, the hunters met in 25 runs or fewer, fed all the way in 80 or more, and hungry in the system in 2 or fewer (M40, M46)", () => {
   for (const [id, all] of [['miner', refittingAll], ['deserter', desertersAll], ['smuggler', smugglersAll]]) {
     const met = all.filter((r) => r.tally.hunts > 0).length;
     const fed = all.filter((r) => r.tally.hungryJumps === 0).length;
