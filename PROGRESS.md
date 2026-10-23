@@ -39,10 +39,10 @@ Newest entry first.
 - **Every rule tested;** every earlier milestone's check passes (below).
 
 **Tests:**
-- `node --test`: TESTS.
+- `node --test`: 1199 pass (1187 on main).
 - **New:** `tests/locks.test.js` (7), `tests/fog.test.js` (4), and one more in `tests/harness.test.js`.
 - **Changed on purpose:**
-  - every test pinning the save version, from 40 to 41;
+  - every test pinning the save version, from 40 to 41, and `tests/citizens.test.js`, which finds v38's migration fourth from the end now;
   - `tests/accessibility.test.js`, whose v40 migration now ends at the current version;
   - `tests/captain.test.js` and `tests/sim.test.js`, whose settings carry `fog`;
   - `tests/harness.test.js`, whose `--compare` message names `--doors`.
