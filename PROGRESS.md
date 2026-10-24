@@ -46,7 +46,8 @@ Newest entry first.
   - Defend: every button 48 px or more; the hint counts the raiders aboard; the fight waits for the lander, then opens; a tap skips it in under 1.5 s; with reduced motion the fight opens at once;
   - captions on, sound off: a weld reads [Weld crackle], the enemy's walks [Footsteps], a won fight [Fight won]; no console errors.
 - **Every earlier milestone's check,** in three chains run one after the other (`m51/regress-a.sh`, M50's back to M30's; `m51/regress-b1.sh`, M29's to M23's; `m51/regress-b2.sh`, M22's to M8's):
-  - REGRESS_RESULT
+  - **Copy adapted for M51:** M29's (`m29/verify51.mjs`): its lost-without-a-fight Defend read the hint at once, where the landing now plays for 3 s first; it waits for it, 38 of 38 at the three sizes. No save change, so the other copies stand.
+  - **All pass,** apart from M32b's first copy, the known exception from M32b's fix (its fix copy passes in its place).
 
 **Known issues:**
 - **No music.** It wants Evan's ear; it stays in §9.
