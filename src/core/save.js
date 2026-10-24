@@ -116,7 +116,9 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      parts to pick from (M46); one under way offers the parts it rolled
 //  43  controls and feel: the settings keep the hand, the playback's speed,
 //      what confirms and vibration (M47)
-export const SAVE_VERSION = 43;
+//  44  senses: the settings keep captions, off, and how the text is set,
+//      standard (M49)
+export const SAVE_VERSION = 44;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -575,6 +577,10 @@ export const MIGRATIONS = [
   {
     from: 42,
     up: (data) => (isObject(data) && isObject(data.settings) ? { ...data, settings: { ...data.settings, hand: 'right', speed: 100, confirm: 'taps', vibration: true } } : data),
+  },
+  {
+    from: 43,
+    up: (data) => (isObject(data) && isObject(data.settings) ? { ...data, settings: { ...data.settings, captions: false, reading: 'standard' } } : data),
   },
 ];
 

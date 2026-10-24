@@ -35,6 +35,21 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Easier reading (M49, Settings' Reading; src/ui/look.js): the letters and
+   words set further apart, more room between lines of running text, and no
+   capitals-only words or italics, as dyslexia style guides ask. */
+:root[data-reading='readable'] body {
+  letter-spacing: 0.05em;
+  word-spacing: 0.16em;
+}
+:root[data-reading='readable'] body * {
+  text-transform: none !important;
+  font-style: normal !important;
+}
+:root[data-reading='readable'] :is(p, li) {
+  line-height: 1.5;
+}
+
 /* The canvas fills the whole screen, under the camera cutout too. */
 #board {
   position: fixed;
@@ -4309,6 +4324,39 @@ textarea {
 
 .fgt-pick[aria-pressed='true']::before {
   content: '✓ ';
+}
+
+/* Captions (M49, src/ui/captions.js): each sound in words, at the top
+   middle of the screen, clear of the fight's status line at the foot and of
+   the column buttons at the sides; never in the way of a tap. */
+.captions {
+  position: fixed;
+  top: max(4px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  max-width: 50vw;
+  pointer-events: none;
+}
+:root[data-captions='off'] .captions {
+  display: none;
+}
+.caption {
+  margin: 0;
+  padding: 2px 10px;
+  border-radius: 10px;
+  background: rgba(7, 10, 20, 0.86);
+  border: 1px solid var(--c-line);
+  color: var(--c-ink);
+  font-size: calc(13px * var(--ts, 1));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* Update prompt */
