@@ -57,7 +57,8 @@ Newest entry first.
   - a boarding with its bridge on fire (6 tiles): no one of the crew starts in it; saved at v45; no console errors.
 - **Every earlier milestone's check,** in two chains run one after the other (`m50/regress-a.sh`, M49's back to M30's; `m50/regress-b.sh`, M29's back to M8's):
   - **Copies made for M50:** 21 checks pinned save v44 and now read v45 (each `verify50.mjs`).
-  - REGRESS_RESULT
+  - **Copies adapted for M50's rules:** M15's (`m15/verify50.mjs`): its raid opens placing now, so it taps Ready before playing it by touch, 31 of 31 at the three sizes. M8's extras (`m8/extras50.mjs`): the fight on the example ship with the bridge set on fire expected all three of the crew to burn on the first turn; now none starts in the fire, and the check says so.
+  - **All pass,** apart from M32b's first copy, the known exception from M32b's fix (its fix copy passes in its place). Chain B hit the two-hour limit at M19's check and ran on from there (`m50/regress-b2.sh`); M15's and M8's extras failed there as above, before their copies.
 
 **Known issues:**
 - **The zone is tile-by-tile, not by room:** at the hangar it takes in the open ground around the ship as well as the decks, as far as 6 steps from the raiders allow.
