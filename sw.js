@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "e3f18776fb98";
+const VERSION = "566874d8f988";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -67,6 +67,7 @@ const FILES = [
   "src/render/colonyBuilds.js",
   "src/render/colonyScene.js",
   "src/render/colonyView.js",
+  "src/render/decals.js",
   "src/render/emblems.js",
   "src/render/exterior.js",
   "src/render/fightLabels.js",

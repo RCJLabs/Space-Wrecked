@@ -14,6 +14,7 @@ import { shownRank } from './crewJobText.js';
 import { coldWarning, questsText } from './questText.js';
 import { offerText } from './shopText.js';
 import { sidesText } from './standingText.js';
+import { withIdentity } from '../../sim/identity.js';
 
 export const LEVEL_NAMES = { calm: 'Calm', rumors: 'Rumors', hunters: 'Hunters', raid: 'Raid' };
 // On the run (act 2, M24), heat's own levels (heat.js RUN_LEVELS).
@@ -21,6 +22,7 @@ export const RUN_LEVEL_NAMES = { calm: 'Calm', rumors: 'Rumors', hunters: 'Hunte
 
 // What the hangar shows:
 //   act, home   "Act 1 · Homeworld", "The hangar"
+//   ship        "Kestrel Rose · KR-482": the ship's name and hull number (M52)
 //   goal        { ready, lines }: the flight checklist, act 1's goal. Each
 //               line is { ok, text, fix, add }, and a fix that adds a part
 //               says how many are on hand, and the shop's price if it has
@@ -70,6 +72,7 @@ export function hangarText(campaign, rules) {
   return {
     act: actTitle(campaign.act, rules),
     home: act?.home ?? '',
+    ship: shipLine(campaign, rules),
     goal: { ready, lines },
     crew,
     sides: sidesText(campaign, rules),
@@ -203,4 +206,18 @@ function voyageWhere(campaign) {
   const { voyage } = colony;
   if (voyage.homing && voyage.to !== null) return `on the way to ${(campaign.colonies ?? []).find((other) => other.id === voyage.to)?.world.name ?? 'a colony'}`;
   return `out from ${colony.world.name}`;
+}
+
+// The ship's name and hull number, for a heading (M52): "Kestrel Rose ·
+// KR-482".
+export function shipLine(campaign, rules) {
+  const { name, number } = withIdentity(campaign, rules).identity;
+  return `${name} · ${number}`;
+}
+
+// The ship as a sentence names her (M52): "the Wren", or a name that
+// starts with "The" as it is.
+export function theShip(campaign, rules) {
+  const { name } = withIdentity(campaign, rules).identity;
+  return /^the\s/i.test(name) ? name : `the ${name}`;
 }

@@ -69,3 +69,23 @@ export function isIdentity(value) {
   if (!value || typeof value !== 'object' || Object.keys(value).some((key) => !['name', 'number', 'emblem'].includes(key))) return false;
   return nameProblem(value.name) === null && tidyName(value.name) === value.name && NUMBER.test(value.number) && (value.emblem === null || (typeof value.emblem === 'string' && /^[a-z][a-z0-9-]*$/.test(value.emblem)));
 }
+
+// What the player's ship wears on her hull: { number, emblem }, rolled
+// for a save from before M52 as withIdentity does.
+export function hullIdentity(campaign, rules) {
+  const { number, emblem } = withIdentity(campaign, rules).identity;
+  return { number, emblem };
+}
+
+// What a ship of a preset (data/ships.json) wears: her side's emblem, and
+// no number. null for a ship of no side, or a side without an emblem.
+export function presetIdentity(presetId, rules) {
+  const side = rules.ships.get(presetId)?.side;
+  const emblem = side ? rules.factions.sides.get(side)?.emblem : null;
+  return emblem ? { number: null, emblem } : null;
+}
+
+// The player's ship's name, rolled for a save from before M52.
+export function shipName(campaign, rules) {
+  return withIdentity(campaign, rules).identity.name;
+}

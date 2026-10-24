@@ -65,3 +65,12 @@ export const EMBLEMS = {
   blade: [mark([[0, -1], [0.2, -0.75], [0.14, 0.45], [-0.14, 0.45], [-0.2, -0.75]]), mark(rect(-0.55, 0.42, 0.55, 0.56)), mark(rect(-0.08, 0.56, 0.08, 1))],
   gear: [mark(gear(8, 1, 0.78)), cut(circle(0, 0, 0.36, 16))],
 };
+
+// An emblem as a little SVG for a tile (the Look tab, M52), px square, in
+// the current color with its cuts in the tile's own background.
+export function emblemSvg(id, px) {
+  const drawing = EMBLEMS[id];
+  if (!drawing) return '';
+  const shapes = drawing.map(({ tone, pts }) => `<path d="M${pts.map(([x, y]) => `${x.toFixed(3)} ${y.toFixed(3)}`).join('L')}Z" fill="${tone === 'cut' ? 'var(--c-panel, #000)' : 'currentColor'}"/>`).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" viewBox="-1.1 -1.1 2.2 2.2" width="${px}" height="${px}">${shapes}</svg>`;
+}

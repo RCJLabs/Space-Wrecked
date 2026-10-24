@@ -25,6 +25,7 @@ import { createCrewCard } from './crewCard.js';
 import { crewCardText, crewSaid } from './crewText.js';
 import { createShipStand, crewRows, heatChip, listRows, panel, questRows, sideRows } from './hubParts.js';
 import { hangarText } from './hubText.js';
+import { hullIdentity } from '../../sim/identity.js';
 import { liveStatus } from '../a11y.js';
 
 const ARM_MS = 3000; // Pay, Launch and a swap on the crew card wait this long for a second tap
@@ -35,8 +36,9 @@ export const hangarScreen = {
     const head = node('header', 'hgr-head');
     const actLine = node('h1');
     const homeLine = node('p', 'hgr-home');
+    const shipLine = node('p', 'hgr-ship');
     const heat = heatChip();
-    head.append(actLine, homeLine, heat.el);
+    head.append(actLine, homeLine, shipLine, heat.el);
     const launchButton = toolButton('hgr-launch', icons.launch, 'Launch');
     launchButton.hidden = true;
     const goalLines = node('ul', 'hgr-goal');
@@ -120,11 +122,12 @@ export const hangarScreen = {
     // force: draw the panels again though the campaign hasn't changed.
     function render(campaign, force = false) {
       if (!defs || !campaign || (campaign === shown && !force)) return;
-      const shipChanged = campaign.ship !== shown?.ship;
+      const shipChanged = campaign.ship !== shown?.ship || campaign.identity !== shown?.identity;
       shown = campaign;
       const text = hangarText(campaign, defs);
       setText(actLine, text.act);
       setText(homeLine, text.home);
+      setText(shipLine, text.ship);
       goalLines.replaceChildren(
         ...text.goal.lines.map(({ ok, text: line, fix, add }) => {
           const item = node('li');
@@ -191,7 +194,7 @@ export const hangarScreen = {
       const said = crewAsk ?? (ask ? { tone: 'warn', text: ask } : crew ? crew.hint : text.hint);
       setText(hint, said.text);
       hint.dataset.tone = said.tone;
-      if (shipChanged) stand.show(campaign.ship, defs);
+      if (shipChanged) stand.show(campaign.ship, defs, hullIdentity(campaign, defs));
     }
 
     // Pay and Launch: the first tap says what it does, the second does it.

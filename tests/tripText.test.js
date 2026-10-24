@@ -9,6 +9,7 @@ import { boardingObjective, boardingOutcome, stripPicks } from '../src/ui/campai
 import { colonyText } from '../src/ui/campaign/colonyText.js';
 import { awayText, legReport, placesText, planText, squadRows } from '../src/ui/campaign/tripText.js';
 import { rules } from './battleKit.js';
+import { theShip } from '../src/ui/campaign/hubText.js';
 import { settled, uidOf } from './colonyKit.js';
 
 const rock = { kind: 'rock', name: 'The Anvil', days: 2, event: 'rich-seam', held: false, seed: 11 };
@@ -106,7 +107,7 @@ test("a held derelict: who holds her, what a win brings, Board her's ask; the fi
   assert.deepEqual([picks.count, picks.pool.map((p) => p.type), picks.start], [2, salvage.pool, [0, 1]]);
   assert.equal(picks.pool[0].label, rules.modules.get(salvage.pool[0]).name);
   assert.equal(stripPicks({ ...battle, winner: 'enemy' }, fight, rules), null);
-  assert.deepEqual(boardingOutcome({ ...battle, winner: 'enemy' }, fight, rules), { tone: 'bad', title: 'Beaten back', text: 'The squad falls back to the ship, hurt. Nothing taken.' });
+  assert.deepEqual(boardingOutcome({ ...battle, winner: 'enemy' }, fight, rules), { tone: 'bad', title: 'Beaten back', text: `The squad falls back to ${theShip(fight, rules)}, hurt. Nothing taken.` });
   const won = endPlaceFight({ ...fight, fight: { ...fight.fight, battle: { ...battle, winner: 'crew' } } }, rules);
   assert.equal(awayText(won, rules).result.title, 'Boarded and won');
   assert.match(awayText(won, rules).result.text, new RegExp(`^The squad took .+ and ${salvage.materials} materials\\.$`));

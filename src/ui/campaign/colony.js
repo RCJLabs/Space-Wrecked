@@ -69,7 +69,8 @@ export const colonyScreen = {
     const actLine = node('h1');
     const homeLine = node('p', 'hgr-home');
     const heat = heatChip();
-    head.append(actLine, homeLine, heat.el);
+    const shipLine = node('p', 'hgr-ship');
+    head.append(actLine, homeLine, shipLine, heat.el);
     // The colony, its buildings, the crew and the world, in one panel.
     const info = node('section', 'hgr-panel cln-info');
     const needs = node('dl', 'hgr-hold cln-needs');
@@ -217,6 +218,7 @@ export const colonyScreen = {
       const text = colonyText(campaign, defs);
       setText(actLine, text.act);
       setText(homeLine, text.home);
+      setText(shipLine, text.ship);
       heat.show(text.heat);
       needs.replaceChildren(...text.needs.map(({ label, value, ok }) => {
         const row = node('div');

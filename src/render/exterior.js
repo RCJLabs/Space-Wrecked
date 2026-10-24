@@ -8,6 +8,7 @@
 // skin: the hull in the ship's paint and trim, each part's fittings in its
 // own maker's (M23g). This is how the ship looks anywhere but the builder.
 import { footprint, interiorRows, placedCells } from '../sim/modules.js';
+import { decalFaces } from './decals.js';
 import { hullBands, hullShape, nearestSide, noseSurfaces, sidePoint, styleOf } from './hullShape.js';
 import { fittingsOf, paintSkin } from './palette.js';
 import { pieceScene } from './pieces.js';
@@ -17,14 +18,16 @@ export const HULL = 0.8; // the hull's height
 const STEP = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 const NOZZLE_Z = HULL / 2;
 
-// input: { ship, defs, hull: traceHull(ship, defs), skin }. The skin is
-// the hull's; each part's fittings are its maker's (palette.js fittingsOf),
-// and the ship's paint and trim go over them all.
-export function exteriorScene({ ship, defs, hull, skin: base }) {
+// input: { ship, defs, hull: traceHull(ship, defs), skin, identity? }. The
+// skin is the hull's; each part's fittings are its maker's (palette.js
+// fittingsOf), and the ship's paint and trim go over them all. identity
+// { number, emblem }, if given, comes back as decals (decals.js): flat
+// faces to paint over the hull once it is drawn.
+export function exteriorScene({ ship, defs, hull, skin: base, identity = null }) {
   const faces = [];
   const glows = [];
   const exhausts = [];
-  if (!hull.cells.length) return { faces, glows, exhausts };
+  if (!hull.cells.length) return { faces, glows, exhausts, decals: [] };
   const skin = paintSkin(base, ship.paint, ship.trim);
   const style = styleOf(defs, ship);
   const shape = hullShape(hull, style);
@@ -144,7 +147,9 @@ export function exteriorScene({ ship, defs, hull, skin: base }) {
     faces.push(...piece.faces);
     glows.push(...piece.glows);
   }
-  return { faces, glows, exhausts };
+  // Her number and emblem (M52), on bare roof, painted over the rest.
+  const decals = identity ? decalFaces({ hull, fitted: faces, identity, colors: { mark: skin.livery, cut: skin.hull }, z: HULL }) : [];
+  return { faces, glows, exhausts, decals };
 }
 
 // A part's fittings on its roof (at HULL), where placement puts it, in

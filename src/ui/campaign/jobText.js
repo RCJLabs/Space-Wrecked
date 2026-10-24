@@ -11,6 +11,7 @@ import { raidLoss } from '../../sim/raid.js';
 import { jobPay } from '../../sim/standing.js';
 import { bonusText, jobSidesText } from './standingText.js';
 import { gearLine } from './armsText.js';
+import { theShip } from './hubText.js';
 
 // A job on the board, in words:
 //   title    "Claim jumpers"
@@ -154,7 +155,7 @@ export function raidObjective(battle) {
 // as it stands before the crew goes home (raid.js endRaid).
 export function raidOutcome(battle, campaign, rules) {
   const after = `Heat falls to ${Math.min(campaign.heat, rules.balance.heatAfterRaid)}.`;
-  if (battle.winner === 'crew') return { tone: 'good', title: 'Raid beaten', text: `They back off, for now. ${after}` };
+  if (battle.winner === 'crew') return { tone: 'good', title: 'Raid beaten', text: `They back off ${theShip(campaign, rules)}, for now. ${after}` };
   const loss = raidLoss(campaign, rules);
   const took = loss?.part ? `They took the ${rules.modules.get(loss.part)?.name ?? loss.part}.` : loss?.credits ? `They took ${loss.credits} credits.` : 'There was nothing to take.';
   return { tone: 'bad', title: 'Raid lost', text: `${took} ${after}` };

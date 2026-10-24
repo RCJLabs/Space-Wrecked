@@ -5,7 +5,10 @@
 // (tap it, then tap beside the hull), drags onto the board, or shows its
 // card on a long press. A paint, a trim or a hull style takes one tap,
 // which undo takes back. The picker opens a sheet of the groups: wings,
-// gear and sculpt (data/styling.json), then paint, trim and hull.
+// gear and sculpt (data/styling.json), then paint, trim and hull. In the
+// campaign (M52) a last group, Name: the ship's name, typed and kept with
+// Rename, and the emblems she can wear, or none, a tap each.
+import { emblemSvg } from '../../render/emblems.js';
 import { paints, trims } from '../../render/palette.js';
 import { pieceIconSvg } from '../../render/pieces.js';
 import { attachGestures, onTap } from '../gestures.js';
@@ -16,7 +19,8 @@ const ICON_WIDTH = 52;
 
 // handlers: piece: { tap(type), longPress(type), dragStart(type, x, y),
 // dragMove(x, y), dragEnd(x, y), dragCancel() }; onPaint(id), onTrim(id),
-// onStyle(id).
+// onStyle(id); identity, in the campaign only: { rename(name) -> the
+// reason it won't do or null, emblem(id or null) }.
 export function createLookPanel(defs, handlers) {
   const el = node('div', 'bld-look');
   const row = node('div', 'bld-look-row');
@@ -37,6 +41,7 @@ export function createLookPanel(defs, handlers) {
     { id: 'paint', name: 'Paint', kind: 'paint', ids: [...defs.paints.keys()] },
     { id: 'trim', name: 'Trim', kind: 'trim', ids: [...defs.trims.keys()] },
     { id: 'hull', name: 'Hull', kind: 'hull', ids: [...defs.hulls.keys()] },
+    ...(handlers.identity ? [{ id: 'name', name: 'Name', kind: 'emblem', ids: ['none', ...[...defs.emblems.values()].filter((e) => e.offered).map((e) => e.id)] }] : []),
   ];
 
   // The sheet: a tile a group, its look on it and how many it holds.
@@ -52,6 +57,17 @@ export function createLookPanel(defs, handlers) {
     sheet.append(choice);
     choices.set(group.id, choice);
   }
+
+  // The ship's name, over the emblems: typed, then kept with Rename.
+  const nameInput = node('input', 'bld-name-input');
+  Object.assign(nameInput, { type: 'text', maxLength: 24, autocomplete: 'off', spellcheck: false, enterKeyHint: 'done' });
+  nameInput.setAttribute('autocapitalize', 'words');
+  nameInput.setAttribute('aria-label', 'Ship name');
+  const renameButton = node('button', 'btn bld-rename', 'Rename');
+  renameButton.type = 'button';
+  const nameWhy = node('p', 'bld-name-why');
+  const nameRow = node('div', 'bld-name-row');
+  nameRow.append(nameInput, renameButton, nameWhy);
 
   // A grid of tiles a group, only the picked one showing.
   const grids = new Map();
@@ -70,6 +86,7 @@ export function createLookPanel(defs, handlers) {
       grid.append(tile);
       tiles.set(`${group.kind}:${id}`, tile);
     }
+    if (group.kind === 'emblem') grid.prepend(nameRow);
     grid.hidden = true;
     grids.set(group.id, grid);
   }
@@ -79,6 +96,7 @@ export function createLookPanel(defs, handlers) {
   let open = false;
   let ship = null;
   let armed = null;
+  let identity = null;
 
   function render() {
     const group = groups.find((g) => g.id === current);
@@ -96,7 +114,8 @@ export function createLookPanel(defs, handlers) {
       for (const [key, tile] of tiles) {
         const [kind, id] = key.split(':');
         if (kind === 'pieces') continue;
-        tile.setAttribute('aria-pressed', String(ship[kind] === id));
+        if (kind === 'emblem') tile.setAttribute('aria-pressed', String((identity?.emblem ?? 'none') === id));
+        else tile.setAttribute('aria-pressed', String(ship[kind] === id));
       }
     }
     scrolls();
@@ -147,10 +166,31 @@ export function createLookPanel(defs, handlers) {
           dragCancel: handlers.piece.dragCancel,
         }),
       );
+    } else if (group.kind === 'emblem') {
+      for (const tile of grid.querySelectorAll('.bld-look-tile')) detach.push(onTap(tile, () => handlers.identity.emblem(tile.dataset.emblem === 'none' ? null : tile.dataset.emblem)));
     } else {
       const act = { paint: handlers.onPaint, trim: handlers.onTrim, hull: handlers.onStyle }[group.kind];
       for (const tile of grid.children) detach.push(onTap(tile, () => act(tile.dataset[group.kind])));
     }
+  }
+
+  if (handlers.identity) {
+    const rename = () => {
+      nameWhy.textContent = handlers.identity.rename(nameInput.value) ?? '';
+      nameInput.blur();
+    };
+    const onKey = (event) => {
+      if (event.key === 'Enter') rename();
+    };
+    const onInput = () => {
+      nameWhy.textContent = '';
+    };
+    nameInput.addEventListener('keydown', onKey);
+    nameInput.addEventListener('input', onInput);
+    detach.push(onTap(renameButton, rename), () => {
+      nameInput.removeEventListener('keydown', onKey);
+      nameInput.removeEventListener('input', onInput);
+    });
   }
 
   const observer = new ResizeObserver(scrolls);
@@ -160,9 +200,11 @@ export function createLookPanel(defs, handlers) {
   return {
     el,
     // The ship as it is: its paint, trim and style show pressed, and its
-    // pieces' count.
-    update(next) {
+    // pieces' count; in the campaign, her name and emblem (M52).
+    update(next, nextIdentity = null) {
       ship = next;
+      if (nextIdentity && nextIdentity.name !== identity?.name && document.activeElement !== nameInput) nameInput.value = nextIdentity.name;
+      identity = nextIdentity;
       render();
     },
     setArmed(type) {
@@ -181,6 +223,7 @@ export function createLookPanel(defs, handlers) {
 
 function nameOf(defs, kind, id) {
   if (kind === 'pieces') return defs.styling.get(id).name;
+  if (kind === 'emblem') return id === 'none' ? 'None' : defs.emblems.get(id).name;
   return { paint: defs.paints, trim: defs.trims, hull: defs.hulls }[kind].get(id).name;
 }
 
@@ -193,6 +236,7 @@ function tileIcon(defs, kind, id) {
   }
   if (kind === 'paint') return `<i class="bld-chip" style="background:${paints[id]?.hull}"></i>`;
   if (kind === 'trim') return `<i class="bld-chip bld-chip-trim" style="background:${trims[id]}"></i>`;
+  if (kind === 'emblem') return id === 'none' ? '<i class="bld-chip bld-chip-none"></i>' : emblemSvg(id, 22);
   return hullIcon(defs.hulls.get(id));
 }
 
@@ -213,6 +257,7 @@ function groupIcon(defs, group) {
     return def ? pieceIconSvg(def, 18 / def.size[1]) : '';
   }
   if (group.kind === 'hull') return hullIcon(defs.hulls.get(group.ids[0]));
+  if (group.kind === 'emblem') return emblemSvg(group.ids[1], 20);
   const colors = group.ids.slice(0, 4).map((id) => (group.kind === 'paint' ? paints[id]?.hull : trims[id]));
   return `<span class="bld-chips${group.kind === 'trim' ? ' bld-chips-trim' : ''}">${colors.map((c) => `<i style="background:${c}"></i>`).join('')}</span>`;
 }

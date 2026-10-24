@@ -100,6 +100,7 @@ export const sectorScreen = {
     // The left panel: the node the ship is at, or the jump picked.
     const info = node('section', 'hgr-panel sct-info');
     const infoTitle = node('h2', null, 'Here');
+    const infoShip = node('p', 'sct-ship');
     const infoName = node('p', 'sct-name');
     const infoKind = node('p', 'sct-kind');
     const infoLines = node('ul', 'sct-lines');
@@ -120,7 +121,7 @@ export const sectorScreen = {
     // so in this panel, in view on the shortest screen.
     const homeButton = toolButton('sct-home', icons.home, 'Fly home');
     homeButton.hidden = true;
-    info.append(infoTitle, infoName, infoKind, jobsButton, swapButton, homeButton, rackList, infoLines, infoText);
+    info.append(infoTitle, infoShip, infoName, infoKind, jobsButton, swapButton, homeButton, rackList, infoLines, infoText);
     const map = node('div', 'sct-map');
     const links = document.createElementNS(SVG, 'svg');
     links.setAttribute('class', 'sct-links');
@@ -539,6 +540,7 @@ export const sectorScreen = {
       buyButtons = [];
       if (plan) {
         setText(infoTitle, plan.ok ? plan.label : plan.head);
+        infoShip.hidden = true;
         setText(infoName, plan.node.name);
         setText(infoKind, plan.node.kind);
         // A world's numbers, once surveyed, under what the jump takes.
@@ -554,6 +556,9 @@ export const sectorScreen = {
       }
       const { here, offer, leave, refit: station, yard } = text;
       setText(infoTitle, 'Here');
+      // The ship's name (M52): she is what is here.
+      setText(infoShip, text.ship);
+      infoShip.hidden = false;
       setText(infoName, here.name);
       setText(infoKind, here.kind);
       const said = leave ? [leave.title, ...leave.lines].map((line, i) => lineItem(line, i ? leave.tone : 'head')) : offer ? [offer.line, offer.why, text.rack?.line].filter(Boolean).map((line) => lineItem(line, 'info')) : yard ? [lineItem(yard.line, 'info')] : [];

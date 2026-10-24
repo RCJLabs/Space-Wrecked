@@ -18,6 +18,8 @@ import { continueText } from '../src/ui/campaign/hubText.js';
 import { nodeText, sectorText } from '../src/ui/campaign/sectorText.js';
 import { withPart } from '../tools/startShip.js';
 import { rules } from './battleKit.js';
+import { theShip } from '../src/ui/campaign/hubText.js';
+import { withIdentity } from '../src/sim/identity.js';
 import { CUTTER_SEED, readyToLaunch } from './launchKit.js';
 
 const onRun = (extra = {}) => beginRun(launch(readyToLaunch(extra), rules).campaign, rules).campaign;
@@ -45,7 +47,7 @@ test('an approach: the two ships, their order, and every order with the odds the
   const text = approachText(campaign, rules);
   assert.equal(text.where, 'Hostile ship · Pirate cutter');
   assert.equal(text.round, `Round 1 of ${rules.balance.approachRounds}`);
-  assert.equal(text.you.name, 'Your ship');
+  assert.equal(text.you.name, withIdentity(campaign, rules).identity.name, 'her name (M52)');
   assert.equal(text.them.name, 'The cutter');
   // The crew's edge shows as it counts (M32): the miner's marine aboard
   // makes the guns surer; the cutter's crew has none.
@@ -169,12 +171,12 @@ test('a boarding fight: the line under the round, how it ended, and Continue', (
   assert.deepEqual([won.tone, won.title], ['good', 'The cutter is yours']);
   // M46: the parts to strip are picked on the end panel.
   assert.equal(won.text, `Strip a part off her: the dearest is picked, tap to pick others. Scrap: ${boarding.salvage.credits} credits.`);
-  assert.deepEqual(boardingOutcome({ ...battle, winner: 'enemy' }, aboard, rules), { tone: 'bad', title: 'Beaten back', text: 'The crew falls back to your ship, hurt. Nothing taken.' });
+  assert.deepEqual(boardingOutcome({ ...battle, winner: 'enemy' }, aboard, rules), { tone: 'bad', title: 'Beaten back', text: `The crew falls back to ${theShip(aboard, rules)}, hurt. Nothing taken.` });
   const home = beginBoarding(endingIn('boardedBy', () => ({ kind: 'evade' }), { parts: { armory: 1 } }), rules).campaign;
   assert.deepEqual(boardingObjective(home.fight.battle, home), { title: 'Boarders', progress: '4 left', done: false, deadline: null });
   assert.equal(continueText(home, rules), `Act 2 · Boarders from the Pirate cutter, round ${home.fight.battle.round}`);
-  assert.deepEqual(boardingOutcome({ ...home.fight.battle, winner: 'crew' }, home, rules), { tone: 'good', title: 'Boarders thrown off', text: `Their gear: ${home.fight.boarding.salvage.credits} credits of scrap.` });
-  assert.deepEqual(boardingOutcome({ ...home.fight.battle, winner: 'enemy' }, home, rules), { tone: 'bad', title: 'Overrun', text: 'They took the Armory.' });
+  assert.deepEqual(boardingOutcome({ ...home.fight.battle, winner: 'crew' }, home, rules), { tone: 'good', title: 'Boarders thrown off', text: `${theShip(home, rules).replace(/^t/, 'T')} is clear. Their gear: ${home.fight.boarding.salvage.credits} credits of scrap.` });
+  assert.deepEqual(boardingOutcome({ ...home.fight.battle, winner: 'enemy' }, home, rules), { tone: 'bad', title: 'Overrun', text: `Boarders overran ${theShip(home, rules)}. They took the Armory.` });
 });
 
 test('the map: a hostile ship until it is met, the parts wrecked aboard, and what a station repairs', () => {

@@ -8,6 +8,7 @@ import { boardingDue } from '../../sim/encounter.js';
 import { raidLoss } from '../../sim/raid.js';
 import { scrapLeft } from '../../sim/strip.js';
 import { gearLine } from './armsText.js';
+import { theShip } from './hubText.js';
 
 // The boarding that is due, as the approach screen offers it, or null:
 //   dir      'them' (the crew boards her) or 'you' (she boards the player)
@@ -68,19 +69,19 @@ export function boardingOutcome(battle, campaign, rules) {
   const { dir, salvage } = campaign.fight.boarding;
   const place = placeOf(campaign);
   if (place) {
-    if (battle.winner !== 'crew') return { tone: 'bad', title: 'Beaten back', text: 'The squad falls back to the ship, hurt. Nothing taken.' };
+    if (battle.winner !== 'crew') return { tone: 'bad', title: 'Beaten back', text: `The squad falls back to ${theShip(campaign, rules)}, hurt. Nothing taken.` };
     return { tone: 'good', title: `${place.name} is yours`, text: `${pickLine(salvage)}Materials: ${salvage.materials ?? 0}, as far as the stores take them.` };
   }
   const name = shortName(campaign.run?.approach?.enemy.name ?? 'ship');
   const scrap = `Scrap: ${salvage.credits} credits.`;
   if (battle.winner === 'crew') {
-    if (dir === 'you') return { tone: 'good', title: 'Boarders thrown off', text: `Their gear: ${salvage.credits} credits of scrap.` };
+    if (dir === 'you') return { tone: 'good', title: 'Boarders thrown off', text: `${capital(theShip(campaign, rules))} is clear. Their gear: ${salvage.credits} credits of scrap.` };
     return { tone: 'good', title: `The ${name} is yours`, text: `${pickLine(salvage)}${scrap}` };
   }
-  if (dir === 'them') return { tone: 'bad', title: 'Beaten back', text: 'The crew falls back to your ship, hurt. Nothing taken.' };
+  if (dir === 'them') return { tone: 'bad', title: 'Beaten back', text: `The crew falls back to ${theShip(campaign, rules)}, hurt. Nothing taken.` };
   const loss = raidLoss(campaign, rules);
   const took = loss?.part ? `They took the ${partName(loss.part, rules)}.` : loss?.credits ? `They took ${loss.credits} credits.` : 'There was nothing to take.';
-  return { tone: 'bad', title: 'Overrun', text: took };
+  return { tone: 'bad', title: 'Overrun', text: `Boarders overran ${theShip(campaign, rules)}. ${took}` };
 }
 
 // What the end panel says of the parts to strip (M46): how many to pick.
@@ -124,4 +125,8 @@ function placeOf(campaign) {
 // "Pirate cutter" -> "cutter".
 function shortName(name) {
   return name.split(' ').at(-1).toLowerCase();
+}
+
+function capital(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

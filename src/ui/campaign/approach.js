@@ -32,6 +32,7 @@ import { fitOrbit } from '../../render/orbit.js';
 import { skinFor } from '../../render/palette.js';
 import { BOARD_VIEW, boardBox } from '../../render/shipView.js';
 import { squadProblem } from '../../sim/crew.js';
+import { hullIdentity, presetIdentity } from '../../sim/identity.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { confirms } from '../confirm.js';
 import { attachGestures, onTap } from '../gestures.js';
@@ -162,8 +163,8 @@ export const approachScreen = {
         return;
       }
       const approach = campaign.run.approach;
-      showShip('you', text.you, campaign.ship);
-      showShip('them', text.them, approach.them.ship);
+      showShip('you', text.you, campaign.ship, hullIdentity(campaign, defs));
+      showShip('them', text.them, approach.them.ship, presetIdentity(approach.enemy.ship, defs));
       if (campaign !== before) played(before?.run?.approach, approach);
       setText(actLine, text.act);
       setText(whereLine, text.where);
@@ -300,7 +301,7 @@ export const approachScreen = {
     }
 
     // A ship's name and numbers, and her picture when she changes.
-    function showShip(side, words, ship) {
+    function showShip(side, words, ship, identity) {
       const view = ships[side];
       setText(view.name, words.name);
       setText(view.stats, words.stats.map(([label, value]) => `${label} ${value}`).join(' · '));
@@ -308,7 +309,7 @@ export const approachScreen = {
       view.ship = ship;
       view.hull = traceHull(ship, defs);
       view.box = boardBox(defs.frames.get(ship.frame) ?? { width: 1, height: 1 }, view.hull, NO_MIN);
-      picture.setShip(side, { ship, defs, hull: view.hull, skin: skinFor('yard') });
+      picture.setShip(side, { ship, defs, hull: view.hull, skin: skinFor('yard'), identity });
       fitSide(side);
     }
 

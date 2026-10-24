@@ -40,9 +40,9 @@ export function createApproachView() {
   const space = { canvas: null, key: null };
   return {
     setShip(side, input) {
-      const { faces, glows } = exteriorScene(input);
+      const { faces, glows, decals } = exteriorScene(input);
       const s = sides[side];
-      s.hull = { faces: prepareSolid(faces, shade), glows, ship: input.ship, defs: input.defs };
+      s.hull = { faces: prepareSolid(faces, shade), glows, decals: prepareSolid(decals, shade), ship: input.ship, defs: input.defs };
       s.marks = null;
       s.shipVersion++;
       s.version++;
@@ -151,6 +151,7 @@ function hullOf(s, ratio) {
   const g = canvasFor(painted, Math.max(1, Math.round(painted.crop.w * ratio)), Math.max(1, Math.round(painted.crop.h * ratio)));
   g.setTransform(ratio, 0, 0, ratio, -painted.crop.x * ratio, -painted.crop.y * ratio);
   paintSolid(g, s.hull.faces, s.hull.glows, cam);
+  if (s.hull.decals.length) paintOver(g, s.hull.decals, [], cam);
   return painted;
 }
 

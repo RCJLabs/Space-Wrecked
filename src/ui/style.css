@@ -230,6 +230,16 @@ textarea {
   font-size: calc(15px * var(--ts, 1));
 }
 
+.hgr-ship {
+  flex: none;
+  white-space: nowrap;
+  margin: 0;
+  color: var(--c-ink);
+  font-size: calc(13px * var(--ts, 1));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
 .hgr-panel {
   min-height: 0;
   overflow-y: auto;
@@ -1185,6 +1195,13 @@ textarea {
   }
 }
 
+.sct-ship {
+  margin: 0 0 2px;
+  color: var(--c-ink-dim);
+  font-size: calc(12px * var(--ts, 1));
+  letter-spacing: 0.04em;
+}
+
 .sct-name {
   margin: 0;
   font-size: calc(15px * var(--ts, 1));
@@ -2069,6 +2086,22 @@ textarea {
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 8px;
   padding: 8px 12px 10px;
+}
+
+.sta-ship {
+  grid-column: 1 / -1;
+}
+
+.sta-ship-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sta-ship-row .sta-ship-name {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
 }
 
 .sta-rows {
@@ -2987,6 +3020,53 @@ textarea {
 .bld-sheet,
 .bld-palette,
 .bld-look-sheet,
+.bld-name-row {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.bld-name-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 10px;
+  border: 1px solid var(--c-line);
+  border-radius: 10px;
+  background: var(--c-space-hi);
+  color: var(--c-ink);
+  font: inherit;
+  font-size: calc(16px * var(--ts, 1)); /* no zoom on focus */
+}
+
+.bld-name-input:focus {
+  border-color: var(--c-accent);
+  outline: none;
+}
+
+#ui .bld-rename {
+  min-height: 48px;
+  padding: 0 12px;
+}
+
+.bld-name-why {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--c-bad);
+  font-size: calc(12px * var(--ts, 1));
+}
+
+.bld-name-why:empty {
+  display: none;
+}
+
+.bld-chip-none {
+  background: transparent !important;
+  border: 2px dashed var(--c-ink-dim);
+}
+
 .bld-look-tiles {
   flex: 1;
   min-height: 0;
