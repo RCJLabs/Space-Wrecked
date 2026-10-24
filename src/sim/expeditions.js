@@ -62,6 +62,7 @@ import { downText, raidDown, tripHeatOf } from './raids.js';
 import { enemyBonus, fightSetup } from './difficulty.js';
 import { salvageOffer, strippedParts } from './strip.js';
 import { MAX_PLACES } from './tripShape.js';
+import { LOW_PROFILE } from './pressure.js';
 
 const MAX_SEED = 0xffffffff;
 // What an event at a place can do and need (data/events.json): food (the
@@ -163,6 +164,7 @@ export function tripPlan(campaign, rules, index, squad) {
   if (!atColony(campaign, rules)) return { ok: false, error: 'Trips leave from the colony.' };
   if (campaign.colony.trip) return { ok: false, error: 'The ship is away already.' };
   if (raidDown(campaign)) return { ok: false, error: downText(campaign, rules) };
+  if (campaign.colony?.lowProfile) return { ok: false, error: LOW_PROFILE };
   const place = campaign.colony.places[index];
   const kind = place ? kindOf(place, rules) : null;
   if (!kind) return { ok: false, error: "There's no such place within reach." };

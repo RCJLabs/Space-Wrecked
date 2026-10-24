@@ -845,7 +845,9 @@ test("the colony's raids: over its 60 days the careful player stays home while o
     assert.equal(travelled.flags.colonyRaidsWon ?? 0, raids.faced.filter((raid) => raid.won).length);
     assert.equal(travelled.flags.colonyRaidsLost ?? 0, raids.faced.filter((raid) => !raid.won).length);
     for (const raid of raids.faced) {
-      assert.ok(raid.landed + raid.stopped === 4 && raid.home >= 0, `seed ${seed}: a raid of 4`);
+      // Four, the pursuer's party, and from M53 one to three more as heat
+      // has it.
+      assert.ok(raid.landed + raid.stopped === raid.party && raid.party >= 4 && raid.party <= 7 && raid.home >= 0, `seed ${seed}: a raid of 4 to 7`);
       // A raid is won only with every raider stopped or beaten; a lost one
       // takes, a won one doesn't.
       assert.equal(raid.taken === null, raid.won);

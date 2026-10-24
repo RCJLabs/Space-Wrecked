@@ -231,7 +231,7 @@ test("a raid found while the ship is away comes down no sooner than the day afte
   // One system out: the warning's days, as at home.
   const near = found(hot);
   assert.ok(near, 'some seed finds the colony');
-  assert.deepEqual(near.campaign.colony.raid, { found: away.colony.day, lands: away.colony.day + 1 + raidWarning });
+  assert.deepEqual(near.campaign.colony.raid, { found: away.colony.day, lands: away.colony.day + 1 + raidWarning, extra: 3 });
   assert.equal(flightHome(near.campaign), 1);
   // Five out: six days, the day after the flight home's five (M38f: a raid
   // where the ship isn't is fought out the day it comes down, so the ship
@@ -240,7 +240,7 @@ test("a raid found while the ship is away comes down no sooner than the day afte
   const far = { ...hot, colony: { ...hot.colony, voyage: { ...hot.colony.voyage, out, at: out } } };
   const farFound = found(far);
   assert.ok(farFound);
-  assert.deepEqual(farFound.campaign.colony.raid, { found: far.colony.day, lands: far.colony.day + 1 + Math.max(raidWarning, out + 1) });
+  assert.deepEqual(farFound.campaign.colony.raid, { found: far.colony.day, lands: far.colony.day + 1 + Math.max(raidWarning, out + 1), extra: 3 });
   // Flying home at once lands the day before it comes down: no lander
   // stops it, and the next day everyone is home to face it.
   const flown = voyageHome(farFound.campaign, rules);
@@ -538,7 +538,7 @@ test("the colony keeps its system's other worlds, which its trips reach, as the 
 });
 
 test('saves at v36 keep a voyage, and those at home in play in a raid fight; a v35 colony migrates home with its worlds; voyages that do not read are caught', () => {
-  assert.equal(SAVE_VERSION, 46);
+  assert.equal(SAVE_VERSION, 47);
   assert.equal(MIGRATIONS.at(-1).from, SAVE_VERSION - 1);
   const fighting = faceRaid(landing(away), rules).campaign;
   for (const campaign of [away, fighting]) {

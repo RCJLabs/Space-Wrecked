@@ -674,6 +674,8 @@ function isColony(colony) {
   // Its citizens, the days toward the next, and its news (M38f).
   if (!isInt(colony.citizens, 0, MAX_CITIZENS) || !isInt(colony.growth, 0, MAX_GROWTH)) return false;
   if (!Array.isArray(colony.news) || colony.news.length > MAX_NEWS || !colony.news.every(isNews)) return false;
+  // Lying low and a side's trader there (M53).
+  if (typeof colony.lowProfile !== 'boolean' || (colony.trader !== null && !isTrader(colony.trader))) return false;
   return Array.isArray(colony.buildings) && colony.buildings.length <= MAX_BUILDINGS && isShipData({ frame: 'colony', modules: colony.buildings, nextUid: colony.nextUid });
 }
 
@@ -762,8 +764,12 @@ function isNews(entry) {
 
 // A raid coming (M29, raids.js): the day the pursuer found the colony and
 // the day its lander comes down, after it.
+function isTrader(trader) {
+  return isRecord(trader) && typeof trader.side === 'string' && isInt(trader.day, 1, MAX_DAYS) && (trader.part === null || typeof trader.part === 'string') && typeof trader.bought === 'boolean' && isInt(trader.sold, 0, 100);
+}
+
 function isRaid(raid) {
-  return isRecord(raid) && isInt(raid.found, 1, MAX_DAYS) && isInt(raid.lands, raid.found + 1, MAX_DAYS + MAX_WARNING);
+  return isRecord(raid) && isInt(raid.found, 1, MAX_DAYS) && isInt(raid.lands, raid.found + 1, MAX_DAYS + MAX_WARNING) && (raid.extra === undefined || isInt(raid.extra, 0, 4));
 }
 
 // True when the colony's trip is at a place the scavengers hold, not yet

@@ -200,6 +200,14 @@ const BALANCE = {
   citizenDays: [1, 60],
   citizenWork: [0, 5],
   raidCitizens: [0, 12],
+  raidExtraHunters: [0, 4],
+  raidExtraTaskForce: [0, 4],
+  raidExtraCornered: [0, 4],
+  lowProfileFall: [1, 20],
+  traderEvery: [2, 60],
+  traderLot: [1, 100],
+  traderLotPrice: [1, 1000],
+  traderLots: [1, 20],
   // Placing the crew before a raid (src/sim/placing.js, M50): how many
   // steps' walk from every raider the tiles they may be put on start.
   placeClear: [1, 20],

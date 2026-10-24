@@ -218,7 +218,7 @@ test('Settle here: act 2 ends, surveyed or not, and the world goes with the camp
   assert.deepEqual([after.act, after.place], [COLONY_ACT, 'hub']);
   // From M38e it is the first colony, at the head of the line, with the ship's heat;
   // from M38f with no citizens, none on the way and no news.
-  assert.deepEqual(after.colony, { world: plan.world, buildings: [], nextUid: 1, day: 1, materials: rules.colony.materials, places: [], trip: null, raid: null, worlds: others, voyage: null, id: 1, at: 0, heat: campaign.heat, citizens: 0, growth: 0, news: [] });
+  assert.deepEqual(after.colony, { world: plan.world, buildings: [], nextUid: 1, day: 1, materials: rules.colony.materials, places: [], trip: null, raid: null, worlds: others, voyage: null, id: 1, at: 0, heat: campaign.heat, citizens: 0, growth: 0, news: [], lowProfile: false, trader: null });
   assert.equal(after.flags.settled, 1);
   // The ship, crew, credits, parts on hand and heat go with it; the run
   // stays as it ended, for the act's record.

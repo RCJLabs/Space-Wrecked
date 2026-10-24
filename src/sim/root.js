@@ -17,6 +17,8 @@ import { canRearrange, rearrangeShip } from './rearrange.js';
 import { chooseEvent } from './events.js';
 import { boardPlace, chooseAtPlace, endPlaceFight, flyHome, flyOn, flyOut, withPlaces } from './expeditions.js';
 import { makePayment } from './heat.js';
+import { payFromColony, setLowProfile } from './pressure.js';
+import { buyFromTrader, sellToTrader } from './traders.js';
 import { launch } from './launch.js';
 import { swapWeapon } from './loadout.js';
 import { beginRaid, endRaid } from './raid.js';
@@ -275,12 +277,20 @@ export function reduce(state, action) {
     case 'campaign/ship':
       return withCampaign(state, state.campaign && (canRearrange(state.campaign, action.rules) ? rearrangeShip : refitShip)(state.campaign, action.ship, action.rules));
     case 'campaign/pay':
+    case 'campaign/colony/pay':
+    case 'campaign/lowprofile':
+    case 'campaign/trader/buy':
+    case 'campaign/trader/sell':
     case 'campaign/buy':
     case 'campaign/sell':
     case 'campaign/arms/sell':
     case 'campaign/arms/swap': {
       const trade = {
         'campaign/pay': (c) => makePayment(c, action.rules),
+        'campaign/colony/pay': (c) => payFromColony(c, action.rules),
+        'campaign/lowprofile': (c) => setLowProfile(c, action.rules, action.on),
+        'campaign/trader/buy': (c) => buyFromTrader(c, action.rules),
+        'campaign/trader/sell': (c) => sellToTrader(c, action.rules),
         'campaign/buy': (c) => buyPart(c, action.rules, action.index),
         'campaign/sell': (c) => sellPart(c, action.rules, action.part),
         'campaign/arms/sell': (c) => sellWeapon(c, action.rules, action.weapon),

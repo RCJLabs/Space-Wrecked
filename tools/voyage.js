@@ -1039,6 +1039,7 @@ function faceRaid(campaign, defs, raids) {
     at: plan.colony,
     landed: done.landing.landed.length,
     stopped: plan.raiders.length - done.landing.landed.length,
+    party: plan.raiders.length,
     home: plan.defenders.length,
     away: !here || Boolean(campaign.colony.trip || campaign.colony.voyage),
     fought: done.fought,

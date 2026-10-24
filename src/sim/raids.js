@@ -39,8 +39,15 @@
 // A raid sets that colony's heat to heatAfterRaid, and the ship's only
 // when it is landed there. Pure: every roll is the campaign's.
 //
+// From M53 the party grows with the heat the colony is found at: at the
+// hunters' level raidExtraHunters raiders more, at a task force
+// raidExtraTaskForce, cornered raidExtraCornered, each another of the
+// pursuer's own party in turn (raidParty). The count is set as the raid is
+// found, so its warning holds it.
+//
 // The raid coming (colony.raid, null with none): { found (the day the
-// pursuer found the colony), lands (the day its lander comes down) }.
+// pursuer found the colony), lands (the day its lander comes down), extra
+// (M53: the raiders past the pursuer's party; 0 in a save from before) }.
 import { int } from '../core/rng.js';
 import { atColony } from './acts.js';
 import { backAboard, colonyFood, homeFront, homeOf, withColonyFood } from './away.js';
@@ -55,11 +62,32 @@ import { pursuerOf, runLevel, withHeat } from './heat.js';
 import { eased } from './quests.js';
 import { difficultyOf, enemyBonus, fightSetup } from './difficulty.js';
 import { withPlacing } from './placing.js';
+import { heatFallOf } from './pressure.js';
 
 const MAX_SEED = 0xffffffff;
 // The levels of heat the pursuer may find the colony at, each with its
 // odds a day off the lanes (data/balance.json).
 export const RAID_ODDS = { rumors: 'raidOddsRumors', hunters: 'raidOddsHunters', taskForce: 'raidOddsTaskForce', cornered: 'raidOddsCornered' };
+
+// The raiders past the pursuer's party that heat brings (M53), by its
+// level.
+const EXTRA = { hunters: 'raidExtraHunters', taskForce: 'raidExtraTaskForce', cornered: 'raidExtraCornered' };
+export function raidExtra(heat, rules) {
+  return rules.balance[EXTRA[runLevel(heat, rules)]] ?? 0;
+}
+
+// The raiders a raid brings: the pursuer's party, then `extra` more of its
+// own kinds in turn.
+export function raidParty(party, extra = 0) {
+  return [...party, ...Array.from({ length: party.length ? extra : 0 }, (_, i) => party[i % party.length])];
+}
+
+// The raiders of the raid coming at a colony (`there`, as landingPlan
+// takes it), or null when the pursuer's party is unknown.
+export function raidersOf(there, rules) {
+  const party = rules.encounters.get(colonyPursuer(there, rules)?.raiders)?.enemies;
+  return party ? raidParty(party, there.colony?.raid?.extra ?? 0) : null;
+}
 
 // The pursuer at the colony (data/backgrounds.json): { levels, raiders,
 // found, landing, faced }, or null.
@@ -145,12 +173,12 @@ export function raidDayEnd(before, campaign, rules) {
     rng = rolled.state;
     if (roll < odds) {
       const reach = raidReach(campaign, campaign.colony);
-      found = { found: before.colony.day, lands: campaign.colony.day + Math.max(rules.balance.raidWarning, away ? reach + 1 : reach) };
+      found = { found: before.colony.day, lands: campaign.colony.day + Math.max(rules.balance.raidWarning, away ? reach + 1 : reach), extra: raidExtra(heatAt(before, before.colony), rules) };
       raid = found;
     }
   }
   const voyage = Boolean(campaign.colony.voyage);
-  const fall = (heat) => withHeat(heat, -rules.balance.colonyHeatFall);
+  const fall = (heat) => withHeat(heat, -heatFallOf(campaign.colony, rules));
   const heat = voyage ? campaign.heat : fall(campaign.heat);
   const flags = tally(campaign.flags, { raidsFound: found ? 1 : 0, ...(found && voyage ? { raidsFoundAway: 1 } : {}) });
   const ended = { ...campaign, rng, heat, flags, colony: { ...campaign.colony, raid, heat: voyage ? fall(campaign.colony.heat) : campaign.colony.heat } };
@@ -217,8 +245,7 @@ export function landingPlan(campaign, rules) {
   const faced = atColony(campaign, rules) || (campaign.place === 'hub' && Boolean(campaign.colony?.voyage?.home));
   if (!faced || !at) return { ok: false, error: 'No lander is down at the colony.' };
   const there = at === campaign.colony ? campaign : thereAt(campaign, at.id);
-  const pursuer = colonyPursuer(campaign, rules);
-  const raiders = rules.encounters.get(pursuer?.raiders)?.enemies;
+  const raiders = raidersOf(there, rules);
   if (!raiders) return { ok: false, error: 'The raiders are unknown.' };
   return { ok: true, colony: at.id, ...facing(there, rules, raiders) };
 }
@@ -380,7 +407,7 @@ export function faceRaid(campaign, rules, setup = {}) {
 // it. campaign: the colony as it lives its day (days.js), its crew those
 // there. Returns { campaign, won, fell (the citizens lost), landing }.
 export function fightAway(campaign, rules) {
-  const raiders = rules.encounters.get(colonyPursuer(campaign, rules)?.raiders)?.enemies ?? [];
+  const raiders = raidersOf(campaign, rules) ?? [];
   const plan = facing(campaign, rules, raiders);
   const { landing, rolled } = fireAtLander(campaign, plan);
   let now = rolled;
