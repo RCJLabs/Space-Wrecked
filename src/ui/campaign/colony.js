@@ -47,6 +47,9 @@ import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { buildingInfo, builtText, colonyText, dayReport, dayText, givenText, placeText, takeDownText, takenText, whyNotText } from './colonyText.js';
 import { createStand } from './colonyStand.js';
+import { aboardAt, landingTimeline, paintLanding, shotsBetween } from '../../render/raidLanding.js';
+import { START_COLUMNS } from '../../sim/colonyMap.js';
+import { cue } from '../../platform/audio.js';
 import { createTrips } from './colonyTrip.js';
 import { takeCarried } from './carried.js';
 import { createVoyages } from './colonyVoyage.js';
@@ -118,6 +121,7 @@ export const colonyScreen = {
     // { text, tone }: what the last tap came to, until the next; first what a
     // flight that landed here from the chart came to (M38f, carried.js).
     let said = takeCarried();
+    let landing = null; // { skip } while a raid's landing plays (M51)
     let marked = null; // the ship's parts a refusal is about
     let armTimer = 0;
     let rowButtons = [];
@@ -171,6 +175,15 @@ export const colonyScreen = {
     const observer = new ResizeObserver(() => stand.layout());
     observer.observe(sceneArea);
     cleanups.push(() => observer.disconnect());
+    // While the landing plays, a tap anywhere skips to its end.
+    const skipLanding = (event) => {
+      if (!landing) return;
+      event.preventDefault();
+      event.stopPropagation();
+      landing.skip();
+    };
+    el.addEventListener('pointerdown', skipLanding, true);
+    cleanups.push(() => el.removeEventListener('pointerdown', skipLanding, true));
 
     loadContent()
       .then((content) => {
@@ -589,6 +602,7 @@ export const colonyScreen = {
     // With raiders left and someone home, the fight's screen opens;
     // otherwise the hint says what came of the landing.
     function tapDefend(press) {
+      if (landing) return;
       const { campaign } = game.getState();
       if (!defs || !campaign || !raidDown(campaign)) return;
       if (!confirms(armed === 'defend', press)) {
@@ -602,8 +616,50 @@ export const colonyScreen = {
       const result = faceRaid(campaign, defs, fightSettings(game.getState().settings));
       said = result.ok ? landingReport(result, campaign, defs) : { text: result.error, tone: 'bad' };
       mode = { kind: 'browse' };
+      // The landing played over the colony first (M51), unless it is
+      // elsewhere or motion is reduced; a tap anywhere skips it.
+      const here = result.ok && (result.colony === undefined || result.colony === campaign.colony.id);
+      if (here && document.documentElement.dataset.motion !== 'reduce') playLanding(result, campaign);
+      else faced();
+    }
+
+    function faced() {
+      landing = null;
+      stand.stop();
       game.dispatch({ type: 'campaign/raid/face', rules: defs });
       if (alive) render(true);
+    }
+
+    // The lander coming down to the raiders' edge, the guns firing up at
+    // it as they rolled, the raiders aboard counted down in the hint.
+    function playLanding(result, campaign) {
+      const { site } = defs.colony;
+      const guns = campaign.colony.buildings.map((b) => {
+        const [w, h] = footprint(siteDef(b.type, defs), b.rot);
+        return { uid: b.uid, x: b.x + w / 2, y: b.y + h / 2 };
+      });
+      const raiders = result.landing.landed.length + result.landing.hits;
+      const timeline = landingTimeline(result.landing, guns, [site.width - START_COLUMNS / 2, site.height / 2], raiders);
+      const start = performance.now();
+      let heard = -1;
+      let aboard = null;
+      landing = { skip: faced };
+      cue('alarm');
+      stand.play((ctx, cam) => {
+        const t = performance.now() - start;
+        for (const { shot, lands } of shotsBetween(timeline, heard, t)) cue(lands ? (shot.hit ? 'hit' : 'miss') : 'burst');
+        heard = t;
+        paintLanding(ctx, cam, timeline, t);
+        const now = aboardAt(timeline, t);
+        if (now !== aboard) {
+          aboard = now;
+          setText(hint, `The lander comes down: ${now} raider${now === 1 ? '' : 's'} aboard.`);
+        }
+        if (t >= timeline.ms + 300 && landing) {
+          landing = null;
+          queueMicrotask(faced);
+        }
+      });
     }
 
     function arm(what) {

@@ -98,8 +98,20 @@ export function createStand(area, { onTap, onHold = null }) {
   };
   area.addEventListener('wheel', onWheel, { passive: false });
 
+  // Something drawn over the colony each frame while it plays (M51, a
+  // raid's landing): (ctx, camera) => void.
+  let overlay = null;
   const stand = {
     mark: null,
+    // Plays `paint` over the colony, drawn every frame, until stop.
+    play(paint) {
+      overlay = paint;
+      dirty = true;
+    },
+    stop() {
+      overlay = null;
+      dirty = true;
+    },
     get scale() {
       return camera?.scale ?? 0;
     },
@@ -148,7 +160,7 @@ export function createStand(area, { onTap, onHold = null }) {
       fit = next;
     },
     draw(ctx, view) {
-      if (!dirty) return;
+      if (!dirty && !overlay) return;
       dirty = false;
       if (!scene || !camera) {
         ctx.fillStyle = palette.space;
@@ -156,6 +168,7 @@ export function createStand(area, { onTap, onHold = null }) {
         return;
       }
       drawColony(ctx, { x: 0, y: 0, w: view.width, h: view.height }, camera, scene);
+      overlay?.(ctx, camera);
     },
     cellAt(x, y) {
       const at = camera && unproject(camera, x, y);

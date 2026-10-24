@@ -23,6 +23,7 @@ import { createBattleBoard, FIGHT_VIEW } from '../../render/battleView.js';
 import { paintFightLabels } from '../../render/fightLabels.js';
 import { steppedPose } from '../../render/figures/sprites.js';
 import { clampOrbit, fitOrbit, panOrbit, pinchOrbit, project, turnOrbit, unproject, zoomOrbit } from '../../render/orbit.js';
+import { followPoints, followShift, glideAt } from '../../render/follow.js';
 import { palette, skinFor } from '../../render/palette.js';
 import { convexHull, inside } from '../../render/pick.js';
 import { cuesBetween, frameAt, makeTimeline, poseAt } from '../../render/playback.js';
@@ -55,6 +56,8 @@ const MIN_ZOOM = 0.6; // times the fitted scale, or of the whole map's if that i
 const TURN_SLOP = 0.17; // radians of twist before a pinch turns the map
 const KEY_TURN = Math.PI / 12; // Q and E on a keyboard
 const SETTLE_MS = 150; // still this long after a camera move, the map sharpens
+const FOLLOW_MS = 250; // a glide of the camera following the action (M51)
+const FOLLOW_INSET = 48; // pixels in from the board's edges what it follows is kept
 const NOTICE_MS = 2600;
 const OPENING_MS = 8000; // a fight's opening words stay this long, or until a tap
 const ARM_MS = 3000; // End turn waits this long for its second tap
@@ -167,6 +170,10 @@ export function mountFight(root, source) {
   let flashTimer = 0;
   let endArmed = false;
   let endHeard = null; // the end's sound played (M51); a fight opened already over makes none
+  // The camera following a playback (M51): home, where the player left it
+  // before it first moved; glide, { from, to, start } while it moves.
+  let home = null;
+  let glide = null;
   let endTimer = 0;
   let settleTimer = 0;
   let cardKind = null; // what the card shows: 'odds', 'unit', 'tile' or 'log'
@@ -214,7 +221,7 @@ export function mountFight(root, source) {
       },
       dragMove(x, y) {
         if (!drag) return;
-        setCamera(panOrbit(camera, x - drag.x, y - drag.y));
+        takeCamera(panOrbit(camera, x - drag.x, y - drag.y));
         drag = { x, y };
       },
       dragEnd() {
@@ -227,7 +234,7 @@ export function mountFight(root, source) {
         if (camera) pinch = { start: camera, from: p };
       },
       pinchMove(p) {
-        if (pinch) setCamera(pinchOrbit(pinch.start, pinch.from, p, limits, TURN_SLOP));
+        if (pinch) takeCamera(pinchOrbit(pinch.start, pinch.from, p, limits, TURN_SLOP));
       },
       pinchEnd() {
         pinch = null;
@@ -236,7 +243,7 @@ export function mountFight(root, source) {
   );
   const onWheel = (event) => {
     event.preventDefault();
-    if (camera) setCamera(zoomOrbit(camera, event.clientX, event.clientY, camera.scale * Math.exp(-event.deltaY * 0.0015), limits));
+    if (camera) takeCamera(zoomOrbit(camera, event.clientX, event.clientY, camera.scale * Math.exp(-event.deltaY * 0.0015), limits));
   };
   board.addEventListener('wheel', onWheel, { passive: false });
   cleanups.push(() => board.removeEventListener('wheel', onWheel));
@@ -244,7 +251,7 @@ export function mountFight(root, source) {
   const onKey = (event) => {
     const key = event.key.toLowerCase();
     if (!camera || event.ctrlKey || event.metaKey) return;
-    if (key === 'q' || key === 'e') setCamera(turnOrbit(camera, rect.x + rect.w / 2, rect.y + rect.h / 2, camera.yaw + (key === 'q' ? -KEY_TURN : KEY_TURN)));
+    if (key === 'q' || key === 'e') takeCamera(turnOrbit(camera, rect.x + rect.w / 2, rect.y + rect.h / 2, camera.yaw + (key === 'q' ? -KEY_TURN : KEY_TURN)));
     else if (key === 'escape') order({ type: 'fight/cancel' });
     else if (key === 'enter') order({ type: 'fight/confirm' });
   };
@@ -253,7 +260,7 @@ export function mountFight(root, source) {
 
   cleanups.push(
     onTap(overButton, () => store && !busy() && source.onOver(picks ? picked.map((i) => picks.pool[i].type) : null)),
-    onTap(fitButton, () => fit && setCamera(fit)),
+    onTap(fitButton, () => fit && takeCamera(fit)),
     onTap(logButton, () => (cardKind === 'log' ? closeCard() : store && openLog())),
     ...extraTools.map((tool) => onTap(tool.button, tool.onTap)),
   );
@@ -489,9 +496,12 @@ export function mountFight(root, source) {
   function advance(now) {
     const t = Math.max(0, now - playing.start) * playing.speed;
     const heard = Math.max(playing.heard, t - SOUND_CATCH_UP);
+    const still = document.documentElement.dataset.motion === 'reduce';
+    const shown = playing.frame?.view ?? playing.timeline.before;
     for (const moment of cuesBetween(playing.timeline, heard, t)) {
       cue(cueSound(moment, store.getState().battle, defs));
       buzz(fightBuzz(moment, store.getState().battle));
+      if (!moment.lands) follow(moment.event, shown, now, still);
     }
     playing.heard = t;
     const frame = frameAt(playing.timeline, t);
@@ -499,6 +509,7 @@ export function mountFight(root, source) {
     playing.frame = frame;
     if (t >= playing.timeline.tail) {
       playing = null;
+      comeHome(now);
       sync();
       return;
     }
@@ -769,6 +780,50 @@ export function mountFight(root, source) {
     setCamera(fit);
   }
 
+  // The player moving the board takes it back from following.
+  function takeCamera(next) {
+    home = glide = null;
+    setCamera(next);
+  }
+
+  // Pans the board, the zoom kept, until what this moment of a playback
+  // moves or shoots is on it (M51): a glide, or at once with reduced
+  // motion. An enemy hidden in the fog of war isn't followed.
+  function follow(event, view, now, still) {
+    if (!camera || !rect || (event.unit && fogged(view, playing?.frame).has(event.unit))) return;
+    const from = glide ? glide.to : camera;
+    const shift = followShift(from, rect, followPoints(event, view), FOLLOW_INSET);
+    if (!shift) return;
+    home ??= camera;
+    const to = clampOrbit(panOrbit(from, shift[0], shift[1]), rect, boxes.all, MARGIN);
+    glideTo(to, now, still);
+  }
+
+  function glideTo(to, now, still) {
+    if (still) {
+      glide = null;
+      setCamera(to);
+    } else glide = { from: camera, to, start: now };
+  }
+
+  // Moves a glide on to `now`; true while it lasts.
+  function stepGlide(now) {
+    if (!glide) return false;
+    const t = (now - glide.start) / FOLLOW_MS;
+    setCamera(glideAt(glide.from, glide.to, t));
+    if (t >= 1) glide = null;
+    return Boolean(glide);
+  }
+
+  // After a playback, on the crew's turn, the board goes back to where the
+  // player left it.
+  function comeHome(now) {
+    if (!home || store?.getState().battle.side !== 'crew') return;
+    const back = home;
+    home = null;
+    glideTo(back, now, document.documentElement.dataset.motion === 'reduce');
+  }
+
   function setCamera(next) {
     if (!boxes) return;
     camera = clampOrbit(next, rect, boxes.all, MARGIN);
@@ -787,6 +842,7 @@ export function mountFight(root, source) {
         advance(performance.now());
         dirty = true;
       }
+      if (stepGlide(performance.now())) dirty = true;
       if (!dirty) return;
       dirty = false;
       ctx.fillStyle = palette.space;
