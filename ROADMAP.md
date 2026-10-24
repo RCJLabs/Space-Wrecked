@@ -2467,6 +2467,22 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **The colony's gun** is one emplacement for every gun building (`data/colony.json` `gun`: 10 hit points, 55 aim, 2 armor, an autogun). A tapped gun says it "stays where it is built".
   - **The guns' raids weren't retuned:** with guns the backgrounds are as far apart as they were on main (one gun: 66 / 50 / 40, main 65 / 49 / 36), a spread from the landing shots against each party's size; with none, they stay within M30's 10 points.
 
+- [ ] **M51 Juice.** Item 12 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-24, "Merge and continue when ready"). From §9: the camera following an enemy turn (raised in M8), the raid's landing seen (M29), and more sounds (M35). The landing over the world itself (M25) came in with M34's scenes.
+
+  Measured first (main after M50):
+  - **Tiles at the fight's opening camera** (`m51/tiles.mjs`, cover / tab / open): the start ship's kind 53 to 63 px; the hauler 27 / 20 / 47, the yacht 32 / 28 / 34, the corvette 36 / 28 / 39; job sites 44 / 34 / 48; the colony 30 / 23 / 33. Under 48 px a player zooms in to tap (CLAUDE.md).
+  - **Enemy turns out of view** (`m51/offview.mjs`: boardings on every hostile preset, 3 seeds, both ways, the camera zoomed to 48 px tiles on the crew as each enemy turn starts): 15 of 1,453 enemy actions end off the board at cover (10 of 460 turns), 35 at tab (23 turns), 2 unfolded (1 turn). At the opening fit, none.
+  - **Sounds** (25): every order makes the one `order` chime; a walk makes none; a fight won or lost makes none. No music.
+  - **The raid's landing** at the colony is a line of words; the fight opens straight after Defend's second tap.
+
+  Done when (my recommendations, taken on Evan's word):
+  - **The camera follows the enemy's turn:** as it plays out, an action whose unit, the tile it walks to or the unit it shoots would be off the board glides the camera (a quarter of a second, the zoom kept) until all of it is on; when the crew's turn comes back, the camera goes back to where the player left it. With reduced motion it moves at once. The measure above finds 0 at the three sizes.
+  - **The landing seen:** Defend at the colony plays the lander coming down over the colony's ground to the raiders' edge, each powered gun's shots flying up at it as they're rolled, a hit flashing and a raider fewer counted, then the fight opens. About 3 s; a tap skips it; with reduced motion only its line of words. Drawn by our renderer, from the landing's own numbers (no new rolls).
+  - **More sounds:** each of the seven orders (suppress, weld, patch, hustle, mark, sedate, kit) and freeing a captive and setting a charge their own sound; a fight won and a fight lost their own; a walk a soft step. Each in `data/sounds.json` with its caption (M49) and loudness; the audition page lists them. Music stays in §9: it wants Evan's ear.
+  - **The frame budget:** an enemy turn playing out, and the landing, hold the frame rate main holds in Chromium at the three sizes.
+  - **Every rule tested;** every earlier milestone's check passes; no save change.
+  - **Touch, at the three sizes:** an enemy turn on the colony with the view zoomed in, the camera following and coming back; Defend's landing played and skipped; a weld's and a win's sounds (and their captions) heard.
+
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
 ### Phase 9: Release (v1.0)
@@ -2563,7 +2579,7 @@ These ideas wait until v0.4 or later:
 - the rest of §4.4's act 2 heat: payments on the debt at stations, as in act 1 (Evan's call in M24: not now), agents at stations from heat 25, and bribes (raised in M24; docking came in M33)
 - what Regroup is worth to a careful player: the test player managing heat is written never to regroup (a day's 3 hit points each costs 5 heat and, from 50, a hunters' roll; it patches up at stations instead), so the voyages don't say. The test player ignoring heat regroups 7 times a run at the median. A test player that weighs it would (raised in M24)
 - the node a long jump passes: the hunters roll only where it comes out, 10 heat cooler, so a long jump in place of a jump where they may wait skips a roll as well as shedding heat. The careful test player managing heat takes 3 a run at the median (1 to 6). A chance at the node passed would weigh long jumps against nebulae and the swap differently (raised in M24)
-- the landing over the world itself: M25's landing is the lift-off backwards against the stars. A world drawn under the ship, by its kind, or a scene in M34's image pass (raised in M25)
+- the landing over the world itself: M25's landing is the lift-off backwards against the stars. A world drawn under the ship, by its kind, or a scene in M34's image pass (raised in M25); done in M34, each kind of world's landing scene
 - a mark on the chart for each kind of world: M25 gives every world the same mark, its kind in words beside it (raised in M25)
 - what danger does in act 3: since M27 soil and water grow a farm's food and ore a mine's materials, and since M29 lanes set how often the pursuer finds the colony and the heat a trip adds. Danger still does nothing: it could raise the raid's odds or its party, or roll a hazard at the places. The test player's score (soil + water + ore + lanes − danger) weighs them all alike (raised in M25, narrowed in M29)
 - food at the colony: on 24 of 30 careful colonies one or two farms feed the crew from day 1 (ocean, ice and jungle worlds); only rock and desert need mines first, and go hungry up to 8 days. Fewer crops a farm, a farm that needs power or water, or a crew that eats more would make food a thing to plan (raised in M27)
