@@ -55,6 +55,7 @@ import { crewCardText, crewSaid } from './crewText.js';
 import { crewRows, heatChip, listRows, questRows, sideRows } from './hubParts.js';
 import { easedSaid } from './questText.js';
 import { defendText, landingReport, raidHint } from './raidText.js';
+import { liveStatus, surface } from '../a11y.js';
 
 const ARM_MS = 4000; // a first tap on Next day, Defend or Take down waits this long for its second
 
@@ -91,12 +92,12 @@ export const colonyScreen = {
     const recordTitle = node('h2');
     const record = node('dl', 'hgr-hold');
     info.append(node('h2', null, 'The colony'), needs, powerLine, storesLine, node('h2', null, 'Buildings'), buildingList, crewBox, node('h2', null, 'Sides'), sideList, node('h2', null, 'Quests'), questList, worldTitle, worldLines, recordTitle, record);
-    const sceneArea = node('div', 'hgr-ship cln-scene');
+    const sceneArea = surface(node('div', 'hgr-ship cln-scene'), 'The colony\'s ground: tap a building for its details; with one picked to build, tap where it goes');
     // What can be built, or the ghost's controls, or the building looked at.
     const side = node('section', 'hgr-panel cln-parts');
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
-    const hint = node('p', 'hgr-hint', 'Loading…');
+    const hint = liveStatus(node('p', 'hgr-hint', 'Loading…'));
     const refitButton = toolButton('hgr-tool cln-refit', icons.build, 'Refit');
     const dayButton = toolButton('hgr-tool cln-day', icons.day, 'Next day');
     // In Next day's place while a raid's lander is down (M29).

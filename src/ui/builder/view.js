@@ -36,6 +36,7 @@ import { builderSounds } from '../sounds.js';
 import { cardFor, pieceCard } from './card.js';
 import { createDrawer } from './drawer.js';
 import { flightSummary, hintFor } from './hints.js';
+import { liveStatus, surface } from '../a11y.js';
 
 export const FRAME = 'starter';
 const MARGIN = 14; // pixels around the ship when it is fitted
@@ -84,10 +85,11 @@ const PICK = 56; // the Parts tab's picker row and the space over it
 //                       outside, returning its cleanup
 export function mountBuilder(root, source) {
   const el = node('section', 'builder');
-  const board = node('div', 'bld-board');
+  el.setAttribute('aria-label', 'Builder');
+  const board = surface(node('div', 'bld-board'), 'The ship, on the builder\'s grid: tap a cell to show the part there, tap again to put it down; drag to look around');
   const layoutChip = node('p', 'bld-layout');
   const card = node('div', 'bld-card');
-  const status = node('p', 'bld-status');
+  const status = liveStatus(node('p', 'bld-status'));
   const fitButton = toolButton('bld-fit', icons.fit, null, 'Reset the view');
   const hullButton = toolButton('bld-hull', icons.hull, 'Hull', 'Show the ship from outside');
   hullButton.setAttribute('aria-pressed', 'false');
