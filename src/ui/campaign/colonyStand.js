@@ -101,15 +101,17 @@ export function createStand(area, { onTap, onHold = null }) {
   // Something drawn over the colony each frame while it plays (M51, a
   // raid's landing): (ctx, camera) => void.
   let overlay = null;
+  let still = null; // the colony as drawn when the overlay began, copied each frame under it
   const stand = {
     mark: null,
     // Plays `paint` over the colony, drawn every frame, until stop.
     play(paint) {
       overlay = paint;
+      still = null;
       dirty = true;
     },
     stop() {
-      overlay = null;
+      overlay = still = null;
       dirty = true;
     },
     get scale() {
@@ -167,7 +169,21 @@ export function createStand(area, { onTap, onHold = null }) {
         ctx.fillRect(0, 0, view.width, view.height);
         return;
       }
-      drawColony(ctx, { x: 0, y: 0, w: view.width, h: view.height }, camera, scene);
+      if (overlay && still) {
+        // The colony stands still under the overlay: its picture copied,
+        // not drawn again.
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.drawImage(still, 0, 0);
+        ctx.restore();
+      } else {
+        drawColony(ctx, { x: 0, y: 0, w: view.width, h: view.height }, camera, scene);
+        if (overlay) {
+          still = document.createElement('canvas');
+          [still.width, still.height] = [ctx.canvas.width, ctx.canvas.height];
+          still.getContext('2d').drawImage(ctx.canvas, 0, 0);
+        }
+      }
       overlay?.(ctx, camera);
     },
     // A deck point on screen, or null before the view is set (M51).
