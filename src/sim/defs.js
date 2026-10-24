@@ -17,7 +17,9 @@ export function indexDefs(files) {
     modules: byId(withBases(modules.modules)),
     // The machines that fight (M39, battle.js): each part's `unit` (the
     // security turret's), by the unit's id, which is its kind in a fight.
-    machines: byId((modules.modules ?? []).filter((def) => def?.base === undefined && def?.unit).map((def) => def.unit)),
+    // From M50 the machine each of the colony's powered guns fights a raid
+    // as (data/colony.json gun, raids.js).
+    machines: byId([...(modules.modules ?? []).filter((def) => def?.base === undefined && def?.unit).map((def) => def.unit), ...(colony?.gun ? [colony.gun] : [])]),
     // The builder's drawer sorts parts into these, in this order (M23e):
     // [{ id, name }], each module naming one as its category.
     categories: modules.categories ?? [],
@@ -98,6 +100,7 @@ export function indexDefs(files) {
           text: colony.text,
           materials: colony.materials ?? 0,
           citizen: colony.citizen ?? null,
+          gun: colony.gun ?? null,
           builds: byId(colony.builds),
           buildings: new Map((colony.buildings ?? []).map((b) => [b.part, b])),
         }

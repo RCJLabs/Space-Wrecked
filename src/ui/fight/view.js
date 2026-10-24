@@ -30,6 +30,7 @@ import { crewColor, LYING_TOP, ordersScene, UNIT_TOP, unitsScene, zonesScene } f
 import { describeEvent } from '../../sim/battleLog.js';
 import { canAct, createFight, ordersFor, reduceFight, selectedUnit, tapActs } from '../../sim/fight.js';
 import { crewLook } from '../../sim/looks.js';
+import { placing } from '../../sim/placing.js';
 import { sightedBy } from '../../sim/sight.js';
 import { tileText } from '../battle/tileText.js';
 import { again, confirms, holdMode } from '../confirm.js';
@@ -380,7 +381,8 @@ export function mountFight(root, source) {
     if (!store || busy()) return;
     const { battle } = store.getState();
     if (battle.winner || battle.side !== 'crew') return;
-    if (battle.units.some((u) => canAct(battle, u)) && !confirms(endArmed, press)) {
+    // Ready, while the crew is being placed (M50): one tap begins the fight.
+    if (!placing(battle) && battle.units.some((u) => canAct(battle, u)) && !confirms(endArmed, press)) {
       endArmed = true;
       clearTimeout(endTimer);
       endTimer = setTimeout(() => (disarmEnd(), sync()), ARM_MS);
@@ -413,7 +415,7 @@ export function mountFight(root, source) {
     const shown = playing ? playing.frame?.view ?? playing.timeline.before : fight.battle;
     const orders = busy() ? null : ordersFor(fight, defs);
     crewBar.update(shown.units.filter((u) => u.side === 'crew'), colors, busy() ? null : fight.selected, faces);
-    crewBar.setEnd(busy() || !orders ? 'off' : endArmed ? 'armed' : 'ready');
+    crewBar.setEnd(busy() || !orders ? 'off' : placing(fight.battle) ? 'placing' : endArmed ? 'armed' : 'ready');
     actionBar.update(orders, busy());
     setLine(chip, chipFor(shown));
     chip.hidden = false;

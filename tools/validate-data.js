@@ -199,6 +199,9 @@ const BALANCE = {
   citizenDays: [1, 60],
   citizenWork: [0, 5],
   raidCitizens: [0, 12],
+  // Placing the crew before a raid (src/sim/placing.js, M50): how many
+  // steps' walk from every raider the tiles they may be put on start.
+  placeClear: [1, 20],
   // Standing with the sides (src/sim/standing.js, M33), from -10 to 10:
   // where the pursuer's side starts a campaign; where each level above
   // hostile begins (cold, neutral, friendly, then trusted); what a job done

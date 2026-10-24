@@ -9,7 +9,8 @@
 // Pure: every roll is the campaign's.
 import { int } from '../core/rng.js';
 import { createBattle } from './battle.js';
-import { machinesOn } from './deploy.js';
+import { clearFirst, machinesOn } from './deploy.js';
+import { withPlacing } from './placing.js';
 import { crewUnit, endFight } from './campaign.js';
 import { PAY_STEP } from './economy.js';
 import { hangarDoors, hangarMap, waysIn } from './hangarMap.js';
@@ -52,15 +53,18 @@ export function beginRaid(campaign, rules, setup = {}) {
     ...raiders.map((kind, i) => ({ kind, x: placed.raiders[i][0], y: placed.raiders[i][1], bonus })),
     ...machines,
   ];
-  const { battle, events } = createBattle({ map, units, seed, options: { forgiving, permadeath, press: true } }, rules);
-  const fight = { encounter: pursuer.raiders, seed, crew: campaign.crew.map((member) => member.id), battle, log: events, job: null, raid: true, boarding: null };
+  const made = createBattle({ map, units, seed, options: { forgiving, permadeath, press: true } }, rules);
+  // The crew can be placed before it begins (M50, placing.js).
+  const battle = withPlacing(made.battle, rules);
+  const fight = { encounter: pursuer.raiders, seed, crew: campaign.crew.map((member) => member.id), battle, log: made.events, job: null, raid: true, boarding: null };
   return { ok: true, campaign: { ...campaign, rng, place: 'fight', fight } };
 }
 
 // Where everyone starts: the crew on the bridge, nearest its middle by
 // walking first (with no bridge, as far from the hangar's doors as it
 // goes), and the raiders inside the hangar's doors, none on a tile held
-// already ([[x, y]], the turrets'). Null without room.
+// already ([[x, y]], the turrets'), nor on a wreck's hazard while there's
+// other room (M50). Null without room.
 function raidPlaces(map, crew, raiders, rules, held = []) {
   const field = { map, doors: [], units: [] };
   const doors = hangarDoors(map).slice(0, raiders);
@@ -75,12 +79,12 @@ function raidPlaces(map, crew, raiders, rules, held = []) {
   const furthest = Math.max(...fromDoors.values());
   const start = bridge.length ? bridge : [...fromDoors].filter(([, steps]) => steps === furthest).map(([key]) => key.split(',').map(Number));
   const taken = new Set([...doors, ...held].map(([x, y]) => `${x},${y}`));
-  const spots = [...stepsFrom(field, start, rules)]
+  const nearest = [...stepsFrom(field, start, rules)]
     .map(([key, steps]) => ({ key, steps, at: key.split(',').map(Number) }))
     .filter(({ key }) => !taken.has(key))
     .sort((a, b) => a.steps - b.steps || a.at[1] - b.at[1] || a.at[0] - b.at[0])
-    .slice(0, crew)
-    .map(({ at }) => at);
+    .map(({ key }) => key);
+  const spots = clearFirst(map, nearest).slice(0, crew).map((key) => key.split(',').map(Number));
   return spots.length < crew || doors.length < raiders ? null : { crew: spots, raiders: doors };
 }
 

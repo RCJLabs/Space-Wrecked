@@ -1,8 +1,10 @@
 // Where a boarding fight's units start on a ship's battle map: the squad on
 // the bridge, and the boarders at the hatches they come in by. Each side
 // takes the tiles nearest its start by walking distance (through doors),
-// ties going to the tile higher up the map, then the one further left. Pure:
-// the same map and lists always give the same places.
+// ties going to the tile higher up the map, then the one further left; from
+// M50 tiles clear of a wreck's fire or vacuum first, a hazard's only when
+// there's no other room. Pure: the same map and lists always give the same
+// places.
 import { hasTag } from './modules.js';
 import { stepsFrom } from './moves.js';
 import { tileRule, walkable } from './terrain.js';
@@ -32,7 +34,7 @@ export function deploy(map, crew, enemies, rules, held = []) {
 
   const taken = new Set(held.map(([x, y]) => `${x},${y}`));
   const place = (kinds, away) => {
-    const spots = nearestFirst(away).filter((key) => !taken.has(key)).slice(0, kinds.length);
+    const spots = clearFirst(map, nearestFirst(away).filter((key) => !taken.has(key))).slice(0, kinds.length);
     spots.forEach((key) => taken.add(key));
     return spots.map((key, i) => {
       const [x, y] = key.split(',').map(Number);
@@ -84,6 +86,16 @@ function floorOf(field, room, rules) {
     for (let x = room.x; x < room.x + room.w; x++) if (walkable(field, x, y, rules)) return [x, y];
   }
   return null;
+}
+
+// Tile keys ("x,y") in the same order, those on a hazard (a wrecked room's
+// fire or vacuum, mapFromShip.js) moved to the end (M50).
+export function clearFirst(map, keys) {
+  const hazard = (key) => {
+    const [x, y] = key.split(',').map(Number);
+    return Boolean(map.hazards?.cells[y * map.width + x]);
+  };
+  return [...keys.filter((key) => !hazard(key)), ...keys.filter(hazard)];
 }
 
 // The keys of a steps map, nearest first, then top to bottom, then left to

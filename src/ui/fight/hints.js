@@ -7,6 +7,7 @@
 import { isMachine } from '../../sim/battle.js';
 import { describeEvent } from '../../sim/battleLog.js';
 import { orderOf } from '../../sim/orders.js';
+import { placing } from '../../sim/placing.js';
 import { rankNameFor } from '../../sim/ranks.js';
 import { burningAt } from '../../sim/terrain.js';
 import { armorAgainst } from '../../sim/weapons.js';
@@ -62,6 +63,9 @@ export function hintFor(fight, orders, ending = null) {
   if (battle.side !== 'crew') return { tone: 'info', text: 'Enemy turn.' };
   if (!orders) return { tone: 'info', text: 'No one can act: tap End turn.' };
   const { unit } = orders;
+  // Placing the crew before a raid (M50, placing.js).
+  if (preview?.type === 'move' && preview.place) return { tone: 'good', text: `${unit.name} starts here. Tap the tile again to put them there.` };
+  if (placing(battle)) return { tone: 'info', text: 'Place your crew: tap one, then a lit tile, clear of the raiders. Tap Ready to begin.' };
   if (preview?.type === 'move') {
     const how = preview.dash ? 'Dash here: both actions' : 'Move here: 1 action';
     return { tone: preview.dash ? 'warn' : 'good', text: `${how}. Tap the tile again to go.` };

@@ -22,7 +22,7 @@ import { lookProblems } from '../src/render/figures/looks.js';
 import { COLONY_EFFECTS } from '../src/sim/edges.js';
 import { isId, isIntIn, isObject, isText, knownKeys, listOf } from './checks.js';
 
-const FILE_KEYS = ['site', 'aboard', 'text', 'materials', 'citizen', 'builds', 'buildings'];
+const FILE_KEYS = ['site', 'aboard', 'text', 'materials', 'citizen', 'gun', 'builds', 'buildings'];
 // The colonist (M38f): its keys and the range of each number.
 const CITIZEN_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'weapon', 'look'];
 const CITIZEN_NUMBERS = { hp: [1, 20], aim: [0, 100], defense: [0, 50], mobility: [1, 8], armor: [0, 5] };
@@ -70,6 +70,7 @@ export function checkColony(file, modules, fail, weapons = []) {
 
   if (!isIntIn(file.materials, 0, MAX_MATERIALS)) fail(where, `materials must be a whole number from 0 to ${MAX_MATERIALS}`);
   checkCitizen(file.citizen, new Set((Array.isArray(weapons) ? weapons : []).map((w) => w?.id)), `${where} citizen`, fail);
+  if (file.gun !== undefined) checkGun(file.gun, new Set((Array.isArray(weapons) ? weapons : []).map((w) => w?.id)), `${where} gun`, fail);
   const builds = listOf(file, 'builds', where, fail);
   if (!builds.length) fail(where, 'needs a build at least');
   const ids = new Set();
@@ -156,6 +157,25 @@ function checkCitizen(citizen, weapons, at, fail) {
   }
   if (!weapons.has(citizen.weapon)) fail(at, `weapon: unknown weapon "${citizen.weapon}"`);
   for (const problem of lookProblems(citizen.look)) fail(at, problem);
+}
+
+// What each of the colony's powered guns fights a raid as (M50): a
+// machine, as a ship's security turret is (M39), with no moves, a weapon of
+// weapons (ids) and a machine's look.
+function checkGun(gun, weapons, at, fail) {
+  if (!isObject(gun)) {
+    fail(at, 'must be an object: the machine each powered gun fights a raid as');
+    return;
+  }
+  knownKeys(gun, CITIZEN_KEYS, at, fail);
+  if (!isId(gun.id)) fail(at, 'id must be lowercase letters, digits and dashes');
+  if (!isText(gun.name) || gun.name.length > MAX_NAME) fail(at, `name must be a non-empty string of up to ${MAX_NAME} letters`);
+  for (const [key, [min, max]] of Object.entries({ ...CITIZEN_NUMBERS, mobility: [0, 0] })) {
+    if (!isIntIn(gun[key], min, max)) fail(at, `${key} must be a whole number from ${min} to ${max}`);
+  }
+  if (!weapons.has(gun.weapon)) fail(at, `weapon: unknown weapon "${gun.weapon}"`);
+  if (gun.look?.machine === undefined) fail(at, "look must be a machine's: { machine }");
+  for (const problem of lookProblems(gun.look)) fail(at, problem);
 }
 
 // A build that makes: what, from which of the world's numbers, and the

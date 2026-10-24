@@ -54,6 +54,7 @@ import { tally } from './flags.js';
 import { pursuerOf, runLevel, withHeat } from './heat.js';
 import { eased } from './quests.js';
 import { difficultyOf, enemyBonus, fightSetup } from './difficulty.js';
+import { withPlacing } from './placing.js';
 
 const MAX_SEED = 0xffffffff;
 // The levels of heat the pursuer may find the colony at, each with its
@@ -262,8 +263,8 @@ function fireAtLander(campaign, plan) {
 // The raid's fight on the colony's grid, as there lives it (faceRaid,
 // fightAway): whoever is there and, from M38f, its colonists (colonistsOf)
 // beside them in the crew's band, against the raiders left, each defender
-// with a powered shield's armor and a powered armory's aim; its seed the
-// next roll of rng. setup is difficulty.js fightSetup's: the raiders bring
+// with a powered shield's armor and a powered armory's aim, and from M50
+// each powered gun standing in it (gunsOn); its seed the next roll of rng. setup is difficulty.js fightSetup's: the raiders bring
 // what the campaign's difficulty adds (M41, a raid fought out too), and a
 // fight the player plays has permanent death if the campaign does.
 // Returns { battle, events, seed, rng, members (the crew fighting, in their
@@ -290,9 +291,31 @@ function raidBattle(there, rules, plan, landed, rng, { forgiving = false, diffic
       return { kind: citizen.id, name: `${citizen.name} ${i + 1}`, bonus: kit(), x, y };
     }),
     ...landed.map((kind, i) => ({ kind, x: starts.raiders[i][0], y: starts.raiders[i][1], bonus })),
+    ...gunsOn(there.colony, plan.guns, rules),
   ];
-  const { battle, events } = createBattle({ map, units, seed: seedRoll.value, options: { forgiving, permadeath, press: true } }, rules);
-  return { battle, events, seed: seedRoll.value, rng: seedRoll.state, members };
+  const made = createBattle({ map, units, seed: seedRoll.value, options: { forgiving, permadeath, press: true } }, rules);
+  // The crew can be placed before it begins (M50, placing.js); the AI's
+  // first order ends placing where a raid is fought out.
+  return { battle: withPlacing(made.battle, rules), events: made.events, seed: seedRoll.value, rng: seedRoll.state, members };
+}
+
+// The colony's powered guns in a raid's fight (M50): each as the machine of
+// data/colony.json gun, on the defenders' side, from its building's first
+// tile (a block of full cover, so it stands in no one's way and sees as a
+// ship's turret does, M39), named as its building, numbered when there are
+// two or more of a name. guns: defensesOf's ([{ uid, name }]). [{ kind,
+// side, name, x, y }], or none without data/colony.json's gun.
+export function gunsOn(colony, guns, rules) {
+  const gun = rules.colony?.gun;
+  if (!gun) return [];
+  const placed = guns.flatMap(({ uid, name }) => {
+    const building = colony.buildings.find((b) => b.uid === uid);
+    return building ? [{ kind: gun.id, side: 'crew', name, x: building.x, y: building.y }] : [];
+  });
+  return placed.map((unit) => {
+    const same = placed.filter((other) => other.name === unit.name);
+    return same.length > 1 ? { ...unit, name: `${unit.name} ${same.indexOf(unit) + 1}` } : unit;
+  });
 }
 
 // The colonists who fell in a raid's battle (M38f): those of its citizens

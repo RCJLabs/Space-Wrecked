@@ -18,6 +18,11 @@ export function describeEvent(event, battle) {
       return `End of ${SIDE[event.side]}'s turn.`;
     case 'move':
       return `${who} moves ${event.path.map(([x, y]) => `(${x}, ${y})`).join(' to ')}.`;
+    // Placing the crew before a raid (M50, placing.js).
+    case 'place':
+      return `${who} takes up a place at (${event.to[0]}, ${event.to[1]}).`;
+    case 'ready':
+      return 'The crew is in place. The fight begins.';
     case 'door':
       return `${who} opens the door on the ${SIDE_NAME[event.side]} side of (${event.at[0]}, ${event.at[1]}).`;
     // Doors as tactics (M45, locks.js).

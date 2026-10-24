@@ -118,7 +118,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      what confirms and vibration (M47)
 //  44  senses: the settings keep captions, off, and how the text is set,
 //      standard (M49)
-export const SAVE_VERSION = 44;
+//  45  deployment: a raid's fight can open with the crew being placed
+//      (battle.setup, M50, placing.js); one under way has begun already,
+//      so it reads as it was
+export const SAVE_VERSION = 45;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -581,6 +584,10 @@ export const MIGRATIONS = [
   {
     from: 43,
     up: (data) => (isObject(data) && isObject(data.settings) ? { ...data, settings: { ...data.settings, captions: false, reading: 'standard' } } : data),
+  },
+  {
+    from: 44,
+    up: (data) => data,
   },
 ];
 
