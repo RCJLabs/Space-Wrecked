@@ -2488,6 +2488,21 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **The lander comes down where the ground shows** between the panels, the raiders' edge or as near it as shows (the Build panel covers it at the cover size); a raid at another colony opens its fight at once. The colony's picture is copied under it, not drawn again: drawn each frame it held only 30 fps unfolded.
   - **The sounds' volumes** are set by `tools/sounds.js` to their loudness, which it lists; there's no audition page in the repo.
 
+- [ ] **M52 Identity on the hull.** Item 4 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-24, "Merge and continue when ready"). From §9: a name or a number on the hull and a side's emblem (raised before M4, narrowed in M23f). Item 5 before it, a scanner part, came in with M39 (a scan reaches a link more with one aboard); it is marked done in §9 and left there.
+
+  Measured first (main after M51):
+  - **The player's ship has no name, number or emblem.** Screens say "your ship"; the hull carries paint and trim (M23f) and nothing else. Enemy ships wear their side's paint (M23f) and no mark.
+  - **A gallery of your own ships** is already the builder's Saves tab (M5): slots, codes, replay. Nothing to add there.
+
+  Done when (my recommendations, taken on Evan's word):
+  - **A name:** the ship is named at New game (a name rolled from a list in data, which the player can change), shown where the game now says "your ship" or "the ship": the hangar's heading, the chart's Here panel, the approach screen and the colony's landed ship, and the fight's end words. Renamed in the builder's Look tab. Saved with the campaign (save v46: a save from before gets a rolled name).
+  - **A hull number** (two letters and three digits, rolled with the name), painted on the roof by the bow in the trim's color, in a stroke lettering our renderer draws, readable on the hangar's ship at the open size.
+  - **An emblem:** one of six drawings in code, picked in the Look tab (none by default), painted on the roof amidships. Each side's ships wear their side's own emblem (data names it), so a patrol shows whose it is.
+  - **The blueprint codes don't change:** name, number and emblem belong to the campaign's ship, not to a design.
+  - **The frame budget:** the hangar's ship and the approach hold the frame rate main holds at the three sizes.
+  - **Every rule tested;** every earlier milestone's check passes.
+  - **Touch, at the three sizes:** a new game named by typing; the name in the hangar, on the chart and on the approach; a rename and an emblem picked in the Look tab; the number and emblem seen on the hull; a patrol's emblem on the approach.
+
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
 ### Phase 9: Release (v1.0)
@@ -2551,7 +2566,7 @@ These ideas wait until v0.4 or later:
 - an act's record with time played and fights won and lost, kept per act: the colony shows what the flags count for the run (raised in M17)
 - the sector map in 3D: M19's chart is flat, drawn in SVG like the job board. A starfield with the nodes as places, seen through the orbit camera, would match the ships (raised in M19)
 - names on the sector map: M19 names a node in the left panel when it is picked. Every name on the chart would crowd it at 7 columns on the cover screen (raised in M19)
-- a scanner part: scanning comes from the ship as such since M20. A sensor module that lengthens `scanRange` would tie scanning to the build, as Law 1 asks (raised in M20; M39's scanner reaches a link more)
+- a scanner part: scanning comes from the ship as such since M20. A sensor module that lengthens `scanRange` would tie scanning to the build, as Law 1 asks (raised in M20; M39's scanner reaches a link more); done in M39, the scanner; a scan range wholly from the build was weighed in M52 and left: an unbuilt ship would scan nothing
 - more for credits to buy in act 2: M20's runs end with about 100 unspent. Repairs came in M21, patching the crew in M22 (the careful test player spends 18 a run on it at the median), recruits in M23 (50 each; the careful test player signs one on in 15 of 30 runs with a cargo hold, and none on the lockers alone) and the transponder swap in M24 (40 a sector; managing heat, the careful test player swaps once a run at the median, 0 to 4). Bribes (§4.4) are still to come (raised in M20)
 - events that start a fight: M20's events settle with a roll. M21 put hostile ships on nodes of their own; a distress call that turns out to be a trap would join the two (raised in M20)
 - shots in the approach: M21 shows a hit as the wrecked room's hazard and a line in the log. Tracers, a flash on the module hit and a shudder would make a round read at a glance (raised in M21)
