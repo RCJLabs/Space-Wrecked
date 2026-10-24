@@ -56,7 +56,9 @@ export function orderAction(battle, unit, rules) {
       return worst && threat(worst) >= GOOD ? give(worst) : null;
     }
     case 'weld': {
-      const hurt = battle.units.some((u) => u.side === unit.side && u.status === 'active' && beside(u, unit) && u.hp * 2 <= u.maxHp);
+      // Bosun's weld (M48) patches the allies beside and gets one down up:
+      // worth it for one down, or at three quarters of their hit points.
+      const hurt = battle.units.some((u) => u.side === unit.side && beside(u, unit) && (u.status === 'active' ? u.hp * (order.hp ? 4 : 2) <= u.maxHp * (order.hp ? 3 : 1) : order.hp && u.status === 'down'));
       return fresh && hurt ? weldAction(battle, unit, reach, rules) : null;
     }
     case 'patch': {

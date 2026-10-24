@@ -10,7 +10,10 @@
 //                       turn and uses a round.
 //   weld     { rounds } the door on the given side of its tile closes and is
 //                       welded shut for `rounds` rounds, this one counted:
-//                       no one walks or sees through it.
+//                       no one walks or sees through it. With `hp` (M48,
+//                       Bosun's weld), the allies beside get `hp` hit points
+//                       back, up to their most, and one down gets up with
+//                       `hp`.
 //   patch    { hp }     an ally beside, hurt or down: `hp` hit points back,
 //                       up to their most. One down gets up with `hp`. With
 //                       `reach` (M40, a talent's), an ally that many tiles
@@ -52,7 +55,7 @@ import { outOfReach, withinReach } from './weapons.js';
 // how far they go.
 export const ORDER_KINDS = {
   suppress: { fields: { aim: [-100, -1] }, reaches: 'enemy' },
-  weld: { fields: { rounds: [1, 20] }, reaches: 'door' },
+  weld: { fields: { rounds: [1, 20] }, extras: { hp: [1, 20] }, reaches: 'door' },
   patch: { fields: { hp: [1, 99] }, extras: { reach: [2, 6] }, reaches: 'ally' },
   hustle: { fields: { ap: [1, 3] }, reaches: 'self' },
   mark: { fields: { aim: [1, 100] }, reaches: 'enemy' },
@@ -196,8 +199,28 @@ function weld(battle, unit, order, side, events) {
   battle.doors = battle.doors.filter((door) => door !== key);
   const until = battle.round + order.rounds - 1;
   battle.welds = [...battle.welds, { key, until }];
-  events.push({ type: 'order', order: 'weld', unit: unit.id, at: [unit.x, unit.y], side, until });
+  const braced = order.hp ? braceAllies(battle, unit, order.hp) : [];
+  events.push({ type: 'order', order: 'weld', unit: unit.id, at: [unit.x, unit.y], side, until, ...(braced.length ? { braced } : {}) });
   return null;
+}
+
+// Bosun's weld (M48): the allies beside the welder patched `hp`, and one
+// down got up with `hp` and no actions left this turn. [{ unit, hp, up }]:
+// each ally and the hit points it got back.
+function braceAllies(battle, unit, hp) {
+  const braced = [];
+  for (const ally of battle.units) {
+    if (ally.id === unit.id || ally.side !== unit.side || Math.max(Math.abs(ally.x - unit.x), Math.abs(ally.y - unit.y)) > 1) continue;
+    if (ally.status === 'down') {
+      Object.assign(ally, { status: 'active', bleed: 0, ap: 0, hp: Math.min(ally.maxHp, hp) });
+      braced.push({ unit: ally.id, hp: ally.hp, up: true });
+    } else if (ally.status === 'active' && ally.hp < ally.maxHp) {
+      const before = ally.hp;
+      ally.hp = Math.min(ally.maxHp, ally.hp + hp);
+      braced.push({ unit: ally.id, hp: ally.hp - before, up: false });
+    }
+  }
+  return braced;
 }
 
 // True if the order's weapon, if it names one, is the one in the unit's

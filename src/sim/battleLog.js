@@ -107,7 +107,7 @@ function orderLine(event, who, name) {
     case 'suppress':
       return `${who} suppresses ${them}: its shots ${event.aim} until its side's turn ends.`;
     case 'weld':
-      return `${who} welds the door on the ${SIDE_NAME[event.side]} side of (${event.at[0]}, ${event.at[1]}) shut, to round ${event.until}.`;
+      return `${who} welds the door on the ${SIDE_NAME[event.side]} side of (${event.at[0]}, ${event.at[1]}) shut, to round ${event.until}.${(event.braced ?? []).map((b) => ` ${name(b.unit)} ${b.up ? `gets up with ${b.hp}` : `gets ${b.hp} back`}.`).join('')}`;
     case 'patch':
       return event.up ? `${who} patches ${them} up: back on their feet with ${event.hp}.` : `${who} patches ${them}: ${event.healed} back, ${event.hp} now.`;
     case 'hustle':

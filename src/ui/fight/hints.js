@@ -98,7 +98,7 @@ function orderHint(battle, unit, order, preview) {
     case 'suppress':
       return `Suppress ${who}: its shots ${signed(def.aim)} till its turn ends${change ? ` (${change.was}% → ${change.now}%)` : ''}. Ends the turn. ${again}`;
     case 'weld':
-      return `Weld the ${SIDE_NAMES[preview.at]} door shut till round ${battle.round + def.rounds}. ${again}`;
+      return `Weld the ${SIDE_NAMES[preview.at]} door shut till round ${battle.round + def.rounds}${def.hp ? `, and patch everyone beside ${def.hp} (one down gets up)` : ''}. ${again}`;
     case 'patch': {
       const up = target.status !== 'active';
       return up ? `Patch ${who}: up again with ${Math.min(target.maxHp, def.hp)} hit points. ${again}` : `Patch ${who}: ${target.hp} → ${Math.min(target.maxHp, target.hp + def.hp)} hit points. ${again}`;

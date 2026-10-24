@@ -23,7 +23,7 @@
     { "id": "provostraid", "name": "Provost raiding squad", "enemies": ["mp", "cadet", "mp"] },
     { "id": "provosthangar", "name": "Provost snatch squad", "enemies": ["mp", "cadet", "cadet"] },
     { "id": "collectors", "name": "Halloran collectors", "enemies": ["collector", "enforcer", "collector"] },
-    { "id": "hallorans", "name": "The Hallorans", "enemies": ["collector", "enforcer", "collector", "collector", "collector", "collector"] },
+    { "id": "hallorans", "name": "The Hallorans", "enemies": ["collector", "enforcer", "collector", "enforcer", "collector", "collector"] },
     { "id": "halloranparty", "name": "Old Halloran's crew", "enemies": ["collector", "enforcer", "cutter", "collector"] },
     { "id": "halloranraid", "name": "Old Halloran's raiders", "enemies": ["collector", "enforcer", "collector", "enforcer", "collector"] },
     { "id": "pikes", "name": "Pike crew", "enemies": ["pike", "heavy", "pike"] },
