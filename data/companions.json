@@ -13,7 +13,7 @@
       "past": "Twenty years in the Fleet's engine rooms, the last six on a supply tender nobody remembered to resupply. She got the reactor back on your spares and decided she liked civilians better.",
       "chain": "tender",
       "loyalty": "varga-loyal",
-      "talent": { "name": "Bosun's weld", "order": { "uses": 3, "rounds": 8 } }
+      "talent": { "name": "Bosun's weld", "order": { "uses": 3, "rounds": 8, "hp": 8 } }
     },
     {
       "id": "brandt",

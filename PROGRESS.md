@@ -2,6 +2,65 @@
 
 Newest entry first.
 
+## M48 Balance pass on known outliers (2026-10-24)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. No save change (still v43).
+
+**How it was picked:** item 13 of the Phase 8 brainstorm, first in the order I set after M47 (13, 11, 7, 12, 5, 4, 9, 8, with 2 after Gate 7), on Evan's "Merge and continue". Four §9 outliers, measured first on main after M47:
+- **Out-and-back:** raiders pressing on stepped out of the crew's sight and back in, 6 to 10 turns a fight in the smuggler's hangar raids on seeds 1, 4 and 8.
+- **Bosun's weld:** 50% → 50% over 1,000 fights; welded 0.2 times a fight.
+- **Weapons:** the shotgun and riot gun still top (81–85% aboard), the pistol and dart gun at the bottom (12% and 5%).
+- **Missions:** the still won 57% (10% by its objective), closing time 85% (27% by holding).
+
+**What shipped:**
+- **Raiders keep the crew in sight** (`src/sim/press.js`): a raider with the crew in sight whose AI move would leave all of them out of sight takes its best move that keeps one in sight, or overwatch. Only the enemy side: the first version also changed the crew's pressing on job sites (the test players' act 1 and voyages) and broke four voyage tests.
+- **The Hallorans' raiding party** (`data/encounters.json`): a collector becomes an enforcer. With the raiders no longer stepping out, the smuggler's hangar raid went from 50% to 70%, outside M30's bar (within 10 points of the miner's); with the enforcer it is 62%.
+- **Bosun's weld** (Varga, `data/companions.json` `hp: 8`, `src/sim/orders.js` braceAllies): the weld also gives 8 hit points to each ally beside the welder and gets one down beside it up with 8. With it the AI welds at three quarters of its hit points or with an ally down beside it (`src/sim/orderAi.js`). The log says who got what back (`battleLog.js`), and the preview adds ", and patch everyone beside 8 (one down gets up)" (`ui/fight/hints.js`).
+- **Weapons and missions:** re-measured, and left as they are (§9 keeps them with these numbers).
+
+**Measurements** (the balance-change rule):
+- `node tools/raids.js --fights 300`, the crew's wins:
+
+  | Background | Hangar, main | Hangar, M48 | Colony, main | Colony, M48 |
+  | --- | --- | --- | --- | --- |
+  | Debt-bound miner | 57% of 4 | 59% of 4 | 42% of 4 | 42% of 4 |
+  | Navy deserter | 64% of 3 | 63% of 3 | 40% of 3 | 40% of 3 |
+  | Burned smuggler | 50% of 6 | 62% of 6 | 42% of 5 | 42% of 5 |
+
+- **Out-and-back** (`m48/raidback.mjs`, 50 raids of each kind, at the hangar and the colony from each start): 0 in all six; on main, the smuggler's hangar raids did it.
+- `node tools/sim.js --talent varga --compare --fights 1000`: the squad's wins 50% → 52% (main: 50% → 50%), weld 0.2 → 0.4 a fight. Ship by ship from −2 to +5 points. Below M40's band of 5 to 15; M40's trials put this kind of weld at +3 to +4 at most, so it is recorded, not forced (§9).
+- **Jobs** (`m40/jobs.mjs`, 300 fights each): every job inside M40's 35–90% band, the lowest the dock strike at 40% (45% on main) and the highest 90%. The still 56% (10% by its objective), closing time 83% (26% by holding).
+- `node tools/sim.js --weapons --fights 300`: identical to main's (the change touches neither boarding fights nor job sites' enemies' pressing in it).
+
+**Done when** (ROADMAP.md, M48), and how each is met:
+- **No out-and-back:** `tests/outliers.test.js` (the three raids that did it, 0 times); every background's raid within M30's bar (`tests/backgrounds.test.js` and the table above).
+- **Bosun's weld patches and gets up:** `tests/outliers.test.js` (the marine patched by 8, the medic up with 8, the event, the log line; the plain engineer patches no one); measured above.
+- **Weapons and missions re-measured,** §9 updated.
+- **No save change;** every rule tested; every earlier milestone's check passes (below).
+- **Touch, at the three sizes:** `m48/verify.mjs`, 11 of 11 at cover, tab and open (below).
+
+**Tests:**
+- `node --test`: 1218 pass (1216 on main).
+- **New:** `tests/outliers.test.js` (2), both failing on main.
+
+**Browser checks:**
+- **M48's own:** `m48/verify.mjs` (from M32's fight orders), 11 of 11 at the three sizes: a fight with Varga's weld (3 uses) on a door tile, the hurt marine and the downed medic beside her; Weld reads "Weld · 3" at 48 px or more; a tap previews "…and patch everyone beside 8 (one down gets up)", spending nothing; the second tap welds, the marine gets 8 back and the medic is up with 8; the log says so; no console errors.
+- **Every earlier milestone's check,** in two chains (`m48/regress-a.sh`, M47's back to M30's; `m48/regress-b.sh`, M29's back to M8's), run one after the other, each the latest adapted copy:
+  - **Copy made for M48:** `m30/verify48.mjs`; M30's check pinned the Hallorans' party, and now reads four collectors and two enforcers. 27 of 27 at the three sizes.
+  - **M15's check adapted (`m15/verify48.mjs`):** with the raiders keeping the crew in sight, its raid now reaches a Reload while a door beside the crew member is open. At 821 × 283 the fight's order column then holds Close door, Lock door and Weld above Reload, and Reload starts 268 px down a 283 px screen. M15's old tap never scrolled the column; the copy brings the button into reach first, as a player swipes. 30 of 30 at the three sizes.
+  - **All pass,** apart from M32b's first copy, the known exception from M32b's fix (its fix copy passes in its place). Chain B ran to its end inside the two hours.
+
+**Known issues:**
+- **Bosun's weld is still below M40's band** (+2 points). A player who welds next to a downed friend will see more of it than the harness does.
+- **Raiders can still be held by overwatch:** a raider whose every move loses sight of the crew now waits on overwatch, where before it stepped out and back. In the raids measured no fight went to 60 rounds.
+- **The weapons' spread and the two missions' odd shapes** are unchanged (§9).
+
+**What Evan should test on the phone:**
+- **A raid** at the hangar or the colony: do the raiders come on, rather than dancing out of sight and back?
+- **Varga's weld** with a hurt or downed crew member beside her: the preview's words, then who gets up.
+
+**Next milestone's first task:** M49, item 11 of the brainstorm (senses), next in my order: study it, measure, write the Done when.
+
 ## M47 Controls and feel (2026-10-23)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves are at v43.

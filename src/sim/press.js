@@ -10,7 +10,13 @@
 // for the other to open it, and boarders hold back from a crew on its
 // bridge (ROADMAP §8). A raid's raiders press on (raid.js), and so does
 // the crew the tools send on jobs (jobAi.js).
-import { aiAction } from './ai.js';
+//
+// In sight of the enemy, one pressing on keeps it in sight (M48): the AI's
+// plan that would walk it back out of sight, where it would only press on
+// again next turn, gives way to its best plan that keeps someone in sight,
+// or to overwatch where it stands. Left alone, a unit stepped out and back
+// turn after turn (ROADMAP §9).
+import { aiAction, bestPlan, planAction, plansFor } from './ai.js';
 import { forceAction } from './locks.js';
 import { rescueAction } from './rescueAi.js';
 import { isMachine } from './battle.js';
@@ -25,8 +31,22 @@ export function pressAction(battle, rules, goals = null) {
   // Where death is permanent (M41), a downed ally first (rescueAi.js).
   const rescue = rescueAction(battle, unit, rules);
   if (rescue) return rescue;
-  if (people(battle, unit, rules).some((u) => canSee(battle, [unit.x, unit.y], [u.x, u.y], rules))) return aiAction(battle, rules);
+  if (people(battle, unit, rules).some((u) => canSee(battle, [unit.x, unit.y], [u.x, u.y], rules))) return unit.side === 'enemy' ? inSight(battle, unit, rules) : aiAction(battle, rules);
   return advance(battle, unit, rules, goals) ?? aiAction(battle, rules);
+}
+
+// The AI's action for a unit with the enemy in sight, unless it walks out of
+// sight of all of them: then its best plan that keeps one in sight, or
+// overwatch.
+function inSight(battle, unit, rules) {
+  const action = aiAction(battle, rules);
+  if (action.type !== 'move' || action.unit !== unit.id) return action;
+  const foes = people(battle, unit, rules);
+  const seesFrom = ([x, y]) => foes.some((u) => canSee(battle, [x, y], [u.x, u.y], rules));
+  if (seesFrom(action.to)) return action;
+  const keeping = plansFor(battle, unit, rules).filter((plan) => !plan.open && seesFrom(plan.to));
+  if (keeping.length) return planAction(unit, bestPlan(keeping));
+  return unit.ammo > 0 ? { type: 'overwatch', unit: unit.id } : action;
 }
 
 // The other side's people standing, or with none, whoever stands for it:
