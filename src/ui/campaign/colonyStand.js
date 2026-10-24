@@ -19,7 +19,7 @@
 import { colonyScene } from '../../render/colonyScene.js';
 import { drawColony, prepareColony } from '../../render/colonyView.js';
 import { traceHull } from '../../render/hull.js';
-import { fitOrbit, panOrbit, pinchOrbit, unproject, zoomOrbit } from '../../render/orbit.js';
+import { fitOrbit, panOrbit, pinchOrbit, project, unproject, zoomOrbit } from '../../render/orbit.js';
 import { palette, skinFor } from '../../render/palette.js';
 import { pickBox } from '../../render/pick.js';
 import { BOARD_VIEW } from '../../render/shipView.js';
@@ -169,6 +169,10 @@ export function createStand(area, { onTap, onHold = null }) {
       }
       drawColony(ctx, { x: 0, y: 0, w: view.width, h: view.height }, camera, scene);
       overlay?.(ctx, camera);
+    },
+    // A deck point on screen, or null before the view is set (M51).
+    screenOf(x, y, z = 0) {
+      return camera ? project(camera, x, y, z) : null;
     },
     cellAt(x, y) {
       const at = camera && unproject(camera, x, y);

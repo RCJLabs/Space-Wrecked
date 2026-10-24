@@ -630,6 +630,20 @@ export const colonyScreen = {
       if (alive) render(true);
     }
 
+    // Where the lander is seen to come down: on the colony's middle row, at
+    // the raiders' edge, or as near it as the ground shows between the
+    // panels (the Build panel can cover that edge on a narrow screen).
+    function landingSpot(site) {
+      const y = site.height / 2;
+      const left = info.getBoundingClientRect().right + 40;
+      const right = side.getBoundingClientRect().left - 40;
+      for (let x = site.width - START_COLUMNS / 2; x > site.width / 2; x -= 0.5) {
+        const at = stand.screenOf(x, y, 1);
+        if (at && at[0] > left && at[0] < right) return [x, y];
+      }
+      return [site.width / 2, y];
+    }
+
     // The lander coming down to the raiders' edge, the guns firing up at
     // it as they rolled, the raiders aboard counted down in the hint.
     function playLanding(result, campaign) {
@@ -639,7 +653,7 @@ export const colonyScreen = {
         return { uid: b.uid, x: b.x + w / 2, y: b.y + h / 2 };
       });
       const raiders = result.landing.landed.length + result.landing.hits;
-      const timeline = landingTimeline(result.landing, guns, [site.width - START_COLUMNS / 2, site.height / 2], raiders);
+      const timeline = landingTimeline(result.landing, guns, landingSpot(site), raiders);
       const start = performance.now();
       let heard = -1;
       let aboard = null;

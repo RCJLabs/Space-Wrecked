@@ -810,8 +810,9 @@ export function mountFight(root, source) {
   function stepGlide(now) {
     if (!glide) return false;
     const t = (now - glide.start) / FOLLOW_MS;
-    setCamera(glideAt(glide.from, glide.to, t));
+    const to = glide.to;
     if (t >= 1) glide = null;
+    setCamera(t >= 1 ? to : glideAt(glide.from, glide.to, t));
     return Boolean(glide);
   }
 
@@ -828,6 +829,10 @@ export function mountFight(root, source) {
     if (!boxes) return;
     camera = clampOrbit(next, rect, boxes.all, MARGIN);
     dirty = true;
+    // Where the view stands, and whether it is following the action (M51),
+    // for the checks that drive the screen.
+    board.dataset.view = `${Math.round(camera.x)},${Math.round(camera.y)},${camera.scale.toFixed(3)}`;
+    board.dataset.following = String(Boolean(home || glide));
   }
 
   return {
