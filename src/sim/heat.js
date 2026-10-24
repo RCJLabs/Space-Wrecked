@@ -68,11 +68,13 @@ export function raidDue(campaign, rules) {
 
 // What a payment on the debt costs and buys: the pursuer's payment
 // ({ name, text, credits, heat }) and whether it can be made now, with
-// why not: { payment, ok, why }.
-export function paymentFor(campaign, rules) {
+// why not: { payment, ok, why }. From M53 one can be made from the colony
+// too (pressure.js, from: 'colony'), where the caller has checked the ship
+// is landed.
+export function paymentFor(campaign, rules, { from = 'hangar' } = {}) {
   const payment = pursuerOf(campaign, rules)?.payment ?? null;
   if (!payment) return { payment, ok: false, why: 'There is no one to pay.' };
-  if (!atHangar(campaign, rules)) return { payment, ok: false, why: 'Payments are made from the hangar.' };
+  if (from === 'hangar' && !atHangar(campaign, rules)) return { payment, ok: false, why: 'Payments are made from the hangar.' };
   if (campaign.heat <= 0) return { payment, ok: false, why: 'There is no heat to pay off.' };
   if (campaign.credits < payment.credits) return { payment, ok: false, why: `A payment is ${payment.credits} credits.` };
   return { payment, ok: true, why: null };
@@ -81,8 +83,8 @@ export function paymentFor(campaign, rules) {
 // Makes a payment: its credits off the campaign's, its heat off the
 // meter, and the flags count it. Returns { ok: true, campaign } or
 // { ok: false, error }.
-export function makePayment(campaign, rules) {
-  const { payment, ok, why } = paymentFor(campaign, rules);
+export function makePayment(campaign, rules, options) {
+  const { payment, ok, why } = paymentFor(campaign, rules, options);
   if (!ok) return { ok: false, error: why };
   return {
     ok: true,

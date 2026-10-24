@@ -39,7 +39,10 @@
 //   places     the places within reach (M28, expeditions.js): [] until
 //              they are rolled, and after each trip until the next list
 //   trip       the trip under way (M28), or null while the ship is home
-//   raid       the raid coming (M29, raids.js): { found, lands }, or null
+//   raid       the raid coming (M29, raids.js): { found, lands, extra }, or null
+//   lowProfile lying low (M53, pressure.js): no flights, the mines idle,
+//              heat falling faster
+//   trader     a side's trader there today (M53, traders.js), or null
 //   voyage     the voyage under way (M38d, voyage.js), or null while the
 //              ship is home
 import { atColony } from './acts.js';
@@ -72,7 +75,7 @@ export const BUILD_GIVES = ['power', 'beds', 'air', 'storage'];
 // the first is 1, at 0. From M38f no citizens yet, none on the way and no
 // news.
 export function newColony(world, materials = 0, worlds = [], { id = 1, at = 0, heat = 0 } = {}) {
-  return { world, buildings: [], nextUid: 1, day: 1, materials, places: [], trip: null, raid: null, worlds, voyage: null, id, at, heat, citizens: 0, growth: 0, news: [] };
+  return { world, buildings: [], nextUid: 1, day: 1, materials, places: [], trip: null, raid: null, worlds, voyage: null, id, at, heat, citizens: 0, growth: 0, news: [], lowProfile: false, trader: null };
 }
 
 // What the colony's citizens eat a day (M38f): a jump's supplies each, as a
@@ -278,7 +281,8 @@ export function colonyStats(campaign, rules) {
     rough: gone ? without : [],
     away: [...away],
     storage: sum('storage') + colonyEdge(colony.voyage ? home : campaign.crew, rules, 'stores'),
-    made: { food: made('food'), materials: made('materials') },
+    // Lying low (M53, pressure.js), the mines stand idle.
+    made: { food: made('food'), materials: colony.lowProfile ? 0 : made('materials') },
     citizens: { count, housed: Math.min(count, room), free: Math.max(0, room - count), working: count - hands },
     defense: { damage: sum('damage'), shield: sum('shield'), intercept: sum('intercept'), armories: lit.filter((b) => b.gives.armory).length },
     infirmary: Math.max(0, ...lit.map((b) => b.gives.heal)),

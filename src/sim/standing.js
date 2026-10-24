@@ -147,6 +147,12 @@ export function priceShare(campaign, rules, node) {
   return side ? rules.balance[PRICES[levelOf(standingWith(campaign, side), rules)]] : 100;
 }
 
+// The share of the price, in percent, a side charges the crew at their
+// standing with it (M53, a trader at the colony).
+export function sideShare(campaign, rules, side) {
+  return rules.balance[PRICES[levelOf(standingWith(campaign, side), rules)]];
+}
+
 // The share where the ship is: the station's, or 100 anywhere else.
 export function shareHere(campaign, rules) {
   const { run } = campaign;

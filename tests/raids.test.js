@@ -19,7 +19,7 @@ import { colonyMap, raidStarts, START_COLUMNS } from '../src/sim/colonyMap.js';
 import { dayPlan, nextDay } from '../src/sim/days.js';
 import { flyHome, flyOn, flyOut, homePlan, onPlan, tripHere, tripPlan } from '../src/sim/expeditions.js';
 import { HEAT_MAX } from '../src/sim/campaign.js';
-import { defendersOf, defensesOf, endColonyRaid, faceRaid, foundOdds, landingPlan, raidDown, raidIn, raidTake, settleRaid, tripHeatOf } from '../src/sim/raids.js';
+import { defendersOf, defensesOf, endColonyRaid, faceRaid, foundOdds, landingPlan, raidDown, raidExtra, raidIn, raidTake, settleRaid, tripHeatOf } from '../src/sim/raids.js';
 import { campaignScreen, initialState, reduce, saveData } from '../src/sim/root.js';
 import { traitBonus } from '../src/sim/traits.js';
 import { rules } from './battleKit.js';
@@ -120,7 +120,7 @@ test("found: the day's odds by heat and the lanes, none below rumors or with a r
   assert.ok(found, 'some seed finds the colony');
   const { tried, day } = found;
   assert.ok(day.roll < 6);
-  assert.deepEqual(day.campaign.colony.raid, { found: 1, lands: 2 + raidWarning });
+  assert.deepEqual(day.campaign.colony.raid, { found: 1, lands: 2 + raidWarning, extra: raidExtra(tried.heat, rules) });
   assert.equal(raidWarning, 3);
   assert.deepEqual([raidIn(day.campaign), raidDown(day.campaign)], [3, false]);
   assert.equal(day.campaign.flags.raidsFound, 1);
@@ -385,7 +385,7 @@ test('while the ship is away: a raid is fought out by those at home and the leg 
 test('saves: v23 for the raid coming and a leg it stopped; a v22 colony opens with none coming; broken ones are caught', () => {
   // 24 since M32's orders in a fight, 27 since M33's fix, 28 since M33b's
   // quests, 29 since M33c's companions.
-  assert.equal(SAVE_VERSION, 46);
+  assert.equal(SAVE_VERSION, 47);
   // From M38e the colony keeps a heat of its own, the ship's as v37 opens
   // it (unused while the ship is landed there).
   const placed = at(settled(), { places: [far] });

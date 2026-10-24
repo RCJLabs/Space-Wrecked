@@ -102,6 +102,8 @@ test('Settle here on a voyage founds a colony where the ship is: 20 materials, n
     citizens: 0,
     growth: 0,
     news: [],
+    lowProfile: false,
+    trader: null,
   });
   assert.equal(rules.colony.materials, 20);
   // The act stays; the ship is landed there with those aboard and its holds.
@@ -203,14 +205,14 @@ test('a raid found at a colony the ship is not at comes down no sooner than the 
   assert.equal(reachOf(hot, first(hot)), 1);
   const near = foundWith(hot, (campaign) => nextDay(campaign, rules).campaign, 1);
   assert.ok(near, 'some seed finds it');
-  assert.deepEqual(first(near).raid, { found: first(hot).day, lands: first(hot).day + 1 + raidWarning });
+  assert.deepEqual(first(near).raid, { found: first(hot).day, lands: first(hot).day + 1 + raidWarning, extra: 3 });
   assert.equal(near.flags.othersRaidsFound, 1);
   // Seven systems from the ship: the flight's seven days and, from M38f,
   // the day after.
   const far = { ...hot, colony: { ...hot.colony, at: 7 } };
   assert.equal(reachOf(far, first(far)), 7);
   const farFound = foundWith(far, (campaign) => nextDay(campaign, rules).campaign, 1);
-  assert.deepEqual(first(farFound).raid, { found: first(far).day, lands: first(far).day + 1 + 7 + 1 });
+  assert.deepEqual(first(farFound).raid, { found: first(far).day, lands: first(far).day + 1 + 7 + 1, extra: 3 });
   // Flying there at once lands the day before it comes down: everyone
   // there to face it.
   const flight = flyFrom(farFound, rules, 1, ids.slice(0, 2));

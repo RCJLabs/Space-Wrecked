@@ -183,5 +183,5 @@ test('a v20 save in act 3 opens on day 1 with 20 materials, its buildings standi
   // and no voyage, from M38e the first colony's number and place, at no
   // heat of its own unless given, and from M38f no citizens, nothing toward
   // the next and no news.
-  assert.deepEqual(newColony(now.colony.world, 20), { world: now.colony.world, buildings: [], nextUid: 1, day: 1, materials: 20, places: [], trip: null, raid: null, worlds: [], voyage: null, id: 1, at: 0, heat: 0, citizens: 0, growth: 0, news: [] });
+  assert.deepEqual(newColony(now.colony.world, 20), { world: now.colony.world, buildings: [], nextUid: 1, day: 1, materials: 20, places: [], trip: null, raid: null, worlds: [], voyage: null, id: 1, at: 0, heat: 0, citizens: 0, growth: 0, news: [], lowProfile: false, trader: null });
 });

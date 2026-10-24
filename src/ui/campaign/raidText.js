@@ -9,7 +9,7 @@
 import { heatAt, thereAt } from '../../sim/colonies.js';
 import { colonyBy } from '../../sim/edges.js';
 import { pursuerOf, runLevel } from '../../sim/heat.js';
-import { colonistsOf, colonyPursuer, defendersOf, defensesOf, downAt, fallenColonists, foundOdds, landingPlan, raidCampaign, raidIn, raidTake } from '../../sim/raids.js';
+import { colonistsOf, colonyPursuer, defendersOf, defensesOf, downAt, fallenColonists, foundOdds, landingPlan, raidCampaign, raidersOf, raidIn, raidTake } from '../../sim/raids.js';
 import { gearLine } from './armsText.js';
 import { byJob } from './crewJobText.js';
 import { easedSaid } from './questText.js';
@@ -26,7 +26,7 @@ export function raidStatus(campaign, rules) {
   const words = colonyPursuer(campaign, rules);
   const days = raidIn(campaign);
   if (days === 0) return { label: 'Raid', value: 'Lander down: defend', ok: false, state: 'down', line: words?.landing ?? '' };
-  if (days !== null) return { label: 'Raid', value: `Lander in ${days} day${days === 1 ? '' : 's'}`, ok: false, state: 'coming', line: words?.found ?? '' };
+  if (days !== null) return { label: 'Raid', value: `Lander in ${days} day${days === 1 ? '' : 's'}${raiders(campaign, rules)}`, ok: false, state: 'coming', line: words?.found ?? '' };
   const odds = foundOdds(campaign, rules);
   const where = LANES[(campaign.colony.world.lanes ?? 2) - 1] ?? '';
   const line = words?.levels[runLevel(heatAt(campaign, campaign.colony), rules)] ?? '';
@@ -67,7 +67,20 @@ export function raidHint(campaign, rules) {
   const days = raidIn(campaign);
   // Away, it is fought out without the ship on the day it lands (M38f).
   const away = campaign.colony.trip || campaign.colony.voyage ? ' The ship is away: home before then, the whole crew meets it; else whoever is home fights it without the ship.' : '';
-  return { text: `${status.line} It lands in ${days} day${days === 1 ? '' : 's'}: set down guns, a shield and an armory from the hold.${away}`, tone: 'warn' };
+  return { text: `${status.line} It lands in ${days} day${days === 1 ? '' : 's'}${raidersSaid(campaign, rules)}: set down guns, a shield and an armory from the hold.${away}`, tone: 'warn' };
+}
+
+// The raiders a raid coming brings, for its line: " · 6 raiders"; and in
+// the hint, " with 6 raiders, 2 more for the heat it was found at" (M53).
+function raiders(campaign, rules) {
+  const n = raidersOf(campaign, rules)?.length ?? 0;
+  return n ? ` · ${n} raider${n === 1 ? '' : 's'}` : '';
+}
+
+function raidersSaid(campaign, rules) {
+  const n = raidersOf(campaign, rules)?.length ?? 0;
+  const extra = campaign.colony.raid?.extra ?? 0;
+  return n ? ` with ${n} raider${n === 1 ? '' : 's'}${extra ? `, ${extra} more for the heat it was found at` : ''}` : '';
 }
 
 // "1 colonist", "3 colonists" (M38f).
