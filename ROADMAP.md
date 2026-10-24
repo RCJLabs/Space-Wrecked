@@ -2510,7 +2510,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **The name is shown** in the hangar's heading and the colony's (with "away" while she is), as a line in the chart's Here panel, as her name over her on the approach, and in the end words of a boarding fight and a hangar raid ("falls back to the Wren", "Boarders overran the Wren").
   - **The Look tab's Name group** holds the name (Rename keeps it) and the emblems as tiles; a rename or an emblem is the campaign's, so the builder's Undo leaves it be.
 
-- [ ] **M53 Colony pressure and levers.** Item 9 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-24, "Merge and continue when ready"). From §9: a raid that grows with heat (raised in M29), shedding heat at the colony (M29), and the sides in act 3 (M33).
+- [x] **M53 Colony pressure and levers.** Item 9 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-24, "Merge and continue when ready"). From §9: a raid that grows with heat (raised in M29), shedding heat at the colony (M29), and the sides in act 3 (M33).
 
   Measured first (main after M52, `tools/voyage.js --runs 30 --background all`):
   - **Raids are rare and mostly won:** 17 to 18 colony raids over 30 runs a background, won 15 or 16 of each; the pursuer finds the colony 1.5% to 1.8% a day before the background's quest pays off.
@@ -2527,6 +2527,8 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Save:** v47 (lying low and the traders' next calls; a save from before has neither).
   - **Every rule tested;** every earlier milestone's check passes.
   - **Touch, at the three sizes:** a raid's warning with its count; Lie low on and off; a payment from the colony; a trader's call, a sale and a buy.
+
+  As built (2026-10-24): all of it, in `src/sim/pressure.js`, `src/sim/traders.js`, `src/sim/raids.js` (raidExtra, raidParty, raidersOf) and the colony's Heat and Trader sections (`src/ui/campaign/colonyLevers.js`, `pressureText.js`), save v47. One cut: lying low idles the mines only; the solar arrays stay lit, being the power the guns and the shield need in a raid. Over 100 runs a background the careful player's raids fell from 49/79/48 to 37/47/33 and were won 89%/87%/97% against main's 96%/92%/94%; runs lost 4/6/1 against 2/5/3. The voyage tests pass unchanged. Details in PROGRESS.md.
 
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 

@@ -49,7 +49,8 @@ Newest entry first.
 **Browser checks:**
 - **M53's own:** `m53/verify.mjs`, 17 of 17 at the three sizes.
 - **Every earlier milestone's check,** in three chains run one after the other (`m53/regress-a.sh`, M52's back to M30's; `m53/regress-b1.sh`, M29's to M23's; `m53/regress-b2.sh`, M22's to M8's), with the 23 copies that pin the save version moved 46 to 47 (`verify53.mjs`, each diffed against its source: only the version changed).
-  - REGRESSRESULT
+  - **Two copies adapted for M53's words:** M29's (`m29/verify53.mjs`: a raid coming reads "Lander in 3 days · 7 raiders", the hint "with 7 raiders, 3 more for the heat it was found at"), 38 of 38 at the three sizes; M27's (`m27/verify53.mjs`: the right-hand panel's headings now include Heat and Trader), 32 of 32.
+  - **All pass,** apart from M32b's first copy (its fix copy passes in its place) and M8's column at the tab size (five orders not clear of the DEV button), both as on main.
 
 **Known issues:**
 - **Heat sits at the foot of the right-hand panel,** under Build, Fly out and Voyage: on the cover screen it takes a scroll to reach.
