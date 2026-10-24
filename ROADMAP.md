@@ -2432,7 +2432,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
 
   Measured first (main after M48):
   - **Sounds:** 25, each played by `cue()` (`src/platform/audio.js`) at its moment, a fight's on the playback's clock; none has words, and with sound off nothing shows they happened.
-  - **Text:** the system font (`system-ui`, Roboto on Android) at the Text size picked (M42); 5 capitals-only styles and 2 italic ones in `style.css`.
+  - **Text:** the system font (`system-ui`, Roboto on Android) at the Text size picked (M42); 17 capitals-only styles and 2 italic ones in `style.css`.
   - **Screen reader** (`m49/audit.mjs` on M43's walk, New game to the colony, every stop; and Settings): every button named. 11 touch surfaces that aren't buttons and have no name: the builder's and the fight's screens and boards, the approach's two ships, the colony's ground. The board's canvas is `aria-hidden`. No status line is live: what a tap did shows, and isn't read out.
 
   Done when (my recommendations, taken on Evan's word):
