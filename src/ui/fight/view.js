@@ -37,7 +37,7 @@ import { again, confirms, holdMode } from '../confirm.js';
 import { attachGestures, onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { playbackSpeed } from '../motion.js';
-import { cueSound, fightSounds } from '../sounds.js';
+import { cueSound, endSound, fightSounds } from '../sounds.js';
 import { machineUrl, portraitUrl } from '../portrait.js';
 import { fightBuzz } from '../vibrations.js';
 import { chipFor, endingFor, eventText, hintFor, oddsText, unitText } from './hints.js';
@@ -166,6 +166,7 @@ export function mountFight(root, source) {
   let flash = null; // a notice shown for NOTICE_MS
   let flashTimer = 0;
   let endArmed = false;
+  let endHeard = null; // the end's sound played (M51); a fight opened already over makes none
   let endTimer = 0;
   let settleTimer = 0;
   let cardKind = null; // what the card shows: 'odds', 'unit', 'tile' or 'log'
@@ -422,7 +423,14 @@ export function mountFight(root, source) {
     showGoal(shown);
     const ending = fight.battle.winner ? source.ending?.(fight.battle, fight.log) ?? endingFor(fight.battle) : null;
     if (!busy() && !endArmed) setStatus(flash ?? hintFor(fight, orders, ending));
-    over.hidden = busy() || !ending;
+    const ended = !busy() && Boolean(ending);
+    endHeard ??= Boolean(fight.battle.winner);
+    // The end's sound once, as its panel first shows (M51).
+    if (ended && over.hidden && !endHeard) {
+      endHeard = true;
+      cue(endSound(fight.battle));
+    }
+    over.hidden = !ended;
     if (ending) {
       setText(overText, ending.title);
       setText(overNote, ending.text);
