@@ -46,7 +46,9 @@ Newest entry first.
 - **Every earlier milestone's check,** in three chains run one after the other (`m52/regress-a.sh`, M51's back to M30's; `m52/regress-b1.sh`, M29's to M23's; `m52/regress-b2.sh`, M22's to M8's):
   - **Copies adapted for M52** (`verify52.mjs`): the 23 that pin the save version, 45 to 46. One of them (M38d fix's) had a materials count of 45 bumped by the same edit; put back.
   - **A bug the chain caught:** M39's check found the part sheet's tiles under 48 px. The Look tab's new name row had gone into the sheets' shared selector list in `style.css`; moved out, M39's check passes 43 of 43 at the three sizes.
-  - REGRESSION_RESULT
+  - **A second bug the chain caught:** M19's check found two `.sct-ship` on the chart. The Here panel's name line had taken the ship marker's class (and its rule restyled the marker); renamed `.sct-here-ship`.
+  - **M22's copy adapted** (`m22/verify52.mjs`): an Overrun's end words now begin "Boarders overran the …"; 35 of 35 at the three sizes.
+  - **All pass,** apart from M32b's first copy, the known exception from M32b's fix (its fix copy passes in its place), and M8's column at the tab size (five orders not clear of the DEV button), as on main.
 
 **Known issues:**
 - **The decals are painted over the hull, not sorted with it:** from a steep angle a tall fitting in front of one could be drawn under it. The default views don't show it.

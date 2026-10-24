@@ -1195,7 +1195,7 @@ textarea {
   }
 }
 
-.sct-ship {
+.sct-here-ship {
   margin: 0 0 2px;
   color: var(--c-ink-dim);
   font-size: calc(12px * var(--ts, 1));

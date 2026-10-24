@@ -100,7 +100,7 @@ export const sectorScreen = {
     // The left panel: the node the ship is at, or the jump picked.
     const info = node('section', 'hgr-panel sct-info');
     const infoTitle = node('h2', null, 'Here');
-    const infoShip = node('p', 'sct-ship');
+    const infoShip = node('p', 'sct-here-ship');
     const infoName = node('p', 'sct-name');
     const infoKind = node('p', 'sct-kind');
     const infoLines = node('ul', 'sct-lines');
