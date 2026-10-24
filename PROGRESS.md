@@ -2,6 +2,57 @@
 
 Newest entry first.
 
+## M49 Senses (2026-10-24)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves are at v44.
+
+**How it was picked:** item 11 of the Phase 8 brainstorm, next in my order, on Evan's "Merge and continue". Measured first on main after M48:
+- **Sounds:** 25, none with words; with sound off, nothing showed a sound had happened.
+- **Text:** the system font, with 17 capitals-only styles and 2 italic ones.
+- **Screen reader** (`m49/audit.mjs`, M43's walk from New game to the colony, every stop, plus Settings): every button already had a name. 11 touch surfaces had none: the builder's and the fight's screens and boards, the approach's ships and the colony's ground. No status line was live.
+
+**What shipped:**
+- **Captions** (Settings, off by default): each sound the game makes is written at the top middle of the screen as it plays, `[Gunshot]`, `[Miss]`, sound on or off, for 1.8 s, up to 3 at once. `src/platform/audio.js` tells each go's sounds to `onSounds` listeners before it checks whether sound is on, so the captions keep the playback's time; `src/ui/captions.js` writes them. The words are each sound's `caption` in `data/sounds.json` (24 letters at most, checked by `tools/validate-sounds.js`). A tap's own click has none. The strip is `aria-hidden`: a screen reader's user hears the sounds.
+- **Reading** (Settings, Standard or Easier reading): with Easier reading, letters 0.05 em and words 0.16 em further apart, running text at 1.5 line height, and no capitals-only words or italics (CSS on `<html data-reading>`). No new font file.
+- **Screen reader** (`src/ui/a11y.js`): the fight's and the builder's boards, the approach's two ships and the colony's ground are named groups saying what they are and what a tap does; the fight and the builder are named; the status lines of the fight, the builder, the hangar, the chart, the colony and the approach are live, so what a tap did is read out.
+- **Save v44:** captions off and standard reading for a save from before.
+
+**Done when** (ROADMAP.md, M49), and how each is met:
+- **Captions, Reading, save v44:** `tests/senses.test.js` (3): the settings and their rows, the migration, every sound's caption and the words for a go's sounds.
+- **Screen reader:** `m49/audit.mjs` at the three sizes finds nothing (0 at cover, tab and open; 11 on main).
+- **Touch, at the three sizes:** `m49/verify.mjs`, 19 of 19 at cover, tab and open (below).
+- **Every rule tested;** every earlier milestone's check passes (below).
+
+**Tests:**
+- `node --test`: 1221 pass (1218 on main).
+- **New:** `tests/senses.test.js` (3).
+- **Changed on purpose:** every test pinning the save version, 43 to 44; `tests/citizens.test.js`, which finds v38's migration seventh from the end now; the default settings in `tests/captain.test.js` and `tests/sim.test.js`.
+
+**Browser checks:**
+- **M49's own:** `m49/verify.mjs`, 19 of 19 at the three sizes:
+  - Settings has Captions and Reading, every choice 48 px or more; tapping On and Easier reading sets them;
+  - Easier reading spaces letters and words, nothing in capitals only or italics, and every button in Settings, the fight and the hangar still 48 px or more with none of its words cut off;
+  - an enemy turn with captions on and sound off shows `[Gunshot]` and `[Miss]` at the top middle; with captions off, none;
+  - the fight's board named, its status and the hangar's hint live; saved at v44; no console errors.
+- **The audit:** `m49/audit.mjs` at the three sizes, 0 controls a screen reader would find without a name (a named group or toolbar counts as named).
+- **Every earlier milestone's check,** in two chains (`m49/regress-a.sh`, M48's back to M30's; `m49/regress-b.sh`, M29's back to M8's), run one after the other, each the latest adapted copy:
+  - **Copies made for M49:** 20 checks pinned save v43 and now read v44 (M47's, M46's, M45's, M44's, M42's, M41's, M40's, M39's, M38f's, M38e's, M38d fix's, M38c's, M38b's, M35's, M34's, M31's, M30's, M29's, M28's and M27's, each `verify49.mjs`).
+  - REGRESS
+
+**Known issues:**
+- **The boards are worked by touch only.** A screen reader names them and reads what a tap did, but can't move a crew member or put a part down without seeing the board: a full way through without sight would be a milestone of its own.
+- **No hyperlegible font.** Atkinson Hyperlegible (SIL OFL 1.1) would read better than the system font; it's a third-party file, so it waits on Evan's word (CLAUDE.md).
+- **The canvas's own words** (the board's labels, M42's scaled text) aren't spaced by Easier reading.
+- **Captions name the sound, not who made it:** `[Gunshot]` doesn't say whose; the status line and the log do.
+
+**What Evan should test on the phone:**
+- **Settings → Captions → On, Sound → Off:** a fight's enemy turn and an approach round. Are the captions readable, and out of the way?
+- **Settings → Reading → Easier reading:** the hangar, the chart and the crew card. Is anything cramped or cut off?
+- **TalkBack, if you use it:** the fight, the hangar and Settings.
+- **Atkinson Hyperlegible:** yes or no to adding it.
+
+**Next milestone's first task:** M50, item 7 of the brainstorm (deployment and defenses: where the crew stands before a raid, the colony's guns as overwatch in the fight, no one starting on a burning tile), next in my order: study it, measure, write the Done when.
+
 ## M48 Balance pass on known outliers (2026-10-24)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. No save change (still v43).
