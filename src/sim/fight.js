@@ -262,7 +262,7 @@ function tap(fight, x, y, rules) {
   const spot = reachOf(battle, unit, rules).get(`${x},${y}`);
   if (!spot) {
     const cleared = fight.preview ? { ...fight, preview: null } : fight;
-    if (placing(battle)) return withNotice(cleared, 'info', `${unit.name} can start only on a lit tile, clear of the raiders and of fire.`);
+    if (placing(battle)) return withNotice(cleared, 'info', isMachine(unit, rules) ? `${unit.name} stays where it is built.` : `${unit.name} can start only on a lit tile, clear of the raiders and of fire.`);
     return walkable(battle, x, y, rules) ? withNotice(cleared, 'info', `${unit.name} can't get there this turn.`) : cleared;
   }
   if (fight.preview?.type === 'move' && fight.preview.to[0] === x && fight.preview.to[1] === y) {

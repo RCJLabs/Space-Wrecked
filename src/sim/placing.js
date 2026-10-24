@@ -61,7 +61,7 @@ export function placeAction(battle, action, rules) {
     return { ok: true, battle: begun, events: [{ type: 'ready' }] };
   }
   const unit = battle.units.find((u) => u.id === action.unit);
-  if (!unit || unit.side !== 'crew' || !canPlace(unit, rules)) return { ok: false, error: `${unit?.name ?? 'That one'} can't be placed.` };
+  if (!unit || !canPlace(unit, rules)) return { ok: false, error: `${unit?.name ?? 'That one'} can't be placed.` };
   const [x, y] = action.to ?? [];
   if (!placesFor(battle, unit, rules).includes(`${x},${y}`)) return { ok: false, error: `${unit.name} can't stand there.` };
   const units = battle.units.map((u) => (u.id === unit.id ? { ...u, x, y } : u));
@@ -71,7 +71,7 @@ export function placeAction(battle, action, rules) {
 // One of the crew who can be moved about: standing, not a machine (a
 // turret or a colony's gun stays where it is built).
 function canPlace(unit, rules) {
-  return unit.status === 'active' && !isFixed(unit, rules);
+  return unit.side === 'crew' && unit.status === 'active' && !isFixed(unit, rules);
 }
 
 function isFixed(unit, rules) {
