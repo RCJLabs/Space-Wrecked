@@ -2428,7 +2428,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Out-and-back** 0 times in 50 raids of each of the six kinds (hangar and colony, each start).
   - **Jobs** all stay in the 35–90% band (the dock strike lowest at 40%); the weapons table is unchanged.
 
-- [ ] **M49 Senses.** Item 11 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-24, "Merge and continue"): a visual cue for every sound, an optional easier-reading font, and an audit of what a screen reader finds.
+- [x] **M49 Senses.** Item 11 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-24, "Merge and continue"): a visual cue for every sound, an optional easier-reading font, and an audit of what a screen reader finds.
 
   Measured first (main after M48):
   - **Sounds:** 25, each played by `cue()` (`src/platform/audio.js`) at its moment, a fight's on the playback's clock; none has words, and with sound off nothing shows they happened.
@@ -2442,6 +2442,11 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Saves go to v44** with captions off and standard reading.
   - **Every rule tested;** every earlier milestone's check passes.
   - **Touch, at the three sizes:** Captions and Reading in Settings at 48 px or more; an enemy turn with captions on and sound off shows its shots in words, and with captions off shows none; Easier reading spaces the words with every button still 48 px or more, none cut off.
+
+  As built (2026-10-24), where it differs from the above or adds to it:
+  - **Easier reading** is letters 0.05 em and words 0.16 em apart, 1.5 line height in running text, and no capitals-only words or italics; the canvas's own labels keep their spacing.
+  - **The audit** counts a named group or toolbar as named: the builder's parts grid was already a toolbar named Parts.
+  - **The captions' strip** is `aria-hidden`, so a screen reader doesn't read the sounds twice.
 
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 

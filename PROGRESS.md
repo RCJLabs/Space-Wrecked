@@ -37,7 +37,7 @@ Newest entry first.
 - **The audit:** `m49/audit.mjs` at the three sizes, 0 controls a screen reader would find without a name (a named group or toolbar counts as named).
 - **Every earlier milestone's check,** in two chains (`m49/regress-a.sh`, M48's back to M30's; `m49/regress-b.sh`, M29's back to M8's), run one after the other, each the latest adapted copy:
   - **Copies made for M49:** 20 checks pinned save v43 and now read v44 (M47's, M46's, M45's, M44's, M42's, M41's, M40's, M39's, M38f's, M38e's, M38d fix's, M38c's, M38b's, M35's, M34's, M31's, M30's, M29's, M28's and M27's, each `verify49.mjs`).
-  - REGRESS
+  - **All pass,** apart from M32b's first copy, the known exception from M32b's fix (its fix copy passes in its place). The container restarted during chain A, at M43's walk; the rest of it ran again from there (`m49/regress-a2.sh`, 17 of 17), then chain B in full (70 of 70).
 
 **Known issues:**
 - **The boards are worked by touch only.** A screen reader names them and reads what a tap did, but can't move a crew member or put a part down without seeing the board: a full way through without sight would be a milestone of its own.
