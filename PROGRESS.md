@@ -2,6 +2,77 @@
 
 Newest entry first.
 
+## M50 Deployment and defenses (2026-10-24)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves are at v45.
+
+**How it was picked:** item 7 of the Phase 8 brainstorm, next in my order, on Evan's "Merge and continue". Measured first on main after M49:
+- **Where the crew starts:** a hangar raid puts them on the bridge nearest its middle; at the colony, the band of open ground by the landed ship. No choice either way.
+- **Hazards at the start** (`m50/hazards.mjs`: every hostile preset, 3 seeds each, each room wrecked in turn by fire and by vacuum, deployed both ways): 320 of 1,468 deployments started someone on a burning or airless tile.
+- **The colony's guns** fired at the lander and then stood idle; the fight had none of them.
+
+**What shipped:**
+- **Placing the crew before a raid** (`src/sim/placing.js`): a raid's fight, at the hangar or the colony, opens with `battle.setup = { zone }`, the tiles anyone can stand on, clear of hazards, at least `balance.placeClear` (6) steps' walk from every raider, plus where the crew stand. While it is set, a tap on one of the crew and a tap on a lit tile shows them there; a second tap puts them down, for nothing. A tap off the zone says why. End reads **Ready** and ends placing without ending the turn; any other order also ends it (`battle.js act`). The log says "{who} takes up a place at (x, y)." and "The crew is in place. The fight begins." A machine can't be placed ("{gun} stays where it is built."). The AI and the test players don't place: their first order ends it, so the harness's numbers stand.
+- **No one starts on a hazard** (`deploy.js clearFirst`): every deployment, boardings, trips and raids, takes tiles clear of fire and vacuum first, and a hazard only when nothing else is left. The measure above now finds 0 of 1,468.
+- **The colony's guns fight** (`raids.js gunsOn`, `data/colony.json` `gun`): each powered gun building also stands in the raid's fight as an emplacement on its own tile, on the defenders' side: 10 hit points, 55 aim, 2 armor, an autogun, shooting, watching and reloading like a ship's turret (M39), wrecked when it falls. Its shots at the lander stand. `tools/validate-colony.js` checks it.
+- **Save v45:** nothing to move (a fight from before simply has no `setup`).
+
+**Sim runs:**
+- `node tools/raids.js` (150 fights each), the same on main and the branch, since the test players never place and the hangar has no hazards:
+
+  | Background | At the hangar | At the colony (no guns) |
+  |---|---|---|
+  | Debt-bound miner | 62% | 41% |
+  | Navy deserter | 61% | 42% |
+  | Burned smuggler | 63% | 41% |
+
+- **Colony raids with guns** (`m50/gunraids.mjs`, 300 fights each; main → branch, the guns' landing shots in both):
+
+  | Guns | Miner | Deserter | Smuggler |
+  |---|---|---|---|
+  | none | 42% → 42% | 40% → 40% | 42% → 42% |
+  | one gun emplacement | 65% → 66% | 49% → 50% | 36% → 40% |
+  | gun and cannon emplacements | 96% → 96% | 92% → 92% | 86% → 90% |
+
+  With no guns, the backgrounds stay within M30's 10 points of the miner's. With guns they don't (one gun: 66 / 50 / 40), but they didn't on main either (65 / 49 / 36): the spread comes from the landing shots against each pursuer's party size, not from the guns fighting, which narrow it a little. Nothing retuned.
+- **Voyage checks:** none moved (the full suite passes on seeds 1 to 30).
+
+**Done when** (ROADMAP.md, M50), and how each is met:
+- **Placing, Ready, any order ends it, save v45:** `tests/deployment.test.js` (8): the zone, place and ready, a move ending placing, machines never placed, the Fight screen's two taps and Ready, a hangar raid opening placing, the migration.
+- **No one on a hazard:** `tests/deployment.test.js` (clearFirst; a boarding with every other tile burning); `m50/hazards.mjs` 0 of 1,468.
+- **The guns fight:** `tests/raids.test.js` (each powered gun in the colony fight at its building); `m50/gunraids.mjs` above.
+- **Touch, at the three sizes:** `m50/verify.mjs`, 21 of 21 at cover, tab and open (below).
+
+**Tests:**
+- `node --test`: 1229 pass (1221 on main).
+- **New:** `tests/deployment.test.js` (8).
+- **Changed on purpose:** every test pinning the save version, 44 to 45; `tests/citizens.test.js`, which finds v38's migration eighth from the end now; `tests/raids.test.js`, whose colony fight now has the guns beside the crew; `tests/raid.test.js`, where the first End in a raid is Ready and the second ends the turn.
+
+**Browser checks:**
+- **M50's own:** `m50/verify.mjs`, 21 of 21 at the three sizes:
+  - a hangar raid opens with End reading Ready and the hint "Place your crew…"; every button 48 px or more;
+  - a crew member chosen, one tap on the farthest lit tile shows them there and places no one, a second puts them there at no cost; a tap off the zone says why;
+  - quit and reopened while placing, still placing, the crew member where put; Ready begins the fight, End turn back, the log has the place and the ready;
+  - a colony raid with a gun emplacement: the gun on its building at 0,0, in the crew bar, can't be moved ("stays where it is built"); placing there too;
+  - a boarding with its bridge on fire (6 tiles): no one of the crew starts in it; saved at v45; no console errors.
+- **Every earlier milestone's check,** in two chains run one after the other (`m50/regress-a.sh`, M49's back to M30's; `m50/regress-b.sh`, M29's back to M8's):
+  - **Copies made for M50:** 21 checks pinned save v44 and now read v45 (each `verify50.mjs`).
+  - **Copies adapted for M50's rules:** M15's (`m15/verify50.mjs`): its raid opens placing now, so it taps Ready before playing it by touch, 31 of 31 at the three sizes. M8's extras (`m8/extras50.mjs`): the fight on the example ship with the bridge set on fire expected all three of the crew to burn on the first turn; now none starts in the fire, and the check says so.
+  - **All pass,** apart from M32b's first copy, the known exception from M32b's fix (its fix copy passes in its place). Chain B hit the two-hour limit at M19's check and ran on from there (`m50/regress-b2.sh`); M15's and M8's extras failed there as above, before their copies.
+
+**Known issues:**
+- **The zone is tile-by-tile, not by room:** at the hangar it takes in the open ground around the ship as well as the decks, as far as 6 steps from the raiders allow.
+- **The test players never place,** so the harness doesn't measure what placing is worth to a player. It can only help: placing costs nothing and the raiders don't move while it lasts.
+- **A colony gun's numbers are a first guess** (10 hit points, 55 aim, an autogun), the same for every gun building.
+- **Tapping a raider while placing aims at them:** a shot is an order, so it ends placing, as the Done when says.
+
+**What Evan should test on the phone:**
+- **A hangar raid** (Dev menu → heat to 80, Defend): is the lit zone clear, and is "Ready" plain enough? Move someone, then Ready.
+- **A colony raid with a reactor and a gun emplacement:** does the gun show in the crew bar and on its building, and is it any use?
+- **A boarding on a ship with a wrecked room:** does anyone start in the fire?
+
+**Next milestone's first task:** M51, item 12 of the brainstorm (juice: the camera follows the enemy's turn, the landing drawn over the world, more sounds and music), next in my order: study it, measure, write the Done when.
+
 ## M49 Senses (2026-10-24)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves are at v44.

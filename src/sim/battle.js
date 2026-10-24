@@ -44,6 +44,8 @@
 //            mission, contracts.js), as objectives.js has it: a grab, a
 //            hack, an extract, an escort, a rescue, a sabotage or a
 //            defense. Once it is done, the crew has won
+//   setup    absent but while the crew is placed before a raid (M50,
+//            placing.js): { zone }, the tiles they may be put on
 //   winner   null, or the side that won: the one still standing, or the
 //            crew once its objective is done, or the enemy once the
 //            crew's deadline has passed, the ward is lost or an enemy has
@@ -98,6 +100,7 @@ import { jobAtRank } from './ranks.js';
 import { talentOrder } from './talents.js';
 import { canSee } from './sight.js';
 import { hazardAt, lockAt, tileRule, walkable, weldedAt } from './terrain.js';
+import { placeAction } from './placing.js';
 import { armorAgainst, outOfReach, shotsOf, withinReach } from './weapons.js';
 
 // setup: { map, units: [{ kind, x, y, name?, hp?, bonus?, rank?, talent?,
@@ -206,7 +209,10 @@ export function createBattle({ map, units, seed, first = 'crew', options = {}, o
 // { ok: false, error }, leaving the battle as it was.
 export function act(battle, action, rules) {
   if (battle.winner) return { ok: false, error: 'The battle is over.' };
+  // Placing the crew before a raid (M50); any other order begins the fight.
+  if (action.type === 'place' || action.type === 'ready') return placeAction(battle, action, rules);
   const next = draft(battle);
+  delete next.setup;
   const events = [];
   let error = null;
   if (action.type === 'end') {

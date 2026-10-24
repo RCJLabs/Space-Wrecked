@@ -14,6 +14,17 @@
     "weapon": "pistol",
     "look": { "suit": "eva", "build": "standard", "helmet": "lamps", "back": "tools", "marks": "plain" }
   },
+  "gun": {
+    "id": "emplacement",
+    "name": "Emplacement",
+    "hp": 10,
+    "aim": 55,
+    "defense": 10,
+    "mobility": 0,
+    "armor": 2,
+    "weapon": "autogun",
+    "look": { "machine": "turret" }
+  },
   "builds": [
     { "id": "farm", "name": "Farm", "size": [2, 2], "cost": 10, "makes": "food", "from": ["soil", "water"], "least": 1, "text": "Fields under clear sheeting, watered from whatever the world has. Every day it grows what the soil and water allow." },
     { "id": "mine", "name": "Mine", "size": [2, 2], "cost": 10, "makes": "materials", "from": ["ore"], "least": 1, "text": "A shaft and a headframe over the best seam the landing found. Every day it brings up what the ore allows." },

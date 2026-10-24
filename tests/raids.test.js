@@ -253,10 +253,17 @@ test("the fight on the colony's grid: buildings as cover, the crew by the ship a
   assert.deepEqual([fought.place, fight.raid, fight.boarding, fight.job, fight.encounter, fight.crew], ['fight', true, null, null, 'raid', [1, 2, 3]]);
   assert.equal(campaignScreen(fought), 'campaign-fight');
   assert.deepEqual(campaignProblems(fought), []);
-  const crew = fight.battle.units.filter((unit) => unit.side === 'crew');
+  // The crew and, from M50, each powered gun fighting from its building.
+  const crew = fight.battle.units.filter((unit) => unit.side === 'crew' && !rules.machines.has(unit.kind));
+  const guns = fight.battle.units.filter((unit) => rules.machines.has(unit.kind));
   const enemies = fight.battle.units.filter((unit) => unit.side === 'enemy');
   assert.deepEqual(enemies.map((unit) => unit.kind), raiders);
   assert.ok(crew.every((unit) => unit.x < START_COLUMNS) && enemies.every((unit) => unit.x >= width - START_COLUMNS));
+  const shooting = landingPlan(down({ ...base, heat: 70 }), rules).guns;
+  assert.deepEqual(guns.map((unit) => [unit.side, unit.name, unit.x, unit.y]), shooting.map((gun) => {
+    const at = base.colony.buildings.find((b) => b.uid === gun.uid);
+    return ['crew', gun.name, at.x, at.y];
+  }));
   // The power plant lights the shield dome; the armory needs no power.
   // Each defender fights with their job's armor and aim, their traits', and
   // the dome's and the armory's.
@@ -378,7 +385,7 @@ test('while the ship is away: a raid is fought out by those at home and the leg 
 test('saves: v23 for the raid coming and a leg it stopped; a v22 colony opens with none coming; broken ones are caught', () => {
   // 24 since M32's orders in a fight, 27 since M33's fix, 28 since M33b's
   // quests, 29 since M33c's companions.
-  assert.equal(SAVE_VERSION, 44);
+  assert.equal(SAVE_VERSION, 45);
   // From M38e the colony keeps a heat of its own, the ship's as v37 opens
   // it (unused while the ship is landed there).
   const placed = at(settled(), { places: [far] });

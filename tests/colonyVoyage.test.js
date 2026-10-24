@@ -538,7 +538,7 @@ test("the colony keeps its system's other worlds, which its trips reach, as the 
 });
 
 test('saves at v36 keep a voyage, and those at home in play in a raid fight; a v35 colony migrates home with its worlds; voyages that do not read are caught', () => {
-  assert.equal(SAVE_VERSION, 44);
+  assert.equal(SAVE_VERSION, 45);
   assert.equal(MIGRATIONS.at(-1).from, SAVE_VERSION - 1);
   const fighting = faceRaid(landing(away), rules).campaign;
   for (const campaign of [away, fighting]) {

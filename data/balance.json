@@ -87,6 +87,7 @@
   "citizenDays": 5,
   "citizenWork": 1,
   "raidCitizens": 6,
+  "placeClear": 6,
   "pursuerStanding": -10,
   "coldStanding": -5,
   "neutralStanding": -1,

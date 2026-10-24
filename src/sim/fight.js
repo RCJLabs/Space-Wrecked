@@ -58,7 +58,13 @@
 //   fight/order { at? }      the selected unit's job's order: shows it at
 //                            `at` (a unit's id or a door's side), or at its
 //                            likeliest; a second time at the same, takes it
-//   fight/end                ends the crew's turn
+//   fight/end                ends the crew's turn; while the crew is
+//                            being placed before a raid (M50, placing.js),
+//                            Ready: placing over, the fight begins
+//
+// While placing, a crew member's reach is the free tiles of the zone, each
+// at no cost: a tap shows them there, a second puts them down (a move
+// preview with place: true).
 //   fight/load { battle, events }   a new battle
 import { aiAction } from './ai.js';
 import { act, isMachine, targetsFor } from './battle.js';
@@ -69,6 +75,7 @@ import { outOfReach, withinReach } from './weapons.js';
 import { SIDES } from './grid.js';
 import { closable, lockable, ownLocks } from './locks.js';
 import { moveRange, reachable } from './moves.js';
+import { placesFor, placing } from './placing.js';
 import { pressAction } from './press.js';
 import { inReach, shutDoor, walkable } from './terrain.js';
 
@@ -99,6 +106,7 @@ export function reduceFight(fight, action, rules) {
     case 'fight/aim':
       return action.target === undefined ? nextTarget(fight, rules) : aim(fight, action.target, rules);
     case 'fight/confirm':
+      if (fight.preview?.type === 'move' && fight.preview.place) return play(fight, { type: 'place', unit: unit.id, to: fight.preview.to }, rules);
       if (fight.preview?.type === 'move') return play(fight, { type: 'move', unit: unit.id, to: fight.preview.to }, rules);
       if (fight.preview?.type === 'shoot') return play(fight, { type: 'shoot', unit: unit.id, target: fight.preview.target }, rules);
       if (fight.preview?.type === 'order') return orderAt(fight, unit, fight.preview.at, rules);
@@ -139,7 +147,7 @@ export function reduceFight(fight, action, rules) {
       return at ? play(fight, { type: 'plant', unit: unit.id, at }, rules) : fight;
     }
     case 'fight/end':
-      return play(fight, { type: 'end' }, rules);
+      return play(fight, placing(fight.battle) ? { type: 'ready' } : { type: 'end' }, rules);
     default:
       return fight;
   }
@@ -214,8 +222,16 @@ function orderNow(battle, unit, rules) {
 }
 
 // The tiles a unit can move to this turn, with its actions as they are; a
-// carrier's once a turn, no dash (moves.js moveRange).
+// carrier's once a turn, no dash (moves.js moveRange). While the crew is
+// being placed (M50), the free tiles of the zone instead, each at no cost,
+// place: true.
 export function reachOf(battle, unit, rules) {
+  if (placing(battle)) {
+    return new Map(placesFor(battle, unit, rules).map((key) => {
+      const [x, y] = key.split(',').map(Number);
+      return [key, { x, y, cost: 0, dash: false, path: [[unit.x, unit.y], [x, y]], place: true }];
+    }));
+  }
   const spots = reachable(battle, unit, moveRange(unit), rules);
   spots.delete(`${unit.x},${unit.y}`);
   for (const spot of spots.values()) spot.dash = spot.cost > unit.mobility;
@@ -246,12 +262,13 @@ function tap(fight, x, y, rules) {
   const spot = reachOf(battle, unit, rules).get(`${x},${y}`);
   if (!spot) {
     const cleared = fight.preview ? { ...fight, preview: null } : fight;
+    if (placing(battle)) return withNotice(cleared, 'info', isMachine(unit, rules) ? `${unit.name} stays where it is built.` : `${unit.name} can start only on a lit tile, clear of the raiders and of fire.`);
     return walkable(battle, x, y, rules) ? withNotice(cleared, 'info', `${unit.name} can't get there this turn.`) : cleared;
   }
   if (fight.preview?.type === 'move' && fight.preview.to[0] === x && fight.preview.to[1] === y) {
-    return play(fight, { type: 'move', unit: unit.id, to: [x, y] }, rules);
+    return play(fight, { type: spot.place ? 'place' : 'move', unit: unit.id, to: [x, y] }, rules);
   }
-  return { ...fight, preview: { type: 'move', to: [x, y], cost: spot.cost, dash: spot.dash, path: spot.path } };
+  return { ...fight, preview: { type: 'move', to: [x, y], cost: spot.cost, dash: spot.dash, path: spot.path, ...(spot.place ? { place: true } : {}) } };
 }
 
 // Shows the shot at an enemy, or takes it if it is already shown.

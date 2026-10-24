@@ -122,7 +122,9 @@ test("on the Fight screen, the raiders' turn presses on toward the crew", () => 
   const away = stepsFrom(fight.battle, bridge, rules);
   const distance = (battle) => battle.units.filter((u) => u.side === 'enemy').reduce((sum, u) => sum + (away.get(`${u.x},${u.y}`) ?? 99), 0);
   const before = distance(fight.battle);
-  const after = reduceFight(createFight(fight.battle, rules, fight.log), { type: 'fight/end' }, rules);
+  // From M50 the first End is Ready (placing over); the second ends the turn.
+  const ready = reduceFight(createFight(fight.battle, rules, fight.log), { type: 'fight/end' }, rules);
+  const after = reduceFight(ready, { type: 'fight/end' }, rules);
   assert.equal(after.battle.side, 'crew');
   assert.ok(distance(after.battle) < before, `the raiders came closer: ${before} to ${distance(after.battle)}`);
 });

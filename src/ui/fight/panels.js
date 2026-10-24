@@ -42,11 +42,14 @@ export function createCrewBar({ onSelect, onEnd, rules = () => null }) {
         setText(row.state, stateText(unit, rules()));
       }
     },
-    // 'ready', 'armed' (tap again to end) or 'off'.
+    // 'ready', 'armed' (tap again to end), 'off', or from M50 'placing'
+    // (Ready: the crew placed, the fight begins).
     setEnd(state) {
       end.disabled = state === 'off';
       end.dataset.state = state;
-      setText(end.querySelector('span'), state === 'armed' ? 'End turn?' : 'End turn');
+      const label = state === 'placing' ? 'Ready' : state === 'armed' ? 'End turn?' : 'End turn';
+      setText(end.querySelector('span'), label);
+      end.setAttribute('aria-label', label);
     },
     dispose() {
       for (const cleanup of cleanups) cleanup();
