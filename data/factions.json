@@ -2,6 +2,7 @@
   "sides": [
     {
       "id": "conreg",
+      "emblem": "pick",
       "name": "Con-Reg",
       "blurb": "Consolidated Regolith: the Company. It owns the mines, the miners' debts and the lawyers who collect them.",
       "color": "yellow",
@@ -10,6 +11,7 @@
     },
     {
       "id": "fleet",
+      "emblem": "anchor",
       "name": "the Fleet",
       "blurb": "The Navy: its ships and stores, its customs men in every port, and the Provost who keeps its sailors from leaving.",
       "color": "blue",
@@ -22,6 +24,7 @@
     },
     {
       "id": "hallorans",
+      "emblem": "blade",
       "name": "the Hallorans",
       "blurb": "Old Halloran's family: the Narrows' loans, rackets and rents, collected with a smile.",
       "color": "magenta",
@@ -30,6 +33,7 @@
     },
     {
       "id": "union",
+      "emblem": "gear",
       "name": "the union",
       "blurb": "The miners' locals, the dockers and the union halls on the run. They look after their own, and remember who helped.",
       "color": "brick",

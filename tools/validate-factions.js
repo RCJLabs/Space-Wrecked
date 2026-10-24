@@ -15,7 +15,7 @@ import { sideColors } from '../src/render/palette.js';
 import { isObject, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 
 const FILE_KEYS = ['sides', 'stations', 'arms'];
-const SIDE_KEYS = ['id', 'name', 'blurb', 'color', 'patrol', 'arms', 'yard'];
+const SIDE_KEYS = ['id', 'name', 'blurb', 'color', 'emblem', 'patrol', 'arms', 'yard'];
 const PATROL_KEYS = ['waved', 'fired'];
 const MAX_NAME = 24;
 const MAX_BLURB = 160;
@@ -42,6 +42,7 @@ export function checkFactions(data, presets, fail) {
     }
   }
   const weaponIds = new Set((data.weapons?.weapons ?? []).map((weapon) => weapon.id));
+  const emblemIds = new Set((data.styling?.emblems ?? []).map((emblem) => emblem?.id));
   const makers = data.manufacturers?.manufacturers;
   const makerIds = new Set(Array.isArray(makers) ? makers.map((maker) => maker?.id) : []);
   const rack = data.balance?.rackSize ?? 0;
@@ -54,6 +55,8 @@ export function checkFactions(data, presets, fail) {
     if (!isText(side.name) || side.name.length > MAX_NAME) fail(at, `name must be a non-empty string of up to ${MAX_NAME} letters`);
     if (!isText(side.blurb) || side.blurb.length > MAX_BLURB) fail(at, `blurb must be a non-empty string of up to ${MAX_BLURB} letters`);
     if (typeof side.color !== 'string' || !Object.hasOwn(sideColors, side.color)) fail(at, `color must be one of src/render/palette.js sideColors (${Object.keys(sideColors).join(', ')})`);
+    // Its ships' emblem (M52), one of styling.json's.
+    if (side.emblem !== undefined && !emblemIds.has(side.emblem)) fail(at, 'emblem must be one of the emblems in styling.json');
     if (side.patrol === undefined) {
       if (atNodes.has(side.id)) fail(at, "its ships are met at the sectors' nodes, so it needs its patrols' words: { waved, fired }");
     } else if (!isObject(side.patrol)) {

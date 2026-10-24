@@ -202,6 +202,22 @@ export function mountBuilder(root, source) {
           onPaint: (color) => act({ type: 'build/paint', color }),
           onTrim: (color) => act({ type: 'build/trim', color }),
           onStyle: (style) => act({ type: 'build/hull', style }),
+          // The ship's name and emblem (M52), in the campaign only: kept
+          // in the campaign, not the session, so undo leaves them be.
+          identity: source.identity
+            ? {
+                rename: (name) => {
+                  const why = source.identity.rename(name);
+                  if (!why) showIdentity();
+                  return why;
+                },
+                emblem: (id) => {
+                  source.identity.emblem(id);
+                  setLook('hull');
+                  showIdentity();
+                },
+              }
+            : null,
         },
         onLaunch: source.launch
           ? () => {
@@ -390,7 +406,7 @@ export function mountBuilder(root, source) {
     const onHand = (type) => partsLeft(session, type);
     // The checklist's fixes ask for a part: any maker's version will do.
     const ofAny = (type) => countOfAny(defs, type, onHand);
-    drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules, onHand: ofAny, ship: session.ship, cleared: source.cleared, frame });
+    drawer.update(derived.lines, derived.totals, { crew: crew(), maxModules: frame.maxModules, onHand: ofAny, ship: session.ship, cleared: source.cleared, frame, identity: source.identity?.get() ?? null });
     drawer.setStock(session.stock ? onHand : null);
   }
 
@@ -474,7 +490,19 @@ export function mountBuilder(root, source) {
     plans.setShip({ ship, defs, frame, doors: openings(ship, defs), hull, selected: null, lifted: null, flagged: new Set() });
     plans.setGhost(null);
     plans.setMarks(null);
-    if (look === 'hull') plans.setHull({ ship, defs, hull, skin: skinFor('yard') });
+    if (look === 'hull') plans.setHull({ ship, defs, hull, skin: skinFor('yard'), identity: identityOf() });
+  }
+
+  // What the ship wears on her hull (M52): the campaign's, or nothing.
+  function identityOf() {
+    return source.identity?.get() ?? null;
+  }
+
+  // After a rename or an emblem: the Look tab and the hull again.
+  function showIdentity() {
+    shown.hull = null;
+    updateDrawer();
+    sync();
   }
 
   // Shows the plans (where the rooms are built) or the hull from outside
@@ -505,7 +533,7 @@ export function mountBuilder(root, source) {
   function showOnBoard(session) {
     if (look === 'hull') {
       if (shown.hull !== session.ship) {
-        plans.setHull({ ship: session.ship, defs, hull: derived.hull, skin: skinFor('yard') });
+        plans.setHull({ ship: session.ship, defs, hull: derived.hull, skin: skinFor('yard'), identity: identityOf() });
         shown.hull = session.ship;
       }
       const ghost = ghostOf(session);

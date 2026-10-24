@@ -15,6 +15,7 @@
 // aboard (M28: what a trip needs, berths and air for each). The board is
 // ../builder/view.js's.
 import { actOf, canRefit, crewAboard, fullSquad, stockOf, wreckedUids } from '../../sim/campaign.js';
+import { nameProblem, withIdentity } from '../../sim/identity.js';
 import { canRearrange } from '../../sim/rearrange.js';
 import { mountBuilder } from '../builder/view.js';
 import { icons } from '../icons.js';
@@ -63,6 +64,23 @@ export const constructionScreen = {
         const now = game.getState().campaign;
         if (!now) return 0;
         return now.colony && !now.colony.voyage && defs ? fullSquad(now, defs) : crewAboard(now);
+      },
+      // The ship's name, number and emblem (M52): renamed and her emblem
+      // picked in the Look tab. A save from before has hers rolled.
+      identity: {
+        get: () => {
+          const now = game.getState().campaign;
+          return now && defs ? withIdentity(now, defs).identity : null;
+        },
+        rename(name) {
+          const why = nameProblem(name);
+          if (why) return why;
+          game.dispatch({ type: 'campaign/rename', name, rules: defs });
+          return null;
+        },
+        emblem(emblem) {
+          game.dispatch({ type: 'campaign/emblem', emblem, rules: defs });
+        },
       },
       liftOff: () => {
         const { campaign } = game.getState();

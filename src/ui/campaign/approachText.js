@@ -12,6 +12,7 @@
 import { AIMS, choicesFor, closeChance, FACED, fleeChance, sideStats, torpedoRounds } from '../../sim/approach.js';
 import { approachIntent, approachState } from '../../sim/encounter.js';
 import { pursuerOf } from '../../sim/heat.js';
+import { shipName } from '../../sim/identity.js';
 import { boardingStakes } from './boardingText.js';
 import { actTitle, heatText } from './hubText.js';
 import { changeLines, patrolWords } from './standingText.js';
@@ -53,7 +54,7 @@ export function approachText(campaign, rules) {
     where: `${approach.hunt ? 'The hunters' : approach.ambush ? 'A trap' : 'Hostile ship'} · ${approach.enemy.name}`,
     round: outcome ? 'Over' : `Round ${approach.round} of ${rules.balance.approachRounds}`,
     heat: heatText(campaign, rules),
-    you: sideText('Your ship', state.you, rules),
+    you: sideText(shipName(campaign, rules), state.you, rules),
     them: sideText(`The ${theirName}`, state.them, rules),
     intent: intent ? intentText(intent, state, theirName, rules) : null,
     orders: intent ? ordersText(state, intent, theirName, rules) : [],

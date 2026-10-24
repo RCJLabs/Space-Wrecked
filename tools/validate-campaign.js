@@ -26,7 +26,8 @@ import { checkArms } from './validate-factions.js';
 import { checkSectors } from './validate-sectors.js';
 import { checkWorlds } from './validate-worlds.js';
 
-const CAMPAIGN_KEYS = ['acts'];
+const CAMPAIGN_KEYS = ['shipNames', 'acts'];
+const MAX_SHIP_NAME = 24; // identity.js MAX_NAME
 const ACT_KEYS = ['act', 'name', 'hub', 'home', 'heals', 'liftOff', 'scene', 'sectors', 'ahead'];
 // A run (act 2) crosses up to this many sectors.
 const MAX_SECTORS = 20;
@@ -244,6 +245,12 @@ function checkActs(file, fail) {
     return;
   }
   knownKeys(file, CAMPAIGN_KEYS, where, fail);
+  // The names a new ship can be given (M52, identity.js): at least a few,
+  // each short enough for the hangar's heading, none twice.
+  const names = file.shipNames;
+  if (!Array.isArray(names) || names.length < 3 || !names.every((name) => isText(name) && name.length <= MAX_SHIP_NAME) || new Set(names).size !== names.length) {
+    fail(where, `shipNames must list at least 3 different names, each up to ${MAX_SHIP_NAME} letters`);
+  }
   const acts = listOf(file, 'acts', where, fail);
   acts.forEach((act, i) => {
     const at = `${where} act #${i + 1}`;

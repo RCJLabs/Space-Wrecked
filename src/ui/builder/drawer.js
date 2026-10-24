@@ -80,7 +80,7 @@ export function createDrawer(defs, { palette: paletteHandlers, look: lookHandler
     setStock: parts.setStock,
     update(lines, totals, context) {
       ship.update(lines, totals, context);
-      look.update(context.ship);
+      look.update(context.ship, context.identity ?? null);
       const open = lines.filter((line) => line.ok !== true).length;
       badge.textContent = open ? String(open) : '✓';
       badge.dataset.tone = open ? 'bad' : 'good';

@@ -117,7 +117,7 @@ export function heatChip() {
 }
 
 // The ship standing still in area, seen from outside and fitted to it:
-//   stand.show(ship, defs)   when the ship changes
+//   stand.show(ship, defs, identity)   when the ship or what she wears changes
 //   stand.layout()           when area may have moved or changed size
 //   stand.draw(ctx, view)    every frame; it draws only after a change
 export function createShipStand(area) {
@@ -126,12 +126,12 @@ export function createShipStand(area) {
   let camera = null;
   let dirty = true;
   const stand = {
-    show(ship, defs) {
+    show(ship, defs, identity = null) {
       const frame = defs.frames.get(ship.frame);
       if (!frame) return;
       const hull = traceHull(ship, defs);
       board = createBoard(frame);
-      board.setHull({ ship, defs, hull, skin: skinFor('yard') });
+      board.setHull({ ship, defs, hull, skin: skinFor('yard'), identity });
       box = boardBox(frame, hull, NO_MIN);
       camera = null;
       stand.layout();

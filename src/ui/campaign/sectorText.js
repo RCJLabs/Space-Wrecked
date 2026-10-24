@@ -41,7 +41,7 @@ import { dockHeat, jobPay, patrolWelcome, pursuerSide, stationSide } from '../..
 import { stationBoard, stationHere } from '../../sim/stationJobs.js';
 import { framesHere, yardHere } from '../../sim/yards.js';
 import { brokenWhy, failingCheck, hereOf, holdOf, jumpPlan, jumpSupplies, knownNodes, leavePlan, linked, openEvent, reach, scanPlan, suppliesCost, suppliesOver, supplyCapacity, supplyOffer, systemNeeds, tradeHeat } from '../../sim/travel.js';
-import { actTitle, crewText, heatText } from './hubText.js';
+import { actTitle, crewText, heatText, shipLine } from './hubText.js';
 import { defendText, raidHint } from './raidText.js';
 import { colonyPanelText, homeText, landerComing } from './voyageText.js';
 import { flyToText, otherColonies, settleOnVoyage } from './colonyListText.js';
@@ -69,6 +69,7 @@ import { dockSaid, sideColor, sideIs, sideName, sidesText, stationText } from '.
 //                { name, color }, or null for nobody's
 //   links        [{ a, b, near }]: near when it joins the node the ship is at
 //   here         the node the ship is at, as nodeText says it
+//   ship         the ship's name and number (M52), as the hangar's
 //   world        the world the ship is at, as worldSaid says it, or null
 //   crew         as the hangar's
 //   sides        each side and the crew's standing with it (M33), as the
@@ -167,6 +168,7 @@ export function sectorText(campaign, rules) {
     })),
     links: sector.links.map(([a, b]) => ({ a, b, near: a === at || b === at })),
     here: placeText(campaign, at, rules, { done: done.includes(at) }),
+    ship: shipLine(campaign, rules),
     world: sector.nodes[at].world ? worldSaid(sector.nodes[at].world, rules, surveyed.includes(at)) : null,
     crew: crewText(campaign, rules),
     sides: sidesText(campaign, rules),

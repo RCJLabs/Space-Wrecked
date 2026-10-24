@@ -2,6 +2,68 @@
 
 Newest entry first.
 
+## M52 Identity on the hull (2026-10-24)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves move to v46 (a save from before gets her name and number when a screen first wants them).
+
+**How it was picked:** item 4 of the Phase 8 brainstorm, next in my order, on Evan's "Merge and continue when ready". Item 5 before it, a scanner part, was found done in M39 and marked so in §9. Measured first on main after M51:
+- **The player's ship had no name, number or emblem:** the screens said "your ship", and the hull carried paint and trim (M23f) and nothing else. Enemy ships wore their side's paint and no mark.
+- **A gallery of your own ships** is already the builder's Saves tab (M5); nothing added there.
+
+**What shipped:**
+- **Her name and number** (`src/sim/identity.js`, `data/campaign.json` shipNames, 24 names): rolled with the new game from its seed, without moving the campaign's rolls; the number two letters (none that reads as a digit) and three digits. The last New game screen offers the name the game would roll, Another for the next on the list, or one typed (24 letters at most). Renamed in the builder's Look tab, Name group.
+- **Shown** in the hangar's heading ("Wren · KR-482"), the colony's (with "away" while she is), a line in the chart's Here panel, over her on the approach, and the end words of a boarding or a raid ("The crew falls back to the Wren", "Boarders overran the Wren", "They back off the Wren").
+- **On her hull** (`src/render/decals.js`): the number in a stroke lettering our renderer draws, by the bow, and the emblem amidships, each in the trim's color on a panel of the hull's paint, kept clear of the tall fittings; painted over the finished hull in the hangar, the builder's hull look and the approach.
+- **Emblems** (`src/render/emblems.js`, `data/styling.json`): ten drawn in code; six offered to the player (star, wing, comet, eye, ring, shield), none by default; each side's ships wear their own (`data/factions.json`: the Fleet's anchor, ConReg's pick, the Hallorans' blade, the Union's gear).
+- **Save v46:** `campaign.identity` ({ name, number, emblem } or null). The migration sets null; `campaign/identity` rolls it as a new game with that seed would have, and every screen reads it through `withIdentity`. Blueprint codes don't change.
+
+**Measurements:**
+- **Where the decals land:** the number and emblem fit on every preset ship and the example ship (`m52/top.mjs`, a top-down sheet). On the hauler, crates fill the middle and the emblem sits forward of it.
+- **The frame budget** (`m52/budget.mjs`, Chromium at dpr 2.625, the camera moving every frame, a corvette):
+
+  | | cover | tab | open |
+  |---|---|---|---|
+  | hangar's hull, without | 21.8 ms mean, 95% 32.7 | 18.9, 95% 26.9 | 38.0, 95% 49.6 |
+  | hangar's hull, with | 19.8, 95% 27.4 | 17.3, 95% 24.1 | 32.5, 95% 37.6 |
+  | approach layer made again, without | 22.1, 95% 32.3 | 17.7, 95% 23.3 | 55.8, 95% 81.1 |
+  | approach layer made again, with | 21.1, 95% 27.5 | 17.1, 95% 21.3 | 50.9, 95% 78.7 |
+
+  No cost that shows: "with" ran second, so its edge is the warm-up's, not a gain. These are frames with the whole hull drawn again; the approach copies its layers at rest, as before.
+
+**Done when** (ROADMAP.md, M52), and how each is met:
+- **A name:** `tests/identity.test.js` (rolled from the seed, the campaign's rolls unmoved, tidied, refused empty or too long, the actions); `m52/verify.mjs` (typed at New game, Another, the hangar, the chart, the approach, the colony, a rename in the Look tab).
+- **A hull number:** the identity tests (its shape, lettering for every character, on her roof by the bow, clear of tall fittings); the hull's pixels in `m52/verify.mjs`.
+- **An emblem:** the identity tests (six offered, a side's not, every one drawn, each side's ships wear theirs); `m52/verify.mjs` (picked, worn, None takes it off; the Fleet corvette's anchor).
+- **The blueprint codes don't change;** the frame budget, the table above; every rule tested; touch at the three sizes, `m52/verify.mjs`.
+
+**Tests:**
+- `node --test`: 1246 pass (1235 on main).
+- **New:** `tests/identity.test.js` (11).
+- **Changed on purpose:** the save version pins (45 to 46) and the migrations' expected campaigns (`identity: null`); `tests/exterior.test.js` (an empty ship's scene has no decals); `tests/approachText.test.js`, `tests/tripText.test.js`, `tests/raid.test.js` (the ship's name where the words said "your ship" or "the ship").
+
+**Browser checks:**
+- **M52's own:** `m52/verify.mjs`, 25 of 25 at the three sizes.
+- **Every earlier milestone's check,** in three chains run one after the other (`m52/regress-a.sh`, M51's back to M30's; `m52/regress-b1.sh`, M29's to M23's; `m52/regress-b2.sh`, M22's to M8's):
+  - **Copies adapted for M52** (`verify52.mjs`): the 23 that pin the save version, 45 to 46. One of them (M38d fix's) had a materials count of 45 bumped by the same edit; put back.
+  - **A bug the chain caught:** M39's check found the part sheet's tiles under 48 px. The Look tab's new name row had gone into the sheets' shared selector list in `style.css`; moved out, M39's check passes 43 of 43 at the three sizes.
+  - **A second bug the chain caught:** M19's check found two `.sct-ship` on the chart. The Here panel's name line had taken the ship marker's class (and its rule restyled the marker); renamed `.sct-here-ship`.
+  - **M22's copy adapted** (`m22/verify52.mjs`): an Overrun's end words now begin "Boarders overran the …"; 35 of 35 at the three sizes.
+  - **All pass,** apart from M32b's first copy, the known exception from M32b's fix (its fix copy passes in its place), and M8's column at the tab size (five orders not clear of the DEV button), as on main.
+
+**Known issues:**
+- **The decals are painted over the hull, not sorted with it:** from a steep angle a tall fitting in front of one could be drawn under it. The default views don't show it.
+- **A roof with no room** for a decal goes without; none of today's presets does.
+- **The colony's landed ship and the lift-off** don't wear the number and emblem; the colony's heading names her.
+- **Enemy ships have no number,** only their side's emblem; a ship of no side has none.
+
+**What Evan should test on the phone:**
+- **New game:** is the name screen clear, and are the 24 names the right voice?
+- **The hangar's ship at the cover size:** is the number readable, and is the emblem where it should be?
+- **The Look tab, Name:** a rename and an emblem; is a Rename button right, or should the name keep as it's typed?
+- **An approach with a Fleet patrol:** does the anchor read as theirs?
+
+**Next milestone's first task:** M53, item 9 of the brainstorm (colony pressure and levers): study it, measure, write the Done when.
+
 ## M51 Juice (2026-10-24)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. No save change (saves stay at v45).

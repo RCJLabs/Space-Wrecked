@@ -1,4 +1,5 @@
 {
+  "shipNames": ["Kestrel's Debt", "Second Wind", "Low Ember", "Patchwork", "Long Odds", "Tin Lantern", "Hollow Crown", "Quiet Mile", "Rust Saint", "Small Mercy", "Far Shore", "Grey Heron", "Night Ferry", "Copper Vow", "Last Light", "Wren", "Halfway Home", "Borrowed Time", "Stray Spark", "Old Faithful", "Cold Comfort", "Iron Psalm", "Dust Runner", "Lucky Strike"],
   "acts": [
     { "act": 1, "name": "Homeworld", "hub": "hangar", "home": "The hangar", "heals": true, "liftOff": 1, "scene": "homeworld" },
     {

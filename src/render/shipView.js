@@ -22,7 +22,7 @@ import { exteriorScene } from './exterior.js';
 import { createFrameBudget } from './frameBudget.js';
 import { OVERHANG } from './hull.js';
 import { paintLayer } from './layer.js';
-import { batchModel, paintBatches, paintLabels, paintSolid, prepareSolid } from './painter.js';
+import { batchModel, paintBatches, paintLabels, paintOver, paintSolid, prepareSolid } from './painter.js';
 import { palette, rgba } from './palette.js';
 import { blueprintScene, ghostScene, gridModel } from './shipScene.js';
 import { shade } from './solid.js';
@@ -96,8 +96,8 @@ export function createBoard(frame) {
       ghost = { batches: batchModel(model), labels: [label] };
     },
     setHull(input) {
-      const { faces, glows } = exteriorScene(input);
-      hull = { faces: prepareSolid(faces, shade), glows, space: input.skin.space };
+      const { faces, glows, decals } = exteriorScene(input);
+      hull = { faces: prepareSolid(faces, shade), glows, decals: prepareSolid(decals, shade), space: input.skin.space };
     },
     // The styling piece being placed or moved and the one picked out, drawn
     // over the hull so they show even behind it.
@@ -108,6 +108,7 @@ export function createBoard(frame) {
       if (view === 'hull') {
         drawSpace(ctx, rect, hull?.space ?? palette.space);
         if (hull) paintSolid(ctx, hull.faces, hull.glows, cam);
+        if (hull?.decals.length) paintOver(ctx, hull.decals, [], cam);
         if (marks) paintSolid(ctx, marks, [], cam);
         lastCam = null;
         return false;

@@ -21,6 +21,7 @@ import { generateSite } from '../src/sim/gen/site.js';
 import { tileText } from '../src/ui/battle/tileText.js';
 import { raidObjective, raidOutcome } from '../src/ui/campaign/jobText.js';
 import { drawn, rules } from './battleKit.js';
+import { theShip } from '../src/ui/campaign/hubText.js';
 
 // A campaign with the raid due: the start ship with its quarters, life
 // support and an engine fitted, and heat at raidHeat.
@@ -215,7 +216,7 @@ test('a raid in words: the raiders left, and what it cost', () => {
   const on = beginRaid(raidCampaign(), rules).campaign;
   assert.deepEqual(raidObjective(on.fight.battle), { title: 'Raid', progress: '4 raiders left', done: false, deadline: null });
   const won = { ...on.fight.battle, winner: 'crew' };
-  assert.deepEqual(raidOutcome(won, on, rules), { tone: 'good', title: 'Raid beaten', text: 'They back off, for now. Heat falls to 40.' });
+  assert.deepEqual(raidOutcome(won, on, rules), { tone: 'good', title: 'Raid beaten', text: `They back off ${theShip(on, rules)}, for now. Heat falls to 40.` });
   const lost = { ...on.fight.battle, winner: 'enemy' };
   assert.deepEqual(raidOutcome(lost, { ...on, parts: { engine: 1 } }, rules), { tone: 'bad', title: 'Raid lost', text: 'They took the Engine. Heat falls to 40.' });
   assert.deepEqual(raidOutcome(lost, { ...on, parts: {}, credits: 100 }, rules), { tone: 'bad', title: 'Raid lost', text: 'They took 50 credits. Heat falls to 40.' });

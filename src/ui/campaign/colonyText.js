@@ -6,7 +6,7 @@ import { buildingOf, colonyStats, shipParts, storesOf } from '../../sim/colony.j
 import { buildList } from '../../sim/colonyBuild.js';
 import { dayPlan, planDay } from '../../sim/days.js';
 import { colonyPursuer, raidIn } from '../../sim/raids.js';
-import { actTitle, crewText, heatText } from './hubText.js';
+import { actTitle, crewText, heatText, shipLine } from './hubText.js';
 import { runRecord } from './launchText.js';
 import { newsText } from './newsText.js';
 import { defenseRow, raidHint, raidStatus } from './raidText.js';
@@ -17,6 +17,8 @@ import { sidesText } from './standingText.js';
 // What the colony screen shows:
 //   act, home   "Act 3 · The colony", "Greenhaven · Ice world · Day 4",
 //               and "· the ship away" while it is out on a trip (M28)
+//   ship        the ship's name and number (M52), and "· away" while she
+//               is
 //   day         the colony's day
 //   needs       [{ label, value, ok }]: power, then beds and air against
 //               the crew at home and who sleeps aboard (while the ship is
@@ -101,6 +103,7 @@ export function colonyText(campaign, rules) {
   return {
     act: actTitle(campaign.act, rules),
     home: `${world.name} · ${kind} · Day ${campaign.colony.day}${trip ? ' · the ship away' : ''}`,
+    ship: `${shipLine(campaign, rules)}${trip ? ' · away' : ''}`,
     day: campaign.colony.day,
     needs,
     heat: heatText(campaign, rules),

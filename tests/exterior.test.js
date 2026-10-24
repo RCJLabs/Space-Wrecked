@@ -17,7 +17,7 @@ const example = () => buildShip(defs, 'starter', script.placements).ship;
 const scene = (ship) => exteriorScene({ ship, defs, hull: traceHull(ship, defs), skin: skins.yard });
 
 test('an empty ship has nothing to show from outside', () => {
-  assert.deepEqual(scene(newShip('starter')), { faces: [], glows: [], exhausts: [] });
+  assert.deepEqual(scene(newShip('starter')), { faces: [], glows: [], exhausts: [], decals: [] });
 });
 
 test('every face is flat data with a unit normal and a skin colour', () => {
