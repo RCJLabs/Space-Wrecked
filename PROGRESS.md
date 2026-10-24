@@ -47,7 +47,8 @@ Newest entry first.
 - **M48's own:** `m48/verify.mjs` (from M32's fight orders), 11 of 11 at the three sizes: a fight with Varga's weld (3 uses) on a door tile, the hurt marine and the downed medic beside her; Weld reads "Weld · 3" at 48 px or more; a tap previews "…and patch everyone beside 8 (one down gets up)", spending nothing; the second tap welds, the marine gets 8 back and the medic is up with 8; the log says so; no console errors.
 - **Every earlier milestone's check,** in two chains (`m48/regress-a.sh`, M47's back to M30's; `m48/regress-b.sh`, M29's back to M8's), run one after the other, each the latest adapted copy:
   - **Copy made for M48:** `m30/verify48.mjs`; M30's check pinned the Hallorans' party, and now reads four collectors and two enforcers. 27 of 27 at the three sizes.
-  - REGRESS_B
+  - **M15's check adapted (`m15/verify48.mjs`):** with the raiders keeping the crew in sight, its raid now reaches a Reload while a door beside the crew member is open. At 821 × 283 the fight's order column then holds Close door, Lock door and Weld above Reload, and Reload starts 268 px down a 283 px screen. M15's old tap never scrolled the column; the copy brings the button into reach first, as a player swipes. 30 of 30 at the three sizes.
+  - **All pass,** apart from M32b's first copy, the known exception from M32b's fix (its fix copy passes in its place). Chain B ran to its end inside the two hours.
 
 **Known issues:**
 - **Bosun's weld is still below M40's band** (+2 points). A player who welds next to a downed friend will see more of it than the harness does.
