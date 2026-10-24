@@ -3016,10 +3016,6 @@ textarea {
   height: 40%;
 }
 
-/* The sheet of categories: tiles the part tiles' size, three across. */
-.bld-sheet,
-.bld-palette,
-.bld-look-sheet,
 .bld-name-row {
   grid-column: 1 / -1;
   display: flex;
@@ -3067,6 +3063,10 @@ textarea {
   border: 2px dashed var(--c-ink-dim);
 }
 
+/* The sheet of categories: tiles the part tiles' size, three across. */
+.bld-sheet,
+.bld-palette,
+.bld-look-sheet,
 .bld-look-tiles {
   flex: 1;
   min-height: 0;
