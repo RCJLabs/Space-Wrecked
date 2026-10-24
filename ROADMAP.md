@@ -2488,7 +2488,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **The lander comes down where the ground shows** between the panels, the raiders' edge or as near it as shows (the Build panel covers it at the cover size); a raid at another colony opens its fight at once. The colony's picture is copied under it, not drawn again: drawn each frame it held only 30 fps unfolded.
   - **The sounds' volumes** are set by `tools/sounds.js` to their loudness, which it lists; there's no audition page in the repo.
 
-- [ ] **M52 Identity on the hull.** Item 4 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-24, "Merge and continue when ready"). From §9: a name or a number on the hull and a side's emblem (raised before M4, narrowed in M23f). Item 5 before it, a scanner part, came in with M39 (a scan reaches a link more with one aboard); it is marked done in §9 and left there.
+- [x] **M52 Identity on the hull.** Item 4 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-24, "Merge and continue when ready"). From §9: a name or a number on the hull and a side's emblem (raised before M4, narrowed in M23f). Item 5 before it, a scanner part, came in with M39 (a scan reaches a link more with one aboard); it is marked done in §9 and left there.
 
   Measured first (main after M51):
   - **The player's ship has no name, number or emblem.** Screens say "your ship"; the hull carries paint and trim (M23f) and nothing else. Enemy ships wear their side's paint (M23f) and no mark.
@@ -2502,6 +2502,13 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **The frame budget:** the hangar's ship and the approach hold the frame rate main holds at the three sizes.
   - **Every rule tested;** every earlier milestone's check passes.
   - **Touch, at the three sizes:** a new game named by typing; the name in the hangar, on the chart and on the approach; a rename and an emblem picked in the Look tab; the number and emblem seen on the hull; a patrol's emblem on the approach.
+
+  As built (2026-10-24), where it differs from the above or adds to it:
+  - **The name at New game** is on its last screen (Your game): the name the new game would roll, which Another swaps for the next on the list and the player can type over. A save from before M52 has hers rolled from its seed the first time a screen wants her, the name a new game with that seed would have had.
+  - **Where the number and emblem go:** each on a panel of the hull's paint over the low plating and vents, clear of the tall fittings (guns, domes, masts), at the biggest size that fits; the number as near the bow as it fits, the emblem as near the middle. A roof with no room for one gets none (none of today's presets).
+  - **They are painted over the finished hull,** as the approach's damage marks are (M38b), not sorted with it; the hangar's ship, the builder's hull look and the approach wear them. The colony's landed ship and the lift-off don't.
+  - **The name is shown** in the hangar's heading and the colony's (with "away" while she is), as a line in the chart's Here panel, as her name over her on the approach, and in the end words of a boarding fight and a hangar raid ("falls back to the Wren", "Boarders overran the Wren").
+  - **The Look tab's Name group** holds the name (Rename keeps it) and the emblems as tiles; a rename or an emblem is the campaign's, so the builder's Undo leaves it be.
 
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
