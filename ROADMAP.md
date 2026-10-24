@@ -2448,6 +2448,20 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **The audit** counts a named group or toolbar as named: the builder's parts grid was already a toolbar named Parts.
   - **The captions' strip** is `aria-hidden`, so a screen reader doesn't read the sounds twice.
 
+- [ ] **M50 Deployment and defenses.** Item 7 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-24, "Merge and continue"). From §9: choosing where the crew stands before a raid (raised in M15), starting clear of hazards (M22), and the colony's guns in the fight (M29).
+
+  Measured first (main after M49):
+  - **Where the crew starts:** in a hangar raid, on the bridge nearest its middle; at the colony, the band of open ground by the landed ship. No choice either way.
+  - **Hazards at the start:** every hostile preset (3 seeds each), each room wrecked in turn by fire and by vacuum, deployed both ways (`m50/hazards.mjs`): 320 of 1,468 deployments start someone on a burning or airless tile, 612 units in all. Deployment takes the tiles nearest the bridge or the hatches whatever is on them.
+  - **The colony's guns:** each powered gun emplacement, flak tower or cannon emplacement fires its shots at the lander (50% each) and then stands idle; the fight on the colony's grid has none of them. Raids at the colony won (300 fights each, `tools/raids.js`): the miner 42%, the deserter 40%, the smuggler 42%.
+
+  Done when (my recommendations, taken on Evan's word):
+  - **Placing the crew before a raid:** a raid's fight, at the hangar or the colony, opens with the crew placing: the crew start where they do now, and any can be moved to a lit tile, any tile clear of hazards at least 6 steps' walk from every raider, a tap showing them there and a second tap putting them down, free. Ready (End turn's place while placing) begins the fight; any other order does too. The AI and the test players don't place, so the harness's numbers stand. Saved with the fight (save v45).
+  - **No one starts on a hazard:** every deployment (boardings, trips, raids) takes tiles clear of fire and vacuum first, and a hazard only when there's no other room. The measure above finds 0.
+  - **The colony's guns fight:** each powered gun emplacement, flak tower and cannon emplacement also fights the raid on the colony's grid, as a ship's security turret does (M39): from its building, on the defenders' side, shooting, watching and reloading, wrecked like a turret. Its shots at the lander stand. Raids at the colony re-measured; each background's within 10 points of the miner's (M30's bar), the guns' numbers retuned if not.
+  - **Every rule tested;** every earlier milestone's check passes; the sim runs pasted into PROGRESS; voyage checks that move held within main's 100-seed margins (M31's rule).
+  - **Touch, at the three sizes:** a hangar raid placed by touch (a crew member moved, Ready, the fight on); a colony raid with a gun emplacement standing in it; a boarding with its bridge on fire starting no one in the fire.
+
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
 ### Phase 9: Release (v1.0)
