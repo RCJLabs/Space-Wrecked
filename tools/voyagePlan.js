@@ -184,6 +184,7 @@ import { huntOdds } from '../src/sim/hunt.js';
 import { mapFromShip } from '../src/sim/mapFromShip.js';
 import { stepsFrom } from '../src/sim/moves.js';
 import { openStep } from '../src/sim/quests.js';
+import { colonyPaymentFor, lowProfilePlan } from '../src/sim/pressure.js';
 import { raidIn } from '../src/sim/raids.js';
 import { recruitOffer } from '../src/sim/recruits.js';
 import { repairPrice, wrecksToRepair } from '../src/sim/repair.js';
@@ -191,6 +192,7 @@ import { regroupPlan } from '../src/sim/regroup.js';
 import { dockHeat, jobMoves, jobPay, levelOf, moveStanding, patrolWelcome, priceShare, standingWith, stationSide } from '../src/sim/standing.js';
 import { stationBoard } from '../src/sim/stationJobs.js';
 import { walkable } from '../src/sim/terrain.js';
+import { tradePlan } from '../src/sim/traders.js';
 import { swapPlan, swapPriceOf } from '../src/sim/transponder.js';
 import { failingCheck, holdOf, jumpSupplies, knownNodes, leadsUncharted, leavePlan, linked, reach, supplyCapacity, systemNeeds, tradeHeat, within } from '../src/sim/travel.js';
 import { voyageHomePlan, voyagePlan } from '../src/sim/voyage.js';
@@ -1173,4 +1175,31 @@ export function backCrew(campaign, rules) {
 function stepToward(sector, from, to) {
   const back = within(sector, to, sector.nodes.length);
   return linked(sector, from).sort((a, b) => back.get(a) - back.get(b) || a - b)[0];
+}
+
+// The colony's levers on heat (M53), as the careful player pulls them
+// before a day at home: the next one, or null. It pays the pursuer at the
+// hunters' level while that leaves LEVER_RESERVE credits; lies low at the
+// hunters' level once its farms feed the crew (the mines' digging builds
+// them first), and stops under the rumors' (voyage.js stops it before it
+// flies); sells the friendly side's trader materials past LEVER_MATERIALS,
+// once the farms feed the crew, and buys its part while that leaves
+// LEVER_RESERVE.
+// 'pay', 'low', 'rise', 'sell' or 'buy'.
+export const LEVER_RESERVE = 150;
+export const LEVER_MATERIALS = 40;
+export function leverNow(campaign, rules) {
+  const { huntHeat, rumorHeat } = rules.balance;
+  const heat = campaign.heat;
+  const payment = colonyPaymentFor(campaign, rules);
+  if (payment.ok && heat >= huntHeat && campaign.credits - payment.payment.credits >= LEVER_RESERVE) return 'pay';
+  const fed = colonyStats(campaign, rules).made.food >= campaign.crew.length * rules.balance.jumpSupplies;
+  if (lowProfilePlan(campaign, rules).ok) {
+    if (!campaign.colony.lowProfile && heat >= huntHeat && fed) return 'low';
+    if (campaign.colony.lowProfile && heat < rumorHeat) return 'rise';
+  }
+  const trade = tradePlan(campaign, rules);
+  if (fed && trade.ok && trade.lots.ok && campaign.colony.materials - trade.lots.lot >= LEVER_MATERIALS) return 'sell';
+  if (trade.ok && trade.part?.ok && campaign.credits - trade.part.price >= LEVER_RESERVE) return 'buy';
+  return null;
 }

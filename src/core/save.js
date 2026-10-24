@@ -121,7 +121,7 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  45  deployment: a raid's fight can open with the crew being placed
 //      (battle.setup, M50, placing.js); one under way has begun already,
 //      so it reads as it was
-export const SAVE_VERSION = 46;
+export const SAVE_VERSION = 47;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -594,6 +594,21 @@ export const MIGRATIONS = [
     // before has none until a screen rolls them (identity.js withIdentity).
     from: 45,
     up: (data) => (isObject(data) && isObject(data.campaign) ? { ...data, campaign: { ...data.campaign, identity: data.campaign.identity ?? null } } : data),
+  },
+  {
+    // 46 to 47 (M53): each colony lies low or not, and has a side's trader
+    // there or none; a raid coming keeps the party it was found with, the
+    // pursuer's own.
+    from: 46,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign)) return data;
+      const fresh = (colony) => (isObject(colony) ? { ...colony, lowProfile: colony.lowProfile ?? false, trader: colony.trader ?? null, raid: isObject(colony.raid) ? { extra: 0, ...colony.raid } : colony.raid } : colony);
+      const { colony, colonies } = data.campaign;
+      const campaign = { ...data.campaign };
+      if (isObject(colony)) campaign.colony = fresh(colony);
+      if (Array.isArray(colonies)) campaign.colonies = colonies.map(fresh);
+      return { ...data, campaign };
+    },
   },
 ];
 

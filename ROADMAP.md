@@ -2510,6 +2510,24 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **The name is shown** in the hangar's heading and the colony's (with "away" while she is), as a line in the chart's Here panel, as her name over her on the approach, and in the end words of a boarding fight and a hangar raid ("falls back to the Wren", "Boarders overran the Wren").
   - **The Look tab's Name group** holds the name (Rename keeps it) and the emblems as tiles; a rename or an emblem is the campaign's, so the builder's Undo leaves it be.
 
+- [ ] **M53 Colony pressure and levers.** Item 9 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-24, "Merge and continue when ready"). From §9: a raid that grows with heat (raised in M29), shedding heat at the colony (M29), and the sides in act 3 (M33).
+
+  Measured first (main after M52, `tools/voyage.js --runs 30 --background all`):
+  - **Raids are rare and mostly won:** 17 to 18 colony raids over 30 runs a background, won 15 or 16 of each; the pursuer finds the colony 1.5% to 1.8% a day before the background's quest pays off.
+  - **The party is fixed:** the pursuer's four (Con-Reg), three (the Provost) or five (the Hallorans), whatever the heat. The start crew alone beats it about 41% of the time at a bare colony (`tools/raids.js`).
+  - **Only the days cool the colony:** 1 heat a day, and down to 40 after a raid. Act 1's payment (Con-Reg 50 credits for 15 heat, the Hallorans 75) can't be made there.
+  - **The sides do nothing in act 3:** standing moves by a few points from the launch to the landing, and nothing at the colony reads it.
+
+  Done when (my recommendations, taken on Evan's word):
+  - **A raid that grows with heat:** at the hunters' level one raider more than the pursuer's party, at a task force two more, cornered three, the extras from the pursuer's own fighters; the warning and Defend's first tap say how many come.
+  - **Lying low:** a colony toggle. While it is on, no trip or voyage flies and the mines and solar arrays stand idle (farms still grow), and heat falls 3 a day instead of 1. The colony screen says what it costs and what it gives.
+  - **A payment from the colony:** the background's act 1 payment (none for the deserter) can be made from the colony screen at its price, two taps.
+  - **A side's trader calls:** while the crew is friendly with a side, its trader calls at the colony every 10 days for a day: it buys materials for credits and sells one part from its side's stock. Its line says when it comes next; a side the crew isn't friendly with sends none.
+  - **Measured:** the careful test player uses the levers (lies low when the colony is at the hunters' level, pays when it can, trades with a trader); over 100 runs a background, raids won and runs lost against main's, and how often each lever was used. Win rates in the voyage tests stay inside their margins of main's (M31's rule).
+  - **Save:** v47 (lying low and the traders' next calls; a save from before has neither).
+  - **Every rule tested;** every earlier milestone's check passes.
+  - **Touch, at the three sizes:** a raid's warning with its count; Lie low on and off; a payment from the colony; a trader's call, a sale and a buy.
+
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
 ### Phase 9: Release (v1.0)

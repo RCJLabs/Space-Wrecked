@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "4192a566c72c";
+const VERSION = "89eab9e36193";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -189,6 +189,7 @@ const FILES = [
   "src/sim/patch.js",
   "src/sim/placing.js",
   "src/sim/press.js",
+  "src/sim/pressure.js",
   "src/sim/questShape.js",
   "src/sim/quests.js",
   "src/sim/racks.js",
@@ -217,6 +218,7 @@ const FILES = [
   "src/sim/survey.js",
   "src/sim/talents.js",
   "src/sim/terrain.js",
+  "src/sim/traders.js",
   "src/sim/traits.js",
   "src/sim/transponder.js",
   "src/sim/travel.js",
@@ -249,6 +251,7 @@ const FILES = [
   "src/ui/campaign/captainText.js",
   "src/ui/campaign/carried.js",
   "src/ui/campaign/colony.js",
+  "src/ui/campaign/colonyLevers.js",
   "src/ui/campaign/colonyListText.js",
   "src/ui/campaign/colonyStand.js",
   "src/ui/campaign/colonyText.js",
@@ -274,6 +277,7 @@ const FILES = [
   "src/ui/campaign/newsText.js",
   "src/ui/campaign/over.js",
   "src/ui/campaign/overText.js",
+  "src/ui/campaign/pressureText.js",
   "src/ui/campaign/questText.js",
   "src/ui/campaign/raidText.js",
   "src/ui/campaign/sector.js",

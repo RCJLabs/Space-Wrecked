@@ -45,6 +45,7 @@ import { colonyEdge } from './edges.js';
 import { tally } from './flags.js';
 import { healCrew, healRate } from './medbay.js';
 import { downText, foundOdds, raidDayEnd, raidDown } from './raids.js';
+import { traderAfter } from './traders.js';
 import { jumpSupplies } from './travel.js';
 
 // More days than a colony will see: a guard on what a save can hold.
@@ -193,7 +194,10 @@ function passPlanned(campaign, rules, plan) {
   const grown = { ...campaign.colony, day: plan.day + 1, materials: plan.materials[1], citizens: citizens.after, growth: citizens.growth[1] };
   const kind = citizens.after > citizens.now ? 'grew' : citizens.after < citizens.now ? 'left' : null;
   const away = Boolean(campaign.colony.voyage || campaign.colony.trip);
-  const colony = !away ? { ...grown, news: [] } : kind ? withNews(grown, { day: plan.day, kind, citizens: citizens.after }) : grown;
+  // A side's trader calls (M53, traders.js) at the colony the ship is
+  // landed at, for the day that begins.
+  const traded = { ...grown, trader: away ? null : traderAfter(campaign, rules, plan.day + 1) };
+  const colony = !away ? { ...traded, news: [] } : kind ? withNews(traded, { day: plan.day, kind, citizens: citizens.after }) : traded;
   const counted = kind ? tally(flags, { [kind === 'grew' ? 'citizensGrown' : 'citizensLeft']: 1 }) : flags;
   const changed = hurt || healed ? crew : campaign.crew;
   const ended = raidDayEnd(campaign, { ...campaign, supplies: plan.food[1], crew: changed, colony, flags: counted }, rules);
@@ -212,7 +216,9 @@ function othersDay(campaign, rules) {
     const plan = planDay(there, rules);
     if (!plan.ok) continue;
     const day = passPlanned(there, rules, plan);
-    now = thereFrom(now, { ...day.campaign, flags: tally(day.campaign.flags, { othersDays: 1, othersHungryDays: plan.fed ? 0 : 1, othersRaidsFound: day.found ? 1 : 0 }) });
+    // No trader calls where the ship isn't (M53).
+    const quiet = { ...day.campaign, colony: { ...day.campaign.colony, trader: null } };
+    now = thereFrom(now, { ...quiet, flags: tally(day.campaign.flags, { othersDays: 1, othersHungryDays: plan.fed ? 0 : 1, othersRaidsFound: day.found ? 1 : 0 }) });
   }
   return now;
 }

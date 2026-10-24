@@ -761,10 +761,12 @@ test("the colony's days: the careful player plays 30, building farms and mines b
     assert.deepEqual(home.colony.buildings.map((b) => b.type), [...colony.given, ...put]);
     assert.equal(days.farms + days.mines, days.built.length);
     // The materials it had, dug and spent add up, the stores keeping the
-    // rest and lost raids taking theirs (M29).
+    // rest, lost raids taking theirs (M29) and a trader buying its lots
+    // (M53).
     const spent = days.built.reduce((sum, b) => sum + rules.colony.builds.get(b.type).cost, 0);
+    const sold = (home.flags.traderSales ?? 0) * balance.traderLot;
     assert.equal(home.flags.materialsSpent ?? 0, spent);
-    assert.equal(days.materials[1], days.materials[0] + (home.flags.materialsDug ?? 0) - spent - (home.flags.materialsLost ?? 0) - (home.flags.raidMaterialsTaken ?? 0), `seed ${seed}: materials add up`);
+    assert.equal(days.materials[1], days.materials[0] + (home.flags.materialsDug ?? 0) - spent - sold - (home.flags.materialsLost ?? 0) - (home.flags.raidMaterialsTaken ?? 0), `seed ${seed}: materials add up`);
     assert.ok(days.materials[1] <= days.stores && days.food[1] <= days.stores);
     // Nobody died of hunger: the crew is the one that landed.
     assert.deepEqual(home.crew.map((m) => m.id), trip.campaign.crew.map((m) => m.id));
@@ -845,7 +847,9 @@ test("the colony's raids: over its 60 days the careful player stays home while o
     assert.equal(travelled.flags.colonyRaidsWon ?? 0, raids.faced.filter((raid) => raid.won).length);
     assert.equal(travelled.flags.colonyRaidsLost ?? 0, raids.faced.filter((raid) => !raid.won).length);
     for (const raid of raids.faced) {
-      assert.ok(raid.landed + raid.stopped === 4 && raid.home >= 0, `seed ${seed}: a raid of 4`);
+      // Four, the pursuer's party, and from M53 one to three more as heat
+      // has it.
+      assert.ok(raid.landed + raid.stopped === raid.party && raid.party >= 4 && raid.party <= 7 && raid.home >= 0, `seed ${seed}: a raid of 4 to 7`);
       // A raid is won only with every raider stopped or beaten; a lost one
       // takes, a won one doesn't.
       assert.equal(raid.taken === null, raid.won);

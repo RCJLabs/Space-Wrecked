@@ -59,6 +59,7 @@ import { withPlaces } from './expeditions.js';
 import { tally } from './flags.js';
 import { withHeat } from './heat.js';
 import { downText, raidDown } from './raids.js';
+import { LOW_PROFILE } from './pressure.js';
 import { enterBeyond, growsOf, holdOf, homewardDay, jumpHeatOf, jumpSupplies, onTheRun, onwardCosts, supplyCapacity, waitIn } from './travel.js';
 
 // What flying out with crew (ids) would come to: { ok, error (why the ship
@@ -77,6 +78,7 @@ export function voyagePlan(campaign, rules, crew) {
   if (!atColony(campaign, rules) || !campaign.run) return { ok: false, error: 'Voyages leave from the colony.' };
   if (campaign.colony.trip) return { ok: false, error: 'The ship is away already.' };
   if (raidDown(campaign)) return { ok: false, error: downText(campaign, rules) };
+  if (campaign.colony?.lowProfile) return { ok: false, error: LOW_PROFILE };
   const picked = new Set(Array.isArray(crew) ? crew : []);
   if (!picked.size) return { ok: false, error: 'Pick who goes: one or more.' };
   if (picked.size !== crew.length || ![...picked].every((id) => campaign.crew.some((member) => member.id === id))) return { ok: false, error: 'Pick who goes from the crew.' };

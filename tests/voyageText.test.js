@@ -96,7 +96,7 @@ test("the colony's panel on the chart while the ship is away: its day, its food,
   assert.equal(panel.rows[3][0], 'Found');
   assert.equal(panel.tone, 'info');
   const coming = colonyPanelText(landing(away, away.colony.day + 2), rules);
-  assert.deepEqual(coming.rows[3], ['Raid', 'Lander in 2 days']);
+  assert.deepEqual(coming.rows[3], ['Raid', 'Lander in 2 days · 4 raiders']);
   assert.equal(coming.tone, 'bad');
   assert.deepEqual(colonyPanelText(landing(away, away.colony.day), rules).rows[3], ['Raid', 'Lander down: defend']);
 });
