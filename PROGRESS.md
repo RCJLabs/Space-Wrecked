@@ -2,6 +2,68 @@
 
 Newest entry first.
 
+## M53 Colony pressure and levers (2026-10-24)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met but one, cut on purpose: lying low idles the mines only, not the solar arrays (below). Saves move to v47 (a colony from before neither lies low nor has a trader; a raid already coming keeps the pursuer's party as it was).
+
+**How it was picked:** item 9 of the Phase 8 brainstorm, next in my order, on Evan's "Merge and continue when ready". Measured first on main after M52 (`tools/voyage.js --background all --runs 30`):
+- **Raids were rare and mostly won:** 17 to 18 a background over 30 runs, 15 or 16 of them won.
+- **The raiding party was fixed:** the pursuer's four, three or five, whatever the heat.
+- **Only the days cooled the colony:** 1 heat a day. Act 1's payment couldn't be made there.
+- **The sides did nothing in act 3.**
+
+**What shipped:**
+- **A raid that grows with heat** (`src/sim/raids.js` raidExtra, raidParty, raidersOf): found at the hunters' level, one raider more than the pursuer's party; at a task force two; cornered three. The extras are the party's own fighters in turn. The count is fixed when the raid is found (`colony.raid.extra`), so the warning's number holds. The needs' line ("Lander in 3 days · 6 raiders"), the hint ("with 6 raiders, 2 more for the heat it was found at") and Defend's first tap say how many.
+- **Lying low** (`src/sim/pressure.js`, `colony.lowProfile`): a toggle under Heat on the colony's right-hand panel, two taps each way. While it is on, no trip, voyage or flight to another colony leaves, the mines dig nothing, and heat falls 3 a day instead of 1 (`lowProfileFall`). The farms grow and the guns stand.
+- **A payment from the colony:** the pursuer's act 1 terms (Con-Reg 50 credits for 15 heat, the Hallorans 75; the Provost takes none, so no row for the deserter), with the ship landed, two taps.
+- **The sides' traders** (`src/sim/traders.js`): while the crew is friendly or better with a side, its trader calls at the colony the ship is landed at every 10 days, on its side's own day, and stays the day. It buys materials (10 a lot for 15 credits, 3 lots a call) and sells one part of its side's yard's maker, picked by its own seed, at the side's price. With none here, the panel says who calls next and on which day. None calls on a trip or a voyage, or at another colony.
+- **Save v47:** `colony.lowProfile`, `colony.trader` (`{ side, day, part, bought, sold }` or null), `colony.raid.extra`; the migration sets false, null and 0.
+- **Sounds:** the four new actions make the confirm sound, as the hangar's payment does.
+
+**Measurements** (`tools/voyage.js --background all --runs 100`, main against this branch, the careful test player pulling the levers over the colony's first days: it lies low at the hunters' level and stops under the rumors', pays while 150 credits stay, sells materials over 40, and buys the trader's part while 150 credits stay):
+
+| | raids, main | won | runs lost | raids, M53 | won | runs lost |
+|---|---|---|---|---|---|---|
+| Debt-bound miner | 49 | 47 | 2 | 33 | 28 | 5 |
+| Navy deserter | 79 | 73 | 5 | 44 | 36 | 7 |
+| Burned smuggler | 48 | 45 | 3 | 30 | 29 | 1 |
+
+- **Levers pulled (runs, times):** the miner paid in 1 (1), lay low in 41 (41) for 485 days, sold to a trader in 5 (25), bought its part in 13 (16). The deserter paid in 0, lay low in 48 for 597 days, sold in 1 (1), bought in 6 (8). The smuggler paid in 5 (5), lay low in 26 for 293 days, sold in 18 (68), bought in 19 (31).
+- **What it comes to:** lying low cuts the raids by a third to a half. The raids that still come are bigger, and win less often: the miner's 96% to 85%, the deserter's 92% to 82%; the smuggler's (the Hallorans, already five strong) 94% to 97%. Runs lost go up 3 for the miner and 2 for the deserter, down 2 for the smuggler. This is the pressure the item asked for; whether it is too much is Evan's call (below).
+- **Payments are rare** for the test player: it seldom holds 200 credits at the colony. The traders call in about a third of runs, where a side is friendly by the landing.
+
+**Done when** (ROADMAP.md, M53), and how each is met:
+- **A raid that grows with heat:** `tests/pressure.test.js` (the extra at each level, the party cycled, a raid down brings it, a save from before brings the party as it was); `m53/verify.mjs` (the needs and the hint count them).
+- **Lying low:** the pressure tests (nothing flies, the mines dig nothing, the farms grow, heat falls 3 a day and 1 again once off); `m53/verify.mjs` (on and off in two taps each, the first saying what it costs, a trip refused while it is on). **Cut:** the solar arrays stay lit. They are the colony's power, and switching them off dims the guns and the shield a raid needs; the mines alone make it cost something.
+- **A payment from the colony:** the pressure tests (its price, landed only, none for the Provost); `m53/verify.mjs` (two taps, credits 300 to 250, heat down 15).
+- **A side's trader calls:** the pressure tests (the friendly sides, the day of every 10, the part from its maker, a sale, a buy, the days bringing it); `m53/verify.mjs` (the next call's line, a sale and a buy).
+- **Measured:** the table above. The voyage tests pass inside their margins of main's (`MAIN` in `tests/voyage.test.js`) unchanged.
+- **Save v47; every rule tested;** touch at the three sizes, `m53/verify.mjs`.
+
+**Tests:**
+- `node --test`: TESTCOUNT pass (1246 on main).
+- **New:** `tests/pressure.test.js` (7).
+- **Changed on purpose:** the save version pins (46 to 47) and the migrations' expected colonies (`lowProfile`, `trader`); raids' expectations carry their `extra`; `tests/voyage.test.js` holds a faced raid's landed and stopped to its party (4 to 7) instead of the fixed party.
+
+**Browser checks:**
+- **M53's own:** `m53/verify.mjs`, 17 of 17 at the three sizes.
+- **Every earlier milestone's check,** in three chains run one after the other (`m53/regress-a.sh`, M52's back to M30's; `m53/regress-b1.sh`, M29's to M23's; `m53/regress-b2.sh`, M22's to M8's), with the 23 copies that pin the save version moved 46 to 47 (`verify53.mjs`, each diffed against its source: only the version changed).
+  - REGRESSRESULT
+
+**Known issues:**
+- **Heat sits at the foot of the right-hand panel,** under Build, Fly out and Voyage: on the cover screen it takes a scroll to reach.
+- **A trip planned while lying low** opens its plan and then refuses at Fly out; the places' rows don't say so beforehand.
+- **The trader buys at a fixed price** and sells one part a call, whatever the colony has; a busier market is for later.
+- **The test player pulls the levers over the colony's first days only,** not on its later days or at the second colony.
+
+**What Evan should test on the phone:**
+- **A raid at a task force's heat:** is "6 raiders, 2 more for the heat it was found at" clear, and does the fight feel harder in the right way?
+- **Lie low:** is the cost clear from the first tap, and is 3 a day the right pace?
+- **The trader:** does it turn up often enough to notice, and is 15 credits a lot worth the materials?
+- **The balance:** raids won fall from 92–96% to 82–85% for the miner and the deserter. Keep it, or soften the extras (`raidExtraHunters`, `raidExtraTaskForce`, `raidExtraCornered` in `data/balance.json`)?
+
+**Next milestone's first task:** M54, item 8 of the brainstorm (a colony layout that matters: neighbours, the storehouse and workshop chain, survivors settling as citizens): study it, measure, write the Done when.
+
 ## M52 Identity on the hull (2026-10-24)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves move to v46 (a save from before gets her name and number when a screen first wants them).

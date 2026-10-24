@@ -163,3 +163,24 @@ test('save v47: a colony from before neither lies low nor has a trader, and a ra
   const broken = parseSave(JSON.stringify(makeSave({ ...initialState(2), campaign: { ...low, colony: { ...low.colony, lowProfile: 'yes' } } })));
   assert.equal(broken.ok, false);
 });
+
+test('the colony screen\'s words for the levers: Lie low, Pay, the trader and the next call', async () => {
+  const { lowProfileRow, paymentRow, traderText } = await import('../src/ui/campaign/pressureText.js');
+  const colony = { ...settled(1, { heat: 60 }), credits: 200 };
+  const low = lowProfileRow(colony, rules);
+  assert.equal(low.name, 'Lie low');
+  assert.match(low.detail, new RegExp(`Heat falls ${balance.lowProfileFall} a day`));
+  assert.equal(lowProfileRow(setLowProfile(colony, rules, true).campaign, rules).name, 'Stop lying low');
+  const pay = paymentRow(colony, rules);
+  assert.equal(pay.ok, true);
+  assert.match(pay.ask, /Tap again to pay/);
+  assert.equal(paymentRow({ ...colony, background: 'deserter' }, rules), null);
+  const friendly = { ...colony, standing: { ...colony.standing, union: balance.friendlyStanding } };
+  assert.match(traderText(friendly, rules).note, /trader calls on day \d+/);
+  assert.equal(traderText(friendly, rules).rows.length, 0);
+  const day = nextCall(friendly, rules, 1).day;
+  const here = { ...friendly, colony: { ...friendly.colony, materials: 30, trader: traderAfter(friendly, rules, day) } };
+  const text = traderText(here, rules);
+  assert.deepEqual(text.rows.map((row) => row.key), ['sell', 'buy']);
+  assert.equal(text.rows[0].ok, true);
+});

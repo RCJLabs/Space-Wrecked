@@ -32,7 +32,9 @@
 // (colonyVoyage.js), and the chart takes over while the ship is away. From
 // M38f its citizens are a line of the needs, and landed again, the hint
 // tells what happened while the ship was away (newsText.js), till the
-// first day passes. The campaign is saved after every change, so Continue
+// first day passes. From M53 Heat follows them: Lie low and a payment to
+// the pursuer, and the friendly side's trader when one is here
+// (colonyLevers.js). The campaign is saved after every change, so Continue
 // on the title comes back here.
 import { loadContent } from '../../platform/content.js';
 import { buildPlan, build, movePlan, takeDown, takeDownPlan, turnedSpot } from '../../sim/colonyBuild.js';
@@ -53,6 +55,7 @@ import { cue } from '../../platform/audio.js';
 import { createTrips } from './colonyTrip.js';
 import { takeCarried } from './carried.js';
 import { createVoyages } from './colonyVoyage.js';
+import { createLevers } from './colonyLevers.js';
 import { createCrewCard } from './crewCard.js';
 import { crewCardText, crewSaid } from './crewText.js';
 import { crewRows, heatChip, listRows, questRows, sideRows } from './hubParts.js';
@@ -160,6 +163,19 @@ export const colonyScreen = {
       refresh: () => alive && render(true),
       cancelTrips: () => trips.cancel(),
     });
+    const levers = createLevers({
+      game,
+      defs: () => defs,
+      rowButton,
+      list,
+      armed: () => armed,
+      arm,
+      disarm,
+      say: (words) => {
+        said = words;
+      },
+      refresh: () => alive && render(true),
+    });
     const stand = createStand(sceneArea, { onTap: tapScene, onHold: holdScene });
     const cleanups = [
       onTap(titleButton, () => game.dispatch({ type: 'screen/show', screen: 'title' })),
@@ -264,7 +280,7 @@ export const colonyScreen = {
       defendButton.dataset.armed = String(armed === 'defend');
       refitButton.disabled = away;
 
-      const tripArmed = armed !== null && !['day', 'defend', 'down', 'voyage'].includes(armed) && !armed.startsWith('arm:');
+      const tripArmed = armed !== null && !['day', 'defend', 'down', 'voyage'].includes(armed) && !armed.startsWith('arm:') && !levers.owns(armed);
       const defend = armed === 'defend' ? defendText(campaign, defs) : null;
       const words = crewAsk ? crewAsk
         : armed === null && crew ? crew.hint
@@ -272,6 +288,7 @@ export const colonyScreen = {
         : defend ? (defend.ok ? { text: defend.ask, tone: 'warn' } : { text: defend.why, tone: 'bad' })
         : armed === 'down' ? takeDownText(takeDownPlan(campaign, defs, mode.uid))
         : armed === 'voyage' ? voyages.hint(campaign)
+        : levers.owns(armed) ? levers.hint(campaign) ?? { text: '', tone: 'info' }
         : (tripArmed ? trips.hint(campaign) : null) ?? said ?? (down ? raidHint(campaign, defs) : null) ?? voyages.hint(campaign) ?? trips.hint(campaign) ?? (plan?.same ? { text: `Tap the grid where the ${lowerFirst(buildingName(mode.type, defs))} should go, or turn it.`, tone: 'info' }
           : plan ? placeText(plan, { moving: mode.uid !== null })
           : mode.kind === 'look' ? buildingInfo(text.buildings.find((b) => b.uid === mode.uid))
@@ -376,7 +393,7 @@ export const colonyScreen = {
       }
       // Build first, the colony's first work (M43); then the places and the
       // voyage out.
-      const sections = [node('h2', null, 'Build'), list(text.builds.map((row) => rowButton(row.name, row.ok ? `${row.cost} materials · ${row.makes}` : row.why, row.ok, () => tapRow(row, 'build'))), 'cln-builds'), ...trips.placesSection(campaign), ...voyages.section(campaign)];
+      const sections = [node('h2', null, 'Build'), list(text.builds.map((row) => rowButton(row.name, row.ok ? `${row.cost} materials · ${row.makes}` : row.why, row.ok, () => tapRow(row, 'build'))), 'cln-builds'), ...trips.placesSection(campaign), ...voyages.section(campaign), ...levers.section(campaign)];
       if (text.hold.length) sections.push(node('h2', null, 'From the hold'), list(text.hold.map((row) => rowButton(row.name, row.ok ? `${row.building} · ${row.gives}` : row.why, row.ok, () => tapRow(row, 'hold'), row.count))));
       sections.push(node('h2', null, 'From the ship'), list(text.parts.map((row) => rowButton(row.name, row.ok ? `${row.building} · ${row.gives}` : row.why, row.ok, () => tapRow(row, 'ship'), row.count))));
       side.replaceChildren(...sections);
@@ -417,7 +434,8 @@ export const colonyScreen = {
       button.append(title, node('small', null, detail));
       button.setAttribute('aria-label', `${name}: ${detail}`);
       item.append(button);
-      rowButtons.push(onTap(button, handler));
+      // A handler that takes the press arms on its first tap (M47).
+      rowButtons.push(onTap(button, handler, { confirm: handler.length > 0 }));
       return item;
     }
 

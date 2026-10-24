@@ -130,6 +130,8 @@ import { buildingOf, colonyStats, donate, storesOf } from '../src/sim/colony.js'
 import { build } from '../src/sim/colonyBuild.js';
 import { crewRoom } from '../src/sim/crew.js';
 import { dayPlan, nextDay } from '../src/sim/days.js';
+import { payFromColony, setLowProfile } from '../src/sim/pressure.js';
+import { buyFromTrader, sellToTrader } from '../src/sim/traders.js';
 import { chooseAtPlace, flyHome, flyOn, flyOut, tripHere, withPlaces } from '../src/sim/expeditions.js';
 import { flightChecklist } from '../src/sim/constraints.js';
 import { indexDefs } from '../src/sim/defs.js';
@@ -165,7 +167,7 @@ import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
 import { withPart } from './startShip.js';
-import { backCrew, bestChoice, boardIt, foodReserve, HEAT_POLICIES, hireWho, homeBuild, homeNow, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, settleMove, STOCK_DAYS, STOCK_SHARE, stationJobPick, stockFor, swapNow, systemMove, tradeHere, tripSquad, voyageCrew, worldScore, yardBuy } from './voyagePlan.js';
+import { backCrew, bestChoice, leverNow, boardIt, foodReserve, HEAT_POLICIES, hireWho, homeBuild, homeNow, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, settleMove, STOCK_DAYS, STOCK_SHARE, stationJobPick, stockFor, swapNow, systemMove, tradeHere, tripSquad, voyageCrew, worldScore, yardBuy } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
@@ -930,8 +932,10 @@ export function afterVoyage(campaign, defs, before) {
 // type, name }], in order), fedOn (the first day its farms fed the crew,
 // what they grow a day covering what the crew eats, or null), hungry
 // (hungry days), farms, mines, food and materials ([at the landing, at the
-// end]), stores (at the end), healed, hurt }, raids ({ faced, set }:
-// raidsLog's) }.
+// end]), stores (at the end), healed, hurt, levers (pullLevers') }, raids
+// ({ faced, set }: raidsLog's) }. From M53 it pulls the colony's levers on
+// heat before each day as leverNow says (pullLevers), and stops lying low
+// at the end, so the ship can fly.
 export function playColony(campaign, defs, days = COLONY_DAYS) {
   const built = [];
   const raids = raidsLog();
@@ -939,7 +943,10 @@ export function playColony(campaign, defs, days = COLONY_DAYS) {
   let fedOn = null;
   let healed = 0;
   let hurt = 0;
+  const levers = { pay: 0, low: 0, rise: 0, sell: 0, buy: 0, lowDays: 0 };
   for (let n = 0; n < days; n++) {
+    campaign = pullLevers(campaign, defs, levers);
+    if (campaign.colony.lowProfile) levers.lowDays++;
     for (let what = nextBuild(campaign, defs); what; what = nextBuild(campaign, defs)) {
       const done = build(campaign, defs, what);
       if (!done.ok) throw new Error(done.error);
@@ -955,6 +962,7 @@ export function playColony(campaign, defs, days = COLONY_DAYS) {
     healed += day.healed;
     hurt += day.hurt;
   }
+  if (campaign.colony.lowProfile) campaign = setLowProfile(campaign, defs, false).campaign;
   const count = (makes) => campaign.colony.buildings.filter((b) => defs.colony.builds.get(b.type)?.makes === makes).length;
   return {
     campaign,
@@ -969,9 +977,30 @@ export function playColony(campaign, defs, days = COLONY_DAYS) {
       stores: storesOf(campaign, defs).total,
       healed,
       hurt,
+      levers,
     },
     raids,
   };
+}
+
+// The colony's levers (M53), pulled as leverNow says until it says none,
+// each counted in levers ({ pay, low, rise, sell, buy, lowDays }).
+// Returns the campaign.
+const LEVERS = {
+  pay: (campaign, defs) => payFromColony(campaign, defs),
+  low: (campaign, defs) => setLowProfile(campaign, defs, true),
+  rise: (campaign, defs) => setLowProfile(campaign, defs, false),
+  sell: (campaign, defs) => sellToTrader(campaign, defs),
+  buy: (campaign, defs) => buyFromTrader(campaign, defs),
+};
+function pullLevers(campaign, defs, levers) {
+  for (let n = 0, what = leverNow(campaign, defs); what && n < 10; n++, what = leverNow(campaign, defs)) {
+    const done = LEVERS[what](campaign, defs);
+    if (!done.ok) throw new Error(done.error);
+    levers[what]++;
+    campaign = done.campaign;
+  }
+  return campaign;
 }
 
 // What the raids came to, as the test player keeps it (M29): faced ([{
@@ -1605,6 +1634,7 @@ export function voyagesByBackground(defs, runs, options = {}) {
       standing: standingMedians(defs, done),
       quests: questCounts(defs, done),
       companions: companionCounts(defs, done),
+      levers: leverCounts(done),
     };
   });
   const width = Math.max(...rows.map((row) => row.name.length), 10);
@@ -1619,8 +1649,24 @@ export function voyagesByBackground(defs, runs, options = {}) {
     ...rows.map((row) => `${row.name.padEnd(width)}  ${questsLine(row.quests)}`),
     "The companions (M33c), each met at their chain's step, signed on, and loyal by the end:",
     ...rows.map((row) => `${row.name.padEnd(width)}  ${companionsLine(row.companions)}`),
+    "The colony's levers on heat (M53), over its first days: runs that pulled each, and how often:",
+    ...rows.map((row) => `${row.name.padEnd(width)}  ${leversLine(row.levers)}`),
   ];
   return { lines, rows };
+}
+
+// The colony's levers in voyages that played its days (M53): for each,
+// the runs that pulled it and the times in all; lowDays the days it lay
+// low.
+export function leverCounts(done) {
+  const played = done.filter((r) => r.tally.days?.levers);
+  const of = (key) => ({ runs: played.filter((r) => r.tally.days.levers[key] > 0).length, times: played.reduce((sum, r) => sum + r.tally.days.levers[key], 0) });
+  return { played: played.length, pay: of('pay'), low: of('low'), sell: of('sell'), buy: of('buy'), lowDays: of('lowDays') };
+}
+
+function leversLine(levers) {
+  const said = (name, { runs, times }) => `${name} in ${runs} (${times})`;
+  return `${said('paid', levers.pay)}, ${said('lay low', levers.low)} for ${levers.lowDays.times} days, ${said('sold to a trader', levers.sell)}, ${said('bought its part', levers.buy)}; of ${levers.played} colonies`;
 }
 
 // What came of the companions in voyages that launched (M33c), each in the
