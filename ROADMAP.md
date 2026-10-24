@@ -2467,7 +2467,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **The colony's gun** is one emplacement for every gun building (`data/colony.json` `gun`: 10 hit points, 55 aim, 2 armor, an autogun). A tapped gun says it "stays where it is built".
   - **The guns' raids weren't retuned:** with guns the backgrounds are as far apart as they were on main (one gun: 66 / 50 / 40, main 65 / 49 / 36), a spread from the landing shots against each party's size; with none, they stay within M30's 10 points.
 
-- [ ] **M51 Juice.** Item 12 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-24, "Merge and continue when ready"). From §9: the camera following an enemy turn (raised in M8), the raid's landing seen (M29), and more sounds (M35). The landing over the world itself (M25) came in with M34's scenes.
+- [x] **M51 Juice.** Item 12 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-24, "Merge and continue when ready"). From §9: the camera following an enemy turn (raised in M8), the raid's landing seen (M29), and more sounds (M35). The landing over the world itself (M25) came in with M34's scenes.
 
   Measured first (main after M50):
   - **Tiles at the fight's opening camera** (`m51/tiles.mjs`, cover / tab / open): the start ship's kind 53 to 63 px; the hauler 27 / 20 / 47, the yacht 32 / 28 / 34, the corvette 36 / 28 / 39; job sites 44 / 34 / 48; the colony 30 / 23 / 33. Under 48 px a player zooms in to tap (CLAUDE.md).
@@ -2482,6 +2482,11 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **The frame budget:** an enemy turn playing out, and the landing, hold the frame rate main holds in Chromium at the three sizes.
   - **Every rule tested;** every earlier milestone's check passes; no save change.
   - **Touch, at the three sizes:** an enemy turn on the colony with the view zoomed in, the camera following and coming back; Defend's landing played and skipped; a weld's and a win's sounds (and their captions) heard.
+
+  As built (2026-10-24), where it differs from the above or adds to it:
+  - **The follow keeps what moves 48 px in from the board's edges;** a drag, pinch, zoom, turn or Fit takes the view back at once; an enemy hidden in the fog isn't followed.
+  - **The lander comes down where the ground shows** between the panels, the raiders' edge or as near it as shows (the Build panel covers it at the cover size); a raid at another colony opens its fight at once. The colony's picture is copied under it, not drawn again: drawn each frame it held only 30 fps unfolded.
+  - **The sounds' volumes** are set by `tools/sounds.js` to their loudness, which it lists; there's no audition page in the repo.
 
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
