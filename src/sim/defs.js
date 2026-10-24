@@ -35,6 +35,9 @@ export function indexDefs(files) {
     stylingGroups: styling?.groups ?? [],
     paints: byId(styling?.paints),
     trims: byId(styling?.trims),
+    // The emblems a hull can wear (M52), each a drawing in code
+    // (render/emblems.js); those offered the player's to pick in the Look.
+    emblems: byId(styling?.emblems),
     // Battles: what each kind of tile does, the weapons, and who fights:
     // crew by their job, and enemies.
     tileRules: tiles?.tiles ?? {},
@@ -62,6 +65,8 @@ export function indexDefs(files) {
     // rocks nearby, each client and site in clients and sites with the
     // districts'.
     acts: new Map((campaign?.acts ?? []).map((act) => [act.act, act])),
+    // The names a new ship can be given (M52, identity.js).
+    shipNames: campaign?.shipNames ?? [],
     backgrounds: byId(backgrounds?.backgrounds),
     districts: byId(districts?.districts),
     clients: byId([...(districts?.districts ?? []).flatMap((district) => district.clients ?? []), ...(docks?.clients ?? [])]),

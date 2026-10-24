@@ -9,6 +9,7 @@ import { heldProblems, lookProblems } from '../src/render/figures/looks.js';
 import { MARKED } from '../src/render/exterior.js';
 import { hullStyleProblems } from '../src/render/hullShape.js';
 import { paints as PAINT_COLORS, skins as SKINS, trims as TRIM_COLORS } from '../src/render/palette.js';
+import { EMBLEMS } from '../src/render/emblems.js';
 import { MODELED } from '../src/render/pieces.js';
 import { AIMS } from '../src/sim/approach.js';
 import { DEFAULT_HULL, DEFAULT_PAINT, DEFAULT_TRIM } from '../src/sim/builder.js';
@@ -55,7 +56,7 @@ const UNIT_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'w
 // Styling (M23f, src/sim/styling.js): a piece's footprint is up to this many
 // cells a side, and a frame takes up to this many pieces (a blueprint code
 // counts them in a byte).
-const STYLING_KEYS = ['groups', 'pieces', 'paints', 'trims'];
+const STYLING_KEYS = ['groups', 'pieces', 'paints', 'trims', 'emblems'];
 const PIECE_KEYS = ['id', 'name', 'group', 'size', 'turns', 'shape'];
 const SHAPES = ['wedge', 'curve'];
 const MAX_PIECE_SIZE = 4;
@@ -632,6 +633,18 @@ function checkStyling(file, moduleIds, fail) {
     });
     if (!ids.has(first)) fail('styling.json', `${key} must have "${first}": ships from before paint have it`);
   }
+  // The emblems (M52): each a drawing in src/render/emblems.js; those
+  // offered, the player's to pick.
+  const emblems = listOf(file, 'emblems', 'styling.json', fail);
+  uniqueIds(emblems, 'styling.json emblems', fail);
+  emblems.forEach((emblem, i) => {
+    const where = `styling.json emblem ${emblem.id ?? `#${i}`}`;
+    knownKeys(emblem, ['id', 'name', 'offered'], where, fail);
+    if (!isText(emblem.name)) fail(where, 'name must be a non-empty string');
+    if (isId(emblem.id) && !Object.hasOwn(EMBLEMS, emblem.id)) fail(where, 'has no drawing in src/render/emblems.js');
+    if (emblem.offered !== undefined && emblem.offered !== true) fail(where, 'offered, if given, must be true');
+  });
+  if (!emblems.some((emblem) => emblem.offered)) fail('styling.json', 'emblems must offer the player at least one');
 }
 
 function checkShip(ship, where, frameById, moduleIds, fail) {

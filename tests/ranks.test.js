@@ -287,7 +287,7 @@ test('Xenobiologist and quartermaster rank 2, Green thumb and Stores master: far
 test('saves: v25 for fights; a v24 crew starts at 0 fights each, and a fight under way keeps its units at rank 0', () => {
   // 26 since M33's factions, 27 since its fix's docking on trade, 28 since
   // M33b's quests, 29 since M33c's companions.
-  assert.equal(SAVE_VERSION, 45);
+  assert.equal(SAVE_VERSION, 46);
   const fighting = beginFight(newCampaign(rules, 5), rules).campaign;
   const v24 = { ...fighting, crew: fighting.crew.map(({ fights, ...member }) => member) };
   const data = { ...saveData(initialState(5)), campaign: v24 };

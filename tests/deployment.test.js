@@ -116,9 +116,9 @@ test('a hangar raid opens placing; a job does not', () => {
 });
 
 test('save v45: a fight from before has no setup and carries on as it was', () => {
-  assert.equal(SAVE_VERSION, 45);
+  assert.equal(SAVE_VERSION, 46);
   const data = { settings: null, campaign: { fight: { battle: { side: 'crew' } } } };
   const moved = migrate({ version: 44, data });
-  assert.equal(moved.version, 45);
-  assert.deepEqual(moved.data, data);
+  assert.equal(moved.version, 46);
+  assert.deepEqual(moved.data, { ...data, campaign: { ...data.campaign, identity: null } }, 'and M52: no name yet');
 });

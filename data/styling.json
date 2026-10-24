@@ -33,5 +33,17 @@
     { "id": "lime", "name": "Lime" },
     { "id": "violet", "name": "Violet" },
     { "id": "white", "name": "White" }
+  ],
+  "emblems": [
+    { "id": "star", "name": "Star", "offered": true },
+    { "id": "wing", "name": "Wing", "offered": true },
+    { "id": "comet", "name": "Comet", "offered": true },
+    { "id": "eye", "name": "Eye", "offered": true },
+    { "id": "ring", "name": "Ring", "offered": true },
+    { "id": "shield", "name": "Shield", "offered": true },
+    { "id": "pick", "name": "Pick" },
+    { "id": "anchor", "name": "Anchor" },
+    { "id": "blade", "name": "Blade" },
+    { "id": "gear", "name": "Gear" }
   ]
 }

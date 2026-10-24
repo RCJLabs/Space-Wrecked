@@ -4,6 +4,7 @@
 import { int } from '../core/rng.js';
 import { emptyBuilds, reduceBuilds } from './builds.js';
 import { beginFight, captainProblem, firstBackground, gameOver, newCampaign, refitShip, saveFight } from './campaign.js';
+import { nameProblem, renameShip, setEmblem, withIdentity } from './identity.js';
 import { donate } from './colony.js';
 import { build, moveBuilding, takeDown } from './colonyBuild.js';
 import { nextDay } from './days.js';
@@ -74,7 +75,7 @@ export function initialState(seed) {
 }
 
 // Campaign actions:
-//   campaign/new { rules, captain, background, difficulty, permadeath }
+//   campaign/new { rules, captain, background, difficulty, permadeath, shipName }
 //                                  a new campaign, in place of any other,
 //                                  from the background picked (M30; none:
 //                                  the first), led by the captain made for
@@ -83,7 +84,8 @@ export function initialState(seed) {
 //                                  difficulty picked, death permanent or
 //                                  not (M41; none: Normal, and not); its
 //                                  seed is the game's next roll, and its
-//                                  first job board is rolled
+//                                  first job board is rolled; the ship named
+//                                  shipName, or a rolled name (M52)
 //   campaign/continue              back to where the campaign is, or its
 //                                  end once the game is over (M41)
 //   campaign/difficulty { value }  the game's difficulty, from the next
@@ -156,6 +158,11 @@ export function initialState(seed) {
 //   campaign/move { uid, placement, rules }   a building moved or turned
 //   campaign/takedown { uid, rules }   a building taken down
 //   campaign/day { rules }         the colony's day passed (days.js)
+//   campaign/identity { rules }    the ship's name and number rolled, for a
+//                                  campaign without them (identity.js, M52)
+//   campaign/rename { name, rules }   the ship renamed (identity.js)
+//   campaign/emblem { emblem, rules }   the emblem she wears, or null for
+//                                  none (identity.js)
 //   campaign/places { rules }      the places within reach rolled, for a
 //                                  colony without them (expeditions.js, M28)
 //   campaign/trip/out { index, squad, rules }   the ship flies out to the
@@ -237,11 +244,13 @@ export function reduce(state, action) {
       const background = action.background ?? firstBackground(action.rules);
       const difficulty = action.difficulty ?? 'normal';
       const permadeath = action.permadeath ?? false;
+      const shipName = action.shipName ?? null;
       if (!action.rules.backgrounds.has(background)) return state;
+      if (shipName !== null && nameProblem(shipName)) return state;
       if (captain && captainProblem(captain, action.rules, background)) return state;
       if (!DIFFICULTIES.includes(difficulty) || typeof permadeath !== 'boolean') return state;
       const { value: seed, state: rng } = int(state.rng, 0, 0xffffffff);
-      return { ...state, rng, campaign: withBoard(newCampaign(action.rules, seed, { background, captain, difficulty, permadeath }), action.rules), screen: PLACE_SCREENS.hub };
+      return { ...state, rng, campaign: withBoard(newCampaign(action.rules, seed, { background, captain, difficulty, permadeath, shipName }), action.rules), screen: PLACE_SCREENS.hub };
     }
     case 'campaign/continue':
       return state.campaign ? { ...state, screen: campaignScreen(state.campaign) } : state;
@@ -251,6 +260,16 @@ export function reduce(state, action) {
     }
     case 'campaign/board':
       return withCampaign(state, state.campaign && withBoard(state.campaign, action.rules));
+    case 'campaign/identity':
+      return withCampaign(state, state.campaign && withIdentity(state.campaign, action.rules));
+    case 'campaign/rename': {
+      const renamed = state.campaign && renameShip(state.campaign, action.name, action.rules);
+      return renamed?.ok ? withCampaign(state, renamed.campaign) : state;
+    }
+    case 'campaign/emblem': {
+      const set = state.campaign && setEmblem(state.campaign, action.emblem ?? null, action.rules);
+      return set?.ok ? withCampaign(state, set.campaign) : state;
+    }
     case 'campaign/places':
       return withCampaign(state, state.campaign && withPlaces(state.campaign, action.rules));
     case 'campaign/ship':

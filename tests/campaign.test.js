@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { rollIdentity } from '../src/sim/identity.js';
 import { makeSave, parseSave } from '../src/core/save.js';
 import { act } from '../src/sim/battle.js';
 import { aiAction } from '../src/sim/ai.js';
@@ -86,6 +87,8 @@ test("a new campaign starts in act 1 at the hangar, with its background's start"
     flags: {},
     eventsMet: [],
     ship,
+    // M52: her name and number rolled from the seed, no emblem.
+    identity: rollIdentity(rules, 77),
     wrecks: {},
     board: [],
     shop: null,

@@ -104,6 +104,7 @@ import { gearWon } from './gear.js';
 import { handedIn, weaponOf, withArms } from './loadout.js';
 import { talentOrder, TALENT_RANK } from './talents.js';
 import { traitBonus } from './traits.js';
+import { isIdentity, nameProblem, rollIdentity, tidyName } from './identity.js';
 
 export { actOf } from './acts.js';
 
@@ -173,12 +174,17 @@ const FLAG = /^[a-zA-Z][a-zA-Z0-9]*$/;
 // one, all from the seed (startCrew). difficulty and permadeath are the
 // game's, picked at New game (M41): Normal, and death not permanent,
 // unless given.
-export function newCampaign(rules, seed, { background = firstBackground(rules), captain = null, difficulty = 'normal', permadeath = false } = {}) {
+export function newCampaign(rules, seed, { background = firstBackground(rules), captain = null, difficulty = 'normal', permadeath = false, shipName = null } = {}) {
   const { start } = rules.backgrounds.get(background);
   const { ship } = buildShip(rules, start.ship.frame, start.ship.placements);
   const why = captain && captainProblem(captain, rules, background);
   if (why) throw new RangeError(`newCampaign: ${why}`);
   if (!DIFFICULTIES.includes(difficulty) || typeof permadeath !== 'boolean') throw new RangeError('newCampaign: the difficulty is Easy, Normal or Hard, and permanent death on or off.');
+  // The ship's name, number and emblem (M52): rolled, the name the
+  // player's if they gave one.
+  const rolled = rollIdentity(rules, seed);
+  if (shipName !== null && nameProblem(shipName)) throw new RangeError(`newCampaign: ${nameProblem(shipName)}`);
+  const identity = shipName === null ? rolled : { ...rolled, name: tidyName(shipName) };
   const at = captain ? start.crew.indexOf(captain.job) : 0;
   const crew = startCrew(rules, seed, start.crew, at, captain);
   return {
@@ -204,6 +210,7 @@ export function newCampaign(rules, seed, { background = firstBackground(rules), 
     // or a place draws one again only once its kind has no others left.
     eventsMet: [],
     ship,
+    identity,
     wrecks: {},
     board: [],
     shop: null,
@@ -582,6 +589,7 @@ export function campaignProblems(value) {
   }
   if (!Array.isArray(value.eventsMet) || value.eventsMet.length > MAX_MET || !value.eventsMet.every(isId) || new Set(value.eventsMet).size !== value.eventsMet.length) wrong('events met are unreadable');
   if (!isShipData(value.ship)) wrong('ship is unreadable');
+  if (!isIdentity(value.identity)) wrong("ship's name, number or emblem is unreadable");
   else if (!isWrecks(value.wrecks, value.ship)) wrong('wrecks are unreadable');
   if (!Array.isArray(value.board) || value.board.length > MAX_BOARD || !value.board.every(isJob)) wrong('job board is unreadable');
   if (value.shop !== null && !(Array.isArray(value.shop) && value.shop.length <= MAX_STOCK && value.shop.every(isStockItem))) wrong("shop's stock is unreadable");
