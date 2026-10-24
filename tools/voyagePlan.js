@@ -1180,9 +1180,11 @@ function stepToward(sector, from, to) {
 // The colony's levers on heat (M53), as the careful player pulls them
 // before a day at home: the next one, or null. It pays the pursuer at the
 // hunters' level while that leaves LEVER_RESERVE credits; lies low at the
-// hunters' level, and stops under the rumors' (it stops before it flies,
-// stopLyingLow); sells the friendly side's trader materials past
-// LEVER_MATERIALS, and buys its part while that leaves LEVER_RESERVE.
+// hunters' level once its farms feed the crew (the mines' digging builds
+// them first), and stops under the rumors' (voyage.js stops it before it
+// flies); sells the friendly side's trader materials past LEVER_MATERIALS,
+// once the farms feed the crew, and buys its part while that leaves
+// LEVER_RESERVE.
 // 'pay', 'low', 'rise', 'sell' or 'buy'.
 export const LEVER_RESERVE = 150;
 export const LEVER_MATERIALS = 40;
@@ -1191,12 +1193,13 @@ export function leverNow(campaign, rules) {
   const heat = campaign.heat;
   const payment = colonyPaymentFor(campaign, rules);
   if (payment.ok && heat >= huntHeat && campaign.credits - payment.payment.credits >= LEVER_RESERVE) return 'pay';
+  const fed = colonyStats(campaign, rules).made.food >= campaign.crew.length * rules.balance.jumpSupplies;
   if (lowProfilePlan(campaign, rules).ok) {
-    if (!campaign.colony.lowProfile && heat >= huntHeat) return 'low';
+    if (!campaign.colony.lowProfile && heat >= huntHeat && fed) return 'low';
     if (campaign.colony.lowProfile && heat < rumorHeat) return 'rise';
   }
   const trade = tradePlan(campaign, rules);
-  if (trade.ok && trade.lots.ok && campaign.colony.materials - trade.lots.lot >= LEVER_MATERIALS) return 'sell';
+  if (fed && trade.ok && trade.lots.ok && campaign.colony.materials - trade.lots.lot >= LEVER_MATERIALS) return 'sell';
   if (trade.ok && trade.part?.ok && campaign.credits - trade.part.price >= LEVER_RESERVE) return 'buy';
   return null;
 }

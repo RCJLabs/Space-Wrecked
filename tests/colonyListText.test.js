@@ -58,7 +58,7 @@ test('every other colony listed: the flight there, its day, food, who is there a
   assert.equal(other.detail, `A day's flight · day ${kept.day} · food ${kept.keep.food} · ${lark} there · ${other.rows[4][1].charAt(0).toLowerCase()}${other.rows[4][1].slice(1)}`);
   // A raid coming there turns it bad, and says when.
   const coming = otherColonies(raidAtFirst(two, kept.day + 2), rules)[0];
-  assert.deepEqual([coming.rows[4], coming.tone], [['Raid', 'Lander in 2 days'], 'bad']);
+  assert.deepEqual([coming.rows[4], coming.tone], [['Raid', 'Lander in 2 days · 4 raiders'], 'bad']);
   // The one flown from is the chart's colony panel, with its flight home.
   const out = voyageOut(two, rules, ids.slice(0, 2)).campaign;
   assert.deepEqual(colonyPanelText(out, rules).rows.at(-1), ['Flight', '1 day']);
