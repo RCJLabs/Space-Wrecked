@@ -2407,6 +2407,21 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Left hand** also reverses the foot rows (the hangar's, the chart's, the colony's, the approach's and the shop's), so Build, Jump and Buy sit under the left thumb, and moves the builder's layout line to the right, clear of Hull.
   - **Measured in the browser:** an enemy turn 6.35 s at 1× and 3.05 s at 2× (the same turn, cover screen).
 
+- [ ] **M48 Balance pass on known outliers.** Item 13 of the Phase 8 brainstorm, first in my recommended order after M47, taken on Evan's word (2026-10-24, "Merge and continue"). From §9: the AI's out-and-back steps (M37), Bosun's weld (M33c, M40), the weapons' balance (M37) and the new missions' (M38).
+
+  Measured first (main after M47):
+  - **Out-and-back:** in the smuggler's hangar raids (`tools/raids.js`), raiders pressing on step out of the crew's sight with one action and back with the next, 6 to 10 turns a fight on seeds 1, 4 and 8. `pressAction` hands a unit with the crew in sight to the AI, whose best move can leave sight; next action, out of sight, it advances back in. Raids won (300 fights each): the miner 57%, the deserter 64%, the smuggler 50%.
+  - **Bosun's weld:** the squad's wins 50% → 50% in 1,000 fights (weld 0.2 times a fight).
+  - **Weapons** (the whole squad carrying each, 300 fights; aboard, on the ground, raids): as issued 51/69/75; the shotgun 81/85/95, the riot gun 85/85/98, the rifle 33/69/60, the carbine 24/65/47, the pistol 12/53/28, the dart gun 5/42/8.
+  - **Missions:** jobs win 57% to 85%; the still 57% (10% by its objective), closing time 85% (27% by holding).
+
+  Done when (my recommendations, taken on Evan's word):
+  - **No out-and-back:** a raider pressing on with the crew in sight keeps them in sight: if the AI's move would leave every one of them out of sight, it takes its best move that keeps one, or else overwatch. The crew's own pressing (the job sites' test player) is unchanged. The three raids that did it do it 0 times (a test), and every background's raid stays within M30's bar (within 10 points of the miner's over 300 fights), the Hallorans' party retuned if the smuggler's moves out of it.
+  - **Bosun's weld patches and gets up:** the weld also gives 8 hit points to each ally beside the welder, and gets one down beside it up with 8; the AI welds at three quarters of its hit points or with an ally down beside it. The log and the preview say so. Measured over 1,000 fights against M40's band (5 to 15 points); M40's trials put its ceiling near +4, so below the band it is recorded, not forced.
+  - **Weapons and the missions** re-measured and left as they are: the carbine is carried by seven enemy types, so changing it moves every fight, and the missions are inside M40's 35–90% band. §9 keeps them with today's numbers, as a milestone of their own.
+  - **No save change.** Every rule tested; every earlier milestone's check passes; the sim runs pasted into PROGRESS.
+  - **Touch, at the three sizes:** the weld's preview and its log line in a fight with Varga.
+
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
 ### Phase 9: Release (v1.0)
