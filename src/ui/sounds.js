@@ -4,11 +4,13 @@
 // builder soft (Evan's picks, ROADMAP M35); the sounds are data, and which
 // moment plays which is here.
 import { raidDue } from '../sim/heat.js';
+import { ORDER_KINDS, orderOf } from '../sim/orders.js';
 
 // The sounds the game plays at its moments. A shot is its weapon's
-// (data/weapons.json sound). The validator checks every one is in
-// data/sounds.json.
-export const MOMENT_SOUNDS = ['tap', 'confirm', 'refuse', 'place', 'turn', 'remove', 'hit', 'miss', 'down', 'order', 'door', 'reload', 'blast', 'jump', 'alarm', 'liftoff', 'landing'];
+// (data/weapons.json sound); an order its kind's, "order-" and the kind
+// (M51). The validator checks every one is in data/sounds.json.
+export const ORDER_SOUNDS = Object.keys(ORDER_KINDS).map((kind) => `order-${kind}`);
+export const MOMENT_SOUNDS = ['tap', 'confirm', 'refuse', 'place', 'turn', 'remove', 'hit', 'miss', 'down', 'order', 'door', 'reload', 'blast', 'jump', 'alarm', 'liftoff', 'landing', ...ORDER_SOUNDS, 'free', 'plant', 'step', 'won', 'lost'];
 
 // The campaign's actions a player takes that spend or settle something.
 // The rest make no sound of their own: a button's tap is enough, and the
@@ -106,8 +108,9 @@ export function fightSounds(fight, prev, action) {
 
 // The sound a moment of a fight's playback makes (render/playback.js
 // cuesBetween): each shot its weapon's as it fires, then a hit or a miss as
-// it lands; a unit down or dead; an order, a door, a reload; a job's
-// captive freed or a charge set (M38), as an order, and a charge blowing.
+// it lands; a walk a soft step; a unit down or dead; an order its kind's
+// (M51; the plain order chime for one with none); a door, a reload; a job's
+// captive freed or a charge set (M38), and a charge blowing.
 // battle names each unit's weapon; rules.weapons each weapon's sound.
 export function cueSound({ event, lands }, battle, rules) {
   switch (event.type) {
@@ -119,10 +122,17 @@ export function cueSound({ event, lands }, battle, rules) {
     case 'down':
     case 'dead':
       return 'down';
-    case 'order':
+    case 'move':
+      return 'step';
+    case 'order': {
+      const unit = battle.units.find((u) => u.id === event.unit);
+      const order = unit && orderOf(unit, rules);
+      return order ? `order-${order.type}` : 'order';
+    }
     case 'free':
+      return 'free';
     case 'plant':
-      return 'order';
+      return 'plant';
     case 'blast':
       return 'blast';
     case 'door':
@@ -136,4 +146,11 @@ export function cueSound({ event, lands }, battle, rules) {
     default:
       return null;
   }
+}
+
+// The sound a fight's end makes as its panel shows (M51): won or lost, by
+// the side that won.
+export function endSound(battle) {
+  if (!battle.winner) return null;
+  return battle.winner === 'crew' ? 'won' : 'lost';
 }

@@ -210,5 +210,5 @@ test("a fight's taps and refusals, and its playback's sounds in step with it", (
   assert.deepEqual(heard(1300, 9999), ['reload', null], 'a turn makes none');
   assert.deepEqual(heard(-1, 9999), ['shotgun', 'hit', 'down', 'shot', 'miss', 'reload', null], 'every moment once, in order');
   const of = (event) => cueSound({ event, lands: false }, before, rules);
-  assert.deepEqual([of({ type: 'shot', unit: 3 }), of({ type: 'dead', unit: 2 }), of({ type: 'order', unit: 1 }), of({ type: 'door' }), of({ type: 'move', unit: 1 })], ['dart', 'down', 'order', 'door', null]);
+  assert.deepEqual([of({ type: 'shot', unit: 3 }), of({ type: 'dead', unit: 2 }), of({ type: 'order', unit: 1 }), of({ type: 'door' }), of({ type: 'move', unit: 1 })], ['dart', 'down', 'order', 'door', 'step'], 'an order with no kind of its own the plain chime; a walk a step (M51)');
 });

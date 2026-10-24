@@ -19,7 +19,7 @@
 import { colonyScene } from '../../render/colonyScene.js';
 import { drawColony, prepareColony } from '../../render/colonyView.js';
 import { traceHull } from '../../render/hull.js';
-import { fitOrbit, panOrbit, pinchOrbit, unproject, zoomOrbit } from '../../render/orbit.js';
+import { fitOrbit, panOrbit, pinchOrbit, project, unproject, zoomOrbit } from '../../render/orbit.js';
 import { palette, skinFor } from '../../render/palette.js';
 import { pickBox } from '../../render/pick.js';
 import { BOARD_VIEW } from '../../render/shipView.js';
@@ -98,8 +98,22 @@ export function createStand(area, { onTap, onHold = null }) {
   };
   area.addEventListener('wheel', onWheel, { passive: false });
 
+  // Something drawn over the colony each frame while it plays (M51, a
+  // raid's landing): (ctx, camera) => void.
+  let overlay = null;
+  let still = null; // the colony as drawn when the overlay began, copied each frame under it
   const stand = {
     mark: null,
+    // Plays `paint` over the colony, drawn every frame, until stop.
+    play(paint) {
+      overlay = paint;
+      still = null;
+      dirty = true;
+    },
+    stop() {
+      overlay = still = null;
+      dirty = true;
+    },
     get scale() {
       return camera?.scale ?? 0;
     },
@@ -148,14 +162,33 @@ export function createStand(area, { onTap, onHold = null }) {
       fit = next;
     },
     draw(ctx, view) {
-      if (!dirty) return;
+      if (!dirty && !overlay) return;
       dirty = false;
       if (!scene || !camera) {
         ctx.fillStyle = palette.space;
         ctx.fillRect(0, 0, view.width, view.height);
         return;
       }
-      drawColony(ctx, { x: 0, y: 0, w: view.width, h: view.height }, camera, scene);
+      if (overlay && still) {
+        // The colony stands still under the overlay: its picture copied,
+        // not drawn again.
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.drawImage(still, 0, 0);
+        ctx.restore();
+      } else {
+        drawColony(ctx, { x: 0, y: 0, w: view.width, h: view.height }, camera, scene);
+        if (overlay) {
+          still = document.createElement('canvas');
+          [still.width, still.height] = [ctx.canvas.width, ctx.canvas.height];
+          still.getContext('2d').drawImage(ctx.canvas, 0, 0);
+        }
+      }
+      overlay?.(ctx, camera);
+    },
+    // A deck point on screen, or null before the view is set (M51).
+    screenOf(x, y, z = 0) {
+      return camera ? project(camera, x, y, z) : null;
     },
     cellAt(x, y) {
       const at = camera && unproject(camera, x, y);

@@ -2,6 +2,67 @@
 
 Newest entry first.
 
+## M51 Juice (2026-10-24)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. No save change (saves stay at v45).
+
+**How it was picked:** item 12 of the Phase 8 brainstorm, next in my order, on Evan's "Merge and continue when ready". Measured first on main after M50:
+- **Tiles at the fight's opening camera** (`m51/tiles.mjs`, cover / tab / open): the start ship's kind of ship 53 to 63 px; the hauler 27 / 20 / 47; job sites 44 / 34 / 48; the colony 30 / 23 / 33. Under 48 px a player zooms in to tap.
+- **Enemy actions out of view** with the board zoomed to 48 px tiles on the crew (`m51/offview.mjs`, boardings on every hostile preset): 15 of 1,453 at cover, 35 at tab, 2 unfolded. None at the opening fit.
+- **Sounds:** every order the one `order` chime; walks and a fight's end silent.
+- **The raid's landing** at the colony was a line of words.
+
+**What shipped:**
+- **The camera follows the action** (`src/render/follow.js`, the fight view): as a playback runs, a walk or a shot whose tiles would be off the board glides the view (250 ms, eased, the zoom kept) until they are 48 px in from its edges; when the crew's turn comes back the view glides back to where the player left it. A drag, pinch, zoom, turn or Fit takes the view back at once. With reduced motion it moves without gliding. An enemy hidden in the fog of war (M45) isn't followed.
+- **The landing seen** (`src/render/raidLanding.js`, the colony screen): Defend's second tap plays the lander easing down over the colony (3 s), each rolled shot flying up from its gun in turn, a hit flashing on it, the hint counting the raiders aboard down ("The lander comes down: 4 raiders aboard."), the alarm, bursts and hits and misses heard; then the fight opens, or the landing's report shows. A tap anywhere skips it; with reduced motion, or a raid at another colony, the fight opens at once as before. It uses the landing's own rolls (no new ones). While it plays the colony's picture is copied, not drawn again, under it.
+- **More sounds** (`data/sounds.json`, 12 new, 37 in all, each with its caption): an order its kind's (`order-suppress` "Covering fire", `order-weld` "Weld crackle", `order-patch` "Hiss of a patch", `order-hustle` "Hustle", `order-mark` "Ping: target marked", `order-sedate` "Sedative", `order-kit` "Kit strapped on"); a captive freed "Bonds cut"; a charge set "Charge armed"; a walk a soft "Footsteps" (−30 dB); a fight "won" and "lost" as its end panel first shows (not on reopening a fight already over). Their volumes are set to their target loudness by `tools/sounds.js`.
+
+**Measurements:**
+- **The camera:** with the board zoomed in on the crew in a colony raid, the enemy's turn moves the view through 10 views and back to the exact one the player left (`m51/verify.mjs`, all three sizes).
+- **The frame budget** (`m51/fps.mjs`, Chromium at dpr 2.625, frame intervals):
+
+  | | cover | tab | open |
+  |---|---|---|---|
+  | enemy turn zoomed, main | 16.7 ms median, 95% 16.7 | 16.7, 95% 16.8 | 16.7, 95% 16.8 |
+  | enemy turn zoomed, M51 (following) | 16.7, 95% 16.8 | 16.7, 95% 16.8 | 16.7, 95% 16.8 |
+  | the landing, M51 | 16.7, 95% 16.8 | 16.7, 95% 16.8 | 16.7, 95% 16.7 |
+
+  The landing first drew the whole colony every frame, 95% 33.3 ms unfolded; copying its picture brought it to 16.7. Its first frame (the full draw and copy) is the slowest, up to 117 ms.
+
+**Done when** (ROADMAP.md, M51), and how each is met:
+- **The camera follows:** `tests/juice.test.js` (what a moment wants in view, the least pan, the glide); `m51/verify.mjs` at the three sizes.
+- **The landing seen:** `tests/juice.test.js` (the timeline: the lander's descent, the shots in turn from their guns, a raider fewer a hit, the sounds' moments); `m51/verify.mjs` (played, skipped, reduced motion).
+- **More sounds:** `tests/juice.test.js` (each job's order its kind's sound, free, plant, step, won and lost, each a sound with a caption); `tests/sound.test.js` (every sound's loudness at its target); captions in `m51/verify.mjs`.
+- **The frame budget:** the table above.
+
+**Tests:**
+- `node --test`: 1235 pass (1229 on main).
+- **New:** `tests/juice.test.js` (6).
+- **Changed on purpose:** `tests/sound.test.js` (a walk now makes a step); `tests/missionText.test.js` (freeing a captive and setting a charge their own sounds, not the order chime); `tests/data.test.js` (37 sounds).
+
+**Browser checks:**
+- **M51's own:** `m51/verify.mjs`, 14 of 14 at the three sizes:
+  - a colony raid zoomed in on the crew: the enemy's turn follows the action and the board comes back to where it was;
+  - Defend: every button 48 px or more; the hint counts the raiders aboard; the fight waits for the lander, then opens; a tap skips it in under 1.5 s; with reduced motion the fight opens at once;
+  - captions on, sound off: a weld reads [Weld crackle], the enemy's walks [Footsteps], a won fight [Fight won]; no console errors.
+- **Every earlier milestone's check,** in three chains run one after the other (`m51/regress-a.sh`, M50's back to M30's; `m51/regress-b1.sh`, M29's to M23's; `m51/regress-b2.sh`, M22's to M8's):
+  - **Copy adapted for M51:** M29's (`m29/verify51.mjs`): its lost-without-a-fight Defend read the hint at once, where the landing now plays for 3 s first; it waits for it, 38 of 38 at the three sizes. No save change, so the other copies stand.
+  - **All pass,** apart from M32b's first copy, the known exception from M32b's fix (its fix copy passes in its place).
+
+**Known issues:**
+- **No music.** It wants Evan's ear; it stays in §9.
+- **The lander lands for show:** at the raiders' edge, or as near it as the ground shows between the panels (the Build panel covers that edge at the cover size). The raiders still start the fight at the edge.
+- **Following is by tile, not by unit:** a long walk that leaves and comes back into view is followed only at its start and its end.
+- **The camera hook** (`data-view` and `data-following` on the fight's board) is there for the checks that drive the screen.
+- **A step for every walk:** in a big enemy turn the footsteps are frequent; they are quiet (−30 dB), but Evan may want them sparser.
+
+**What Evan should test on the phone:**
+- **A colony raid, zoomed in on the crew:** does the follow help, and is the glide back too quick or too slow?
+- **Defend at the colony with a gun or two:** is the landing readable, and is 3 s too long?
+- **Sound on:** the seven orders, a win and a loss, and the footsteps. Too many steps?
+
+**Next milestone's first task:** M52, item 5 of the brainstorm, next in my order: study it, measure, write the Done when.
+
 ## M50 Deployment and defenses (2026-10-24)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. Saves are at v45.

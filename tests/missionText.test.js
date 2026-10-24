@@ -208,8 +208,8 @@ test('the playback: a crate picked up, taken from the fallen and carried out, th
   assert.equal(eventText({ type: 'through', unit: 'e1', at: [0, 1] }, near).tone, 'bad');
 });
 
-test('a blast sounds as one, and freeing the captive or setting a charge as an order does', () => {
+test('a blast sounds as one, and freeing the captive and setting a charge each their own (M51)', () => {
   const of = (event) => cueSound({ event, lands: false }, { units: [] }, rules);
-  assert.deepEqual([of({ type: 'blast', at: [1, 1], units: [], damage: 4 }), of({ type: 'plant', unit: 'c1' }), of({ type: 'free', unit: 'c1' }), of({ type: 'pull', unit: 'e1' })], ['blast', 'order', 'order', null]);
+  assert.deepEqual([of({ type: 'blast', at: [1, 1], units: [], damage: 4 }), of({ type: 'plant', unit: 'c1' }), of({ type: 'free', unit: 'c1' }), of({ type: 'pull', unit: 'e1' })], ['blast', 'plant', 'free', null]);
   assert.ok(MOMENT_SOUNDS.includes('blast'));
 });
