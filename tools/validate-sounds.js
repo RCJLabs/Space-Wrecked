@@ -1,6 +1,7 @@
 // The sounds (data/sounds.json, M35, src/platform/audio.js), for
-// validate-data.js: each one's id, what it is for, how loud it is meant to
-// be (tools/sounds.js measures it), and its ZzFX parameters by name
+// validate-data.js: each one's id, what it is for, its caption (M49), how
+// loud it is meant to be (tools/sounds.js measures it), and its ZzFX
+// parameters by name
 // (src/core/soundParams.js), each in a range ZzFX makes sense of. A sound
 // lasts at most MAX_LENGTH, and its slides never take the pitch through
 // zero. Every sound the game plays at its moments (src/ui/sounds.js) is
@@ -9,7 +10,9 @@ import { slidesThroughZero, soundLength, ZZFX_PARAMS } from '../src/core/soundPa
 import { MOMENT_SOUNDS } from '../src/ui/sounds.js';
 import { isId, isIntIn, isObject, isText, knownKeys, listOf, uniqueIds } from './checks.js';
 
-const SOUND_KEYS = ['id', 'for', 'loudness', 'zzfx'];
+const SOUND_KEYS = ['id', 'for', 'caption', 'loudness', 'zzfx'];
+// A caption is a few words, shown as the sound plays (Settings' Captions).
+const MAX_CAPTION = 24;
 export const MAX_LENGTH = 2.5; // s
 const LOUDNESS = [-40, -6]; // dB
 const MAX_FOR = 120;
@@ -44,6 +47,7 @@ export function checkSounds(file, fail) {
     const where = `sounds.json ${sound.id ?? `#${i}`}`;
     knownKeys(sound, SOUND_KEYS, where, fail);
     if (!isText(sound.for) || sound.for.length > MAX_FOR) fail(where, `for must say what the sound is for, in up to ${MAX_FOR} letters`);
+    if (!isText(sound.caption) || sound.caption.length > MAX_CAPTION) fail(where, `caption must name the sound in words, in up to ${MAX_CAPTION} letters`);
     if (!(Number.isFinite(sound.loudness) && sound.loudness >= LOUDNESS[0] && sound.loudness <= LOUDNESS[1])) {
       fail(where, `loudness must be a number of dB from ${LOUDNESS[0]} to ${LOUDNESS[1]}`);
     }

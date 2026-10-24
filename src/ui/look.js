@@ -8,14 +8,16 @@
 // draws in them. From M47 the controls too: <html data-hand> (right or left,
 // which the CSS mirrors the columns by), data-confirm (taps or hold, which
 // src/ui/confirm.js reads), data-speed (the playback's, in percent) and
-// data-vibration (on or off, which src/platform/haptics.js reads).
+// data-vibration (on or off, which src/platform/haptics.js reads). From M49
+// <html data-captions> (on or off, which src/ui/captions.js reads) and
+// data-reading (standard or readable, which the CSS sets the text by).
 import { applyCssVars, usePalette } from '../render/palette.js';
 import { setTextScale } from '../render/textScale.js';
 
-const KEYS = ['colors', 'textSize', 'fog', 'hand', 'confirm', 'speed', 'vibration'];
+const KEYS = ['colors', 'textSize', 'fog', 'hand', 'confirm', 'speed', 'vibration', 'captions', 'reading'];
 
 export function syncLook(store) {
-  const apply = ({ colors, textSize, fog, hand, confirm, speed, vibration }) => {
+  const apply = ({ colors, textSize, fog, hand, confirm, speed, vibration, captions, reading }) => {
     usePalette(colors);
     applyCssVars();
     const root = document.documentElement;
@@ -26,6 +28,8 @@ export function syncLook(store) {
     root.dataset.confirm = confirm;
     root.dataset.speed = String(speed);
     root.dataset.vibration = vibration ? 'on' : 'off';
+    root.dataset.captions = captions ? 'on' : 'off';
+    root.dataset.reading = reading;
     root.style.setProperty('--ts', String(textSize / 100));
     setTextScale(textSize / 100);
   };

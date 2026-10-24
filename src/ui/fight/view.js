@@ -42,6 +42,7 @@ import { fightBuzz } from '../vibrations.js';
 import { chipFor, endingFor, eventText, hintFor, oddsText, unitText } from './hints.js';
 import { objectiveMarks, objectiveZones } from './marks.js';
 import { createActionBar, createCrewBar, node, setText, toolButton } from './panels.js';
+import { liveStatus, surface } from '../a11y.js';
 
 // A ship's insides in the yard's skin; a job's site on the ground, or in
 // the look its map names (data/sites.json, M38c: a station's docks, the
@@ -90,10 +91,11 @@ const SOUND_CATCH_UP = 250; // ms of a playback's sounds played after a gap
 //              OPENING_MS, or null for nothing
 export function mountFight(root, source) {
   const el = node('section', 'fight');
-  const board = node('div', 'fgt-board');
+  el.setAttribute('aria-label', 'Fight');
+  const board = surface(node('div', 'fgt-board'), 'The fight\'s board: tap a tile to show a move or a shot, tap again to make it; hold a figure for its details');
   const chip = node('p', 'fgt-chip');
   const goal = node('p', 'fgt-goal');
-  const status = node('p', 'fgt-status');
+  const status = liveStatus(node('p', 'fgt-status'));
   const card = node('div', 'fgt-card');
   const over = node('div', 'fgt-over');
   const overText = node('p');

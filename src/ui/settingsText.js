@@ -1,7 +1,7 @@
 // Text for the settings screen (settings.js): each setting's choices, and
 // what the one picked does, its numbers from data/balance.json. Pure.
 import { DIFFICULTIES, enemyBonus, gunneryBonus } from '../sim/difficulty.js';
-import { COLORS, CONFIRMS, FPS_CAPS, HANDS, MOTIONS, SPEEDS, TEXT_SIZES, VOLUMES } from '../sim/settings.js';
+import { COLORS, CONFIRMS, FPS_CAPS, HANDS, MOTIONS, READINGS, SPEEDS, TEXT_SIZES, VOLUMES } from '../sim/settings.js';
 
 // The rows, in order: [{ key, title, choices: [{ value, label }], value,
 // action, line }]. key is the setting (sim/settings.js); value is the one
@@ -22,6 +22,12 @@ export function settingsText(settings, balance, campaign = null) {
       title: 'Volume',
       choices: VOLUMES.map((value) => ({ value, label: `${value}%` })),
       line: settings.sound ? `Every sound at ${settings.volume}%.` : `Every sound at ${settings.volume}%, once sound is on.`,
+    },
+    {
+      key: 'captions',
+      title: 'Captions',
+      choices: [{ value: false, label: 'Off' }, { value: true, label: 'On' }],
+      line: settings.captions ? 'Every sound the game makes is written at the foot of the screen as it plays, with sound on or off.' : 'No captions.',
     },
     campaign && campaign.crew.length
       ? {
@@ -99,6 +105,14 @@ export function settingsText(settings, balance, campaign = null) {
       title: 'Text size',
       choices: TEXT_SIZES.map((value) => ({ value, label: `${value}%` })),
       line: settings.textSize === 100 ? 'Text as drawn.' : `Every word ${settings.textSize}% as big, in the panels and on the board. Long lists scroll.`,
+    },
+    {
+      key: 'reading',
+      title: 'Reading',
+      choices: READINGS.map((value) => ({ value, label: { standard: 'Standard', readable: 'Easier reading' }[value] })),
+      line: settings.reading === 'readable'
+        ? 'The panels\' text is set wider apart, in lines with more room between them, with no capitals-only words or italics.'
+        : 'Text as drawn.',
     },
     {
       key: 'fpsCap',

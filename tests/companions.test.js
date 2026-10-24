@@ -142,7 +142,7 @@ test('a companion let go ends their loyalty quest, and the chain they came throu
 });
 
 test('saves: v29 for companions; a v28 save reads as it is; companions, loyalty and talents are checked', () => {
-  assert.equal(SAVE_VERSION, 43);
+  assert.equal(SAVE_VERSION, 44);
   const step = MIGRATIONS.find((m) => m.from === 28);
   const v28 = { settings: {}, rng: 1, builds: null, campaign: settled() };
   assert.equal(step.up(v28), v28);

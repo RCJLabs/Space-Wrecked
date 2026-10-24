@@ -13,6 +13,9 @@
 //   audioStatus()      a line on how sound stands, with the last few
 //                      played (the dev menu)
 //   recentSounds()     the ids of the last RECENT sounds played
+//   onSounds(listener) listener(ids) hears each go's sounds as they would
+//                      play, a tap's own left out, whether sound is on or
+//                      not: the captions (M49, ui/captions.js)
 //
 // ZzFX scales a sound by its own volume (0.3) as it makes it and again as
 // it plays it; the samples are made once with the first scaling (the
@@ -35,6 +38,7 @@ const buffers = new Map(); // id -> AudioBuffer
 let voices = 0;
 let pending = [];
 const recent = [];
+const listeners = new Set();
 
 export function startAudio(store) {
   follow(store.getState().settings);
@@ -73,6 +77,11 @@ export function recentSounds() {
   return [...recent];
 }
 
+export function onSounds(listener) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
 function follow(settings) {
   setting = { sound: settings.sound !== false, volume: settings.volume ?? 70 };
   if (ready) ready.gain.gain.value = setting.volume / 100;
@@ -102,8 +111,9 @@ function wake() {
 function flush() {
   const ids = pending;
   pending = [];
-  if (!ready || !setting.sound) return;
   const telling = [...new Set(ids.filter((id) => id !== 'tap'))];
+  if (telling.length) for (const listener of listeners) listener(telling);
+  if (!ready || !setting.sound) return;
   let at = 0;
   for (const id of telling.length ? telling : ['tap']) at = start(id, at) + GAP;
 }

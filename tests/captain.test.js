@@ -125,7 +125,7 @@ test("forgiving odds come from the settings and the difficulty from the game (M4
 
 test('settings take only what they can hold', () => {
   const settings = defaultSettings();
-  assert.deepEqual(settings, { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, colors: 'standard', textSize: 100, fog: false, hand: 'right', speed: 100, confirm: 'taps', vibration: true });
+  assert.deepEqual(settings, { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, colors: 'standard', textSize: 100, fog: false, hand: 'right', speed: 100, confirm: 'taps', vibration: true, captions: false, reading: 'standard' });
   const apply = (action) => reduceSettings(settings, action);
   assert.equal(apply({ type: 'settings/difficulty', value: 'easy' }), settings, 'the game keeps the difficulty from M41');
   assert.equal(apply({ type: 'settings/forgiving', value: 'yes' }), settings);

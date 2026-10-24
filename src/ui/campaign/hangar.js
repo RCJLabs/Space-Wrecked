@@ -25,6 +25,7 @@ import { createCrewCard } from './crewCard.js';
 import { crewCardText, crewSaid } from './crewText.js';
 import { createShipStand, crewRows, heatChip, listRows, panel, questRows, sideRows } from './hubParts.js';
 import { hangarText } from './hubText.js';
+import { liveStatus } from '../a11y.js';
 
 const ARM_MS = 3000; // Pay, Launch and a swap on the crew card wait this long for a second tap
 
@@ -59,7 +60,7 @@ export const hangarScreen = {
     side.append(crewPanel, panel('Hangar', holdings), panel('Sides', sideList), panel('Quests', questList));
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
-    const hint = node('p', 'hgr-hint', 'Loading…');
+    const hint = liveStatus(node('p', 'hgr-hint', 'Loading…'));
     const payButton = toolButton('hgr-pay', icons.pay, 'Pay');
     const shopButton = toolButton('hgr-shop', icons.shop, 'Shop');
     const jobsButton = toolButton('hgr-jobs', icons.jobs, 'Jobs');

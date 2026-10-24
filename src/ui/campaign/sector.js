@@ -70,6 +70,7 @@ import { flightReport } from './colonyListText.js';
 import { landingReport } from './raidText.js';
 import { jumpText, sectorText } from './sectorText.js';
 import { voyageReport } from './voyageText.js';
+import { liveStatus } from '../a11y.js';
 
 const ARM_MS = 3000; // Jump on, Buy, Repair, Patch up, Scan, Regroup, the swap, Survey, Settle here, Fly home, Defend, Sign on and Let go wait this long for a second tap
 const SVG = 'http://www.w3.org/2000/svg';
@@ -170,7 +171,7 @@ export const sectorScreen = {
     side.append(crewPanel, shipPanel, colonyPanel, othersBox, panel('Sides', sideList), panel('Quests', questList));
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
-    const hint = node('p', 'hgr-hint', 'Loading…');
+    const hint = liveStatus(node('p', 'hgr-hint', 'Loading…'));
     const buys = node('div', 'sct-buys');
     const restButton = toolButton('sct-rest', icons.regroup, 'Regroup');
     const scanButton = toolButton('sct-scan', icons.scan, 'Scan');

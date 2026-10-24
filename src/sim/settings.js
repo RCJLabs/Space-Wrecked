@@ -15,6 +15,9 @@
 //   speed       the playback's speed, in percent: one of SPEEDS (M47)
 //   confirm     'taps' (a second tap confirms) or 'hold' (a hold does, M47)
 //   vibration   whether the phone vibrates on hits (M47)
+//   captions    whether each sound the game makes is shown in words too (M49)
+//   reading     'standard', or 'readable' for text spaced for easier reading
+//               (M49)
 // The difficulty was a setting too until M41, when it became the
 // campaign's (difficulty.js).
 
@@ -33,12 +36,14 @@ export const TEXT_SIZES = [100, 115, 130];
 export const HANDS = ['right', 'left'];
 export const SPEEDS = [100, 150, 200];
 export const CONFIRMS = ['taps', 'hold'];
+// Senses (M49): how the text is set.
+export const READINGS = ['standard', 'readable'];
 // More tips than the game has: a guard on what a save can hold.
 export const MAX_TIPS = 64;
 const TIP_ID = /^[a-z][a-z0-9-]{0,31}$/;
 
 export function defaultSettings() {
-  return { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, colors: 'standard', textSize: 100, fog: false, hand: 'right', speed: 100, confirm: 'taps', vibration: true };
+  return { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, colors: 'standard', textSize: 100, fog: false, hand: 'right', speed: 100, confirm: 'taps', vibration: true, captions: false, reading: 'standard' };
 }
 
 // Actions:
@@ -57,6 +62,8 @@ export function defaultSettings() {
 //   settings/speed { value }        one of SPEEDS (M47)
 //   settings/confirm { value }      taps or hold (M47)
 //   settings/vibration { value }    vibration on or off (M47)
+//   settings/captions { value }     captions on or off (M49)
+//   settings/reading { value }      standard or readable (M49)
 export function reduceSettings(settings, action) {
   const set = (key, ok) => (!ok || action.value === settings[key] ? settings : { ...settings, [key]: action.value });
   switch (action.type) {
@@ -86,6 +93,10 @@ export function reduceSettings(settings, action) {
       return set('confirm', CONFIRMS.includes(action.value));
     case 'settings/vibration':
       return set('vibration', typeof action.value === 'boolean');
+    case 'settings/captions':
+      return set('captions', typeof action.value === 'boolean');
+    case 'settings/reading':
+      return set('reading', READINGS.includes(action.value));
     case 'settings/tips/reset':
       return settings.tips && !settings.tipsSeen.length ? settings : { ...settings, tips: true, tipsSeen: [] };
     case 'settings/tip/seen':
@@ -112,6 +123,8 @@ export function settingsProblems(settings) {
   if (!SPEEDS.includes(settings.speed)) problems.push('The playback speed setting is invalid.');
   if (!CONFIRMS.includes(settings.confirm)) problems.push('The confirm setting is invalid.');
   if (typeof settings.vibration !== 'boolean') problems.push('The vibration setting is invalid.');
+  if (typeof settings.captions !== 'boolean') problems.push('The captions setting is invalid.');
+  if (!READINGS.includes(settings.reading)) problems.push('The reading setting is invalid.');
   const { tipsSeen } = settings;
   if (typeof settings.tips !== 'boolean' || !Array.isArray(tipsSeen) || tipsSeen.length > MAX_TIPS || !tipsSeen.every((id) => TIP_ID.test(id)) || new Set(tipsSeen).size !== tipsSeen.length) {
     problems.push('The tips settings are unreadable.');

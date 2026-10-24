@@ -43,6 +43,7 @@ import { approachText } from './approachText.js';
 import { squadText } from './crewText.js';
 import { heatChip } from './hubParts.js';
 import { createSquadCard } from './squadCard.js';
+import { liveStatus, surface } from '../a11y.js';
 
 const ARM_MS = 3000; // an order waits this long for its second tap
 const MARGIN = 8; // pixels around each ship
@@ -66,7 +67,7 @@ export const approachScreen = {
     // through.
     const ships = Object.fromEntries(
       SIDES.map((side) => {
-        const area = node('div', `apr-ship apr-${side}`);
+        const area = surface(node('div', `apr-ship apr-${side}`), side === 'you' ? 'Your ship, from outside: a tap skips the round as it plays' : 'Their ship, from outside: a tap skips the round as it plays');
         const name = node('p', 'apr-name');
         const stats = node('p', 'apr-stats');
         const hole = node('div', 'apr-hole');
@@ -81,7 +82,7 @@ export const approachScreen = {
     const column = node('section', 'hgr-panel apr-side');
     const intentHead = node('h2', null, 'Their order');
     const intent = node('p', 'apr-intent');
-    const hint = node('p', 'apr-said', 'Loading…');
+    const hint = liveStatus(node('p', 'apr-said', 'Loading…'));
     const out = node('div', 'apr-out');
     const outTitle = node('h2', 'apr-out-title');
     const outLines = node('ul', 'apr-out-lines');
