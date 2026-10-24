@@ -81,13 +81,13 @@ test("heat at the colony: the run's levels with the pursuer's words for the colo
   // Found: the lander's days, counted down, then down.
   const found = coming(at(base, { heat: 50 }), 1, 4);
   assert.deepEqual(raidStatus(found, rules), { label: 'Raid', value: 'Lander in 3 days · 4 raiders', ok: false, state: 'coming', line: words.found });
-  assert.equal(raidStatus({ ...found, colony: { ...found.colony, day: 3 } }, rules).value, 'Lander in 1 day');
+  assert.equal(raidStatus({ ...found, colony: { ...found.colony, day: 3 } }, rules).value, 'Lander in 1 day · 4 raiders');
   assert.deepEqual(raidStatus(down(found), rules), { label: 'Raid', value: 'Lander down: defend', ok: false, state: 'down', line: words.landing });
   // The colony's needs end with the raid's line.
   assert.deepEqual(colonyText(found, rules).needs.at(-1), { label: 'Raid', value: 'Lander in 3 days · 4 raiders', ok: false });
   assert.deepEqual(colonyText(at(base, { heat: 50, lanes: 2 }), rules).needs.at(-1), { label: 'Found', value: '6% a day · off the lanes', ok: true });
   // The hint warns while one is coming, and says when the ship is away.
-  assert.deepEqual(raidHint(found, rules), { text: `${words.found} It lands in 3 days: set down guns, a shield and an armory from the hold.`, tone: 'warn' });
+  assert.deepEqual(raidHint(found, rules), { text: `${words.found} It lands in 3 days with 4 raiders: set down guns, a shield and an armory from the hold.`, tone: 'warn' });
   assert.equal(raidHint(at(base, { heat: 50 }), rules), null);
   // The act's words say what is still to come.
   assert.match(colonyText(base, rules).ahead, /^All of v0\.4 is here, sound included\. Still to come in v1\.0: /);

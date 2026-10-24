@@ -20,16 +20,17 @@ Newest entry first.
 - **Save v47:** `colony.lowProfile`, `colony.trader` (`{ side, day, part, bought, sold }` or null), `colony.raid.extra`; the migration sets false, null and 0.
 - **Sounds:** the four new actions make the confirm sound, as the hangar's payment does.
 
-**Measurements** (`tools/voyage.js --background all --runs 100`, main against this branch, the careful test player pulling the levers over the colony's first days: it lies low at the hunters' level and stops under the rumors', pays while 150 credits stay, sells materials over 40, and buys the trader's part while 150 credits stay):
+**Measurements** (`tools/voyage.js --background all --runs 100`, main against this branch, the careful test player pulling the levers over the colony's first days: once its farms feed the crew it lies low at the hunters' level and stops under the rumors', and sells materials over 40; it pays while 150 credits stay, and buys the trader's part while 150 credits stay):
 
 | | raids, main | won | runs lost | raids, M53 | won | runs lost |
 |---|---|---|---|---|---|---|
-| Debt-bound miner | 49 | 47 | 2 | 33 | 28 | 5 |
-| Navy deserter | 79 | 73 | 5 | 44 | 36 | 7 |
-| Burned smuggler | 48 | 45 | 3 | 30 | 29 | 1 |
+| Debt-bound miner | 49 | 47 | 2 | 37 | 33 | 4 |
+| Navy deserter | 79 | 73 | 5 | 47 | 41 | 6 |
+| Burned smuggler | 48 | 45 | 3 | 33 | 32 | 1 |
 
-- **Levers pulled (runs, times):** the miner paid in 1 (1), lay low in 41 (41) for 485 days, sold to a trader in 5 (25), bought its part in 13 (16). The deserter paid in 0, lay low in 48 for 597 days, sold in 1 (1), bought in 6 (8). The smuggler paid in 5 (5), lay low in 26 for 293 days, sold in 18 (68), bought in 19 (31).
-- **What it comes to:** lying low cuts the raids by a third to a half. The raids that still come are bigger, and win less often: the miner's 96% to 85%, the deserter's 92% to 82%; the smuggler's (the Hallorans, already five strong) 94% to 97%. Runs lost go up 3 for the miner and 2 for the deserter, down 2 for the smuggler. This is the pressure the item asked for; whether it is too much is Evan's call (below).
+- **Levers pulled (runs, times):** the miner paid in 1 (1), lay low in 32 (32) for 378 days, sold to a trader in 6 (36), bought its part in 13 (16). The deserter paid in 0, lay low in 40 for 477 days, sold in 3 (4), bought in 6 (8). The smuggler paid in 5 (5), lay low in 22 for 229 days, sold in 19 (74), bought in 19 (31).
+- **A first cut lay low and sold before the farms fed the crew;** with the mines idle the farms came late (seed 1 fed from day 19, past M27's 15), so the test player now waits for the farms. A player can make the same mistake; the first tap says the mines stop.
+- **What it comes to:** lying low cuts the raids by a quarter to two fifths. The raids that still come are bigger, and are won less often: the miner's 96% to 89%, the deserter's 92% to 87%; the smuggler's (the Hallorans, already five strong) 94% to 97%. Runs lost go up 2 for the miner and 1 for the deserter, down 2 for the smuggler. This is the pressure the item asked for; whether it is too much is Evan's call (below).
 - **Payments are rare** for the test player: it seldom holds 200 credits at the colony. The traders call in about a third of runs, where a side is friendly by the landing.
 
 **Done when** (ROADMAP.md, M53), and how each is met:
@@ -41,9 +42,9 @@ Newest entry first.
 - **Save v47; every rule tested;** touch at the three sizes, `m53/verify.mjs`.
 
 **Tests:**
-- `node --test`: TESTCOUNT pass (1246 on main).
+- `node --test`: 1253 pass (1246 on main).
 - **New:** `tests/pressure.test.js` (7).
-- **Changed on purpose:** the save version pins (46 to 47) and the migrations' expected colonies (`lowProfile`, `trader`); raids' expectations carry their `extra`; `tests/voyage.test.js` holds a faced raid's landed and stopped to its party (4 to 7) instead of the fixed party.
+- **Changed on purpose:** the save version pins (46 to 47) and the migrations' expected colonies (`lowProfile`, `trader`); raids' expectations carry their `extra`; `tests/voyage.test.js` holds a faced raid's landed and stopped to its party (4 to 7) instead of the fixed party; its materials ledger counts the lots sold to a trader; `tests/raidText.test.js`, `tests/colonyListText.test.js` and `tests/voyageText.test.js` (a raid coming says how many raiders).
 
 **Browser checks:**
 - **M53's own:** `m53/verify.mjs`, 17 of 17 at the three sizes.
@@ -60,7 +61,7 @@ Newest entry first.
 - **A raid at a task force's heat:** is "6 raiders, 2 more for the heat it was found at" clear, and does the fight feel harder in the right way?
 - **Lie low:** is the cost clear from the first tap, and is 3 a day the right pace?
 - **The trader:** does it turn up often enough to notice, and is 15 credits a lot worth the materials?
-- **The balance:** raids won fall from 92–96% to 82–85% for the miner and the deserter. Keep it, or soften the extras (`raidExtraHunters`, `raidExtraTaskForce`, `raidExtraCornered` in `data/balance.json`)?
+- **The balance:** raids won fall from 92–96% to 87–89% for the miner and the deserter. Keep it, or soften the extras (`raidExtraHunters`, `raidExtraTaskForce`, `raidExtraCornered` in `data/balance.json`)?
 
 **Next milestone's first task:** M54, item 8 of the brainstorm (a colony layout that matters: neighbours, the storehouse and workshop chain, survivors settling as citizens): study it, measure, write the Done when.
 
