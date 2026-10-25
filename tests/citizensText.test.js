@@ -95,7 +95,7 @@ test("a colony's news in words: the raids fought out without the ship, and who c
   const stopped = { ...fought, day: 41, landed: 0, fell: 0 };
   assert.equal(newsSaid([stopped], colony, roomy(), rules), `the guns stopped every one of ${pursuer.name}'s raiders on day 41`);
   const people = [{ day: 2, kind: 'grew', citizens: 1 }, { day: 7, kind: 'grew', citizens: 2 }, { day: 9, kind: 'settled', citizens: 3 }, { day: 12, kind: 'left', citizens: 2 }];
-  assert.equal(newsSaid(people, { citizens: 2 }, roomy(), rules), '2 citizens came, a freed captive settled and one left, short of food: 2 now');
+  assert.equal(newsSaid(people, { citizens: 2 }, roomy(), rules), '2 citizens came, a newcomer settled and one left, short of food: 2 now');
   assert.deepEqual([newsTone([fought]), newsTone([stopped]), newsTone([lost]), newsTone(people), newsTone(people.slice(0, 3))], ['warn', 'good', 'bad', 'warn', 'good']);
   // The last of it, short, for the chart's panels.
   assert.deepEqual([newsLine({ news: [fought] }), newsLine({ news: [lost] }), newsLine({ news: [stopped] }), newsLine({ news: people }), newsLine({ news: [] })], ['Raid fought off, day 34 · 1 fell', 'Raid lost, day 40 · 2 fell', 'Raid stopped landing, day 41', 'A citizen left, day 12', null]);

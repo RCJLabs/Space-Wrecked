@@ -978,6 +978,8 @@ export function playColony(campaign, defs, days = COLONY_DAYS) {
       healed,
       hurt,
       levers,
+      // Buildings gaining from a neighbour at the end (M54).
+      near: colonyStats(campaign, defs).buildings.filter((b) => b.near?.length).length,
     },
     raids,
   };
@@ -1635,6 +1637,9 @@ export function voyagesByBackground(defs, runs, options = {}) {
       quests: questCounts(defs, done),
       companions: companionCounts(defs, done),
       levers: leverCounts(done),
+      near: done.filter((r) => r.tally.days).reduce((sum, r) => sum + (r.tally.days.near ?? 0), 0),
+      nearRuns: done.filter((r) => r.tally.days?.near > 0).length,
+      settlers: done.reduce((sum, r) => sum + Math.max(r.campaign?.flags?.survivorsSettled ?? 0, r.out?.campaign?.flags?.survivorsSettled ?? 0), 0),
     };
   });
   const width = Math.max(...rows.map((row) => row.name.length), 10);
@@ -1651,6 +1656,8 @@ export function voyagesByBackground(defs, runs, options = {}) {
     ...rows.map((row) => `${row.name.padEnd(width)}  ${companionsLine(row.companions)}`),
     "The colony's levers on heat (M53), over its first days: runs that pulled each, and how often:",
     ...rows.map((row) => `${row.name.padEnd(width)}  ${leversLine(row.levers)}`),
+    "Neighbours and settlers (M54): buildings gaining from a neighbour at the end of the colony's first days, and survivors from events who settled:",
+    ...rows.map((row) => `${row.name.padEnd(width)}  ${row.near} buildings in ${row.nearRuns} colonies; ${row.settlers} survivors settled`),
   ];
   return { lines, rows };
 }

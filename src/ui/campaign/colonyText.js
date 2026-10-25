@@ -8,6 +8,7 @@ import { dayPlan, planDay } from '../../sim/days.js';
 import { colonyPursuer, raidIn } from '../../sim/raids.js';
 import { actTitle, crewText, heatText, shipLine } from './hubText.js';
 import { runRecord } from './launchText.js';
+import { nearLine, namesOf } from './neighbourText.js';
 import { newsText } from './newsText.js';
 import { defenseRow, raidHint, raidStatus } from './raidText.js';
 import { worldSaid } from './sectorText.js';
@@ -100,6 +101,9 @@ export function colonyText(campaign, rules) {
   const raid = raidStatus(campaign, rules);
   needs.push({ label: raid.label, value: raid.value, ok: raid.ok });
   const list = buildList(campaign, rules);
+  // What a building's neighbours give it (M54), after what it gives.
+  const names = namesOf(stats);
+  const near = (b) => (b.near?.length ? ` · ${nearLine(b, names)}` : '');
   return {
     act: actTitle(campaign.act, rules),
     home: `${world.name} · ${kind} · Day ${campaign.colony.day}${trip ? ' · the ship away' : ''}`,
@@ -113,7 +117,7 @@ export function colonyText(campaign, rules) {
     buildings: stats.buildings.map((b) => ({
       uid: b.uid,
       name: b.name,
-      gives: !b.powered ? `Dark: needs ${b.need} power` : b.makes ? `${makesText(b.makes)}${b.worked ? ' · a citizen works it' : ''}` : givesText(b.gives),
+      gives: !b.powered ? `Dark: needs ${b.need} power` : `${b.makes ? `${makesText(b.makes)}${b.worked ? ' · a citizen works it' : ''}` : givesText(b.gives)}${near(b)}`,
       powered: b.powered,
     })),
     crew: crew.map((row, i) => ({ ...row, aboard: aboard.has(campaign.crew[i].id), away: away.has(campaign.crew[i].id), rough: rough.has(campaign.crew[i].id) })),
@@ -231,14 +235,16 @@ export function whyNotText(row, verb) {
 // plan): where it is and what the second tap does, or why it can't stand
 // there. moving: true for a building being moved.
 //   { ok, text, tone }
-export function placeText(plan, { moving = false } = {}) {
+// near (M54, neighbourText.js ghostNearText): what it would gain and give
+// by its neighbours there, after what it does.
+export function placeText(plan, { moving = false, near = '' } = {}) {
   if (!plan.ok) return { ok: false, text: `${plan.error} Tap the grid where it can go.`, tone: 'warn' };
   const name = plan.name;
   const after = 'or tap the grid to put it somewhere else.';
-  if (moving) return { ok: true, text: `The ${lowerFirst(name)} here: tap it again to move it, ${after}`, tone: 'info' };
-  if (plan.from === 'build') return { ok: true, text: `A ${lowerFirst(name)} here, for ${plan.cost} materials: ${lowerFirst(plan.makes ? makesText(plan.makes) : givesText(plan.gives))}. Tap it again to build it, ${after}`, tone: 'info' };
-  if (plan.from === 'hold') return { ok: true, text: `The ${lowerFirst(name)} here, from the hold: ${lowerFirst(givesText(plan.gives))}. Tap it again to set it down, ${after}`, tone: 'info' };
-  return { ok: true, text: `The ${lowerFirst(name)} here: ${lowerFirst(givesText(plan.gives))}. It comes off the ship. Tap it again to give it, ${after}`, tone: 'info' };
+  if (moving) return { ok: true, text: `The ${lowerFirst(name)} here${near ? `.${near} Tap` : ': tap'} it again to move it, ${after}`, tone: 'info' };
+  if (plan.from === 'build') return { ok: true, text: `A ${lowerFirst(name)} here, for ${plan.cost} materials: ${lowerFirst(plan.makes ? makesText(plan.makes) : givesText(plan.gives))}.${near} Tap it again to build it, ${after}`, tone: 'info' };
+  if (plan.from === 'hold') return { ok: true, text: `The ${lowerFirst(name)} here, from the hold: ${lowerFirst(givesText(plan.gives))}.${near} Tap it again to set it down, ${after}`, tone: 'info' };
+  return { ok: true, text: `The ${lowerFirst(name)} here: ${lowerFirst(givesText(plan.gives))}.${near} It comes off the ship. Tap it again to give it, ${after}`, tone: 'info' };
 }
 
 // What a tap on a row that can't be given says, and (M26) what a first tap

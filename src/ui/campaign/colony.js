@@ -56,6 +56,7 @@ import { createTrips } from './colonyTrip.js';
 import { takeCarried } from './carried.js';
 import { createVoyages } from './colonyVoyage.js';
 import { createLevers } from './colonyLevers.js';
+import { ghostNearText } from './neighbourText.js';
 import { createCrewCard } from './crewCard.js';
 import { crewCardText, crewSaid } from './crewText.js';
 import { crewRows, heatChip, listRows, questRows, sideRows } from './hubParts.js';
@@ -290,7 +291,7 @@ export const colonyScreen = {
         : armed === 'voyage' ? voyages.hint(campaign)
         : levers.owns(armed) ? levers.hint(campaign) ?? { text: '', tone: 'info' }
         : (tripArmed ? trips.hint(campaign) : null) ?? said ?? (down ? raidHint(campaign, defs) : null) ?? voyages.hint(campaign) ?? trips.hint(campaign) ?? (plan?.same ? { text: `Tap the grid where the ${lowerFirst(buildingName(mode.type, defs))} should go, or turn it.`, tone: 'info' }
-          : plan ? placeText(plan, { moving: mode.uid !== null })
+          : plan ? placeText(plan, { moving: mode.uid !== null, near: plan.ok ? ghostNearText(campaign, defs, { uid: mode.uid, type: mode.type, ...mode.placement }) : '' })
           : mode.kind === 'look' ? buildingInfo(text.buildings.find((b) => b.uid === mode.uid))
           : raidHint(campaign, defs) ?? text.news ?? text.next);
       setText(hint, words.text);

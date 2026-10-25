@@ -28,6 +28,8 @@ const FILE_KEYS = ['drops', 'events'];
 const EVENT_KEYS = ['id', 'kind', 'quest', 'background', 'title', 'text', 'choices'];
 const CHOICE_KEYS = ['id', 'label', 'needs', 'outcomes'];
 const OUTCOME_KEYS = ['chance', 'text', 'effects'];
+// Survivors an outcome brings (M54), who may settle at the colony.
+const MAX_SETTLERS = 4;
 const MAX_TITLE = 24;
 const MAX_LABEL = 24;
 const MAX_TEXT = 240;
@@ -167,6 +169,7 @@ function checkEffects(effects, needs, at, { drops, moduleIds, sides, companions,
       else if (!held.has(kind)) fail(at, `ambush: the scavengers can't hold a place of kind "${kind}" (expeditions.json held)`);
     } else if (!presets.get(effects.ambush)?.tactics) fail(at, `ambush "${effects.ambush}" must be a ship preset that can fight an approach (ships.json, with tactics)`);
   }
+  if (effects.settlers !== undefined && !isIntIn(effects.settlers, 1, MAX_SETTLERS)) fail(at, `settlers must be a whole number from 1 to ${MAX_SETTLERS}`);
   if (effects.joins !== undefined) {
     if (!companions.has(effects.joins)) fail(at, `joins: unknown companion "${effects.joins}" (companions.json)`);
     if ((needs.berth ?? 0) < 1) fail(at, 'signs a companion on, so the choice must need a berth');

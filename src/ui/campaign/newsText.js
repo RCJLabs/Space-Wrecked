@@ -38,7 +38,7 @@ export function newsTone(entries) {
 export function newsLine(colony) {
   const last = colony?.news?.at(-1);
   if (!last) return null;
-  if (last.kind !== 'raid') return `${{ grew: 'A citizen came', left: 'A citizen left', settled: 'A captive settled' }[last.kind]}, day ${last.day}`;
+  if (last.kind !== 'raid') return `${{ grew: 'A citizen came', left: 'A citizen left', settled: 'A newcomer settled' }[last.kind]}, day ${last.day}`;
   const what = !last.landed ? 'Raid stopped landing' : last.won ? 'Raid fought off' : 'Raid lost';
   return `${what}, day ${last.day}${last.fell ? ` · ${last.fell} fell` : ''}`;
 }
@@ -58,7 +58,8 @@ function peopleSaid(entries, now) {
   const [grew, settled, left] = [count('grew'), count('settled'), count('left')];
   const said = [
     ...(grew ? [grew === 1 ? 'a citizen came' : `${grew} citizens came`] : []),
-    ...(settled ? [settled === 1 ? 'a freed captive settled' : `${settled} freed captives settled`] : []),
+    // A freed captive (M38f) or an event's survivor (M54).
+    ...(settled ? [settled === 1 ? 'a newcomer settled' : `${settled} newcomers settled`] : []),
     ...(left ? [`${left === 1 ? 'one' : left} left, short of food`] : []),
   ];
   return said.length ? `${listed(said)}: ${now} now` : null;

@@ -55,6 +55,7 @@ import { tally } from './flags.js';
 import { cellAt } from './grid.js';
 import { baseOf } from './makers.js';
 import { footprint, hasTag, isRotation } from './modules.js';
+import { neighbourGains } from './neighbours.js';
 import { supplyCapacity } from './travel.js';
 
 // The id the colony's grid goes by as a frame, for the builder's placement.
@@ -220,7 +221,8 @@ export function givesOf(def) {
 //              from M39 a part's building's that makes food (a greenhouse),
 //              else null; worked, whether a citizen works it (M38f): one to
 //              each farm and mine in the order built, for citizenWork more a
-//              day.
+//              day; near, what it gains from its neighbours (M54,
+//              neighbours.js), already in its makes and its storage.
 //   beds, air  from the powered buildings, one each for a crew member
 //   housed     the crew at home with a bed and air at the colony: the first
 //              of those at home, in the crew's order. The rest sleep aboard
@@ -253,16 +255,23 @@ export function colonyStats(campaign, rules) {
   // built.
   const work = rules.balance.citizenWork ?? 0;
   let hands = colony.citizens ?? 0;
+  // What each gains from its neighbours (M54, neighbours.js), a dark
+  // partner giving nothing.
+  const lit = new Set(lighted.filter((b) => b.powered).map((b) => b.uid));
+  const near = neighbourGains(colony.buildings, rules, (uid) => lit.has(uid));
   const buildings = lighted.map(({ uid, type, build, gives, need, powered }) => {
     const own = build ? makesOf(build, colony.world, more) : partMakes(type, rules);
     const worked = Boolean(build) && Boolean(own) && hands > 0;
     if (worked) hands -= 1;
-    const makes = worked ? Object.fromEntries(Object.entries(own).map(([what, n]) => [what, n + work])) : own;
-    return { uid, type, name: buildingName(type, rules), need, powered, gives, makes, worked };
+    const gains = near.get(uid) ?? [];
+    let makes = worked ? Object.fromEntries(Object.entries(own).map(([what, n]) => [what, n + work])) : own;
+    for (const gain of gains) if (gain.makes && makes) makes = Object.fromEntries(Object.entries(makes).map(([what, n]) => [what, n + (gain.makes[what] ?? 0)]));
+    const storage = gains.reduce((total, gain) => total + gain.storage, 0);
+    return { uid, type, name: buildingName(type, rules), need, powered, gives: storage ? { ...gives, storage: gives.storage + storage } : gives, makes, worked, near: gains };
   });
-  const lit = buildings.filter((b) => b.powered);
-  const sum = (key) => lit.reduce((total, b) => total + b.gives[key], 0);
-  const made = (what) => lit.reduce((total, b) => total + (b.makes?.[what] ?? 0), 0);
+  const on = buildings.filter((b) => b.powered);
+  const sum = (key) => on.reduce((total, b) => total + b.gives[key], 0);
+  const made = (what) => on.reduce((total, b) => total + (b.makes?.[what] ?? 0), 0);
   const [beds, air] = [sum('beds'), sum('air')];
   const away = new Set(trip?.squad ?? []);
   const home = homeCrew(campaign);
@@ -284,8 +293,8 @@ export function colonyStats(campaign, rules) {
     // Lying low (M53, pressure.js), the mines stand idle.
     made: { food: made('food'), materials: colony.lowProfile ? 0 : made('materials') },
     citizens: { count, housed: Math.min(count, room), free: Math.max(0, room - count), working: count - hands },
-    defense: { damage: sum('damage'), shield: sum('shield'), intercept: sum('intercept'), armories: lit.filter((b) => b.gives.armory).length },
-    infirmary: Math.max(0, ...lit.map((b) => b.gives.heal)),
+    defense: { damage: sum('damage'), shield: sum('shield'), intercept: sum('intercept'), armories: on.filter((b) => b.gives.armory).length },
+    infirmary: Math.max(0, ...on.map((b) => b.gives.heal)),
     effects,
   };
 }

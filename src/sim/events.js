@@ -47,6 +47,10 @@
 //                             at a hulk the scavengers were waiting
 //                             (expeditions.js)
 //   arms                      a weapon of that id on hand (M37, loadout.js)
+//   settlers                  that many survivors (M54, settlers.js): on a
+//                             voyage they settle at the colony flown from,
+//                             as far as its beds and air go; elsewhere
+//                             they are set down at the next station
 // The run keeps the nodes whose events are settled and the last one
 // settled, until the next jump (travel.js). The flags count the events
 // settled, and the campaign keeps each one's id (eventsMet, M36), so a
@@ -71,9 +75,10 @@ import { hasTag } from './modules.js';
 import { atEvent } from './quests.js';
 import { wrecksToRepair } from './repair.js';
 import { moveStanding } from './standing.js';
+import { settleSurvivors } from './settlers.js';
 import { openEvent, supplyCapacity } from './travel.js';
 
-export const EFFECTS = ['credits', 'supplies', 'heat', 'materials', 'wound', 'part', 'drop', 'sell', 'standing', 'joins', 'wreck', 'repair', 'ambush', 'arms'];
+export const EFFECTS = ['credits', 'supplies', 'heat', 'materials', 'wound', 'part', 'drop', 'sell', 'standing', 'joins', 'wreck', 'repair', 'ambush', 'arms', 'settlers'];
 export const NEEDS = ['credits', 'supplies', 'parts', 'berth', 'job', 'trait', 'wrecks'];
 // The tags of the parts an event can wreck: those a volley can hit.
 const WRECKABLE = [...new Set(Object.values(AIM_TAGS).flat())];
@@ -282,6 +287,11 @@ export function applyEffects(campaign, rules, effects, { among = null, taker = n
   if (effects.arms) {
     next.arms = withArms(next.arms ?? {}, effects.arms);
     changes.arms = [effects.arms];
+  }
+  if (effects.settlers) {
+    const settled = settleSurvivors(next, rules, effects.settlers);
+    next = settled.campaign;
+    changes.settlers = { came: effects.settlers, settled: settled.settled, home: settled.home };
   }
   return { campaign: next, changes };
 }
