@@ -555,7 +555,7 @@ export const colonyScreen = {
         game.dispatch({ type: 'campaign/move', uid, placement: plan.placement, rules: defs });
       } else {
         const result = build(campaign, defs, mode.what, mode.placement);
-        said = !result.ok ? { text: result.error, tone: 'bad' } : result.plan.from === 'ship' ? givenText(result, defs) : builtText(result);
+        said = !result.ok ? { text: result.error, tone: 'bad' } : result.plan.from === 'ship' ? givenText(result, defs) : builtText(result, defs);
         const action = { type: 'campaign/build', what: mode.what, placement: mode.placement, rules: defs };
         mode = { kind: 'browse' };
         game.dispatch(action);

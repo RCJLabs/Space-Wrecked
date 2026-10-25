@@ -124,3 +124,13 @@ test('the neighbour pairings are checked: kinds that exist, makes or storage, id
   assert.ok(problems([{ id: 'x', who: ['mine'], by: ['farm'], storage: 5, makes: { food: 1 } }]).some((p) => p.includes('makes or storage')));
   assert.ok(problems([{ id: 'x', who: ['mine'], by: ['farm'], storage: 5 }, { id: 'x', who: ['farm'], by: ['mine'], storage: 5 }]).some((p) => p.includes('used twice')));
 });
+
+test("building's words name what its neighbours give it", async () => {
+  const { build } = await import('../src/sim/colonyBuild.js');
+  const { builtText } = await import('../src/ui/campaign/colonyText.js');
+  const colony = withBuildings({ ...settled(), colony: { ...settled().colony, materials: 30 } }, [['workshop', 3, 0], ['reactor', 17, 9]]);
+  const result = build({ ...colony, colony: { ...colony.colony, materials: 30 } }, rules, { build: 'mine' }, { x: 0, y: 0, rot: 0 });
+  assert.equal(result.ok, true, result.error);
+  assert.match(builtText(result, rules).text, /^The mine stands at the colony: materials \+\d a day, \+1 materials by the machine shop\. \d+ materials left\.$/);
+  assert.doesNotMatch(builtText(result).text, /machine shop/);
+});

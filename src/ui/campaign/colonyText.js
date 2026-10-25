@@ -261,9 +261,12 @@ export function givenText(result, rules) {
 }
 
 // What building came to (colonyBuild.js build's result): { text, tone }.
-export function builtText(result) {
+// With rules, what its neighbours give it too (M54).
+export function builtText(result, rules = null) {
   const { plan, campaign } = result;
-  const does = lowerFirst(plan.makes ? makesText(plan.makes) : givesText(plan.gives));
+  const stats = rules ? colonyStats(campaign, rules) : null;
+  const near = stats?.buildings.at(-1)?.near?.length ? `, ${nearLine(stats.buildings.at(-1), namesOf(stats))}` : '';
+  const does = `${lowerFirst(plan.makes ? makesText(plan.makes) : givesText(plan.gives))}${near}`;
   const what = plan.from === 'build' ? `${does}. ${campaign.colony.materials} materials left` : does;
   return { text: `The ${lowerFirst(plan.name)} stands at the colony: ${what}.`, tone: 'good' };
 }
