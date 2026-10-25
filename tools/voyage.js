@@ -916,7 +916,8 @@ export function afterVoyage(campaign, defs, before) {
     grown: since('citizensGrown'),
     left: since('citizensLeft'),
     fell: since('citizensFell'),
-    settled: since('rescuedSettled'),
+    // Freed captives (M38f) and event survivors (M54) who settled.
+    settled: since('rescuedSettled') + since('survivorsSettled'),
     foughtOut: since('raidsFoughtOut'),
     won: since('raidsFoughtOutWon'),
     lost: since('raidsFoughtOutLost'),
@@ -978,6 +979,8 @@ export function playColony(campaign, defs, days = COLONY_DAYS) {
       healed,
       hurt,
       levers,
+      // Buildings gaining from a neighbour at the end (M54).
+      near: colonyStats(campaign, defs).buildings.filter((b) => b.near?.length).length,
     },
     raids,
   };
@@ -1635,6 +1638,9 @@ export function voyagesByBackground(defs, runs, options = {}) {
       quests: questCounts(defs, done),
       companions: companionCounts(defs, done),
       levers: leverCounts(done),
+      near: done.filter((r) => r.tally.days).reduce((sum, r) => sum + (r.tally.days.near ?? 0), 0),
+      nearRuns: done.filter((r) => r.tally.days?.near > 0).length,
+      settlers: done.reduce((sum, r) => sum + Math.max(r.campaign?.flags?.survivorsSettled ?? 0, r.out?.campaign?.flags?.survivorsSettled ?? 0), 0),
     };
   });
   const width = Math.max(...rows.map((row) => row.name.length), 10);
@@ -1651,6 +1657,8 @@ export function voyagesByBackground(defs, runs, options = {}) {
     ...rows.map((row) => `${row.name.padEnd(width)}  ${companionsLine(row.companions)}`),
     "The colony's levers on heat (M53), over its first days: runs that pulled each, and how often:",
     ...rows.map((row) => `${row.name.padEnd(width)}  ${leversLine(row.levers)}`),
+    "Neighbours and settlers (M54): buildings gaining from a neighbour at the end of the colony's first days, and survivors from events who settled:",
+    ...rows.map((row) => `${row.name.padEnd(width)}  ${row.near} buildings in ${row.nearRuns} colonies; ${row.settlers} survivors settled`),
   ];
   return { lines, rows };
 }
@@ -1967,7 +1975,7 @@ export function citizensSummary(done) {
   };
   return (
     `Citizens (M38f): back from the voyage out and ${AFTER_DAYS} days more at the first colony, ${where(1, 'first')}; ${where(2, 'second')}. ` +
-    `Since flying out ${sum('grown')} came, ${sum('left')} left short of food, ${sum('fell')} fell in raids, ${sum('settled')} freed captive${sum('settled') === 1 ? '' : 's'} settled. ` +
+    `Since flying out ${sum('grown')} came, ${sum('left')} left short of food, ${sum('fell')} fell in raids, ${sum('settled')} newcomer${sum('settled') === 1 ? '' : 's'} settled (freed captives and survivors). ` +
     `Raids fought out without the ship ${sum('foughtOut')}: won ${sum('won')}, lost ${sum('lost')}. Hungry days in the ${AFTER_DAYS}: ${sum('hungry')}, in ${after.filter((a) => a.hungry > 0).length} runs.`
   );
 }

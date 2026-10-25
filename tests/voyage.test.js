@@ -1219,5 +1219,5 @@ test("back from its voyage out the careful player plays the first colony's next 
   const runs = (id) => refittingAll.filter((r) => (r.out.after.citizens.find(([colony]) => colony === id)?.[1] ?? 0) > 0).length;
   assert.ok(runs(1) >= CITIZENS.first - MARGIN, `citizens at the first in ${runs(1)} of ${RATE_RUNS}`);
   assert.ok(runs(2) >= CITIZENS.second - MARGIN, `citizens at the second in ${runs(2)}`);
-  assert.match(citizensSummary(refittingAll), /^Citizens \(M38f\): back from the voyage out and 20 days more at the first colony, at the first \d+ \(\d+ to \d+\), in \d+ of 100; at the second \d+ \(\d+ to \d+\), in \d+ of \d+\. Since flying out \d+ came, \d+ left short of food, \d+ fell in raids, \d+ freed captives? settled\. Raids fought out without the ship \d+: won \d+, lost \d+\. Hungry days in the 20: \d+, in \d+ runs\.$/);
+  assert.match(citizensSummary(refittingAll), /^Citizens \(M38f\): back from the voyage out and 20 days more at the first colony, at the first \d+ \(\d+ to \d+\), in \d+ of 100; at the second \d+ \(\d+ to \d+\), in \d+ of \d+\. Since flying out \d+ came, \d+ left short of food, \d+ fell in raids, \d+ newcomers? settled \(freed captives and survivors\)\. Raids fought out without the ship \d+: won \d+, lost \d+\. Hungry days in the 20: \d+, in \d+ runs\.$/);
 });

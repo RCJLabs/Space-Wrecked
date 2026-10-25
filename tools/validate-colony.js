@@ -5,7 +5,9 @@
 // building gives is its part's own numbers (data/modules.json), so it names
 // a part that exists, a base part (each maker's version of it is the same
 // building), none twice, none that stays aboard, and one that fits on the
-// grid. From M27: the materials a colony starts with, and what it builds
+// grid. From M54 the neighbour pairings: each with an id, who gains and by
+// whom (builds' ids or buildings' parts), and what it gains, a day's food or
+// materials, or storage. From M27: the materials a colony starts with, and what it builds
 // from them (the farms and mines): each with an id no part has, a name no
 // other building has, a size that fits on the grid, its cost, what it
 // makes and from which of the world's numbers, the least it makes a day,
@@ -22,7 +24,11 @@ import { lookProblems } from '../src/render/figures/looks.js';
 import { COLONY_EFFECTS } from '../src/sim/edges.js';
 import { isId, isIntIn, isObject, isText, knownKeys, listOf } from './checks.js';
 
-const FILE_KEYS = ['site', 'aboard', 'text', 'materials', 'citizen', 'gun', 'builds', 'buildings'];
+const FILE_KEYS = ['site', 'aboard', 'text', 'materials', 'citizen', 'gun', 'neighbours', 'builds', 'buildings'];
+// A neighbour pairing (M54, src/sim/neighbours.js): who gains, by whom, and
+// what: makes (food or materials a day) or storage.
+const NEIGHBOUR_KEYS = ['id', 'who', 'by', 'makes', 'storage'];
+const MAX_NEIGHBOUR = 20;
 // The colonist (M38f): its keys and the range of each number.
 const CITIZEN_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'weapon', 'look'];
 const CITIZEN_NUMBERS = { hp: [1, 20], aim: [0, 100], defense: [0, 50], mobility: [1, 8], armor: [0, 5] };
@@ -99,6 +105,8 @@ export function checkColony(file, modules, fail, weapons = []) {
   });
 
   const buildings = listOf(file, 'buildings', where, fail);
+  const kinds = new Set([...ids, ...buildings.map((b) => b?.part)]);
+  checkNeighbours(file.neighbours, kinds, `${where} neighbours`, fail);
   if (!buildings.length) fail(where, 'needs a building at least');
   const seen = new Set();
   buildings.forEach((building, i) => {
@@ -208,4 +216,34 @@ function fits(part, site) {
   const [w, h] = Array.isArray(part.size) ? part.size : [1, 1];
   const [W, H] = [site.width ?? 0, site.height ?? 0];
   return (w <= W && h <= H) || (h <= W && w <= H);
+}
+
+// The neighbour pairings (M54): who and by name builds or buildings, and
+// each gains a day's food or materials, or storage, not both.
+function checkNeighbours(list, kinds, where, fail) {
+  if (list === undefined) return;
+  if (!Array.isArray(list)) {
+    fail(where, 'must be a list');
+    return;
+  }
+  const ids = new Set();
+  list.forEach((rule, i) => {
+    const at = `${where} ${rule?.id ?? `#${i}`}`;
+    if (!isObject(rule)) {
+      fail(at, 'must be an object');
+      return;
+    }
+    knownKeys(rule, NEIGHBOUR_KEYS, at, fail);
+    if (!isId(rule.id)) fail(at, 'id must be lowercase letters, digits and dashes');
+    else if (ids.has(rule.id)) fail(at, 'id used twice');
+    ids.add(rule.id);
+    for (const key of ['who', 'by']) {
+      if (!Array.isArray(rule[key]) || !rule[key].length || !rule[key].every((kind) => kinds.has(kind))) fail(at, `${key} must be a list of builds' ids or buildings' parts`);
+    }
+    if ((rule.makes === undefined) === (rule.storage === undefined)) fail(at, 'must have makes or storage, not both');
+    else if (rule.makes !== undefined) {
+      if (!isObject(rule.makes) || !Object.keys(rule.makes).length) fail(at, `makes must be { ${MAKES.join(' | ')}: a day }`);
+      else for (const [what, n] of Object.entries(rule.makes)) if (!MAKES.includes(what) || !isIntIn(n, 1, MAX_LEAST)) fail(at, `makes: ${what} must be one of ${MAKES.join(', ')}, from 1 to ${MAX_LEAST} a day`);
+    } else if (!isIntIn(rule.storage, 1, MAX_NEIGHBOUR)) fail(at, `storage must be a whole number from 1 to ${MAX_NEIGHBOUR}`);
+  });
 }

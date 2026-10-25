@@ -124,7 +124,25 @@ export function effectsText(effects, campaign, rules, taker = null) {
     said.push(mended.length ? `${listed(mended.map((wreck) => `the ${partName(wreck.type, rules)}`))} repaired` : 'a repair, with nothing wrecked');
   }
   if (effects.ambush) said.push(trapSaid(effects.ambush, rules));
+  if (effects.settlers) said.push(settlersSaid(effects.settlers, campaign));
   return said.length ? said.join(', ') : 'nothing';
+}
+
+// Survivors (M54), as the odds say it: "2 survivors to settle at
+// Copperhill" on a voyage, else "2 survivors to set down".
+function settlersSaid(count, campaign) {
+  const who = `${count} survivor${count === 1 ? '' : 's'}`;
+  return campaign.colony?.voyage?.home ? `${who} to settle at ${campaign.colony.world.name}` : `${who} to set down`;
+}
+
+// What came of survivors (M54, events.js changes.settlers): settled at the
+// colony flown from, or set down at the next station.
+function settledSaid({ came, settled, home }, campaign) {
+  const world = campaign.colony?.world?.name ?? 'the colony';
+  if (!home) return `${came === 1 ? 'The survivor is' : 'The survivors are'} set down at the next station.`;
+  if (settled === came) return `${came === 1 ? 'The survivor settles' : `All ${came} settle`} at ${world}: ${settled === 1 ? 'a citizen' : `${settled} citizens`} more.`;
+  if (settled) return `${settled} of the ${came} settle at ${world}, all its beds and air allow; the rest are set down at the next station.`;
+  return `${world} has no bed and air free for them: they are set down at the next station.`;
 }
 
 // A trap (M36), as the odds say it: on the run, the ship that fires first;
@@ -162,6 +180,7 @@ export function changesText(changes, campaign, rules) {
   if (changes.repaired?.length) said.push(`Repaired: ${listed(changes.repaired.map((fixed) => `the ${partName(fixed.type, rules)}`))}.`);
   if (changes.ambush === true) said.push('A trap: they hold her now.');
   else if (changes.ambush) said.push(`A trap: ${aPart(changes.ambush, rules, rules.ships)} fired first.`);
+  if (changes.settlers) said.push(settledSaid(changes.settlers, campaign));
   return said.length ? said.join(' ') : 'Nothing changes.';
 }
 

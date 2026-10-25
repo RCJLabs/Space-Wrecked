@@ -302,8 +302,8 @@
           "label": "Tow them in",
           "needs": { "supplies": 3 },
           "outcomes": [
-            { "chance": 80, "text": "They pay, and in cash. Somewhere a pig is flying.", "effects": { "supplies": -3, "credits": 25, "standing": { "union": 1 } } },
-            { "chance": 20, "text": "They pay in IOUs and a bag of ore samples. Worth about what you'd think.", "effects": { "supplies": -3, "credits": 5, "standing": { "union": 1 } } }
+            { "chance": 80, "text": "They pay, and in cash. Somewhere a pig is flying.", "effects": { "supplies": -3, "credits": 25, "standing": { "union": 1 }, "settlers": 2 } },
+            { "chance": 20, "text": "They pay in IOUs and a bag of ore samples. Worth about what you'd think.", "effects": { "supplies": -3, "credits": 5, "standing": { "union": 1 }, "settlers": 2 } }
           ]
         },
         {
@@ -405,7 +405,7 @@
           "label": "Send your medic",
           "needs": { "job": "medic" },
           "outcomes": [
-            { "chance": 75, "text": "Your medic doses the lot of them. They pay what they can, and the kids wave from the viewport.", "effects": { "credits": 20, "heat": -3 } },
+            { "chance": 75, "text": "Your medic doses the lot of them. They pay what they can, and the kids wave from the viewport.", "effects": { "credits": 20, "heat": -3, "settlers": 2 } },
             { "chance": 25, "text": "They pay, and your medic brings the fever home. A day in the bunk, maybe two.", "effects": { "credits": 20, "wound": { "hp": 3 } } }
           ]
         },
@@ -428,7 +428,7 @@
           "id": "answer",
           "label": "Go alongside",
           "outcomes": [
-            { "chance": 55, "text": "Two miners, half frozen and very grateful. They tip in ore money and share their rations.", "effects": { "credits": 20, "supplies": 4 } },
+            { "chance": 55, "text": "Two miners, half frozen and very grateful. They tip in ore money and share their rations.", "effects": { "credits": 20, "supplies": 4, "settlers": 2 } },
             { "chance": 45, "text": "The lifeboat is empty and the beacon is bait. A cutter drops out of the dark behind you.", "effects": { "ambush": "cutter" } }
           ]
         },
@@ -451,7 +451,7 @@
           "id": "cut",
           "label": "Cut them out",
           "needs": { "job": "engineer" },
-          "outcomes": [{ "chance": 100, "text": "Your engineer has the lock open in ten minutes. They pay in cash, and in tears.", "effects": { "credits": 20 } }]
+          "outcomes": [{ "chance": 100, "text": "Your engineer has the lock open in ten minutes. They pay in cash, and in tears.", "effects": { "credits": 20, "settlers": 1 } }]
         },
         {
           "id": "blow",
@@ -526,7 +526,7 @@
           "label": "Fight the fire",
           "needs": { "job": "engineer" },
           "outcomes": [
-            { "chance": 80, "text": "Your engineer smothers it from outside. Her captain pays in cash, gratefully.", "effects": { "credits": 30 } },
+            { "chance": 80, "text": "Your engineer smothers it from outside. Her captain pays in cash, gratefully.", "effects": { "credits": 30, "settlers": 1 } },
             { "chance": 20, "text": "Smothered, and your engineer takes a scorching for it. The captain pays.", "effects": { "credits": 30, "wound": { "hp": 2 } } }
           ]
         },

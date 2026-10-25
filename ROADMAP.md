@@ -2530,6 +2530,28 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
 
   As built (2026-10-24): all of it, in `src/sim/pressure.js`, `src/sim/traders.js`, `src/sim/raids.js` (raidExtra, raidParty, raidersOf) and the colony's Heat and Trader sections (`src/ui/campaign/colonyLevers.js`, `pressureText.js`), save v47. One cut: lying low idles the mines only; the solar arrays stay lit, being the power the guns and the shield need in a raid. Over 100 runs a background the careful player's raids fell from 49/79/48 to 37/47/33 and were won 89%/87%/97% against main's 96%/92%/94%; runs lost 4/6/1 against 2/5/3. The voyage tests pass unchanged. Details in PROGRESS.md.
 
+- [x] **M54 A colony layout that matters.** Item 8 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-24, "Merge and continue"). From §9: where a building stands changing what it gives (raised in M27's build mode), the storehouse and machine shop working with the pits (M38d's fix, M39), and survivors settling as citizens (M38f).
+
+  Measured first (main after M53, the careful test player's 90 colonies at the end of their first days, seeds 1 to 30 from each background, `m54/layout.mjs`):
+  - **Where a building stands changes nothing** but which one a raid's fight puts where (M50): every number is the colony's whole, and the one-cell path round each building is the only rule.
+  - **What stands:** 183 farms, 60 mines, 124 gun emplacements, about 35 storehouses of all kinds, one machine shop, one greenhouse. Buildings fall where the first spot fits, so farms already stand by farms (156 pairs within a path) and by mines (105), the air plant by the guns (58).
+  - **Citizens:** 18 across the 90 colonies; only a station job's freed captive on a voyage settles one (M38f). No event brings any.
+
+  Done when (my recommendations, taken on Evan's word):
+  - **Neighbours:** two buildings are neighbours when only the path lies between them (no more than one cell apart, side or corner). Three pairings, as data (`data/colony.json` `neighbours`), each counted once a building whatever how many partners:
+    - **a mine by a machine shop** digs 1 more a day (the shop's +1 to every mine stays);
+    - **a farm by an air plant** (any life support's building) grows 1 more a day;
+    - **a storehouse by a farm or a mine** (any hold's building) holds 10 more.
+    A dark building gives its neighbours nothing.
+  - **Shown where it's decided:** the ghost's line says what it would gain from where it stands and what it would give its neighbours; a building's details and its row say what its neighbours give it ("+1 materials by the machine shop").
+  - **Survivors settle:** an event effect, `settlers`, on five rescues (the stalled miner, the fever ship, the lifeboat beacon, the jammed airlock, the burning barge). On a voyage they settle at the colony flown from, a citizen each, as far as its beds and air go, and its news says so; elsewhere the result's words say they were set down at the next station.
+  - **Measured:** the test player's colonies with the neighbours as its buildings fall (it doesn't seek them), food and materials made at the end of the first days and the voyage tests inside their margins of main's; how many neighbour pairings stand; how many citizens settle from events over 100 voyages a background.
+  - **No save change:** neighbours are worked out from where buildings stand, and settlers are citizens. Save stays v47.
+  - **Every rule tested;** every earlier milestone's check passes.
+  - **Touch, at the three sizes:** a ghost by a machine shop and its line; a building's details naming its neighbour; survivors settling from a voyage's event.
+
+  As built (2026-10-25): all of it, in `src/sim/neighbours.js`, `src/sim/settlers.js`, `data/colony.json` `neighbours` and the five rescues in `data/events.json`, with the words in `src/ui/campaign/neighbourText.js`. No save change. As buildings fall for the test player, food made rose 4.50 to 4.72 a day and materials 2.12 to 2.13 over 90 colonies; the raids table over 100 runs a background is main's to the run; 3, 1 and 3 survivors settled. Details in PROGRESS.md.
+
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
 ### Phase 9: Release (v1.0)

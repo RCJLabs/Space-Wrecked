@@ -137,13 +137,14 @@ test("the day, food and materials against the stores, and what can be built: far
   const text = colonyText(campaign, rules);
   assert.equal(text.day, 1);
   // The mine digs 3 a day: the world's ore, 2, and the engineer at home's 1
-  // (M32).
+  // (M32). The storehouse, set down in the first spot by the mine, holds 10
+  // more for it (M54).
   assert.deepEqual(text.needs.filter((need) => ['Food', 'Materials'].includes(need.label)), [
-    { label: 'Food', value: '27 of 50 · +0, eats 3', ok: true },
-    { label: 'Materials', value: '10 of 50 · +3 a day', ok: true },
+    { label: 'Food', value: '27 of 60 · +0, eats 3', ok: true },
+    { label: 'Materials', value: '10 of 60 · +3 a day', ok: true },
   ]);
-  assert.equal(text.stores, "50 each, 30 in the landed ship's holds and 20 in storehouses");
-  assert.deepEqual(text.buildings.map((b) => [b.name, b.gives]), [['Mine', 'Materials +3 a day'], ['Storehouse', 'Stores 20']]);
+  assert.equal(text.stores, "60 each, 30 in the landed ship's holds and 30 in storehouses");
+  assert.deepEqual(text.buildings.map((b) => [b.name, b.gives]), [['Mine', 'Materials +3 a day'], ['Storehouse', 'Stores 30 · stores +10 by the mine']]);
   // A solar array and a shelter (M28) give rather than make.
   assert.deepEqual(text.builds, [
     { what: { build: 'farm' }, id: 'farm', name: 'Farm', cost: 10, makes: 'Food +1 a day here', ok: true, why: null },
@@ -170,7 +171,7 @@ test("the day, food and materials against the stores, and what can be built: far
   assert.equal(whyNotText(text.hold[1], 'set down').text, "Corridor ×2, Engine: can't be set down. Stays aboard: no use to the colony.");
   // Short of food tomorrow: the line says so.
   const hungry = colonyText({ ...campaign, supplies: 2 }, rules);
-  assert.deepEqual(hungry.needs.find((need) => need.label === 'Food'), { label: 'Food', value: '2 of 50 · +0, eats 3', ok: false });
+  assert.deepEqual(hungry.needs.find((need) => need.label === 'Food'), { label: 'Food', value: '2 of 60 · +0, eats 3', ok: false });
   assert.equal(makesText({ food: 5 }), 'Food +5 a day');
 });
 

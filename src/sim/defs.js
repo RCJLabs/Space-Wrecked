@@ -106,6 +106,8 @@ export function indexDefs(files) {
           materials: colony.materials ?? 0,
           citizen: colony.citizen ?? null,
           gun: colony.gun ?? null,
+          // From M54 the neighbour pairings (neighbours.js), in data order.
+          neighbours: colony.neighbours ?? [],
           builds: byId(colony.builds),
           buildings: new Map((colony.buildings ?? []).map((b) => [b.part, b])),
         }
