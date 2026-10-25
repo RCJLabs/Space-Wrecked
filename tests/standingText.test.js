@@ -179,7 +179,7 @@ test("the approach screen: a patrol waving the ship through, one opening fire, a
 test("an event's odds and its result say what it moves with the sides", () => {
   const campaign = onRun({ standing: { ...STOOD, union: 0 } });
   const tow = rules.events.get('stalled-miner').choices.find((c) => c.id === 'tow');
-  assert.equal(effectsText(tow.outcomes[0].effects, campaign, rules), '+25 credits, −3 supplies, the union +1');
+  assert.equal(effectsText(tow.outcomes[0].effects, campaign, rules), '+25 credits, −3 supplies, the union +1, 2 survivors to set down');
   const nodes = campaign.run.sector.nodes.map((node) => (node.id === 1 ? { ...node, type: 'distress', event: 'stalled-miner' } : node));
   const at = { ...campaign, run: { ...campaign.run, sector: { ...campaign.run.sector, nodes }, at: 1, seen: [...campaign.run.seen, 1] } };
   const chose = chooseEvent(at, rules, 'crate').campaign;
