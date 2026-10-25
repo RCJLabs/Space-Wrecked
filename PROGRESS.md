@@ -2,6 +2,59 @@
 
 Newest entry first.
 
+## M54 A colony layout that matters (2026-10-25)
+
+**Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. No save change: saves stay v47.
+
+**How it was picked:** item 8 of the Phase 8 brainstorm, next in my order, on Evan's "Merge and continue" (taken as M53's balance kept). Measured first on main after M53 (`m54/layout.mjs`, the careful test player's 90 colonies at the end of their first days):
+- **Where a building stood changed nothing** but where a raid's fight put it (M50).
+- **What stood:** 183 farms, 60 mines, 124 gun emplacements, about 35 storehouses, one machine shop. Farms already stood by farms (156 pairs within a path) and by mines (105).
+- **Citizens:** 18 in 90 colonies, from freed captives only (M38f).
+
+**What shipped:**
+- **Neighbours** (`src/sim/neighbours.js`, `data/colony.json` `neighbours`): two buildings with only the path between them, side or corner, are neighbours. Three pairings, each counted once a building:
+  - a mine by a machine shop digs 1 more;
+  - a farm by an air plant (life support or air works) grows 1 more;
+  - a storehouse (any hold's building) by a farm or a mine holds 10 more.
+  A dark partner gives nothing. The gains are part of `colonyStats` (each building's `near`), so the days, the stores and every number on screen carry them.
+- **Shown where it's decided** (`src/ui/campaign/neighbourText.js`): the ghost's line says what it gains where it stands and what it gives the buildings round it ("By the machine shop: +1 materials."; "The storehouse by it: stores +10."); a building's row and details name what its neighbours give it; the line after building does too.
+- **Survivors settle** (`src/sim/settlers.js`): an event effect, `settlers`, on five rescues (the stalled miner and the lifeboat beacon, two each; the fever ship, two; the jammed airlock and the burning barge, one each). On a voyage they settle at the colony flown from, a citizen each, as far as its beds and air go; its news says "newcomers settled". Elsewhere the result says they were set down at the next station. The odds name them ("2 survivors to settle at Copperhill").
+- **Validation:** the pairings name builds or buildings that exist, and give makes or storage; settlers are 1 to 4.
+
+**Measurements:**
+- **Production** (`m54/made.mjs`, 90 colonies at the end of their first days, the test player placing as before, not seeking neighbours): food 4.50 a day on main, 4.72 now; materials 2.12, 2.13; stores 61.9, 63.8.
+- **Over 100 voyages a background** (`tools/voyage.js --background all --runs 100`): the raids table is the same as main's to the run. Buildings gaining from a neighbour at the end of the first days: 58 in 49 colonies (the miner), 43 in 41 (the deserter), 42 in 35 (the smuggler). Survivors settled from events: 3, 1 and 3 (the five rescues are a few among 100 events, and the test player settles only on a voyage with room).
+- **What it comes to:** a small gain as buildings fall; the pairings matter for a player who places by them. The machine shop pairing is rare in play (one shop in 90 colonies), so most of the gain is farms by the air plant and storehouses by the fields.
+
+**Done when** (ROADMAP.md, M54), and how each is met:
+- **Neighbours:** `tests/neighbours.test.js` (next to by side and corner, two cells off not; each pairing's gain, once each, a dark partner none, the colony's sums; the pairings validated).
+- **Shown where it's decided:** the neighbour tests (the ghost's gains and gives, its words, a row's words, the built line); `m54/verify.mjs` (a mine picked lands by the machine shop and its line says so; built, its row and the hint say so; a storehouse's row by a farm).
+- **Survivors settle:** the neighbour tests (settled with room, partly, none; landed or before act 3 none; the event's words; the five rescues); `m54/verify.mjs` (newcomers in the hint home from a voyage).
+- **Measured:** above; the voyage tests pass inside their margins of main's.
+- **No save change; every rule tested;** touch at the three sizes, `m54/verify.mjs`.
+
+**Tests:**
+- `node --test`: 1259 pass (1253 on main).
+- **New:** `tests/neighbours.test.js` (6).
+- **Changed on purpose:** `tests/colonyText.test.js` (a storehouse set down by a mine holds 10 more: stores 60, not 50); `tests/citizensText.test.js` (a settled newcomer, not only a freed captive); `tests/standingText.test.js` (the stalled miner's odds name its survivors); `tests/voyage.test.js` (the materials ledger counts trader sales from M53 already; the headcount and the summary count survivors among the newcomers settled).
+
+**Browser checks:**
+- **M54's own:** `m54/verify.mjs`, 9 of 9 at the three sizes.
+- **Every earlier milestone's check,** in three chains run one after the other (`m54/regress-a.sh`, M53's back to M30's; `m54/regress-b1.sh`, M29's to M23's; `m54/regress-b2.sh`, M22's to M8's).
+  - REGRESSRESULT
+
+**Known issues:**
+- **The test player doesn't place by neighbours,** so the measurements show what falls, not what a player who plans gets.
+- **No marks on the ground** show neighbours: the words say it, the stand doesn't draw a link.
+- **Survivors settle only on a voyage;** an act 2 rescue sets them down, since there is no colony yet.
+
+**What Evan should test on the phone:**
+- **Placing a farm by the air plant, a mine by a machine shop:** is the ghost's line enough to see the gain, or should the ground show it?
+- **The three pairings:** are they the right ones, and is +1 / +10 worth planning a layout for?
+- **A rescue on a voyage:** does "All 2 settle at Copperhill" read right, and is the news on the way home clear?
+
+**Next milestone's first task:** item 2 of the brainstorm is held until after Gate 7, and the items in my order are done; the next is Evan's pick (Gate 7's play on the phone, or another brainstorm item).
+
 ## M53 Colony pressure and levers (2026-10-24)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met but one, cut on purpose: lying low idles the mines only, not the solar arrays (below). Saves move to v47 (a colony from before neither lies low nor has a trader; a raid already coming keeps the pursuer's party as it was).
