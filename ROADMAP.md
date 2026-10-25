@@ -2530,7 +2530,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
 
   As built (2026-10-24): all of it, in `src/sim/pressure.js`, `src/sim/traders.js`, `src/sim/raids.js` (raidExtra, raidParty, raidersOf) and the colony's Heat and Trader sections (`src/ui/campaign/colonyLevers.js`, `pressureText.js`), save v47. One cut: lying low idles the mines only; the solar arrays stay lit, being the power the guns and the shield need in a raid. Over 100 runs a background the careful player's raids fell from 49/79/48 to 37/47/33 and were won 89%/87%/97% against main's 96%/92%/94%; runs lost 4/6/1 against 2/5/3. The voyage tests pass unchanged. Details in PROGRESS.md.
 
-- [ ] **M54 A colony layout that matters.** Item 8 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-24, "Merge and continue"). From §9: where a building stands changing what it gives (raised in M27's build mode), the storehouse and machine shop working with the pits (M38d's fix, M39), and survivors settling as citizens (M38f).
+- [x] **M54 A colony layout that matters.** Item 8 of the Phase 8 brainstorm, next in my recommended order, taken on Evan's word (2026-10-24, "Merge and continue"). From §9: where a building stands changing what it gives (raised in M27's build mode), the storehouse and machine shop working with the pits (M38d's fix, M39), and survivors settling as citizens (M38f).
 
   Measured first (main after M53, the careful test player's 90 colonies at the end of their first days, seeds 1 to 30 from each background, `m54/layout.mjs`):
   - **Where a building stands changes nothing** but which one a raid's fight puts where (M50): every number is the colony's whole, and the one-cell path round each building is the only rule.
@@ -2549,6 +2549,8 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **No save change:** neighbours are worked out from where buildings stand, and settlers are citizens. Save stays v47.
   - **Every rule tested;** every earlier milestone's check passes.
   - **Touch, at the three sizes:** a ghost by a machine shop and its line; a building's details naming its neighbour; survivors settling from a voyage's event.
+
+  As built (2026-10-25): all of it, in `src/sim/neighbours.js`, `src/sim/settlers.js`, `data/colony.json` `neighbours` and the five rescues in `data/events.json`, with the words in `src/ui/campaign/neighbourText.js`. No save change. As buildings fall for the test player, food made rose 4.50 to 4.72 a day and materials 2.12 to 2.13 over 90 colonies; the raids table over 100 runs a background is main's to the run; 3, 1 and 3 survivors settled. Details in PROGRESS.md.
 
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 

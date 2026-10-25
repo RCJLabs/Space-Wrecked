@@ -41,7 +41,9 @@ Newest entry first.
 **Browser checks:**
 - **M54's own:** `m54/verify.mjs`, 9 of 9 at the three sizes.
 - **Every earlier milestone's check,** in three chains run one after the other (`m54/regress-a.sh`, M53's back to M30's; `m54/regress-b1.sh`, M29's to M23's; `m54/regress-b2.sh`, M22's to M8's).
-  - REGRESSRESULT
+  - **All pass,** apart from M32b's first copy (its fix copy passes in its place) and M8's column at the tab size (five orders not clear of the DEV button), both as on main.
+  - **Two that failed once and passed on a rerun:** M33b's at the cover size (a place's row measured just under 48 px; 43 of 43 on the rerun), and M14's at the cover size (its boards that run rolled no hack job, so "a job of each kind" missed one; 49 of 49 on the rerun). Neither touches what M54 changed; the second is the check's own luck with the board.
+  - **The chains were first run as one job,** which passed the two-hour limit partway through the third; the third was run again on its own.
 
 **Known issues:**
 - **The test player doesn't place by neighbours,** so the measurements show what falls, not what a player who plans gets.
