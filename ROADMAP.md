@@ -2569,7 +2569,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
 
   **As built:** the harness plays the boarders as the game does (`--boarders press`; 3% stall then, 0.7% of the game's own boardings); passing over the downed tried and backed out (the smuggler's hangar raid 63% to 3%). Suppress pins (moves.js gives a suppressed unit only its own tile; the move rule refuses), takes one action and a round, and the crew AI gives it at the start of its turn to the enemy with the best shot at the crew: all orders 58% against 54% without it, given 1.7 times a fight, 4 points, under M40's band and recorded. The words say pinned (preview, odds card, the unit's word, details, log, the job's line). Weapons measured and left as main has them, two rounds of numbers moving nothing past the noise (§9). Act 1's sites 69% to 65%, raids and boardings in M40's bands. No save change. Details in PROGRESS.md.
 
-- [ ] **M56 The reckoning.** Item 4 of the second Phase 8 brainstorm, an ending, next in my order (taken on Evan's word, "Merge and continue"): a victory condition, a last confrontation with the pursuer, an epilogue and the run's record.
+- [x] **M56 The reckoning.** Item 4 of the second Phase 8 brainstorm, an ending, next in my order (taken on Evan's word, "Merge and continue"): a victory condition, a last confrontation with the pursuer, an epilogue and the run's record.
 
   Measured first (main after M55, `tools/voyage.js --runs 30 --background all`): the background's thread pays off at the colony in 26, 24 and 27 of 30 runs (the miner, the deserter, the smuggler); after it the pursuer's raids all but stop (1, 0 and 0 faced in the days after, against 12, 10 and 12 before). The pursuit goes quiet there with nothing to say it is over, and nothing in the game ends a run but the crew all dying (M41).
 
@@ -2582,6 +2582,8 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Measured:** the test player reaches the reckoning and wins or loses it, from each start over 30 runs, and PROGRESS says how often; the voyage tests held to MAIN's rates.
   - **Every rule tested;** every earlier milestone's check passes.
   - **Touch, at the three sizes:** the reckoning's warning, its fight, the epilogue, Carry on and Continue after it.
+
+  **As built:** all of it, in `src/sim/reckoning.js` with the raids', the leaders and their words as data (`data/enemies.json`, `data/encounters.json`, the pursuer's `colony.reckoning` in `data/backgrounds.json`), and the epilogue in `src/ui/campaign/epilogue.js`. Save v48. Due on the founding colony's day 90 or 10 days after the pay-off, warned 5 days ahead, again 15 days after a loss. Over 30 runs a start the test player met it in 27, 24 and 28 and won it in 22, 20 and 28; the smuggler's is easy, recorded and not tuned. Details in PROGRESS.md.
 
 **The second Phase 8 brainstorm** (Evan's call, 2026-10-26: "Add everything to the queue. Then start 1"). Areas 1 to 3 are his, 4 to 10 mine. Each becomes a milestone as it starts, with its Done when settled then; my recommended order after 1 is 4, 6, 2, 3, 5, 7, 9, 10, 8.
 1. **Improving combat:** the orders nobody gives (Suppress and Weld add nothing measured), weapon roles (the shotgun best everywhere), enemy behaviour types (flankers, shield-bearers, medics, leaders), interactive ship tiles (venting a room, exploding consoles, lights out), morale and retreat (which also ends fights stuck behind a fallen body), a boss for each pursuer.

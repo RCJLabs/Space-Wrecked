@@ -18,6 +18,7 @@
 //                       the pursuit over, from the day it was won; seen once
 //                       the epilogue has been read and Carry on tapped
 //                       (closeEpilogue)
+import { tally } from './flags.js';
 import { pursuerOf } from './heat.js';
 
 // The colony the crew founded, the one the leader comes for.
@@ -75,8 +76,10 @@ export function afterPayoff(campaign, rules) {
 }
 
 // The reckoning's raid over at the founding colony on its day `day`: won,
-// the ending; lost, due again reckoningAgain days on.
+// the ending; lost, due again reckoningAgain days on. Counted in the flags
+// as reckoningsWon or reckoningsLost.
 export function reckoningSettled(campaign, rules, won, day) {
-  if (won) return { ...campaign, ending: { day, colony: campaign.colony?.world?.name ?? null, won: true, seen: false } };
-  return { ...campaign, reckoning: { due: day + rules.balance.reckoningAgain } };
+  const flags = tally(campaign.flags, { [won ? 'reckoningsWon' : 'reckoningsLost']: 1 });
+  if (won) return { ...campaign, flags, ending: { day, colony: campaign.colony?.world?.name ?? null, won: true, seen: false } };
+  return { ...campaign, flags, reckoning: { due: day + rules.balance.reckoningAgain } };
 }

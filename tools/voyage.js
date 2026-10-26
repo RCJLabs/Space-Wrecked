@@ -1677,19 +1677,23 @@ export function leverCounts(done) {
   return { played: played.length, pay: of('pay'), low: of('low'), sell: of('sell'), buy: of('buy'), lowDays: of('lowDays') };
 }
 
-// The reckoning in voyages that founded a colony (M56): runs it landed in,
-// runs it was won in (the campaign's ending at the last), runs it was lost
-// in at least once, and its landings in all.
+// The reckoning in voyages that founded a colony (M56), from the flags
+// reckoning.js counts (faced by the crew or fought out while the ship was
+// away): runs it landed in, runs it was won in (the pursuit over), runs it
+// was lost in at least once, and its landings in all.
 export function reckoningCounts(done) {
   const played = done.filter((r) => r.landed);
-  const ended = (r) => [r.campaign, r.out?.campaign, r.travelled, r.home].some((campaign) => campaign?.ending?.won);
-  const met = (r) => (r.tally.raids?.faced ?? []).filter((raid) => raid.reckoning);
+  const flags = (r) => [r.campaign, r.out?.campaign, r.travelled, r.home].reduce((most, campaign) => ({
+    won: Math.max(most.won, campaign?.flags?.reckoningsWon ?? 0),
+    lost: Math.max(most.lost, campaign?.flags?.reckoningsLost ?? 0),
+  }), { won: 0, lost: 0 });
+  const counted = played.map(flags);
   return {
     played: played.length,
-    met: played.filter((r) => met(r).length > 0).length,
-    won: played.filter(ended).length,
-    lost: played.filter((r) => met(r).some((raid) => !raid.won)).length,
-    landings: played.reduce((sum, r) => sum + met(r).length, 0),
+    met: counted.filter(({ won, lost }) => won + lost > 0).length,
+    won: counted.filter(({ won }) => won > 0).length,
+    lost: counted.filter(({ lost }) => lost > 0).length,
+    landings: counted.reduce((sum, { won, lost }) => sum + won + lost, 0),
   };
 }
 

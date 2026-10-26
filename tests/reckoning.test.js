@@ -77,6 +77,7 @@ test('won, the pursuit is over: the ending kept, no raid found again, nothing du
   assert.equal(lost.ending, null);
   assert.deepEqual(lost.reckoning, { due: dayOf + reckoningWarning + reckoningAgain });
   assert.ok(lost.flags.colonyRaidsLost >= 1);
+  assert.deepEqual([won.flags.reckoningsWon, lost.flags.reckoningsLost], [1, 1]);
   // A plain raid settles as before, the reckoning untouched.
   const plain = { ...colony, colony: { ...colony.colony, raid: { found: 3, lands: 6, extra: 0 } } };
   const after = settleRaid(plain, rules, true).campaign;
