@@ -11,9 +11,12 @@ Newest entry first.
 **What the measuring found** (main after M55, `tools/voyage.js --runs 30 --background all`): the background's thread pays off at the colony in 26, 24 and 27 of 30 runs (the miner, the deserter, the smuggler), and after it the pursuer's raids all but stop (1, 0 and 0 faced after, against 12, 10 and 12 before). The pursuit went quiet with nothing to say it was over, and nothing ended a run but the crew all dying.
 
 **What shipped:**
-- **The leaders** (`data/enemies.json`, `data/encounters.json`): Director Kroft of Con-Reg (the miner's), Marshal Okoye (the deserter's) and Teodor Halloran (the smuggler's), each an enemy of their own (16 to 18 hit points, above the pursuer's others) with a party of their best. Their words are in `data/backgrounds.json`, the pursuer's `colony.reckoning`: the name, the warning, the landing, the epilogue won and the raid lost. `tools/validate-campaign.js` checks them: the party known, the leader in it, no more than a lander holds, every word there.
+- **The leaders** (`data/enemies.json`, `data/encounters.json`): Director Kroft of Con-Reg (the miner's, an autogun), Marshal Okoye (the deserter's, a rifle) and Teodor Halloran (the smuggler's, a riot gun), each an enemy of their own (16 to 18 hit points, above the pursuer's others) with a party of their best.
+  - **They wear a cape** (`src/render/figures/shapes.js` `cape`, a back piece for both suits in `looks.js`). The twenty enemies before them had used up the looks `tests/figures.test.js` can tell apart at the cover screen's size (20% of pixels): no look built from the pieces there came within it. With the cape they stand 21 to 24% apart.
+  - **The director carries an autogun:** the rail rifle first given him reached out of his tile as he fell. Their words are in `data/backgrounds.json`, the pursuer's `colony.reckoning`: the name, the warning, the landing, the epilogue won and the raid lost. `tools/validate-campaign.js` checks them: the party known, the leader in it, no more than a lander holds, every word there.
 - **The reckoning comes** (`src/sim/reckoning.js`, `src/sim/raids.js`): once, at the colony the crew founded.
-  - **When:** by its day `reckoningDay` (90), or `reckoningAfter` (10) days after the background's thread pays off (`src/sim/quests.js`), whichever is sooner.
+  - **When:** by its day `reckoningDay` (90), or `reckoningAfter` (10) days after the background's thread pays off (`src/sim/quests.js`), whichever is sooner; and only with the ship there. Due while the ship is away on a voyage or a trip, it waits for the crew to come home: the leader comes for the crew, and the run's last fight is the player's, never fought out without them. (Found while away, it called the ship home and cut voyages out short: second colonies fell from 75 of 100 voyages to 59.)
+  - **The citizens shelter:** none stand in it as colonists (`colonistsOf`). It is the crew's fight with the leader; with them in it, small colonies lost their one or two citizens even when it was won, and runs with citizens at the first colony after the voyage fell from main's 86 of 100 to 63.
   - **How:** found at that day's end with no roll, before any raid is rolled for, and warned `reckoningWarning` (5) days ahead, or the flight home if the ship is further. It is a raid in every other way: Defend, the guns at the lander, the colonists, or fought out without the ship (fightAway).
   - **Lost:** a raid lost, as now, and the leader comes again `reckoningAgain` (15) days on.
   - **Won:** the campaign's `ending` is set. The pursuer finds no colony again (`foundOdds` is 0), and the colony's raid line says "The pursuit is over".
@@ -26,11 +29,12 @@ Newest entry first.
 
 | Start | Colonies | Met the reckoning | Won it | Lost it at least once | Landings |
 | --- | --- | --- | --- | --- | --- |
-| Debt-bound miner | 30 | 27 | 22 | 12 | 40 |
-| Navy deserter | 30 | 24 | 20 | 6 | 31 |
-| Burned smuggler | 30 | 28 | 28 | 1 | 29 |
+| Debt-bound miner | 30 | 10 | 8 | 2 | 10 |
+| Navy deserter | 30 | 16 | 8 | 8 | 18 |
+| Burned smuggler | 30 | 20 | 20 | 1 | 21 |
 
-- **Reached and won from every start.** Why 3, 6 and 2 runs never meet it is not checked run by run. The likely reason is that the test player stops playing the colony (first days, a voyage out and home) before its day 90 comes, in runs whose thread never paid off.
+- **Reached and won from every start,** in a third to two thirds of the runs. The test player stops at a fixed point (the colony's first days, a voyage out and home, 20 days more); the leader, waiting for the ship to be home, often comes after it. A player playing on meets it.
+- **The marshal is the hardest** (8 of 16 met lost at least once) and **Halloran the easiest** (20 of 20 won). Recorded, not tuned: the deserter's raids already run hardest (7 of 30 runs lost one), the smuggler's easiest.
 - **The smuggler wins nearly every time**, as its raids already go (37 of 39 won). Halloran's party may want to be harder; the margin is recorded here, not tuned.
 - **The voyage tests** hold to MAIN's rates (below).
 
@@ -42,7 +46,7 @@ Newest entry first.
 
 **Tests:**
 - `node --test`: TESTS_LINE
-- **Changed on purpose:** `tests/campaign.test.js` (a new campaign has `reckoning` and `ending` null).
+- **Changed on purpose:** `tests/campaign.test.js` (a new campaign has `reckoning` and `ending` null); every save test naming the version, 47 to 48, and the four whose migrated campaigns now carry `reckoning` and `ending` (`tests/deployment.test.js`, `difficulty.test.js`, `missions.test.js`, and `citizens.test.js`'s count of the migrations after v37's); `tests/data.test.js`'s counts (23 enemies, 31 encounters).
 
 **Browser checks:**
 - **M56's own:** `m56/verify.mjs`, 18 of 18 at the three sizes. It covers the leader's warning on the colony, the landing words and Defend into a fight with the leader in it, the epilogue's words and panels, its buttons (48 px or more, on screen, no sideways scroll), Carry on marking it read, the colony saying the pursuit is over, the title's Continue going to the colony after, and no console errors.
@@ -51,11 +55,13 @@ Newest entry first.
 **Known issues:**
 - **The epilogue's last rows need a scroll** on the cover screen (The run's Lost row sits under the fold); the panel scrolls.
 - **An old save's leader comes on day 90** even if its thread had already paid off (above).
-- **The smuggler's reckoning is easy** for the test player (28 of 28 met won).
+- **The smuggler's reckoning is easy** for the test player (20 of 20 met won), the deserter's hard (half lost at least once).
+- **A reckoning found just before the crew flies out** lands while they are away and is fought out without them; Fly out isn't refused for it.
 - **Carry on leaves nothing new to do** at the colony: the colony plays on without the pursuer, and that is all. What comes after an ending is item 8's (replay).
 
 **What Evan should test on the phone:**
-- Play a colony to its day 90, or to 10 days after the background's thread pays off. The leader should be named in the warning five days out, then Defend.
+- Play a colony to its day 90, or to 10 days after the background's thread pays off, with the ship at home. The leader should be named in the warning five days out, then Defend: the crew alone, no colonists, and the leader in a cape.
+- Be away on a voyage when it is due: nothing should come until you are home.
 - Win: the epilogue should show, with Carry on and New game. Close the app and reopen: Continue should bring the epilogue back until Carry on, then the colony, with "The pursuit is over" where the raid odds were.
 - Lose: the leader should come again 15 days later.
 
