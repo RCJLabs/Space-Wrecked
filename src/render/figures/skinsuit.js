@@ -2,7 +2,7 @@
 // the trim down the limbs and chest, plates in the suit's color over it, and
 // a smooth egg of a helmet whose visor wraps round. With plates, the
 // shoulders are capped in the trim.
-import { add, ball, dome, HELMET, hexa, lathe, mix, plateAlong, ridge, rod, scale, tube } from './shapes.js';
+import { HELMET, add, ball, cape, dome, hexa, lathe, mix, plateAlong, ridge, rod, scale, tube } from './shapes.js';
 
 export function dressSkinsuit(kit, s, look) {
   const { suit, trim, under } = kit.colors;
@@ -49,7 +49,7 @@ function bootOf(kit, [u, v], g) {
 }
 
 // On the back: a slim pack along the spine with two lights (spine), a jump
-// pack with its nozzles lit (jump), or nothing.
+// pack with its nozzles lit (jump), a leader's cape (cape, M56), or nothing.
 function back(kit, s, kind) {
   const { suit, trim, under } = kit.colors;
   const { hip, shoulder, girth: g, width: wv } = s.b;
@@ -57,6 +57,8 @@ function back(kit, s, kind) {
     lathe(kit, [-0.09 * g, 0], [[hip + 0.03, 0.035 * g, 0.045 * wv], [shoulder + 0.01, 0.04 * g, 0.05 * wv], [shoulder + 0.03, 0.025 * g, 0.035 * wv]], 8, suit, { square: 3 });
     const u = -0.132 * g;
     for (const w of [hip + 0.1, hip + 0.15]) hexa(kit, [[u, -0.022, w], [u + 0.006, -0.022, w], [u + 0.006, 0.022, w], [u, 0.022, w], [u, -0.022, w + 0.018], [u + 0.006, -0.022, w + 0.018], [u + 0.006, 0.022, w + 0.018], [u, 0.022, w + 0.018]], trim, true);
+  } else if (kind === 'cape') {
+    cape(kit, s, 0.1);
   } else if (kind === 'jump') {
     // A frame across the back, two thrusters pointing down, lit at the ends.
     lathe(kit, [-0.095 * g, 0], [[shoulder - 0.13, 0.03 * g, 0.1 * wv], [shoulder + 0.02, 0.035 * g, 0.11 * wv]], 8, under, { square: 4 });

@@ -39,6 +39,10 @@ test('due on the founding colony\'s day reckoningDay; found at that day\'s end, 
   assert.equal(reckoningDay(colony, rules), dayOf);
   assert.equal(reckoningDue(onDay(colony, dayOf - 1), rules), false);
   assert.equal(reckoningDue(onDay(colony, dayOf), rules), true);
+  // Not while the ship is away from it: it waits for the crew's return.
+  const out = onDay(colony, dayOf + 3);
+  assert.equal(reckoningDue({ ...out, colony: { ...out.colony, voyage: { out: 1 } } }, rules), false);
+  assert.equal(reckoningDue({ ...out, colony: { ...out.colony, trip: { place: {} } } }, rules), false);
   // The day before: the day's end makes it due, and it is found, even with
   // heat too low for any raid.
   const day = nextDay(onDay(colony, dayOf - 1, 0), rules);

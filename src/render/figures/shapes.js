@@ -198,3 +198,17 @@ export function cross(a, b) {
 export function norm(a) {
   return scale(a, 1 / (Math.hypot(...a) || 1));
 }
+
+// A leader's cape (M56): a long panel in the trim from the shoulders to
+// below the hips, flaring as it falls, with a dark collar across the top.
+// `behind` is how far behind the spine it hangs at the shoulders.
+export function cape(kit, s, behind) {
+  const { trim, dark } = kit.colors;
+  const { hip, shoulder, girth: g, width: wv } = s.b;
+  const [top, foot] = [shoulder + 0.03, hip - 0.15];
+  const [u0, u1] = [-behind * g, -(behind + 0.04) * g];
+  const [v0, v1] = [0.11 * wv, 0.16 * wv];
+  const t = 0.01;
+  hexa(kit, [[u1 - t, -v1, foot], [u1, -v1, foot], [u1, v1, foot], [u1 - t, v1, foot], [u0 - t, -v0, top], [u0, -v0, top], [u0, v0, top], [u0 - t, v0, top]], trim);
+  block(kit, [u0 - 0.02, -v0 - 0.01, top - 0.02], [u0 + 0.03, v0 + 0.01, top + 0.012], dark);
+}

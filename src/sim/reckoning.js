@@ -3,7 +3,9 @@
 //   - It is due on the founding colony's day reckoningDay, or from the
 //     background's thread's pay-off (quests.js) reckoningAfter days on,
 //     whichever is sooner; lost, reckoningAgain days after.
-//   - Due, with no raid coming there, it is found at that day's end as a
+//   - Due, with no raid coming there and the ship at home (not on a voyage
+//     or a trip from it: the leader comes for the crew, and their fight is
+//     the player's, never fought out without them), it is found at that day's end as a
 //     raid is (raids.js raidDayEnd), its lander down reckoningWarning days
 //     later, its party the leader's (data/backgrounds.json, the pursuer's
 //     colony.reckoning: { party, leader, name, found, landing, won, lost }).
@@ -51,10 +53,11 @@ export function reckoningDay(campaign, rules) {
 }
 
 // True when the reckoning is due at the colony as it stands: the founding
-// colony, its day come, no raid coming there, the pursuit not over.
+// colony with the ship there (not away on a voyage or a trip), its day
+// come, no raid coming there, the pursuit not over.
 export function reckoningDue(campaign, rules) {
   const { colony } = campaign;
-  if (!colony || colony.id !== HOME || colony.raid || pursuitOver(campaign) || !reckoningOf(campaign, rules)) return false;
+  if (!colony || colony.id !== HOME || colony.voyage || colony.trip || colony.raid || pursuitOver(campaign) || !reckoningOf(campaign, rules)) return false;
   return colony.day >= reckoningDay(campaign, rules);
 }
 

@@ -182,7 +182,7 @@ export function raidDayEnd(before, campaign, rules) {
   if (reckoningDue(campaign, rules)) {
     // The leader comes (M56), warned as long as reckoningWarning.
     const reach = raidReach(campaign, campaign.colony);
-    found = { found: before.colony.day, lands: campaign.colony.day + Math.max(rules.balance.reckoningWarning, away ? reach + 1 : reach), extra: 0, reckoning: true };
+    found = { found: before.colony.day, lands: campaign.colony.day + Math.max(rules.balance.reckoningWarning, reach), extra: 0, reckoning: true };
     raid = found;
   } else if (odds > 0) {
     const rolled = int(rng, 0, 99);

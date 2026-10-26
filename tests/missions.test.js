@@ -353,12 +353,12 @@ test('a campaign saved at any order of each new mission\'s fight passes the save
 });
 
 test('SAVE_VERSION 34: a save from before reads unchanged', () => {
-  assert.equal(SAVE_VERSION, 47);
+  assert.equal(SAVE_VERSION, 48);
   const data = { campaign: { crew: [], fight: null }, slots: [] };
   const migrated = migrate({ version: 33, data });
-  assert.equal(migrated.version, 47);
+  assert.equal(migrated.version, 48);
   // Unchanged but for M38e's other colonies, none (v37), and M41's game:
   // Normal, death not permanent, no one fallen, and no settings to move;
-  // and M52's ship with no name yet.
-  assert.deepEqual(migrated.data, { ...data, campaign: { ...data.campaign, colonies: [], difficulty: 'normal', permadeath: false, fallen: [], identity: null } });
+  // and M52's ship with no name yet; M56's reckoning and ending, none.
+  assert.deepEqual(migrated.data, { ...data, campaign: { ...data.campaign, colonies: [], difficulty: 'normal', permadeath: false, fallen: [], identity: null, reckoning: null, ending: null } });
 });

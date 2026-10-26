@@ -20,8 +20,8 @@
     { "id": "breacher", "name": "Con-Reg breacher", "hp": 6, "aim": 60, "defense": 0, "mobility": 4, "armor": 0, "weapon": "rivetgun", "look": { "suit": "eva", "build": "heavy", "helmet": "lamps", "back": "none", "marks": "plain" } },
     { "id": "proctor", "name": "Provost proctor", "hp": 9, "aim": 65, "defense": 5, "mobility": 4, "armor": 1, "weapon": "baton", "look": { "suit": "skinsuit", "build": "standard", "helmet": "mirror", "back": "jump", "marks": "plates" } },
     { "id": "cutter", "name": "Halloran cutter", "hp": 5, "aim": 60, "defense": 5, "mobility": 5, "armor": 0, "weapon": "machinepistol", "look": { "suit": "skinsuit", "build": "heavy", "helmet": "crest", "back": "jump", "marks": "plates" } },
-    { "id": "director", "name": "Recovery Director", "hp": 18, "aim": 70, "defense": 10, "mobility": 4, "armor": 2, "weapon": "railrifle", "look": { "suit": "eva", "build": "heavy", "helmet": "lamps", "back": "tanks", "marks": "stripes" } },
-    { "id": "marshal", "name": "Provost Marshal", "hp": 18, "aim": 80, "defense": 10, "mobility": 4, "armor": 2, "weapon": "rifle", "look": { "suit": "skinsuit", "build": "heavy", "helmet": "mirror", "back": "spine", "marks": "plates" } },
-    { "id": "heir", "name": "Halloran heir", "hp": 16, "aim": 70, "defense": 10, "mobility": 4, "armor": 2, "weapon": "riotgun", "look": { "suit": "skinsuit", "build": "standard", "helmet": "fin", "back": "none", "marks": "plates" } }
+    { "id": "director", "name": "Recovery Director", "hp": 18, "aim": 70, "defense": 10, "mobility": 4, "armor": 2, "weapon": "autogun", "look": { "suit": "eva", "build": "light", "helmet": "lamps", "back": "cape", "marks": "plain" } },
+    { "id": "marshal", "name": "Provost Marshal", "hp": 18, "aim": 80, "defense": 10, "mobility": 4, "armor": 2, "weapon": "rifle", "look": { "suit": "skinsuit", "build": "light", "helmet": "egg", "back": "cape", "marks": "plates" } },
+    { "id": "heir", "name": "Halloran heir", "hp": 16, "aim": 70, "defense": 10, "mobility": 4, "armor": 2, "weapon": "riotgun", "look": { "suit": "skinsuit", "build": "standard", "helmet": "egg", "back": "cape", "marks": "plates" } }
   ]
 }
