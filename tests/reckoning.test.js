@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import { makeSave, MIGRATIONS, parseSave, SAVE_VERSION } from '../src/core/save.js';
 import { campaignProblems } from '../src/sim/campaign.js';
 import { nextDay } from '../src/sim/days.js';
-import { foundOdds, landingPlan, raidersOf, settleRaid } from '../src/sim/raids.js';
+import { colonistsOf, foundOdds, landingPlan, raidersOf, settleRaid } from '../src/sim/raids.js';
 import { afterPayoff, HOME, pursuitOver, reckoningDay, reckoningDue, reckoningOf } from '../src/sim/reckoning.js';
 import { campaignScreen, initialState, reduce, saveData } from '../src/sim/root.js';
 import { rules } from './battleKit.js';
@@ -54,6 +54,10 @@ test('due on the founding colony\'s day reckoningDay; found at that day\'s end, 
   assert.deepEqual(raidersOf(day.campaign, rules), rules.encounters.get(leader.party).enemies);
   const down = { ...day.campaign, colony: { ...day.campaign.colony, day: raid.lands } };
   assert.deepEqual(landingPlan(down, rules).raiders, rules.encounters.get(leader.party).enemies);
+  // The citizens shelter: the crew's fight alone.
+  const peopled = { ...down, colony: { ...down.colony, citizens: 3 } };
+  assert.equal(colonistsOf(peopled, rules), 0);
+  assert.ok(colonistsOf({ ...peopled, colony: { ...peopled.colony, raid: { ...raid, reckoning: undefined } } }, rules) > 0, 'a plain raid has them');
 });
 
 test('the thread\'s pay-off brings it forward reckoningAfter days, never later than it was', () => {

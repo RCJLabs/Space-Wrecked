@@ -278,9 +278,11 @@ function facing(there, rules, raiders) {
 }
 
 // How many of a colony's citizens stand in its raid as colonists (M38f): all
-// of them, up to raidCitizens; none without data/colony.json's citizen.
+// of them, up to raidCitizens; none without data/colony.json's citizen, and
+// none in the reckoning (M56), the crew's fight with the leader, the
+// citizens sheltered.
 export function colonistsOf(campaign, rules) {
-  if (!rules.colony?.citizen) return 0;
+  if (!rules.colony?.citizen || campaign.colony?.raid?.reckoning) return 0;
   return Math.min(campaign.colony?.citizens ?? 0, rules.balance.raidCitizens ?? 0);
 }
 
