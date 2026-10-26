@@ -2,6 +2,57 @@
 
 Newest entry first.
 
+## M55 Combat that moves (2026-10-26)
+
+**Status:** done, with two of its three parts turned by what the measurements found (below); the ROADMAP.md box is ticked. No save change: saves stay v47.
+
+**How it was picked:** item 1 of the second Phase 8 brainstorm, improving combat, on Evan's "Add everything to the queue. Then start 1". Its first part only; enemy types, ship tiles that do things, morale and bosses stay in item 1.
+
+**What the measuring found, and what it changed** (the Done when was rewritten to match, in ROADMAP.md):
+- **The stalled fights were the harness's, not the game's.** The plain harness (`tools/sim.js`) ended 14% of its fights with no winner, 33% on the gunship and the frigate, both sides holding overwatch either side of a wall. But it played the boarders as defenders. The game's boarders on the crew's ship press on (press.js, since M15): played so, 2% stall (0 to 6% a preset), and 0.7% of the game's own boardings (`--boardings`). The few left are AI against AI with a downed crew member blocking a corridor; a player is never stuck behind one, and a raid fought out without the player has its own way on.
+  - **Tried and backed out:** letting units pass over the downed. It ended every stall, and took the burned smuggler's hangar raid from 63% crew wins to 3%: a crew member down in a doorway is the crew's chokepoint, and six raiders flooded through.
+  - **Kept:** `tools/sim.js --boarders press`, and the weapons table aboard with the boarders pressing on.
+- **Suppress was worth nothing**, with or without the crew AI giving it (54% either way; given 0.3 times a fight). Now:
+  - **It pins** (`src/sim/moves.js`, `src/sim/battle.js`): a suppressed unit can't move until its side's turn ends. It can still shoot at −30, or hold overwatch; the AI's plans, the press, the rescue and the fight-out players all see it has nowhere to go, and the move rule says "pinned down".
+  - **It takes one action, not the turn** (`src/sim/orders.js`), so the marine can pin and then shoot.
+  - **The crew AI** (`src/sim/orderAi.js`) suppresses at the start of its turn the enemy in sight with the best shot at the crew (40% or more), whatever its own shot.
+  - **Words:** the preview ("pinned, no moving, and its shots −30 till its turn ends… Takes an action and a round"), the odds card ("Pirate e1 pinned"), the unit's word on the board (PINNED), the unit's details, the log and the job's line on the crew card.
+  - **Measured:** all orders 58% against 54% without Suppress (1,000 fights, the boarders pressing on), given 1.7 times a fight. 4 points, just under M40's band for an order (5 to 15): recorded, not forced.
+- **Weapons for their places: measured and left as they were.** The heavies win on job sites as well as aboard (riot gun 85%, shotgun 85%, against the rail rifle's 82%). Two rounds of numbers (the heavies 15 to 20 points worse past close range, the long guns 5 better at mid) moved nothing past the noise: the riot gun went 85% to 84% to 86% on sites. A heavy wins by closing in, where it hits hardest, so its accuracy further out barely counts. `data/weapons.json` is as main has it; what would change it (a rule, not a number) is in ROADMAP §9.
+
+**Measurements** (M55 against main, the same seeds):
+- **`node tools/sim.js --boarders press`**, 1,000 fights: crew 58%, boarders 39%, no winner 3% (0 to 6% a preset). Shots 28.9 a fight, the crew hitting 56%, the boarders 38%. Orders a fight: Patch 1.0, Suppress 1.7, Weld 0.1.
+- **Boardings both ways** (`--boardings`, 63 fights a row): every row stays in M40's band of 20 to 80%. It moves within the noise of 63 fights (about ±12): boarding a fleet frigate 29% to 44%, a Halloran runner 62% to 79%, a patrol corvette 49% to 38%. Stalled: 6 of 1,008, 7 on main.
+- **Raids** (`tools/raids.js`, 150 fights a cell): at the hangar 62/61/63% on main, 60/59/63% now; at the colony 41/42/41%, now 51/45/41%.
+- **Act 1's job sites** (`--sites`, 300 fights): 69% on main, 65% now (the miner 63% to 59%, the deserter 66% to 60%, the smuggler 78% both). In M40's band of 35 to 90%.
+- **Voyages:** the voyage tests' 100-seed rates pass inside their margins of main's.
+
+**Done when** (ROADMAP.md, M55 as rewritten), and how each is met:
+- **The harness plays the boarders as the game does:** `--boarders press`, `tests/harness.test.js`; the weapons table aboard uses it.
+- **Suppress pins:** `tests/orders.test.js` (pinned: its reach is its own tile, a move is refused, a shot is not; an action left to the marine; gone when its side's turn ends) and `tests/orderAi.test.js` (the enemy with the best shot, not one already pinned, only with both actions to take); measured above.
+- **Weapons:** measured and parked, above.
+- **No save change; every rule tested;** the golden battle log unchanged (the scripted player gives no orders); act 1's jobs, raids and boardings in M40's bands.
+- **Touch at the three sizes:** `m55/verify.mjs`.
+
+**Tests:**
+- `node --test`: TESTS_LINE
+- **Changed on purpose:** `tests/orders.test.js` and `tests/orderAi.test.js` (above); `tests/crewJobText.test.js` (Suppress's line); `tests/harness.test.js` (`--boarders` takes press); `tests/voyage.test.js` (the voyage where a raid calls the ship home is seed 160's now: seed 130's no longer is, as the fights roll; 3 of seeds 101 to 280 show it, as before).
+
+**Browser checks:**
+- **M55's own:** `m55/verify.mjs`, 12 of 12 at the three sizes: the Suppress button 48 px or more, its preview, a second tap gives it, the marine keeps an action, the pinned enemy holds its tile through its turn, the pin wears off, no console errors.
+- CHAINS_LINE
+
+**Known issues:**
+- **The PINNED word is hidden under the odds badge** while one of the crew who could shoot that enemy is selected (the "70%" sits on it). Every unit word (MARKED, WATCHING) has the same overlap since M32; the details card and the preview say it in full.
+- **Suppress measures 4 points**, under M40's band for an order.
+- **Weapons still don't fit their places** (the heavies win on open ground too); §9 has what would change it.
+
+**What Evan should test on the phone:**
+- In a boarding, select the marine with an enemy in sight: tap Suppress, read the preview, tap again. The marine should still have an action to shoot with, and the enemy should show PINNED and stay put through its turn.
+- Long-press the pinned enemy: its details say "Pinned: no moving".
+
+**Next milestone's first task:** item 4 of the brainstorm, an ending, next in my order: study what the run has once the colony stands, and what would make an end worth reaching.
+
 ## M54 A colony layout that matters (2026-10-25)
 
 **Status:** done, and the ROADMAP.md box is ticked. Every bar of the Done when is met. No save change: saves stay v47.
