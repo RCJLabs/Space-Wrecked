@@ -35,7 +35,7 @@ Newest entry first.
 - **Touch at the three sizes:** `m55/verify.mjs`.
 
 **Tests:**
-- `node --test`: TESTS_LINE
+- `node --test`: 1259 pass (1259 on main: no tests added, those for the pin written into the Suppress tests).
 - **Changed on purpose:** `tests/orders.test.js` and `tests/orderAi.test.js` (above); `tests/crewJobText.test.js` (Suppress's line); `tests/harness.test.js` (`--boarders` takes press); `tests/voyage.test.js` (the voyage where a raid calls the ship home is seed 160's now: seed 130's no longer is, as the fights roll; 3 of seeds 101 to 280 show it, as before).
 
 **Browser checks:**
