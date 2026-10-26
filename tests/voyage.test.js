@@ -1128,10 +1128,11 @@ test("after the colony's 60 days the careful player stocks the holds and flies o
   assert.deepEqual(flown.steps, stayed.steps);
   assert.equal(stayed.out, null);
   // A raid coming calls the ship home: on 1 or 2 of the miner's 100
-  // voyages out, and since M40 on none of seeds 1 to 100, so seed 130's,
-  // one of 3 among seeds 101 to 220, shows it.
-  const lifted = launchedAt(rules, 130);
-  assert.ok(voyage(rules, 130, { refit: 'yes', jobs: 'yes', fit: powered(lifted) }, lifted).out.back.called, "a raid calls the ship home on seed 130's voyage out");
+  // voyages out, and since M40 on none of seeds 1 to 100, so seed 160's,
+  // one of 3 among seeds 101 to 280, shows it (seed 130's till M55's
+  // Suppress changed how the fights roll).
+  const lifted = launchedAt(rules, 160);
+  assert.ok(voyage(rules, 160, { refit: 'yes', jobs: 'yes', fit: powered(lifted) }, lifted).out.back.called, "a raid calls the ship home on seed 160's voyage out");
   assert.match(outSummary(refittingAll), /^The voyage out \(M38d\): flown in 100 of 100, home in \d+; .+ systems crossed \d+ \(\d+ to \d+\), all 3 in \d+; days away .+ At home: found in \d+ runs, calling the ship home in \d+; raids faced while away \d+, lost \d+ .+ met at home once back \d+, won \d+; fed all the while in \d+ of 100; the mines' digging past the storehouses lost in \d+ runs \(\d+ in all\)\. Before flying out, \d+ \(\d+ to \d+\) days stocking the holds, full in \d+ runs; flying out, food spoiled in \d+ runs \(\d+ in all\)\.$/);
   assert.match(flown.lines.at(-1), /^The voyage out: [0-3] of 3 systems crossed, home after \d+ days away(, called home by a raid)?; /);
 });
