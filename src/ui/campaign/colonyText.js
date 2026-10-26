@@ -6,6 +6,7 @@ import { buildingOf, colonyStats, shipParts, storesOf } from '../../sim/colony.j
 import { buildList } from '../../sim/colonyBuild.js';
 import { dayPlan, planDay } from '../../sim/days.js';
 import { colonyPursuer, raidIn } from '../../sim/raids.js';
+import { reckoningOf } from '../../sim/reckoning.js';
 import { actTitle, crewText, heatText, shipLine } from './hubText.js';
 import { runRecord } from './launchText.js';
 import { nearLine, namesOf } from './neighbourText.js';
@@ -343,6 +344,11 @@ export function dayReport(result, rules) {
   const text = `Day ${plan.day + 1}. ${made.charAt(0).toUpperCase()}${made.slice(1)}; ${eat}. Food ${plan.food[1]}, materials ${plan.materials[1]}.${lost}${citizensSaid(plan, 'came', 'left')}`;
   const days = (n) => `${n} day${n === 1 ? '' : 's'}`;
   const tone = plan.fed ? 'good' : 'bad';
+  if (result.found?.reckoning) {
+    // The leader comes (M56): no roll for it.
+    const words = reckoningOf(result.campaign, rules)?.found;
+    return { text: `${text}${words ? ` ${words}` : ''} The lander comes down in ${days(result.found.lands - (plan.day + 1))}.`, tone: 'bad' };
+  }
   if (result.found) {
     const words = colonyPursuer(result.campaign, rules)?.found;
     return { text: `${text}${words ? ` ${words}` : ''} Rolled ${result.roll}, under the ${plan.found}%: the lander comes down in ${days(result.found.lands - (plan.day + 1))}.`, tone: 'bad' };

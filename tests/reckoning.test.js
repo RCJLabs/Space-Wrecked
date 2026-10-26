@@ -10,7 +10,7 @@ import { campaignProblems } from '../src/sim/campaign.js';
 import { nextDay } from '../src/sim/days.js';
 import { foundOdds, landingPlan, raidersOf, settleRaid } from '../src/sim/raids.js';
 import { afterPayoff, HOME, pursuitOver, reckoningDay, reckoningDue, reckoningOf } from '../src/sim/reckoning.js';
-import { initialState, saveData } from '../src/sim/root.js';
+import { campaignScreen, initialState, reduce, saveData } from '../src/sim/root.js';
 import { rules } from './battleKit.js';
 import { settled } from './colonyKit.js';
 
@@ -66,7 +66,7 @@ test('won, the pursuit is over: the ending kept, no raid found again, nothing du
   const colony = onDay(settled(), dayOf + reckoningWarning, 95);
   const down = { ...colony, colony: { ...colony.colony, raid: { found: dayOf - 1, lands: dayOf + reckoningWarning, extra: 0, reckoning: true } } };
   const won = settleRaid(down, rules, true).campaign;
-  assert.deepEqual(won.ending, { day: dayOf + reckoningWarning, colony: colony.colony.world.name, won: true });
+  assert.deepEqual(won.ending, { day: dayOf + reckoningWarning, colony: colony.colony.world.name, won: true, seen: false });
   assert.equal(won.colony.raid, null);
   assert.equal(pursuitOver(won), true);
   assert.equal(foundOdds({ ...won, heat: 99, colony: { ...won.colony, heat: 99 } }, rules), 0);
@@ -85,7 +85,7 @@ test('won, the pursuit is over: the ending kept, no raid found again, nothing du
 
 test('the reckoning and the ending are saved and read back; a save from before has neither', () => {
   const colony = onDay(settled(), 20);
-  const ended = { ...colony, reckoning: { due: 30 }, ending: { day: 35, colony: 'Copperhill', won: true } };
+  const ended = { ...colony, reckoning: { due: 30 }, ending: { day: 35, colony: 'Copperhill', won: true, seen: false } };
   const state = { ...initialState(1), campaign: ended };
   const parsed = parseSave(JSON.stringify(makeSave(saveData(state))));
   assert.equal(parsed.ok, true, parsed.error);
@@ -114,4 +114,18 @@ test('a pursuer\'s reckoning is checked: its party known, the leader in it, its 
   assert.ok(problems({ ...good, party: 'nobody' }).some((p) => p.includes('unknown party')));
   assert.ok(problems({ ...good, leader: 'pirate' }).some((p) => p.includes('must be in the party')));
   assert.ok(problems({ ...good, won: '' }).some((p) => p.includes('won must be')));
+});
+
+test('won, the epilogue shows until Carry on, then the colony; Continue goes where Carry on left it', () => {
+  const colony = onDay(settled(), 40);
+  const ended = { ...colony, ending: { day: 40, colony: colony.colony.world.name, won: true, seen: false } };
+  assert.equal(campaignScreen(ended), 'epilogue');
+  assert.equal(campaignScreen({ ...ended, place: 'fight', fight: { raid: true } }), 'campaign-fight', 'not while a fight is on');
+  const state = { ...initialState(1), campaign: ended, screen: 'fight' };
+  const closed = reduce(state, { type: 'campaign/epilogue/close' });
+  assert.equal(closed.campaign.ending.seen, true);
+  assert.equal(closed.screen, 'colony');
+  assert.equal(reduce({ ...closed, screen: 'title' }, { type: 'campaign/continue' }).screen, 'colony');
+  // Nothing to close once it is read.
+  assert.equal(reduce(closed, { type: 'campaign/epilogue/close' }), closed);
 });

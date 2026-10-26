@@ -777,9 +777,9 @@ function isTrader(trader) {
 }
 
 // The reckoning won (M56, reckoning.js): { day, colony (its name, or
-// null), won: true }.
+// null), won: true, seen }.
 function isEnding(ending) {
-  return isRecord(ending) && isInt(ending.day, 0, MAX_DAYS) && (ending.colony === null || (typeof ending.colony === 'string' && ending.colony.length <= 60)) && ending.won === true;
+  return isRecord(ending) && isInt(ending.day, 0, MAX_DAYS) && (ending.colony === null || (typeof ending.colony === 'string' && ending.colony.length <= 60)) && ending.won === true && typeof ending.seen === 'boolean';
 }
 
 function isRaid(raid) {

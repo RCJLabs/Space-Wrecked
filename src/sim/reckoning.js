@@ -14,8 +14,10 @@
 //   campaign.reckoning  null, or { due }: the founding colony's day it is
 //                       due from, once set (by the pay-off or a loss); with
 //                       none, reckoningDay
-//   campaign.ending     null, or { day, colony (its name), won: true }: the
-//                       pursuit over, from the day it was won
+//   campaign.ending     null, or { day, colony (its name), won: true, seen }:
+//                       the pursuit over, from the day it was won; seen once
+//                       the epilogue has been read and Carry on tapped
+//                       (closeEpilogue)
 import { pursuerOf } from './heat.js';
 
 // The colony the crew founded, the one the leader comes for.
@@ -24,6 +26,17 @@ export const HOME = 1;
 // The pursuer's reckoning (see above), or null.
 export function reckoningOf(campaign, rules) {
   return pursuerOf(campaign, rules)?.colony?.reckoning ?? null;
+}
+
+// True while the epilogue waits to be read: the pursuit over, Carry on not
+// yet tapped, and no fight on.
+export function epilogueDue(campaign) {
+  return pursuitOver(campaign) && campaign.ending.seen !== true && !campaign.fight;
+}
+
+// The epilogue read: Carry on goes back to the colony, the pursuit over.
+export function closeEpilogue(campaign) {
+  return epilogueDue(campaign) ? { ...campaign, ending: { ...campaign.ending, seen: true } } : campaign;
 }
 
 // True once the pursuit is over.
@@ -64,6 +77,6 @@ export function afterPayoff(campaign, rules) {
 // The reckoning's raid over at the founding colony on its day `day`: won,
 // the ending; lost, due again reckoningAgain days on.
 export function reckoningSettled(campaign, rules, won, day) {
-  if (won) return { ...campaign, ending: { day, colony: campaign.colony?.world?.name ?? null, won: true } };
+  if (won) return { ...campaign, ending: { day, colony: campaign.colony?.world?.name ?? null, won: true, seen: false } };
   return { ...campaign, reckoning: { due: day + rules.balance.reckoningAgain } };
 }

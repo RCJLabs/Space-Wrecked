@@ -13,8 +13,16 @@ import { colonistsOf, colonyPursuer, defendersOf, defensesOf, downAt, fallenColo
 import { gearLine } from './armsText.js';
 import { byJob } from './crewJobText.js';
 import { easedSaid } from './questText.js';
+import { pursuitOver, reckoningOf } from '../../sim/reckoning.js';
 
 const LANES = ['near the lanes', 'off the lanes', 'far from the lanes'];
+
+// The words for the raid coming at the campaign's colony: the leader's for
+// the reckoning (M56, { name, found, landing, won, lost }), else the
+// pursuer's ({ found, landing, faced }); or null.
+export function raidWords(campaign, rules) {
+  return campaign.colony?.raid?.reckoning ? reckoningOf(campaign, rules) : colonyPursuer(campaign, rules);
+}
 
 // The raids' line for the colony screen's needs: { label, value, ok,
 // state, line }. state: 'down' (the lander is down), 'coming' (found, the
@@ -23,8 +31,10 @@ const LANES = ['near the lanes', 'off the lanes', 'far from the lanes'];
 // the campaign's colony (another's through colonies.js thereAt), by its
 // own heat (M38e).
 export function raidStatus(campaign, rules) {
-  const words = colonyPursuer(campaign, rules);
+  const words = raidWords(campaign, rules);
   const days = raidIn(campaign);
+  // The pursuit over (M56), nothing more comes.
+  if (days === null && pursuitOver(campaign)) return { label: 'Found', value: 'The pursuit is over', ok: true, state: 'quiet', line: `${reckoningOf(campaign, rules)?.name ?? 'The pursuer'} won't be back.` };
   if (days === 0) return { label: 'Raid', value: 'Lander down: defend', ok: false, state: 'down', line: words?.landing ?? '' };
   if (days !== null) return { label: 'Raid', value: `Lander in ${days} day${days === 1 ? '' : 's'}${raiders(campaign, rules)}`, ok: false, state: 'coming', line: words?.found ?? '' };
   const odds = foundOdds(campaign, rules);
@@ -163,6 +173,10 @@ export function colonyRaidOutcome(battle, campaign, rules) {
   const heat = heatAfter(heatAt(there, there.colony), rules);
   const fell = fallenColonists(battle);
   const lost = fell ? ` ${fell === 1 ? 'A colonist' : `${fell} colonists`} fell, lost to the colony: ${Math.max(0, (there.colony.citizens ?? 0) - fell)} citizen${(there.colony.citizens ?? 0) - fell === 1 ? '' : 's'} left.` : '';
+  // The reckoning (M56): the leader beaten, or come again.
+  const leader = there.colony.raid?.reckoning ? reckoningOf(there, rules) : null;
+  if (leader && battle.winner === 'crew') return { tone: 'good', title: `${leader.name} beaten`, text: `The pursuit is over.${lost}` };
+  if (leader) return { tone: 'bad', title: 'The reckoning lost', text: `${leader.lost} They took ${takenText(raidTake(there, rules), rules)}.${lost} ${heat}` };
   if (battle.winner === 'crew') return { tone: fell ? 'warn' : 'good', title: 'Raid beaten', text: `${colonyPursuer(campaign, rules)?.faced ?? 'They pull back to their lander.'}${lost} ${heat}` };
   return { tone: 'bad', title: 'Raid lost', text: `They took ${takenText(raidTake(there, rules), rules)}.${lost} ${heat}` };
 }
