@@ -40,7 +40,11 @@ Newest entry first.
 
 **Browser checks:**
 - **M55's own:** `m55/verify.mjs`, 12 of 12 at the three sizes: the Suppress button 48 px or more, its preview, a second tap gives it, the marine keeps an action, the pinned enemy holds its tile through its turn, the pin wears off, no console errors.
-- CHAINS_LINE
+- **Every earlier milestone's check,** in three chains (`m55/regress-a.sh`, M54's back to M30's; `m55/regress-b1.sh`, M29's to M23's; `m55/regress-b2.sh`, M22's to M8's):
+  - **All pass,** apart from M32b's first copy (its fix copy passes in its place) and M8's column at the tab size, both as on main.
+  - **Adapted for M55:** M32b's two copies (`m32b/verify55.mjs`, `m32b/verify-fix55.mjs`) for Suppress's new preview words; the fix copy 27 of 27 at the three sizes.
+  - **M35's at the open size fails one check on main as here:** "the landing's roar" is heard before the check's early sample. The check's timing, not M55.
+  - **Run at once, the three chains clashed:** two checks found their port taken, and four timed out or missed an animation's moment under the load. Each was run again alone and passed: M38e at cover and open, M41 at tab, M26 at cover, M23f and M23d at open, M23 at cover, M17 at open, and M14's saves at cover.
 
 **Known issues:**
 - **The PINNED word is hidden under the odds badge** while one of the crew who could shoot that enemy is selected (the "70%" sits on it). Every unit word (MARKED, WATCHING) has the same overlap since M32; the details card and the preview say it in full.
