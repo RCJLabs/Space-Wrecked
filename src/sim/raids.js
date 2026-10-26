@@ -47,7 +47,12 @@
 //
 // The raid coming (colony.raid, null with none): { found (the day the
 // pursuer found the colony), lands (the day its lander comes down), extra
-// (M53: the raiders past the pursuer's party; 0 in a save from before) }.
+// (M53: the raiders past the pursuer's party; 0 in a save from before),
+// reckoning (M56: true for the leader's own, reckoning.js) }.
+//
+// From M56 the leader comes for the founding colony once (reckoning.js):
+// due, it is found at the day's end before any raid is rolled for, its
+// party the leader's; won, the pursuit is over and no raid is found again.
 import { int } from '../core/rng.js';
 import { atColony } from './acts.js';
 import { backAboard, colonyFood, homeFront, homeOf, withColonyFood } from './away.js';
@@ -63,6 +68,7 @@ import { eased } from './quests.js';
 import { difficultyOf, enemyBonus, fightSetup } from './difficulty.js';
 import { withPlacing } from './placing.js';
 import { heatFallOf } from './pressure.js';
+import { pursuitOver, reckoningDue, reckoningOf, reckoningSettled } from './reckoning.js';
 
 const MAX_SEED = 0xffffffff;
 // The levels of heat the pursuer may find the colony at, each with its
@@ -85,12 +91,18 @@ export function raidParty(party, extra = 0) {
 // The raiders of the raid coming at a colony (`there`, as landingPlan
 // takes it), or null when the pursuer's party is unknown.
 export function raidersOf(there, rules) {
-  const party = rules.encounters.get(colonyPursuer(there, rules)?.raiders)?.enemies;
+  const party = rules.encounters.get(raidEncounter(there, rules))?.enemies;
   return party ? raidParty(party, there.colony?.raid?.extra ?? 0) : null;
 }
 
+// The encounter the raid coming at a colony brings: the leader's party for
+// the reckoning (M56), else the pursuer's raiders.
+export function raidEncounter(there, rules) {
+  return there.colony?.raid?.reckoning ? reckoningOf(there, rules)?.party : colonyPursuer(there, rules)?.raiders;
+}
+
 // The pursuer at the colony (data/backgrounds.json): { levels, raiders,
-// found, landing, faced }, or null.
+// found, landing, faced, reckoning }, or null.
 export function colonyPursuer(campaign, rules) {
   return pursuerOf(campaign, rules)?.colony ?? null;
 }
@@ -114,7 +126,7 @@ export function tripHeatOf(campaign, rules) {
 // easedOdds percent of that, rounded as the odds are. The heat is the
 // colony's own trail (M38e, heatAt).
 export function foundOdds(campaign, rules) {
-  if (!campaign.colony || campaign.colony.raid) return 0;
+  if (!campaign.colony || campaign.colony.raid || pursuitOver(campaign)) return 0;
   const key = RAID_ODDS[runLevel(heatAt(campaign, campaign.colony), rules)];
   if (!key) return 0;
   const share = eased(campaign, rules) ? rules.balance.easedOdds : 100;
@@ -167,7 +179,12 @@ export function raidDayEnd(before, campaign, rules) {
   let raid = campaign.colony.raid;
   let found = null;
   const away = Boolean(campaign.colony.voyage || campaign.colony.trip);
-  if (odds > 0) {
+  if (reckoningDue(campaign, rules)) {
+    // The leader comes (M56), warned as long as reckoningWarning.
+    const reach = raidReach(campaign, campaign.colony);
+    found = { found: before.colony.day, lands: campaign.colony.day + Math.max(rules.balance.reckoningWarning, away ? reach + 1 : reach), extra: 0, reckoning: true };
+    raid = found;
+  } else if (odds > 0) {
     const rolled = int(rng, 0, 99);
     roll = rolled.value;
     rng = rolled.state;
@@ -390,7 +407,7 @@ export function faceRaid(campaign, rules, setup = {}) {
   const begun = raidBattle(there, rules, plan, landed, rolled.rng, fightSetup(campaign, setup));
   if (begun.error) return { ok: false, error: begun.error };
   const { battle, events, seed, members } = begun;
-  const fight = { encounter: colonyPursuer(campaign, rules).raiders, seed, crew: members.map((member) => member.id), battle, log: events, job: null, raid: true, boarding: null, ...(other ? { colony: other } : {}) };
+  const fight = { encounter: raidEncounter(there, rules), seed, crew: members.map((member) => member.id), battle, log: events, job: null, raid: true, boarding: null, ...(other ? { colony: other } : {}) };
   const front = other ? frontAt(rolled, other) : homeFront(rolled);
   return { ok: true, campaign: { ...front, rng: begun.rng, place: 'fight', fight }, colony: plan.colony, landing, fight: true, won: null, taken: null };
 }
@@ -473,10 +490,16 @@ export function endColonyRaid(campaign, rules) {
 }
 
 // A raid over, won or lost: heat down to heatAfterRaid, the raid gone, and
-// lost, what the raiders take (raidTake). The heat is the colony's: the
+// lost, what the raiders take (raidTake); the reckoning's (M56) its ending
+// or its next coming (reckoning.js reckoningSettled). The heat is the colony's: the
 // campaign's with the ship landed there, else the colony's own, the ship's
 // left alone (M38e). Returns { campaign, taken (or null when won) }.
 export function settleRaid(campaign, rules, won) {
+  if (campaign.colony.raid?.reckoning) return settleRaidAs(reckoningSettled(campaign, rules, won, campaign.colony.day), rules, won);
+  return settleRaidAs(campaign, rules, won);
+}
+
+function settleRaidAs(campaign, rules, won) {
   const taken = won ? null : raidTake(campaign, rules);
   const parts = { ...campaign.parts };
   if (taken?.part) {

@@ -28,6 +28,9 @@
     { "id": "halloranraid", "name": "Old Halloran's raiders", "enemies": ["collector", "enforcer", "collector", "enforcer", "collector"] },
     { "id": "pikes", "name": "Pike crew", "enemies": ["pike", "heavy", "pike"] },
     { "id": "podthieves", "name": "Pirate crew", "enemies": ["pirate", "brute", "pirate"] },
-    { "id": "breakers", "name": "Strikebreakers", "enemies": ["heavy", "guard", "heavy"] }
+    { "id": "breakers", "name": "Strikebreakers", "enemies": ["heavy", "guard", "heavy"] },
+    { "id": "directorsparty", "name": "The Recovery Director's party", "enemies": ["director", "heavy", "agent", "heavy", "agent"] },
+    { "id": "marshalsparty", "name": "The Provost Marshal's party", "enemies": ["marshal", "mp", "proctor", "mp", "cadet"] },
+    { "id": "heirsparty", "name": "The Halloran heir's party", "enemies": ["heir", "enforcer", "collector", "enforcer", "collector"] }
   ]
 }

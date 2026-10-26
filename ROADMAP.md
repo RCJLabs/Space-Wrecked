@@ -2578,7 +2578,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **The leaders:** one for each pursuer, an enemy of its own in `data/enemies.json` (hit points, armor and aim above the pursuer's others, a look from the pursuer's own), a party in `data/encounters.json`, and their words in `data/backgrounds.json` (who they are, the warning, the epilogue won). Content as data: a new background's reckoning needs no engine edit.
   - **Won, the pursuit ends:** the epilogue screen: the background's own words, the colony as it stands (its day, citizens, buildings), the crew and the fallen, and the run's record (acts, jumps, fights, raids). Then Carry on, at the colony with no more of the pursuer's raids, or New game. The title's Continue goes on from there.
   - **Lost, it isn't over:** the raid's loss as now, and the leader comes again `reckoningAgain` days on.
-  - **Save v48,** with a migration: a save at the colony with its thread paid off gets its reckoning that many days on from its day; one before act 3 gets it when it settles.
+  - **Save v48,** with a migration: a save from before has neither, so its leader comes on the colony's day `reckoningDay`, as for a run whose thread never paid off (a migration can't read the data to tell which thread is the background's).
   - **Measured:** the test player reaches the reckoning and wins or loses it, from each start over 30 runs, and PROGRESS says how often; the voyage tests held to MAIN's rates.
   - **Every rule tested;** every earlier milestone's check passes.
   - **Touch, at the three sizes:** the reckoning's warning, its fight, the epilogue, Carry on and Continue after it.

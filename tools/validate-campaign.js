@@ -67,8 +67,12 @@ const RUN_KEYS = ['levels', 'hunters', 'taskForce', 'faced'];
 // At the colony (act 3, src/sim/raids.js, M29): its words for each of the
 // run's levels of heat, the encounter its lander brings down, and its words
 // as it finds the colony, as the lander comes down, and once a raid has
-// been faced.
-const COLONY_KEYS = ['levels', 'raiders', 'found', 'landing', 'faced'];
+// been faced; from M56 its reckoning (src/sim/reckoning.js).
+const COLONY_KEYS = ['levels', 'raiders', 'found', 'landing', 'faced', 'reckoning'];
+// The reckoning (M56): the leader's party (an encounter with the leader
+// in it), the leader (an enemy id) and their name, and the words as it is
+// found, as it comes down, won (the epilogue's) and lost.
+const RECKONING_KEYS = ['party', 'leader', 'name', 'found', 'landing', 'won', 'lost'];
 const PAYMENT_KEYS = ['name', 'text', 'credits', 'heat'];
 const MAX_HUNTERS = 2;
 // A raid's raiders, at the hangar's doors (hangarMap.js).
@@ -510,6 +514,25 @@ function checkPursuerColony(colony, where, encounters, fail) {
   else if (raiders.length > MAX_RAIDERS) fail(where, `a raid of ${raiders.length}: a lander brings ${MAX_RAIDERS} at most`);
   for (const key of ['found', 'landing', 'faced']) {
     if (!isText(colony[key])) fail(where, `${key} must be a non-empty string`);
+  }
+  checkReckoning(colony.reckoning, `${where} reckoning`, encounters, fail);
+}
+
+// A pursuer's reckoning at the colony (M56): see RECKONING_KEYS.
+export function checkReckoning(reckoning, where, encounters, fail) {
+  if (!isObject(reckoning)) {
+    fail(where, `must be { ${RECKONING_KEYS.join(', ')} }`);
+    return;
+  }
+  knownKeys(reckoning, RECKONING_KEYS, where, fail);
+  const party = encounters.get(reckoning.party);
+  if (!party) fail(where, `unknown party encounter "${reckoning.party}"`);
+  else {
+    if (party.length > MAX_RAIDERS) fail(where, `a party of ${party.length}: a lander brings ${MAX_RAIDERS} at most`);
+    if (!party.includes(reckoning.leader)) fail(where, `the leader "${reckoning.leader}" must be in the party`);
+  }
+  for (const key of ['name', 'found', 'landing', 'won', 'lost']) {
+    if (!isText(reckoning[key])) fail(where, `${key} must be a non-empty string`);
   }
 }
 

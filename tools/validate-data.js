@@ -191,6 +191,10 @@ const BALANCE = {
   // colony at this share of the odds, in percent.
   easedOdds: [0, 100],
   raidWarning: [1, 10],
+  reckoningAfter: [0, 60],
+  reckoningDay: [10, 400],
+  reckoningAgain: [1, 60],
+  reckoningWarning: [1, 10],
   landingHit: [0, 100],
   raidShieldArmor: [0, 5],
   raidArmoryAim: [0, 50],

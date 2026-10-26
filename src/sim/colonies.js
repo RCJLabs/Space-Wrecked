@@ -103,11 +103,12 @@ export function thereAt(campaign, id) {
 
 // The campaign once another colony has lived what thereAt gave it: that
 // colony as it came out, with whoever is there and its food, and the
-// rolls and the flags it made.
+// rolls and the flags it made, and from M56 the reckoning and the ending
+// (reckoning.js).
 export function thereFrom(campaign, there) {
   const { voyage, ...colony } = there.colony;
   const back = { ...colony, voyage: null, keep: { crew: there.crew, food: there.supplies } };
-  return { ...withOther(campaign, colony.id, () => back), rng: there.rng, flags: there.flags };
+  return { ...withOther(campaign, colony.id, () => back), rng: there.rng, flags: there.flags, reckoning: there.reckoning ?? null, ending: there.ending ?? null };
 }
 
 // Those at another colony in play to fight a raid there (raids.js): its

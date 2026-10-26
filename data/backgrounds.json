@@ -45,7 +45,16 @@
           "raiders": "raid",
           "found": "Con-Reg has found the colony. A lander is on its way with a court order and a lot of friends.",
           "landing": "Con-Reg's lander is coming down on the colony.",
-          "faced": "Con-Reg will have to send another lander. That buys some quiet."
+          "faced": "Con-Reg will have to send another lander. That buys some quiet.",
+          "reckoning": {
+            "party": "directorsparty",
+            "leader": "director",
+            "name": "Director Kroft",
+            "found": "Con-Reg has stopped sending landers. Director Kroft is coming in person, with the paper and the people to serve it.",
+            "landing": "Director Kroft's lander is coming down on the colony.",
+            "won": "Director Kroft's lander lifts with the Director aboard it, under guard of the colony this time. Con-Reg writes the colony off as a bad debt, the cheapest word it has for losing. Nobody comes asking after your boots again; the paper is just paper.",
+            "lost": "Director Kroft takes what the lander can carry and lifts, promising to come back for the rest."
+          }
         }
       },
       "launch": {
@@ -111,7 +120,16 @@
           "raiders": "provostraid",
           "found": "The Provost has found the colony. A lander is on its way with a warrant and a squad of MPs.",
           "landing": "The Provost's lander is coming down on the colony.",
-          "faced": "The Provost will have to file for another lander. That buys some quiet."
+          "faced": "The Provost will have to file for another lander. That buys some quiet.",
+          "reckoning": {
+            "party": "marshalsparty",
+            "leader": "marshal",
+            "name": "Marshal Okoye",
+            "found": "The Provost has stopped filing for landers. Marshal Okoye is coming herself, with a warrant she means to serve.",
+            "landing": "Marshal Okoye's lander is coming down on the colony.",
+            "won": "Marshal Okoye leaves the way she came, under a flag of truce and without her warrant. Her report says the deserter died out past the charts. It is the kindest lie the Provost has ever filed, and nobody reads it twice.",
+            "lost": "Marshal Okoye takes what the lander can carry and lifts. Her warrant stays open; she will be back to serve it."
+          }
         }
       },
       "launch": {
@@ -185,7 +203,16 @@
           "raiders": "halloranraid",
           "found": "The Hallorans have found the colony. A lander is on its way with a ledger and a lot of friends.",
           "landing": "The Hallorans' lander is coming down on the colony.",
-          "faced": "The Hallorans will have to send another lander. That buys some quiet."
+          "faced": "The Hallorans will have to send another lander. That buys some quiet.",
+          "reckoning": {
+            "party": "heirsparty",
+            "leader": "heir",
+            "name": "Teodor Halloran",
+            "found": "The Hallorans have stopped sending landers. Old Halloran's heir is coming to collect in person, the family's ledger under his arm.",
+            "landing": "Teodor Halloran's lander is coming down on the colony.",
+            "won": "Teodor Halloran flies home with nothing in the ledger but a line in his own hand: settled. Old Halloran laughs for the first time in a year, and the Narrows hear that the family has a new neighbour it doesn't collect from.",
+            "lost": "Teodor Halloran takes the interest in kind and lifts. The ledger stays open; he will be back for the principal."
+          }
         }
       },
       "launch": {
