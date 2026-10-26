@@ -94,7 +94,8 @@ import { readData } from './data.js';
 import { launchedShip, withPart } from './startShip.js';
 import { validateData } from './validate-data.js';
 
-const PLAYERS = { ai: aiAction, scripted: scriptedAction };
+import { pressAction } from '../src/sim/press.js';
+const PLAYERS = { ai: aiAction, scripted: scriptedAction, press: pressAction };
 
 // --doors (M45): 'none', or 'lock'.
 function doorsArg(text, arg) {
