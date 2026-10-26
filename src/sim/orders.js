@@ -5,9 +5,11 @@
 // on battle.js's draft, as battle.js does.
 //
 // The kinds, each with its numbers in the data:
-//   suppress { aim }    an enemy in sight: its shots take `aim` (below 0)
-//                       until its side's next turn ends. Ends the unit's
-//                       turn and uses a round.
+//   suppress { aim }    an enemy in sight is pinned (M55): it can't move,
+//                       and its shots take `aim` (below 0), until its
+//                       side's next turn ends (moves.js reads it). Takes
+//                       one of the unit's actions (till M55, its turn) and
+//                       a round.
 //   weld     { rounds } the door on the given side of its tile closes and is
 //                       welded shut for `rounds` rounds, this one counted:
 //                       no one walks or sees through it. With `hp` (M48,
@@ -132,7 +134,7 @@ export function doOrder(battle, unit, action, events, rules) {
   const said = { type: 'order', order: order.type, unit: unit.id, target: target.id };
   switch (order.type) {
     case 'suppress':
-      unit.ap = 0;
+      unit.ap -= 1;
       unit.ammo -= 1;
       target.suppressed = { aim: order.aim };
       events.push({ ...said, aim: order.aim });

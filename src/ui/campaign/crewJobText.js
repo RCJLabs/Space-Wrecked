@@ -14,7 +14,7 @@ const plural = (n, one, many) => (n === 1 ? one : many);
 
 // Each order kind's words (orders.js ORDER_KINDS), from the order.
 export const ORDER_WORDS = {
-  suppress: (o) => `an enemy in sight shoots at ${signed(o.aim)} to hit until its side's next turn ends. It ends the turn.`,
+  suppress: (o) => `an enemy in sight is pinned: it can't move, and shoots at ${signed(o.aim)} to hit, until its side's next turn ends. It takes an action and a round.`,
   weld: (o) => `the door beside them is welded shut for ${o.rounds} ${plural(o.rounds, 'round', 'rounds')}: no one walks or sees through it.`,
   patch: (o) => `an ally ${o.reach ? `in sight within ${o.reach} tiles` : 'beside'} gets ${o.hp} hit points back; one who is down gets up.`,
   hustle: (o) => `${o.ap} more ${plural(o.ap, 'action', 'actions')} this turn.`,

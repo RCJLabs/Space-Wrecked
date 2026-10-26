@@ -2552,6 +2552,35 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
 
   As built (2026-10-25): all of it, in `src/sim/neighbours.js`, `src/sim/settlers.js`, `data/colony.json` `neighbours` and the five rescues in `data/events.json`, with the words in `src/ui/campaign/neighbourText.js`. No save change. As buildings fall for the test player, food made rose 4.50 to 4.72 a day and materials 2.12 to 2.13 over 90 colonies; the raids table over 100 runs a background is main's to the run; 3, 1 and 3 survivors settled. Details in PROGRESS.md.
 
+- [x] **M55 Combat that moves.** Item 1 of the second Phase 8 brainstorm, improving combat, taken on Evan's word (2026-10-26, "Then start 1"). Its first part: the order nobody gives, and weapons that don't fit their places. Enemy types, ship tiles that do things, morale and bosses stay in item 1 for the milestones after.
+
+  Measured first (main after M54, `tools/sim.js`, 1,000 fights, the squad against the boarding party, both played by the AI):
+  - **Fights that stall: the harness's, not the game's.** 14% of the plain harness's fights end with no winner, 33% aboard the gunship and the frigate: both sides hold overwatch either side of a wall. But the harness played the boarders as defenders; the game's boarders press on (press.js, since M15), and played so, 2% stall (0 to 5% a preset), and 0.7% of the game's own boardings (`--boardings`, both ways). The 2% left are AI against AI with a downed crew member in a corridor between them; a player is never stuck behind one, and a raid fought out without the player has its own way on (fightOut.js). Letting units pass over the downed ended them, and took the burned smuggler's hangar raid from 63% to 3%: backed out.
+  - **Orders:** all of them together add 5 points. The AI gives Patch 0.8 times a fight, Suppress 0.3, Weld 0.1; with Suppress or without, the crew wins 54%.
+  - **Weapons** (the whole squad carrying each, 300 fights; aboard with the boarders pressing on, job sites, against armor): as issued 54/69/84; the heavies win everywhere, on open ground too, where the long guns should (riot gun 82/85/99, shotgun 79/85/96, against the rail rifle 56/82/86 and the marksman's 43/79/63). On job sites 39% of the crew's shots are close, 43% mid, 19% long.
+
+  Done when (my recommendations, taken on Evan's word):
+  - **The harness plays the boarders as the game does:** `tools/sim.js --boarders press`, and the weapons table aboard with them; the stall measured and said in PROGRESS, not ruled away.
+  - **Suppress pins:** a suppressed unit can't move until its side's turn ends; it can still shoot, at the aim it loses now, or hold overwatch. Suppress takes one action, not the turn, so the marine can pin and then shoot. The preview, the odds card, the unit's mark and the log say "pinned", and the AI suppresses the enemy with the best shot at the crew at the start of its turn. Measured over 1,000 fights with it and without, against M40's band for an order (5 to 15 points); below it, recorded, not forced.
+  - **Weapons for their places, measured and left:** two rounds of `data/weapons.json` numbers (the heavies 15 to 20 points worse at mid range, the long guns 5 better) moved nothing past the noise at 200 fights: on job sites the riot gun went 85% to 84% to 86% against the rail rifle's 82% to 83% to 84%. A heavy wins by closing in, where it hits hardest, and accuracy past close range barely touches that. The numbers stay as main has them, the measurements are in PROGRESS, and what would change it, a rule and not a number, is in §9.
+  - **No save change** (the pin is read from the suppression the battle already keeps).
+  - **Every rule tested;** the golden battle log rewritten only if the scripted player's own play changes, and said so; act 1's jobs, raids and boardings still in M40's bands; every earlier milestone's check passes.
+  - **Touch, at the three sizes:** Suppress's preview and its "pinned" mark; a pinned enemy shown with no moves.
+
+  **As built:** the harness plays the boarders as the game does (`--boarders press`; 3% stall then, 0.7% of the game's own boardings); passing over the downed tried and backed out (the smuggler's hangar raid 63% to 3%). Suppress pins (moves.js gives a suppressed unit only its own tile; the move rule refuses), takes one action and a round, and the crew AI gives it at the start of its turn to the enemy with the best shot at the crew: all orders 58% against 54% without it, given 1.7 times a fight, 4 points, under M40's band and recorded. The words say pinned (preview, odds card, the unit's word, details, log, the job's line). Weapons measured and left as main has them, two rounds of numbers moving nothing past the noise (§9). Act 1's sites 69% to 65%, raids and boardings in M40's bands. No save change. Details in PROGRESS.md.
+
+**The second Phase 8 brainstorm** (Evan's call, 2026-10-26: "Add everything to the queue. Then start 1"). Areas 1 to 3 are his, 4 to 10 mine. Each becomes a milestone as it starts, with its Done when settled then; my recommended order after 1 is 4, 6, 2, 3, 5, 7, 9, 10, 8.
+1. **Improving combat:** the orders nobody gives (Suppress and Weld add nothing measured), weapon roles (the shotgun best everywhere), enemy behaviour types (flankers, shield-bearers, medics, leaders), interactive ship tiles (venting a room, exploding consoles, lights out), morale and retreat (which also ends fights stuck behind a fallen body), a boss for each pursuer.
+2. **Character and ship customization:** editing any crew member's look, callsigns, scars and implants earned in play, suits in the ship's colours, a choice of perk at each rank; paint patterns, engine glow, an emblem editor, more hull styles, a second livery.
+3. **Visuals:** baked shading and reactive room lights (red alert, power out), fire, venting, sparks, muzzle flash and tracers in boardings, the colony's ground by world kind with day, night and weather, a short camera moment on a kill, portraits with expressions, transitions.
+4. **An ending:** a victory condition and a last confrontation with the pursuer, an epilogue and the run's record.
+5. **Music and ambience:** looping beds made in code for the hangar, the run, a fight and the colony; ship hum and room tone.
+6. **A cover-screen pass:** every screen walked at 905 × 370 and §9's crowding items fixed.
+7. **Content depth:** more place events, one more story beat for each companion, each background's colony events.
+8. **Replay:** unlocks across runs, run modifiers, a weekly seed made offline.
+9. **Performance on a low-end phone:** the colony, the approach and the big fights profiled, a low quality setting, the 30 fps mode checked.
+10. **Saves and safety:** several campaign slots, a backup before each act, a reminder to export.
+
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
 ### Phase 9: Release (v1.0)
@@ -2587,6 +2616,7 @@ A Capacitor build; a paid version with a web demo; optional cloud saves on Base4
 
 These ideas wait until v0.4 or later:
 
+- weapons for their places (raised in M55): the heavies win on open ground too, because a fight closes in to where they hit hardest, and accuracy numbers past close range don't change that (M55 tried two rounds). It would take a rule: a heavy slowing its carrier (a step less to move), or a long gun's first shot at someone stepping into its sight (overwatch that reaches further), or ground with more open lanes
 - roles as licenses: mercenary, surveyor, homesteader, hauler, salvager, smuggler
 - nemesis captains and legacy captains
 - black box derelicts and zero-g drift

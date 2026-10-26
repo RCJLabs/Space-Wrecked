@@ -48,7 +48,7 @@ test("each job says its order, what it does aboard and what it does at the colon
     assert.ok(said.colony?.startsWith('At the colony: '), job.id);
   }
   assert.deepEqual(jobSaid('marine', rules), {
-    order: "Suppress, 2 a fight: an enemy in sight shoots at −30 to hit until its side's next turn ends. It ends the turn.",
+    order: "Suppress, 2 a fight: an enemy in sight is pinned: it can't move, and shoots at −30 to hit, until its side's next turn ends. It takes an action and a round.",
     ship: "Aboard: the ship's guns are +10 to hit in the approach.",
     colony: "At the colony: each defense's shot at a lander is +10 to hit.",
   });

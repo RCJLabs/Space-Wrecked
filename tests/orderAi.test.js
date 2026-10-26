@@ -91,14 +91,14 @@ test('Kit out: at the start of its turn, an ally beside first, then itself', () 
   assert.equal(asks(battle, 'c1'), null);
 });
 
-test('Suppress: when its own best shot is poor, the enemy with the best shot at the crew', () => {
+test('Suppress: at the start of its turn, the enemy with the best shot at the crew, pinned, its own shot or not (M55)', () => {
   const battle = fight(openMap(8, 3), [{ kind: 'marine', x: 0, y: 0 }, { kind: 'medic', x: 0, y: 2 }, { kind: 'pirate', x: 4, y: 0 }, { kind: 'brute', x: 7, y: 2 }]);
-  assert.equal(asks(battle, 'c1'), null, 'a good shot of its own');
-  tweak(battle, { c1: { aim: 0 } });
   // The pirate, nearer, has the better shot at the crew.
   assert.deepEqual(asks(battle, 'c1'), { type: 'order', unit: 'c1', target: 'e1' });
   tweak(battle, { e1: { suppressed: { aim: -30 } } });
   assert.deepEqual(asks(battle, 'c1'), { type: 'order', unit: 'c1', target: 'e2' }, 'not one suppressed already');
+  tweak(battle, { c1: { ap: 1 } });
+  assert.equal(asks(battle, 'c1'), null, 'only with both its actions to take');
 });
 
 test(`Weld: at the start of its turn, with itself or an ally beside badly hurt, the door the nearest enemy comes through, once it is within ${WELD_STEPS} steps and out of sight`, () => {

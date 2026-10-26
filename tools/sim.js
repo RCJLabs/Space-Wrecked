@@ -21,6 +21,11 @@
 //                                        the same fights before and after
 //   node tools/sim.js --crew scripted    the crew played by the plain scripted
 //                                        player, not the AI (--boarders too)
+//   node tools/sim.js --boarders press   the boarders pressing on (press.js),
+//                                        as the game's boarders do on the
+//                                        crew's ship (M55: left to the AI,
+//                                        14% of fights stall with both sides
+//                                        either side of a wall)
 //   node tools/sim.js --squad pilot,scout,medic
 //                                        another squad: jobs from
 //                                        data/jobs.json (M32)
@@ -87,6 +92,7 @@ import { step } from '../src/sim/grid.js';
 import { jobAction } from '../src/sim/jobAi.js';
 import { lockable } from '../src/sim/locks.js';
 import { mapFromShip } from '../src/sim/mapFromShip.js';
+import { pressAction } from '../src/sim/press.js';
 import { scriptedAction } from '../src/sim/scripted.js';
 import { TALENT_RANK } from '../src/sim/talents.js';
 import { exampleShipMap } from './battle-log.js';
@@ -94,7 +100,7 @@ import { readData } from './data.js';
 import { launchedShip, withPart } from './startShip.js';
 import { validateData } from './validate-data.js';
 
-const PLAYERS = { ai: aiAction, scripted: scriptedAction };
+const PLAYERS = { ai: aiAction, scripted: scriptedAction, press: pressAction };
 
 // --doors (M45): 'none', or 'lock'.
 function doorsArg(text, arg) {
@@ -191,7 +197,7 @@ export function setting(text) {
 }
 
 function player(text, arg) {
-  if (!(text in PLAYERS)) throw new Error(`${arg} is played by ai or scripted, not "${text}".`);
+  if (!(text in PLAYERS)) throw new Error(`${arg} is played by ai, scripted or press, not "${text}".`);
   return text;
 }
 
@@ -300,9 +306,11 @@ export function runSites(rules, { fights, weapon = null }) {
 // Every weapon's table (M37): the crew's wins with the whole squad as
 // issued and then carrying each weapon, aboard ships (against the first
 // encounter), on job sites and against armor (ARMORED), `fights` in each.
+// Aboard, the boarders press on, as the game's do (M55: till then they
+// held overwatch, and a fight in seven stalled).
 // [{ weapon (null as issued), kind, aboard, sites, armor }], each a share.
 export function runWeapons(rules, { ships, fights, seed, rounds }) {
-  const base = { ships, fights, seed, crew: 'ai', boarders: 'ai', rounds };
+  const base = { ships, fights, seed, crew: 'ai', boarders: 'press', rounds };
   const wins = (records) => share(records.filter((r) => r.winner === 'crew').length, records.length);
   return [null, ...rules.weapons.keys()].map((weapon) => ({
     weapon,
@@ -514,7 +522,7 @@ function commas(n) {
 // for the numbers a run changes.
 export function setupText(rules, options, ships, balance) {
   const party = options.encounter ? rules.encounters.get(options.encounter) : rules.encounters.values().next().value;
-  const who = (side) => (options[side] === 'ai' ? 'the AI' : 'the scripted player');
+  const who = (side) => ({ ai: 'the AI', scripted: 'the scripted player', press: 'the AI pressing on' })[options[side]];
   const sets = options.sets.map(({ name, value }) => `${name} ${balance[name]} → ${value}`).join(', ');
   const orders = options.orders === 'all' ? 'every job order' : options.orders === 'none' ? 'no job orders' : `only ${options.orders.split(',').join(' and ')}`;
   const companion = options.talent ? rules.companions?.get(options.talent) : null;

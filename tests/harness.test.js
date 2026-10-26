@@ -31,7 +31,7 @@ test('the command line: defaults, every option, and what is wrong with a bad one
     [['--fights', '0'], /--fights needs a whole number, 1 or more/],
     [['--fights'], /--fights needs a value/],
     [['--set', 'halfCover'], /--set needs name=number/],
-    [['--boarders', 'human'], /--boarders is played by ai or scripted/],
+    [['--boarders', 'human'], /--boarders is played by ai, scripted or press/],
     [['--compare'], /--compare needs a --set, --orders, --rank, --talent, --weapon or --doors/],
     [['--doors', 'weld'], /--doors takes none or lock/],
     [['--rank', 'one'], /--rank needs a whole number, 0 or more/],

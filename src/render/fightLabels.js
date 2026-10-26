@@ -104,7 +104,7 @@ function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, initial, overwatc
 // extract, M38), or on overwatch.
 function orderWord({ overwatch, marked, suppressed, asleep, carrying }) {
   if (asleep) return ['ASLEEP', palette.inkDim];
-  if (suppressed) return ['SUPPRESSED', palette.good];
+  if (suppressed) return ['PINNED', palette.good];
   if (marked) return [overwatch ? 'MARKED · WATCHING' : 'MARKED', palette.target];
   if (carrying) return ['CARRYING', palette.good];
   return overwatch ? ['OVERWATCH', palette.accent] : null;

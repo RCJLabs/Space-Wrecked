@@ -100,7 +100,7 @@ function orderHint(battle, unit, order, preview) {
   const change = preview.change;
   switch (preview.kind) {
     case 'suppress':
-      return `Suppress ${who}: its shots ${signed(def.aim)} till its turn ends${change ? ` (${change.was}% → ${change.now}%)` : ''}. Ends the turn. ${again}`;
+      return `Suppress ${who}: pinned, no moving, and its shots ${signed(def.aim)} till its turn ends${change ? ` (${change.was}% → ${change.now}%)` : ''}. Takes an action and a round. ${again}`;
     case 'weld':
       return `Weld the ${SIDE_NAMES[preview.at]} door shut till round ${battle.round + def.rounds}${def.hp ? `, and patch everyone beside ${def.hp} (one down gets up)` : ''}. ${again}`;
     case 'patch': {
@@ -142,7 +142,7 @@ export function oddsText(shooter, target, odds, rules) {
     cover: (part) => `${part.cover === 'full' ? 'Full' : 'Half'} cover`,
     defense: () => 'Defense',
     overwatch: () => 'Overwatch',
-    suppressed: () => `${shooter.name} suppressed`,
+    suppressed: () => `${shooter.name} pinned`,
     marked: () => `${target.name} marked`,
     forgiving: () => 'Forgiving odds',
     // A dart's rank (orders.js dartOdds, M32b), by the rank's name; a loyal
@@ -263,7 +263,7 @@ function talentName(unit, rules) {
 function ordersOn(unit) {
   const lines = [];
   if (unit.mark) lines.push(`Marked: the crew's shots at it +${unit.mark.aim}, ${unit.mark.turns === 1 ? 'until your turn ends' : 'through your next turn'}.`);
-  if (unit.suppressed) lines.push(`Suppressed: its shots ${signed(unit.suppressed.aim)} to hit until its turn ends.`);
+  if (unit.suppressed) lines.push(`Pinned: no moving, and its shots ${signed(unit.suppressed.aim)} to hit, until its turn ends.`);
   if (unit.asleep) lines.push('Asleep: it loses its next turn.');
   if (unit.kitted) lines.push('Kitted out for the fight.');
   return lines;

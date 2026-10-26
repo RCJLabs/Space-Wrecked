@@ -6,9 +6,11 @@
 // so the enemy AI plays as it did, and the scripted player gives none.
 // Pure and deterministic. "At the start of its turn" is with all its
 // actions (balance.actionPoints) still to take.
-//   suppress  an enemy in sight with a GOOD shot at one of the crew, when
-//             the unit's own best shot is under GOOD: the one with the
-//             best shot at the crew
+//   suppress  at the start of its turn, an enemy in sight with a GOOD shot
+//             at one of the crew: the one with the best shot, pinned, and
+//             the unit's other action still to take (M55: till then only
+//             when its own shot was poor, and it ended the turn; given 0.3
+//             times a fight, it was worth nothing measured)
 //   weld      at the start of its turn, with no enemy in sight and one
 //             within WELD_STEPS, while it or an ally beside is down to
 //             half its hit points or less: the door beside it the nearest
@@ -49,7 +51,7 @@ export function orderAction(battle, unit, rules) {
   const give = (target) => ({ type: 'order', unit: unit.id, target: target.id });
   switch (order.type) {
     case 'suppress': {
-      if (bestShot(battle, unit, rules) >= GOOD) return null;
+      if (!fresh) return null;
       const crew = battle.units.filter((u) => u.side === unit.side && u.status === 'active');
       const threat = (foe) => Math.max(0, ...crew.filter((c) => canSee(battle, [foe.x, foe.y], [c.x, c.y], rules)).map((c) => shotOdds(battle, foe, c, rules).hit));
       const worst = most(targets.filter((foe) => !foe.suppressed), threat);
