@@ -3,8 +3,9 @@
 // door isn't, open or closed, since walking through one opens it, unless it
 // is welded shut (orders.js) or locked (locks.js, M45). A step
 // costs 1, or balance.rubbleMoveCost onto rubble. A unit can pass through
-// its own side's units but not the other side's, and can't stop on anyone
-// still in the fight or lying hurt. Paths of equal cost always tie the same
+// its own side's units but not the other side's, and anyone lying hurt
+// (M55: before, one down in a corridor barred it for good), and can't stop
+// on anyone still in the fight or lying hurt. Paths of equal cost always tie the same
 // way: the first found, trying north, east, south, west.
 import { SIDES, step } from './grid.js';
 import { wallAt } from './mapFromShip.js';
@@ -25,7 +26,8 @@ export function moveRange(unit) {
 export function reachable(battle, unit, budget, rules) {
   const occupied = new Map();
   for (const other of battle.units) {
-    if (other.id !== unit.id && other.status !== 'dead') occupied.set(`${other.x},${other.y}`, other.side);
+    // Anyone lying hurt is passed over as one's own side would be.
+    if (other.id !== unit.id && other.status !== 'dead') occupied.set(`${other.x},${other.y}`, other.status === 'active' ? other.side : unit.side);
   }
   const start = { x: unit.x, y: unit.y, cost: 0, path: [[unit.x, unit.y]] };
   const best = new Map([[`${unit.x},${unit.y}`, start]]);
