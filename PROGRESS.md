@@ -45,7 +45,7 @@ Newest entry first.
 - **Touch at the three sizes:** `m56/verify.mjs`.
 
 **Tests:**
-- `node --test`: TESTS_LINE
+- `node --test`: 1270 pass (1259 on main: 11 added, in `tests/reckoning.test.js` and `tests/epilogueText.test.js`).
 - **Changed on purpose:** `tests/campaign.test.js` (a new campaign has `reckoning` and `ending` null); every save test naming the version, 47 to 48, and the four whose migrated campaigns now carry `reckoning` and `ending` (`tests/deployment.test.js`, `difficulty.test.js`, `missions.test.js`, and `citizens.test.js`'s count of the migrations after v37's); `tests/data.test.js`'s counts (23 enemies, 31 encounters).
 
 **Browser checks:**
