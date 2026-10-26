@@ -2562,7 +2562,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   Done when (my recommendations, taken on Evan's word):
   - **The harness plays the boarders as the game does:** `tools/sim.js --boarders press`, and the weapons table aboard with them; the stall measured and said in PROGRESS, not ruled away.
   - **Suppress pins:** a suppressed unit can't move until its side's turn ends; it can still shoot, at the aim it loses now, or hold overwatch. Suppress takes one action, not the turn, so the marine can pin and then shoot. The preview, the odds card, the unit's mark and the log say "pinned", and the AI suppresses the enemy with the best shot at the crew at the start of its turn. Measured over 1,000 fights with it and without, against M40's band for an order (5 to 15 points); below it, recorded, not forced.
-  - **Weapons for their places:** heavies keep close quarters and long guns get the open ground: on job sites the best long gun wins at least as often as the best heavy; aboard ships the best heavy stays best; the squad as issued within 5 points of today in all three columns. Data only (`data/weapons.json` numbers).
+  - **Weapons for their places, measured and left:** two rounds of `data/weapons.json` numbers (the heavies 15 to 20 points worse at mid range, the long guns 5 better) moved nothing past the noise at 200 fights: on job sites the riot gun went 85% to 84% to 86% against the rail rifle's 82% to 83% to 84%. A heavy wins by closing in, where it hits hardest, and accuracy past close range barely touches that. The numbers stay as main has them, the measurements are in PROGRESS, and what would change it, a rule and not a number, is in §9.
   - **No save change** (the pin is read from the suppression the battle already keeps).
   - **Every rule tested;** the golden battle log rewritten only if the scripted player's own play changes, and said so; act 1's jobs, raids and boardings still in M40's bands; every earlier milestone's check passes.
   - **Touch, at the three sizes:** Suppress's preview and its "pinned" mark; a pinned enemy shown with no moves.
@@ -2614,6 +2614,7 @@ A Capacitor build; a paid version with a web demo; optional cloud saves on Base4
 
 These ideas wait until v0.4 or later:
 
+- weapons for their places (raised in M55): the heavies win on open ground too, because a fight closes in to where they hit hardest, and accuracy numbers past close range don't change that (M55 tried two rounds). It would take a rule: a heavy slowing its carrier (a step less to move), or a long gun's first shot at someone stepping into its sight (overwatch that reaches further), or ground with more open lanes
 - roles as licenses: mercenary, surveyor, homesteader, hauler, salvager, smuggler
 - nemesis captains and legacy captains
 - black box derelicts and zero-g drift
