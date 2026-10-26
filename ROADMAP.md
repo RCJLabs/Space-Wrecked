@@ -2552,6 +2552,18 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
 
   As built (2026-10-25): all of it, in `src/sim/neighbours.js`, `src/sim/settlers.js`, `data/colony.json` `neighbours` and the five rescues in `data/events.json`, with the words in `src/ui/campaign/neighbourText.js`. No save change. As buildings fall for the test player, food made rose 4.50 to 4.72 a day and materials 2.12 to 2.13 over 90 colonies; the raids table over 100 runs a background is main's to the run; 3, 1 and 3 survivors settled. Details in PROGRESS.md.
 
+**The second Phase 8 brainstorm** (Evan's call, 2026-10-26: "Add everything to the queue. Then start 1"). Areas 1 to 3 are his, 4 to 10 mine. Each becomes a milestone as it starts, with its Done when settled then; my recommended order after 1 is 4, 6, 2, 3, 5, 7, 9, 10, 8.
+1. **Improving combat:** the orders nobody gives (Suppress and Weld add nothing measured), weapon roles (the shotgun best everywhere), enemy behaviour types (flankers, shield-bearers, medics, leaders), interactive ship tiles (venting a room, exploding consoles, lights out), morale and retreat (which also ends fights stuck behind a fallen body), a boss for each pursuer.
+2. **Character and ship customization:** editing any crew member's look, callsigns, scars and implants earned in play, suits in the ship's colours, a choice of perk at each rank; paint patterns, engine glow, an emblem editor, more hull styles, a second livery.
+3. **Visuals:** baked shading and reactive room lights (red alert, power out), fire, venting, sparks, muzzle flash and tracers in boardings, the colony's ground by world kind with day, night and weather, a short camera moment on a kill, portraits with expressions, transitions.
+4. **An ending:** a victory condition and a last confrontation with the pursuer, an epilogue and the run's record.
+5. **Music and ambience:** looping beds made in code for the hangar, the run, a fight and the colony; ship hum and room tone.
+6. **A cover-screen pass:** every screen walked at 905 × 370 and §9's crowding items fixed.
+7. **Content depth:** more place events, one more story beat for each companion, each background's colony events.
+8. **Replay:** unlocks across runs, run modifiers, a weekly seed made offline.
+9. **Performance on a low-end phone:** the colony, the approach and the big fights profiled, a low quality setting, the 30 fps mode checked.
+10. **Saves and safety:** several campaign slots, a backup before each act, a reminder to export.
+
 **Gate 8 (draft):** the game plays on the phone as Evan wants it at launch, and he wants to release.
 
 ### Phase 9: Release (v1.0)
