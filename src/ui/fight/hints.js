@@ -142,7 +142,7 @@ export function oddsText(shooter, target, odds, rules) {
     cover: (part) => `${part.cover === 'full' ? 'Full' : 'Half'} cover`,
     defense: () => 'Defense',
     overwatch: () => 'Overwatch',
-    suppressed: () => `${shooter.name} suppressed`,
+    suppressed: () => `${shooter.name} pinned`,
     marked: () => `${target.name} marked`,
     forgiving: () => 'Forgiving odds',
     // A dart's rank (orders.js dartOdds, M32b), by the rank's name; a loyal
