@@ -2075,6 +2075,17 @@ textarea {
   color: var(--c-ink-dim);
 }
 
+/* The epilogue (M56): the game's end's layout, with the background's own
+   words first; five panels, so the rows scroll on the cover screen. */
+.epl .sta-rows {
+  overflow-y: auto;
+}
+
+.epl-words {
+  margin: 0;
+  line-height: 1.4;
+}
+
 /* A new game's last screen (M41): how hard the game is and whether death
    is permanent, side by side (one above the other on the unfolded
    screen), with Back, the hint and Start along the bottom, as on the
