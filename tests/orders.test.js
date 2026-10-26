@@ -63,20 +63,24 @@ test('an enemy has no order, and an order with no uses left says so', () => {
   assert.deepEqual(orderTargets(once, who(once, 'c1'), rules), []);
 });
 
-test('Suppress: an enemy in sight shoots at −30 until its side\'s turn ends; it ends the marine\'s turn and uses a round', () => {
+test('Suppress: an enemy in sight is pinned and shoots at −30 until its side\'s turn ends; it takes one of the marine\'s actions and a round', () => {
   const battle = fight(openMap(6, 2), [{ kind: 'marine', x: 0, y: 0 }, { kind: 'medic', x: 0, y: 1 }, { kind: 'pirate', x: 5, y: 0 }]);
   const before = shotOdds(battle, who(battle, 'e1'), who(battle, 'c1'), rules);
   assert.match(act(battle, order('c1', { target: 'c2' }), rules).error, /for the enemy/);
   const { battle: after, events } = play(battle, order('c1', { target: 'e1' }));
   assert.deepEqual(events[0], { type: 'order', order: 'suppress', unit: 'c1', target: 'e1', aim: -30 });
-  assert.deepEqual([who(after, 'c1').ap, who(after, 'c1').ammo, who(after, 'c1').uses], [0, 3, 1]);
+  assert.deepEqual([who(after, 'c1').ap, who(after, 'c1').ammo, who(after, 'c1').uses], [1, 3, 1]);
   const now = shotOdds(after, who(after, 'e1'), who(after, 'c1'), rules);
   assert.deepEqual(now.hitParts.find((p) => p.why === 'suppressed'), { why: 'suppressed', value: -30 });
   assert.equal(now.hit, before.hit - 30);
-  // Through the enemy's turn, then gone.
+  // Through the enemy's turn, pinned (M55): it can't move, and the AI's
+  // reach and the move rule both say so; it can still shoot.
   const theirs = play(after, { type: 'end' }).battle;
   assert.equal(theirs.side, 'enemy');
   assert.deepEqual(who(theirs, 'e1').suppressed, { aim: -30 });
+  assert.deepEqual([...reachable(theirs, who(theirs, 'e1'), 4, rules).keys()], ['5,0']);
+  assert.match(act(theirs, { type: 'move', unit: 'e1', to: [4, 0] }, rules).error, /is pinned down: no moving/);
+  assert.equal(act(theirs, { type: 'shoot', unit: 'e1', target: 'c1' }, rules).ok, true);
   const next = play(theirs, { type: 'end' }).battle;
   assert.equal(who(next, 'e1').suppressed, null);
   // No round in the clip, no Suppress.
@@ -234,7 +238,7 @@ test("Kit out with aim (M40, Brandt's talent): the ally's aim rises by it for th
 
 test('every order event reads as a line of the log', () => {
   const lines = [
-    [{ type: 'order', order: 'suppress', unit: 'c1', target: 'e1', aim: -30 }, /suppresses Pirate e1: its shots -30/],
+    [{ type: 'order', order: 'suppress', unit: 'c1', target: 'e1', aim: -30 }, /suppresses Pirate e1: pinned, no moving, its shots -30/],
     [{ type: 'order', order: 'patch', unit: 'c1', target: 'c1', hp: 3, healed: 3, up: true }, /back on their feet with 3/],
     [{ type: 'order', order: 'hustle', unit: 'c1', target: 'c1', ap: 1 }, /hustles: 1 more action this turn/],
     [{ type: 'order', order: 'mark', unit: 'c1', target: 'e1', aim: 15 }, /marks Pirate e1: the crew's shots at it \+15/],

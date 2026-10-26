@@ -21,8 +21,10 @@ export function moveRange(unit) {
 
 // Every tile `unit` can get to for at most `budget`, as a Map from "x,y" to
 // { x, y, cost, path }, where path runs [x, y] by [x, y] from the unit's
-// tile (included, at cost 0) to that one.
+// tile (included, at cost 0) to that one. A unit pinned by a Suppress
+// (M55, orders.js) gets nowhere: only its own tile.
 export function reachable(battle, unit, budget, rules) {
+  if (unit.suppressed) budget = 0;
   const occupied = new Map();
   for (const other of battle.units) {
     if (other.id !== unit.id && other.status !== 'dead') occupied.set(`${other.x},${other.y}`, other.side);

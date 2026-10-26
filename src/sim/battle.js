@@ -353,6 +353,7 @@ function move(battle, unit, to, events, rules) {
   const [x, y] = to ?? [];
   if (x === unit.x && y === unit.y) return `${unit.name} is already there.`;
   if (unit.carrying && unit.hauled) return `${unit.name} has a crate in hand: one move a turn.`;
+  if (unit.suppressed) return `${unit.name} is pinned down: no moving till its side's turn ends.`;
   const spot = reachable(battle, unit, moveRange(unit), rules).get(`${x},${y}`);
   if (!spot) return `${unit.name} can't get to (${x}, ${y}) this turn.`;
   unit.ap -= spot.cost <= unit.mobility ? 1 : 2;

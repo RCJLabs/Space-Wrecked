@@ -110,7 +110,7 @@ function orderLine(event, who, name) {
   const them = name(event.target);
   switch (event.order) {
     case 'suppress':
-      return `${who} suppresses ${them}: its shots ${event.aim} until its side's turn ends.`;
+      return `${who} suppresses ${them}: pinned, no moving, its shots ${event.aim} until its side's turn ends.`;
     case 'weld':
       return `${who} welds the door on the ${SIDE_NAME[event.side]} side of (${event.at[0]}, ${event.at[1]}) shut, to round ${event.until}.${(event.braced ?? []).map((b) => ` ${name(b.unit)} ${b.up ? `gets up with ${b.hp}` : `gets ${b.hp} back`}.`).join('')}`;
     case 'patch':
