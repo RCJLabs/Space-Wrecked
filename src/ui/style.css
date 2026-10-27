@@ -338,6 +338,13 @@ textarea {
   white-space: normal;
 }
 
+/* A side's name or a quest's wraps rather than being cut short (M57):
+   they're few, and a crew member's name is already short. */
+.hgr-sides .hgr-name > span,
+.hgr-quests .hgr-name > span {
+  white-space: normal;
+}
+
 .hgr-quests li[data-state='done'] .hgr-num {
   color: var(--c-good);
 }
@@ -1131,6 +1138,29 @@ textarea {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* On a folded screen (M57) the crew card takes the side column's room
+   too: the column only lists the crew again. */
+@media (max-height: 480px) {
+  .sct-crew {
+    grid-column: 1 / -1;
+  }
+}
+
+/* On a folded screen (M57) a list that has the card's width to itself
+   lays its rows two abreast, so three crew show without a scroll; beside
+   the list for hire it stays one column. */
+@media (max-height: 480px) {
+  .sct-crew-list ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    column-gap: 16px;
+  }
+
+  .sct-crew-list li:nth-child(2) {
+    border-top: 0;
+  }
 }
 
 .sct-crew-list li {
@@ -5060,7 +5090,6 @@ textarea {
 
 .cln-info h2:not(:first-child),
 .cln-group + .cln-group,
-.cln-group + .cln-crew,
 .cln-crew + .cln-group {
   margin-top: 10px;
 }
@@ -5466,5 +5495,77 @@ textarea {
   /* In the paged panel, the group shown starts at the top. */
   .cln-info.hgr-paged > .hgr-page-shown {
     margin-top: 0;
+  }
+}
+
+/* The epilogue on the cover screen (M57): its panels three abreast, so the
+   whole of it shows without a scroll. Shorter still (a browser's tab), the
+   words would run too long in a third of the width: two columns, as on
+   the open screen. */
+@media (max-height: 480px) and (min-height: 321px) {
+  .epl .sta-rows {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: auto 1fr;
+    gap: 6px;
+  }
+
+  .epl-words {
+    line-height: 1.3;
+  }
+
+  .epl .bkg-facts {
+    row-gap: 2px;
+  }
+
+  /* After down the first column and the colony down the second, so the
+     first row is as tall as the crew alone, with the run under it in the
+     third; the fallen, when there are any, under the colony. */
+  .epl .sta-rows > :nth-child(1) {
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
+
+  .epl .sta-rows > :nth-child(2) {
+    grid-column: 2;
+    grid-row: 1 / 3;
+  }
+
+  .epl .sta-rows > :nth-child(3) {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .epl .sta-rows > :nth-child(4) {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .epl .sta-rows > :nth-child(5) {
+    grid-column: 3;
+    grid-row: 2;
+  }
+}
+
+/* The captain's screen on a folded screen (M57): the traits' panel wider,
+   its picks three abreast, so the twenty take one swipe, not two. */
+@media (max-height: 480px) {
+  .cap {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr) minmax(0, 1.5fr);
+  }
+
+  .cap-traits {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  #ui .cap-trait {
+    min-height: 48px;
+    padding: 3px 8px;
+  }
+
+  /* The portrait smaller, so the look's buttons keep their room. */
+  .cap-face {
+    width: 76px;
+    height: 76px;
   }
 }

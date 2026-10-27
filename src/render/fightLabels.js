@@ -43,15 +43,21 @@ export function paintFightLabels(ctx, cam, rect, { units = [], badges = [], mark
   for (const weld of welds) seam(ctx, cam, weld);
   if (shot) tracer(ctx, cam, shot);
   if (blast) burst(ctx, cam, blast);
-  for (const unit of units) if (unit.status !== 'dead') bar(ctx, cam, unit);
-  for (const badge of badges) pill(ctx, cam, badge);
+  // A unit's word (PINNED, MARKED…) is never under its tile's hit chance
+  // (M57): the badge rises clear of the word.
+  const tops = new Map();
+  for (const unit of units) if (unit.status !== 'dead') tops.set(tileKey(unit.at), bar(ctx, cam, unit));
+  for (const badge of badges) pill(ctx, cam, badge, tops.get(tileKey(badge.at)));
   for (const float of floats) rising(ctx, cam, float);
   if (banner) sign(ctx, rect, banner);
   ctx.restore();
 }
 
+const tileKey = ([x, y]) => `${Math.floor(x)},${Math.floor(y)}`;
+
 // Hit points over a standing unit, or over one lying on the deck, and a
-// word for its state. A captive held (M38) stands.
+// word for its state. A captive held (M38) stands. Returns the top of its
+// word on the screen, or undefined with none.
 function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, initial, overwatch, bleed, selected, marked, suppressed, asleep, carrying }) {
   const standing = status === 'active' || status === 'held';
   const [sx, sy] = project(cam, x, y, standing ? UNIT_TOP + 0.16 : LYING_TOP + 0.14);
@@ -97,6 +103,7 @@ function bar(ctx, cam, { at: [x, y], status, hp, maxHp, color, initial, overwatc
     ctx.strokeStyle = rgba(palette.space, 0.9);
     ctx.stroke();
   }
+  return word ? top : undefined;
 }
 
 // What a standing unit's word says, the first that holds: asleep,
@@ -111,9 +118,11 @@ function orderWord({ overwatch, marked, suppressed, asleep, carrying }) {
 }
 
 // A hit chance over an enemy the selected unit can shoot, or (tone
-// 'order', M32) what a job's order shown reaches.
-function pill(ctx, cam, { at: [x, y], text, strong, tone }) {
-  const [sx, sy] = project(cam, x + 0.5, y + 0.5, UNIT_TOP + 0.62);
+// 'order', M32) what a job's order shown reaches; below: the top of the
+// unit's word on that tile, which the badge sits clear above (M57).
+function pill(ctx, cam, { at: [x, y], text, strong, tone }, below = Infinity) {
+  const [sx, at] = project(cam, x + 0.5, y + 0.5, UNIT_TOP + 0.62);
+  const sy = Math.min(at, below - 11);
   const color = tone === 'order' ? palette.good : palette.target;
   ctx.font = BADGE();
   const w = ctx.measureText(text).width + 12;
