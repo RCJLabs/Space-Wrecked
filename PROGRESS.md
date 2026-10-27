@@ -37,14 +37,16 @@ Newest entry first.
 - **The frame budget** (`m59/budget.mjs` against a copy of main, 12 runs each, interleaved, medians): at rest 12.3 ms against main's 12.7; with a shot at its hit 14.9 ms against 13.3 (12% more, inside 15%). Single runs spread 11 to 18 ms on both, so a single run proves little. Nothing new draws while nothing moves; the 30 fps setting is untouched.
 - **No save change; every earlier check; three sizes:** below.
 
-**Tests:** `node --test`: TESTS_LINE. Updated on purpose: `tests/battleScene.test.js` counts a room's floor by its lit color, and its fire glows by those without an alpha (the spill has one). Golden files are unchanged.
+**Tests:** `node --test`: 1291 pass (1282 on main: 9 added, 6 in `tests/shotFx.test.js` and 3 in `tests/roomLights.test.js`). Updated on purpose: `tests/battleScene.test.js` counts a room's floor by its lit color, and its fire glows by those without an alpha (the spill has one). Golden files are unchanged.
 
 **Browser checks:**
 - **M59's own:** `m59/verify.mjs` (the two fights and the fade) passes at each of the three sizes.
 - **Every earlier milestone's check,** in the three chains (`m59/regress-a.sh`, `regress-b1.sh`, `regress-b2.sh`), M58's added to chain A:
   - **M32b's first copy** fails its 2 checks, as on main.
   - **M47's copy at tab** timed out once in chain A and passed 29 of 29 when run again.
-  - CHAIN_LINE
+  - **M14's copy at cover** timed out once in chain B2 and passed 40 of 40 when run again.
+  - **Three checks failed once against the first cross-fade** (M35 at open, M33's fix at tab, M31 at open), before the fade stopped copying the panels; all three pass in the chains run after it.
+  - **The rest pass at the three sizes:** 117 runs in chain A, 42 in B1, 33 in B2 (a check at one size is one run).
 
 **Known issues:**
 - **The shot frame is 12% over main's,** close to the 15% bar; a busier map could cross it. The cost is the sparks' and flash's glows while a shot is in flight, not at rest.
