@@ -10,6 +10,7 @@
 import { footprint, interiorRows, placedCells } from '../sim/modules.js';
 import { decalFaces } from './decals.js';
 import { hullBands, hullShape, nearestSide, noseSurfaces, sidePoint, styleOf } from './hullShape.js';
+import { cellBounds, flameColor, plateColor } from './livery.js';
 import { fittingsOf, paintSkin } from './palette.js';
 import { pieceScene } from './pieces.js';
 import { normalOf, placeFaces, plate, solidBox, solidCylinder, solidTube } from './solid.js';
@@ -53,13 +54,16 @@ export function exteriorScene({ ship, defs, hull, skin: base, identity = null })
     const sortAt = [middle[0] + outward[0] * 0.01, middle[1] + outward[1] * 0.01, (pts[0][2] + pts[3][2]) / 2];
     faces.push({ pts: [band(pts[3], z0), band(pts[2], z0), band(pts[2], z1), band(pts[3], z1)], normal, color: skin.livery, sortAt });
   }
-  // The roof: a plate per module in one of the skin's tints, and plain hull
-  // over pockets and fairings. A plated hull frames each with a seam.
+  // The roof: a plate per module in one of the skin's tints, or the second
+  // color's where the paint's pattern puts it (livery.js, M58), and plain
+  // hull over pockets and fairings. A plated hull frames each with a seam.
+  const bounds = cellBounds(hull.cells);
   for (const module of ship.modules) {
     const def = defs.modules.get(module.type);
     if (!def) continue;
     const [w, h] = footprint(def, module.rot);
-    plate(faces, [module.x, module.y], [module.x + w, module.y + h], HULL, skin.plates[module.uid % skin.plates.length], { edge: skin.seam });
+    const color = plateColor(ship, skin, bounds, [module.x, module.y, module.x + w, module.y + h], module.uid);
+    plate(faces, [module.x, module.y], [module.x + w, module.y + h], HULL, color, { edge: skin.seam });
     if (style.roof === 'panels') seams(faces, [module.x, module.y], [module.x + w, module.y + h], skin.seam);
   }
   for (const [x, y] of hull.pockets) plate(faces, [x, y], [x + 1, y + 1], HULL, skin.hull, { edge: skin.seam });
@@ -100,9 +104,11 @@ export function exteriorScene({ ship, defs, hull, skin: base, identity = null })
     const [sx, sy] = sidePoint(shape, [x + 0.5, y + 0.5], [dx, dy]);
     solidTube(faces, [sx - dx * 0.04, sy - dy * 0.04, NOZZLE_Z], [dx, dy], 0.16, 0.34, 0.34, skin.dark, { segments: sides });
     const start = [sx + dx * 0.1, sy + dy * 0.1, NOZZLE_Z];
-    solidTube(faces, start, [dx, dy], 0.42, 0.2, 0.31, skin.dark, { endColor: skin.flame, glowing: true });
-    glows.push({ at: [start[0] + dx * 0.78, start[1] + dy * 0.78, NOZZLE_Z], r: 0.6, color: skin.flame });
-    exhausts.push({ at: [start[0] + dx * 0.42, start[1] + dy * 0.42, NOZZLE_Z], dir: [dx, dy], flame: skin.flame });
+    // The engines burn in the ship's glow, or their maker's (M58).
+    const flame = flameColor(ship, skin.flame);
+    solidTube(faces, start, [dx, dy], 0.42, 0.2, 0.31, skin.dark, { endColor: flame, glowing: true });
+    glows.push({ at: [start[0] + dx * 0.78, start[1] + dy * 0.78, NOZZLE_Z], r: 0.6, color: flame });
+    exhausts.push({ at: [start[0] + dx * 0.42, start[1] + dy * 0.42, NOZZLE_Z], dir: [dx, dy], flame });
   }
   for (const { x, y, side, heavy, what } of hull.barrels) {
     const skin = kitAt(x, y);

@@ -5,7 +5,8 @@ import { int } from '../core/rng.js';
 import { emptyBuilds, reduceBuilds } from './builds.js';
 import { closeEpilogue, epilogueDue } from './reckoning.js';
 import { beginFight, captainProblem, firstBackground, gameOver, newCampaign, refitShip, saveFight } from './campaign.js';
-import { nameProblem, renameShip, setEmblem, withIdentity } from './identity.js';
+import { nameProblem, renameShip, setEmblem, setSuits, withIdentity } from './identity.js';
+import { setCrewLook } from './crewLook.js';
 import { donate } from './colony.js';
 import { build, moveBuilding, takeDown } from './colonyBuild.js';
 import { nextDay } from './days.js';
@@ -278,6 +279,16 @@ export function reduce(state, action) {
     }
     case 'campaign/emblem': {
       const set = state.campaign && setEmblem(state.campaign, action.emblem ?? null, action.rules);
+      return set?.ok ? withCampaign(state, set.campaign) : state;
+    }
+    // The crew's suits in the ship's paint or their own (M58).
+    case 'campaign/suits': {
+      const set = state.campaign && setSuits(state.campaign, action.suits, action.rules);
+      return set?.ok ? withCampaign(state, set.campaign) : state;
+    }
+    // A crew member's look and callsign, from the crew card (M58).
+    case 'campaign/crew/look': {
+      const set = state.campaign && setCrewLook(state.campaign, action.id, action.look, action.callsign ?? '');
       return set?.ok ? withCampaign(state, set.campaign) : state;
     }
     case 'campaign/places':

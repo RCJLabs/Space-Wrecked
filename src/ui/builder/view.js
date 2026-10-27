@@ -202,6 +202,9 @@ export function mountBuilder(root, source) {
           onPaint: (color) => act({ type: 'build/paint', color }),
           onTrim: (color) => act({ type: 'build/trim', color }),
           onStyle: (style) => act({ type: 'build/hull', style }),
+          onPattern: (pattern) => act({ type: 'build/pattern', pattern }),
+          onAccent: (color) => act({ type: 'build/accent', color }),
+          onGlow: (glow) => act({ type: 'build/glow', glow }),
           // The ship's name and emblem (M52), in the campaign only: kept
           // in the campaign, not the session, so undo leaves them be.
           identity: source.identity
@@ -214,6 +217,10 @@ export function mountBuilder(root, source) {
                 emblem: (id) => {
                   source.identity.emblem(id);
                   setLook('hull');
+                  showIdentity();
+                },
+                suits: (id) => {
+                  source.identity.suits?.(id);
                   showIdentity();
                 },
               }

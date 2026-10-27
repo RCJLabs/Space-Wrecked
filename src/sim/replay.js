@@ -1,7 +1,7 @@
 // Builds played back. A ship's build log is every command that made it from
 // an empty frame, in order (session.js keeps it as the player builds), so
 // replaying the log shows the build step by step: the timelapse. Pure.
-import { applyCommand, DEFAULT_HULL, DEFAULT_PAINT, DEFAULT_TRIM, newShip } from './builder.js';
+import { applyCommand, DEFAULT_ACCENT, DEFAULT_GLOW, DEFAULT_HULL, DEFAULT_PAINT, DEFAULT_PATTERN, DEFAULT_TRIM, newShip } from './builder.js';
 
 // The ship after each step: ships[0] is the empty frame, ships[n] the ship
 // after n commands. A command that no longer applies (content changed since
@@ -27,6 +27,9 @@ export function logFor(ship) {
     ...(ship.hull && ship.hull !== DEFAULT_HULL ? [{ op: 'hull', style: ship.hull }] : []),
     ...(ship.paint && ship.paint !== DEFAULT_PAINT ? [{ op: 'paint', color: ship.paint }] : []),
     ...(ship.trim && ship.trim !== DEFAULT_TRIM ? [{ op: 'trim', color: ship.trim }] : []),
+    ...(ship.pattern && ship.pattern !== DEFAULT_PATTERN ? [{ op: 'pattern', pattern: ship.pattern }] : []),
+    ...(ship.accent && ship.accent !== DEFAULT_ACCENT ? [{ op: 'accent', color: ship.accent }] : []),
+    ...(ship.glow && ship.glow !== DEFAULT_GLOW ? [{ op: 'glow', glow: ship.glow }] : []),
   ];
   const place = ({ uid, type, x, y, rot }) => ({ op: 'place', uid, type, x, y, rot });
   return [...looks, ...ship.modules.map(place), ...(ship.styling ?? []).map(place)];
@@ -55,6 +58,9 @@ export function logMatches(log, ship, defs) {
     built.hull === ship.hull &&
     built.paint === (ship.paint ?? DEFAULT_PAINT) &&
     built.trim === (ship.trim ?? DEFAULT_TRIM) &&
+    built.pattern === (ship.pattern ?? DEFAULT_PATTERN) &&
+    built.accent === (ship.accent ?? DEFAULT_ACCENT) &&
+    built.glow === (ship.glow ?? DEFAULT_GLOW) &&
     built.nextUid === ship.nextUid &&
     same(built.modules, ship.modules) &&
     same(built.styling, ship.styling ?? [])
@@ -82,7 +88,9 @@ export function isCommand(value) {
   const whole = (n) => Number.isInteger(n);
   if (value.op === 'remove') return whole(value.uid) && value.uid > 0;
   if (value.op === 'hull') return typeof value.style === 'string' && value.style !== '';
-  if (value.op === 'paint' || value.op === 'trim') return typeof value.color === 'string' && value.color !== '';
+  if (value.op === 'paint' || value.op === 'trim' || value.op === 'accent') return typeof value.color === 'string' && value.color !== '';
+  if (value.op === 'pattern') return typeof value.pattern === 'string' && value.pattern !== '';
+  if (value.op === 'glow') return typeof value.glow === 'string' && value.glow !== '';
   if (value.op !== 'place' && value.op !== 'move') return false;
   if (value.op === 'move' && !(whole(value.uid) && value.uid > 0)) return false;
   if (value.op === 'place' && value.uid !== undefined && !(whole(value.uid) && value.uid > 0)) return false;

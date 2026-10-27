@@ -75,7 +75,7 @@ export const hangarScreen = {
     foot.append(titleButton, hint, payButton, shopButton, jobsButton, buildButton);
     const goalPanel = panel('Goal: launch', launchButton, goalLines);
     goalPanel.classList.add('hgr-goal-panel');
-    const crewCard = createCrewCard({ tap: tapCrew, done: () => toggleCrew(false) });
+    const crewCard = createCrewCard({ tap: tapCrew, done: () => toggleCrew(false), save: (id, look, callsign) => defs && game.dispatch({ type: 'campaign/crew/look', rules: defs, id, look, callsign }) });
     el.append(head, goalPanel, shipArea, side, foot, crewCard.el);
     root.append(el);
 

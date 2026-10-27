@@ -334,6 +334,15 @@ export const trims = {
   white: '#eef3fb',
 };
 
+// The engines' glows a player can pick (M58, data/styling.json glows); the
+// maker's, the first, is each part's maker's own flame (palette skins).
+export const glows = {
+  ice: '#9fe8ff',
+  ember: '#ff7a3a',
+  plasma: '#d98bff',
+  toxic: '#9dff6a',
+};
+
 // The sides' colors (M33): data/factions.json gives each side one by name,
 // for its mark beside the side's name on the panels, the job board and the
 // chart.

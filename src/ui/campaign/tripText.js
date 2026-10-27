@@ -50,7 +50,7 @@ export function squadRows(campaign, rules, going) {
     about: rules.jobs.get(member.job)?.name ?? member.job,
     hp: member.hp,
     max: maxHp(member, rules),
-    face: faceOf(member, rules, i),
+    face: faceOf(member, rules, i, campaign),
     going: picked.has(member.id),
   }));
 }

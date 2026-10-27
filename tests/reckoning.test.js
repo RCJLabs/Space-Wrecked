@@ -99,7 +99,7 @@ test('the reckoning and the ending are saved and read back; a save from before h
   const parsed = parseSave(JSON.stringify(makeSave(saveData(state))));
   assert.equal(parsed.ok, true, parsed.error);
   assert.deepEqual([parsed.save.data.campaign.reckoning, parsed.save.data.campaign.ending], [ended.reckoning, ended.ending]);
-  assert.equal(SAVE_VERSION, 48);
+  assert.equal(SAVE_VERSION, 49);
   const old = { campaign: { ...colony } };
   delete old.campaign.reckoning;
   delete old.campaign.ending;

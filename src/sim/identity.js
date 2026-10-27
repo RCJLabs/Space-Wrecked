@@ -5,10 +5,14 @@
 // data/campaign.json shipNames) without moving the campaign's RNG; a save
 // from before M52 has none until a screen wants them (withIdentity). Pure.
 //
-//   campaign.identity   { name, number, emblem } or null
+//   campaign.identity   { name, number, emblem, suits? } or null
+//
+// suits (M58) is what the crew's suits are painted: 'standard', their own
+// slate, or 'ship', the ship's paint (SUITS). Absent is standard.
 import { int, seedFrom } from '../core/rng.js';
 
 export const MAX_NAME = 24;
+export const SUITS = ['standard', 'ship'];
 // The hull number's letters: none that reads as a digit.
 const LETTERS = 'ABCDEFGHJKLMNPRSTUVWXYZ';
 const NUMBER = /^[A-HJ-NP-Z]{2}-\d{3}$/;
@@ -25,7 +29,7 @@ export function rollIdentity(rules, seed) {
   const names = rules.shipNames;
   const name = names[draw(0, names.length - 1)];
   const number = `${LETTERS[draw(0, LETTERS.length - 1)]}${LETTERS[draw(0, LETTERS.length - 1)]}-${String(draw(100, 999))}`;
-  return { name, number, emblem: null };
+  return { name, number, emblem: null, suits: 'standard' };
 }
 
 // The campaign with its identity rolled, if it has none yet (a save from
@@ -63,10 +67,24 @@ export function setEmblem(campaign, emblem, rules) {
   return { ok: true, campaign: { ...campaign, identity: { ...identity, emblem } } };
 }
 
+// The crew's suits painted as SUITS names (M58): { ok: true, campaign } or
+// { ok: false, error }.
+export function setSuits(campaign, suits, rules) {
+  if (!SUITS.includes(suits)) return { ok: false, error: 'Suits are standard or the ship\'s.' };
+  const { identity } = withIdentity(campaign, rules);
+  return { ok: true, campaign: { ...campaign, identity: { ...identity, suits } } };
+}
+
+// What the crew's suits are painted: 'standard' or 'ship'.
+export function suitsOf(campaign) {
+  return campaign?.identity?.suits ?? 'standard';
+}
+
 // True for a readable identity, or null (a save from before M52).
 export function isIdentity(value) {
   if (value === null) return true;
-  if (!value || typeof value !== 'object' || Object.keys(value).some((key) => !['name', 'number', 'emblem'].includes(key))) return false;
+  if (!value || typeof value !== 'object' || Object.keys(value).some((key) => !['name', 'number', 'emblem', 'suits'].includes(key))) return false;
+  if (value.suits !== undefined && !SUITS.includes(value.suits)) return false;
   return nameProblem(value.name) === null && tidyName(value.name) === value.name && NUMBER.test(value.number) && (value.emblem === null || (typeof value.emblem === 'string' && /^[a-z][a-z0-9-]*$/.test(value.emblem)));
 }
 

@@ -20,6 +20,12 @@ export const LOOK_WORDS = {
   mark: { none: 'None', scar: 'Scar', freckles: 'Freckles', tattoo: 'Tattoo', ports: 'Ports', cybereye: 'Cyber eye', jawplate: 'Jaw plate', earring: 'Earring', eyepatch: 'Eye patch', lines: 'Lines' },
 };
 
+// A look's layers in words: [{ key, label, value }] (the captain screen's,
+// and the crew card's look editor's, M58).
+export function lookLayers(look) {
+  return look ? LOOK_KEYS.map((key) => ({ key, label: LAYER_NAMES[key], value: key === 'face' ? `${look.face + 1} of ${FACES}` : LOOK_WORDS[key][look[key]] })) : [];
+}
+
 // What the screen shows for a draft captain, { name, job, traits, look }:
 //   background  { name, blurb, pursuer }: the one picked (background.js)
 //   look        [{ key, label, value }]: each layer of the look, its name
@@ -42,7 +48,7 @@ export function captainText(rules, draft, background = firstBackground(rules)) {
   const left = CAPTAIN_TRAITS - draft.traits.length;
   return {
     background: { name: start.name, blurb: start.blurb, pursuer: start.pursuer.name },
-    look: draft.look ? LOOK_KEYS.map((key) => ({ key, label: LAYER_NAMES[key], value: key === 'face' ? `${draft.look.face + 1} of ${FACES}` : LOOK_WORDS[key][draft.look[key]] })) : [],
+    look: lookLayers(draft.look),
     jobs: [...new Set(start.start.crew)].map((id) => {
       const fighter = rules.jobs.get(id);
       return { id, name: fighter.name, line: statLine(fighter, rules), picked: id === draft.job };

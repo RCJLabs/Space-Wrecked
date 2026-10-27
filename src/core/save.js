@@ -124,7 +124,11 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  48  the reckoning: the campaign keeps when the pursuer's leader is due
 //      at the founding colony and its ending once that is won, neither
 //      yet (M56)
-export const SAVE_VERSION = 48;
+//  49  who they are and the ship's colors (M58): a crew member can carry a
+//      callsign (none yet), every ship a paint pattern, a second color and
+//      an engine glow (plain, bone, the maker's), and the ship's identity
+//      what the crew's suits are painted (standard)
+export const SAVE_VERSION = 49;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -620,6 +624,17 @@ export const MIGRATIONS = [
     from: 47,
     up: (data) => (isObject(data) && isObject(data.campaign) ? { ...data, campaign: { ...data.campaign, reckoning: null, ending: null } } : data),
   },
+  {
+    // 48 to 49 (M58): every ship plain, in bone for a second color, with
+    // her engines in her makers' glow; the crew in standard suits. No one
+    // has a callsign yet, which is none at all.
+    from: 48,
+    up: (data) => {
+      const looked = eachShip(data, (ship) => (isObject(ship) ? { ...ship, pattern: ship.pattern ?? 'plain', accent: ship.accent ?? 'bone', glow: ship.glow ?? 'maker' } : ship));
+      if (!isObject(looked) || !isObject(looked.campaign) || !isObject(looked.campaign.identity)) return looked;
+      return { ...looked, campaign: { ...looked.campaign, identity: { ...looked.campaign.identity, suits: looked.campaign.identity.suits ?? 'standard' } } };
+    },
+  },
 ];
 
 // The save's data with fn applied to every ship in it: the builder's slots,
@@ -632,7 +647,7 @@ function eachShip(data, fn) {
     next = { ...next, builds: { ...data.builds, slots: data.builds.slots.map((slot) => (isObject(slot) ? { ...slot, ship: fn(slot.ship) } : slot)) } };
   }
   if (isObject(data.campaign)) {
-    let campaign = { ...data.campaign, ship: fn(data.campaign.ship) };
+    let campaign = data.campaign.ship === undefined ? { ...data.campaign } : { ...data.campaign, ship: fn(data.campaign.ship) };
     const approach = isObject(campaign.run) ? campaign.run.approach : null;
     if (isObject(approach) && isObject(approach.them)) {
       campaign = { ...campaign, run: { ...campaign.run, approach: { ...approach, them: { ...approach.them, ship: fn(approach.them.ship) } } } };

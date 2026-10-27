@@ -49,6 +49,8 @@ export const icons = {
   endTurn: icon('<path d="M4 12h12"/><path d="m11 6 6 6-6 6"/><path d="M20 5v14"/>'),
   skip: icon('<path d="m4 6 8 6-8 6z"/><path d="m12 6 8 6-8 6z"/>'),
   log: icon('<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>'),
+  // A head and shoulders: a crew member's look (M58).
+  look: icon('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
   again: icon('<path d="M3 12a9 9 0 0 1 15.3-6.4L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.3 6.4L3 16"/><path d="M3 21v-5h5"/>'),
   // The campaign.
   build: icon('<path d="M14.5 4.5a4 4 0 0 0-3.9 5.1L4 16.2 7.8 20l6.6-6.6a4 4 0 0 0 5.1-3.9l-2.7 2.7-2.4-.7-.7-2.4z"/>'),

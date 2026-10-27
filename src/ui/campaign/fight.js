@@ -14,7 +14,9 @@
 // lost, Continue takes the crew home, or back to the run. The board is
 // ../fight/view.js's.
 import { isMachine } from '../../sim/battle.js';
-import { rankUps } from '../../sim/campaign.js';
+import { rankUps, scarsTaken } from '../../sim/campaign.js';
+import { suitsOf } from '../../sim/identity.js';
+import { suitColor } from '../../render/livery.js';
 import { gearWon } from '../../sim/gear.js';
 import { endingFor } from '../fight/hints.js';
 import { mountFight } from '../fight/view.js';
@@ -22,6 +24,7 @@ import { icons } from '../icons.js';
 import { boardingObjective, boardingOutcome, stripPicks } from './boardingText.js';
 import { aWeapon } from './armsText.js';
 import { rankUpLines } from './crewJobText.js';
+import { scarLines } from './crewText.js';
 import { jobOutcome, objectiveText, raidObjective, raidOutcome, settledLine } from './jobText.js';
 import { questJobEnd, questPlaceEnd } from './questText.js';
 import { jobEndLines } from './standingText.js';
@@ -65,6 +68,10 @@ export const campaignFightScreen = {
         if (!defs || !fightOn()?.raid || !campaign.colony || !unmoved(battle, defs)) return null;
         return landingNotice(battle, fightOn(), campaign, defs);
       },
+      suitColor() {
+        const { campaign } = game.getState();
+        return campaign ? suitColor(suitsOf(campaign), campaign.ship?.paint) : undefined;
+      },
       lookOf(unit, index) {
         const id = fightOn()?.crew[index];
         return game.getState().campaign?.crew.find((member) => member.id === id)?.look ?? null;
@@ -72,7 +79,7 @@ export const campaignFightScreen = {
       ending(battle, log) {
         if (!defs) return null;
         const { campaign } = game.getState();
-        const ranks = rankUpLines(rankUps(campaign, battle, defs), defs);
+        const ranks = [...rankUpLines(rankUps(campaign, battle, defs), defs), ...scarLines(scarsTaken(campaign, battle, defs))];
         const won = battle.winner === 'crew';
         // What the fight did to a quest (M33b): a quest's job done, or its
         // place at the colony won; then the sides.

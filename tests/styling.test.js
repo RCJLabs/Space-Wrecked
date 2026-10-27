@@ -280,10 +280,10 @@ test('save version 17 gives every ship the yard\'s paint and trim and no pieces,
 });
 
 test('codes carry paint, trim and pieces from version 4; older codes open in the yard\'s colors with none', () => {
-  assert.equal(BLUEPRINT_VERSION, 4);
+  assert.equal(BLUEPRINT_VERSION, 5);
   const dressed = renumbered(applyCommand(applyCommand(dress(start, DRESSED), rules, { op: 'paint', color: 'rust' }).ship, rules, { op: 'trim', color: 'signal' }).ship);
   const code = encodeBlueprint(dressed);
-  assert.match(code, /^wtb\.4\./);
+  assert.match(code, /^wtb\.5\./);
   const back = decodeBlueprint(code, rules);
   assert.ok(back.ok, back.error);
   assert.deepEqual(back.ship, dressed);

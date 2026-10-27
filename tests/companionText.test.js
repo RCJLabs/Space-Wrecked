@@ -4,7 +4,7 @@
 // and the third rank in a fight.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { sideColors } from '../src/render/palette.js';
+import { palette, sideColors } from '../src/render/palette.js';
 import { crewColor } from '../src/render/units.js';
 import { createBattle } from '../src/sim/battle.js';
 import { crewUnit } from '../src/sim/campaign.js';
@@ -71,7 +71,7 @@ test("a companion's face is their bust in their side's color, on the crew card, 
   const faces = [crewCardText(made, rules).members, squadText(made, rules).members, squadRows(made, rules, [])].map((members) => members.map((m) => m.face));
   for (const list of faces) {
     const at = made.crew.indexOf(aboard(made, 'varga'));
-    assert.deepEqual(list[at], { look: aboard(made, 'varga').look, job: rules.jobs.get('engineer').look, trim: crewColor(at), ...bust });
+    assert.deepEqual(list[at], { look: aboard(made, 'varga').look, job: rules.jobs.get('engineer').look, trim: crewColor(at), shell: palette.crewSuit, ...bust });
     assert.ok(list.every((face, i) => i === at || (face.bust === undefined && face.mark === undefined)), 'the rest wear their helmets');
   }
 });

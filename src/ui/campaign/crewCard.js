@@ -7,18 +7,27 @@
 // hand they could take, two taps to swap, the first showing the spare's
 // facts under the buttons; the card opens at the hangar and the colony too.
 //
+// Since M58 each crew member's row has a Look button: it opens the look
+// editor in the card's place (the captain screen's layer buttons and Roll,
+// with a callsign), and Keep saves both.
+//
 //   card.show(text, armed)   crewCardText's card, or null (the card hides);
 //                            armed is the key of the button that has had
 //                            its first tap, if any
 //   card.detach()            lets go of the buttons
+import { seedFrom } from '../../core/rng.js';
+import { MAX_CALLSIGN, callsignProblem } from '../../sim/crewLook.js';
+import { rollLook, stepLook } from '../../sim/looks.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { faceUrl, portraitImg, withRank } from '../portrait.js';
+import { lookLayers } from './captainText.js';
 
 // tap(key, press): a Sign on, Let go or spare weapon button's tap (press:
-// { held }, M47); done(): Done.
-export function createCrewCard({ tap, done }) {
+// { held }, M47); done(): Done; save(id, look, callsign): the look
+// editor's Keep (M58), or none for no Look buttons.
+export function createCrewCard({ tap, done, save = null }) {
   const el = node('section', 'sct-crew');
   el.setAttribute('aria-label', 'Crew');
   const title = node('h2');
@@ -39,11 +48,19 @@ export function createCrewCard({ tap, done }) {
   // The lists scroll if they must; the head and Done stay put.
   const lists = node('div', 'sct-crew-lists');
   lists.append(aboard, hire);
-  el.append(head, lists);
+  const editor = lookEditor();
+  el.append(head, lists, editor.el);
   el.hidden = true;
 
   let buttons = [];
-  const offDone = onTap(doneButton, () => done());
+  // Who the look editor is open for: { id, name, look, callsign, face },
+  // the look and callsign as edited so far; or null.
+  let editing = null;
+  let shownText = null;
+  const offDone = onTap(doneButton, () => {
+    editing = null;
+    done();
+  });
 
   const card = {
     el,
@@ -51,10 +68,16 @@ export function createCrewCard({ tap, done }) {
       buttons.forEach((entry) => entry.detach());
       buttons = [];
       el.hidden = !shown;
-      if (!shown) return;
+      shownText = shown;
+      if (!shown) {
+        editing = null;
+        return;
+      }
+      if (editing && !shown.members.some((member) => member.id === editing.id)) editing = null;
+      editor.render();
       setText(title, shown.title);
       setText(text, shown.text);
-      aboardRows.replaceChildren(...shown.members.map((member) => row(member, member.dismiss, armed)));
+      aboardRows.replaceChildren(...shown.members.map((member) => row(member, member.dismiss, armed, true)));
       hire.hidden = !shown.hire;
       if (shown.hire) {
         setText(hireTitle, shown.hire.title);
@@ -70,10 +93,115 @@ export function createCrewCard({ tap, done }) {
     },
     detach() {
       offDone();
+      editor.detach();
       buttons.forEach((entry) => entry.detach());
       buttons = [];
     },
   };
+
+  // The look editor (M58): a crew member's portrait, a button for each
+  // layer stepping it to its next choice, Roll, a callsign, and Keep and
+  // Cancel. It takes the lists' place in the card while it is open.
+  function lookEditor() {
+    const box = node('section', 'crew-edit');
+    const face = portraitImg('crew-edit-face', '');
+    const layers = node('div', 'cap-layers crew-edit-layers');
+    const input = node('input', 'cap-name crew-edit-call');
+    Object.assign(input, { type: 'text', maxLength: MAX_CALLSIGN, autocomplete: 'off', spellcheck: false, enterKeyHint: 'done', placeholder: 'Callsign: none' });
+    input.setAttribute('autocapitalize', 'words');
+    input.setAttribute('aria-label', 'Callsign');
+    const label = node('label', 'cap-label crew-edit-label');
+    label.append(node('span', 'crew-edit-label-text', 'Callsign'), input);
+    const roll = toolButton('cap-roll crew-edit-roll', icons.again, 'Roll');
+    const keep = toolButton('crew-edit-keep', icons.done, 'Keep');
+    const cancel = toolButton('crew-edit-cancel', icons.prev, 'Cancel');
+    const actions = node('div', 'crew-edit-actions');
+    actions.append(label, cancel, keep);
+    // Why a callsign won't do, under the field, until it is fixed.
+    const why = node('p', 'crew-edit-why');
+    why.setAttribute('role', 'status');
+    const heading = node('h3', 'crew-edit-name');
+    const look = node('div', 'crew-edit-look');
+    look.append(face, layers);
+    box.append(heading, look, actions, why);
+    box.hidden = true;
+    let rolls = 0;
+    const offs = [
+      onTap(roll, () => {
+        if (!editing) return;
+        editing.look = rollLook(seedFrom(`look edit ${editing.id} ${++rolls}`)).value;
+        render();
+      }),
+      onTap(cancel, () => {
+        editing = null;
+        render();
+      }),
+      onTap(keep, () => {
+        if (!editing) return;
+        const problem = callsignProblem(input.value);
+        setText(why, problem ?? '');
+        if (problem) return;
+        const { id, look: kept } = editing;
+        editing = null;
+        render();
+        save?.(id, kept, input.value);
+      }),
+    ];
+    const onInput = () => {
+      if (editing) editing.callsign = input.value;
+      setText(why, '');
+    };
+    input.addEventListener('input', onInput);
+    let built = false;
+    function render() {
+      box.hidden = !editing;
+      lists.hidden = Boolean(editing);
+      el.dataset.editing = String(Boolean(editing));
+      if (!editing) return;
+      const layered = lookLayers(editing.look);
+      if (!built) {
+        layers.replaceChildren(
+          ...layered.map((layer) => {
+            const button = node('button', 'btn cap-layer');
+            button.type = 'button';
+            button.dataset.key = layer.key;
+            button.append(node('span', 'cap-layer-name', layer.label), node('span', 'cap-layer-value', layer.value));
+            offs.push(onTap(button, () => {
+              if (!editing) return;
+              editing.look = stepLook(editing.look, layer.key);
+              render();
+            }));
+            return button;
+          }),
+          roll,
+        );
+        built = true;
+      }
+      setText(heading, `${editing.name}'s look`);
+      const url = faceUrl({ ...editing.face, look: editing.look }, 'bust');
+      if (face.getAttribute('src') !== url) face.src = url;
+      face.alt = `${editing.name}'s portrait`;
+      for (const button of layers.querySelectorAll('.cap-layer')) {
+        const layer = layered.find((each) => each.key === button.dataset.key);
+        setText(button.querySelector('.cap-layer-value'), layer.value);
+        button.setAttribute('aria-label', `${layer.label}: ${layer.value}. Tap for the next.`);
+      }
+      if (input.value !== editing.callsign) input.value = editing.callsign;
+    }
+    return {
+      el: box,
+      render,
+      open(member) {
+        editing = { id: member.id, name: member.name, look: { ...member.look }, callsign: member.callsign ?? '', face: member.face };
+        setText(why, '');
+        render();
+      },
+      detach() {
+        offs.forEach((off) => off());
+        input.removeEventListener('input', onInput);
+      },
+    };
+  }
 
   // A row: their portrait with a chevron for each rank, the name, what they
   // are, a recruit's or a companion's past, their rank and fights (M32b), a
@@ -82,7 +210,8 @@ export function createCrewCard({ tap, done }) {
   // done with them here, if anything; under it, a button for each spare
   // weapon they could take, and once one has had its first tap, its facts,
   // so the foot's hint need only say what the swap does.
-  function row({ name, about, past, rank, rankLine, loyalty, traits, brief, weapon, hp, max, face }, action, armed) {
+  function row(member, action, armed, aboard = false) {
+    const { name, about, past, rank, rankLine, loyalty, traits, brief, weapon, hp, max, face } = member;
     const item = node('li');
     item.dataset.wounded = String(hp < max);
     item.append(withRank(portraitImg('crew-face', faceUrl(face, 'face')), rank));
@@ -103,6 +232,16 @@ export function createCrewCard({ tap, done }) {
     health.append(node('span', 'hgr-num', `${hp}/${max}`), bar);
     health.setAttribute('aria-label', `${hp} of ${max} hit points`);
     item.append(who, health);
+    // Their look and callsign (M58), for anyone aboard: under their hit
+    // points, so the row's words keep their width.
+    const acts = node('span', 'crew-acts');
+    if (aboard && save && member.look) {
+      const button = toolButton('crew-look', icons.look, 'Look');
+      button.setAttribute('aria-label', `${name}: change their look or callsign`);
+      buttons.push({ detach: onTap(button, () => editor.open(member)) });
+      health.append(button);
+    }
+    if (acts.childElementCount) item.append(acts);
     if (action) {
       const on = armed === action.key;
       const button = node('button', 'btn sct-crew-act', on ? action.ask : action.label);
@@ -111,7 +250,8 @@ export function createCrewCard({ tap, done }) {
       button.dataset.armed = String(on);
       button.setAttribute('aria-label', action.ok ? `${name}: ${on ? action.ask : action.label}` : `${name}: ${action.why}`);
       buttons.push({ detach: onTap(button, (press) => tap(action.key, press), { confirm: true }) });
-      item.append(button);
+      acts.append(button);
+      if (acts.parentNode !== item) item.append(acts);
     }
     if (weapon?.swaps.length) {
       const swaps = node('div', 'crew-swaps');

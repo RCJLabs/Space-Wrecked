@@ -10,8 +10,11 @@
 // is for hire while the crew is short. rules are the content tables
 // (src/sim/defs.js).
 import { crewColor } from '../../render/units.js';
+import { suitColor } from '../../render/livery.js';
 import { maxHp } from '../../sim/campaign.js';
 import { companionOf } from '../../sim/companions.js';
+import { fullName } from '../../sim/crewLook.js';
+import { suitsOf } from '../../sim/identity.js';
 import { crewRoom, defaultSquad } from '../../sim/crew.js';
 import { healRate } from '../../sim/medbay.js';
 import { rankOf } from '../../sim/ranks.js';
@@ -73,7 +76,9 @@ export function crewCardText(campaign, rules) {
     const companion = companionOf(rules, member.companion);
     return {
       id: member.id,
-      name: member.name,
+      name: fullName(member),
+      look: member.look,
+      callsign: member.callsign ?? '',
       about: [captain ? 'Captain' : null, companion ? companionAbout(companion, rules) : job === member.name ? null : job, pastOf(member, rules)?.name].filter(Boolean).join(' · '),
       past: companion?.past,
       rank: shownRank(member, rules),
@@ -84,7 +89,7 @@ export function crewCardText(campaign, rules) {
       weapon: carriedText(campaign, rules, member),
       hp: member.hp,
       max: maxHp(member, rules),
-      face: faceOf(member, rules, i),
+      face: faceOf(member, rules, i, campaign),
       dismiss: atStation && !captain ? dismissText(campaign, rules, member) : null,
     };
   });
@@ -138,17 +143,26 @@ export function squadText(campaign, rules, picked = null) {
     text: 'Tap someone to take them or leave them aboard. The rest sit this one out.',
     members: campaign.crew.map((member, i) => {
       const job = jobName(member.job, rules);
-      return { id: member.id, name: member.name, about: job === member.name ? '' : job, rank: shownRank(member, rules), hp: member.hp, max: maxHp(member, rules), face: faceOf(member, rules, i), going: going.has(member.id) };
+      return { id: member.id, name: member.name, about: job === member.name ? '' : job, rank: shownRank(member, rules), hp: member.hp, max: maxHp(member, rules), face: faceOf(member, rules, i, campaign), going: going.has(member.id) };
     }),
   };
 }
 
-// What a portrait (src/ui/portrait.js) is drawn from: { look, job, trim }:
-// the crew member's look, their job's helmet and suit (data/jobs.json), and
-// the trim of the place they hold in the crew; a companion's with their
-// bust and side's color (M34, companionText.js bustOf).
-export function faceOf(member, rules, index) {
-  return { look: member.look, job: rules.jobs.get(member.job)?.look ?? null, trim: crewColor(index), ...bustOf(member.companion ? companionOf(rules, member.companion) : null, rules) };
+// The lines a fight's end panel gives the marks it left (M58,
+// campaign.js scarsTaken).
+export function scarLines(scars) {
+  return scars.map(({ member, mark }) => (mark === 'scar' ? `${member.name} went down and lived: a scar to show for it.` : `${member.name} went down again: a jaw plate where the scar was.`));
+}
+
+// What a portrait (src/ui/portrait.js) is drawn from: { look, job, trim,
+// shell }: the crew member's look, their job's helmet and suit
+// (data/jobs.json), the trim of the place they hold in the crew, and with
+// the campaign the suit's color (M58: the ship's paint if she says so); a
+// companion's with their bust and side's color (M34, companionText.js
+// bustOf).
+export function faceOf(member, rules, index, campaign = null) {
+  const shell = campaign ? suitColor(suitsOf(campaign), campaign.ship?.paint) : undefined;
+  return { look: member.look, job: rules.jobs.get(member.job)?.look ?? null, trim: crewColor(index), shell, ...bustOf(member.companion ? companionOf(rules, member.companion) : null, rules) };
 }
 
 // What the med bay does for the crew, as a line.

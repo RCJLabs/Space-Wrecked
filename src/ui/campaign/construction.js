@@ -81,6 +81,10 @@ export const constructionScreen = {
         emblem(emblem) {
           game.dispatch({ type: 'campaign/emblem', emblem, rules: defs });
         },
+        // The crew's suits in the ship's paint or their own (M58).
+        suits(suits) {
+          game.dispatch({ type: 'campaign/suits', suits, rules: defs });
+        },
       },
       liftOff: () => {
         const { campaign } = game.getState();

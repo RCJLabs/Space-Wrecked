@@ -35,6 +35,10 @@ export function indexDefs(files) {
     stylingGroups: styling?.groups ?? [],
     paints: byId(styling?.paints),
     trims: byId(styling?.trims),
+    // The hull's paint patterns and its engines' glows (M58), each a
+    // drawing or a color in code (render/palette.js).
+    patterns: byId(styling?.patterns),
+    glows: byId(styling?.glows),
     // The emblems a hull can wear (M52), each a drawing in code
     // (render/emblems.js); those offered the player's to pick in the Look.
     emblems: byId(styling?.emblems),

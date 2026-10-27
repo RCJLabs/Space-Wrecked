@@ -1,6 +1,7 @@
 // Words for the epilogue (epilogue.js, M56): the reckoning won, the
 // pursuit over. The background's own words, the colony as it stands, the
 // crew and the fallen, and how far the run came. Pure.
+import { fullName } from '../../sim/crewLook.js';
 import { pursuerOf } from '../../sim/heat.js';
 import { HOME, reckoningOf } from '../../sim/reckoning.js';
 
@@ -26,7 +27,7 @@ export function epilogueText(campaign, rules) {
       ['Buildings', `${home?.buildings?.length ?? 0}`],
       ...(others ? [['Other colonies', `${others}`]] : []),
     ],
-    crew: [...campaign.crew].map((member) => ({ name: member.name, about: `${job(member.job)}${member.id === campaign.captain ? ' · captain' : ''} · ${member.fights ?? 0} fight${member.fights === 1 ? '' : 's'}` })),
+    crew: [...campaign.crew].map((member) => ({ name: fullName(member), about: `${job(member.job)}${member.id === campaign.captain ? ' · captain' : ''} · ${member.fights ?? 0} fight${member.fights === 1 ? '' : 's'}` })),
     fallen: (campaign.fallen ?? []).map((member) => ({ name: member.name, about: `${job(member.job)} · act ${member.act}` })),
     record: [
       ['Difficulty', `${campaign.difficulty[0].toUpperCase()}${campaign.difficulty.slice(1)}${campaign.permadeath ? ', death permanent' : ''}`],
