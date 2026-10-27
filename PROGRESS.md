@@ -2,6 +2,65 @@
 
 Newest entry first.
 
+## M59 Light and fire (2026-10-27)
+
+**Status:** done; the ROADMAP.md box is ticked. No save change.
+
+**How it was picked:** item 3 of the second Phase 8 brainstorm (visuals), next in my order, on Evan's "Merge when ready then continue to the next item". Cut to the fight, its rooms and the moves between screens; the colony's day and night, portraits with expressions, baked shading and flickering fire went to §9.
+
+**What the measuring found:**
+- A shot was one tracer line and, on a hit, a flash. No muzzle flash; a miss just faded past; a stun dart and a flamer's shot looked like any other.
+- Rooms had no light of their own, and nothing told a boarding of your own ship from a fight anywhere else.
+- A kill was a color flash and the fall pose; screens swapped at once.
+- A fight's full frame on main costs about 11 to 14 ms in Chromium at cover (2.625 dpr), with single runs spread wide.
+
+**What shipped:**
+- **Shots** (`src/render/shotFx.js`, pure; drawn by `tracer` in `src/render/fightLabels.js`):
+  - a muzzle flash for the first eighth of each shot;
+  - each round of a burst was already its own shot, so each flies as its own tracer;
+  - a hit throws 7 sparks that fly out and fade, seeded from the shot's place in the playback (the same frame always draws the same sparks);
+  - a miss ends in a small puff of dust;
+  - stun shots are blue (new palette token `stunShot`, with a contrast check against the tracer), fire shots orange, the rest as before, from the weapon's existing data.
+- **Rooms' lights** (`litFloor` in `src/render/battleScene.js`): each room's floor is lit by a pool toward its middle, out in a wrecked room, and red (`alertLight`) when the fight is a boarding of the player's ship or a raid. A burning tile adds a wide, dim orange glow over its neighbours.
+- **A kill moment** (`src/render/playback.js`, `src/ui/fight/view.js`): when a shot drops a unit, the playback holds 400 ms more (the fall itself at its usual pace) while the board eases in toward it. None with reduced motion, at 200%, or on a unit fog hides.
+- **Cross-fades** (`src/ui/crossFade.js`): a copy of the old board fades out over the new screen in 160 ms while the new screen's panels fade in. None with reduced motion.
+
+**A change from the Done when, on purpose:** it said a soft light over each room's middle. Drawn as a glow per room, that cost 50% more per frame at cover; a small lamp glow per room still cost 20% more; the bar was 15%. The floor pool looks like the room's light and costs nothing per frame, since a tile's color is made once with the scene. ROADMAP.md's As built says so.
+
+**A first cut that was changed:** the first cross-fade copied the old screen's panels too. Its copied buttons sat in the page for 160 ms, where the tips' `find()` and three browser checks found them (a 0 × 0 button, a missed sound, a timeout). The fade now copies only the board.
+
+**Done when** (ROADMAP.md, M59), and how each is met:
+- **Shots that read:** `tests/shotFx.test.js` covers the tone from the weapon's data, the flash only early, sparks only on a hit and the same each time, the puff only on a miss.
+- **Rooms with lights of their own:** `tests/roomLights.test.js` covers the pool (brightest at the middle and soft), out when wrecked, red and stronger on alert, no glow per room, and the burning tile's spill. `m59/look.mjs` screenshots a job and a boarding of the crew's own ship at the three sizes.
+- **A kill moment:** `tests/shotFx.test.js` covers the 400 ms hold, the fall at its usual pace, none without hold or with reduced motion, only a fall right after its shot, and the cue that moves the camera.
+- **Transitions:** `m59/fade.mjs` at the three sizes: the board's copy fades and is gone, the panels fade in, no copied buttons; none with reduced motion; no console errors.
+- **The frame budget** (`m59/budget.mjs` against a copy of main, 12 runs each, interleaved, medians): at rest 12.3 ms against main's 12.7; with a shot at its hit 14.9 ms against 13.3 (12% more, inside 15%). Single runs spread 11 to 18 ms on both, so a single run proves little. Nothing new draws while nothing moves; the 30 fps setting is untouched.
+- **No save change; every earlier check; three sizes:** below.
+
+**Tests:** `node --test`: TESTS_LINE. Updated on purpose: `tests/battleScene.test.js` counts a room's floor by its lit color, and its fire glows by those without an alpha (the spill has one). Golden files are unchanged.
+
+**Browser checks:**
+- **M59's own:** `m59/verify.mjs` (the two fights and the fade) passes at each of the three sizes.
+- **Every earlier milestone's check,** in the three chains (`m59/regress-a.sh`, `regress-b1.sh`, `regress-b2.sh`), M58's added to chain A:
+  - **M32b's first copy** fails its 2 checks, as on main.
+  - **M47's copy at tab** timed out once in chain A and passed 29 of 29 when run again.
+  - CHAIN_LINE
+
+**Known issues:**
+- **The shot frame is 12% over main's,** close to the 15% bar; a busier map could cross it. The cost is the sparks' and flash's glows while a shot is in flight, not at rest.
+- **The room pools are subtle** in an ordinary fight (22% toward the light at a room's middle). The red on a boarding reads clearly.
+- **The cross-fade fades the panels in rather than across:** the old panels are gone at once, and only the board cross-fades.
+- **The kill moment's ease-in is undone** only when the crew's turn comes back, like the camera's other follows (M51): in an enemy turn with several kills, each eases in a little further from where the last left it, up to the zoom limit.
+
+**What Evan should test on the phone:**
+- In a fight, watch a shot: a flash at the gun, sparks on a hit, a puff on a miss. A stun dart should be blue, a flamer orange.
+- A boarding of your own ship should have red rooms; a wrecked room should be dark.
+- Drop an enemy: the board should ease in and hold a beat. At 200% playback, or with reduced motion on, it shouldn't.
+- Move between screens (title, settings, hangar, chart): a short fade. With reduced motion on, none.
+- Check the fight still feels smooth on the phone, on the 60 fps and 30 fps settings.
+
+**Next milestone's first task:** item 5 of the brainstorm, music: list where the game is silent today and what ZzFX can carry as music (loops, layers, size), then measure what a loop costs to build and play on the phone.
+
 ## M58 Who they are and the ship's colours (2026-10-27)
 
 **Status:** done; the ROADMAP.md box is ticked. Save v49 and blueprint codes v5, each with a migration.
