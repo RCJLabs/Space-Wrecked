@@ -2,6 +2,73 @@
 
 Newest entry first.
 
+## M57 The cover-screen pass (2026-10-27)
+
+**Status:** done; the ROADMAP.md box is ticked. No save change.
+
+**How it was picked:** item 6 of the second Phase 8 brainstorm, next in my order, on Evan's "Merge when ready then continue to the next item".
+
+**What the measuring found:** an audit (`m57/audit.mjs`) of 18 screens and panels at 905 × 370 (cover), 821 × 283 (a browser's tab on the cover screen) and 960 × 825 (open). It measures each panel's hidden height, text cut short, touch targets, buttons off the screen or under another, and text under 10 px. Nothing was too small or off the screen at any size. On the folded sizes eight places crowded; the table below has them.
+
+**What shipped** (CSS, apart from the pager and the badge):
+- **The side pager** (`src/ui/campaign/sidePager.js`): on a screen 480 px tall or less, the hangar's, the chart's (a station's, a yard's) and the colony's side columns show one panel at a time. A bar at the top has ‹ and › at 48 px and between them "2 / 4" over "then Sides", naming the panel › goes to. A hidden or empty panel is passed over, and the bar keeps itself on top when a screen redraws the column. On a taller screen the bar hides and every panel shows, as before.
+- **The colony:** its info sections grouped at each heading, so the pager steps through them (needs, buildings, crew, sides, quests, the world, the run). Its parts column has its own pager over its groups (fly out, voyage, heat, trader, the hold, the ship), each group's list two abreast. The ship's name line is dropped from its head on a short screen.
+- **The fight's orders** in their own column, two abreast at 64 px where the screen is short, so the column never scrolls and Title and Log stay in sight.
+- **The crew card** takes the side column's room too (it only listed the crew again), its crew two abreast, three in a browser's tab.
+- **The epilogue** three abreast on the cover screen and four in a browser's tab. Its rows are now sized to their panels: a panel that scrolls had its row squeezed to the screen and ran under the next (found here, at 821 × 283; M56's known issue was the scroll).
+- **The captain's screen:** the traits three abreast in a wider panel, the look's portrait smaller.
+- **Names wrap** instead of being cut: the sides and quests panels, a crew member's job line at the colony.
+- **The odds badge** (`src/render/fightLabels.js`): on a tile where a unit's word shows (PINNED, DOWN), the hit chance rises clear of the word (M55's known issue). Over a unit with no word it stays where it was.
+
+**Measurements** (hidden px in the panel that scrolls; main → M57):
+
+| Place | 905 × 370 | 821 × 283 |
+| --- | --- | --- |
+| Fight's orders | 99 → 0 | 150 → 0 |
+| Hangar's side column | 287 → 0 | → 0 (each page) |
+| Chart's side column | 236 → 0 | → 0 (Sides +37 on its page) |
+| Colony's info | 805 → 89 | 842 → 143 |
+| Colony's parts | 922 → 0 | 1028 → 31 |
+| Crew card's list | 72–104 → 0 | 122–140 → 0 |
+| Epilogue | 34 → 0 | 67 → 0 |
+| Captain's traits | 313 → 145 | 390 → 222 |
+| Names cut short | 4 → 0 | → 0 |
+
+- **The open screen** is unchanged but for the colony's info (+356 → +385): crew job lines now wrap instead of being cut (3 cut there → 1).
+- **Not in the Done when, and left:** a station's Here panel (+281 at cover, +353 in the tab; +203 at a yard), the hangar's goal panel in the tab (+101), the background's details (+39 → +99 in the tab), the settings (+1,204), and the shop's and job board's lists (lists that read as such).
+
+**Done when** (ROADMAP.md, M57), and how each is met:
+- **The fight's orders all in sight, two columns, 48 px or more:** above; `m57/verify.mjs` checks the column doesn't scroll and every order is 48 px or more.
+- **No name cut short:** 0 at both folded sizes in the audit.
+- **No scroll in the hangar's side column, the epilogue, the crew card's three:** 0 at both.
+- **The colony's hidden content halved in each panel, its build list two abreast:** above.
+- **The traits two abreast, a swipe at most:** three abreast. 145 px hidden at cover is half the panel's height. 222 px in the tab is about one swipe of the panel.
+- **The PINNED word clear of the badge:** `tests/fightLabels.test.js`.
+- **Touch targets, nothing off or under another, the open screen as it is:** the audit. Its only "under another" are the chart's nodes under the open crew card, which is meant to cover them.
+- **No save change; every earlier check passes:** below.
+
+**Tests:**
+- `node --test`: 1272 pass (1270 on main: 2 added, in `tests/fightLabels.test.js`).
+
+**Browser checks:**
+- **M57's own:** `m57/verify.mjs` at the three sizes. It covers the fight's column (no scroll, orders 48 px or more, Title and Log in sight), each pager stepping through its panels and naming the next, the colony's groups and parts, the crew card, the epilogue, the captain's traits, no names cut, the badge over a pinned enemy, and no console errors.
+- **Every earlier milestone's check:** running (chains A, B1 and B2), results to follow.
+
+**Known issues:**
+- **The pager hides panels.** On a folded screen a side column's other panels are a tap away, not a glance; the bar names the next one so the player knows what's past ›. The colony's info needs a short scroll on some of its pages (89 px at cover).
+- **A station's Here panel scrolls** (+281 at cover), outside this Done when.
+- **In a browser's tab** (821 × 283) the hangar's goal panel scrolls (+101), and the traits take a swipe.
+- **The pager starts on the first panel** each time a screen opens; it doesn't remember where it was.
+
+**What Evan should test on the phone:**
+- On the cover screen: the hangar, the chart and a station. The side column should show one panel with ‹ › above it and "then <name>"; step through all of them.
+- The colony: both columns paged; the parts list two abreast; Fly out and the trader reachable.
+- A fight: every order on screen in two columns without scrolling; pin an enemy and aim at it: the hit chance above PINNED, not over it.
+- The crew card, the captain's traits, and the epilogue if you have a save near it.
+- Unfold: everything should look as before.
+
+**Next milestone's first task:** item 2 of the brainstorm, character and ship customization: list what a player can change today about a crew member and the ship, and measure what it costs to add each of the items.
+
 ## M56 The reckoning (2026-10-26)
 
 **Status:** done; the ROADMAP.md box is ticked. Saves go to v48, with a migration.
