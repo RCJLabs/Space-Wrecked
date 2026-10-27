@@ -48,9 +48,11 @@ export function createSidePager(side, { pages = null } = {}) {
     on.disabled = at === shown.length - 1;
   }
 
+  // A new page opens at its top, not where the last was scrolled to.
   const step = (by) => () => {
     at += by;
     refresh();
+    side.scrollTop = 0;
   };
   // A screen that draws the column afresh (replaceChildren) takes the bar
   // with it: put it back at the top.

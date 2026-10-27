@@ -60,7 +60,7 @@ import { ghostNearText } from './neighbourText.js';
 import { createCrewCard } from './crewCard.js';
 import { crewCardText, crewSaid } from './crewText.js';
 import { crewRows, heatChip, listRows, questRows, sideRows } from './hubParts.js';
-import { createSidePager } from './sidePager.js';
+import { createSidePager, folded } from './sidePager.js';
 import { easedSaid } from './questText.js';
 import { defendText, landingReport, raidHint } from './raidText.js';
 import { liveStatus, surface } from '../a11y.js';
@@ -277,6 +277,7 @@ export const colonyScreen = {
       crewOpener.setAttribute('aria-expanded', String(crewOpen));
       info.inert = crewOpen;
       sceneArea.inert = crewOpen;
+      side.inert = crewOpen && folded();
       sideList.replaceChildren(...sideRows(text.sides));
       questList.replaceChildren(...questRows(text.quests));
       setText(worldTitle, text.world.title);

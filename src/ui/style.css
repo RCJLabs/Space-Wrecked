@@ -5467,11 +5467,18 @@ textarea {
 }
 
 @media (max-height: 480px) {
+  /* It stays at the column's top when a long page scrolls under it. */
   .hgr-paged[data-pages='true'] > .hgr-pager {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     flex: none;
     display: flex;
     align-items: center;
     gap: 4px;
+    border-radius: 10px;
+    /* The panel's color twice over: what scrolls under doesn't show through. */
+    background: linear-gradient(var(--c-panel), var(--c-panel)), var(--c-panel);
   }
 
   .hgr-paged[data-pages='true'] > :not(.hgr-pager):not(.hgr-page-shown) {
