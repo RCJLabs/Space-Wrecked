@@ -19,6 +19,11 @@ Newest entry first.
 - **The captain's screen:** the traits three abreast in a wider panel, the look's portrait smaller.
 - **Names wrap** instead of being cut: the sides and quests panels, a crew member's job line at the colony.
 - **The odds badge** (`src/render/fightLabels.js`): on a tile where a unit's word shows (PINNED, DOWN), the hit chance rises clear of the word (M55's known issue). Over a unit with no word it stays where it was.
+- **Found by the earlier milestones' checks, and fixed:**
+  - the pager's bar now stays at the column's top (sticky, solid) while a long page scrolls under it, and a new page opens at its top;
+  - where the crew card spreads over the side column on a folded screen, that column is inert under it (the hangar's, the chart's and the colony's parts), as the panels it covered were already;
+  - a crew list with spare weapons on hand keeps one row per member: in narrow cells the swaps stacked tall and pushed a weapon's facts out of sight;
+  - the bar's label clears when the column has no pages (the colony's placing view).
 
 **Measurements** (hidden px in the panel that scrolls; main → M57):
 
@@ -52,7 +57,10 @@ Newest entry first.
 
 **Browser checks:**
 - **M57's own:** `m57/verify.mjs` at the three sizes. It covers the fight's column (no scroll, orders 48 px or more, Title and Log in sight), each pager stepping through its panels and naming the next, the colony's groups and parts, the crew card, the epilogue, the captain's traits, no names cut, the badge over a pinned enemy, and no console errors.
-- **Every earlier milestone's check:** running (chains A, B1 and B2), results to follow.
+- **Every earlier milestone's check,** in three chains run one after another (`m57/regress-a.sh`, `regress-b1.sh`, `regress-b2.sh`):
+  - **All pass,** apart from M32b's first copy (2 checks, as on main; its fix copy passes 27 of 27). M8's column now passes at the tab size too.
+  - **Adapted for M57**, the checks doing what a player would on a folded screen: the shared kit (`m8/kit.mjs`, with `m57/paging.mjs`) and `m18/old.mjs`'s `reach` page the side column to a control before waiting on or tapping it, start a swipe below the pager's bar, and take a control taller than what shows of its panel as reached when its middle is in sight. Copies (`verify57.mjs`): M38c, M38d's fix, M38e, M38f and M35 (page before a tap), M38d's fix (the colony panel on its page offline), M27, M26 and M25 (the colony's sections now in groups: their selectors and the panel's text), M23 (on a folded screen Done puts the crew card away, the side column under it).
+  - **M34 at the open size** missed once in the chain under load and passed 39 of 39 alone.
 
 **Known issues:**
 - **The pager hides panels.** On a folded screen a side column's other panels are a tap away, not a glance; the bar names the next one so the player knows what's past ›. The colony's info needs a short scroll on some of its pages (89 px at cover).
