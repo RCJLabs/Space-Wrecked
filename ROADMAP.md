@@ -2638,6 +2638,36 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Saves and codes:** save v49 and codes v5, both migrating old ones to plain, bone, the maker's glow and standard suits; content listed in `data/styling.json`.
   - **Found by the earlier checks:** the Look button beside each row made M57's crew card scroll at cover; it now sits under the hit points. Details in PROGRESS.md.
 
+- [ ] **M59 Light and fire.** Item 3 of the second Phase 8 brainstorm (visuals), next in my order, on Evan's "Merge when ready then continue to the next item"; cut to the fight, its rooms and the moves between screens.
+
+  Measured first (main after M58):
+  - **A shot** is one tracer line from the shooter's tile to the target, and on a hit a flash where it lands (`src/render/fightLabels.js`). There is no muzzle flash. A burst's rounds show as one line. A miss just fades past the target. A stun dart and a flamer's shot look like any other.
+  - **Rooms** are lit by one fixed light from above (`src/render/solid.js`); a room has no light of its own. A wrecked room burns, frosts or fills with rubble, and a vented one glows blue. Nothing tells a boarding of your own ship from a fight anywhere else.
+  - **A kill** is the target's colors flashing, then the fall pose. The camera stays put.
+  - **Screens** swap at once, with no transition.
+
+  Done when (my recommendations, taken on Evan's word):
+  - **Shots that read:**
+    - a muzzle flash at the shooter's weapon for each shot, and each round of a burst flies as its own tracer;
+    - a hit throws a few sparks that fly out and fade;
+    - a miss ends in a small puff where it strikes past the target;
+    - a stun dart's tracer and sparks are blue, a flamer's orange, and every other shot keeps today's color;
+    - all of it is drawn from the weapon's existing data (its kind, stun and fire), with no new data needed.
+  - **Rooms with lights of their own:**
+    - every room has a soft light over its middle;
+    - a wrecked room's light is out;
+    - when the fight is a boarding of the player's own ship, the lights are red;
+    - a burning tile casts an orange glow on the tiles beside it.
+  - **A kill moment:** when a shot takes a unit down or kills it, the camera eases a short way toward it and the playback holds for 400 ms. Off with reduced motion and at the fastest playback speed.
+  - **Transitions:** screens cross-fade in 160 ms; none with reduced motion.
+  - **The frame budget:**
+    - at 905 × 370 in Chromium, a fight's full frame with lights and a shot's effects costs at most 15% more than the same frame on main;
+    - nothing new draws while nothing moves (no continuous redraw added);
+    - the 30 fps setting still holds.
+  - **Pure and tested:** the effects are pure functions of the playback's frame (the same frame always draws the same sparks), each with a test.
+  - **No save change;** every earlier milestone's check passes; the three sizes checked.
+  - **Not in this milestone** (to §9): the colony's ground by day, night and weather; portraits with expressions; baked shading (ambient occlusion); fire that flickers (it needs a redraw every frame, against the battery).
+
 **The second Phase 8 brainstorm** (Evan's call, 2026-10-26: "Add everything to the queue. Then start 1"). Areas 1 to 3 are his, 4 to 10 mine. Each becomes a milestone as it starts, with its Done when settled then; my recommended order after 1 is 4, 6, 2, 3, 5, 7, 9, 10, 8.
 1. **Improving combat:** the orders nobody gives (Suppress and Weld add nothing measured), weapon roles (the shotgun best everywhere), enemy behaviour types (flankers, shield-bearers, medics, leaders), interactive ship tiles (venting a room, exploding consoles, lights out), morale and retreat (which also ends fights stuck behind a fallen body), a boss for each pursuer.
 2. **Character and ship customization:** editing any crew member's look, callsigns, scars and implants earned in play, suits in the ship's colours, a choice of perk at each rank; paint patterns, engine glow, an emblem editor, more hull styles, a second livery.
@@ -2810,5 +2840,9 @@ These ideas wait until v0.4 or later:
 - a choice of perk at each rank: the player picking between two at rank 1 and rank 2, in place of the job's one. A balance change across every job, best with a combat pass (raised in M58)
 - an emblem editor: the player drawing their own from shapes and colors, where today they pick 6 of 10 drawings (raised in M58)
 - more hull styles: a third beside rounded and plated, its own shapes outside and in the yard (raised in M58)
+- the colony's ground by day, night and weather: a light that moves with the colony's days, and dust, snow or rain by world kind (raised in M59)
+- portraits with expressions: a face that winces when hurt and falls slack when down, on the crew buttons and the cards (raised in M59)
+- baked shading: ambient occlusion where walls meet floors and under fittings, baked once per map (raised in M59)
+- fire that flickers: a burning tile's light moving with time, which needs a redraw every frame while it burns (raised in M59)
 
 Ideas that come up during a session go here, not into code.
