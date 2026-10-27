@@ -60,6 +60,7 @@ import { ghostNearText } from './neighbourText.js';
 import { createCrewCard } from './crewCard.js';
 import { crewCardText, crewSaid } from './crewText.js';
 import { crewRows, heatChip, listRows, questRows, sideRows } from './hubParts.js';
+import { createSidePager, folded } from './sidePager.js';
 import { easedSaid } from './questText.js';
 import { defendText, landingReport, raidHint } from './raidText.js';
 import { liveStatus, surface } from '../a11y.js';
@@ -99,10 +100,27 @@ export const colonyScreen = {
     const worldLines = node('ul', 'cln-lines');
     const recordTitle = node('h2');
     const record = node('dl', 'hgr-hold');
-    info.append(node('h2', null, 'The colony'), needs, powerLine, storesLine, node('h2', null, 'Buildings'), buildingList, crewBox, node('h2', null, 'Sides'), sideList, node('h2', null, 'Quests'), questList, worldTitle, worldLines, recordTitle, record);
+    // Each heading with what is under it in a group of its own, so on a
+    // folded screen the panel shows one group at a time (M57, sidePager.js).
+    const group = (...children) => {
+      const box = node('div', 'cln-group');
+      box.append(...children);
+      return box;
+    };
+    info.append(
+      group(node('h2', null, 'The colony'), needs, powerLine, storesLine),
+      group(node('h2', null, 'Buildings'), buildingList),
+      crewBox,
+      group(node('h2', null, 'Sides'), sideList),
+      group(node('h2', null, 'Quests'), questList),
+      group(worldTitle, worldLines),
+      group(recordTitle, record),
+    );
+    const pager = createSidePager(info);
     const sceneArea = surface(node('div', 'hgr-ship cln-scene'), 'The colony\'s ground: tap a building for its details; with one picked to build, tap where it goes');
     // What can be built, or the ghost's controls, or the building looked at.
     const side = node('section', 'hgr-panel cln-parts');
+    const partsPager = createSidePager(side, { pages: '.cln-group' });
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const hint = liveStatus(node('p', 'hgr-hint', 'Loading…'));
@@ -259,6 +277,7 @@ export const colonyScreen = {
       crewOpener.setAttribute('aria-expanded', String(crewOpen));
       info.inert = crewOpen;
       sceneArea.inert = crewOpen;
+      side.inert = crewOpen && folded();
       sideList.replaceChildren(...sideRows(text.sides));
       questList.replaceChildren(...questRows(text.quests));
       setText(worldTitle, text.world.title);
@@ -397,7 +416,18 @@ export const colonyScreen = {
       const sections = [node('h2', null, 'Build'), list(text.builds.map((row) => rowButton(row.name, row.ok ? `${row.cost} materials · ${row.makes}` : row.why, row.ok, () => tapRow(row, 'build'))), 'cln-builds'), ...trips.placesSection(campaign), ...voyages.section(campaign), ...levers.section(campaign)];
       if (text.hold.length) sections.push(node('h2', null, 'From the hold'), list(text.hold.map((row) => rowButton(row.name, row.ok ? `${row.building} · ${row.gives}` : row.why, row.ok, () => tapRow(row, 'hold'), row.count))));
       sections.push(node('h2', null, 'From the ship'), list(text.parts.map((row) => rowButton(row.name, row.ok ? `${row.building} · ${row.gives}` : row.why, row.ok, () => tapRow(row, 'ship'), row.count))));
-      side.replaceChildren(...sections);
+      side.replaceChildren(...byHeading(sections));
+    }
+
+    // The sections a group each, from each heading to the next (M57), so on
+    // a folded screen the panel shows one at a time.
+    function byHeading(nodes) {
+      const groups = [];
+      for (const item of nodes) {
+        if (item.tagName === 'H2' || !groups.length) groups.push(node('div', 'cln-group'));
+        groups.at(-1).append(item);
+      }
+      return groups;
     }
 
     // A day's report, and what's next after it (M43): another day, unless
@@ -722,6 +752,8 @@ export const colonyScreen = {
       },
       unmount() {
         alive = false;
+        pager();
+        partsPager();
         for (const cleanup of cleanups) cleanup();
         el.remove();
       },

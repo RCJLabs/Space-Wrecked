@@ -25,6 +25,7 @@ import { createCrewCard } from './crewCard.js';
 import { crewCardText, crewSaid } from './crewText.js';
 import { createShipStand, crewRows, heatChip, listRows, panel, questRows, sideRows } from './hubParts.js';
 import { hangarText } from './hubText.js';
+import { createSidePager, folded } from './sidePager.js';
 import { hullIdentity } from '../../sim/identity.js';
 import { liveStatus } from '../a11y.js';
 
@@ -60,6 +61,7 @@ export const hangarScreen = {
     const shipArea = node('div', 'hgr-ship');
     const side = node('div', 'hgr-side');
     side.append(crewPanel, panel('Hangar', holdings), panel('Sides', sideList), panel('Quests', questList));
+    const pager = createSidePager(side);
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const hint = liveStatus(node('p', 'hgr-hint', 'Loading…'));
@@ -158,6 +160,7 @@ export const hangarScreen = {
       crewPanel.dataset.open = String(crewOpen);
       goalPanel.inert = crewOpen;
       shipArea.inert = crewOpen;
+      side.inert = crewOpen && folded();
       holdings.replaceChildren(...listRows(text.holdings));
       sideList.replaceChildren(...sideRows(text.sides));
       questList.replaceChildren(...questRows(text.quests));
@@ -266,6 +269,7 @@ export const hangarScreen = {
       },
       unmount() {
         alive = false;
+        pager();
         for (const cleanup of cleanups) cleanup();
         el.remove();
       },

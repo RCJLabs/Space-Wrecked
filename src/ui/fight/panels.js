@@ -113,7 +113,11 @@ export function createActionBar(handlers, tools = []) {
     reload: toolButton('fgt-act', icons.reload, 'Reload'),
     skip: toolButton('fgt-act fgt-skip', icons.skip, 'Skip'),
   };
-  el.append(top, ...Object.values(buttons));
+  // The orders in a box of their own, below the tools: one column, or on a
+  // folded screen two (M57, style.css).
+  const orders = node('div', 'fgt-orders');
+  orders.append(...Object.values(buttons));
+  el.append(top, orders);
   const cleanups = Object.entries(buttons).map(([name, button]) => onTap(button, () => handlers[name]()));
   // The column scrolls into place when the orders shown change or its size
   // does, never while the player is scrolling it. An edge with more past

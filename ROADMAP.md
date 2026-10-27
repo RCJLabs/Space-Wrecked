@@ -2585,6 +2585,32 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
 
   **As built:** all of it, in `src/sim/reckoning.js` with the raids', the leaders and their words as data (`data/enemies.json`, `data/encounters.json`, the pursuer's `colony.reckoning` in `data/backgrounds.json`), and the epilogue in `src/ui/campaign/epilogue.js`. Save v48. Due on the founding colony's day 90 or 10 days after the pay-off, with the ship at home (it waits out a voyage or a trip), warned 5 days ahead, again 15 days after a loss; the crew's fight alone, the citizens sheltered. The leaders wear a cape, a new back piece, as the enemies' looks had run out. Over 30 runs a start the test player met it in 10, 16 and 20 and won it in 8, 8 and 20; the marshal hard and Halloran easy, recorded and not tuned. Details in PROGRESS.md.
 
+- [x] **M57 The cover-screen pass.** Item 6 of the second Phase 8 brainstorm, next in my order (taken on Evan's word, "Merge when ready then continue to the next item"): every screen walked at the folded sizes and the crowding fixed.
+
+  Measured first (main after M56, an audit of 18 screens and panels at 905 × 370, 821 × 283 and 960 × 825: what needs a scroll and by how much, text cut short, touch targets under 48 px, buttons off the screen or under another, text under 10 px):
+  - **Nothing too small, off the screen, under another or under 10 px** at any size. The open screen (960 × 825) fits everything but the colony's two panels and the settings.
+  - **On the folded screens, eight places crowd:**
+    - **the fight's orders** (+99 px at 905 × 370, +150 at 821 × 283): the column scrolls, so Title and Log sit above its top;
+    - **the colony** (its needs panel +805 px, its build list +922);
+    - **the hangar's side column** (+287, §9's from M33), the chart's and a station's (+236 and +281);
+    - **the captain's traits** (+313) and the background's details (+39, §9's from M30);
+    - **the crew card's lists** (+72 to +104, §9's from M23);
+    - **the epilogue** (+34);
+    - **names cut short:** the chart's sides panel ("The Hallorans", "The miner's debt"), and the colony's world line and each crew member's "sleeps aboard".
+  - **Not crowding:** the settings (+1,204), the shop's and the job board's lists, which are lists and read as such.
+
+  Done when (my recommendations, taken on Evan's word), at 905 × 370 and 821 × 283, measured by the same audit (`m57/audit.mjs`):
+  - **The fight's orders all in sight:** no scroll in the action column; the orders in two columns where the screen is short, each 48 px or more.
+  - **No name cut short** anywhere the audit walks.
+  - **No scroll** in the hangar's side column, the epilogue or the crew card's list of three.
+  - **The colony's hidden content halved** in each of its two panels, its build list in two columns of shorter cards.
+  - **The captain's traits** in two columns, needing at most one swipe.
+  - **The PINNED word clear of the odds badge** (M55's known issue).
+  - **Touch targets stay 48 px or more,** nothing goes off the screen or under another, and the open screen stays as it is.
+  - **No save change;** every earlier milestone's check passes.
+
+  **As built:** CSS and one new piece, the side pager (`src/ui/campaign/sidePager.js`): on a folded screen the hangar's, the chart's and the colony's side columns show one panel at a time, with ‹ and › and "2 / 4, then Sides" between them. Also: the fight's orders in two columns, the colony's sections grouped and paged, its parts list two abreast, the crew card over the side column with its crew two or three abreast, the epilogue three or four abreast (its rows no longer run under each other), the captain's traits three abreast, names wrapping, and the odds badge lifted clear of a unit's word. At 905 × 370 and 821 × 283 nothing named in the Done when scrolls except the colony's info (805 to 89 px and 842 to 143, halved) and the traits (313 to 145 and 390 to 222, a swipe). Not in the Done when and left: the station's Here panel (+281 and +353), the hangar's goal panel in a browser's tab (+101), the background's details (+99 there). The earlier milestones' checks found three more, fixed: the bar now sticks at the column's top over a long page, the column is inert under the crew card where the card covers it, and a crew list with swaps keeps one row each. No save change. Details in PROGRESS.md.
+
 **The second Phase 8 brainstorm** (Evan's call, 2026-10-26: "Add everything to the queue. Then start 1"). Areas 1 to 3 are his, 4 to 10 mine. Each becomes a milestone as it starts, with its Done when settled then; my recommended order after 1 is 4, 6, 2, 3, 5, 7, 9, 10, 8.
 1. **Improving combat:** the orders nobody gives (Suppress and Weld add nothing measured), weapon roles (the shotgun best everywhere), enemy behaviour types (flankers, shield-bearers, medics, leaders), interactive ship tiles (venting a room, exploding consoles, lights out), morale and retreat (which also ends fights stuck behind a fallen body), a boss for each pursuer.
 2. **Character and ship customization:** editing any crew member's look, callsigns, scars and implants earned in play, suits in the ship's colours, a choice of perk at each rank; paint patterns, engine glow, an emblem editor, more hull styles, a second livery.
