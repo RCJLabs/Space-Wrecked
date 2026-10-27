@@ -1065,9 +1065,11 @@ function faceRaid(campaign, defs, raids) {
   if (!plan.ok) throw new Error(plan.error);
   const here = plan.colony === campaign.colony.id;
   const day = colonyById(campaign, plan.colony).day;
+  const reckoning = Boolean(colonyById(campaign, plan.colony).raid?.reckoning);
   const done = fightRaid(campaign, defs);
   raids.faced.push({
     day,
+    reckoning,
     at: plan.colony,
     landed: done.landing.landed.length,
     stopped: plan.raiders.length - done.landing.landed.length,
@@ -1638,6 +1640,7 @@ export function voyagesByBackground(defs, runs, options = {}) {
       quests: questCounts(defs, done),
       companions: companionCounts(defs, done),
       levers: leverCounts(done),
+      reckoning: reckoningCounts(done),
       near: done.filter((r) => r.tally.days).reduce((sum, r) => sum + (r.tally.days.near ?? 0), 0),
       nearRuns: done.filter((r) => r.tally.days?.near > 0).length,
       settlers: done.reduce((sum, r) => sum + Math.max(r.campaign?.flags?.survivorsSettled ?? 0, r.out?.campaign?.flags?.survivorsSettled ?? 0), 0),
@@ -1659,6 +1662,8 @@ export function voyagesByBackground(defs, runs, options = {}) {
     ...rows.map((row) => `${row.name.padEnd(width)}  ${leversLine(row.levers)}`),
     "Neighbours and settlers (M54): buildings gaining from a neighbour at the end of the colony's first days, and survivors from events who settled:",
     ...rows.map((row) => `${row.name.padEnd(width)}  ${row.near} buildings in ${row.nearRuns} colonies; ${row.settlers} survivors settled`),
+    "The reckoning (M56): runs whose colony the leader landed on, won it (the pursuit over), lost it at least once, and the leader's landings in all:",
+    ...rows.map((row) => `${row.name.padEnd(width)}  met in ${row.reckoning.met}, won in ${row.reckoning.won}, lost in ${row.reckoning.lost} (${row.reckoning.landings} landings); of ${row.reckoning.played} colonies`),
   ];
   return { lines, rows };
 }
@@ -1670,6 +1675,26 @@ export function leverCounts(done) {
   const played = done.filter((r) => r.tally.days?.levers);
   const of = (key) => ({ runs: played.filter((r) => r.tally.days.levers[key] > 0).length, times: played.reduce((sum, r) => sum + r.tally.days.levers[key], 0) });
   return { played: played.length, pay: of('pay'), low: of('low'), sell: of('sell'), buy: of('buy'), lowDays: of('lowDays') };
+}
+
+// The reckoning in voyages that founded a colony (M56), from the flags
+// reckoning.js counts (faced by the crew or fought out while the ship was
+// away): runs it landed in, runs it was won in (the pursuit over), runs it
+// was lost in at least once, and its landings in all.
+export function reckoningCounts(done) {
+  const played = done.filter((r) => r.landed);
+  const flags = (r) => [r.campaign, r.out?.campaign, r.travelled, r.home].reduce((most, campaign) => ({
+    won: Math.max(most.won, campaign?.flags?.reckoningsWon ?? 0),
+    lost: Math.max(most.lost, campaign?.flags?.reckoningsLost ?? 0),
+  }), { won: 0, lost: 0 });
+  const counted = played.map(flags);
+  return {
+    played: played.length,
+    met: counted.filter(({ won, lost }) => won + lost > 0).length,
+    won: counted.filter(({ won }) => won > 0).length,
+    lost: counted.filter(({ lost }) => lost > 0).length,
+    landings: counted.reduce((sum, { won, lost }) => sum + won + lost, 0),
+  };
 }
 
 function leversLine(levers) {

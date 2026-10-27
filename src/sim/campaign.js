@@ -223,6 +223,11 @@ export function newCampaign(rules, seed, { background = firstBackground(rules), 
     // (colonies.js).
     colony: null,
     colonies: [],
+    // The reckoning and the ending (M56, reckoning.js): when the
+    // pursuer's leader is due at the founding colony, and once the
+    // reckoning is won, the pursuit over.
+    reckoning: null,
+    ending: null,
     fight: null,
   };
 }
@@ -582,6 +587,9 @@ export function campaignProblems(value) {
   if (typeof value.permadeath !== 'boolean') wrong('permanent death setting is invalid');
   if (!Array.isArray(value.fallen) || value.fallen.length > MAX_FALLEN || !value.fallen.every(isFallen)) wrong('fallen are unreadable');
   if (!isInt(value.heat, 0, HEAT_MAX)) wrong('heat is invalid');
+  // The reckoning and the ending (M56).
+  if (value.reckoning !== null && !(isRecord(value.reckoning) && isInt(value.reckoning.due, 0, MAX_DAYS))) wrong('reckoning is unreadable');
+  if (value.ending !== null && !isEnding(value.ending)) wrong('ending is unreadable');
   if (!isStanding(value.standing, MAX_SIDES)) wrong('standing with the sides is unreadable');
   if (!isQuests(value.quests)) wrong('quests are unreadable');
   if (!isRecord(value.flags) || !Object.entries(value.flags).every(([name, flag]) => FLAG.test(name) && name.length <= 32 && isFlag(flag))) {
@@ -768,8 +776,14 @@ function isTrader(trader) {
   return isRecord(trader) && typeof trader.side === 'string' && isInt(trader.day, 1, MAX_DAYS) && (trader.part === null || typeof trader.part === 'string') && typeof trader.bought === 'boolean' && isInt(trader.sold, 0, 100);
 }
 
+// The reckoning won (M56, reckoning.js): { day, colony (its name, or
+// null), won: true, seen }.
+function isEnding(ending) {
+  return isRecord(ending) && isInt(ending.day, 0, MAX_DAYS) && (ending.colony === null || (typeof ending.colony === 'string' && ending.colony.length <= 60)) && ending.won === true && typeof ending.seen === 'boolean';
+}
+
 function isRaid(raid) {
-  return isRecord(raid) && isInt(raid.found, 1, MAX_DAYS) && isInt(raid.lands, raid.found + 1, MAX_DAYS + MAX_WARNING) && (raid.extra === undefined || isInt(raid.extra, 0, 4));
+  return isRecord(raid) && isInt(raid.found, 1, MAX_DAYS) && isInt(raid.lands, raid.found + 1, MAX_DAYS + MAX_WARNING) && (raid.extra === undefined || isInt(raid.extra, 0, 4)) && (raid.reckoning === undefined || raid.reckoning === true);
 }
 
 // True when the colony's trip is at a place the scavengers hold, not yet

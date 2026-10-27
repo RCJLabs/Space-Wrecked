@@ -11,6 +11,7 @@ import { hangarScreen } from './campaign/hangar.js';
 import { jobsScreen } from './campaign/jobs.js';
 import { landingScreen } from './campaign/landing.js';
 import { launchScreen } from './campaign/launch.js';
+import { epilogueScreen } from './campaign/epilogue.js';
 import { overScreen } from './campaign/over.js';
 import { sectorScreen } from './campaign/sector.js';
 import { shopScreen } from './campaign/shop.js';
@@ -36,6 +37,7 @@ const screens = {
   landing: landingScreen,
   colony: colonyScreen,
   over: overScreen,
+  epilogue: epilogueScreen,
 };
 
 export function screenFor(id) {

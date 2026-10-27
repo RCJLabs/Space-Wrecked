@@ -11,18 +11,20 @@
 //             back    life (a life-support pack) | tools (a pack, a mast and
 //                     a tool rack) | tanks (twin tanks) | junk (a pack with
 //                     scrap strapped on) | med (a slim pack marked with a
-//                     plus) | none
+//                     plus) | cape (a leader's, over a slim pack,
+//                     M56) | none
 //             marks   plain | stripes (bands of trim on the arms and legs)
 //   skinsuit  a close-fitting suit with lines of light, a smooth helmet
 //             helmet  egg (a visor that wraps round) | fin (and a fin) |
 //                     crest (and a low crest) | mirror (a dark visor)
-//             back    spine (a slim pack) | jump (a jump pack) | none
+//             back    spine (a slim pack) | jump (a jump pack) | cape (a
+//                     leader's, M56) | none
 //             marks   seams (lines of light) | plates (and shoulder plates in
 //                     the trim)
 export const BUILDS = ['light', 'standard', 'heavy'];
 export const SUITS = {
-  eva: { helmet: ['bubble', 'lamps', 'bar'], back: ['life', 'tools', 'tanks', 'junk', 'med', 'none'], marks: ['plain', 'stripes'] },
-  skinsuit: { helmet: ['egg', 'fin', 'crest', 'mirror'], back: ['spine', 'jump', 'none'], marks: ['seams', 'plates'] },
+  eva: { helmet: ['bubble', 'lamps', 'bar'], back: ['life', 'tools', 'tanks', 'junk', 'med', 'cape', 'none'], marks: ['plain', 'stripes'] },
+  skinsuit: { helmet: ['egg', 'fin', 'crest', 'mirror'], back: ['spine', 'jump', 'cape', 'none'], marks: ['seams', 'plates'] },
 };
 export const LOOK_KEYS = ['suit', 'build', 'helmet', 'back', 'marks'];
 // A machine that fights (M39): a ship's security turret. Its look is

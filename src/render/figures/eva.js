@@ -2,7 +2,7 @@
 // hard chest with its controls, a pack on the back and a bubble helmet.
 // The trim runs over the top of the helmet and on the pack's lid, and with
 // stripes, round the arms and legs.
-import { add, ball, band, block, boot, cubeAt, HELMET, hexa, lathe, mix, rod, sub, tube } from './shapes.js';
+import { add, ball, band, block, boot, cape, cubeAt, HELMET, hexa, lathe, mix, rod, sub, tube } from './shapes.js';
 
 export function dressEva(kit, s, look) {
   const { suit, trim, dark } = kit.colors;
@@ -88,6 +88,11 @@ function pack(kit, s, kind) {
         for (const t of [0.25, 0.75]) band(kit, mix(from, to, t), [0, 0, 1], 0.053 * g, 0.02, dark);
       }
       hoses();
+      break;
+    case 'cape':
+      // A leader's cape (M56) over a slim pack.
+      box(at + 0.03, 0.08 * wv, 0.04 * g, hip + 0.06, shoulder, suit);
+      cape(kit, s, 0.155);
       break;
     default:
       break;

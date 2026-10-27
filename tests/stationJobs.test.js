@@ -209,7 +209,7 @@ test('the store takes a station job into its fight and brings the crew back to t
 });
 
 test('saves: v35 keeps the jobs taken this visit, and a v34 run takes none', () => {
-  assert.equal(SAVE_VERSION, 47);
+  assert.equal(SAVE_VERSION, 48);
   const campaign = at(fresh, stations[0].id);
   const taken = takeStationJob(campaign, rules, 0).campaign;
   const loaded = parseSave(JSON.stringify(makeSave(saveData({ ...initialState(7), campaign: taken }))));

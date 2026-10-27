@@ -48,10 +48,10 @@ test('the four settings: their defaults, the values each takes, checked in a sav
 });
 
 test('save v43: a save from before has the four settings at their defaults', () => {
-  assert.equal(SAVE_VERSION, 47);
+  assert.equal(SAVE_VERSION, 48);
   const { hand, speed, confirm, vibration, ...v42 } = { ...defaultSettings(), colors: 'safe' };
   const moved = migrate({ version: 42, data: { settings: v42, campaign: null } });
-  assert.equal(moved.version, 47);
+  assert.equal(moved.version, 48);
   assert.deepEqual(moved.data.settings, { ...defaultSettings(), colors: 'safe' });
 });
 

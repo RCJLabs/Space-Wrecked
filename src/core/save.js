@@ -121,7 +121,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  45  deployment: a raid's fight can open with the crew being placed
 //      (battle.setup, M50, placing.js); one under way has begun already,
 //      so it reads as it was
-export const SAVE_VERSION = 47;
+//  48  the reckoning: the campaign keeps when the pursuer's leader is due
+//      at the founding colony and its ending once that is won, neither
+//      yet (M56)
+export const SAVE_VERSION = 48;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -609,6 +612,13 @@ export const MIGRATIONS = [
       if (Array.isArray(colonies)) campaign.colonies = colonies.map(fresh);
       return { ...data, campaign };
     },
+  },
+  {
+    // 47 to 48 (M56): the reckoning and the ending, neither yet: the
+    // leader is due on the founding colony's day reckoningDay, as for a
+    // run whose thread never paid off.
+    from: 47,
+    up: (data) => (isObject(data) && isObject(data.campaign) ? { ...data, campaign: { ...data.campaign, reckoning: null, ending: null } } : data),
   },
 ];
 

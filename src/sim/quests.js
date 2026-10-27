@@ -30,6 +30,7 @@ import { int, seedFrom } from '../core/rng.js';
 import { atColony, atHangar } from './acts.js';
 import { makeLoyal } from './companions.js';
 import { PAY_STEP } from './economy.js';
+import { afterPayoff } from './reckoning.js';
 import { withHeat } from './heat.js';
 import { floorOf, moveStanding, pursuerSide, standingWith } from './standing.js';
 import { endCold } from './questShape.js';
@@ -133,6 +134,8 @@ export function stepDone(campaign, rules, id) {
     const side = payoff.standing && pursuerSide(next, rules);
     const by = side ? floorOf(payoff.standing, rules) - standingWith(next, side) : 0;
     if (by > 0) apply({ standing: { [side]: by } });
+    // The background's thread paid off, the leader comes (M56).
+    if (payoff.eased) next = afterPayoff(next, rules);
   }
   next = { ...next, quests: { ...next.quests, [id]: last ? { step: index, state: 'done' } : { step: index + 1, state: 'open' } } };
   return { campaign: next, note: { quest: id, did: last ? 'finished' : 'done', step: index, changes } };

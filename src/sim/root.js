@@ -3,6 +3,7 @@
 // content tables (rules) for the actions that need them.
 import { int } from '../core/rng.js';
 import { emptyBuilds, reduceBuilds } from './builds.js';
+import { closeEpilogue, epilogueDue } from './reckoning.js';
 import { beginFight, captainProblem, firstBackground, gameOver, newCampaign, refitShip, saveFight } from './campaign.js';
 import { nameProblem, renameShip, setEmblem, withIdentity } from './identity.js';
 import { donate } from './colony.js';
@@ -44,7 +45,7 @@ import { flyFrom, flyTo, voyageHome, voyageOut } from './voyage.js';
 // landing plays between act 2 and act 3 (M25), whose home is the colony
 // (M26), and from which the ship flies out on voyages (M38d).
 export const PLACE_SCREENS = { hub: 'hub', fight: 'campaign-fight' };
-export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'sector', 'approach', 'landing', 'colony', 'over'];
+export const CAMPAIGN_SCREENS = [...Object.values(PLACE_SCREENS), 'construction', 'jobs', 'shop', 'launch', 'sector', 'approach', 'landing', 'colony', 'over', 'epilogue'];
 // The moves on the run that can open an approach (a hostile ship, the
 // pursuer's hunters, or a trap an event sprang, M36) or put one away, and
 // so change the screen; and from M38d a voyage's Fly out and Fly home,
@@ -58,6 +59,8 @@ const SCREEN_CHANGES = ['campaign/jump', 'campaign/sector/leave', 'campaign/regr
 // its end.
 export function campaignScreen(campaign) {
   if (gameOver(campaign)) return 'over';
+  // The reckoning won (M56): its epilogue, until Carry on.
+  if (epilogueDue(campaign)) return 'epilogue';
   if (campaign.place === 'fight') return PLACE_SCREENS.fight;
   if (campaign.act === 2 || campaign.colony?.voyage) return campaign.run?.approach ? 'approach' : 'sector';
   return campaign.act === 1 ? PLACE_SCREENS.hub : 'colony';
@@ -256,6 +259,11 @@ export function reduce(state, action) {
     }
     case 'campaign/continue':
       return state.campaign ? { ...state, screen: campaignScreen(state.campaign) } : state;
+    // The epilogue read (M56): Carry on, at the colony.
+    case 'campaign/epilogue/close': {
+      const next = withCampaign(state, state.campaign && closeEpilogue(state.campaign));
+      return next === state ? state : { ...next, screen: campaignScreen(next.campaign) };
+    }
     case 'campaign/difficulty': {
       const set = state.campaign && setDifficulty(state.campaign, action.value);
       return set?.ok ? withCampaign(state, set.campaign) : state;
