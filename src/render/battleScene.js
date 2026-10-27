@@ -39,6 +39,7 @@ export function battleScene({ map, skin, open = [], locked = [], fires = [], mou
   const glows = [];
   const edge = { edge: skin.edge };
   const mounted = new Set(mounts.map(([x, y]) => `${x},${y}`));
+  const rooms = new Map(map.rooms.map((room) => [room.uid, room]));
 
   for (let y = 0; y < map.height; y++) {
     for (let x = 0; x < map.width; x++) {
@@ -62,7 +63,7 @@ export function battleScene({ map, skin, open = [], locked = [], fires = [], mou
       }
       const hazard = cellAt(map.hazards, x, y);
       const floor = hazard ? palette[FLOOR_UNDER[hazard]] : skin.floors[uid % skin.floors.length];
-      plate(faces, [x, y], [x + 1, y + 1], 0, floor, { edge: skin.floorSeam });
+      plate(faces, [x, y], [x + 1, y + 1], 0, litFloor(floor, rooms.get(uid), x, y, alert), { edge: skin.floorSeam });
       if (mounted.has(`${x},${y}`)) mount(faces, x, y, skin);
       else FITTINGS[kind]?.(faces, glows, x, y, skin);
       if (hazard) HAZARDS[hazard](faces, glows, x, y, kind);
@@ -75,8 +76,7 @@ export function battleScene({ map, skin, open = [], locked = [], fires = [], mou
   for (const { x, y, side } of map.hatches) collar(faces, glows, x, y, side, skin);
   // A room open to space glows cold, once for the whole room; any other
   // wrecked room is dark; the rest have a light of their own (M59), red on
-  // a boarding of the player's ship (roomLights).
-  glows.push(...roomLights(map, alert));
+  // a boarding of the player's ship, pooled on its floor (litFloor).
   for (const room of map.rooms) {
     if (room.wreck !== 'vacuum') continue;
     glows.push({ at: [room.x + room.w / 2, room.y + room.h / 2, 0.2], r: 0.45 + 0.35 * Math.max(room.w, room.h), color: palette.vacuum });
@@ -84,12 +84,27 @@ export function battleScene({ map, skin, open = [], locked = [], fires = [], mou
   return { faces, glows };
 }
 
-// Each room's own light (M59): a soft glow over its middle, as wide as
-// the room; none in a wrecked room (its light is out); red when alert.
-export function roomLights(map, alert = false) {
-  return map.rooms
-    .filter((room) => !room.wreck)
-    .map((room) => ({ at: [room.x + room.w / 2, room.y + room.h / 2, 0.5], r: 0.4 + 0.45 * Math.max(room.w, room.h), color: alert ? palette.alertLight : palette.roomLight, alpha: alert ? 0.3 : 0.14 }));
+// Each room's own light (M59), out in a wrecked room and red when alert, is
+// a pool on its floor: the floor tiles' own colors, made once with the
+// scene. A soft glow over each room looked the same but cost a gradient
+// over every room each frame, a fifth more than the frame budget allows
+// (PROGRESS.md, M59).
+export const POOL = { lit: 0.22, alert: 0.3 }; // how far the floor at a room's middle turns to its light
+
+// A floor tile's color in its room's light: toward the light's color by
+// POOL under the lamp, less toward the room's edges; unchanged in a wrecked
+// room or none.
+export function litFloor(floor, room, x, y, alert = false) {
+  if (!room || room.wreck) return floor;
+  const reach = 0.5 + 0.5 * Math.max(room.w, room.h);
+  const off = Math.hypot(x + 0.5 - (room.x + room.w / 2), y + 0.5 - (room.y + room.h / 2));
+  const t = (alert ? POOL.alert : POOL.lit) * Math.max(0, 1 - off / reach);
+  return t > 0 && /^#[0-9a-f]{6}$/i.test(floor) ? mixHex(floor, alert ? palette.alertLight : palette.roomLight, t) : floor;
+}
+
+function mixHex(a, b, t) {
+  const [p, q] = [a, b].map((hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)));
+  return `#${p.map((v, i) => Math.round(v + (q[i] - v) * t).toString(16).padStart(2, '0')).join('')}`;
 }
 
 // The boxes the camera works with, in tiles: `fit`, the ship and what sticks
