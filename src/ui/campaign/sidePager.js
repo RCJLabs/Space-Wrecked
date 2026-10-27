@@ -11,6 +11,11 @@
 import { node } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 
+// A folded screen, as style.css's own (max-height: 480px): where the pager
+// shows, and where the crew card spreads over the side column too, so the
+// screens make the column inert under it.
+export const folded = () => typeof matchMedia === 'function' && matchMedia('(max-height: 480px)').matches;
+
 export function createSidePager(side, { pages = null } = {}) {
   const bar = node('nav', 'hgr-pager');
   const back = node('button', 'btn hgr-page-back', '‹');

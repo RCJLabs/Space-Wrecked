@@ -1161,6 +1161,16 @@ textarea {
   .sct-crew-list li:nth-child(2) {
     border-top: 0;
   }
+
+  /* With spares on hand, each row carries its swaps, which stack tall in
+     a narrow cell: one row each, as before. */
+  .sct-crew-list ul:has(.crew-swaps) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sct-crew-list ul:has(.crew-swaps) li:nth-child(2) {
+    border-top: 1px solid var(--c-line);
+  }
 }
 
 .sct-crew-list li {
@@ -1221,6 +1231,10 @@ textarea {
 
   .sct-crew-list li:nth-child(3) {
     border-top: 0;
+  }
+
+  .sct-crew-list ul:has(.crew-swaps) li:nth-child(3) {
+    border-top: 1px solid var(--c-line);
   }
 
   .sct-crew-list li {

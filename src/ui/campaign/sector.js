@@ -61,7 +61,7 @@ import { confirms } from '../confirm.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { createCrewCard } from './crewCard.js';
-import { createSidePager } from './sidePager.js';
+import { createSidePager, folded } from './sidePager.js';
 import { crewCardText, crewHeading, crewSaid } from './crewText.js';
 import { createEventCard } from './eventCard.js';
 import { eventText, resultText } from './eventText.js';
@@ -304,6 +304,8 @@ export const sectorScreen = {
       const covered = carded || crewOpen;
       info.inert = covered;
       map.inert = covered;
+      // On a folded screen the crew card spreads over the side column too.
+      side.inert = crewOpen && folded();
       if (carded) disarm();
 
       // Refit, at a station or a shipyard, or Rearrange between jumps

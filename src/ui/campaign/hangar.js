@@ -25,7 +25,7 @@ import { createCrewCard } from './crewCard.js';
 import { crewCardText, crewSaid } from './crewText.js';
 import { createShipStand, crewRows, heatChip, listRows, panel, questRows, sideRows } from './hubParts.js';
 import { hangarText } from './hubText.js';
-import { createSidePager } from './sidePager.js';
+import { createSidePager, folded } from './sidePager.js';
 import { hullIdentity } from '../../sim/identity.js';
 import { liveStatus } from '../a11y.js';
 
@@ -160,6 +160,7 @@ export const hangarScreen = {
       crewPanel.dataset.open = String(crewOpen);
       goalPanel.inert = crewOpen;
       shipArea.inert = crewOpen;
+      side.inert = crewOpen && folded();
       holdings.replaceChildren(...listRows(text.holdings));
       sideList.replaceChildren(...sideRows(text.sides));
       questList.replaceChildren(...questRows(text.quests));
