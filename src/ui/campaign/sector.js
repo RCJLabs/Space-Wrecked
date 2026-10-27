@@ -197,6 +197,7 @@ export const sectorScreen = {
     const crewCard = createCrewCard({
       tap: (key, press) => twoTaps(key, () => crewOrder(key), press),
       done: () => toggleCrew(false),
+      save: (id, look, callsign) => defs && game.dispatch({ type: 'campaign/crew/look', rules: defs, id, look, callsign }),
     });
     el.append(head, info, map, side, card.el, crewCard.el, foot);
     root.append(el);

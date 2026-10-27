@@ -7,9 +7,12 @@
 // which undo takes back. The picker opens a sheet of the groups: wings,
 // gear and sculpt (data/styling.json), then paint, trim and hull. In the
 // campaign (M52) a last group, Name: the ship's name, typed and kept with
-// Rename, and the emblems she can wear, or none, a tap each.
+// Rename, and the emblems she can wear, or none, a tap each. Since M58 the
+// paint's pattern, its second color and the engines' glow, a tap each that
+// undo takes back, and in the campaign the crew's suits, standard or the
+// ship's.
 import { emblemSvg } from '../../render/emblems.js';
-import { paints, trims } from '../../render/palette.js';
+import { glows, paints, trims } from '../../render/palette.js';
 import { pieceIconSvg } from '../../render/pieces.js';
 import { attachGestures, onTap } from '../gestures.js';
 
@@ -19,8 +22,9 @@ const ICON_WIDTH = 52;
 
 // handlers: piece: { tap(type), longPress(type), dragStart(type, x, y),
 // dragMove(x, y), dragEnd(x, y), dragCancel() }; onPaint(id), onTrim(id),
-// onStyle(id); identity, in the campaign only: { rename(name) -> the
-// reason it won't do or null, emblem(id or null) }.
+// onStyle(id), onPattern(id), onAccent(id), onGlow(id); identity, in the
+// campaign only: { rename(name) -> the reason it won't do or null,
+// emblem(id or null), suits(id) }.
 export function createLookPanel(defs, handlers) {
   const el = node('div', 'bld-look');
   const row = node('div', 'bld-look-row');
@@ -41,7 +45,10 @@ export function createLookPanel(defs, handlers) {
     { id: 'paint', name: 'Paint', kind: 'paint', ids: [...defs.paints.keys()] },
     { id: 'trim', name: 'Trim', kind: 'trim', ids: [...defs.trims.keys()] },
     { id: 'hull', name: 'Hull', kind: 'hull', ids: [...defs.hulls.keys()] },
-    ...(handlers.identity ? [{ id: 'name', name: 'Name', kind: 'emblem', ids: ['none', ...[...defs.emblems.values()].filter((e) => e.offered).map((e) => e.id)] }] : []),
+    { id: 'pattern', name: 'Pattern', kind: 'pattern', ids: [...(defs.patterns?.keys() ?? [])] },
+    { id: 'accent', name: 'Second color', kind: 'accent', ids: [...defs.paints.keys()] },
+    { id: 'glow', name: 'Glow', kind: 'glow', ids: [...(defs.glows?.keys() ?? [])] },
+    ...(handlers.identity ? [{ id: 'name', name: 'Name', kind: 'emblem', ids: ['none', ...[...defs.emblems.values()].filter((e) => e.offered).map((e) => e.id)] }, { id: 'suits', name: 'Suits', kind: 'suits', ids: ['standard', 'ship'] }] : []),
   ];
 
   // The sheet: a tile a group, its look on it and how many it holds.
@@ -115,7 +122,8 @@ export function createLookPanel(defs, handlers) {
         const [kind, id] = key.split(':');
         if (kind === 'pieces') continue;
         if (kind === 'emblem') tile.setAttribute('aria-pressed', String((identity?.emblem ?? 'none') === id));
-        else tile.setAttribute('aria-pressed', String(ship[kind] === id));
+        else if (kind === 'suits') tile.setAttribute('aria-pressed', String((identity?.suits ?? 'standard') === id));
+        else tile.setAttribute('aria-pressed', String((ship[kind] ?? LOOK_DEFAULTS[kind]) === id));
       }
     }
     scrolls();
@@ -168,8 +176,10 @@ export function createLookPanel(defs, handlers) {
       );
     } else if (group.kind === 'emblem') {
       for (const tile of grid.querySelectorAll('.bld-look-tile')) detach.push(onTap(tile, () => handlers.identity.emblem(tile.dataset.emblem === 'none' ? null : tile.dataset.emblem)));
+    } else if (group.kind === 'suits') {
+      for (const tile of grid.children) detach.push(onTap(tile, () => handlers.identity.suits(tile.dataset.suits)));
     } else {
-      const act = { paint: handlers.onPaint, trim: handlers.onTrim, hull: handlers.onStyle }[group.kind];
+      const act = { paint: handlers.onPaint, trim: handlers.onTrim, hull: handlers.onStyle, pattern: handlers.onPattern, accent: handlers.onAccent, glow: handlers.onGlow }[group.kind];
       for (const tile of grid.children) detach.push(onTap(tile, () => act(tile.dataset[group.kind])));
     }
   }
@@ -221,10 +231,14 @@ export function createLookPanel(defs, handlers) {
   };
 }
 
+// What a ship has of M58's looks before they are picked (builder.js).
+const LOOK_DEFAULTS = { pattern: 'plain', accent: 'bone', glow: 'maker' };
+
 function nameOf(defs, kind, id) {
   if (kind === 'pieces') return defs.styling.get(id).name;
   if (kind === 'emblem') return id === 'none' ? 'None' : defs.emblems.get(id).name;
-  return { paint: defs.paints, trim: defs.trims, hull: defs.hulls }[kind].get(id).name;
+  if (kind === 'suits') return id === 'ship' ? "The ship's" : 'Standard';
+  return { paint: defs.paints, trim: defs.trims, hull: defs.hulls, pattern: defs.patterns, accent: defs.paints, glow: defs.glows }[kind].get(id).name;
 }
 
 // What a tile shows: a piece's icon, a paint's or a trim's color, a hull
@@ -237,7 +251,18 @@ function tileIcon(defs, kind, id) {
   if (kind === 'paint') return `<i class="bld-chip" style="background:${paints[id]?.hull}"></i>`;
   if (kind === 'trim') return `<i class="bld-chip bld-chip-trim" style="background:${trims[id]}"></i>`;
   if (kind === 'emblem') return id === 'none' ? '<i class="bld-chip bld-chip-none"></i>' : emblemSvg(id, 22);
+  if (kind === 'accent') return `<i class="bld-chip" style="background:${paints[id]?.hull}"></i>`;
+  if (kind === 'glow') return id === 'maker' ? '<i class="bld-chip bld-chip-maker"></i>' : `<i class="bld-chip bld-chip-glow" style="background:${glows[id]};color:${glows[id]}"></i>`;
+  if (kind === 'pattern') return patternIcon(id);
+  if (kind === 'suits') return `<i class="bld-chip bld-chip-suits" data-suits="${id}"></i>`;
   return hullIcon(defs.hulls.get(id));
+}
+
+// A pattern as a little hull, its second color where the pattern puts it
+// (render/livery.js PATTERNS), in the panel's own two tones.
+function patternIcon(id) {
+  const fill = { plain: '', split: '<path d="M24 4h10c6 0 12 4 12 8s-6 8-12 8H24z"/>', band: '<path d="M17 4h14v16H17z"/>', blocks: '<path d="M8 4h8v8H8zM24 4h8v8h-8zM16 12h8v8h-8zM32 12h8v8h-8z"/>' }[id] ?? '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" viewBox="0 0 48 24" width="44" height="22"><defs><clipPath id="pat-${id}"><path d="M6 4h26c8 0 14 4 14 8s-6 8-14 8H6c-2 0-4-2-4-4V8c0-2 2-4 4-4z"/></clipPath></defs><g clip-path="url(#pat-${id})" fill="currentColor" opacity="0.55">${fill}</g><path d="M6 4h26c8 0 14 4 14 8s-6 8-14 8H6c-2 0-4-2-4-4V8c0-2 2-4 4-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`;
 }
 
 // A hull style as a little outline: soft corners and a round nose, or cut
@@ -258,7 +283,10 @@ function groupIcon(defs, group) {
   }
   if (group.kind === 'hull') return hullIcon(defs.hulls.get(group.ids[0]));
   if (group.kind === 'emblem') return emblemSvg(group.ids[1], 20);
-  const colors = group.ids.slice(0, 4).map((id) => (group.kind === 'paint' ? paints[id]?.hull : trims[id]));
+  if (group.kind === 'pattern') return patternIcon('split');
+  if (group.kind === 'suits') return '<i class="bld-chip bld-chip-suits" data-suits="ship"></i>';
+  if (group.kind === 'glow') return `<span class="bld-chips">${Object.values(glows).map((c) => `<i style="background:${c}"></i>`).join('')}</span>`;
+  const colors = group.ids.slice(0, 4).map((id) => (group.kind === 'paint' || group.kind === 'accent' ? paints[id]?.hull : trims[id]));
   return `<span class="bld-chips${group.kind === 'trim' ? ' bld-chips-trim' : ''}">${colors.map((c) => `<i style="background:${c}"></i>`).join('')}</span>`;
 }
 

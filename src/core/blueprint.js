@@ -2,7 +2,7 @@
 // paste between devices. A code is
 //   wtb.<version>.<payload>.<checksum>
 // The payload is base64url bytes: the frame's id, the hull's style, paint
-// and trim, the part types the ship uses, then each part in build order as
+// and trim, its pattern, second color and glow, the part types the ship uses, then each part in build order as
 // three bytes: its type, x, and y × 4 + its quarter turns; then the same
 // for its styling pieces, with y × 8 + their turn. Decoding rebuilds the ship
 // through the builder's placement rules, so a code can only make a ship the
@@ -18,25 +18,27 @@
 //   4  the hull's paint and trim after its style, and the styling pieces
 //      after the parts (M23f). An older code opens in the yard's slate and
 //      sky with none.
+//   5  the paint's pattern, its second color and the engines' glow after
+//      the trim (M58). An older code opens plain, with the maker's glow.
 import { config } from '../config.js';
-import { buildShip, DEFAULT_HULL, DEFAULT_PAINT, DEFAULT_TRIM, placePiece } from '../sim/builder.js';
+import { buildShip, DEFAULT_ACCENT, DEFAULT_GLOW, DEFAULT_HULL, DEFAULT_PAINT, DEFAULT_PATTERN, DEFAULT_TRIM, placePiece } from '../sim/builder.js';
 import { regridPlacement } from '../sim/regrid.js';
 import { base64UrlToBytes, bytesToBase64Url, checksum } from './codec.js';
 
-export const BLUEPRINT_VERSION = 4;
+export const BLUEPRINT_VERSION = 5;
 const PREFIX = `${config.appId}b`;
 const SAVE_PREFIX = `${config.appId}.`;
 
 // The code for a ship: its frame, its hull's style, paint and trim, its
 // parts in build order and its styling pieces.
 export function encodeBlueprint(ship) {
-  return encodePlacements(ship.frame, ship.modules, BLUEPRINT_VERSION, ship.hull, { paint: ship.paint, trim: ship.trim, styling: ship.styling ?? [] });
+  return encodePlacements(ship.frame, ship.modules, BLUEPRINT_VERSION, ship.hull, { paint: ship.paint, trim: ship.trim, pattern: ship.pattern, accent: ship.accent, glow: ship.glow, styling: ship.styling ?? [] });
 }
 
 // The code for a frame and placements [{ type, x, y, rot }], unchecked, with
 // the hull's style from version 3, and its paint, trim and styling pieces
-// from 4. Tests use it to make codes the game would never make.
-export function encodePlacements(frameId, placements, version = BLUEPRINT_VERSION, hull = DEFAULT_HULL, { paint = DEFAULT_PAINT, trim = DEFAULT_TRIM, styling = [] } = {}) {
+// from 4, and its pattern, second color and glow from 5. Tests use it to make codes the game would never make.
+export function encodePlacements(frameId, placements, version = BLUEPRINT_VERSION, hull = DEFAULT_HULL, { paint = DEFAULT_PAINT, trim = DEFAULT_TRIM, pattern = DEFAULT_PATTERN, accent = DEFAULT_ACCENT, glow = DEFAULT_GLOW, styling = [] } = {}) {
   const bytes = [];
   const text = (value) => {
     const chars = [...value].map((c) => c.charCodeAt(0));
@@ -60,6 +62,11 @@ export function encodePlacements(frameId, placements, version = BLUEPRINT_VERSIO
   if (version >= 4) {
     text(paint);
     text(trim);
+  }
+  if (version >= 5) {
+    text(pattern);
+    text(accent);
+    text(glow);
   }
   list(placements, 'part', 64, 4);
   if (version >= 4) list(styling, 'styling piece', 32, 8);
@@ -102,6 +109,9 @@ export function decodeBlueprint(text, defs) {
     hull: defs.hulls?.has(read.hull) ? read.hull : DEFAULT_HULL,
     paint: defs.paints?.has(read.paint) ? read.paint : DEFAULT_PAINT,
     trim: defs.trims?.has(read.trim) ? read.trim : DEFAULT_TRIM,
+    pattern: defs.patterns?.has(read.pattern) ? read.pattern : DEFAULT_PATTERN,
+    accent: defs.paints?.has(read.accent) ? read.accent : DEFAULT_ACCENT,
+    glow: defs.glows?.has(read.glow) ? read.glow : DEFAULT_GLOW,
   };
   for (const piece of read.styling) {
     const placed = placePiece(ship, defs, piece);
@@ -110,7 +120,8 @@ export function decodeBlueprint(text, defs) {
   return { ok: true, ship };
 }
 
-// The payload's bytes as { frame, hull, paint, trim, placements, styling },
+// The payload's bytes as { frame, hull, paint, trim, pattern, accent, glow,
+// placements, styling },
 // or null if they don't follow the layout of the code's version exactly.
 function unpack(payload, version) {
   let bytes;
@@ -153,11 +164,14 @@ function unpack(payload, version) {
   const hull = version >= 3 ? text() : DEFAULT_HULL;
   const paint = version >= 4 ? text() : DEFAULT_PAINT;
   const trim = version >= 4 ? text() : DEFAULT_TRIM;
-  if (frame === null || hull === null || paint === null || trim === null) return null;
+  const pattern = version >= 5 ? text() : DEFAULT_PATTERN;
+  const accent = version >= 5 ? text() : DEFAULT_ACCENT;
+  const glow = version >= 5 ? text() : DEFAULT_GLOW;
+  if ([frame, hull, paint, trim, pattern, accent, glow].includes(null)) return null;
   const placements = list(4);
   const styling = placements && version >= 4 ? list(8) : [];
   if (!placements || !styling || at !== bytes.length) return null;
-  return { frame, hull, paint, trim, placements, styling };
+  return { frame, hull, paint, trim, pattern, accent, glow, placements, styling };
 }
 
 function fail(error) {

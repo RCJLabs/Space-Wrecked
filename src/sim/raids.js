@@ -56,6 +56,7 @@
 import { int } from '../core/rng.js';
 import { atColony } from './acts.js';
 import { backAboard, colonyFood, homeFront, homeOf, withColonyFood } from './away.js';
+import { scarredLook, wentDown } from './crewLook.js';
 import { allColonies, backFrom, frontAt, heatAt, reachOf, thereAt, thereFrom, withNews } from './colonies.js';
 import { createBattle } from './battle.js';
 import { crewUnit, endFight } from './campaign.js';
@@ -443,7 +444,7 @@ export function fightAway(campaign, rules) {
     const stood = new Map(begun.members.map((member, i) => [member.id, units[i]]));
     const crew = rolled.crew.map((member) => {
       const unit = stood.get(member.id);
-      return unit ? { ...member, hp: Math.max(1, unit.hp), fights: (member.fights ?? 0) + 1 } : member;
+      return unit ? { ...member, hp: Math.max(1, unit.hp), fights: (member.fights ?? 0) + 1, look: wentDown(unit) ? scarredLook(member.look) : member.look } : member;
     });
     now = { ...rolled, rng: begun.rng, crew, flags: tally(rolled.flags, { [won ? 'fightsWon' : 'fightsLost']: 1 }) };
   }

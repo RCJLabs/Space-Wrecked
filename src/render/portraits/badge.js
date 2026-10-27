@@ -20,10 +20,9 @@ const ZOOM = {
   face: 'translate(50 50) scale(1.42) translate(-50 -47)',
 };
 
-export function portraitSvg(look, { suit = 'eva', helmet = 'bubble', trim = palette.crewA, crop = 'bust', id = 'p' } = {}) {
+export function portraitSvg(look, { suit = 'eva', helmet = 'bubble', trim = palette.crewA, crop = 'bust', id = 'p', shell = palette.crewSuit } = {}) {
   const g = faceGeometry(look);
   const parts = faceSvg(look, g, id);
-  const shell = palette.crewSuit;
   let defs = `<clipPath id="${id}c"><rect width="100" height="100" rx="8"/></clipPath>`;
   defs += `<radialGradient id="${id}v" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="${palette.visor}" stop-opacity="0.28"/><stop offset="0.6" stop-color="${C.glassTint}" stop-opacity="0.12"/><stop offset="1" stop-color="${C.glassDeep}" stop-opacity="0.5"/></radialGradient>`;
   let body = `<g clip-path="url(#${id}c)"><rect width="100" height="100" fill="${C.card}"/>`;

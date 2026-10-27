@@ -1210,6 +1210,90 @@ textarea {
   gap: 3px;
 }
 
+/* A crew row's buttons (M58): Look, and Let go at a station, side by
+   side. */
+.crew-acts {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#ui .crew-look {
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 10px;
+}
+
+/* The look editor (M58): in the crew card's lists' place, the portrait
+   beside the layers (the captain screen's buttons), four abreast, then the
+   callsign with Cancel and Keep. */
+.crew-edit {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.crew-edit[hidden],
+.sct-crew-lists[hidden] {
+  display: none;
+}
+
+.crew-edit-name {
+  margin: 0;
+  color: var(--c-ink-dim);
+  font-size: calc(12px * var(--ts, 1));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.crew-edit-look {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.crew-edit-face {
+  flex: none;
+  width: clamp(76px, 11vw, 112px);
+  height: clamp(76px, 11vw, 112px);
+  border-radius: 10px;
+}
+
+.crew-edit-layers {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.crew-edit-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.crew-edit-label {
+  flex: 1;
+  margin: 0;
+}
+
+#ui .crew-edit-keep,
+#ui .crew-edit-cancel {
+  min-height: 48px;
+}
+
+@media (max-height: 320px) {
+  .crew-edit-face {
+    width: 64px;
+    height: 64px;
+  }
+
+  .crew-edit {
+    gap: 4px;
+  }
+}
+
 #ui .sct-crew-act {
   min-height: 48px;
   padding: 0 12px;
@@ -3133,6 +3217,26 @@ textarea {
 .bld-chip-none {
   background: transparent !important;
   border: 2px dashed var(--c-ink-dim);
+}
+
+/* M58: the maker's own glow, a glow's chip lit, and the suits' chips. */
+.bld-chip-maker {
+  background: linear-gradient(90deg, var(--c-ink-dim), transparent);
+}
+
+.bld-chip-glow {
+  box-shadow: 0 0 6px currentColor;
+}
+
+.bld-chip-suits {
+  width: calc(var(--tile) * 0.3);
+  height: calc(var(--tile) * 0.4);
+  border-radius: 40% 40% 4px 4px;
+  background: var(--c-ink-dim);
+}
+
+.bld-chip-suits[data-suits='ship'] {
+  background: var(--c-accent);
 }
 
 /* The sheet of categories: tiles the part tiles' size, three across. */

@@ -45,5 +45,18 @@
     { "id": "anchor", "name": "Anchor" },
     { "id": "blade", "name": "Blade" },
     { "id": "gear", "name": "Gear" }
+  ],
+  "patterns": [
+    { "id": "plain", "name": "Plain" },
+    { "id": "split", "name": "Split" },
+    { "id": "band", "name": "Band" },
+    { "id": "blocks", "name": "Blocks" }
+  ],
+  "glows": [
+    { "id": "maker", "name": "The maker's" },
+    { "id": "ice", "name": "Ice" },
+    { "id": "ember", "name": "Ember" },
+    { "id": "plasma", "name": "Plasma" },
+    { "id": "toxic", "name": "Toxic" }
   ]
 }

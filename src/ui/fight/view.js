@@ -90,6 +90,8 @@ const SOUND_CATCH_UP = 250; // ms of a playback's sounds played after a gap
 //   lookOf(unit, index)   optional: the look (src/sim/looks.js) of the
 //              crew unit at `index` among the crew, for its portrait; one
 //              is rolled if not given
+//   suitColor()   optional: the crew's suit color (M58, the ship's paint
+//              or the standard), for their figures and portraits
 //   opening(battle)   optional: { tone, text } to say as a fight is shown,
 //              in place of the hint until the first tap on the board or
 //              OPENING_MS, or null for nothing
@@ -301,7 +303,7 @@ export function mountFight(root, source) {
       const rolled = u.ward ? `ward ${u.name}` : u.citizen ? `colonist ${u.name}` : null;
       const look = rolled ? crewLook(rolled, u.id, looks) : source.lookOf?.(u, i) ?? crewLook('sandbox', i + 1, looks);
       looks.push(look);
-      faces.set(u.id, portraitUrl(look, kindOf(u)?.look, colors.get(u.id), 'face'));
+      faces.set(u.id, portraitUrl(look, kindOf(u)?.look, colors.get(u.id), 'face', rolled ? undefined : source.suitColor?.()));
     });
     playing = null;
     doorsShown = null;
@@ -608,7 +610,10 @@ export function mountFight(root, source) {
     const length = Math.hypot(...facing) || 1;
     // A ward (M38), the person the crew brings out, carries no weapon.
     const kind = kindOf(u);
-    return { id: u.id, side: u.side, status: u.status, at, facing: [facing[0] / length, facing[1] / length], trim: colors.get(u.id) ?? palette.enemyTrim, flash: frame?.hit === u.id, look: kind?.look, held: u.ward ? false : defs.weapons.get(u.weapon)?.held, pose };
+    // The crew's own wear their suits in the ship's paint if she says so
+    // (M58); a turret, a ward and a colonist their own.
+    const crewSuit = u.side === 'crew' && !u.ward && !u.citizen && !defs.machines?.get(u.kind) ? source.suitColor?.() : undefined;
+    return { id: u.id, side: u.side, status: u.status, at, facing: [facing[0] / length, facing[1] / length], trim: colors.get(u.id) ?? palette.enemyTrim, flash: frame?.hit === u.id, look: kind?.look, held: u.ward ? false : defs.weapons.get(u.weapon)?.held, pose, suit: crewSuit };
   }
 
   // A way t of the turn from `from` to `to`, the short way round.

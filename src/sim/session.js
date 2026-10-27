@@ -44,7 +44,7 @@
 // swap are one undo step each, but the log keeps their commands one by one
 // (a run's places; a swap's remove and place), so a log reads as it always
 // has.
-import { applyCommand, moduleAt, rotateModule, turnedPlacement } from './builder.js';
+import { applyCommand, LOOKS, moduleAt, rotateModule, turnedPlacement } from './builder.js';
 import { flightChecklist } from './constraints.js';
 import { suggestSpot } from './fit.js';
 import { baseOf } from './makers.js';
@@ -116,6 +116,13 @@ export function reduceSession(session, action, defs) {
     case 'build/paint':
     case 'build/trim':
       return paint(session, defs, action.type === 'build/paint' ? 'paint' : 'trim', action.color);
+    // M58: the paint's pattern, its second color, the engines' glow.
+    case 'build/pattern':
+      return relook(session, defs, { op: 'pattern', pattern: action.pattern });
+    case 'build/accent':
+      return relook(session, defs, { op: 'accent', color: action.color });
+    case 'build/glow':
+      return relook(session, defs, { op: 'glow', glow: action.glow });
     case 'build/layer':
       return layer(session, action.layer);
     // A ship from elsewhere (another slot, a pasted blueprint, an imported
@@ -481,6 +488,17 @@ function paint(session, defs, op, color) {
   if (result.ship === session.ship) return session;
   const name = (op === 'paint' ? defs.paints : defs.trims).get(color).name;
   return withNotice(record(session, result.ship, command, `${name.toLowerCase()} ${op}`), 'good', `${name} ${op}.`);
+}
+
+// A pattern, a second color or a glow (M58, builder.js LOOKS), a step
+// undo takes back.
+function relook(session, defs, command) {
+  const result = applyCommand(session.ship, defs, command);
+  if (!result.ok) return withNotice(session, 'bad', result.message);
+  if (result.ship === session.ship) return session;
+  const [, key, known, noun] = LOOKS[command.op];
+  const said = `${defs[known].get(command[key]).name} ${noun}`;
+  return withNotice(record(session, result.ship, command, said.toLowerCase()), 'good', `${said}.`);
 }
 
 // The launch itself is act 1's (M17); for now the check is the point: a

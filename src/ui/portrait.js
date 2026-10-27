@@ -14,16 +14,17 @@ const kept = new Map();
 const KEEP = 120;
 
 // The data URL of `look` in a job's helmet (its look in data/jobs.json:
-// { suit, helmet }) in `trim`, at a crop ('bust' or 'face').
-export function portraitUrl(look, jobLook, trim, crop = 'bust') {
-  return keep(JSON.stringify([look, jobLook?.suit, jobLook?.helmet, trim, crop]), () => portraitSvg(look, { suit: jobLook?.suit, helmet: jobLook?.helmet, trim, crop }));
+// { suit, helmet }) in `trim`, at a crop ('bust' or 'face'), the suit in
+// `shell` if given (M58: the ship's paint), else the standard.
+export function portraitUrl(look, jobLook, trim, crop = 'bust', shell = undefined) {
+  return keep(JSON.stringify([look, jobLook?.suit, jobLook?.helmet, trim, crop, shell]), () => portraitSvg(look, { suit: jobLook?.suit, helmet: jobLook?.helmet, trim, crop, shell }));
 }
 
 // The data URL of a crew member's face as the campaign's screens show it
-// (crewText.js faceOf: { look, job, trim, bust, mark }): a companion's bust,
+// (crewText.js faceOf: { look, job, trim, bust, mark, shell }): a companion's bust,
 // anyone else's helmet badge. The fight's buttons keep the badge for all.
 export function faceUrl(face, crop = 'bust') {
-  if (!face.bust) return portraitUrl(face.look, face.job, face.trim, crop);
+  if (!face.bust) return portraitUrl(face.look, face.job, face.trim, crop, face.shell);
   return keep(JSON.stringify([face.look, face.bust, face.trim, face.mark, crop]), () => bustSvg(face.look, face.bust, { trim: face.trim, mark: face.mark, crop }));
 }
 

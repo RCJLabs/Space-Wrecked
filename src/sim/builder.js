@@ -1,9 +1,12 @@
 // Ship layout rules on the shared grid: placing, moving and removing modules,
 // and checking a whole layout. A ship is plain data:
-//   { frame, hull, paint, trim, modules: [{ uid, type, x, y, rot }],
-//     styling: [{ uid, type, x, y, rot }], nextUid }
+//   { frame, hull, paint, trim, pattern, accent, glow,
+//     modules: [{ uid, type, x, y, rot }], styling: [{ uid, type, x, y, rot }],
+//     nextUid }
 // hull is its hull's style (data/hulls.json, M23d); paint, trim and the
-// styling pieces (data/styling.json, styling.js, M23f) are its looks. None
+// styling pieces (data/styling.json, styling.js, M23f) are its looks, and
+// from M58 the paint's pattern, its second color (accent, a paint) and the
+// engines' glow. None
 // of them changes anything but how it looks from outside. Modules and
 // pieces share one count of uids. Every change is a command (see
 // applyCommand), so a build can be replayed step by step. Functions return
@@ -25,9 +28,15 @@ export const DEFAULT_HULL = 'rounded';
 // ones ships saved before M23f were given.
 export const DEFAULT_PAINT = 'slate';
 export const DEFAULT_TRIM = 'sky';
+// The pattern, second color and glow a ship has until the player picks
+// others (M58), and the ones ships saved before were given: plain, with
+// the engines in their maker's colors.
+export const DEFAULT_PATTERN = 'plain';
+export const DEFAULT_ACCENT = 'bone';
+export const DEFAULT_GLOW = 'maker';
 
 export function newShip(frameId, hull = DEFAULT_HULL) {
-  return { frame: frameId, hull, paint: DEFAULT_PAINT, trim: DEFAULT_TRIM, modules: [], styling: [], nextUid: 1 };
+  return { frame: frameId, hull, paint: DEFAULT_PAINT, trim: DEFAULT_TRIM, pattern: DEFAULT_PATTERN, accent: DEFAULT_ACCENT, glow: DEFAULT_GLOW, modules: [], styling: [], nextUid: 1 };
 }
 
 // True if value has a ship's shape: whole-number positions, quarter-turn
@@ -39,7 +48,7 @@ export function newShip(frameId, hull = DEFAULT_HULL) {
 // layout rules' business, not this; a save only has to be readable.
 export function isShipData(value) {
   if (!isRecord(value) || typeof value.frame !== 'string' || !value.frame || !Array.isArray(value.modules)) return false;
-  for (const name of ['hull', 'paint', 'trim']) {
+  for (const name of ['hull', 'paint', 'trim', 'pattern', 'accent', 'glow']) {
     if (value[name] !== undefined && (typeof value[name] !== 'string' || !value[name])) return false;
   }
   if (value.styling !== undefined && !Array.isArray(value.styling)) return false;
@@ -157,6 +166,9 @@ export function rotateModule(ship, defs, uid) {
 //   { op: 'hull', style }              gives the hull a style
 //   { op: 'paint', color }             paints the hull (data/styling.json)
 //   { op: 'trim', color }              and its trim
+//   { op: 'pattern', pattern }         paints a pattern on it (M58)
+//   { op: 'accent', color }            in a second color, a paint
+//   { op: 'glow', glow }               lights its engines (M58)
 // Returns { ok: true, ship, uid?, removed? } or { ok: false, rule,
 // message }. A change to the rooms takes off the styling pieces it leaves
 // with nothing to hold them (styling.js misfits): removed lists them.
@@ -179,8 +191,22 @@ export function applyCommand(ship, defs, command) {
     if (!known?.has(command.color)) return { ok: false, rule: command.op, message: `There is no ${command.op} "${command.color}".` };
     return { ok: true, ship: ship[command.op] === command.color ? ship : { ...ship, [command.op]: command.color } };
   }
+  if (command.op in LOOKS) {
+    const [field, key, known, noun] = LOOKS[command.op];
+    const value = command[key];
+    if (!defs[known]?.has(value)) return { ok: false, rule: command.op, message: `There is no ${noun} "${value}".` };
+    return { ok: true, ship: ship[field] === value ? ship : { ...ship, [field]: value } };
+  }
   return { ok: false, rule: 'command', message: `Unknown build command "${command.op}".` };
 }
+
+// M58's looks by command: [the ship's field, the command's key, the defs
+// that name them, a noun for the message].
+export const LOOKS = {
+  pattern: ['pattern', 'pattern', 'patterns', 'pattern'],
+  accent: ['accent', 'color', 'paints', 'second color'],
+  glow: ['glow', 'glow', 'glows', 'glow'],
+};
 
 // Adds a styling piece. Returns { ok: true, ship, uid } or { ok: false,
 // rule, message, uids? }.

@@ -30,15 +30,16 @@ export function crewColor(index) {
 }
 
 // units: [{ id, side, status, at: [x, y], facing: [fx, fy], trim, flash,
-// look, held, pose }], where `at` is the point it stands on (a tile's
+// look, held, pose, suit? }], where `at` is the point it stands on (a tile's
 // middle, or between two while it walks), facing a unit vector, trim its
 // color, flash true for the moment a shot hits it, look and held its kind's
 // and its weapon's (figures/looks.js), and pose { aim, stride, fall }
-// (figure.js). Returns { figures } for figures/sprites.js, each { id, at,
+// (figure.js), and suit a crew member's suit color (M58, livery.js
+// suitColor) in place of the standard. Returns { figures } for figures/sprites.js, each { id, at,
 // facing, look, held, colors, pose, key }.
 export function unitsScene(units) {
-  const figures = units.map(({ id, side, status, at, facing, trim, flash, look, held, pose = {} }) => {
-    const colors = colorsOf(side, status, trim, flash);
+  const figures = units.map(({ id, side, status, at, facing, trim, flash, look, held, pose = {}, suit }) => {
+    const colors = colorsOf(side, status, trim, flash, suit);
     const lying = status !== 'active' && status !== 'held';
     return {
       id,
@@ -57,7 +58,7 @@ export function unitsScene(units) {
 // A figure's colors (figures/figure.js) and the outline round it: its
 // side's, its trim, grey once out of the fight or dead, and the tracer's
 // flash for the moment a shot hits it.
-export function colorsOf(side, status, trim, flash = false) {
+export function colorsOf(side, status, trim, flash = false, suit = null) {
   const gone = status === 'dead' || status === 'out';
   if (gone) {
     const grey = palette.fallenDark;
@@ -65,7 +66,7 @@ export function colorsOf(side, status, trim, flash = false) {
   }
   const crew = side === 'crew';
   const colors = {
-    suit: crew ? palette.crewSuit : palette.enemySuit,
+    suit: crew ? suit ?? palette.crewSuit : palette.enemySuit,
     trim,
     dark: crew ? palette.gunmetal : palette.enemyDark,
     under: crew ? palette.crewUnder : palette.enemyUnder,

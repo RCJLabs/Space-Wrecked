@@ -129,7 +129,7 @@ export const colonyScreen = {
     // In Next day's place while a raid's lander is down (M29).
     const defendButton = toolButton('hgr-tool cln-defend', icons.shoot, 'Defend');
     foot.append(titleButton, hint, refitButton, dayButton, defendButton);
-    const crewCard = createCrewCard({ tap: tapCrew, done: () => toggleCrew(false) });
+    const crewCard = createCrewCard({ tap: tapCrew, done: () => toggleCrew(false), save: (id, look, callsign) => defs && game.dispatch({ type: 'campaign/crew/look', rules: defs, id, look, callsign }) });
     el.append(head, info, sceneArea, side, foot, crewCard.el);
     root.append(el);
 

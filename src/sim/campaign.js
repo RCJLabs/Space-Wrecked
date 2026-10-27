@@ -89,6 +89,7 @@ import { createBattle, isMachine } from './battle.js';
 import { buildShip, isShipData } from './builder.js';
 import { flightChecklist, partLines } from './constraints.js';
 import { deploy, machinesOn } from './deploy.js';
+import { isCallsign, scarredLook, shortName, wentDown } from './crewLook.js';
 import { crewLook, isLook } from './looks.js';
 import { MAX_STOCK } from './economy.js';
 import { baseOf } from './makers.js';
@@ -351,7 +352,8 @@ export function maxHp(member, rules) {
 // the weapon they carry (M37, loadout.js) and their job's rank (ranks.js);
 // a loyal companion, their talent, past rank 2 (M33c, talents.js).
 export function crewUnit(member, rules) {
-  const unit = { kind: member.job, name: member.name, hp: Math.min(member.hp, maxHp(member, rules)), bonus: traitBonus(member.traits, rules), weapon: weaponOf(member, rules) };
+  // A callsign stands for the name in a fight (M58).
+  const unit = { kind: member.job, name: shortName(member), hp: Math.min(member.hp, maxHp(member, rules)), bonus: traitBonus(member.traits, rules), weapon: weaponOf(member, rules) };
   if (member.loyal && talentOrder(rules, member.companion)) return { ...unit, rank: TALENT_RANK, talent: member.companion };
   const rank = rankOf(member, rules);
   return rank > 0 ? { ...unit, rank } : unit;
@@ -489,8 +491,10 @@ export function endFight(campaign, rules) {
   const crew = campaign.crew.flatMap((member) => {
     const unit = stood.get(member.id);
     if (unit?.status === 'dead') return [];
-    // Everyone who stood in it counts it, won or lost (ranks.js, M32b).
-    const counted = unit ? { ...member, fights: (member.fights ?? 0) + 1 } : member;
+    // Everyone who stood in it counts it, won or lost (ranks.js, M32b);
+    // anyone who went down and lived bears it (crewLook.js, M58).
+    const marked = wentDown(unit) ? { ...member, look: scarredLook(member.look) } : member;
+    const counted = unit ? { ...marked, fights: (member.fights ?? 0) + 1 } : marked;
     if (heals) return [{ ...counted, hp: maxHp(member, rules) }];
     if (!unit) return [counted];
     return [{ ...counted, hp: Math.max(1, unit.hp) }];
@@ -548,6 +552,20 @@ export function rankUps(campaign, battle, rules) {
     if (!unit || unit.status === 'dead') return [];
     const rank = rankOf({ ...member, fights: (member.fights ?? 0) + 1 }, rules);
     return rank > rankOf(member, rules) ? [{ member, rank }] : [];
+  });
+}
+
+// Who bears a new mark as the fight under way ends (crewLook.js, M58), by
+// endFight's: [{ member, mark }] in the crew's order, each who went down
+// in it, lived, and had a mark still to take. [] before it has a winner.
+export function scarsTaken(campaign, battle, rules) {
+  const { fight } = campaign;
+  if (!fight || !battle?.winner) return [];
+  const stood = standing(fight, battle, rules);
+  return campaign.crew.flatMap((member) => {
+    if (!wentDown(stood.get(member.id))) return [];
+    const { mark } = scarredLook(member.look);
+    return mark === member.look.mark ? [] : [{ member, mark }];
   });
 }
 
@@ -848,7 +866,7 @@ function isCrew(crew) {
       Array.isArray(member.traits) && member.traits.length <= MAX_TRAITS && member.traits.every(isId) && new Set(member.traits).size === member.traits.length &&
       isLook(member.look) && isInt(member.fights, 0, MAX_FIGHTS) && (member.background === undefined || isId(member.background)) &&
       (member.companion === undefined || isId(member.companion)) && (member.loyal === undefined || (member.loyal === true && member.companion !== undefined)) &&
-      (member.weapon === undefined || isId(member.weapon))
+      (member.weapon === undefined || isId(member.weapon)) && (member.callsign === undefined || isCallsign(member.callsign))
     );
   });
 }

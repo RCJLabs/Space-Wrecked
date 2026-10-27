@@ -8,7 +8,8 @@ import { pathToFileURL } from 'node:url';
 import { heldProblems, lookProblems } from '../src/render/figures/looks.js';
 import { MARKED } from '../src/render/exterior.js';
 import { hullStyleProblems } from '../src/render/hullShape.js';
-import { paints as PAINT_COLORS, skins as SKINS, trims as TRIM_COLORS } from '../src/render/palette.js';
+import { PATTERNS } from '../src/render/livery.js';
+import { glows as GLOW_COLORS, paints as PAINT_COLORS, skins as SKINS, trims as TRIM_COLORS } from '../src/render/palette.js';
 import { EMBLEMS } from '../src/render/emblems.js';
 import { MODELED } from '../src/render/pieces.js';
 import { AIMS } from '../src/sim/approach.js';
@@ -56,7 +57,7 @@ const UNIT_KEYS = ['id', 'name', 'hp', 'aim', 'defense', 'mobility', 'armor', 'w
 // Styling (M23f, src/sim/styling.js): a piece's footprint is up to this many
 // cells a side, and a frame takes up to this many pieces (a blueprint code
 // counts them in a byte).
-const STYLING_KEYS = ['groups', 'pieces', 'paints', 'trims', 'emblems'];
+const STYLING_KEYS = ['groups', 'pieces', 'paints', 'trims', 'emblems', 'patterns', 'glows'];
 const PIECE_KEYS = ['id', 'name', 'group', 'size', 'turns', 'shape'];
 const SHAPES = ['wedge', 'curve'];
 const MAX_PIECE_SIZE = 4;
@@ -644,6 +645,21 @@ function checkStyling(file, moduleIds, fail) {
       if (isId(item.id) && !(item.id in colors)) fail(where, `has no color in src/render/palette.js ${key}`);
     });
     if (!ids.has(first)) fail('styling.json', `${key} must have "${first}": ships from before paint have it`);
+  }
+  // The paint's patterns and the engines' glows (M58): each pattern a
+  // drawing in src/render/livery.js, each glow but the maker's a color in
+  // src/render/palette.js glows; plain and the maker's first, what ships
+  // from before M58 have.
+  for (const [key, has, first] of [['patterns', (id) => id in PATTERNS, 'plain'], ['glows', (id) => id === 'maker' || id in GLOW_COLORS, 'maker']]) {
+    const list = listOf(file, key, 'styling.json', fail);
+    uniqueIds(list, `styling.json ${key}`, fail);
+    list.forEach((item, i) => {
+      const where = `styling.json ${key} ${item.id ?? `#${i}`}`;
+      knownKeys(item, ['id', 'name'], where, fail);
+      if (!isText(item.name)) fail(where, 'name must be a non-empty string');
+      if (isId(item.id) && !has(item.id)) fail(where, key === 'patterns' ? 'has no drawing in src/render/livery.js PATTERNS' : 'has no color in src/render/palette.js glows');
+    });
+    if (list[0]?.id !== first) fail('styling.json', `${key} must start with "${first}": ships from before M58 have it`);
   }
   // The emblems (M52): each a drawing in src/render/emblems.js; those
   // offered, the player's to pick.
