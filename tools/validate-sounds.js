@@ -61,7 +61,9 @@ export function checkSounds(file, fail) {
   return ids;
 }
 
-function checkZzfx(zzfx, where, fail) {
+// A ZzFX instrument's parameters: each in range, the whole at most maxLength
+// s long (a bed's notes may ring longer than a sound, M60).
+export function checkZzfx(zzfx, where, fail, maxLength = MAX_LENGTH) {
   knownKeys(zzfx, ZZFX_PARAMS, where, fail);
   let numbers = true;
   for (const [key, value] of Object.entries(zzfx)) {
@@ -73,12 +75,12 @@ function checkZzfx(zzfx, where, fail) {
       if (!isIntIn(value, 0, 5)) fail(where, 'shape must be 0 (sine), 1 (triangle), 2 (saw), 3 (tan), 4 (noise) or 5 (square)');
     } else if (key === 'filter') {
       if (value !== 0 && !(Math.abs(value) >= 20 && Math.abs(value) <= 20000)) fail(where, 'filter must be 0, or 20 to 20000 Hz (negative a low-pass)');
-    } else if (value < RANGES[key][0] || value > RANGES[key][1]) {
-      fail(where, `${key} must be from ${RANGES[key][0]} to ${RANGES[key][1]}`);
+    } else if (value < RANGES[key][0] || value > (['attack', 'sustain', 'release', 'decay', 'delay'].includes(key) ? maxLength : RANGES[key][1])) {
+      fail(where, `${key} must be from ${RANGES[key][0]} to ${['attack', 'sustain', 'release', 'decay', 'delay'].includes(key) ? maxLength : RANGES[key][1]}`);
     }
   }
   if (!numbers) return;
-  if (soundLength(zzfx) > MAX_LENGTH) fail(where, `it lasts ${soundLength(zzfx).toFixed(2)} s, over ${MAX_LENGTH}`);
+  if (soundLength(zzfx) > maxLength) fail(where, `it lasts ${soundLength(zzfx).toFixed(2)} s, over ${maxLength}`);
   if (soundLength(zzfx) <= 0) fail(where, 'it must last some time');
   if (slidesThroughZero(zzfx)) fail(where, 'its slides take the pitch through zero, where it turns back up');
 }
