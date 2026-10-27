@@ -1263,7 +1263,7 @@ textarea {
   border-radius: 10px;
 }
 
-.crew-edit-layers {
+.cap-layers.crew-edit-layers {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
@@ -1276,6 +1276,16 @@ textarea {
 .crew-edit-label {
   flex: 1;
   margin: 0;
+}
+
+.crew-edit-why {
+  margin: 0;
+  color: var(--c-bad);
+  font-size: calc(12px * var(--ts, 1));
+}
+
+.crew-edit-why:empty {
+  display: none;
 }
 
 #ui .crew-edit-keep,
@@ -1291,6 +1301,88 @@ textarea {
 
   .crew-edit {
     gap: 4px;
+  }
+}
+
+@media (max-height: 480px) {
+  /* Folded: two rows of five layers, and the callsign, Cancel and Keep
+     in a column beside them, so the editor needs no scroll. */
+  .cap-layers.crew-edit-layers {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  /* The callsign, Cancel and Keep in a column beside the layers. */
+  .crew-edit:not([hidden]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(180px, 26vw, 240px);
+    grid-template-areas: 'name name' 'look actions' 'why why';
+    align-content: start;
+    column-gap: 8px;
+  }
+
+  .crew-edit-name {
+    grid-area: name;
+  }
+
+  .crew-edit-look {
+    grid-area: look;
+    gap: 6px;
+  }
+
+  .crew-edit-actions {
+    grid-area: actions;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .crew-edit-why {
+    grid-area: why;
+  }
+
+  .cap-label.crew-edit-label {
+    flex-basis: 100%;
+  }
+
+  .crew-edit-label-text {
+    display: none;
+  }
+
+  #ui .crew-edit-keep,
+  #ui .crew-edit-cancel {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    gap: 4px;
+    height: 48px;
+    padding-block: 0;
+  }
+}
+
+/* The tab screen's height: the name over the callsign, beside the layers. */
+@media (max-height: 320px) {
+  .crew-edit:not([hidden]) {
+    grid-template-areas: 'look name' 'look actions' 'why why';
+    row-gap: 2px;
+  }
+
+  .cap-name.crew-edit-call {
+    height: 48px;
+    margin: 0;
+    padding-block: 0;
+  }
+
+  .crew-edit-actions {
+    align-content: start;
+    row-gap: 0;
+  }
+
+  .cap-label.crew-edit-label {
+    display: flex;
+    height: 48px;
   }
 }
 

@@ -165,3 +165,9 @@ test('the livery drawn: the second color only where the pattern puts it, the glo
   assert.equal(flameColor({ glow: 'ice' }, '#abcdef'), glows.ice);
   assert.equal(flameColor(undefined, '#abcdef'), '#abcdef');
 });
+
+test('the end panel says who took a scar and who a jaw plate', async () => {
+  const { scarLines } = await import('../src/ui/campaign/crewText.js');
+  const lines = scarLines([{ member: { name: 'Fen Lindqvist' }, mark: 'scar' }, { member: { name: 'Quill' }, mark: 'jawplate' }]);
+  assert.deepEqual(lines, ['Fen Lindqvist went down and lived: a scar to show for it.', 'Quill went down again: a jaw plate where the scar was.']);
+});

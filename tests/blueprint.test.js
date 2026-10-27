@@ -23,7 +23,8 @@ test('a code rebuilds the identical ship, in the same build order', () => {
   const ship = example();
   const code = encodeBlueprint(ship);
   assert.match(code, new RegExp(`^wtb\\.${BLUEPRINT_VERSION}\\.[A-Za-z0-9_-]+\\.[0-9a-f]{8}$`));
-  assert.ok(code.length < 200, `${code.length} characters for 11 parts`);
+  // Under 220 since version 5 named the pattern, second color and glow (M58).
+  assert.ok(code.length < 220, `${code.length} characters for 11 parts`);
   const result = decodeBlueprint(code, defs);
   assert.equal(result.ok, true, result.error);
   assert.deepEqual(result.ship, ship);

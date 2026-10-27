@@ -2621,7 +2621,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   Done when (my recommendations, taken on Evan's word):
   - **Any crew member's look, changed:** a Look button on each row of the crew card opens the captain screen's look editor (each layer's button and Roll) for that member; Done keeps it. Wherever the crew card opens, free.
   - **Callsigns:** each crew member may have one, up to 12 letters, set in the same editor: shown on the crew card ("Fen 'Rook' Lindqvist"), on the fight's crew buttons in place of the name, and in the epilogue.
-  - **Scars earned:** a crew member downed in a fight who lives gets a scar if they had no mark, and a jaw plate where the scar was if they go down again; the fight's end panel says so. Their portrait and figure show it.
+  - **Scars earned:** a crew member downed in a fight who lives gets a scar if they had no mark, and a jaw plate where the scar was if they go down again; the fight's end panel says so. Their portrait shows it (a figure in a fight wears a helmet, so it shows there only on the crew buttons' faces).
   - **Suits in the ship's colors:** a choice on the Look tab, "Suits: standard / the ship's": with the ship's, every crew suit's body takes the ship's paint (portraits and figures), the trims staying the crew's own colors so they are told apart in a fight.
   - **Paint patterns and a second color:** four patterns (plain, split, band, blocks) and a second color for them from the paints, on the Look tab, drawn on the hull outside, in the yard, on the approach and at the lift-off.
   - **Engine glow:** the maker's, or one of four colors, picked on the Look tab and drawn wherever the engines burn.

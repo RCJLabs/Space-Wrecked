@@ -16,7 +16,7 @@
 //                            its first tap, if any
 //   card.detach()            lets go of the buttons
 import { seedFrom } from '../../core/rng.js';
-import { MAX_CALLSIGN } from '../../sim/crewLook.js';
+import { MAX_CALLSIGN, callsignProblem } from '../../sim/crewLook.js';
 import { rollLook, stepLook } from '../../sim/looks.js';
 import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
@@ -107,20 +107,23 @@ export function createCrewCard({ tap, done, save = null }) {
     const face = portraitImg('crew-edit-face', '');
     const layers = node('div', 'cap-layers crew-edit-layers');
     const input = node('input', 'cap-name crew-edit-call');
-    Object.assign(input, { type: 'text', maxLength: MAX_CALLSIGN, autocomplete: 'off', spellcheck: false, enterKeyHint: 'done', placeholder: 'None' });
+    Object.assign(input, { type: 'text', maxLength: MAX_CALLSIGN, autocomplete: 'off', spellcheck: false, enterKeyHint: 'done', placeholder: 'Callsign: none' });
     input.setAttribute('autocapitalize', 'words');
     input.setAttribute('aria-label', 'Callsign');
-    const label = node('label', 'cap-label crew-edit-label', 'Callsign');
-    label.append(input);
+    const label = node('label', 'cap-label crew-edit-label');
+    label.append(node('span', 'crew-edit-label-text', 'Callsign'), input);
     const roll = toolButton('cap-roll crew-edit-roll', icons.again, 'Roll');
     const keep = toolButton('crew-edit-keep', icons.done, 'Keep');
     const cancel = toolButton('crew-edit-cancel', icons.prev, 'Cancel');
     const actions = node('div', 'crew-edit-actions');
     actions.append(label, cancel, keep);
+    // Why a callsign won't do, under the field, until it is fixed.
+    const why = node('p', 'crew-edit-why');
+    why.setAttribute('role', 'status');
     const heading = node('h3', 'crew-edit-name');
     const look = node('div', 'crew-edit-look');
     look.append(face, layers);
-    box.append(heading, look, actions);
+    box.append(heading, look, actions, why);
     box.hidden = true;
     let rolls = 0;
     const offs = [
@@ -135,6 +138,9 @@ export function createCrewCard({ tap, done, save = null }) {
       }),
       onTap(keep, () => {
         if (!editing) return;
+        const problem = callsignProblem(input.value);
+        setText(why, problem ?? '');
+        if (problem) return;
         const { id, look: kept } = editing;
         editing = null;
         render();
@@ -143,6 +149,7 @@ export function createCrewCard({ tap, done, save = null }) {
     ];
     const onInput = () => {
       if (editing) editing.callsign = input.value;
+      setText(why, '');
     };
     input.addEventListener('input', onInput);
     let built = false;
@@ -186,6 +193,7 @@ export function createCrewCard({ tap, done, save = null }) {
       render,
       open(member) {
         editing = { id: member.id, name: member.name, look: { ...member.look }, callsign: member.callsign ?? '', face: member.face };
+        setText(why, '');
         render();
       },
       detach() {

@@ -647,7 +647,7 @@ function eachShip(data, fn) {
     next = { ...next, builds: { ...data.builds, slots: data.builds.slots.map((slot) => (isObject(slot) ? { ...slot, ship: fn(slot.ship) } : slot)) } };
   }
   if (isObject(data.campaign)) {
-    let campaign = { ...data.campaign, ship: fn(data.campaign.ship) };
+    let campaign = data.campaign.ship === undefined ? { ...data.campaign } : { ...data.campaign, ship: fn(data.campaign.ship) };
     const approach = isObject(campaign.run) ? campaign.run.approach : null;
     if (isObject(approach) && isObject(approach.them)) {
       campaign = { ...campaign, run: { ...campaign.run, approach: { ...approach, them: { ...approach.them, ship: fn(approach.them.ship) } } } };
