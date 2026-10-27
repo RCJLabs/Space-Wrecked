@@ -80,3 +80,30 @@ test("the validator refuses a screen that isn't one, a screen under two beds, no
   assert.match(problems([{ ...good, parts: [{ ...good.parts[0], notes: '0 x . .' }] }]).join(), /"x" is not a step/);
   assert.match(problems([{ ...good, parts: [{ ...good.parts[0], zzfx: { sustain: 7 } }] }]).join(), /sustain must be from 0 to 6/);
 });
+
+test('the Music setting takes its levels only; save v50 gives a save from before music at 30', async () => {
+  const { defaultSettings, reduceSettings, settingsProblems, MUSIC_LEVELS } = await import('../src/sim/settings.js');
+  const { MIGRATIONS, SAVE_VERSION } = await import('../src/core/save.js');
+  const settings = defaultSettings();
+  assert.equal(settings.music, 30);
+  assert.deepEqual(MUSIC_LEVELS, [0, 10, 30, 50, 70]);
+  assert.equal(reduceSettings(settings, { type: 'settings/music', value: 0 }).music, 0);
+  assert.equal(reduceSettings(settings, { type: 'settings/music', value: 45 }), settings);
+  assert.deepEqual(settingsProblems({ ...settings, music: 45 }), ['The music setting is invalid.']);
+  assert.equal(SAVE_VERSION, 50);
+  const step = MIGRATIONS.at(-1);
+  assert.equal(step.from, 49);
+  const { music, ...before } = settings;
+  assert.equal(step.up({ settings: before }).settings.music, 30);
+  assert.equal(step.up({ settings: { ...before, music: 10 } }).settings.music, 10, 'a level already there stays');
+});
+
+test("a screen's bed: the one that lists it, else none", async () => {
+  const { bedFor } = await import('../src/core/music.js');
+  const beds = new Map(readData().music.beds.map((b) => [b.id, b]));
+  assert.equal(bedFor(beds, 'title'), 'hangar');
+  assert.equal(bedFor(beds, 'sector'), 'run');
+  assert.equal(bedFor(beds, 'campaign-fight'), 'fight');
+  assert.equal(bedFor(beds, 'colony'), 'colony');
+  assert.equal(bedFor(beds, 'launch'), null);
+});
