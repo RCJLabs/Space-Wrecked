@@ -31,8 +31,10 @@ const FLOOR_UNDER = { fire: 'scorch', vacuum: 'frost', rubble: 'dust' };
 // doors, by edge key (battle.doors); locked its locked ones (M45,
 // battle.locks' keys), drawn red and as tall as the walls; fires the tiles a weapon set burning
 // (battle.fires); mounts the tiles a ship's turrets (M39) stand on, [[x,
-// y]], drawn as a bare base plate for the turret to stand on.
-export function battleScene({ map, skin, open = [], locked = [], fires = [], mounts = [] }) {
+// y]], drawn as a bare base plate for the turret to stand on; alert true
+// when the fight is a boarding of the player's own ship (M59), its rooms'
+// lights red.
+export function battleScene({ map, skin, open = [], locked = [], fires = [], mounts = [], alert = false }) {
   const faces = [];
   const glows = [];
   const edge = { edge: skin.edge };
@@ -71,12 +73,23 @@ export function battleScene({ map, skin, open = [], locked = [], fires = [], mou
   for (const { at } of fires) HAZARDS.fire(faces, glows, at[0], at[1], 'floor');
   walls(faces, map, skin, new Set(open), new Set(locked));
   for (const { x, y, side } of map.hatches) collar(faces, glows, x, y, side, skin);
-  // A room open to space glows cold, once for the whole room.
+  // A room open to space glows cold, once for the whole room; any other
+  // wrecked room is dark; the rest have a light of their own (M59), red on
+  // a boarding of the player's ship (roomLights).
+  glows.push(...roomLights(map, alert));
   for (const room of map.rooms) {
     if (room.wreck !== 'vacuum') continue;
     glows.push({ at: [room.x + room.w / 2, room.y + room.h / 2, 0.2], r: 0.45 + 0.35 * Math.max(room.w, room.h), color: palette.vacuum });
   }
   return { faces, glows };
+}
+
+// Each room's own light (M59): a soft glow over its middle, as wide as
+// the room; none in a wrecked room (its light is out); red when alert.
+export function roomLights(map, alert = false) {
+  return map.rooms
+    .filter((room) => !room.wreck)
+    .map((room) => ({ at: [room.x + room.w / 2, room.y + room.h / 2, 0.5], r: 0.4 + 0.45 * Math.max(room.w, room.h), color: alert ? palette.alertLight : palette.roomLight, alpha: alert ? 0.3 : 0.14 }));
 }
 
 // The boxes the camera works with, in tiles: `fit`, the ship and what sticks
@@ -215,6 +228,8 @@ const HAZARDS = {
       flame(f, x + 0.62 + 0.15 * hash(x, y, 4), y + 0.6 + 0.15 * hash(x, y, 5), 0.1, 0.3 + 0.15 * hash(x, y, 6));
     }
     g.push({ at: [x + 0.5, y + 0.5, 0.3], r: 0.62, color: palette.fire });
+    // And a dimmer light thrown on the tiles beside it (M59).
+    g.push({ at: [x + 0.5, y + 0.5, 0.15], r: 1.5, color: palette.fire, alpha: 0.22 });
   },
   vacuum(f, g, x, y) {
     // Frost on the deck.

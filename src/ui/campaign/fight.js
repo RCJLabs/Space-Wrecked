@@ -72,6 +72,12 @@ export const campaignFightScreen = {
         const { campaign } = game.getState();
         return campaign ? suitColor(suitsOf(campaign), campaign.ship?.paint) : undefined;
       },
+      // The rooms' lights go red (M59) when it is the crew's own ship or
+      // ground that is boarded: boarders aboard, or a raid.
+      alert() {
+        const fight = fightOn();
+        return Boolean(fight?.raid || fight?.boarding?.dir === 'you');
+      },
       lookOf(unit, index) {
         const id = fightOn()?.crew[index];
         return game.getState().campaign?.crew.find((member) => member.id === id)?.look ?? null;

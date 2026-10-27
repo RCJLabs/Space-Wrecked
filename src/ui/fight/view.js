@@ -546,7 +546,7 @@ export function mountFight(root, source) {
     const battle = frame ? frame.view : fight.battle;
     if (battle.doors !== doorsShown || battle.fires !== firesShown || battle.locks !== locksShown) {
       const locked = (battle.locks ?? []).map((lock) => lock.key);
-      mapView.setMap({ map, skin: skinOf(map, defs), open: battle.doors, locked, fires: battle.fires ?? [], mounts: battle.units.filter((u) => defs.machines?.has(u.kind)).map((u) => [u.x, u.y]) });
+      mapView.setMap({ map, skin: skinOf(map, defs), open: battle.doors, locked, fires: battle.fires ?? [], mounts: battle.units.filter((u) => defs.machines?.has(u.kind)).map((u) => [u.x, u.y]), alert: source.alert?.() ?? false });
       doorsShown = battle.doors;
       firesShown = battle.fires;
       locksShown = battle.locks;

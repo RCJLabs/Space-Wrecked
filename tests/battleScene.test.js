@@ -130,7 +130,9 @@ test('wrecks show: flames and a glow on fire, frost and a cold glow in vacuum, r
   assert.equal(floorsIn(palette.scorch), 6);
   assert.equal(floorsIn(palette.dust), 9);
   assert.equal(floorsIn(palette.frost), 1);
-  assert.equal(glows.filter((g) => g.color === palette.fire).length, 6, 'a glow on each burning tile');
+  // A glow on each burning tile, and since M59 a dimmer one thrown past it.
+  assert.equal(glows.filter((g) => g.color === palette.fire && g.alpha === undefined).length, 6, 'a glow on each burning tile');
+  assert.equal(glows.filter((g) => g.color === palette.fire && g.alpha !== undefined).length, 6, 'and its light on the tiles beside it');
   assert.ok(faces.some((f) => f.emissive && f.color === palette.fireCore));
   assert.equal(glows.filter((g) => g.color === palette.vacuum).length, 1, 'one for the room');
   assert.ok(faces.some((f) => f.emissive && f.color === palette.vacuum));
@@ -154,7 +156,7 @@ test("a weapon's fire (M37) burns on its tile over the floor, a glow and flames 
   const floor = [...tiles(map)].find((tile) => tile.kind === 'floor');
   const plain = battleScene({ map, skin });
   const burning = battleScene({ map, skin, fires: [{ at: [floor.x, floor.y], until: 3 }] });
-  const fire = (scene) => scene.glows.filter((g) => g.color === palette.fire);
+  const fire = (scene) => scene.glows.filter((g) => g.color === palette.fire && g.alpha === undefined);
   assert.equal(fire(plain).length, 0);
   assert.equal(fire(burning).length, 1);
   assert.deepEqual(fire(burning)[0].at.slice(0, 2), [floor.x + 0.5, floor.y + 0.5]);
