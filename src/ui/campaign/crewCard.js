@@ -232,14 +232,14 @@ export function createCrewCard({ tap, done, save = null }) {
     health.append(node('span', 'hgr-num', `${hp}/${max}`), bar);
     health.setAttribute('aria-label', `${hp} of ${max} hit points`);
     item.append(who, health);
-    // Their look and callsign (M58), for anyone aboard, beside what can be
-    // done with them here.
+    // Their look and callsign (M58), for anyone aboard: under their hit
+    // points, so the row's words keep their width.
     const acts = node('span', 'crew-acts');
     if (aboard && save && member.look) {
       const button = toolButton('crew-look', icons.look, 'Look');
       button.setAttribute('aria-label', `${name}: change their look or callsign`);
       buttons.push({ detach: onTap(button, () => editor.open(member)) });
-      acts.append(button);
+      health.append(button);
     }
     if (acts.childElementCount) item.append(acts);
     if (action) {

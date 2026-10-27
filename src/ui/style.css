@@ -1224,6 +1224,20 @@ textarea {
   padding: 0 10px;
 }
 
+/* Folded, the Look button is its icon alone (its label is still read
+   out), at the hit points' right. */
+@media (max-height: 480px) {
+  #ui .crew-look {
+    align-self: flex-end;
+    width: 48px;
+    padding: 0;
+  }
+
+  #ui .crew-look span {
+    display: none;
+  }
+}
+
 /* The look editor (M58): in the crew card's lists' place, the portrait
    beside the layers (the captain screen's buttons), four abreast, then the
    callsign with Cancel and Keep. */
