@@ -61,6 +61,7 @@ import { confirms } from '../confirm.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { createCrewCard } from './crewCard.js';
+import { createSidePager } from './sidePager.js';
 import { crewCardText, crewHeading, crewSaid } from './crewText.js';
 import { createEventCard } from './eventCard.js';
 import { eventText, resultText } from './eventText.js';
@@ -170,6 +171,7 @@ export const sectorScreen = {
     const questList = node('ul', 'hgr-quests');
     const side = node('div', 'hgr-side');
     side.append(crewPanel, shipPanel, colonyPanel, othersBox, panel('Sides', sideList), panel('Quests', questList));
+    const pager = createSidePager(side);
     const foot = node('footer', 'hgr-foot');
     const titleButton = toolButton('hgr-tool', icons.leave, 'Title');
     const hint = liveStatus(node('p', 'hgr-hint', 'Loading…'));
@@ -843,6 +845,7 @@ export const sectorScreen = {
       },
       unmount() {
         alive = false;
+        pager();
         for (const cleanup of cleanups) cleanup();
         el.remove();
       },

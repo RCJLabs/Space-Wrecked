@@ -409,6 +409,8 @@ textarea {
 .hgr-name small {
   color: var(--c-ink-dim);
   font-size: 0.82em;
+  /* A job's line wraps rather than being cut short (M57). */
+  white-space: normal;
 }
 
 /* Short screens: the side panels' crew rows are the names alone, a line
@@ -4313,6 +4315,31 @@ textarea {
   }
 }
 
+/* The orders, below the tools (M57: a box of their own). */
+.fgt-orders {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Folded screens (M57): the tools and the orders each in two columns, so
+   every button is in sight with no scroll; a single column needed one at
+   905 × 370 and 821 × 283. */
+@media (max-height: 480px) {
+  .fgt-tools,
+  .fgt-orders {
+    display: grid;
+    grid-template-columns: repeat(2, 64px);
+  }
+}
+
+@media (max-height: 320px) {
+  .fgt-orders {
+    gap: 4px;
+  }
+}
+
 /* The end of a fight, in the middle of the board. */
 .fgt-over {
   position: absolute;
@@ -5031,7 +5058,10 @@ textarea {
   color: var(--c-accent);
 }
 
-.cln-info h2:not(:first-child) {
+.cln-info h2:not(:first-child),
+.cln-group + .cln-group,
+.cln-group + .cln-crew,
+.cln-crew + .cln-group {
   margin-top: 10px;
 }
 
@@ -5369,4 +5399,72 @@ textarea {
 /* With the dev menu, the crew bar on the right clears its button. */
 :root[data-hand='left'] #ui[data-dev] .fgt-crew {
   padding-top: 58px;
+}
+
+/* The side column's pager (M57, sidePager.js): hidden on a tall screen,
+   where every panel shows; on a folded one, one panel at a time with ‹
+   and › either side of its name. */
+.hgr-pager {
+  display: none;
+}
+
+@media (max-height: 480px) {
+  .hgr-paged[data-pages='true'] > .hgr-pager {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .hgr-paged[data-pages='true'] > :not(.hgr-pager):not(.hgr-page-shown) {
+    display: none !important;
+  }
+
+  #ui .hgr-page-back,
+  #ui .hgr-page-on {
+    flex: none;
+    width: 48px;
+    min-height: 48px;
+    padding: 0;
+    font-size: calc(22px * var(--ts, 1));
+    line-height: 1;
+  }
+
+  .hgr-page-name {
+    flex: 1;
+    margin: 0;
+    color: var(--c-ink-dim);
+    font-size: calc(12px * var(--ts, 1));
+    text-align: center;
+    white-space: nowrap;
+  }
+}
+
+/* The colony on a folded screen (M57): its build list wider, two cards to
+   a row, where one long column needed most of a thousand pixels of
+   scrolling; its info panel a group at a time (sidePager.js). */
+@media (max-height: 480px) {
+  .cln {
+    grid-template-columns: minmax(170px, 26%) minmax(0, 1fr) minmax(250px, 38%);
+  }
+
+  .cln-parts ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cln-parts.hgr-paged > .hgr-page-shown {
+    margin-top: 0;
+  }
+
+  /* The ship's name gives way in the colony's head, so the world's line
+     shows whole. */
+  .cln .hgr-head .hgr-ship {
+    display: none;
+  }
+
+  /* In the paged panel, the group shown starts at the top. */
+  .cln-info.hgr-paged > .hgr-page-shown {
+    margin-top: 0;
+  }
 }
