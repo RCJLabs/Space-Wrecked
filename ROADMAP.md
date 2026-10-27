@@ -2681,7 +2681,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Frame budget** (`m59/budget.mjs`, cover, 2.625 dpr, medians of 12 runs interleaved with main's): at rest 12.3 ms against main's 12.7; with a shot at its hit 14.9 against 13.3 (12% more). Single runs spread 11 to 18 ms on both. Nothing draws while nothing moves; the 30 fps setting is untouched.
   - **No save change.**
 
-- [ ] **M60 Music and room tone.** Item 5 of the second Phase 8 brainstorm, next in my order, on Evan's "Merge when ready then continue to the next item".
+- [x] **M60 Music and room tone.** Item 5 of the second Phase 8 brainstorm, next in my order, on Evan's "Merge when ready then continue to the next item".
 
   Measured first (main after M59):
   - **Sound** is 41 short effects made by ZzFX from their parameters (`data/sounds.json`), each played once through one volume. Between them the game is silent: no music, no hum, nothing under the menus, the chart, a fight or the colony.
@@ -2699,6 +2699,19 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Pure and tested:** rendering a bed is a pure function of its data (`src/core/music.js`), tested for its length, its seam, its peak under clipping and its loudness.
   - **Every earlier milestone's check passes; the three sizes checked; nothing new draws** (music adds no frame cost).
   - **Not in this milestone** (to §9): music that changes with the fight (tension, a won fight's sting), more than one bed per place, a bed per world kind or side.
+
+  **As built:**
+  - **Four beds** in `data/music.json`, each a loop with its own tempo, key and parts:
+    - hangar: 72 bpm, A minor, 8 bars, 26.7 s;
+    - run: 88 bpm, D minor, 8 bars, 21.8 s;
+    - fight: 116 bpm, E minor, 4 bars, 8.3 s;
+    - colony: 64 bpm, G major, 8 bars, 30.0 s.
+    The parts are pad, bass, an arpeggio or pluck, and the drums in a fight. A part's notes are written step by step ("." a rest, "0,3,7" a chord); a part with its own frequency (a drum, the hum) counts its notes from it. `tools/music.js` reports each bed's loudness and the gain that would meet its target, and `--wav <dir>` writes each loop to listen to.
+  - **Room tone:** a 55 Hz hum (hangar, fight), the engines' 45 Hz thrum (run), filtered air, and wind at the colony, as parts of the beds.
+  - **Off the page's thread:** `src/platform/musicWorker.js` renders a bed (0.5 to 1.4 s in Node here). `src/platform/audio.js` keeps the two last played, about 5 MB each at most, and cross-fades over 1.5 s. The game never waits on it.
+  - **Which bed:** each bed lists its screens. The lift-off, the landing and the game over play none, and the dev sandboxes none either (`src/ui/music.js`, `bedFor`).
+  - **The Music setting:** Off, 10, 30, 50, 70%, a new game at 30; sound off is music off. Save v50 sets 30.
+  - **Loudness** (as `tools/sounds.js` measures, the sounds' middle -18 dB): hangar, run and colony at -32 dB, the fight at -30; peaks 0.10 to 0.60.
 
 **The second Phase 8 brainstorm** (Evan's call, 2026-10-26: "Add everything to the queue. Then start 1"). Areas 1 to 3 are his, 4 to 10 mine. Each becomes a milestone as it starts, with its Done when settled then; my recommended order after 1 is 4, 6, 2, 3, 5, 7, 9, 10, 8.
 1. **Improving combat:** the orders nobody gives (Suppress and Weld add nothing measured), weapon roles (the shotgun best everywhere), enemy behaviour types (flankers, shield-bearers, medics, leaders), interactive ship tiles (venting a room, exploding consoles, lights out), morale and retreat (which also ends fights stuck behind a fallen body), a boss for each pursuer.
