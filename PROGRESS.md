@@ -50,7 +50,10 @@ Newest entry first.
 
 **Browser checks:**
 - **M56's own:** `m56/verify.mjs`, 18 of 18 at the three sizes. It covers the leader's warning on the colony, the landing words and Defend into a fight with the leader in it, the epilogue's words and panels, its buttons (48 px or more, on screen, no sideways scroll), Carry on marking it read, the colony saying the pursuit is over, the title's Continue going to the colony after, and no console errors.
-- **Every earlier milestone's check:** REGRESS_LINE
+- **Every earlier milestone's check,** in three chains run one after another (`m56/regress-a.sh`, M55's back to M30's; `m56/regress-b1.sh`, M29's to M23's; `m56/regress-b2.sh`, M22's to M8's):
+  - **All pass,** apart from M32b's first copy (its fix copy passes 27 of 27 in its place) and M8's column at the tab size, both as on main.
+  - **Adapted for M56:** the 22 checks that name the save version (`verify56.mjs` beside each `verify53.mjs`), 47 to 48; M32b's run as M55's copies.
+  - **M14's at the cover size** missed one job's pay in the chain and passed 40 of 40 run again alone.
 
 **Known issues:**
 - **The epilogue's last rows need a scroll** on the cover screen (The run's Lost row sits under the fold); the panel scrolls.
