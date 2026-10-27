@@ -2681,6 +2681,25 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Frame budget** (`m59/budget.mjs`, cover, 2.625 dpr, medians of 12 runs interleaved with main's): at rest 12.3 ms against main's 12.7; with a shot at its hit 14.9 against 13.3 (12% more). Single runs spread 11 to 18 ms on both. Nothing draws while nothing moves; the 30 fps setting is untouched.
   - **No save change.**
 
+- [ ] **M60 Music and room tone.** Item 5 of the second Phase 8 brainstorm, next in my order, on Evan's "Merge when ready then continue to the next item".
+
+  Measured first (main after M59):
+  - **Sound** is 41 short effects made by ZzFX from their parameters (`data/sounds.json`), each played once through one volume. Between them the game is silent: no music, no hum, nothing under the menus, the chart, a fight or the colony.
+  - **A looping bed made the same way** (a prototype: 8 bars at 84 bpm, three parts, 100 notes, 23 s) takes about 320 ms to render in Node on this machine, so likely over a second on the phone, and is 4 MB of samples. Rendered on the page, it would stall the game.
+
+  Done when (my recommendations, taken on Evan's word):
+  - **Four beds,** made in code from data (`data/music.json`): the hangar (the title and act 1's screens), the run (the chart and the approach), a fight, and the colony. Each is a loop of a few bars at its own tempo and key: parts (pad, bass, pulse, a line over them), each a ZzFX instrument and the notes it plays, step by step. No sound files.
+  - **Room tone in each bed:** a ship's low hum under the hangar's, the run's and a fight's; wind at the colony.
+  - **Seamless loops:** a note that rings past the loop's end carries on at its start, so the loop has no seam.
+  - **Off the page's thread:** the beds are rendered in a worker, so a bed starting never costs a frame; a bed is kept once rendered, at most two at a time.
+  - **Moving between them:** a screen's bed follows from the screen (listed in the data); changing beds cross-fades over 1.5 s; screens with their own big sound (the lift-off, the landing) and the game's end play none.
+  - **A Music setting:** off, 10, 30, 50 or 70%, a new game at 30, under the sound switch (sound off is music off too). Save v50, with a migration that sets it to 30.
+  - **Loudness:** each bed, measured as `tools/sounds.js` measures the sounds, sits 10 to 16 dB under the effects' usual level, so shots and chimes stay on top.
+  - **Content is data, validated:** each bed's instruments are ZzFX parameters `tools/validate-data.js` checks like the sounds', its parts' notes fit its bars, and each screen it names exists.
+  - **Pure and tested:** rendering a bed is a pure function of its data (`src/core/music.js`), tested for its length, its seam, its peak under clipping and its loudness.
+  - **Every earlier milestone's check passes; the three sizes checked; nothing new draws** (music adds no frame cost).
+  - **Not in this milestone** (to §9): music that changes with the fight (tension, a won fight's sting), more than one bed per place, a bed per world kind or side.
+
 **The second Phase 8 brainstorm** (Evan's call, 2026-10-26: "Add everything to the queue. Then start 1"). Areas 1 to 3 are his, 4 to 10 mine. Each becomes a milestone as it starts, with its Done when settled then; my recommended order after 1 is 4, 6, 2, 3, 5, 7, 9, 10, 8.
 1. **Improving combat:** the orders nobody gives (Suppress and Weld add nothing measured), weapon roles (the shotgun best everywhere), enemy behaviour types (flankers, shield-bearers, medics, leaders), interactive ship tiles (venting a room, exploding consoles, lights out), morale and retreat (which also ends fights stuck behind a fallen body), a boss for each pursuer.
 2. **Character and ship customization:** editing any crew member's look, callsigns, scars and implants earned in play, suits in the ship's colours, a choice of perk at each rank; paint patterns, engine glow, an emblem editor, more hull styles, a second livery.
@@ -2857,5 +2876,7 @@ These ideas wait until v0.4 or later:
 - portraits with expressions: a face that winces when hurt and falls slack when down, on the crew buttons and the cards (raised in M59)
 - baked shading: ambient occlusion where walls meet floors and under fittings, baked once per map (raised in M59)
 - fire that flickers: a burning tile's light moving with time, which needs a redraw every frame while it burns (raised in M59)
+- music that follows a fight: tension as it turns, a sting when it's won or lost (raised in M60)
+- more than one bed for a place, and beds by world kind or by side (raised in M60)
 
 Ideas that come up during a session go here, not into code.
