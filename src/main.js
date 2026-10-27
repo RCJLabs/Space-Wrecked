@@ -16,7 +16,8 @@ import { createDevMenu } from './ui/dev/menu.js';
 import { createFpsReadout } from './ui/dev/fps.js';
 import { startCaptions } from './ui/captions.js';
 import { syncLook } from './ui/look.js';
-import { syncMotion } from './ui/motion.js';
+import { crossFade } from './ui/crossFade.js';
+import { motionReduced, syncMotion } from './ui/motion.js';
 import { screenFor } from './ui/screens.js';
 import { gameSounds } from './ui/sounds.js';
 import { startTips } from './ui/tips.js';
@@ -106,6 +107,7 @@ function persist(data) {
 
 function syncScreen(state) {
   if (state.screen === activeId) return;
+  if (active && !motionReduced(state.settings)) crossFade(view.canvas, screenRoot); // M59
   active?.unmount();
   activeId = state.screen;
   ui.dataset.screen = activeId; // where the dev overlay sits depends on the screen

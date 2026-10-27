@@ -76,6 +76,24 @@ body {
   inset: 0;
 }
 
+/* The screens' cross-fade (M59, crossFade.js): the old screen's copies, over
+   the new one as they fade. */
+.fade-ghost {
+  pointer-events: none;
+}
+
+.fade-board {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.fade-screen {
+  position: absolute;
+  inset: 0;
+}
+
 #ui button,
 #ui input,
 #ui textarea,
