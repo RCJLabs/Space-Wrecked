@@ -2638,7 +2638,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Saves and codes:** save v49 and codes v5, both migrating old ones to plain, bone, the maker's glow and standard suits; content listed in `data/styling.json`.
   - **Found by the earlier checks:** the Look button beside each row made M57's crew card scroll at cover; it now sits under the hit points. Details in PROGRESS.md.
 
-- [ ] **M59 Light and fire.** Item 3 of the second Phase 8 brainstorm (visuals), next in my order, on Evan's "Merge when ready then continue to the next item"; cut to the fight, its rooms and the moves between screens.
+- [x] **M59 Light and fire.** Item 3 of the second Phase 8 brainstorm (visuals), next in my order, on Evan's "Merge when ready then continue to the next item"; cut to the fight, its rooms and the moves between screens.
 
   Measured first (main after M58):
   - **A shot** is one tracer line from the shooter's tile to the target, and on a hit a flash where it lands (`src/render/fightLabels.js`). There is no muzzle flash. A burst's rounds show as one line. A miss just fades past the target. A stun dart and a flamer's shot look like any other.
@@ -2667,6 +2667,19 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Pure and tested:** the effects are pure functions of the playback's frame (the same frame always draws the same sparks), each with a test.
   - **No save change;** every earlier milestone's check passes; the three sizes checked.
   - **Not in this milestone** (to §9): the colony's ground by day, night and weather; portraits with expressions; baked shading (ambient occlusion); fire that flickers (it needs a redraw every frame, against the battery).
+
+  **As built:**
+  - **Shots** (`src/render/shotFx.js`, drawn by `fightLabels.js`'s `tracer`):
+    - a muzzle flash for the first eighth of each shot's flight;
+    - each round of a burst was already its own shot in the playback, so each flies as its own tracer;
+    - a hit throws 7 sparks over 0.35 of the shot's beat, seeded from the shot's place in the playback, so the same frame always draws the same sparks;
+    - a miss ends in a puff of 4 bits of dust;
+    - the color comes from the weapon's data: stun blue (a new token, `stunShot`), fire orange, every other shot the tracer's color.
+  - **Rooms' lights, changed from the Done when's words:** a room's light is a pool on its floor, the floor tiles turned toward the light's color (22% under the middle), less toward the room's edges. The Done when said a soft light over the middle: drawn as a glow over each room, it cost 50% more per frame at cover, and a small lamp glow per room still 20% more. A floor tile's color is made once with the scene and costs nothing per frame. Out in a wrecked room; red (`alertLight`, 30%) when the fight is a boarding of the player's own ship or a raid. A burning tile adds a wide, dim orange glow over the tiles beside it.
+  - **A kill moment:** a shot's fall is held 400 ms (`KILL_HOLD`, `src/render/playback.js`), the fall itself at its usual pace, while the board eases in by 1.15 toward the fallen unit (not if fog hides it). None with reduced motion (the playback is still) or at 200%.
+  - **Cross-fades** (`src/ui/crossFade.js`): a copy of the board as the old screen drew it fades out over the new one in 160 ms while the new screen's panels fade in. The old panels are not copied: a first cut that copied them left their buttons where the tips and the browser checks found them for 160 ms. None with reduced motion.
+  - **Frame budget** (`m59/budget.mjs`, cover, 2.625 dpr, medians of 12 runs interleaved with main's): at rest 12.3 ms against main's 12.7; with a shot at its hit 14.9 against 13.3 (12% more). Single runs spread 11 to 18 ms on both. Nothing draws while nothing moves; the 30 fps setting is untouched.
+  - **No save change.**
 
 **The second Phase 8 brainstorm** (Evan's call, 2026-10-26: "Add everything to the queue. Then start 1"). Areas 1 to 3 are his, 4 to 10 mine. Each becomes a milestone as it starts, with its Done when settled then; my recommended order after 1 is 4, 6, 2, 3, 5, 7, 9, 10, 8.
 1. **Improving combat:** the orders nobody gives (Suppress and Weld add nothing measured), weapon roles (the shotgun best everywhere), enemy behaviour types (flankers, shield-bearers, medics, leaders), interactive ship tiles (venting a room, exploding consoles, lights out), morale and retreat (which also ends fights stuck behind a fallen body), a boss for each pursuer.
