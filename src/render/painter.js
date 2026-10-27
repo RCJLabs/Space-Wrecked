@@ -120,7 +120,8 @@ function addLine(path, pts, project) {
   }
 }
 
-// Soft lights, added on top of what is under them.
+// Soft lights, added on top of what is under them: alpha, if a glow gives
+// one, how bright its middle is (M59), else 0.55.
 function paintGlows(ctx, glows, project, cam) {
   if (!glows.length) return;
   ctx.save();
@@ -129,7 +130,7 @@ function paintGlows(ctx, glows, project, cam) {
     const [x, y, depth] = project(g.at);
     const r = (g.r * cam.scale * cam.distance) / depth;
     const gradient = ctx.createRadialGradient(x, y, 0, x, y, r);
-    gradient.addColorStop(0, rgba(g.color, 0.55));
+    gradient.addColorStop(0, rgba(g.color, g.alpha ?? 0.55));
     gradient.addColorStop(1, rgba(g.color, 0));
     ctx.fillStyle = gradient;
     ctx.beginPath();
