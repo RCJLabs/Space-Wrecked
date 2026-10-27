@@ -128,7 +128,8 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      callsign (none yet), every ship a paint pattern, a second color and
 //      an engine glow (plain, bone, the maker's), and the ship's identity
 //      what the crew's suits are painted (standard)
-export const SAVE_VERSION = 49;
+//  50  music (M60): the settings keep how loud the music plays, 30
+export const SAVE_VERSION = 50;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -634,6 +635,11 @@ export const MIGRATIONS = [
       if (!isObject(looked) || !isObject(looked.campaign) || !isObject(looked.campaign.identity)) return looked;
       return { ...looked, campaign: { ...looked.campaign, identity: { ...looked.campaign.identity, suits: looked.campaign.identity.suits ?? 'standard' } } };
     },
+  },
+  {
+    // Music (M60): it plays at 30%, as a new game's does.
+    from: 49,
+    up: (data) => (isObject(data) && isObject(data.settings) ? { ...data, settings: { ...data.settings, music: data.settings.music ?? 30 } } : data),
   },
 ];
 

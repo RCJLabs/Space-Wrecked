@@ -52,3 +52,9 @@ export function renderBed(bed, synth, sampleRate) {
   }
   return out;
 }
+
+// The bed a screen plays under, by id, or null: beds a Map or list of beds.
+export function bedFor(beds, screen) {
+  for (const bed of beds.values()) if (bed.screens.includes(screen)) return bed.id;
+  return null;
+}

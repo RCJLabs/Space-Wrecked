@@ -18,6 +18,7 @@ import { startCaptions } from './ui/captions.js';
 import { syncLook } from './ui/look.js';
 import { crossFade } from './ui/crossFade.js';
 import { motionReduced, syncMotion } from './ui/motion.js';
+import { startMusic } from './ui/music.js';
 import { screenFor } from './ui/screens.js';
 import { gameSounds } from './ui/sounds.js';
 import { startTips } from './ui/tips.js';
@@ -47,6 +48,7 @@ syncMotion(store);
 syncLook(store);
 // Sound (M35): from the first tap, at the settings' volume.
 startAudio(store);
+startMusic(store);
 startCaptions();
 startHaptics();
 store.subscribe((state, prev, action) => gameSounds(state, prev, action).forEach(cue));

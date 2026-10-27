@@ -7,6 +7,8 @@
 //   tipsSeen    the ids of the tips already put away
 //   sound       whether the game plays sound (M35)
 //   volume      how loud, in percent: one of VOLUMES
+//   music       how loud the music plays, in percent: one of MUSIC_LEVELS, 0
+//               none (M60). Sound off is music off too
 //   colors      'standard', or 'safe' for colorblind-safe colors (M42)
 //   textSize    how big the text is, in percent: one of TEXT_SIZES (M42)
 //   fog         fog of war (M45): in a fight, an enemy no one in the crew
@@ -27,6 +29,9 @@ export const MOTIONS = ['auto', 'reduce', 'full'];
 // The volumes to pick from, in percent; a new game starts at 70 (Evan's
 // pick, M35).
 export const VOLUMES = [10, 30, 50, 70, 100];
+// The music's levels, in percent; a new game starts at 30, under the sounds
+// (M60).
+export const MUSIC_LEVELS = [0, 10, 30, 50, 70];
 // The color sets (src/render/palette.js COLOR_SETS) and the text sizes, in
 // percent (M42).
 export const COLORS = ['standard', 'safe'];
@@ -43,7 +48,7 @@ export const MAX_TIPS = 64;
 const TIP_ID = /^[a-z][a-z0-9-]{0,31}$/;
 
 export function defaultSettings() {
-  return { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, colors: 'standard', textSize: 100, fog: false, hand: 'right', speed: 100, confirm: 'taps', vibration: true, captions: false, reading: 'standard' };
+  return { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, music: 30, colors: 'standard', textSize: 100, fog: false, hand: 'right', speed: 100, confirm: 'taps', vibration: true, captions: false, reading: 'standard' };
 }
 
 // Actions:
@@ -55,6 +60,7 @@ export function defaultSettings() {
 //   settings/tip/seen { id }        a tip put away, not to show again
 //   settings/sound { value }        sound on or off
 //   settings/volume { value }       one of VOLUMES
+//   settings/music { value }        one of MUSIC_LEVELS (M60)
 //   settings/colors { value }       standard or safe
 //   settings/textSize { value }     one of TEXT_SIZES
 //   settings/fog { value }          fog of war on or off (M45)
@@ -79,6 +85,8 @@ export function reduceSettings(settings, action) {
       return set('sound', typeof action.value === 'boolean');
     case 'settings/volume':
       return set('volume', VOLUMES.includes(action.value));
+    case 'settings/music':
+      return set('music', MUSIC_LEVELS.includes(action.value));
     case 'settings/colors':
       return set('colors', COLORS.includes(action.value));
     case 'settings/textSize':
@@ -116,6 +124,7 @@ export function settingsProblems(settings) {
   if (!MOTIONS.includes(settings.motion)) problems.push('The motion setting is invalid.');
   if (typeof settings.sound !== 'boolean') problems.push('The sound setting is invalid.');
   if (!VOLUMES.includes(settings.volume)) problems.push('The volume setting is invalid.');
+  if (!MUSIC_LEVELS.includes(settings.music)) problems.push('The music setting is invalid.');
   if (!COLORS.includes(settings.colors)) problems.push('The colors setting is invalid.');
   if (!TEXT_SIZES.includes(settings.textSize)) problems.push('The text size setting is invalid.');
   if (typeof settings.fog !== 'boolean') problems.push('The fog of war setting is invalid.');
