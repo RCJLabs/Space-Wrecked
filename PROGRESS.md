@@ -73,7 +73,7 @@ Golden files are unchanged.
   - **Adapted for M58's new controls:**
     - M23f's copy expects the Look tab's three new groups (41 tiles, not 26), and the defaults (plain, bone, the maker's) pressed with them.
     - M23's copy checks the captain has no Let go, not that their row has no button at all (it now has Look).
-  - **M14's copy** checked a won job paid exactly its listed credits. Since M33 a friendly side pays 10% more, and this run's chain of jobs reached friendly standing at cover ("Paid 160 credits (+10%: the union is friendly)"). The copy now reads the pay off the end panel and checks the credits move by it: M14_RESULT.
+  - **M14's copy** checked a won job paid exactly its listed credits. Since M33 a friendly side pays 10% more, and this run's chain of jobs reached friendly standing at cover ("Paid 160 credits (+10%: the union is friendly)"). The copy now reads the pay off the end panel and checks the credits move by it: 48 of 48 at cover, on a run that paid no bonus (the bonus path is covered by the logic, not by that run).
   - **The rest pass at the three sizes:** 115 runs in chain A, 43 in B1, 34 in B2 (a check at one size is one run).
 
 **Known issues:**
