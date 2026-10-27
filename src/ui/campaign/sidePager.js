@@ -34,7 +34,10 @@ export function createSidePager(side, { pages = null } = {}) {
     if (!shown.length) return;
     at = Math.min(Math.max(at, 0), shown.length - 1);
     for (const el of [...side.children]) el.classList.toggle('hgr-page-shown', el === shown[at]);
-    name.textContent = `${at + 1} / ${shown.length}`;
+    // Where it is among them, and the name of the one › goes to, so what
+    // lies past the arrow can be read before it is tapped.
+    const next = shown[at + 1];
+    name.replaceChildren(node('span', null, `${at + 1} / ${shown.length}`), node('small', null, next ? `then ${title(next)}` : 'the last'));
     name.setAttribute('aria-label', `${title(shown[at])}, ${at + 1} of ${shown.length}`);
     back.disabled = at === 0;
     on.disabled = at === shown.length - 1;
