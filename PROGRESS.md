@@ -2,6 +2,91 @@
 
 Newest entry first.
 
+## M58 Who they are and the ship's colours (2026-10-27)
+
+**Status:** done; the ROADMAP.md box is ticked. Save v49 and blueprint codes v5, each with a migration.
+
+**How it was picked:** item 2 of the second Phase 8 brainstorm (character and ship customization), next in my order, on Evan's "Merge when ready then continue to the next item". Cut to what fits one milestone; the rest went to §9.
+
+**What the measuring found:**
+- A crew member's look is seven layers, but only the captain's could be changed, and only before the game starts.
+- No one could be renamed, and there were no callsigns. The mark layer (scar, jaw plate and the rest) was only ever rolled.
+- The ship had one paint and one trim: no pattern, no second color. The engines burned the maker's color, which the player couldn't pick.
+
+**What shipped:**
+- **The look editor on the crew card** (`src/ui/campaign/crewCard.js`):
+  - A Look button on each row of the crew aboard, wherever the card opens (hangar, chart, colony), free.
+  - It opens the captain screen's layer buttons and Roll for that member, beside their bust, with a callsign field, Cancel and Keep.
+  - On a folded screen the editor fits without scrolling: two rows of five layers, with the callsign, Cancel and Keep in a column beside them.
+  - On a folded screen the Look button is its icon alone, under the hit points, so the rows keep their height.
+- **Callsigns** (`src/sim/crewLook.js`):
+  - Up to 12 letters: letters, numbers, spaces and `- . '`.
+  - A bad one is refused in the editor, with the reason under the field.
+  - The crew card and the epilogue give the full name ("Fen 'Rook' Lindqvist"); a fight's buttons and log give the callsign.
+- **Scars earned:**
+  - A crew member who goes down in a fight and lives takes a scar if they had no mark, and a jaw plate where the scar was; any other mark stays.
+  - The fight's end panel says so.
+  - Raids fought out without the player do the same.
+  - The portrait shows it; a figure in a fight wears its helmet, so there the mark shows only on the crew buttons' faces.
+- **Suits in the ship's colors:** a Suits group on the Look tab in the campaign, "Standard" or "The ship's". With the ship's, each crew suit's body takes the ship's paint in the fight's figures and in every portrait. The trims stay each member's own color, so they can still be told apart.
+- **Patterns and a second color:** four patterns (plain, split, band, blocks) and a second color from the paints, as Look-tab groups. Drawn on the hull's roof plates outside: in the yard, on the approach, at the lift-off and at the colony (`src/render/livery.js`).
+- **Engine glow:** the maker's, or ice, ember, plasma or toxic. Picked on the Look tab and drawn on the nozzles, the glows and the plumes, the lift-off's included.
+- **Undo, codes, saves:**
+  - The pattern, second color and glow are builder commands, so undo, redo and the build log carry them.
+  - Blueprint codes carry them from version 5; an older code opens plain, bone, with the maker's glow.
+  - Save v49: an old save's ships are plain with the maker's glow, its crew standard-suited, and nobody has a callsign.
+- **Content as data:** the patterns and glows are listed in `data/styling.json`, their drawings in code. `tools/validate-data.js` checks each has a drawing (patterns) or a palette color (glows).
+
+**Done when** (ROADMAP.md, M58), and how each is met:
+- **Any crew member's look changed, free, wherever the card opens:** `m58/verify.mjs`:
+  - a layer's step redraws the bust;
+  - Keep saves the look;
+  - the editor's buttons are 48 px or more;
+  - it fits each screen without scrolling.
+- **Callsigns, shown on the card, the fight's buttons and the epilogue:**
+  - `m58/verify.mjs`: the card names "Fen 'Rook' Lindqvist", the fight's button says Rook, the field stops at 12 letters, and "R@@k" is refused with its reason.
+  - `tests/crewLook.test.js` covers the names.
+- **Scars earned, the end panel says so:** `tests/crewLook.test.js` covers none → scar → jaw plate, the panel's lines, "not over yet", and a second fight.
+- **Suits in the ship's colors:** `m58/verify.mjs` checks the choice saves. `tests/crewLook.test.js` covers the suit color: the ship's paint, else the standard.
+- **Patterns, second color, glow on the Look tab:** `m58/verify.mjs` checks, for each of the three, that the choice saves, its tile shows pressed, and the hull's pixels change (about 90,000 sampled pixels differ for each).
+- **As data, validated:** `npm run validate`.
+- **Save v49, codes v5, migrations:** `tests/crewLook.test.js` and the updated save and blueprint tests.
+- **Every earlier check passes; touch at three sizes:** below.
+
+**Tests:** `node --test`: 1282 pass (1272 on main: 10 added in `tests/crewLook.test.js`). Updated on purpose:
+- the save-version and code-version pins (48 → 49, 4 → 5);
+- the old-save fixtures, which now gain the three looks;
+- the companion face, which now carries the suit color;
+- the migration count from the end.
+
+Golden files are unchanged.
+
+**A change made on purpose:** the example ship's blueprint code is 211 characters, up from under 200, because version 5 writes the pattern, second color and glow by name. The test's bound is now 220. Names keep old codes readable when the lists grow; indexes would break them.
+
+**Browser checks:**
+- **M58's own:** `m58/verify.mjs` passes 26 of 26 at each of the three sizes.
+- **Every earlier milestone's check,** in the three chains (`m58/regress-a.sh`, `regress-b1.sh`, `regress-b2.sh`):
+  - **Adapted for v49** (`m58/adapt.sh`): 24 checks pinned to save v48 or to `wtb.4.` codes have `verify58.mjs` copies pinned to v49 and `wtb.5.`.
+  - **Found and fixed in the app:** the crew card's Look button, beside each row, squeezed the row's words until the card scrolled 37 px at cover (M57's own check). The fix is the icon-only button under the hit points.
+  - **Found in the test kit, not the app:** M57 made the side pager's bar sticky after its chain A had run. `m18/old.mjs`'s `reach` took the bar's own ‹ › for out of sight under the bar, so M36 and M42 (which reach every button) and two copies of M33b and M34 stopped on a folded screen. `reach` now counts the bar's own arrows as in sight. All four pass at the three sizes.
+  - **M32b's first copy** fails its 2 checks, as on main.
+  - RESULTS_PLACEHOLDER
+
+**Known issues:**
+- **A figure's scar doesn't show in a fight:** the figures wear helmets. It shows on the crew buttons' faces and everywhere a portrait is drawn.
+- **Patterns follow the roof plates,** a module at a time, so a pattern's edge falls on a module's edge, not a straight line across the hull.
+- **The second color is one of the six paints.** There's no free color picker, by design (palette tokens).
+- **The callsign field stops at 12 letters** rather than refusing a longer one; only stray marks get a reason.
+
+**What Evan should test on the phone:**
+- Open the crew card anywhere and tap a crew member's Look. Step a few layers, give them a callsign, and Keep. The card should say "First 'Callsign' Last", and in a fight their button should say the callsign.
+- In the builder's Look tab: Pattern (Split, Band, Blocks), Second color, Glow. The hull should change with each, and Undo should take each back.
+- Suits → The ship's: in a fight, the crew's suits should take the ship's paint, with each member's trim still their own.
+- Fly to a station or lift off and check the glow on the engines.
+- After a fight where someone went down, the end panel should name their scar, and the crew card should show it on their face.
+
+**Next milestone's first task:** item 3 of the brainstorm, visuals: list what the fight, the colony and the screens' changes draw today, and measure the frame cost of shading, room lights and effects on the cover screen.
+
 ## M57 The cover-screen pass (2026-10-27)
 
 **Status:** done; the ROADMAP.md box is ticked. No save change.
