@@ -36,7 +36,10 @@ export function createSidePager(side, { pages = null } = {}) {
   function refresh() {
     const shown = panels();
     side.dataset.pages = String(shown.length > 1);
-    if (!shown.length) return;
+    if (!shown.length) {
+      name.replaceChildren();
+      return;
+    }
     at = Math.min(Math.max(at, 0), shown.length - 1);
     for (const el of [...side.children]) el.classList.toggle('hgr-page-shown', el === shown[at]);
     // Where it is among them, and the name of the one › goes to, so what
