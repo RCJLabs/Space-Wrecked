@@ -56,3 +56,22 @@ test("the playback's shot carries the shooter's weapon and its beat's start, the
   assert.equal(frame.shot.weapon, 'torch');
   assert.equal(frame.shot.seed, timeline.beats[1].at);
 });
+
+test('a kill moment: a unit a shot drops is held on 400 ms more, its fall at its usual pace; not without hold, nor with reduced motion', async () => {
+  const { KILL_HOLD, cuesBetween, durationOf } = await import('../src/render/playback.js');
+  const unit = (id, side, x) => ({ id, side, x, y: 3, status: 'active', weapon: 'rifle' });
+  const before = { units: [unit('c', 'crew', 2), unit('e', 'enemy', 4)] };
+  const events = [{ type: 'shot', unit: 'c', target: 'e', hit: true }, { type: 'dead', unit: 'e' }];
+  const played = [{ events, battle: before }];
+  const plain = makeTimeline(before, played);
+  const held = makeTimeline(before, played, { hold: true });
+  assert.equal(held.length, plain.length + KILL_HOLD);
+  assert.equal(held.beats[1].kill, true);
+  assert.equal(makeTimeline(before, played, { hold: true, still: true }).length, 0, 'reduced motion: none');
+  const fall = durationOf(events[1]);
+  assert.equal(frameAt(held, held.beats[1].at + fall / 2).progress, 0.5, 'the fall at its usual pace');
+  assert.equal(frameAt(held, held.beats[1].at + fall + 200).progress, 1, 'then held');
+  assert.deepEqual(cuesBetween(held, -1, held.length).map((c) => c.kill ?? false), [false, false, true]);
+  const missed = [{ events: [{ type: 'reload', unit: 'c' }, { type: 'dead', unit: 'e' }], battle: before }];
+  assert.equal(makeTimeline(before, missed, { hold: true }).beats[1].kill, undefined, 'only a fall right after the shot that caused it');
+});

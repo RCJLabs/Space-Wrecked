@@ -56,6 +56,10 @@ const MS = {
   over: 700,
 };
 export const FLIGHT = 0.3; // a shot flies for this part of its time, then lands
+// A kill moment (M59): a unit a shot takes down or kills is held on this
+// much longer, for the camera to close in on it.
+export const KILL_HOLD = 400;
+const FALLS = new Set(['down', 'dead']);
 
 export function durationOf(event) {
   return event.type === 'move' ? STEP_MS * (event.path.length - 1) : MS[event.type] ?? 0;
@@ -63,15 +67,19 @@ export function durationOf(event) {
 
 // still (M42, reduced motion): every event takes no time, so the end shows
 // at once with all the words rising together, stacked where they share a
-// tile.
-export function makeTimeline(before, played, { still = false } = {}) {
+// tile. hold (M59): a unit going down or dying from the shot just before
+// is a kill moment, its beat marked kill and KILL_HOLD ms longer.
+export function makeTimeline(before, played, { still = false, hold = false } = {}) {
   const beats = [];
   let at = 0;
   for (const step of played) {
+    let last = null;
     for (const event of step.events) {
-      const ms = still ? 0 : durationOf(event);
-      beats.push({ at, ms, event });
+      const kill = hold && !still && FALLS.has(event.type) && last?.type === 'shot' && last.target === event.unit;
+      const ms = still ? 0 : durationOf(event) + (kill ? KILL_HOLD : 0);
+      beats.push(kill ? { at, ms, event, kill } : { at, ms, event });
       at += ms;
+      last = event;
     }
     beats.push({ at, ms: 0, snap: step.battle });
   }
@@ -97,7 +105,9 @@ export function frameAt(timeline, t) {
       }
     }
     if (t < beat.at + beat.ms) {
-      playing = { event: beat.event, progress: (t - beat.at) / beat.ms, at: beat.at };
+      // A kill moment's fall plays at its usual pace, then holds (M59).
+      const span = beat.kill ? beat.ms - KILL_HOLD : beat.ms;
+      playing = { event: beat.event, progress: Math.min(1, (t - beat.at) / span), at: beat.at, kill: Boolean(beat.kill) };
       break;
     }
     view = applyEvent(view, beat.event);
@@ -116,13 +126,14 @@ export function frameAt(timeline, t) {
 
 // The moments of a playback in (from, to] ms that a sound belongs to, in
 // order (M35, ui/sounds.js cueSound): { event, lands }, each event as it
-// starts, and a shot again as it lands, FLIGHT of the way through.
+// starts, and a shot again as it lands, FLIGHT of the way through; kill
+// true on a kill moment's (M59, makeTimeline).
 export function cuesBetween(timeline, from, to) {
   const cues = [];
   for (const beat of timeline.beats) {
     if (beat.at > to) break;
     if (beat.snap) continue;
-    if (beat.at > from) cues.push({ event: beat.event, lands: false });
+    if (beat.at > from) cues.push(beat.kill ? { event: beat.event, lands: false, kill: true } : { event: beat.event, lands: false });
     const lands = beat.at + FLIGHT * beat.ms;
     if (beat.event.type === 'shot' && lands > from && lands <= to) cues.push({ event: beat.event, lands: true });
   }

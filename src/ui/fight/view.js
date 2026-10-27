@@ -59,6 +59,8 @@ const KEY_TURN = Math.PI / 12; // Q and E on a keyboard
 const SETTLE_MS = 150; // still this long after a camera move, the map sharpens
 const FOLLOW_MS = 250; // a glide of the camera following the action (M51)
 const FOLLOW_INSET = 48; // pixels in from the board's edges what it follows is kept
+const KILL_ZOOM = 1.15; // how far the board eases in on a kill moment (M59)
+const KILL_SPEED = 2; // and at this playback speed (200%) there is none
 const NOTICE_MS = 2600;
 const OPENING_MS = 8000; // a fight's opening words stay this long, or until a tap
 const ARM_MS = 3000; // End turn waits this long for its second tap
@@ -358,8 +360,10 @@ export function mountFight(root, source) {
       // With reduced motion (M42) the end shows at once, its words and
       // sounds with it, and the board is free.
       const still = document.documentElement.dataset.motion === 'reduce';
-      // speed (M47): the playback's, kept from its start to its end.
-      playing = { timeline: makeTimeline(prev.battle, fight.played, { still }), start: performance.now(), speed: playbackSpeed(), frame: null, done: false, heard: -1 };
+      // speed (M47): the playback's, kept from its start to its end. A kill
+      // holds a moment for the camera (M59), but not at the fastest speed.
+      const speed = playbackSpeed();
+      playing = { timeline: makeTimeline(prev.battle, fight.played, { still, hold: speed < KILL_SPEED }), start: performance.now(), speed, frame: null, done: false, heard: -1 };
       closeCard();
     }
     if (fight.notice && fight.notice !== prev.notice) {
@@ -504,7 +508,8 @@ export function mountFight(root, source) {
     for (const moment of cuesBetween(playing.timeline, heard, t)) {
       cue(cueSound(moment, store.getState().battle, defs));
       buzz(fightBuzz(moment, store.getState().battle));
-      if (!moment.lands) follow(moment.event, shown, now, still);
+      if (moment.kill) closeIn(moment.event, shown, now);
+      else if (!moment.lands) follow(moment.event, shown, now, still);
     }
     playing.heard = t;
     const frame = frameAt(playing.timeline, t);
@@ -803,6 +808,18 @@ export function mountFight(root, source) {
     home ??= camera;
     const to = clampOrbit(panOrbit(from, shift[0], shift[1]), rect, boxes.all, MARGIN);
     glideTo(to, now, still);
+  }
+
+  // A kill moment (M59, playback.js makeTimeline): the board eases in a
+  // little on the unit that falls, and goes back after the playback as a
+  // follow does (comeHome). Only a moment with motion has it.
+  function closeIn(event, view, now) {
+    const unit = view.units.find((u) => u.id === event.unit);
+    if (!camera || !rect || !unit || fogged(view, playing?.frame).has(unit.id)) return;
+    const from = glide ? glide.to : camera;
+    const [sx, sy] = project(from, unit.x + 0.5, unit.y + 0.5, 0);
+    home ??= camera;
+    glideTo(zoomOrbit(from, sx, sy, from.scale * KILL_ZOOM, limits), now, false);
   }
 
   function glideTo(to, now, still) {
