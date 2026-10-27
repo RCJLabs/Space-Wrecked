@@ -70,7 +70,11 @@ Golden files are unchanged.
   - **Found and fixed in the app:** the crew card's Look button, beside each row, squeezed the row's words until the card scrolled 37 px at cover (M57's own check). The fix is the icon-only button under the hit points.
   - **Found in the test kit, not the app:** M57 made the side pager's bar sticky after its chain A had run. `m18/old.mjs`'s `reach` took the bar's own ‹ › for out of sight under the bar, so M36 and M42 (which reach every button) and two copies of M33b and M34 stopped on a folded screen. `reach` now counts the bar's own arrows as in sight. All four pass at the three sizes.
   - **M32b's first copy** fails its 2 checks, as on main.
-  - RESULTS_PLACEHOLDER
+  - **Adapted for M58's new controls:**
+    - M23f's copy expects the Look tab's three new groups (41 tiles, not 26), and the defaults (plain, bone, the maker's) pressed with them.
+    - M23's copy checks the captain has no Let go, not that their row has no button at all (it now has Look).
+  - **M14's copy** checked a won job paid exactly its listed credits. Since M33 a friendly side pays 10% more, and this run's chain of jobs reached friendly standing at cover ("Paid 160 credits (+10%: the union is friendly)"). The copy now reads the pay off the end panel and checks the credits move by it: M14_RESULT.
+  - **The rest pass at the three sizes:** 115 runs in chain A, 43 in B1, 34 in B2 (a check at one size is one run).
 
 **Known issues:**
 - **A figure's scar doesn't show in a fight:** the figures wear helmets. It shows on the crew buttons' faces and everywhere a portrait is drawn.
