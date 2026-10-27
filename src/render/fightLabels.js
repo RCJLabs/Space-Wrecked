@@ -8,6 +8,7 @@
 import { project } from './orbit.js';
 import { palette, rgba } from './palette.js';
 import { FLIGHT, FLOAT_MS } from './playback.js';
+import { endOf, muzzle, puff, sparks } from './shotFx.js';
 import { textScale } from './textScale.js';
 import { LYING_TOP, UNIT_TOP } from './units.js';
 
@@ -194,45 +195,66 @@ function rising(ctx, cam, { at: [x, y], text, tone, age, stack = 0 }) {
   ctx.globalAlpha = 1;
 }
 
-// A shot: it flies from the shooter's gun to the target, or past it on a
-// miss, then fades.
-function tracer(ctx, cam, { from, to, hit, progress }) {
+// A shot: a flash at the muzzle as it leaves (M59), then it flies from the
+// shooter's gun to the target, or past it on a miss, and fades; a hit
+// throws sparks, a miss a puff of dust where it strikes (shotFx.js). A
+// stunning shot is blue, a fire weapon's orange (tone, shotFx.js).
+function tracer(ctx, cam, shot) {
+  const { from, hit, progress, tone = 'plain' } = shot;
+  const color = { stun: palette.stunShot, fire: palette.fire }[tone] ?? palette.tracer;
   const [ax, ay] = [from[0] + 0.5, from[1] + 0.5];
-  let [bx, by] = [to[0] + 0.5, to[1] + 0.5];
-  if (!hit) {
-    // Wide of the target, and on past it.
-    const [dx, dy] = [bx - ax, by - ay];
-    const len = Math.hypot(dx, dy) || 1;
-    [bx, by] = [bx + (dx / len) * 0.7 - (dy / len) * 0.35, by + (dy / len) * 0.7 + (dx / len) * 0.35];
-  }
+  const [bx, by] = endOf(shot);
   const flying = Math.min(1, progress / FLIGHT);
   const fade = progress <= FLIGHT ? 1 : Math.max(0, 1 - (progress - FLIGHT) / 0.4);
+  const flash = muzzle(shot);
+  if (flash) glowAt(ctx, project(cam, flash.at[0], flash.at[1], 0.36), 14, palette.fireCore, color, 0.95 * flash.alpha);
   if (fade <= 0) return;
   const [tx, ty] = [ax + (bx - ax) * flying, ay + (by - ay) * flying];
   const [p, q] = [project(cam, ax, ay, 0.33), project(cam, tx, ty, 0.38)];
   ctx.lineCap = 'round';
   ctx.globalAlpha = fade;
-  ctx.strokeStyle = rgba(palette.tracer, 0.35);
+  ctx.strokeStyle = rgba(color, 0.35);
   ctx.lineWidth = 6;
   ctx.beginPath();
   ctx.moveTo(p[0], p[1]);
   ctx.lineTo(q[0], q[1]);
   ctx.stroke();
-  ctx.strokeStyle = palette.tracer;
+  ctx.strokeStyle = color;
   ctx.lineWidth = 2;
   ctx.stroke();
-  if (hit && progress >= FLIGHT) {
-    // Where it lands, a flash.
-    const r = 18 * (1 - fade * 0.4);
-    const glow = ctx.createRadialGradient(q[0], q[1], 0, q[0], q[1], r);
-    glow.addColorStop(0, rgba(palette.tracer, 0.9));
-    glow.addColorStop(1, rgba(palette.fire, 0));
-    ctx.fillStyle = glow;
+  ctx.globalAlpha = 1;
+  // Where it lands, a flash, and sparks thrown out.
+  if (hit && progress >= FLIGHT) glowAt(ctx, q, 18 * (1 - fade * 0.4), color, palette.fire, 0.9 * fade);
+  ctx.fillStyle = color;
+  for (const spark of sparks(shot)) {
+    const [sx, sy] = project(cam, spark.at[0], spark.at[1], spark.z);
+    ctx.globalAlpha = spark.alpha;
+    ctx.fillRect(sx - 1.5, sy - 1.5, 3, 3);
+  }
+  // A miss strikes past: a little dust where it lands.
+  ctx.fillStyle = palette.rubble;
+  for (const dust of puff(shot)) {
+    const [sx, sy] = project(cam, dust.at[0], dust.at[1], dust.z);
+    const [ex] = project(cam, dust.at[0] + dust.r, dust.at[1], dust.z);
+    ctx.globalAlpha = dust.alpha;
     ctx.beginPath();
-    ctx.arc(q[0], q[1], r, 0, Math.PI * 2);
+    ctx.arc(sx, sy, Math.max(1.5, Math.abs(ex - sx)), 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.globalAlpha = 1;
+}
+
+// A soft round glow at a screen point [x, y], r px, from one color at its
+// middle to nothing at its edge.
+function glowAt(ctx, [x, y], r, core, edge, alpha) {
+  if (alpha <= 0 || r <= 0) return;
+  const glow = ctx.createRadialGradient(x, y, 0, x, y, r);
+  glow.addColorStop(0, rgba(core, alpha));
+  glow.addColorStop(1, rgba(edge, 0));
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 // A charge blowing (M38): a flash over its tile and the tiles beside it,

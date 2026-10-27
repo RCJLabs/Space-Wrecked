@@ -26,6 +26,7 @@ import { clampOrbit, fitOrbit, panOrbit, pinchOrbit, project, turnOrbit, unproje
 import { followPoints, followShift, glideAt } from '../../render/follow.js';
 import { palette, skinFor } from '../../render/palette.js';
 import { convexHull, inside } from '../../render/pick.js';
+import { tone as shotTone } from '../../render/shotFx.js';
 import { cuesBetween, frameAt, makeTimeline, poseAt } from '../../render/playback.js';
 import { crewColor, LYING_TOP, ordersScene, UNIT_TOP, unitsScene, zonesScene } from '../../render/units.js';
 import { describeEvent } from '../../sim/battleLog.js';
@@ -589,7 +590,7 @@ export function mountFight(root, source) {
       marks: objectiveMarks(battle),
       welds: weldLabels(battle),
       floats: frame?.floats ?? [],
-      shot: frame?.done ? null : frame?.shot ?? null,
+      shot: frame?.done || !frame?.shot ? null : { ...frame.shot, tone: shotTone(defs?.weapons.get(frame.shot.weapon)) },
       blast: frame?.done ? null : frame?.blast ?? null,
       banner: frame?.event?.type === 'turn' ? { text: frame.event.side === 'crew' ? 'YOUR TURN' : 'ENEMY TURN', progress: frame.progress } : null,
     };

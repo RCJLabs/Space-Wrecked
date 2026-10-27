@@ -79,6 +79,12 @@ export const palette = {
   cover: '#bff0ff',
   target: '#ff6b6b',
   tracer: '#fff1b8',
+  // A stunning shot's tracer and sparks (M59); a fire weapon's take fire.
+  stunShot: '#8fd8ff',
+  // A room's own light on a battle map (M59), and red when the player's
+  // ship is boarded.
+  roomLight: '#ffe9c2',
+  alertLight: '#ff4a3d',
   // An approach played out (M38b): the other ship's shots, and the shimmer
   // of a shield taking one.
   enemyTracer: '#ffb08a',
@@ -446,6 +452,7 @@ export const MUST_DIFFER = [
   ['reach', 'dash', 'move tiles, an action and a dash'],
   ['bpGlow', 'bad', 'a hit on an enemy and a hurt to the crew'],
   ['tracer', 'enemyTracer', 'shots on the approach, ours and theirs'],
+  ['tracer', 'stunShot', 'a shot and a stunning one'],
   ['crewSuit', 'enemySuit', 'the crew and boarders'],
   ['crewA', 'enemyTrim', 'hit point pips'],
   ['crewB', 'enemyTrim', 'hit point pips'],

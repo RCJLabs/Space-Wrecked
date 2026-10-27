@@ -13,7 +13,9 @@
 //     event    the event playing at t (or null), and progress, 0 to 1
 //     moving   { id, at: [x, y], facing } for a unit walking, at a point
 //              between tile middles
-//     shot     { shooter, target, from, to, hit, progress } for a shot
+//     shot     { shooter, target, from, to, hit, progress, weapon, seed }
+//              for a shot: weapon the shooter's (M59), seed the ms its
+//              beat starts, for shotFx.js to scatter its sparks by
 //     hit      the id of a unit a shot has just hit, or null
 //     blast    { at: [x, y], progress } for a charge blowing (M38), or null
 //     floats   [{ at: [x, y], text, tone, age, stack }]: words over tiles;
@@ -95,7 +97,7 @@ export function frameAt(timeline, t) {
       }
     }
     if (t < beat.at + beat.ms) {
-      playing = { event: beat.event, progress: (t - beat.at) / beat.ms };
+      playing = { event: beat.event, progress: (t - beat.at) / beat.ms, at: beat.at };
       break;
     }
     view = applyEvent(view, beat.event);
@@ -106,7 +108,7 @@ export function frameAt(timeline, t) {
   if (event?.type === 'blast') frame.blast = { at: event.at, progress: frame.progress };
   if (event?.type === 'shot') {
     const [shooter, target] = [unitOf(view, event.unit), unitOf(view, event.target)];
-    frame.shot = { shooter: shooter.id, target: target.id, from: [shooter.x, shooter.y], to: [target.x, target.y], hit: event.hit, progress: frame.progress };
+    frame.shot = { shooter: shooter.id, target: target.id, from: [shooter.x, shooter.y], to: [target.x, target.y], hit: event.hit, progress: frame.progress, weapon: shooter.weapon ?? null, seed: playing.at };
     if (event.hit && frame.progress >= FLIGHT && frame.progress < FLIGHT + 0.2) frame.hit = target.id;
   }
   return frame;

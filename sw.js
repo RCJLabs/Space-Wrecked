@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "5f2e2013cc3e";
+const VERSION = "5959e1f083e8";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -116,6 +116,7 @@ const FILES = [
   "src/render/scenes/world.js",
   "src/render/shipScene.js",
   "src/render/shipView.js",
+  "src/render/shotFx.js",
   "src/render/solid.js",
   "src/render/starfield.js",
   "src/render/svg.js",
