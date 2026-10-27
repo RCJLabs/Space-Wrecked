@@ -74,7 +74,7 @@ test('the actions rename her and pick her emblem, and refuse what will not do', 
 });
 
 test('a save from before M52 has no identity until a screen rolls hers, the one a new game would', () => {
-  assert.equal(SAVE_VERSION, 49);
+  assert.equal(SAVE_VERSION, 50);
   const campaign = newCampaign(rules, 31);
   const old = { version: 45, data: { ...initialState(2), campaign: { ...campaign, identity: undefined } } };
   delete old.data.campaign.identity;
