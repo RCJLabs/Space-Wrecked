@@ -1,7 +1,7 @@
 // Text for the settings screen (settings.js): each setting's choices, and
 // what the one picked does, its numbers from data/balance.json. Pure.
 import { DIFFICULTIES, enemyBonus, gunneryBonus } from '../sim/difficulty.js';
-import { COLORS, CONFIRMS, FPS_CAPS, HANDS, MOTIONS, READINGS, SPEEDS, TEXT_SIZES, VOLUMES } from '../sim/settings.js';
+import { COLORS, CONFIRMS, FPS_CAPS, HANDS, MOTIONS, MUSIC_LEVELS, READINGS, SPEEDS, TEXT_SIZES, VOLUMES } from '../sim/settings.js';
 
 // The rows, in order: [{ key, title, choices: [{ value, label }], value,
 // action, line }]. key is the setting (sim/settings.js); value is the one
@@ -22,6 +22,12 @@ export function settingsText(settings, balance, campaign = null) {
       title: 'Volume',
       choices: VOLUMES.map((value) => ({ value, label: `${value}%` })),
       line: settings.sound ? `Every sound at ${settings.volume}%.` : `Every sound at ${settings.volume}%, once sound is on.`,
+    },
+    {
+      key: 'music',
+      title: 'Music',
+      choices: MUSIC_LEVELS.map((value) => ({ value, label: value ? `${value}%` : 'Off' })),
+      line: !settings.music ? "No music, and none of the ship's hum or the colony's wind under the game." : settings.sound ? `Music and the ship's hum at ${settings.music}%, under the sounds.` : `Music at ${settings.music}%, once sound is on.`,
     },
     {
       key: 'captions',

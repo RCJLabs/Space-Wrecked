@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "fd24a297589f";
+const VERSION = "d459cfddeed6";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -25,6 +25,7 @@ const FILES = [
   "data/jobs.json",
   "data/manufacturers.json",
   "data/modules.json",
+  "data/music.json",
   "data/quests.json",
   "data/recruits.json",
   "data/sectors.json",
@@ -46,6 +47,7 @@ const FILES = [
   "src/config.js",
   "src/core/blueprint.js",
   "src/core/codec.js",
+  "src/core/music.js",
   "src/core/rng.js",
   "src/core/save.js",
   "src/core/soundParams.js",
@@ -54,6 +56,7 @@ const FILES = [
   "src/platform/audio.js",
   "src/platform/content.js",
   "src/platform/haptics.js",
+  "src/platform/musicWorker.js",
   "src/platform/orientation.js",
   "src/platform/serviceWorker.js",
   "src/platform/storage.js",
@@ -319,6 +322,7 @@ const FILES = [
   "src/ui/icons.js",
   "src/ui/look.js",
   "src/ui/motion.js",
+  "src/ui/music.js",
   "src/ui/names.js",
   "src/ui/portrait.js",
   "src/ui/screens.js",

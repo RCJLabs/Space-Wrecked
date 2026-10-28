@@ -2,6 +2,74 @@
 
 Newest entry first.
 
+## M60 Music and room tone (2026-10-27)
+
+**Status:** done; the ROADMAP.md box is ticked. Save v50, with a migration.
+
+**How it was picked:** item 5 of the second Phase 8 brainstorm, next in my order, on Evan's "Merge when ready then continue to the next item". The beds are my picks, not yet heard by Evan: the WAVs are his to judge (below).
+
+**What the measuring found:**
+- The game's sound was 37 short effects, each played once. Between them it was silent: no music, no hum.
+- A looping bed made the same way takes long enough to render that, done on the page, it would stall the game for a second or more on the phone.
+
+**What shipped:**
+- **Four beds as data** (`data/music.json`), made by ZzFX from their parts' notes (`src/core/music.js`, pure):
+  - the hangar's (the title and act 1's screens);
+  - the run's (the chart and the approach);
+  - a fight's;
+  - the colony's (and the run's end).
+- **Room tone in each:** a low hum under the hangar's and a fight's, the engines' thrum under the run's, wind at the colony.
+- **Seamless loops:** a note that rings past the end carries on at the start.
+- **Rendered in a worker** (`src/platform/musicWorker.js`): the game never waits on it. The two last-played beds are kept, so going from the hangar to a fight and back starts at once. Changing beds cross-fades over 1.5 s (`playMusic` in `src/platform/audio.js`, the screen's bed in `src/ui/music.js`).
+- **A Music setting** under Volume: Off, 10, 30, 50, 70%, a new game at 30. Sound off is music off. Save v50 gives an older save 30.
+- **Tools:** `node tools/music.js` reports each bed's loop, peak and loudness against its target. `--wav <dir>` writes each loop to listen to.
+- **Validation:** `tools/validate-music.js` checks each bed's screens are real and under one bed, its tempo and bars, each part's instrument as a sound's is (notes may ring 6 s), and that its notes fill the bed's steps evenly.
+
+**Done when** (ROADMAP.md, M60), and how each is met:
+- **Four beds from data, with room tone:** `tests/music.test.js` names them and checks only the lift-off, the landing and the game over are silent.
+- **Seamless loops:** `tests/music.test.js` checks a note at the last step wraps to the start.
+- **Off the page's thread:** `m60/verify.mjs` saw no long task while the title's bed was made. It saw two during the fight's opening (80 and 106 ms at cover), and nothing here tells whether they are the fight screen's own mounting or the music. The fight's bed is made in the worker, but the AudioBuffer copy and the cross-fade start on the page.
+- **Moving between beds:** `m60/verify.mjs` at the three sizes: the title's first tap brings the hangar's in; settings keep it; a fight cross-fades to the fight's with the hangar's kept; Music Off stops it; 30% brings it back at once.
+- **The setting and save v50:** `tests/music.test.js` (levels, refusals, the migration). `m60/verify.mjs`: the Music row's five buttons are 48 px or more, and the save reads v50 with music 0.
+- **Loudness:** each bed within 1 dB of its target and 12 to 14 dB under the sounds' middle (-18 dB), peaks under 1 (`tests/music.test.js`, from the real data).
+- **Content as data, validated:** `npm run validate`, and the validator's refusals in `tests/music.test.js`.
+- **Pure and tested:** `renderBed` with a stand-in synth (length, repeat, seam, frequency rule, gain).
+- **Every earlier check; three sizes:** below.
+
+**Tests:** `node --test`: 1300 pass (1291 on main: 9 added in `tests/music.test.js`). Updated on purpose:
+- the save-version pins (49 → 50);
+- the default settings (with `music: 30`);
+- the v38 migration's place from the end;
+- the validator's summary line (4 music beds).
+
+Golden files are unchanged.
+
+**Browser checks:**
+- **M60's own:** `m60/verify.mjs` passes 11 of 11 at each of the three sizes.
+- **Every earlier milestone's check,** in the three chains (`m60/regress-a.sh`, `regress-b1.sh`, `regress-b2.sh`), M59's added to chain A:
+  - **Adapted for v50** (`m60/adapt.sh`): 23 checks pinned to save v49 have copies (`<name>-60.mjs`) pinned to v50.
+  - **M35's copy** counted ZzFX loaded once at the first tap. The music's worker loads its own ZzFX to make the title's bed, so it is two now; the copy counts the page's and the worker's. 24 of 24 at the three sizes.
+  - **M32b's first copy** fails its 2 checks, as on main.
+  - **Found in the test kit, not the app:** the Music row put the settings' Tips row past the 12 swipes `m18/old.mjs`'s `reach` allowed at 821 × 283, so M23c's and M23's copies stopped while turning tips off. The settings still scroll to it; `reach` now allows 20, and both pass.
+  - **M22's copy at open** timed out once in chain B2 and passed 35 of 35 when run again.
+  - **The rest pass at the three sizes:** 120 runs in chain A, 42 in B1, 33 in B2 (a check at one size is one run).
+
+**Known issues:**
+- **Nobody has heard the beds.** The notes, tempos and levels are my picks from music theory and the loudness meter. Evan should listen to the WAVs (`node tools/music.js --wav <dir>`) and say what to change; it is a data edit.
+- **A bed takes 0.5 to 1.4 s to render in Node here,** likely 2 to 5 s on the phone. The first time a place's bed is wanted, it comes in that much later, and the bed before keeps playing until then.
+- **Up to about 10 MB of samples** are held while two beds are kept (the colony's loop is 5.3 MB).
+- **Music doesn't follow a fight's course** (tension, a sting when won or lost): §9.
+- **The worker needs module workers** (Chrome on Android has them). Where they're missing, there's no music and a console warning, and nothing else changes.
+
+**What Evan should test on the phone:**
+- From a fresh start: tap the title. Within a few seconds the hangar's bed should fade in under the menu.
+- Go to the chart, then into a fight and back: each place's bed should cross-fade in. Back at the hangar it should start at once.
+- Settings → Music: Off silences it; 10 to 70% sets its level against the sounds. Sound off silences everything.
+- Leave the game and come back: the music should stop while away and carry on after.
+- Listen for clicks at the loop's end (there shouldn't be any), and say what the beds should sound like instead.
+
+**Next milestone's first task:** item 7 of the brainstorm, content depth: count the place events, the companions' story beats and each background's colony events, and list where a run repeats itself most.
+
 ## M59 Light and fire (2026-10-27)
 
 **Status:** done; the ROADMAP.md box is ticked. No save change.

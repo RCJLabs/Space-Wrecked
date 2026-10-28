@@ -40,6 +40,9 @@ const screens = {
   epilogue: epilogueScreen,
 };
 
+// The screens' ids: the music (M60) names the ones each bed plays under.
+export const SCREEN_IDS = Object.keys(screens);
+
 export function screenFor(id) {
   return screens[id] ?? sandboxes.find((s) => s.id === id)?.screen ?? titleScreen;
 }

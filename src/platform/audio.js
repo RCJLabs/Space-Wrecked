@@ -16,6 +16,13 @@
 //   onSounds(listener) listener(ids) hears each go's sounds as they would
 //                      play, a tap's own left out, whether sound is on or
 //                      not: the captions (M49, ui/captions.js)
+//   playMusic(id)      the music bed to play (M60, data/music.json), or null
+//                      for none; ui/music.js names the screen's. A bed is
+//                      made by the worker (musicWorker.js) the first time,
+//                      and kept, the KEPT_BEDS last played; a new one
+//                      cross-fades in over FADE s. Music is off with sound,
+//                      and at a music level of 0
+//   musicStatus()      { wanted, playing, kept }: the dev menu and the checks
 //
 // ZzFX scales a sound by its own volume (0.3) as it makes it and again as
 // it plays it; the samples are made once with the first scaling (the
@@ -29,8 +36,10 @@ import { loadContent } from './content.js';
 const MAX_VOICES = 12; // sounds playing at once; any more are dropped
 const GAP = 0.05; // s between sounds cued together
 const RECENT = 40;
+const FADE = 1.5; // s, from one music bed to the next
+const KEPT_BEDS = 2;
 
-let setting = { sound: true, volume: 70 };
+let setting = { sound: true, volume: 70, music: 30 };
 let touched = false; // the page has had its first tap
 let loading = null; // loading ZzFX and the sounds, once begun
 let ready = null; // { ZZFX, ctx, gain, sounds } once loaded
@@ -39,6 +48,11 @@ let voices = 0;
 let pending = [];
 const recent = [];
 const listeners = new Set();
+let wantedBed = null; // the bed asked for, playing or not
+let playingBed = null; // { id, source, gain }
+const beds = new Map(); // id -> AudioBuffer, the latest played last
+const asked = new Set(); // ids the worker is making
+let worker = null;
 
 export function startAudio(store) {
   follow(store.getState().settings);
@@ -77,15 +91,28 @@ export function recentSounds() {
   return [...recent];
 }
 
+export function playMusic(id) {
+  wantedBed = id ?? null;
+  syncMusic();
+}
+
+export function musicStatus() {
+  return { wanted: wantedBed, playing: playingBed?.id ?? null, kept: [...beds.keys()] };
+}
+
 export function onSounds(listener) {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
 
 function follow(settings) {
-  setting = { sound: settings.sound !== false, volume: settings.volume ?? 70 };
-  if (ready) ready.gain.gain.value = setting.volume / 100;
+  setting = { sound: settings.sound !== false, volume: settings.volume ?? 70, music: settings.music ?? 30 };
+  if (ready) {
+    ready.gain.gain.value = setting.volume / 100;
+    ready.music.gain.value = setting.music / 100;
+  }
   if (touched && setting.sound) load();
+  syncMusic();
 }
 
 function load() {
@@ -95,7 +122,11 @@ function load() {
       const gain = ctx.createGain();
       gain.gain.value = setting.volume / 100;
       gain.connect(ctx.destination);
-      ready = { ZZFX, ctx, gain, sounds: content.sounds };
+      const music = ctx.createGain();
+      music.gain.value = setting.music / 100;
+      music.connect(ctx.destination);
+      ready = { ZZFX, ctx, gain, music, sounds: content.sounds, beds: content.music };
+      syncMusic();
     })
     .catch((err) => {
       loading = null; // the next tap tries again
@@ -150,4 +181,79 @@ function bufferOf(id) {
     buffers.set(id, buffer);
   }
   return buffers.get(id);
+}
+
+// The music: the bed wanted playing, if sound and music are on and the bed
+// is made; else the worker asked to make it, and the bed playing kept on
+// until it is.
+function syncMusic() {
+  if (!ready) return;
+  const id = setting.sound && setting.music > 0 ? wantedBed : null;
+  if ((playingBed?.id ?? null) === id) return;
+  if (id === null) return fadeTo(null);
+  if (beds.has(id)) return fadeTo(id);
+  makeBed(id);
+}
+
+function makeBed(id) {
+  const bed = ready.beds?.get(id);
+  if (!bed || asked.has(id)) return;
+  worker ??= startWorker();
+  if (!worker) return;
+  asked.add(id);
+  worker.postMessage(bed);
+}
+
+function startWorker() {
+  try {
+    const made = new Worker(new URL('./musicWorker.js', import.meta.url), { type: 'module' });
+    made.addEventListener('message', ({ data }) => {
+      asked.delete(data.id);
+      const buffer = ready.ctx.createBuffer(1, data.samples.length, data.sampleRate);
+      buffer.getChannelData(0).set(data.samples);
+      keep(data.id, buffer);
+      syncMusic();
+    });
+    made.addEventListener('error', (err) => console.warn(`Music not made: ${err.message}`));
+    return made;
+  } catch (err) {
+    console.warn(`Music not made: ${err.message}`);
+    return null;
+  }
+}
+
+// Keeps a bed as the latest played, and only the KEPT_BEDS latest.
+function keep(id, buffer) {
+  beds.delete(id);
+  beds.set(id, buffer);
+  for (const old of beds.keys()) if (beds.size > KEPT_BEDS && old !== playingBed?.id) beds.delete(old);
+}
+
+// Fades the bed playing out and the one by id (made) in, over FADE.
+function fadeTo(id) {
+  const { ctx } = ready;
+  const now = ctx.currentTime;
+  if (playingBed) {
+    const { source, gain } = playingBed;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(gain.gain.value, now);
+    gain.gain.linearRampToValueAtTime(0, now + FADE);
+    source.stop(now + FADE);
+    source.onended = () => {
+      source.disconnect();
+      gain.disconnect();
+    };
+  }
+  playingBed = null;
+  if (id === null) return;
+  const source = ctx.createBufferSource();
+  source.buffer = beds.get(id);
+  source.loop = true;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(1, now + FADE);
+  source.connect(gain).connect(ready.music);
+  source.start(now);
+  playingBed = { id, source, gain };
+  keep(id, beds.get(id));
 }

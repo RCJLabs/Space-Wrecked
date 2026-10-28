@@ -1,0 +1,75 @@
+{
+  "beds": [
+    {
+      "id": "hangar",
+      "for": "The title, the hangar and act 1's screens: an easy, low minor loop over the hangar's hum",
+      "screens": ["title", "settings", "background", "captain", "start", "hub", "construction", "jobs", "shop"],
+      "bpm": 72,
+      "steps": 8,
+      "bars": 8,
+      "root": 110,
+      "gain": 0.475,
+      "loudness": -32,
+      "parts": [
+        {"name": "pad", "octave": 1, "zzfx": {"volume": 0.22, "attack": 0.8, "sustain": 2.2, "release": 1.2, "shape": 1, "filter": -1400, "tremolo": 0.05}, "notes": "0,3,7 . . . . . . . 0,3,7 . . . . . . . -4,0,3 . . . . . . . -4,0,3 . . . . . . . 3,7,10 . . . . . . . 3,7,10 . . . . . . . -2,2,5 . . . . . . . -2,2,5 . . . . . . ."},
+        {"name": "bass", "octave": -1, "zzfx": {"volume": 0.5, "attack": 0.02, "sustain": 0.5, "release": 0.5, "shape": 2, "filter": -400}, "notes": "0 . . . 0 . . . 0 . . . 0 . . . -4 . . . -4 . . . -4 . . . -4 . . . -9 . . . -9 . . . -9 . . . -9 . . . -2 . . . -2 . . . -2 . . . -2 . . ."},
+        {"name": "pulse", "octave": 2, "zzfx": {"volume": 0.12, "attack": 0.005, "sustain": 0.02, "release": 0.3, "shape": 0, "delay": 0.25}, "notes": "0 . 7 . 3 . 7 . 0 . 7 . 3 . 7 . -4 . 3 . 0 . 3 . -4 . 3 . 0 . 3 . 3 . 10 . 7 . 10 . 3 . 10 . 7 . 10 . -2 . 5 . 2 . 5 . -2 . 5 . 2 . 5 ."},
+        {"name": "hum", "zzfx": {"volume": 0.35, "frequency": 55, "attack": 1, "sustain": 1.6, "release": 1, "shape": 0, "tremolo": 0.08}, "notes": "0 . . . . . . ."},
+        {"name": "air", "zzfx": {"volume": 0.06, "attack": 1, "sustain": 1.6, "release": 1, "shape": 4, "noise": 1, "filter": -500}, "notes": "0 . . . . . . ."}
+      ]
+    },
+    {
+      "id": "run",
+      "for": "The chart and the approach: a wide, drifting loop over the engines' thrum",
+      "screens": ["sector", "approach"],
+      "bpm": 88,
+      "steps": 8,
+      "bars": 8,
+      "root": 73.42,
+      "gain": 1.65,
+      "loudness": -32,
+      "parts": [
+        {"name": "pad", "octave": 1, "zzfx": {"volume": 0.18, "attack": 1, "sustain": 1.6, "release": 1.4, "shape": 1, "filter": -1100}, "notes": "0,3,7 . . . . . . . 0,3,7 . . . . . . . -2,2,5 . . . . . . . -2,2,5 . . . . . . . -4,0,3 . . . . . . . -4,0,3 . . . . . . . -2,2,5 . . . . . . . -5,-2,2 . . . . . . ."},
+        {"name": "arp", "octave": 2, "zzfx": {"volume": 0.1, "attack": 0.004, "sustain": 0.01, "release": 0.22, "shape": 0, "delay": 0.17}, "notes": "0 3 7 12 7 3 . . 0 3 7 12 7 3 . . -2 2 5 10 5 2 . . -2 2 5 10 5 2 . . -4 0 3 8 3 0 . . -4 0 3 8 3 0 . . -2 2 5 10 5 2 . . -5 -2 2 7 2 -2 . ."},
+        {"name": "bass", "octave": -1, "zzfx": {"volume": 0.45, "attack": 0.1, "sustain": 1.2, "release": 0.6, "shape": 1, "filter": -300}, "notes": "0 . . . . . . . 0 . . . . . . . -2 . . . . . . . -2 . . . . . . . -4 . . . . . . . -4 . . . . . . . -2 . . . . . . . -5 . . . . . . ."},
+        {"name": "thrum", "zzfx": {"volume": 0.3, "frequency": 45, "attack": 1, "sustain": 1.2, "release": 1, "shape": 2, "filter": -160, "tremolo": 0.3}, "notes": "0 . . . . . . ."},
+        {"name": "air", "zzfx": {"volume": 0.06, "attack": 1, "sustain": 1.6, "release": 1, "shape": 4, "noise": 1, "filter": -500}, "notes": "0 . . . . . . ."}
+      ]
+    },
+    {
+      "id": "fight",
+      "for": "A fight: a driving minor loop, kick and snap, over the ship's hum",
+      "screens": ["campaign-fight"],
+      "bpm": 116,
+      "steps": 8,
+      "bars": 4,
+      "root": 82.41,
+      "gain": 0.592,
+      "loudness": -30,
+      "parts": [
+        {"name": "bass", "octave": -1, "zzfx": {"volume": 0.5, "attack": 0.005, "sustain": 0.08, "release": 0.12, "shape": 2, "filter": -500}, "notes": "0 0 0 0 0 0 0 0 -4 -4 -4 -4 -4 -4 -4 -4 -2 -2 -2 -2 -2 -2 -2 -2 -5 -5 -5 -5 -5 -5 -5 -5"},
+        {"name": "kick", "zzfx": {"volume": 0.9, "frequency": 55, "attack": 0, "sustain": 0.04, "release": 0.16, "shape": 0, "pitchJump": -20, "pitchJumpTime": 0.02}, "notes": "0 . . . 0 . 0 ."},
+        {"name": "snap", "zzfx": {"volume": 0.18, "frequency": 1200, "attack": 0, "sustain": 0.01, "release": 0.09, "shape": 4, "noise": 2, "filter": 1500}, "notes": ". . 0 . . . 0 ."},
+        {"name": "pad", "octave": 1, "zzfx": {"volume": 0.14, "attack": 0.4, "sustain": 1.2, "release": 0.6, "shape": 2, "filter": -900}, "notes": "0,3,7 . . . . . . . -4,0,3 . . . . . . . -2,2,5 . . . . . . . -5,-1,2 . . . . . . ."},
+        {"name": "hum", "zzfx": {"volume": 0.35, "frequency": 55, "attack": 0.6, "sustain": 0.9, "release": 0.6, "shape": 0, "tremolo": 0.08}, "notes": "0 . . . . . . ."}
+      ]
+    },
+    {
+      "id": "colony",
+      "for": "The colony and the run's end: a warm, slow major loop over the wind",
+      "screens": ["colony", "epilogue"],
+      "bpm": 64,
+      "steps": 8,
+      "bars": 8,
+      "root": 98,
+      "gain": 0.351,
+      "loudness": -32,
+      "parts": [
+        {"name": "pad", "octave": 1, "zzfx": {"volume": 0.2, "attack": 1.2, "sustain": 2.2, "release": 1.6, "shape": 0, "tremolo": 0.06}, "notes": "0,4,7 . . . . . . . 0,4,7 . . . . . . . -3,0,4 . . . . . . . -3,0,4 . . . . . . . -7,-3,0 . . . . . . . -7,-3,0 . . . . . . . -5,-1,2 . . . . . . . -5,-1,2 . . . . . . ."},
+        {"name": "pluck", "octave": 2, "zzfx": {"volume": 0.12, "attack": 0.004, "sustain": 0.03, "release": 0.6, "shape": 1, "delay": 0.3}, "notes": "0 . . 7 . 4 . . 0 . . 7 . 4 . . -3 . . 4 . 0 . . -3 . . 4 . 0 . . -7 . . 0 . -3 . . -7 . . 0 . -3 . . -5 . . 2 . -1 . . -5 . . 2 . -1 . ."},
+        {"name": "bass", "octave": -1, "zzfx": {"volume": 0.45, "attack": 0.05, "sustain": 1, "release": 0.8, "shape": 1, "filter": -350}, "notes": "0 . . . . . . . 0 . . . . . . . -3 . . . . . . . -3 . . . . . . . -7 . . . . . . . -7 . . . . . . . -5 . . . . . . . -5 . . . . . . ."},
+        {"name": "wind", "zzfx": {"volume": 0.09, "frequency": 300, "attack": 1.5, "sustain": 1.2, "release": 1.5, "shape": 4, "noise": 2, "tremolo": 0.4, "filter": -900}, "notes": "0 . . . . . . . . . . . . . . ."}
+      ]
+    }
+  ]
+}
