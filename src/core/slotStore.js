@@ -1,7 +1,7 @@
 // The campaign slots kept in a key-value store (M63): which slot is in play,
 // writing its save with the backup a write calls for, opening another slot,
 // restoring a backup, and the reminder's mark. The rules are slots.js's; the
-// store is anything with read(name), write(name, text) and remove(name), so
+// store is anything with read(name) and write(name, text), so
 // the game hands it localStorage (src/platform/saves.js) and the tests a Map.
 // parse and serialize turn save text into data and back (save.js).
 import { ACTIVE, BACKUPS, SLOTS, activeSlot, backupFor, backupName, markFor, markName, openedData, reminderDue, saveName, slotState } from './slots.js';

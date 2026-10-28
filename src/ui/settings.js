@@ -8,6 +8,7 @@
 import { seedFrom } from '../core/rng.js';
 import { exportSave, importSave, makeSave } from '../core/save.js';
 import { loadContent } from '../platform/content.js';
+import { saves } from '../platform/saves.js';
 import { drawStars, makeStarfield, paintBackdrop } from '../render/starfield.js';
 import { saveData } from '../sim/root.js';
 import { copyText } from './clipboard.js';
@@ -107,6 +108,7 @@ export const settingsScreen = {
       const makeCode = () => {
         exportArea.value = exportSave(makeSave(saveData(game.getState())));
         setNote(exportNote, `${exportArea.value.length} characters.`, 'info');
+        saves.markDone(game.getState().campaign); // the title's reminder is answered (M63)
       };
       const importArea = codeArea('Paste a save code here.');
       const importNote = node('p', 'set-note');
@@ -122,6 +124,7 @@ export const settingsScreen = {
         }),
         onTap(importButton, () => {
           if (checked) {
+            saves.keepReplaced(); // the campaign it replaces stays a backup (M63)
             game.dispatch({ type: 'save/restore', data: checked.data });
             checked = null;
             importArea.value = '';
@@ -133,7 +136,7 @@ export const settingsScreen = {
           if (!result.ok) return setNote(importNote, result.error, 'bad');
           checked = result.save;
           importLabel();
-          setNote(importNote, 'A good save code. Tap Replace save? to put it in place of this one: the campaign under way goes.', 'warn');
+          setNote(importNote, 'A good save code. Tap Replace save? to put it in place of this one: the campaign under way is kept as a backup, under Campaigns.', 'warn');
         }),
       );
       const onEdit = () => {

@@ -1,4 +1,5 @@
-// Maps state.screen to a screen module: the title and its settings, a new
+// Maps state.screen to a screen module: the title, its settings and
+// campaign slots (M63), a new
 // game's background, captain and how hard it is (M41), the campaign's
 // screens (src/sim/root.js CAMPAIGN_SCREENS) and the dev sandboxes.
 import { approachScreen } from './campaign/approach.js';
@@ -16,6 +17,7 @@ import { overScreen } from './campaign/over.js';
 import { sectorScreen } from './campaign/sector.js';
 import { shopScreen } from './campaign/shop.js';
 import { startGameScreen } from './campaign/startGame.js';
+import { campaignsScreen } from './campaigns.js';
 import { sandboxes } from './dev/sandboxes.js';
 import { settingsScreen } from './settings.js';
 import { titleScreen } from './title.js';
@@ -23,6 +25,7 @@ import { titleScreen } from './title.js';
 const screens = {
   title: titleScreen,
   settings: settingsScreen,
+  campaigns: campaignsScreen,
   background: backgroundScreen,
   captain: captainScreen,
   start: startGameScreen,

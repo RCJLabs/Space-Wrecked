@@ -22,7 +22,6 @@ function memory(entries = {}) {
     map,
     read: (name) => (map.has(name) ? map.get(name) : null),
     write: (name, text) => (map.set(name, text), true),
-    remove: (name) => map.delete(name),
   };
 }
 const slotsIn = (kv) => createSaves(kv, { parse: parseSave, serialize });

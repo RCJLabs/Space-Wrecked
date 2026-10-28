@@ -3,9 +3,9 @@
 // storage.js and the save's text format.
 import { makeSave, parseSave } from '../core/save.js';
 import { createSaves } from '../core/slotStore.js';
-import { readText, removeText, writeText } from './storage.js';
+import { readText, writeText } from './storage.js';
 
 export const saves = createSaves(
-  { read: readText, write: writeText, remove: removeText },
+  { read: readText, write: writeText },
   { parse: parseSave, serialize: (data) => JSON.stringify(makeSave(data)) },
 );
