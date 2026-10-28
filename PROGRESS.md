@@ -50,7 +50,9 @@ Golden files are unchanged.
   - **Adapted for v50** (`m60/adapt.sh`): 23 checks pinned to save v49 have copies (`<name>-60.mjs`) pinned to v50.
   - **M35's copy** counted ZzFX loaded once at the first tap. The music's worker loads its own ZzFX to make the title's bed, so it is two now; the copy counts the page's and the worker's. 24 of 24 at the three sizes.
   - **M32b's first copy** fails its 2 checks, as on main.
-  - CHAIN_LINE
+  - **Found in the test kit, not the app:** the Music row put the settings' Tips row past the 12 swipes `m18/old.mjs`'s `reach` allowed at 821 × 283, so M23c's and M23's copies stopped while turning tips off. The settings still scroll to it; `reach` now allows 20, and both pass.
+  - **M22's copy at open** timed out once in chain B2 and passed 35 of 35 when run again.
+  - **The rest pass at the three sizes:** 120 runs in chain A, 42 in B1, 33 in B2 (a check at one size is one run).
 
 **Known issues:**
 - **Nobody has heard the beds.** The notes, tempos and levels are my picks from music theory and the loudness meter. Evan should listen to the WAVs (`node tools/music.js --wav <dir>`) and say what to change; it is a data edit.
