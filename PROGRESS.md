@@ -2,6 +2,66 @@
 
 Newest entry first.
 
+## M61 Content depth (2026-10-28)
+
+**Status:** done; the ROADMAP.md box is ticked. Save v51, with a migration.
+
+**How it was picked:** item 7 of the second Phase 8 brainstorm, next in my order, on Evan's "Merge when ready then continue to the next item". The 28 events are my writing, not yet read by Evan.
+
+**What the measuring found** (`m61/events.mjs`, main after M60):
+- **No kind of event runs dry within a run:** 1 to 5 met of each kind, from pools of 9 to 14. The repeats come across runs.
+- **The colony's days had no events:** nothing to decide between building and trips.
+- **Each companion's story was one step:** their loyalty place, and nothing else past the offer.
+
+**What shipped:**
+- **Colony events** (`src/sim/colonyEvents.js`): a day at home, with the ship landed and no trip, brings one at 20 in 100 (`balance.colonyEventChance`), of the new kind `colony`, drawn fresh-first like every kind. The next day waits until it is decided. Its choices need only supplies, parts, a job or a trait, and do only what the colony can: food, materials, a wound to someone at home, parts, a drop or a weapon. 10 for any colony and 2 for each background, 16 in all.
+- **A companion's beat:** each loyalty quest has a new first step, an event at the colony about their past: Varga's ration count, Teo's list, Ama's survey stakes, Dez's birthday card. It comes the day after they are aboard at the colony, ahead of any rolled event, and any choice does it. Their place is listed only after it. A list of places rolled before keeps room for it.
+- **2 more events for each kind of place,** 11 each.
+- **The colony screen** shows an open event in the run's event card (`eventCard.js`), over the panel and the ground. A choice takes two taps, and the card shows what came of it, and a beat's next step, until Carry on. Next day and Refit wait while an event is open.
+- **Save v51:** colonies get no event open. A loyalty quest under way moves one step on, past its new beat, so it is where it was.
+- **The test player** (`tools/voyage.js`) decides colony events with `bestChoice`, as on the run (`decideAtColony` in `voyagePlan.js`).
+- **Validated:** a colony event's needs and effects (no ambush, heat, wreck or settlers), a beat's event of kind `colony` marked for its quest, the chance 0 to 100.
+
+**Done when** (ROADMAP.md, M61), and how each is met:
+- **Colony events, 16, the next day waiting:** `tests/colonyEvents.test.js` covers the counts, the roll at the day's chance, fresh-first draws over a pool, none while one is open or the ship is out, the day refused until decided, and the result shown for a day. `m61/verify.mjs` checks the card at the three sizes.
+- **A second beat for each companion, saves kept where they were:** `tests/colonyEvents.test.js` covers the beat the day after signing on, any choice doing the step, the place listed after it (on a list rolled before too), and the v51 migration. `tests/companions.test.js` goes through the beat to the place's fight.
+- **8 more place events:** `tests/eventKinds.test.js` (11 of each kind, 128 events in all).
+- **28 events, each with two choices or more:** yes. **Each with an outcome that costs as well as pays:** not the four beats. They are story, and any choice does the step; Varga's and Teo's cost nothing, Ama's pays 2 materials one way.
+- **Save v51:** `tests/colonyEvents.test.js`.
+- **Test players and the margins:** `tests/voyage.test.js` passes against main's 100-seed rates (MAIN unchanged). Three checks moved, as CLAUDE.md asks:
+  - the near-against-far raid rate is now over 100 seeds: on the first 30, near came to 0.75 a run and far 0.81;
+  - a background's own run events are counted apart from its colony ones;
+  - the raid that calls the ship home is on seed 142's voyage out, not 160's: the colony's rolls moved the days.
+  - The colony days' materials check counts the events' materials both ways (`flags.eventMaterialsGot`, `eventMaterialsLost`).
+- **Validated:** `npm run validate`, and the refusals in `tests/colonyEvents.test.js`.
+- **Every earlier check; three sizes:** below.
+
+**Tests:** `node --test`: TESTS. Updated on purpose:
+- the save-version pins (50 → 51);
+- a new colony's shape (`event`, `eventResult`);
+- the loyalty tests, which now hear the beat first (`heard` in `tests/colonyKit.js`);
+- the tests of what else a day does, which run with no events rolled (`calm` in `tests/colonyKit.js`);
+- the event counts and the validator's summary line.
+
+Golden files are unchanged.
+
+**Browser checks:**
+- **M61's own:** `m61/verify.mjs` passes 21 of 21 at each of the three sizes: the tremor open, Next day held, a choice in two taps, the result and Carry on; Varga's beat the day after, its step done and her place listed; every button 48 px or more; no console errors.
+- **Every earlier milestone's check,** in the three chains (`m61/regress-a.sh`, `regress-b1.sh`, `regress-b2.sh`), M60's added to chain A. Copies pinned to save v50 have v51 ones (`m61/adapt.sh`, 23 of them). CHAINS
+
+**Known issues:**
+- **Nobody has read the events.** Wording and balance are mine. The colony's are small (±2 to 8 food or materials, wounds of 2 to 4).
+- **At the cover screen's shortest height** an event's text can scroll inside the card, as the run's do.
+- **The four beats cost nothing to hear.** They are a step of story before each loyalty place, not a decision with stakes.
+- **A colony event's choices** don't use heat, settlers or standing yet.
+
+**What Evan should test on the phone:**
+- At the colony, tap Next day a few times. About one day in five an event card should come up over the colony; Next day should wait until you choose. Choose, read what happened, then Carry on.
+- With a companion aboard, the first day at the colony brings their beat. After it, their place should be on the places list.
+- An older save with a loyalty quest open should still show that companion's place.
+
+**Next milestone's first task:** item 9 of the brainstorm, performance on a low-end phone: profile the colony, the approach and the biggest fight under a 4× CPU throttle at the cover size, frame times and long tasks, and check the 30 fps setting holds.
+
 ## M60 Music and room tone (2026-10-27)
 
 **Status:** done; the ROADMAP.md box is ticked. Save v50, with a migration.
