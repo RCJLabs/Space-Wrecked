@@ -23,7 +23,7 @@ import { defendersOf, defensesOf, endColonyRaid, faceRaid, foundOdds, landingPla
 import { campaignScreen, initialState, reduce, saveData } from '../src/sim/root.js';
 import { traitBonus } from '../src/sim/traits.js';
 import { rules } from './battleKit.js';
-import { settled, uidOf } from './colonyKit.js';
+import { calm, settled, uidOf } from './colonyKit.js';
 
 const { colonyHeatFall, raidWarning, heatAfterRaid, landingHit, raidShieldArmor, raidArmoryAim } = rules.balance;
 const raiders = rules.encounters.get(rules.backgrounds.get('miner').pursuer.colony.raiders).enemies;
@@ -90,6 +90,7 @@ test('heat at the colony: it falls a little each day, and a trip adds some, less
 });
 
 test("found: the day's odds by heat and the lanes, none below rumors or with a raid coming; the roll is the campaign's, and the lander comes raidWarning days later", () => {
+  const rules = calm; // no colony events rolled (M61)
   const landed = settled();
   const odds = (heat, lanes) => foundOdds(at({ ...landed, heat }, { lanes }), rules);
   // Calm, rumors, hunters, the task force and cornered; off, near and far
@@ -385,7 +386,7 @@ test('while the ship is away: a raid is fought out by those at home and the leg 
 test('saves: v23 for the raid coming and a leg it stopped; a v22 colony opens with none coming; broken ones are caught', () => {
   // 24 since M32's orders in a fight, 27 since M33's fix, 28 since M33b's
   // quests, 29 since M33c's companions.
-  assert.equal(SAVE_VERSION, 50);
+  assert.equal(SAVE_VERSION, 51);
   // From M38e the colony keeps a heat of its own, the ship's as v37 opens
   // it (unused while the ship is landed there).
   const placed = at(settled(), { places: [far] });

@@ -761,12 +761,12 @@ test("the colony's days: the careful player plays 30, building farms and mines b
     assert.deepEqual(home.colony.buildings.map((b) => b.type), [...colony.given, ...put]);
     assert.equal(days.farms + days.mines, days.built.length);
     // The materials it had, dug and spent add up, the stores keeping the
-    // rest, lost raids taking theirs (M29) and a trader buying its lots
-    // (M53).
+    // rest, lost raids taking theirs (M29), a trader buying its lots (M53)
+    // and the colony's events giving and taking theirs (M61).
     const spent = days.built.reduce((sum, b) => sum + rules.colony.builds.get(b.type).cost, 0);
     const sold = (home.flags.traderSales ?? 0) * balance.traderLot;
     assert.equal(home.flags.materialsSpent ?? 0, spent);
-    assert.equal(days.materials[1], days.materials[0] + (home.flags.materialsDug ?? 0) - spent - sold - (home.flags.materialsLost ?? 0) - (home.flags.raidMaterialsTaken ?? 0), `seed ${seed}: materials add up`);
+    assert.equal(days.materials[1], days.materials[0] + (home.flags.materialsDug ?? 0) - spent - sold - (home.flags.materialsLost ?? 0) - (home.flags.raidMaterialsTaken ?? 0) + (home.flags.eventMaterialsGot ?? 0) - (home.flags.eventMaterialsLost ?? 0), `seed ${seed}: materials add up`);
     assert.ok(days.materials[1] <= days.stores && days.food[1] <= days.stores);
     // Nobody died of hunger: the crew is the one that landed.
     assert.deepEqual(home.crew.map((m) => m.id), trip.campaign.crew.map((m) => m.id));
@@ -869,8 +869,6 @@ test("the colony's raids: over its 60 days the careful player stays home while o
       const after = trip.tally.trips.flown.filter((flown) => flown.day >= last).length;
       assert.ok(travelled.heat <= balance.heatAfterRaid + after * tripHeatOf(home, rules), `seed ${seed}: heat ${travelled.heat} at the end, ${after} trips after the last raid`);
     }
-    rate[raids.lanes][0] += raids.found;
-    rate[raids.lanes][1] += 1;
     faced += raids.faced.length;
     // The report says the raids.
     assert.ok(
@@ -879,7 +877,13 @@ test("the colony's raids: over its 60 days the careful player stays home while o
     );
   }
   assert.ok(faced >= 1, 'some colony is raided');
-  // Found more often near the lanes than far from them, a run.
+  // Found more often near the lanes than far from them, a run: over
+  // RATE_RUNS seeds since M61, whose colony events tipped the first RUNS
+  // (near 0.75 a run, far 0.81).
+  for (const { tally } of refittingAll) {
+    rate[tally.raids.lanes][0] += tally.raids.found;
+    rate[tally.raids.lanes][1] += 1;
+  }
   const per = (lanes) => rate[lanes][0] / Math.max(1, rate[lanes][1]);
   assert.ok(rate[1][1] > 0 && rate[3][1] > 0, 'colonies near and far from the lanes');
   assert.ok(per(1) > per(3), `near ${per(1)} a run, far ${per(3)}`);
@@ -942,7 +946,8 @@ test("events come again only once their kind has no others left: from each start
     assert.ok(onRun <= RATE_RUNS / 10, `${id}: an event met twice on the run in ${onRun} of ${RATE_RUNS}`);
     assert.ok(atColony <= RATE_RUNS / 10, `${id}: an event met twice at the colony in ${atColony} of ${RATE_RUNS}`);
     const met = new Set(all.flatMap((r) => r.steps.filter((step) => step.kind === 'event').map((step) => step.event)));
-    const own = [...rules.events.values()].filter((event) => event.background === id).map((event) => event.id);
+    // On the run: the colony's own two (M61) are met at the colony.
+    const own = [...rules.events.values()].filter((event) => event.background === id && event.kind !== 'colony').map((event) => event.id);
     const others = [...rules.events.values()].filter((event) => event.background && event.background !== id).map((event) => event.id);
     assert.equal(own.length, 4);
     assert.deepEqual(own.filter((event) => !met.has(event)), [], `${id}: its own events met`);
@@ -1130,9 +1135,10 @@ test("after the colony's 60 days the careful player stocks the holds and flies o
   // A raid coming calls the ship home: on 1 or 2 of the miner's 100
   // voyages out, and since M40 on none of seeds 1 to 100, so seed 160's,
   // one of 3 among seeds 101 to 280, shows it (seed 130's till M55's
-  // Suppress changed how the fights roll).
-  const lifted = launchedAt(rules, 160);
-  assert.ok(voyage(rules, 160, { refit: 'yes', jobs: 'yes', fit: powered(lifted) }, lifted).out.back.called, "a raid calls the ship home on seed 160's voyage out");
+  // Suppress changed how the fights roll, 160's till M61's colony events
+  // rolled the days: 142's is one of 3 among seeds 101 to 300).
+  const lifted = launchedAt(rules, 142);
+  assert.ok(voyage(rules, 142, { refit: 'yes', jobs: 'yes', fit: powered(lifted) }, lifted).out.back.called, "a raid calls the ship home on seed 142's voyage out");
   assert.match(outSummary(refittingAll), /^The voyage out \(M38d\): flown in 100 of 100, home in \d+; .+ systems crossed \d+ \(\d+ to \d+\), all 3 in \d+; days away .+ At home: found in \d+ runs, calling the ship home in \d+; raids faced while away \d+, lost \d+ .+ met at home once back \d+, won \d+; fed all the while in \d+ of 100; the mines' digging past the storehouses lost in \d+ runs \(\d+ in all\)\. Before flying out, \d+ \(\d+ to \d+\) days stocking the holds, full in \d+ runs; flying out, food spoiled in \d+ runs \(\d+ in all\)\.$/);
   assert.match(flown.lines.at(-1), /^The voyage out: [0-3] of 3 systems crossed, home after \d+ days away(, called home by a raid)?; /);
 });

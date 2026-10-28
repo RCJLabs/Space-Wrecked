@@ -76,7 +76,7 @@ export const BUILD_GIVES = ['power', 'beds', 'air', 'storage'];
 // the first is 1, at 0. From M38f no citizens yet, none on the way and no
 // news.
 export function newColony(world, materials = 0, worlds = [], { id = 1, at = 0, heat = 0 } = {}) {
-  return { world, buildings: [], nextUid: 1, day: 1, materials, places: [], trip: null, raid: null, worlds, voyage: null, id, at, heat, citizens: 0, growth: 0, news: [], lowProfile: false, trader: null };
+  return { world, buildings: [], nextUid: 1, day: 1, materials, places: [], trip: null, raid: null, worlds, voyage: null, id, at, heat, citizens: 0, growth: 0, news: [], lowProfile: false, trader: null, event: null, eventResult: null };
 }
 
 // What the colony's citizens eat a day (M38f): a jump's supplies each, as a

@@ -129,7 +129,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //      an engine glow (plain, bone, the maker's), and the ship's identity
 //      what the crew's suits are painted (standard)
 //  50  music (M60): the settings keep how loud the music plays, 30
-export const SAVE_VERSION = 50;
+//  51  colony events (M61): each colony has no event open and none
+//      decided; a companion's loyalty quest gains a first step at the
+//      colony, so one under way, or done, moves one step on
+export const SAVE_VERSION = 51;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -640,6 +643,25 @@ export const MIGRATIONS = [
     // Music (M60): it plays at 30%, as a new game's does.
     from: 49,
     up: (data) => (isObject(data) && isObject(data.settings) ? { ...data, settings: { ...data.settings, music: data.settings.music ?? 30 } } : data),
+  },
+  {
+    // Colony events (M61): no colony has one open or decided. A loyalty
+    // quest (its id ending -loyal) gains a first step, an event at the
+    // colony, before the place it had: one under way, or done, moves on to
+    // where it was.
+    from: 50,
+    up: (data) => {
+      if (!isObject(data) || !isObject(data.campaign)) return data;
+      const quiet = (colony) => (isObject(colony) ? { ...colony, event: colony.event ?? null, eventResult: colony.eventResult ?? null } : colony);
+      const { campaign } = data;
+      const next = { ...campaign };
+      if (isObject(campaign.quests)) {
+        next.quests = Object.fromEntries(Object.entries(campaign.quests).map(([id, at]) => [id, id.endsWith('-loyal') && isObject(at) && Number.isInteger(at.step) ? { ...at, step: at.step + 1 } : at]));
+      }
+      if (isObject(campaign.colony)) next.colony = quiet(campaign.colony);
+      if (Array.isArray(campaign.colonies)) next.colonies = campaign.colonies.map(quiet);
+      return { ...data, campaign: next };
+    },
   },
 ];
 

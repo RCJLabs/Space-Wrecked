@@ -194,6 +194,7 @@
       "blurb": "The pirates who cut the tender's stores pod open are laid up somewhere past the charts. Varga would like a word with them.",
       "companion": "varga",
       "steps": [
+        { "act": 3, "event": "tender-count", "next": "Varga has something on her mind. Spend a day at the colony with her." },
         {
           "act": 3,
           "place": {
@@ -217,6 +218,7 @@
       "blurb": "The strikebreakers who broke Pier Nine hire out to claims past the charts now. Teo has kept a list of their names.",
       "companion": "brandt",
       "steps": [
+        { "act": 3, "event": "pier-list", "next": "Teo has a list he wants read out. Spend a day at the colony with him." },
         {
           "act": 3,
           "place": {
@@ -240,6 +242,7 @@
       "blurb": "The survey chief who let Ama go is staking this system for the Company. His guards don't know her. He does.",
       "companion": "osei",
       "steps": [
+        { "act": 3, "event": "survey-stakes", "next": "Ama walks the ridge most mornings. Spend a day at the colony with her." },
         {
           "act": 3,
           "place": {
@@ -263,6 +266,7 @@
       "blurb": "The family has sent the collectors to bring Dez home for Old Halloran's birthday, whatever Dez says about it.",
       "companion": "halloran",
       "steps": [
+        { "act": 3, "event": "birthday-card", "next": "There's family post coming for Dez. Spend a day at the colony." },
         {
           "act": 3,
           "place": {

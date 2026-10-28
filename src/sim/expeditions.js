@@ -146,7 +146,7 @@ export function withPlaces(campaign, rules) {
 }
 
 // How many places the quests' open steps hold on the list (M33b): a rolled
-// list leaves room for them.
+// list leaves room for them, a companion's beat (M61) for the place after it.
 function questRoom(campaign, rules) {
   return [...(rules.quests?.values() ?? [])].filter((quest) => campaign.quests?.[quest.id]?.state === 'open' && quest.steps[campaign.quests[quest.id].step]?.act === 3).length;
 }

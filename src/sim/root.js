@@ -17,6 +17,7 @@ import { buyPart, sellPart, sellWeapon } from './economy.js';
 import { beginBoarding, closeApproach, endBoarding, giveOrder } from './encounter.js';
 import { canRearrange, rearrangeShip } from './rearrange.js';
 import { chooseEvent } from './events.js';
+import { chooseAtColony } from './colonyEvents.js';
 import { boardPlace, chooseAtPlace, endPlaceFight, flyHome, flyOn, flyOut, withPlaces } from './expeditions.js';
 import { makePayment } from './heat.js';
 import { payFromColony, setLowProfile } from './pressure.js';
@@ -176,6 +177,8 @@ export function initialState(seed) {
 //                                  (crew ids): the days out pass at home
 //   campaign/trip/choose { choice, rules }   a choice made at the event
 //                                  where the squad is
+//   campaign/colony/choose { choice, rules }  a choice made at the
+//                                  colony's open event (M61)
 //   campaign/trip/board { rules }  the squad boards the derelict the
 //                                  scavengers hold where it is: the fight
 //                                  begins
@@ -384,6 +387,7 @@ export function reduce(state, action) {
     case 'campaign/day':
     case 'campaign/trip/out':
     case 'campaign/trip/choose':
+    case 'campaign/colony/choose':
     case 'campaign/trip/home':
     case 'campaign/trip/on':
     case 'campaign/voyage/out':
@@ -417,6 +421,7 @@ export function reduce(state, action) {
         'campaign/day': (c) => nextDay(c, action.rules),
         'campaign/trip/out': (c) => flyOut(c, action.rules, action.index, action.squad),
         'campaign/trip/choose': (c) => chooseAtPlace(c, action.rules, action.choice),
+        'campaign/colony/choose': (c) => chooseAtColony(c, action.rules, action.choice),
         'campaign/trip/home': (c) => flyHome(c, action.rules),
         'campaign/trip/on': (c) => flyOn(c, action.rules),
         'campaign/voyage/out': (c) => voyageOut(c, action.rules, action.crew),

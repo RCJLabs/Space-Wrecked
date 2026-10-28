@@ -21,7 +21,7 @@ import { placesText, squadRows } from '../src/ui/campaign/tripText.js';
 import { unitText } from '../src/ui/fight/hints.js';
 import { icons } from '../src/ui/icons.js';
 import { openMap, rules } from './battleKit.js';
-import { settled } from './colonyKit.js';
+import { heard, settled } from './colonyKit.js';
 import { atStep, CHAINS } from './companionKit.js';
 
 const ABOUT = { varga: 'Engineer · The Fleet', brandt: 'Quartermaster · The union', osei: 'Scout · Con-Reg', halloran: 'Medic · The Hallorans' };
@@ -58,7 +58,7 @@ test('signed on: the result shows them, the chain done and their loyalty quest o
   const result = resultText(made, rules);
   assert.deepEqual(result.companion, companionCard(rules.companions.get('varga'), made, rules));
   assert.equal(result.companion.face.trim, crewColor(made.crew.indexOf(aboard(made, 'varga'))), 'in the trim of her place in the crew');
-  assert.equal(result.quest, "The tender's stores: done. Ines Varga signs on. A new quest: Varga's tender. The pirates who took the tender's stores, within reach of the colony.");
+  assert.equal(result.quest, "The tender's stores: done. Ines Varga signs on. A new quest: Varga's tender. Varga has something on her mind. Spend a day at the colony with her.");
   assert.equal(eventText(made, rules), null, 'settled');
   const tagged = chooseEvent(there, rules, 'tag').campaign;
   assert.equal(resultText(tagged, rules).companion, null);
@@ -114,7 +114,7 @@ test("the quests panel: a side's chain and the companion it brought, their loyal
   const made = chooseEvent(atStep('tender'), rules, 'tagjoin').campaign;
   const line = (campaign, id) => questsText(campaign, rules).find((quest) => quest.id === id);
   assert.equal(line(made, 'tender').next, 'Ines Varga came aboard.');
-  assert.deepEqual([line(made, 'varga-loyal').label, line(made, 'varga-loyal').next], ['Step 1 of 1', "The pirates who took the tender's stores, within reach of the colony."]);
+  assert.deepEqual([line(made, 'varga-loyal').label, line(made, 'varga-loyal').next], ['Step 1 of 2', 'Varga has something on her mind. Spend a day at the colony with her.']);
   assert.equal(line(chooseEvent(atStep('tender'), rules, 'tag').campaign, 'tender').next, 'The Fleet remembers it.', 'done without her');
   const finished = { ...made, quests: { ...made.quests, 'varga-loyal': { step: 0, state: 'done' } } };
   assert.equal(line(loyalOf(finished, 'varga'), 'varga-loyal').next, "Ines Varga is loyal: rank 3, Bosun's weld.");
@@ -123,7 +123,7 @@ test("the quests panel: a side's chain and the companion it brought, their loyal
 });
 
 test('the loyalty place at the colony, with who holds her; won, the fight says the companion is loyal', () => {
-  const home = withPlaces(joinCompanion(settled(), rules, 'osei').campaign, rules);
+  const home = withPlaces(heard(joinCompanion(settled(), rules, 'osei').campaign), rules);
   const place = home.colony.places.find((p) => p.quest === 'osei-loyal');
   const row = placesText(home, rules).find((entry) => entry.quest);
   assert.deepEqual([row.name, row.kind, row.line], ["Survey chief's tug", "Ama's survey chief", "Ama's survey chief · 2 days away · held"]);

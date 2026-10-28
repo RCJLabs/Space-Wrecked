@@ -182,6 +182,7 @@ const BALANCE = {
   // the days its lander takes to come; a defense's chance of hitting the
   // lander; and what a powered shield and armory give the defenders.
   colonyHeatFall: [0, 20],
+  colonyEventChance: [0, 100],
   tripHeat: [0, 50],
   lanesNear: [100, 400],
   lanesFar: [0, 100],

@@ -38,6 +38,7 @@
 // days and its hungry ones, and the others'. The only roll is the
 // pursuer's, the campaign's. Pure.
 import { atColony } from './acts.js';
+import { colonyEventHere, dayEvent } from './colonyEvents.js';
 import { backAboard, homeFront } from './away.js';
 import { thereAt, thereFrom, withNews } from './colonies.js';
 import { citizenEats, colonyStats, homeCrew, storesOf } from './colony.js';
@@ -60,6 +61,8 @@ export function dayPlan(campaign, rules) {
   if (!atColony(campaign, rules)) return { ok: false, error: 'Days pass at the colony.' };
   if (campaign.colony.trip) return { ok: false, error: away };
   if (raidDown(campaign)) return { ok: false, error: downText(campaign, rules) };
+  const open = colonyEventHere(campaign, rules);
+  if (open) return { ok: false, error: `Decide first: ${open.event.title}.` };
   return planDay(campaign, rules);
 }
 
@@ -140,7 +143,12 @@ export function citizensDay(campaign, rules, stats, fed) {
 // ship isn't, M38f: raids.js fightAway's, or null) } or { ok: false, error }.
 export function nextDay(campaign, rules) {
   const plan = dayPlan(campaign, rules);
-  return plan.ok ? passPlanned(campaign, rules, plan) : plan;
+  if (!plan.ok) return plan;
+  // The last event's result goes with the day; the day may bring another
+  // (M61, colonyEvents.js).
+  const cleared = campaign.colony.eventResult ? { ...campaign, colony: { ...campaign.colony, eventResult: null } } : campaign;
+  const day = passPlanned(cleared, rules, plan);
+  return { ...day, campaign: dayEvent(day.campaign, rules) };
 }
 
 // Passes the next day, the ship at home or away (planDay): what a trip's

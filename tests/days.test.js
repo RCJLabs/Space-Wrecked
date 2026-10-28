@@ -10,7 +10,7 @@ import { colonyStats, newColony, storesOf, yieldOf } from '../src/sim/colony.js'
 import { dayPlan, MAX_DAYS, nextDay } from '../src/sim/days.js';
 import { campaignScreen, initialState, reduce, saveData } from '../src/sim/root.js';
 import { rules } from './battleKit.js';
-import { settled } from './colonyKit.js';
+import { calm, settled } from './colonyKit.js';
 
 const { regroupHp, hungerHp } = rules.balance;
 
@@ -22,6 +22,7 @@ function withBuildings(campaign, list) {
 }
 
 test('a day: farms grow food and mines dig materials by the world, the crew eats a food each, and the day count rises', () => {
+  const rules = calm; // no colony events rolled (M61)
   const landed = settled();
   // Copperhill, a desert: soil 1, water 0, ore 2. A crew of three.
   assert.deepEqual([landed.colony.world.soil, landed.colony.world.water, landed.colony.world.ore, landed.crew.length], [1, 0, 2, 3]);
@@ -158,12 +159,13 @@ test('a v20 save in act 3 opens on day 1 with 20 materials, its buildings standi
   const given = withBuildings(now, [['quarters', 0, 0]]);
   // A v20 colony had no day or materials, no places or trip (M28), no raid
   // (M29), and no other worlds or voyage (M38d).
-  const { day, materials, places, trip, raid, worlds, voyage, ...v20colony } = given.colony;
+  const { day, materials, places, trip, raid, worlds, voyage, event, eventResult, ...v20colony } = given.colony;
   assert.deepEqual([day, materials, places, trip, raid, voyage], [1, 20, [], null, null, null]);
   assert.equal(worlds.length, rules.worlds.system.worlds - 1);
   const v20 = { ...given, colony: v20colony };
   const old = (campaign) => ({ ...saveData(initialState(3)), campaign });
   const step = MIGRATIONS.find((s) => s.from === 20);
+  assert.deepEqual([event, eventResult], [null, null], 'and no event (M61)');
   assert.deepEqual(step.up(old(v20)).campaign, { ...given, colony: { ...v20colony, day: 1, materials: 20 } });
   // Before settling, and with no campaign, nothing changes.
   const { colony, ...rest } = now;
@@ -181,7 +183,7 @@ test('a v20 save in act 3 opens on day 1 with 20 materials, its buildings standi
   // A new colony starts the same way, with no places yet and the ship home
   // (M28), no raid coming (M29), from M38d the other worlds it is given
   // and no voyage, from M38e the first colony's number and place, at no
-  // heat of its own unless given, and from M38f no citizens, nothing toward
-  // the next and no news.
-  assert.deepEqual(newColony(now.colony.world, 20), { world: now.colony.world, buildings: [], nextUid: 1, day: 1, materials: 20, places: [], trip: null, raid: null, worlds: [], voyage: null, id: 1, at: 0, heat: 0, citizens: 0, growth: 0, news: [], lowProfile: false, trader: null });
+  // heat of its own unless given, from M38f no citizens, nothing toward
+  // the next and no news, and from M61 no event.
+  assert.deepEqual(newColony(now.colony.world, 20), { world: now.colony.world, buildings: [], nextUid: 1, day: 1, materials: 20, places: [], trip: null, raid: null, worlds: [], voyage: null, id: 1, at: 0, heat: 0, citizens: 0, growth: 0, news: [], lowProfile: false, trader: null, event: null, eventResult: null });
 });

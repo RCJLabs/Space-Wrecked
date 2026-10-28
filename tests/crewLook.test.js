@@ -137,7 +137,7 @@ test('blueprint codes v5 carry them; a v4 code opens plain with the maker\'s glo
 });
 
 test('save v49: an old save\'s ships plain, bone, the maker\'s glow; its identity standard-suited; no one with a callsign', () => {
-  assert.equal(SAVE_VERSION, 50);
+  assert.equal(SAVE_VERSION, 51);
   const step = MIGRATIONS.find((m) => m.from === 48);
   const ship = { frame: 'starter', hull: 'rounded', paint: 'rust', trim: 'sky', modules: [], styling: [], nextUid: 1 };
   const data = { builds: { slots: [{ ship }] }, campaign: { ship, identity: { name: 'Iron Psalm', number: 'FJ-897', emblem: null }, crew: [] } };

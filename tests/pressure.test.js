@@ -13,7 +13,7 @@ import { initialState, reduce } from '../src/sim/root.js';
 import { buyFromTrader, callDay, callerOn, friendlySides, nextCall, sellToTrader, tradePlan, traderAfter, traderPart } from '../src/sim/traders.js';
 import { voyagePlan } from '../src/sim/voyage.js';
 import { rules } from './battleKit.js';
-import { settled } from './colonyKit.js';
+import { calm, settled } from './colonyKit.js';
 
 const { balance } = rules;
 
@@ -131,6 +131,7 @@ test("a friendly side's trader calls on its day of every traderEvery, buys mater
 });
 
 test('the days bring the traders: a friendly side calls at the colony the ship is at, none while lying low is off or on alike', () => {
+  const rules = calm; // no colony events rolled (M61)
   const base = settled();
   const friendly = { ...base, standing: { ...base.standing, union: balance.friendlyStanding }, heat: 0 };
   let now = friendly;
@@ -146,7 +147,7 @@ test('the days bring the traders: a friendly side calls at the colony the ship i
 });
 
 test('save v47: a colony from before neither lies low nor has a trader, and a raid coming keeps the pursuer\'s party', () => {
-  assert.equal(SAVE_VERSION, 50);
+  assert.equal(SAVE_VERSION, 51);
   const colony = settled();
   const strip = ({ lowProfile, trader, ...rest }) => rest;
   const old = { version: 46, data: { ...initialState(2), campaign: { ...colony, colony: { ...strip(colony.colony), raid: { found: 1, lands: 4 } } } } };

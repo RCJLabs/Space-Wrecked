@@ -21,7 +21,7 @@ const SETTLED = new Set([
   'campaign/new', 'campaign/buy', 'campaign/sell', 'campaign/yard/buy', 'campaign/yard/sell', 'campaign/yard/frame', 'campaign/hire', 'campaign/dismiss', 'campaign/pay', 'campaign/job/take', 'campaign/job/quest', 'campaign/job/station',
   'campaign/patch', 'campaign/repair', 'campaign/supplies', 'campaign/swap', 'campaign/scan', 'campaign/survey', 'campaign/regroup',
   'campaign/event/choose', 'campaign/donate', 'campaign/day', 'campaign/fight/begin', 'campaign/raid/begin', 'campaign/raid/face',
-  'campaign/boarding/begin', 'campaign/trip/choose', 'campaign/trip/board',
+  'campaign/boarding/begin', 'campaign/trip/choose', 'campaign/trip/board', 'campaign/colony/choose',
   'campaign/colony/pay', 'campaign/lowprofile', 'campaign/trader/buy', 'campaign/trader/sell',
 ]);
 // The ones that fly the ship somewhere, and the colony's building by hand.

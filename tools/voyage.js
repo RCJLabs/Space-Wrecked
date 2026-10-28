@@ -167,7 +167,7 @@ import { readData } from './data.js';
 import { runToLaunch } from './run.js';
 import { rulesWith, setting } from './sim.js';
 import { withPart } from './startShip.js';
-import { backCrew, bestChoice, leverNow, boardIt, foodReserve, HEAT_POLICIES, hireWho, homeBuild, homeNow, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, settleMove, STOCK_DAYS, STOCK_SHARE, stationJobPick, stockFor, swapNow, systemMove, tradeHere, tripSquad, voyageCrew, worldScore, yardBuy } from './voyagePlan.js';
+import { backCrew, bestChoice, decideAtColony, leverNow, boardIt, foodReserve, HEAT_POLICIES, hireWho, homeBuild, homeNow, LONG_FROM, nextBuild, nextGift, nextJump, nextPlace, placeChoice, raidPrep, refitAt, refitForSquad, restNow, scanNow, settleMove, STOCK_DAYS, STOCK_SHARE, stationJobPick, stockFor, swapNow, systemMove, tradeHere, tripSquad, voyageCrew, worldScore, yardBuy } from './voyagePlan.js';
 
 export const LONG_POLICIES = ['heat', 'never'];
 export const SCAN_POLICIES = ['yes', 'no'];
@@ -957,7 +957,7 @@ export function playColony(campaign, defs, days = COLONY_DAYS) {
     campaign = readyForRaid(campaign, defs, raids);
     if (fedOn === null && colonyStats(campaign, defs).made.food >= campaign.crew.length * defs.balance.jumpSupplies) fedOn = campaign.colony.day;
     logOdds(campaign, defs, raids);
-    const day = nextDay(campaign, defs);
+    const day = nextDay(decideAtColony(campaign, defs), defs);
     if (!day.ok) throw new Error(day.error);
     campaign = day.campaign;
     healed += day.healed;
@@ -1049,7 +1049,7 @@ function waitForRaid(campaign, defs, raids) {
     now = readyForRaid(now, defs, raids);
     if (!now.colony.raid) return { campaign: now, days };
     logOdds(now, defs, raids);
-    const day = nextDay(now, defs);
+    const day = nextDay(decideAtColony(now, defs), defs);
     if (!day.ok) throw new Error(day.error);
     now = day.campaign;
     days += 1;
@@ -1121,7 +1121,7 @@ export function playTrips(campaign, defs, days = TRIP_DAYS) {
       campaign = readyForRaid(campaign, defs, raids);
       if (campaign.colony.raid) {
         logOdds(campaign, defs, raids);
-        const day = nextDay(campaign, defs);
+        const day = nextDay(decideAtColony(campaign, defs), defs);
         if (!day.ok) throw new Error(day.error);
         campaign = day.campaign;
       }
@@ -1156,7 +1156,7 @@ export function playTrips(campaign, defs, days = TRIP_DAYS) {
       }
     }
     logOdds(campaign, defs, raids);
-    const day = nextDay(campaign, defs);
+    const day = nextDay(decideAtColony(campaign, defs), defs);
     if (!day.ok) throw new Error(day.error);
     campaign = day.campaign;
   }
@@ -1281,7 +1281,7 @@ export function voyageOutOf(campaign, defs) {
     const stuck = made.food <= jumpSupplies(now, defs) && made.materials === 0;
     if (!coming && (now.supplies >= stockFor(now, defs) || stocked >= STOCK_DAYS || stuck)) break;
     logOdds(now, defs, raids);
-    const day = nextDay(now, defs);
+    const day = nextDay(decideAtColony(now, defs), defs);
     if (!day.ok) throw new Error(day.error);
     now = day.campaign;
     if (coming) waited += 1;
@@ -1356,7 +1356,7 @@ function secondColony(campaign, defs, raids) {
       now = built.campaign;
     }
     now = readyForRaid(now, defs, raids);
-    const day = nextDay(now, defs);
+    const day = nextDay(decideAtColony(now, defs), defs);
     if (!day.ok) throw new Error(day.error);
     now = day.campaign;
   }

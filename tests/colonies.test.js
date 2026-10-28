@@ -104,6 +104,8 @@ test('Settle here on a voyage founds a colony where the ship is: 20 materials, n
     news: [],
     lowProfile: false,
     trader: null,
+    event: null,
+    eventResult: null,
   });
   assert.equal(rules.colony.materials, 20);
   // The act stays; the ship is landed there with those aboard and its holds.
