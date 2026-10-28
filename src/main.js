@@ -56,7 +56,14 @@ store.subscribe((state, prev, action) => gameSounds(state, prev, action).forEach
 // Screens and the render loop.
 let activeId = null;
 let active = null;
-const view = createView(document.getElementById('board'), (v) => active?.resize?.(v));
+const view = createView(document.getElementById('board'), (v) => active?.resize?.(v), () => store.getState().settings.quality);
+// The Quality setting takes effect at once (M62).
+let quality = store.getState().settings.quality;
+store.subscribe((state) => {
+  if (state.settings.quality === quality) return;
+  quality = state.settings.quality;
+  view.remeasure();
+});
 syncScreen(store.getState());
 store.subscribe(syncScreen);
 startTips(ui, store);
@@ -77,7 +84,7 @@ const loop = createLoop({
     view.ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
     active.draw(view.ctx, view, timeMs);
   },
-  onStats: fps ? (stats) => fps.update(stats, view, active.frameStats?.()) : undefined,
+  onStats: fps ? (stats) => fps.update({ ...stats, quality: store.getState().settings.quality }, view, active.frameStats?.()) : undefined,
 });
 loop.start();
 

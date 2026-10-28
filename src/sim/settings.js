@@ -20,6 +20,7 @@
 //   captions    whether each sound the game makes is shown in words too (M49)
 //   reading     'standard', or 'readable' for text spaced for easier reading
 //               (M49)
+//   quality     'high' (up to 2 pixels a CSS pixel) or 'low' (1, M62)
 // The difficulty was a setting too until M41, when it became the
 // campaign's (difficulty.js).
 
@@ -43,12 +44,15 @@ export const SPEEDS = [100, 150, 200];
 export const CONFIRMS = ['taps', 'hold'];
 // Senses (M49): how the text is set.
 export const READINGS = ['standard', 'readable'];
+// How sharp the board is drawn (M62, src/render/canvas.js pixelRatio):
+// Low draws a pixel a CSS pixel, for a phone that can't keep up.
+export const QUALITIES = ['high', 'low'];
 // More tips than the game has: a guard on what a save can hold.
 export const MAX_TIPS = 64;
 const TIP_ID = /^[a-z][a-z0-9-]{0,31}$/;
 
 export function defaultSettings() {
-  return { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, music: 30, colors: 'standard', textSize: 100, fog: false, hand: 'right', speed: 100, confirm: 'taps', vibration: true, captions: false, reading: 'standard' };
+  return { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, music: 30, colors: 'standard', textSize: 100, fog: false, hand: 'right', speed: 100, confirm: 'taps', vibration: true, captions: false, reading: 'standard', quality: 'high' };
 }
 
 // Actions:
@@ -70,6 +74,7 @@ export function defaultSettings() {
 //   settings/vibration { value }    vibration on or off (M47)
 //   settings/captions { value }     captions on or off (M49)
 //   settings/reading { value }      standard or readable (M49)
+//   settings/quality { value }      high or low (M62)
 export function reduceSettings(settings, action) {
   const set = (key, ok) => (!ok || action.value === settings[key] ? settings : { ...settings, [key]: action.value });
   switch (action.type) {
@@ -105,6 +110,8 @@ export function reduceSettings(settings, action) {
       return set('captions', typeof action.value === 'boolean');
     case 'settings/reading':
       return set('reading', READINGS.includes(action.value));
+    case 'settings/quality':
+      return set('quality', QUALITIES.includes(action.value));
     case 'settings/tips/reset':
       return settings.tips && !settings.tipsSeen.length ? settings : { ...settings, tips: true, tipsSeen: [] };
     case 'settings/tip/seen':
@@ -134,6 +141,7 @@ export function settingsProblems(settings) {
   if (typeof settings.vibration !== 'boolean') problems.push('The vibration setting is invalid.');
   if (typeof settings.captions !== 'boolean') problems.push('The captions setting is invalid.');
   if (!READINGS.includes(settings.reading)) problems.push('The reading setting is invalid.');
+  if (!QUALITIES.includes(settings.quality)) problems.push('The quality setting is invalid.');
   const { tipsSeen } = settings;
   if (typeof settings.tips !== 'boolean' || !Array.isArray(tipsSeen) || tipsSeen.length > MAX_TIPS || !tipsSeen.every((id) => TIP_ID.test(id)) || new Set(tipsSeen).size !== tipsSeen.length) {
     problems.push('The tips settings are unreadable.');

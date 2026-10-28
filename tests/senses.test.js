@@ -34,10 +34,10 @@ test('captions and reading: their defaults, the values each takes, checked in a 
 });
 
 test('save v44: a save from before has captions off and standard reading', () => {
-  assert.equal(SAVE_VERSION, 51);
+  assert.equal(SAVE_VERSION, 52);
   const { captions, reading, ...v43 } = { ...defaultSettings(), hand: 'left' };
   const moved = migrate({ version: 43, data: { settings: v43, campaign: null } });
-  assert.equal(moved.version, 51);
+  assert.equal(moved.version, 52);
   assert.deepEqual(moved.data.settings, { ...defaultSettings(), hand: 'left' });
 });
 
