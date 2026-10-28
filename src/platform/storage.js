@@ -8,7 +8,6 @@ import { config } from '../config.js';
 import { checksum } from '../core/codec.js';
 
 const key = (name) => `${config.appId}:${name}`;
-const SAVE_KEY = key('save');
 
 function get(k) {
   try {
@@ -35,12 +34,15 @@ function remove(k) {
   }
 }
 
-export function readSave() {
-  return get(SAVE_KEY);
+// Any stored text by name: the campaign slots, their backups and marks
+// (M63, named in src/core/slots.js; slot 1's is "save", as it always was).
+// writeText returns false where storage is unavailable or full.
+export function readText(name) {
+  return get(key(name));
 }
 
-export function writeSave(text) {
-  return set(SAVE_KEY, text);
+export function writeText(name, text) {
+  return set(key(name), text);
 }
 
 // Keeps a copy of a save that failed to load, so writing a fresh save never

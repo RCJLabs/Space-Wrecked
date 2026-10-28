@@ -203,6 +203,50 @@ textarea {
   background: var(--c-space);
 }
 
+/* Campaigns names the slot in play under it (M63), as Continue says where. */
+.title-slots {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+}
+
+.title-slots small {
+  font-size: calc(12px * var(--ts, 1));
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+/* The reminder to export (M63): a line and its two buttons, on a ground of
+   their own. */
+.title-remind {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 10px;
+  margin-top: 6px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: var(--c-space);
+}
+
+.title-remind[hidden] {
+  display: none;
+}
+
+.title-remind p {
+  margin: 0;
+  color: var(--c-dash);
+  font-size: calc(14px * var(--ts, 1));
+}
+
+#ui .title-remind .btn {
+  min-height: 48px;
+  min-width: 96px;
+}
+
 /* The hangar: the act's goal on the left, the crew and holdings on the
    right, the ship (drawn on the canvas) in the middle, and the orders along
    the bottom. A panel scrolls if it has to. */
@@ -2522,7 +2566,8 @@ textarea {
 }
 
 .set-row h2,
-.set-save h2 {
+.set-save h2,
+.cmp-slots h2 {
   margin: 0 0 4px;
   color: var(--c-ink-dim);
   font-size: calc(12px * var(--ts, 1));
@@ -2600,6 +2645,53 @@ textarea {
   .set-body {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* The Campaigns screen (M63) on the settings screen's frame: the slots on
+   the left, the backups of the slot in play on the right (under them,
+   unfolded, packed to the top). */
+.cmp .set-body {
+  align-content: start;
+}
+
+#ui .cmp-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 52px;
+  text-align: left;
+}
+
+#ui .cmp-slot[aria-pressed='true'] {
+  border-color: var(--c-accent);
+}
+
+.cmp-slot small,
+.cmp-words small {
+  color: var(--c-ink-dim);
+  font-size: calc(12px * var(--ts, 1));
+}
+
+.cmp-backup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cmp-words {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#ui .cmp-restore {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  white-space: nowrap;
 }
 
 /* The launch: the ship lifts off in the middle (drawn on the canvas), the

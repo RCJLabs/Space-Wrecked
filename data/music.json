@@ -3,7 +3,7 @@
     {
       "id": "hangar",
       "for": "The title, the hangar and act 1's screens: an easy, low minor loop over the hangar's hum",
-      "screens": ["title", "settings", "background", "captain", "start", "hub", "construction", "jobs", "shop"],
+      "screens": ["title", "settings", "campaigns", "background", "captain", "start", "hub", "construction", "jobs", "shop"],
       "bpm": 72,
       "steps": 8,
       "bars": 8,

@@ -1,12 +1,12 @@
 // Boot: load the save, build the store, mount the screen, start the loop.
 // State flows one way: input -> action -> reducer (src/sim/) -> state -> render.
 import { config } from './config.js';
-import { makeSave, parseSave } from './core/save.js';
 import { createStore } from './core/store.js';
 import { audioStatus, cue, startAudio } from './platform/audio.js';
 import { startHaptics } from './platform/haptics.js';
 import { lockLandscape } from './platform/orientation.js';
 import { registerServiceWorker } from './platform/serviceWorker.js';
+import { saves } from './platform/saves.js';
 import * as storage from './platform/storage.js';
 import { createView } from './render/canvas.js';
 import { createLoop } from './render/loop.js';
@@ -95,23 +95,26 @@ addEventListener('load', () => {
   registerServiceWorker({ onUpdateReady: (apply) => showUpdatePrompt(ui, apply) });
 });
 
+// The slot in play's save (M63: slots.js; slot 1 is the save the game
+// always had).
 function loadSavedGame() {
-  const raw = storage.readSave();
-  if (raw === null) return null;
-  const result = parseSave(raw);
-  if (result.ok) {
-    store.dispatch({ type: 'save/restore', data: result.save.data });
+  const loaded = saves.load();
+  if (loaded === null) return null;
+  if (loaded.ok) {
+    store.dispatch({ type: 'save/restore', data: loaded.data });
     return null;
   }
   // Keep the broken save before a fresh one replaces it.
-  const backupKey = storage.backupBrokenSave(raw);
-  const note = `Save not loaded: ${result.error} A copy is kept in localStorage under "${backupKey}".`;
+  const backupKey = storage.backupBrokenSave(loaded.text);
+  const note = `Save not loaded: ${loaded.error} A copy is kept in localStorage under "${backupKey}".`;
   console.warn(note);
   return note;
 }
 
+// Writes the slot's save, keeping the backup the change calls for (before
+// an act, or the campaign replaced).
 function persist(data) {
-  if (!storage.writeSave(JSON.stringify(makeSave(data)))) console.warn('Could not write the save: storage is unavailable.');
+  if (!saves.persist(data)) console.warn('Could not write the save: storage is unavailable.');
 }
 
 function syncScreen(state) {
