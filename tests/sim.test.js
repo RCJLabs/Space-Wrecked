@@ -11,7 +11,7 @@ function deepFreeze(value) {
 }
 
 test('initial state starts on the title with default settings and the given seed', () => {
-  const settings = { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, music: 30, colors: 'standard', textSize: 100, fog: false, hand: 'right', speed: 100, confirm: 'taps', vibration: true, captions: false, reading: 'standard' };
+  const settings = { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, music: 30, colors: 'standard', textSize: 100, fog: false, hand: 'right', speed: 100, confirm: 'taps', vibration: true, captions: false, reading: 'standard', quality: 'high' };
   assert.deepEqual(initialState(42), { screen: 'title', settings, rng: 42, builds: { active: 0, slots: [] }, campaign: null });
   assert.equal(initialState(-1).rng, 0xffffffff);
 });
