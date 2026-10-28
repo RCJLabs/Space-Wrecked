@@ -2740,6 +2740,37 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Save v51:** `event` and `eventResult` on every colony, null; a loyalty quest's step one on. Materials from colony events are counted in `flags.eventMaterialsGot` and `eventMaterialsLost`.
   - **Voyage tests:** within main's margins, MAIN unchanged. The near/far raid rate moved to 100 seeds; the raid calling the ship home is seed 142's.
 
+- [x] **M62 Performance on a low-end phone.** Item 9 of the second Phase 8 brainstorm, next in my order, on Evan's "Merge when ready then continue to the next item".
+
+  Measured first (main after M61; `m62/profile.mjs`, the real app by touch in headless Chromium, Chrome's CPU throttle at 4×, about a mid-range phone; frames a second while dragging the board for 3 s, or playing an approach round):
+
+  | Screen | cover, pixel ratio 2.6 (now) | cover, pixel ratio 1 | open, 2.6 | open, 1 |
+  |---|---|---|---|---|
+  | Colony (after 30 days) | 23 | 51 | 14 | 41 |
+  | Approach round | 50 | 59 | 42 | 59 |
+  | Job fight | 39 | 57 | 20 | 54 |
+  | Boarding | 43 | 56 | 19 | 50 |
+
+  - **Unthrottled,** every screen holds 60. At rest every screen draws next to nothing.
+  - **The cost is pixels, not the game's code:** the game's own drawing is 1 to 9 ms a frame at 4×. The rest is the browser painting the canvas, at 2 pixels a CSS pixel (`MAX_DPR`), about 1.3 M pixels on the cover screen and 2.9 M open. The canvas is painted in software here, so a phone's GPU will differ, but the ratio is the lever.
+  - **The 30 fps mode** holds its cap; at 4× the colony's drag falls below it anyway.
+
+  Done when (my recommendations, taken on Evan's word):
+  - **A Quality setting:** High (sharp: up to 2 pixels a CSS pixel, as now) and Low (1 pixel a CSS pixel, about a third to a quarter the pixels on the Fold). A new game starts on High. It applies at once, to every canvas the game draws on.
+  - **Save v52:** `settings.quality`, an older save getting High.
+  - **Measured again with Low** (`m62/profile.mjs`, 4×): dragging the colony and both fights at 50 frames a second or more at the cover size and 40 or more open; an approach round at 55 or more. High's numbers unchanged within noise.
+  - **The 30 fps mode checked:** at 1×, 30 frames a second (±2) drawn while dragging, on each of the four screens.
+  - **The dev menu's frame readout** names the quality and the pixel ratio in use, so Evan can read them on the phone.
+  - **Tests:** the setting's values and refusals, the migration, and the pixel ratio each quality draws at (a pure function).
+  - **Every earlier milestone's check passes; the three sizes checked.**
+  - **Not in this milestone** (to §9): switching quality by itself when frames drop; Low leaving out effects (glows, the room lights, the fire's spill); profiling on a real phone (Evan's, with the readout).
+
+  **As built:**
+  - **Quality** in Settings, High and Low (`QUALITIES` in `src/sim/settings.js`, `pixelRatio` in `src/render/canvas.js`): the main canvas is measured again the moment it changes, and everything drawn off-screen follows its ratio. Save v52.
+  - **Low at 4×:** 55, 59, 58 and 58 frames a second (colony, approach, job fight, boarding) at the cover size; 43, 59, 56 and 52 open.
+  - **The 30 fps mode** is checked by `tests/loop.test.js`, not the browser, which can't tell a cap from a screen with nothing new to draw. That test found the cap failing on a 90 Hz screen (60 drew 90), now fixed in `src/render/loop.js`.
+  - **The dev readout** names the quality.
+
 **The second Phase 8 brainstorm** (Evan's call, 2026-10-26: "Add everything to the queue. Then start 1"). Areas 1 to 3 are his, 4 to 10 mine. Each becomes a milestone as it starts, with its Done when settled then; my recommended order after 1 is 4, 6, 2, 3, 5, 7, 9, 10, 8.
 1. **Improving combat:** the orders nobody gives (Suppress and Weld add nothing measured), weapon roles (the shotgun best everywhere), enemy behaviour types (flankers, shield-bearers, medics, leaders), interactive ship tiles (venting a room, exploding consoles, lights out), morale and retreat (which also ends fights stuck behind a fallen body), a boss for each pursuer.
 2. **Character and ship customization:** editing any crew member's look, callsigns, scars and implants earned in play, suits in the ship's colours, a choice of perk at each rank; paint patterns, engine glow, an emblem editor, more hull styles, a second livery.
@@ -2922,5 +2953,8 @@ These ideas wait until v0.4 or later:
 - a companion's beats on the run itself, not only at the colony's places (raised in M61)
 - colony events that chain from day to day (raised in M61)
 - colony events that use heat, settlers or standing (raised in M61)
+- quality that switches by itself when frames drop (raised in M62)
+- a Low quality that also leaves out the glows, room lights and the fire's spill (raised in M62)
+- M8's whole-fight browser check taps a wrong tile on one fight seed at the tab size; give it a fixed seed (raised in M62)
 
 Ideas that come up during a session go here, not into code.

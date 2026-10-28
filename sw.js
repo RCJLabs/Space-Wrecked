@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "877bed5c7ea3";
+const VERSION = "d05f0c1f9ecf";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",

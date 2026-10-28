@@ -28,8 +28,12 @@ export function createLoop({ frame, getCap, onStats }) {
 
     const interval = 1000 / getCap();
     acc += delta;
-    if (!first && acc + period / 2 < interval) return;
-    acc = Math.min(Math.max(acc - interval, 0), interval);
+    // A hundredth of a millisecond's slack: a frame due on the dot isn't
+    // skipped for float rounding.
+    if (!first && acc + period / 2 < interval - 0.01) return;
+    // A frame drawn up to half a refresh early is owed back (M62): on a 90 Hz
+    // screen, 60 is two frames in three, not every one.
+    acc = Math.min(Math.max(acc - interval, -period / 2), interval);
 
     const t0 = performance.now();
     frame(now);

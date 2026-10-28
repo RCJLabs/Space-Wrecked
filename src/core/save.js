@@ -132,7 +132,7 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  51  colony events (M61): each colony has no event open and none
 //      decided; a companion's loyalty quest gains a first step at the
 //      colony, so one under way, or done, moves one step on
-export const SAVE_VERSION = 51;
+export const SAVE_VERSION = 52;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -662,6 +662,11 @@ export const MIGRATIONS = [
       if (Array.isArray(campaign.colonies)) next.colonies = campaign.colonies.map(quiet);
       return { ...data, campaign: next };
     },
+  },
+  {
+    // Quality (M62): High, as the game drew before it.
+    from: 51,
+    up: (data) => (isObject(data) && isObject(data.settings) ? { ...data, settings: { ...data.settings, quality: data.settings.quality ?? 'high' } } : data),
   },
 ];
 

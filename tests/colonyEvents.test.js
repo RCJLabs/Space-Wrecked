@@ -133,9 +133,8 @@ test("a companion's beat comes the day after they sign on, at any chance; any ch
 });
 
 test('save v51: no colony has an event; a loyalty quest moves on past its new beat', () => {
-  assert.equal(SAVE_VERSION, 51);
+  assert.equal(SAVE_VERSION, 52);
   const step = MIGRATIONS.find((m) => m.from === 50);
-  assert.equal(step, MIGRATIONS.at(-1));
   const home = settled();
   const { event, eventResult, ...before } = home.colony;
   const other = { ...before, id: 2 };

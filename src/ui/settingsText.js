@@ -1,7 +1,7 @@
 // Text for the settings screen (settings.js): each setting's choices, and
 // what the one picked does, its numbers from data/balance.json. Pure.
 import { DIFFICULTIES, enemyBonus, gunneryBonus } from '../sim/difficulty.js';
-import { COLORS, CONFIRMS, FPS_CAPS, HANDS, MOTIONS, MUSIC_LEVELS, READINGS, SPEEDS, TEXT_SIZES, VOLUMES } from '../sim/settings.js';
+import { COLORS, CONFIRMS, FPS_CAPS, HANDS, MOTIONS, MUSIC_LEVELS, QUALITIES, READINGS, SPEEDS, TEXT_SIZES, VOLUMES } from '../sim/settings.js';
 
 // The rows, in order: [{ key, title, choices: [{ value, label }], value,
 // action, line }]. key is the setting (sim/settings.js); value is the one
@@ -119,6 +119,12 @@ export function settingsText(settings, balance, campaign = null) {
       line: settings.reading === 'readable'
         ? 'The panels\' text is set wider apart, in lines with more room between them, with no capitals-only words or italics.'
         : 'Text as drawn.',
+    },
+    {
+      key: 'quality',
+      title: 'Quality',
+      choices: QUALITIES.map((value) => ({ value, label: { high: 'High', low: 'Low' }[value] })),
+      line: settings.quality === 'high' ? 'Sharp.' : 'Softer, and easier on a slower phone.',
     },
     {
       key: 'fpsCap',

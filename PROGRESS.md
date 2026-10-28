@@ -2,6 +2,64 @@
 
 Newest entry first.
 
+## M62 Performance on a low-end phone (2026-10-28)
+
+**Status:** done; the ROADMAP.md box is ticked. Save v52, with a migration.
+
+**How it was picked:** item 9 of the second Phase 8 brainstorm, next in my order, on Evan's "Merge when ready then continue to the next item".
+
+**What the measuring found** (`m62/profile.mjs`: the real app by touch in headless Chromium, with Chrome's CPU throttle at 4×, about a mid-range phone; frames a second while dragging the board for 3 s, or playing an approach round):
+- **Unthrottled,** every screen holds 60. At rest every screen draws next to nothing.
+- **At 4×,** dragging fell to 23 frames a second on the colony, about 40 in a fight and 14 to 22 on the unfolded screen.
+- **The cost is pixels:** the game's own drawing is 1 to 9 ms a frame at 4×. The rest is the browser painting a canvas of 2 pixels a CSS pixel. At 1 pixel a CSS pixel the same drags run at 50 to 59.
+- **The frame cap had a bug:** on a 90 Hz screen the 60 cap drew every frame, 90 a second. A frame drawn a little early wiped its debt instead of carrying it.
+
+**What shipped:**
+- **A Quality setting** under Text and above Frame rate: High (sharp, up to 2 pixels a CSS pixel, as before) and Low (1). A new game starts on High; it takes effect at once, on every canvas (`pixelRatio` in `src/render/canvas.js`; the approach's space and the boards' layers follow the view's ratio).
+- **Save v52** gives an older save High.
+- **The dev readout** shows the quality beside the pixel ratio ("@1x low quality").
+- **The frame cap fixed** (`src/render/loop.js`): a frame drawn up to half a refresh early is owed back, so 60 on a 90 Hz screen is two frames in three; and a frame due on the dot isn't skipped for float rounding, so 30 on a 60 Hz screen is every other frame, evenly.
+
+**Done when** (ROADMAP.md, M62), and how each is met:
+- **The Quality setting, at once, every canvas:** `tests/quality.test.js` (the ratio each quality draws at, the setting, the row's words). `m62/verify.mjs` at the three sizes: the board at 2x on High and 1x the moment Low is tapped, in a fight too, still Low after a reload, 2x again on High.
+- **Save v52:** `tests/quality.test.js`; `m62/verify.mjs` reads the save at v52.
+- **Measured again with Low** (4×, frames a second while dragging):
+
+  | Screen | cover High | cover Low | open High | open Low |
+  |---|---|---|---|---|
+  | Colony | 23 | 55 | 14 | 43 |
+  | Approach round | 51 | 59 | 43 | 59 |
+  | Job fight | 44 | 58 | 22 | 56 |
+  | Boarding | 44 | 58 | 22 | 52 |
+
+  Every Low number meets its bar (50 at the cover size, 40 open, 55 for a round). High's are as measured before, within noise.
+- **The 30 fps mode:** the browser can't show it here, since a screen redraws only when something moves and the test's drag moves 20 times a second. So it's proved where it lives: `tests/loop.test.js` runs the loop on 60, 90 and 120 Hz clocks, and the cap holds at 60 and 30 on each, evenly, and with a jittery screen. That test found the 90 Hz bug.
+- **The dev readout:** `m62/verify.mjs` reads "@1x low quality".
+- **Every earlier check; three sizes:** below.
+
+**Tests:** `node --test`: 1315 pass (1308 on main: 4 added in `tests/quality.test.js`, 3 in `tests/loop.test.js`). Updated on purpose: the save-version pins (51 → 52), the default settings (with `quality: 'high'`), and the v38 migration's place from the end. Golden files are unchanged.
+
+**Browser checks:**
+- **M62's own:** `m62/verify.mjs` passes 10 of 10 at each of the three sizes.
+- **Every earlier milestone's check,** in the three chains (`m62/regress-a.sh`, `regress-b1.sh`, `regress-b2.sh`), M61's added to chain A. Copies pinned to save v51 have v52 ones (`m62/adapt.sh`).
+  - **Run again alone, and passed:** with the three chains sharing the machine, M60's long-task limits (cover, open), M59 (open), M55 (open), M37b (cover, tab), M34 (cover, tab), M25 (cover, open), M23c (tab) and M14 (cover) timed out or found their port taken. Each passed alone: M60 11 of 11, M59 2 of 2, M55 12 of 12, M37b 36, M34 39, M25 21 of 21, M23c 25 of 25, M14 40 of 40.
+  - **M8's fight at the tab size** fails on one fight seed and passes on others: alone it passed 2 runs of 3, and its failing run is the same, number for number, as M61's on main (the engineer's move tap after order 4). So it is the check's, on that seed at that size, not M62's (§9).
+  - **M32b's first copy** still looks for Suppress · 2 and Sedate · 2, as in every chain since the M32b fix; the fix's copy passes 27 of 27 at the three sizes.
+  - **The rest pass at the three sizes:** 127 runs in chain A, 43 in B1, 34 in B2.
+
+**Known issues:**
+- **Measured in a headless browser that paints in software,** not on a phone. A phone's GPU will paint the High canvas faster than this does, so High may be fine on Evan's phone; Low is there if it isn't. The dev readout shows the frame rate on the phone.
+- **Low is softer:** lines and text drawn on the board are blurrier at 1x on a 2.6x screen. The panels and buttons (HTML) stay sharp.
+- **Nothing switches by itself:** a player on a slow phone has to find the setting (§9).
+- **The colony at 4× open on Low** is 43, the lowest of the lot: its own drawing is about 8 ms a frame at 4× there, the most of any screen.
+
+**What Evan should test on the phone:**
+- Turn on the dev menu (`?dev=1`) and watch its frame rate while dragging the colony and a fight, on High.
+- Settings → Quality → Low: the board should go a little softer at once, and the frame rate should rise if it was below 60. Back to High: sharp again.
+- If High holds near 60 on the Fold, say so: Low then stays for older phones.
+
+**Next milestone's first task:** item 10 of the brainstorm, saves and safety: count what a player can lose today (one save, overwritten each change; a broken save kept aside), and what several slots, a backup before each act and an export reminder would take.
+
 ## M61 Content depth (2026-10-28)
 
 **Status:** done; the ROADMAP.md box is ticked. Save v51, with a migration.
