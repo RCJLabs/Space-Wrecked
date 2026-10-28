@@ -4,7 +4,7 @@
 // tools/precache.js; don't edit it by hand.
 
 // <precache>
-const VERSION = "d05f0c1f9ecf";
+const VERSION = "a785d9f7c5c8";
 const CACHE_PREFIX = "wt-";
 const FILES = [
   "data/backgrounds.json",
@@ -50,6 +50,8 @@ const FILES = [
   "src/core/music.js",
   "src/core/rng.js",
   "src/core/save.js",
+  "src/core/slotStore.js",
+  "src/core/slots.js",
   "src/core/soundParams.js",
   "src/core/store.js",
   "src/main.js",
@@ -58,6 +60,7 @@ const FILES = [
   "src/platform/haptics.js",
   "src/platform/musicWorker.js",
   "src/platform/orientation.js",
+  "src/platform/saves.js",
   "src/platform/serviceWorker.js",
   "src/platform/storage.js",
   "src/platform/zzfx.js",

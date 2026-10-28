@@ -43,6 +43,21 @@ export function writeSave(text) {
   return set(SAVE_KEY, text);
 }
 
+// Any stored text by name (M63: the campaign slots, their backups and
+// marks, named in src/core/slots.js). writeText returns false where storage
+// is unavailable or full.
+export function readText(name) {
+  return get(key(name));
+}
+
+export function writeText(name, text) {
+  return set(key(name), text);
+}
+
+export function removeText(name) {
+  remove(key(name));
+}
+
 // Keeps a copy of a save that failed to load, so writing a fresh save never
 // destroys it. Returns the key it was kept under.
 export function backupBrokenSave(text) {
