@@ -2740,7 +2740,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Save v51:** `event` and `eventResult` on every colony, null; a loyalty quest's step one on. Materials from colony events are counted in `flags.eventMaterialsGot` and `eventMaterialsLost`.
   - **Voyage tests:** within main's margins, MAIN unchanged. The near/far raid rate moved to 100 seeds; the raid calling the ship home is seed 142's.
 
-- [ ] **M62 Performance on a low-end phone.** Item 9 of the second Phase 8 brainstorm, next in my order, on Evan's "Merge when ready then continue to the next item".
+- [x] **M62 Performance on a low-end phone.** Item 9 of the second Phase 8 brainstorm, next in my order, on Evan's "Merge when ready then continue to the next item".
 
   Measured first (main after M61; `m62/profile.mjs`, the real app by touch in headless Chromium, Chrome's CPU throttle at 4×, about a mid-range phone; frames a second while dragging the board for 3 s, or playing an approach round):
 
@@ -2764,6 +2764,12 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **Tests:** the setting's values and refusals, the migration, and the pixel ratio each quality draws at (a pure function).
   - **Every earlier milestone's check passes; the three sizes checked.**
   - **Not in this milestone** (to §9): switching quality by itself when frames drop; Low leaving out effects (glows, the room lights, the fire's spill); profiling on a real phone (Evan's, with the readout).
+
+  **As built:**
+  - **Quality** in Settings, High and Low (`QUALITIES` in `src/sim/settings.js`, `pixelRatio` in `src/render/canvas.js`): the main canvas is measured again the moment it changes, and everything drawn off-screen follows its ratio. Save v52.
+  - **Low at 4×:** 55, 59, 58 and 58 frames a second (colony, approach, job fight, boarding) at the cover size; 43, 59, 56 and 52 open.
+  - **The 30 fps mode** is checked by `tests/loop.test.js`, not the browser, which can't tell a cap from a screen with nothing new to draw. That test found the cap failing on a 90 Hz screen (60 drew 90), now fixed in `src/render/loop.js`.
+  - **The dev readout** names the quality.
 
 **The second Phase 8 brainstorm** (Evan's call, 2026-10-26: "Add everything to the queue. Then start 1"). Areas 1 to 3 are his, 4 to 10 mine. Each becomes a milestone as it starts, with its Done when settled then; my recommended order after 1 is 4, 6, 2, 3, 5, 7, 9, 10, 8.
 1. **Improving combat:** the orders nobody gives (Suppress and Weld add nothing measured), weapon roles (the shotgun best everywhere), enemy behaviour types (flankers, shield-bearers, medics, leaders), interactive ship tiles (venting a room, exploding consoles, lights out), morale and retreat (which also ends fights stuck behind a fallen body), a boss for each pursuer.
