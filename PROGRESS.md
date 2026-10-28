@@ -41,7 +41,11 @@ Newest entry first.
 
 **Browser checks:**
 - **M62's own:** `m62/verify.mjs` passes 10 of 10 at each of the three sizes.
-- CHAINS
+- **Every earlier milestone's check,** in the three chains (`m62/regress-a.sh`, `regress-b1.sh`, `regress-b2.sh`), M61's added to chain A. Copies pinned to save v51 have v52 ones (`m62/adapt.sh`).
+  - **Run again alone, and passed:** with the three chains sharing the machine, M60's long-task limits (cover, open), M59 (open), M55 (open), M37b (cover, tab), M34 (cover, tab), M25 (cover, open), M23c (tab) and M14 (cover) timed out or found their port taken. Each passed alone: M60 11 of 11, M59 2 of 2, M55 12 of 12, M37b 36, M34 39, M25 21 of 21, M23c 25 of 25, M14 40 of 40.
+  - **M8's fight at the tab size** fails on one fight seed and passes on others: alone it passed 2 runs of 3, and its failing run is the same, number for number, as M61's on main (the engineer's move tap after order 4). So it is the check's, on that seed at that size, not M62's (§9).
+  - **M32b's first copy** still looks for Suppress · 2 and Sedate · 2, as in every chain since the M32b fix; the fix's copy passes 27 of 27 at the three sizes.
+  - **The rest pass at the three sizes:** 127 runs in chain A, 43 in B1, 34 in B2.
 
 **Known issues:**
 - **Measured in a headless browser that paints in software,** not on a phone. A phone's GPU will paint the High canvas faster than this does, so High may be fine on Evan's phone; Low is there if it isn't. The dev readout shows the frame rate on the phone.

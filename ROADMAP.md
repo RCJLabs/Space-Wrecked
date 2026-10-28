@@ -2955,5 +2955,6 @@ These ideas wait until v0.4 or later:
 - colony events that use heat, settlers or standing (raised in M61)
 - quality that switches by itself when frames drop (raised in M62)
 - a Low quality that also leaves out the glows, room lights and the fire's spill (raised in M62)
+- M8's whole-fight browser check taps a wrong tile on one fight seed at the tab size; give it a fixed seed (raised in M62)
 
 Ideas that come up during a session go here, not into code.
