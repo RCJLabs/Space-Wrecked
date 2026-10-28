@@ -36,7 +36,7 @@ Newest entry first.
 - **Validated:** `npm run validate`, and the refusals in `tests/colonyEvents.test.js`.
 - **Every earlier check; three sizes:** below.
 
-**Tests:** `node --test`: TESTS. Updated on purpose:
+**Tests:** `node --test`: 1308 pass (1300 on main: 8 added in `tests/colonyEvents.test.js`). Updated on purpose:
 - the save-version pins (50 → 51);
 - a new colony's shape (`event`, `eventResult`);
 - the loyalty tests, which now hear the beat first (`heard` in `tests/colonyKit.js`);
