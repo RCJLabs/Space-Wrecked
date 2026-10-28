@@ -34,8 +34,11 @@
 // tells what happened while the ship was away (newsText.js), till the
 // first day passes. From M53 Heat follows them: Lie low and a payment to
 // the pursuer, and the friendly side's trader when one is here
-// (colonyLevers.js). The campaign is saved after every change, so Continue
-// on the title comes back here.
+// (colonyLevers.js). From M61 a day may bring the colony an event of its
+// own, or a companion's beat: the run's event card (eventCard.js) over the
+// panel and the ground, two taps a choice, and what came of it until Carry
+// on; Next day waits for it. The campaign is saved after every change, so
+// Continue on the title comes back here.
 import { loadContent } from '../../platform/content.js';
 import { buildPlan, build, movePlan, takeDown, takeDownPlan, turnedSpot } from '../../sim/colonyBuild.js';
 import { buildingName, siteDef } from '../../sim/colony.js';
@@ -58,6 +61,8 @@ import { createVoyages } from './colonyVoyage.js';
 import { createLevers } from './colonyLevers.js';
 import { ghostNearText } from './neighbourText.js';
 import { createCrewCard } from './crewCard.js';
+import { createEventCard } from './eventCard.js';
+import { colonyEventText, colonyResultText } from './eventText.js';
 import { crewCardText, crewSaid } from './crewText.js';
 import { crewRows, heatChip, listRows, questRows, sideRows } from './hubParts.js';
 import { createSidePager, folded } from './sidePager.js';
@@ -130,11 +135,20 @@ export const colonyScreen = {
     const defendButton = toolButton('hgr-tool cln-defend', icons.shoot, 'Defend');
     foot.append(titleButton, hint, refitButton, dayButton, defendButton);
     const crewCard = createCrewCard({ tap: tapCrew, done: () => toggleCrew(false), save: (id, look, callsign) => defs && game.dispatch({ type: 'campaign/crew/look', rules: defs, id, look, callsign }) });
-    el.append(head, info, sceneArea, side, foot, crewCard.el);
+    // The colony's event (M61): its choices, then what came of it.
+    const eventCard = createEventCard({
+      choose: (choice) => defs && game.dispatch({ type: 'campaign/colony/choose', choice, rules: defs }),
+      close: () => {
+        closedResult = game.getState().campaign?.colony?.eventResult ?? null;
+        render(true);
+      },
+    });
+    el.append(head, info, sceneArea, side, foot, crewCard.el, eventCard.el);
     root.append(el);
 
     let defs = null;
     let alive = true;
+    let closedResult = null; // the event's result put away with Carry on
     let shown = null; // the campaign last drawn
     // What the player is doing: { kind: 'browse' }; { kind: 'place', what,
     // type, placement, uid } (uid: the building being moved, else null);
@@ -203,6 +217,7 @@ export const colonyScreen = {
       onTap(defendButton, tapDefend, { confirm: true }),
       onTap(crewOpener, () => toggleCrew(!crewOpen)),
       () => crewCard.detach(),
+      () => eventCard.detach(),
       () => clearTimeout(armTimer),
       () => rowButtons.forEach((detach) => detach()),
       () => stand.dispose(),
@@ -266,6 +281,14 @@ export const colonyScreen = {
       buildingList.replaceChildren(...(text.buildings.length ? text.buildings.map(buildingRow) : [node('li', 'cln-none', 'None yet: build a farm or a mine, or give the colony a part of the ship.')]));
       const where = (row) => (row.away ? 'away' : row.rough ? 'no bed or air' : row.aboard ? 'sleeps aboard' : null);
       crewList.replaceChildren(...crewRows(text.crew.map((row) => (where(row) ? { ...row, job: [row.job, where(row)].filter(Boolean).join(' · ') } : row))));
+      // The colony's event (M61), over the panel and the ground, and what
+      // came of it until Carry on; the crew card waits under it.
+      const event = colonyEventText(campaign, defs);
+      const result = event || campaign.colony.eventResult === closedResult ? null : colonyResultText(campaign, defs);
+      eventCard.show(event, result);
+      const carded = Boolean(event || result);
+      el.dataset.card = String(carded);
+      if (carded && crewOpen) crewOpen = false;
       // The crew card, over the panel and the ground, which take no taps
       // under it.
       const crew = crewOpen ? crewCardText(campaign, defs) : null;
@@ -275,9 +298,10 @@ export const colonyScreen = {
       crewCard.show(crew, armed);
       el.dataset.crew = String(crewOpen);
       crewOpener.setAttribute('aria-expanded', String(crewOpen));
-      info.inert = crewOpen;
-      sceneArea.inert = crewOpen;
-      side.inert = crewOpen && folded();
+      info.inert = crewOpen || carded;
+      sceneArea.inert = crewOpen || carded;
+      // An event open holds the rest of the colony too, till it is decided.
+      side.inert = (crewOpen && folded()) || Boolean(event);
       sideList.replaceChildren(...sideRows(text.sides));
       questList.replaceChildren(...questRows(text.quests));
       setText(worldTitle, text.world.title);
@@ -294,11 +318,11 @@ export const colonyScreen = {
       const down = raidDown(campaign);
       if (!down && armed === 'defend') disarm();
       dayButton.dataset.armed = String(armed === 'day');
-      dayButton.disabled = away;
+      dayButton.disabled = away || Boolean(event);
       dayButton.hidden = down;
       defendButton.hidden = !down;
       defendButton.dataset.armed = String(armed === 'defend');
-      refitButton.disabled = away;
+      refitButton.disabled = away || Boolean(event);
 
       const tripArmed = armed !== null && !['day', 'defend', 'down', 'voyage'].includes(armed) && !armed.startsWith('arm:') && !levers.owns(armed);
       const defend = armed === 'defend' ? defendText(campaign, defs) : null;

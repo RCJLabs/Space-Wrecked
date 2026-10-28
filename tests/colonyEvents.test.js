@@ -123,6 +123,10 @@ test("a companion's beat comes the day after they sign on, at any chance; any ch
   assert.deepEqual(made.campaign.quests['varga-loyal'], { step: 1, state: 'open' });
   assert.ok(made.note, "the quest's next words");
   assert.ok(withPlaces(made.campaign, rules).colony.places.some((p) => p.quest === 'varga-loyal'), 'their place, now');
+  // A list rolled before the beat takes the place on once it is heard.
+  const listed = withPlaces(day.campaign, calm);
+  assert.ok(listed.colony.places.length > 0 && !listed.colony.places.some((p) => p.quest));
+  assert.ok(chooseAtColony(listed, calm, 'hear').campaign.colony.places.some((p) => p.quest === 'varga-loyal'), 'on the list already rolled');
   assert.deepEqual(heard(joined).quests['varga-loyal'], { step: 1, state: 'open' }, "the tests' kit hears it the same way");
   // Heard, no beat comes again.
   assert.equal(nextDay(made.campaign, calm).campaign.colony.event, null);

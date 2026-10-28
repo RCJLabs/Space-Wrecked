@@ -8,7 +8,8 @@
 //
 // colony.event: { id, quest } (quest null for one rolled), or null.
 // colony.eventResult: what came of the last one decided, { event, choice,
-// outcome, roll, changes, taker? }, until the next day passes, or null.
+// outcome, roll, changes, taker?, quest? (the step's note) }, until the
+// next day passes, or null.
 //
 // Its choices need and do what the colony can (COLONY_NEEDS,
 // COLONY_EFFECTS): food (the run's supplies, kept to the stores),
@@ -17,7 +18,7 @@ import { int } from '../core/rng.js';
 import { atColony } from './acts.js';
 import { eventsOf, freshest } from './eventPool.js';
 import { applyEffects, choiceProblem, metEvent, outcomeFor, takerOf } from './events.js';
-import { openSteps, stepDone } from './quests.js';
+import { openSteps, stepDone, withQuestPlaces } from './quests.js';
 import { tally } from './flags.js';
 
 export const COLONY_EFFECTS = ['supplies', 'materials', 'wound', 'part', 'drop', 'arms'];
@@ -54,7 +55,8 @@ export function dayEvent(campaign, rules) {
 // Makes choice id at the colony's open event: rolls its outcome if it has
 // more than one (0 to 99, as on the run) and has its effects, a wound only
 // on those at home. At a companion's step, any choice does the step
-// (quests.js stepDone). Returns { ok: true, campaign, result, note (the
+// (quests.js stepDone), and the place after it joins a list already
+// rolled. Returns { ok: true, campaign, result, note (the
 // quest's, or null) } or { ok: false, error }.
 export function chooseAtColony(campaign, rules, id) {
   const here = colonyEventHere(campaign, rules);
@@ -79,8 +81,14 @@ export function chooseAtColony(campaign, rules, id) {
   const met = metEvent(done.campaign, here.event.id);
   // Its materials counted both ways, as the stores' other comings and goings are.
   const flags = tally(met.flags, { colonyEvents: 1, eventMaterialsGot: done.changes.materials, eventMaterialsLost: -done.changes.materials });
-  let next = { ...met, flags, colony: { ...met.colony, event: null, eventResult: result } };
+  let next = { ...met, flags };
   let note = null;
-  if (here.quest) ({ campaign: next, note } = stepDone(next, rules, here.quest));
-  return { ok: true, campaign: next, result, note };
+  if (here.quest) {
+    ({ campaign: next, note } = stepDone(next, rules, here.quest));
+    // The place after the beat goes on a list already rolled.
+    if (next.colony.places.length) next = withQuestPlaces(next, rules);
+  }
+  const kept = note ? { ...result, quest: note } : result;
+  next = { ...next, colony: { ...next.colony, event: null, eventResult: kept } };
+  return { ok: true, campaign: next, result: kept, note };
 }

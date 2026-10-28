@@ -6,7 +6,9 @@
 // signed on (companionText.js). From M36 a choice that needs a job or a
 // trait names who would take it, or says who it needs; and an outcome can
 // spring a trap, wreck parts aboard or repair them; from M37, put a weapon
-// on hand. rules are the content tables (src/sim/defs.js).
+// on hand. From M61 the colony's own event, as the colony screen shows it.
+// rules are the content tables (src/sim/defs.js).
+import { colonyEventHere } from '../../sim/colonyEvents.js';
 import { companionOf } from '../../sim/companions.js';
 import { sellPriceOf } from '../../sim/economy.js';
 import { choiceProblem, takerOf } from '../../sim/events.js';
@@ -72,6 +74,45 @@ export function resultText(campaign, rules) {
     changes: changesText(result.changes, campaign, rules),
     quest: [...questNoteLines(result.quest, rules, campaign), ...(joined ? joinedLines(joined.id, rules) : [])].join(' '),
     companion: joined ? companionCard(joined, campaign, rules) : null,
+  };
+}
+
+// The event open at the colony (M61), as eventText's: where is the colony
+// ("At the colony · Copperhill"), a companion's beat its quest's name too
+// ("At the colony · Varga's tender"); any choice does a beat's step.
+export function colonyEventText(campaign, rules) {
+  const here = colonyEventHere(campaign, rules);
+  if (!here) return null;
+  const { event, quest } = here;
+  const named = quest ? rules.quests?.get(quest)?.name : null;
+  return {
+    where: ['At the colony', named ?? campaign.colony.world.name].join(' · '),
+    title: event.title,
+    text: event.text,
+    companion: null,
+    choices: event.choices.map((choice) => {
+      const said = choiceSaid(choice, campaign, rules);
+      return { ...said, berth: '', ask: `${said.ask} Tap again to choose.` };
+    }),
+  };
+}
+
+// What came of the colony's event decided last (M61), as resultText's, or
+// null: until the next day, or Carry on.
+export function colonyResultText(campaign, rules) {
+  const result = campaign.colony?.eventResult;
+  if (!result) return null;
+  const event = rules.events.get(result.event);
+  const choice = event?.choices.find((entry) => entry.id === result.choice);
+  const outcome = choice?.outcomes[result.outcome];
+  return {
+    where: ['At the colony', campaign.colony.world.name].join(' · '),
+    title: event && choice ? `${event.title}: ${choice.label}` : 'Done',
+    text: outcome?.text ?? '',
+    roll: result.roll === null || !outcome ? '' : `Rolled ${result.roll}: the ${outcome.chance}% came up.`,
+    changes: changesText(result.changes, campaign, rules),
+    quest: questNoteLines(result.quest ?? null, rules, campaign).join(' '),
+    companion: null,
   };
 }
 
