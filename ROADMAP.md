@@ -2713,6 +2713,25 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **The Music setting:** Off, 10, 30, 50, 70%, a new game at 30; sound off is music off. Save v50 sets 30.
   - **Loudness** (as `tools/sounds.js` measures, the sounds' middle -18 dB): hangar, run and colony at -32 dB, the fight at -30; peaks 0.10 to 0.60.
 
+- [ ] **M61 Content depth.** Item 7 of the second Phase 8 brainstorm, next in my order, on Evan's "Merge when ready then continue to the next item".
+
+  Measured first (main after M60; `m61/events.mjs`, 4 test runs from each background, the whole run: act 2, the colony's trips and the voyage out):
+  - **No kind of event runs dry within a run.** A run meets 1 to 5 events of each kind, from pools of 9 to 14, so it doesn't repeat itself inside one game. The repeats come across games: the second run draws from the same pools.
+  - **The colony's days have no events.** A day brings production, eating, growth and news, and nothing to decide. The only events past the charts are at the places within reach, 9 of each kind of place.
+  - **Each companion's story is one step:** their loyalty quest sends the squad to one place, and that's all there is of them past their offer.
+  - **A background's own events:** 4 each, all on the run; none at the colony.
+
+  Done when (my recommendations, taken on Evan's word):
+  - **Colony events:** each day at the colony has a chance (`balance.json`, 1 in 5) of an event of a new kind, `colony`. It opens on the colony screen, and the next day waits until it is decided. It uses the run's vocabulary as the places do (food, materials, a wound to someone at home, parts, heat, settlers), drawn fresh-first like every other kind. 10 for any colony, and 2 for each background (6), 16 in all.
+  - **A second beat for each companion:** each loyalty quest gains a first step, an event at a colony place about their past, before the place it ends at. 4 new events. A save with a loyalty quest under way keeps it where it is: its step moves to the new last one.
+  - **More place events:** 2 more for each kind of place (hulk, wreckage, rock, planet), 9 → 11 each, 8 in all.
+  - **28 new events in all,** written in the voice of the game's others, each with at least two choices and an outcome that costs as well as pays.
+  - **Save v51:** a colony's open event (none in an older save) and the loyalty quests' step, migrated.
+  - **The test players** decide colony events as they decide the run's (`voyagePlan.js` `bestChoice`); the voyage tests stay within their margin of main's 100-seed rates (CLAUDE.md, M31).
+  - **Validated:** a colony event uses only what the colony can do; each background's are its own; each companion's new step names an event that exists.
+  - **Every earlier milestone's check passes; the three sizes checked.**
+  - **Not in this milestone** (to §9): more of the run's events (no kind runs dry in a run); companions' beats on the run itself; events that chain across colony days.
+
 **The second Phase 8 brainstorm** (Evan's call, 2026-10-26: "Add everything to the queue. Then start 1"). Areas 1 to 3 are his, 4 to 10 mine. Each becomes a milestone as it starts, with its Done when settled then; my recommended order after 1 is 4, 6, 2, 3, 5, 7, 9, 10, 8.
 1. **Improving combat:** the orders nobody gives (Suppress and Weld add nothing measured), weapon roles (the shotgun best everywhere), enemy behaviour types (flankers, shield-bearers, medics, leaders), interactive ship tiles (venting a room, exploding consoles, lights out), morale and retreat (which also ends fights stuck behind a fallen body), a boss for each pursuer.
 2. **Character and ship customization:** editing any crew member's look, callsigns, scars and implants earned in play, suits in the ship's colours, a choice of perk at each rank; paint patterns, engine glow, an emblem editor, more hull styles, a second livery.
@@ -2891,5 +2910,8 @@ These ideas wait until v0.4 or later:
 - fire that flickers: a burning tile's light moving with time, which needs a redraw every frame while it burns (raised in M59)
 - music that follows a fight: tension as it turns, a sting when it's won or lost (raised in M60)
 - more than one bed for a place, and beds by world kind or by side (raised in M60)
+- more of the run's events: no kind runs dry inside a run, so they add variety across runs only (raised in M61)
+- a companion's beats on the run itself, not only at the colony's places (raised in M61)
+- colony events that chain from day to day (raised in M61)
 
 Ideas that come up during a session go here, not into code.
