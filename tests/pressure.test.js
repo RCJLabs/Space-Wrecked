@@ -147,7 +147,7 @@ test('the days bring the traders: a friendly side calls at the colony the ship i
 });
 
 test('save v47: a colony from before neither lies low nor has a trader, and a raid coming keeps the pursuer\'s party', () => {
-  assert.equal(SAVE_VERSION, 52);
+  assert.equal(SAVE_VERSION, 53);
   const colony = settled();
   const strip = ({ lowProfile, trader, ...rest }) => rest;
   const old = { version: 46, data: { ...initialState(2), campaign: { ...colony, colony: { ...strip(colony.colony), raid: { found: 1, lands: 4 } } } } };

@@ -9,6 +9,7 @@ import { isState } from './rng.js';
 import { isShipData } from '../sim/builder.js';
 import { emptyBuilds, isBuilds } from '../sim/builds.js';
 import { campaignProblems } from '../sim/campaign.js';
+import { profileProblems } from '../sim/record.js';
 import { crewLook } from '../sim/looks.js';
 import { regridCommand, regridShip } from '../sim/regrid.js';
 import { isCommand, logFor, renumbered } from '../sim/replay.js';
@@ -132,7 +133,10 @@ import { defaultSettings, settingsProblems } from '../sim/settings.js';
 //  51  colony events (M61): each colony has no event open and none
 //      decided; a companion's loyalty quest gains a first step at the
 //      colony, so one under way, or done, moves one step on
-export const SAVE_VERSION = 52;
+//  52  replay (M64): the game keeps a record across runs, started from the
+//      campaign under way (its act, and the reckoning if won); a campaign
+//      has no modifiers and is no week's run
+export const SAVE_VERSION = 53;
 
 // Ordered list. Each step takes `data` from version `from` to `from + 1` and
 // returns the new data. Never edit a shipped step; add a new one instead.
@@ -668,6 +672,34 @@ export const MIGRATIONS = [
     from: 51,
     up: (data) => (isObject(data) && isObject(data.settings) ? { ...data, settings: { ...data.settings, quality: data.settings.quality ?? 'high' } } : data),
   },
+  // Replay (M64): the record across runs, from the campaign under way; and
+  // the campaign's modifiers and week, none.
+  {
+    from: 52,
+    up: (data) => {
+      // A save too broken to have a campaign at all is left for validate.
+      if (!isObject(data) || !('campaign' in data)) return data;
+      const campaign = isObject(data.campaign) ? { ...data.campaign, modifiers: data.campaign.modifiers ?? [], week: data.campaign.week ?? null } : data.campaign;
+      const whole = isObject(campaign) && Number.isInteger(campaign.seed) && typeof campaign.background === 'string' && Number.isInteger(campaign.act);
+      const runs = whole
+        ? [
+            {
+              seed: campaign.seed,
+              background: campaign.background,
+              difficulty: campaign.difficulty,
+              permadeath: campaign.permadeath,
+              modifiers: [],
+              week: null,
+              act: campaign.act,
+              won: campaign.ending?.won === true,
+              over: campaign.permadeath === true && Array.isArray(campaign.crew) && campaign.crew.length === 0 && !campaign.fight,
+            },
+          ]
+        : [];
+      const profile = { reached: { act: runs[0]?.act ?? 0, won: runs[0]?.won ?? false }, runs };
+      return { ...data, campaign, profile: data.profile ?? profile };
+    },
+  },
 ];
 
 // The save's data with fn applied to every ship in it: the builder's slots,
@@ -736,6 +768,7 @@ export function validate(save) {
   if (!isState(data.rng)) problems.push('The RNG state is missing or invalid.');
   problems.push(...settingsProblems(data.settings));
   if (!isBuilds(data.builds)) problems.push('The saved ships are missing or unreadable.');
+  problems.push(...profileProblems(data.profile));
   if (data.campaign === undefined) problems.push('The campaign is missing.');
   else if (data.campaign !== null) problems.push(...campaignProblems(data.campaign));
   return problems;

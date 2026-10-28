@@ -88,7 +88,7 @@ test('bought, the ship moves over at once: its parts keep their places, its cost
   assert.equal(after.flags.framesBought, 1);
   assert.deepEqual(layoutProblems(after.ship, rules), []);
   assert.deepEqual(campaignProblems(after), []);
-  assert.equal(SAVE_VERSION, 52);
+  assert.equal(SAVE_VERSION, 53);
   const reread = parseSave(JSON.stringify(makeSave({ ...saveData(initialState(3)), campaign: after })));
   assert.equal(reread.ok, true, reread.error);
   assert.equal(reread.save.data.campaign.ship.frame, 'courier');

@@ -5,7 +5,7 @@
 // key; slot 1's is the key the game has always used, so a save from before
 // slots is slot 1 as it was. The settings and the sandbox's ships are the
 // game's, not a slot's: whichever slot is in play writes them, and a slot
-// opened takes them from the game.
+// opened takes them from the game. So does the record across runs (M64).
 //
 // A slot keeps up to three backups, the latest of each kind:
 //   act2      the save as it stood just before the lift-off into act 2
@@ -51,13 +51,14 @@ export function backupFor(prev, next) {
   return null;
 }
 
-// The data a slot opens with: its own campaign and RNG, the game's settings
-// and ships. An empty slot has no campaign and the RNG it is given (a fresh
-// one, so its New game rolls its own).
+// The data a slot opens with: its own campaign and RNG, the game's settings,
+// ships and record across runs (M64). An empty slot has no campaign and the
+// RNG it is given (a fresh one, so its New game rolls its own).
 export function openedData(slotData, game, freshRng) {
   return {
     settings: game.settings,
     builds: game.builds,
+    profile: game.profile,
     rng: slotData?.rng ?? freshRng,
     campaign: slotData?.campaign ?? null,
   };

@@ -6,7 +6,9 @@
 // under way (the title asked first); Back goes back to the captain with
 // nothing lost. Above them (M52), the ship's name: the one the new game
 // would roll, which the player can type over, or swap for another from
-// the list.
+// the list. Below them (M64), the run's modifiers, a button each (a locked
+// boon says what opens it), and whether this is the week's run, whose seed
+// and modifiers are the week's.
 import { int, seedFrom } from '../../core/rng.js';
 import { loadContent } from '../../platform/content.js';
 import { drawStars, makeStarfield, paintBackdrop } from '../../render/starfield.js';
@@ -14,6 +16,9 @@ import { node, setText, toolButton } from '../fight/panels.js';
 import { onTap } from '../gestures.js';
 import { icons } from '../icons.js';
 import { MAX_NAME, nameProblem, rollIdentity, tidyName } from '../../sim/identity.js';
+import { weekKey, weeklyRun } from '../../sim/modifiers.js';
+import { emptyProfile } from '../../sim/record.js';
+import { modifierChoices, modifiersLine } from '../runText.js';
 import { newGameDraft } from './newGame.js';
 import { startText } from './startText.js';
 
@@ -36,6 +41,17 @@ export const startGameScreen = {
     shipRow.append(shipInput, anotherButton);
     const shipPanel = node('section', 'set-row hgr-panel sta-row sta-ship');
     shipPanel.append(node('h2', null, 'Your ship'), shipRow);
+    // The run's modifiers (M64).
+    const modPanel = node('section', 'set-row hgr-panel sta-row sta-mods');
+    const modButtons = node('div', 'set-choices');
+    modButtons.setAttribute('role', 'group');
+    modButtons.setAttribute('aria-label', 'Modifiers');
+    const modLine = node('p', 'set-line');
+    modPanel.append(node('h2', null, 'Modifiers'), modButtons, modLine);
+    // This week, from the phone's date: the week's run is the same for
+    // everyone who starts it this week.
+    const today = new Date();
+    const week = weekKey(today.getFullYear(), today.getMonth() + 1, today.getDate());
     const foot = node('footer', 'cap-foot');
     const backButton = toolButton('cap-back', icons.prev, 'Back');
     const hint = node('p', 'cap-hint', 'Loading…');
@@ -79,10 +95,13 @@ export const startGameScreen = {
       });
 
     // The name the new game would roll: its seed is the next the game's
-    // RNG gives (root.js campaign/new).
+    // RNG gives (root.js campaign/new), or the week's.
     function rolledName() {
-      return rollIdentity(defs, int(game.getState().rng, 0, 0xffffffff).value).name;
+      const seed = newGameDraft.weekly ? weeklyRun(defs, week).seed : int(game.getState().rng, 0, 0xffffffff).value;
+      return rollIdentity(defs, seed).name;
     }
+
+    const reached = () => (game.getState().profile ?? emptyProfile()).reached;
 
     // The next name on the list after the one in the box.
     function another() {
@@ -96,9 +115,18 @@ export const startGameScreen = {
 
     function build() {
       shipInput.value = newGameDraft.shipName ?? rolledName();
+      modButtons.replaceChildren(
+        ...[...defs.modifiers.values()].map((def) => {
+          const button = node('button', 'btn set-choice sta-mod');
+          button.type = 'button';
+          button.dataset.id = def.id;
+          cleanups.push(onTap(button, () => toggle(def.id)));
+          return button;
+        }),
+      );
       body.replaceChildren(
         shipPanel,
-        ...startText(defs, newGameDraft).rows.map((row) => {
+        ...startText(defs, newGameDraft, false, week).rows.map((row) => {
           const item = node('section', 'set-row hgr-panel sta-row');
           const choices = node('div', 'set-choices');
           choices.setAttribute('role', 'group');
@@ -115,12 +143,24 @@ export const startGameScreen = {
           shown.set(row.key, { buttons, line });
           return item;
         }),
+        modPanel,
       );
     }
 
     function render() {
       if (!defs) return;
-      const text = startText(defs, newGameDraft, Boolean(game.getState().campaign));
+      const text = startText(defs, newGameDraft, Boolean(game.getState().campaign), week);
+      if (newGameDraft.shipName === null && document.activeElement !== shipInput) shipInput.value = rolledName();
+      const weekOn = newGameDraft.weekly ? week : null;
+      const choices = modifierChoices(defs, newGameDraft.modifiers, reached(), weekOn);
+      for (const button of modButtons.children) {
+        const choice = choices.find((c) => c.id === button.dataset.id);
+        setText(button, choice.label);
+        button.setAttribute('aria-pressed', String(choice.pressed));
+        button.disabled = choice.disabled;
+        button.dataset.kind = choice.kind;
+      }
+      setText(modLine, modifiersLine(defs, newGameDraft.modifiers, reached(), weekOn));
       setText(sub, text.sub);
       for (const row of text.rows) {
         const { buttons, line } = shown.get(row.key);
@@ -138,10 +178,18 @@ export const startGameScreen = {
       render();
     }
 
+    // A modifier picked or put back (an open one; the week's can't be).
+    function toggle(id) {
+      if (newGameDraft.weekly) return;
+      const picked = newGameDraft.modifiers;
+      newGameDraft.modifiers = picked.includes(id) ? picked.filter((other) => other !== id) : [...picked, id];
+      render();
+    }
+
     function start() {
       if (!defs || startButton.disabled) return;
-      const { background, captain, difficulty, permadeath, shipName } = newGameDraft;
-      game.dispatch({ type: 'campaign/new', rules: defs, background, captain: { ...captain, name: captain.name.trim() }, difficulty, permadeath, shipName: shipName === null ? null : tidyName(shipName) });
+      const { background, captain, difficulty, permadeath, shipName, modifiers, weekly } = newGameDraft;
+      game.dispatch({ type: 'campaign/new', rules: defs, background, captain: { ...captain, name: captain.name.trim() }, difficulty, permadeath, shipName: shipName === null ? null : tidyName(shipName), modifiers, week: weekly ? week : null });
     }
 
     let backdrop = null;

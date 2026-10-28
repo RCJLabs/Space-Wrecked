@@ -2802,6 +2802,40 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **The reminder's mark** is `wt:exported:<slot>`, the campaign's seed and act; Export in Settings and Later set it.
   - **Tests:** `tests/slots.test.js`, 9.
 
+- [x] **M64 Replay.** Item 8 of the second Phase 8 brainstorm, the last in my order, on Evan's "Merge when ready then continue to the next item".
+
+  Measured first (main after M63):
+  - **Nothing carries from one run to the next.** A New game rolls a fresh seed from the game's RNG, and the choices are the background (3), the captain, the difficulty, permanent death and the ship's name. A run that ends (the reckoning won, or a game over with death permanent) leaves nothing behind once it is replaced.
+  - **Every start is fixed by its background:** credits (0, 0 or 75), the parts on hand, a crew of three, heat 0, the background's standing.
+  - **Act 1 by the test player** (`tools/run.js --runs 30`): 30 of 30 ready to launch, 6 jobs (4 to 12), no raids.
+
+  Done when (my recommendations, taken on Evan's word):
+  - **A record across runs** (`data.profile`, the game's like the settings, shared by every slot): each run's background, difficulty, modifiers and week, the furthest act it reached, and whether it was won or ended in a game over (the latest 20); and the furthest any run has gone (act, and the reckoning won). It is kept as play goes, not only when a run ends. Save v53: an older save's record starts from its campaign as it stands.
+  - **Run modifiers** (`data/modifiers.json`, content as data), picked on the new game's last screen, each changing the start only:
+    - **burdens,** open from the first game: Wanted (30 heat), Skeleton crew (one fewer crew member, never the captain), Bad blood (−3 standing with every side);
+    - **boons, unlocked by the record:** Nest egg (+150 credits) by reaching act 2, Spare crates (one more of each part the start gives) by reaching act 3, Old friends (+3 standing with every side) by winning the reckoning.
+    - A locked one shows what opens it. The campaign keeps its modifiers, and the hub and Continue name them.
+  - **The week's run:** a choice on the same screen. Its seed and two modifiers (a burden and one other) are made from the week alone (ISO week, worked out offline from the phone's date), the same for everyone that week and background. The record keeps each week's furthest run.
+  - **The record on screen:** on the Campaigns screen, the furthest reached and the latest runs.
+  - **Measured:** `tools/run.js --modifiers` runs act 1 30 times with each modifier. A burden that leaves fewer than 20 of 30 ready to launch is softened before it ships.
+  - **Tests:** the modifiers' start effects, the unlock rules, the week's key, seed and draw (the same week the same run), the record kept through acts, a game over and a win, the migration, and the validator's refusals.
+  - **A browser check:**
+    - a modifier picked and its start seen;
+    - a locked boon shown with its condition, and open after the record says so;
+    - the week's run started twice gives the same crew and ship name;
+    - the record listed;
+    - checked at the three sizes.
+  - **Every earlier milestone's check passes.**
+  - **Not in this milestone** (to §9): modifiers that change rules beyond the start (heat gained, prices, pay); unlocks beyond modifiers (backgrounds, parts, captains' traits); a shared leaderboard (no network, by design).
+
+  **As built:**
+  - **The record** (`src/sim/record.js`): `profile` in the save, `{ reached: { act, won }, runs }`, the latest 20 runs newest first. The root reducer notes each campaign it moves to (`noteRun`). Opening a campaign slot keeps the game's record (`openedData`).
+  - **The modifiers** (`data/modifiers.json`, `src/sim/modifiers.js`, `tools/validate-modifiers.js`): starts of credits, heat, standing, crew and parts, applied in data order (`withModifiers`). New game refuses one the record hasn't opened (`modifiersProblem`). The campaign keeps `modifiers` and `week`.
+  - **The week** (`weekKey`, `weeklyRun`): the ISO week in day counts, its seed and modifiers from `seedFrom` of the week.
+  - **On screen:** the start screen's Run row and Modifiers panel (`src/ui/runText.js`), the hub's home line, and the Campaigns screen's Record panel.
+    - **One change from the Done when:** Continue doesn't name the modifiers, since the title's button has no room at the cover size.
+  - **Measured:** every burden leaves 25 or more of 30 ready to launch (PROGRESS.md).
+
 **The second Phase 8 brainstorm** (Evan's call, 2026-10-26: "Add everything to the queue. Then start 1"). Areas 1 to 3 are his, 4 to 10 mine. Each becomes a milestone as it starts, with its Done when settled then; my recommended order after 1 is 4, 6, 2, 3, 5, 7, 9, 10, 8.
 1. **Improving combat:** the orders nobody gives (Suppress and Weld add nothing measured), weapon roles (the shotgun best everywhere), enemy behaviour types (flankers, shield-bearers, medics, leaders), interactive ship tiles (venting a room, exploding consoles, lights out), morale and retreat (which also ends fights stuck behind a fallen body), a boss for each pursuer.
 2. **Character and ship customization:** editing any crew member's look, callsigns, scars and implants earned in play, suits in the ship's colours, a choice of perk at each rank; paint patterns, engine glow, an emblem editor, more hull styles, a second livery.
@@ -2989,5 +3023,8 @@ These ideas wait until v0.4 or later:
 - M8's whole-fight browser check taps a wrong tile on one fight seed at the tab size; give it a fixed seed (raised in M62)
 - saving a backup to a file (a download the player keeps), naming slots, more than three slots (raised in M63)
 - more than one backup of each kind for a slot, or one before each colony founded (raised in M63)
+- run modifiers that change rules as the run goes (heat gained, prices, pay), and unlocks beyond them (backgrounds, parts, captains' traits) (raised in M64)
+- Skeleton crew softened, or a crew member hired cheaper with it, if Evan finds it too hard (raised in M64)
+- the voyage measured with each modifier (raised in M64)
 
 Ideas that come up during a session go here, not into code.

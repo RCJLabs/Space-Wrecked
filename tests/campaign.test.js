@@ -78,6 +78,8 @@ test("a new campaign starts in act 1 at the hangar, with its background's start"
     // M41: the game's difficulty, Normal, death not permanent, no one fallen.
     difficulty: 'normal',
     permadeath: false,
+    modifiers: [],
+    week: null,
     fallen: [],
     heat: 0,
     // M33: hostile with the pursuer's side, Con-Reg, and neutral with the rest.

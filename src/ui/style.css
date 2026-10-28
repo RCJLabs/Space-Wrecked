@@ -2686,6 +2686,27 @@ textarea {
   flex-direction: column;
 }
 
+/* The backups and the record stacked in the second column (M64). */
+.cmp-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cmp-runs {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--c-ink-dim);
+  font-size: calc(12px * var(--ts, 1));
+  line-height: 1.4;
+}
+
+/* A start screen's locked modifier (M64) reads as one, beside its text. */
+#ui .sta-mod:disabled {
+  opacity: 0.55;
+}
+
 #ui .cmp-restore {
   display: flex;
   align-items: center;

@@ -3,12 +3,13 @@
 // picked on the screens before. Pure.
 import { DIFFICULTIES } from '../../sim/difficulty.js';
 import { difficultyLine } from '../settingsText.js';
+import { weekLine } from '../runText.js';
 
 // { sub, rows: [{ key, title, choices: [{ value, label }], value, line }],
 // hint: { tone, text } }. draft is newGame.js's: { background, captain,
-// difficulty, permadeath }. under: true when a campaign is under way, which
-// Start replaces.
-export function startText(rules, draft, under = false) {
+// difficulty, permadeath, weekly }. under: true when a campaign is under
+// way, which Start replaces. week: this week's key (M64), for its row.
+export function startText(rules, draft, under = false, week = null) {
   const background = rules.backgrounds.get(draft.background);
   const captain = draft.captain;
   const job = captain ? rules.jobs.get(captain.job)?.name.toLowerCase() : null;
@@ -31,6 +32,18 @@ export function startText(rules, draft, under = false) {
           ? 'Anyone who bleeds out in a fight dies. If the captain dies, whoever has stood in the most fights takes command; with no one left aboard, the game is over. It holds for the whole game.'
           : 'Anyone who bleeds out in a fight comes back after it, badly hurt. It holds for the whole game.',
       },
+      // The week's run (M64).
+      ...(week
+        ? [
+            {
+              key: 'weekly',
+              title: 'Run',
+              choices: [{ value: false, label: 'Your own' }, { value: true, label: "This week's" }],
+              value: draft.weekly === true,
+              line: weekLine(rules, week, draft.weekly === true),
+            },
+          ]
+        : []),
     ],
     hint: { tone: 'good', text: `Tap Start to begin.${under ? ' This replaces the campaign under way.' : ''}` },
   };

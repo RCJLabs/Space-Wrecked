@@ -1,0 +1,11 @@
+{
+  "_comment": "Run modifiers (M64, src/sim/modifiers.js): picked on a new game's last screen, each changing the start only. A burden is open from the first game; a boon opens once the record (src/sim/record.js) has reached its unlock: { act } reached by any run, or { won: true } the reckoning won. start: credits (added), heat (set at least), standing (added on every side, held within its range), crew (-1: the last who isn't the captain stays behind), parts (that many more of each part the start gives).",
+  "modifiers": [
+    { "id": "wanted", "name": "Wanted", "kind": "burden", "text": "You start with 30 heat: the pursuer is already looking.", "start": { "heat": 30 } },
+    { "id": "skeleton", "name": "Skeleton crew", "kind": "burden", "text": "One fewer crew member at the start, never the captain.", "start": { "crew": -1 } },
+    { "id": "bad-blood", "name": "Bad blood", "kind": "burden", "text": "Every side thinks 3 less of you.", "start": { "standing": -3 } },
+    { "id": "nest-egg", "name": "Nest egg", "kind": "boon", "text": "150 credits put by.", "start": { "credits": 150 }, "unlock": { "act": 2 } },
+    { "id": "spare-crates", "name": "Spare crates", "kind": "boon", "text": "One more of each part you start with.", "start": { "parts": 1 }, "unlock": { "act": 3 } },
+    { "id": "old-friends", "name": "Old friends", "kind": "boon", "text": "Every side thinks 3 more of you.", "start": { "standing": 3 }, "unlock": { "won": true } }
+  ]
+}
