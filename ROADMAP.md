@@ -2771,6 +2771,30 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **The 30 fps mode** is checked by `tests/loop.test.js`, not the browser, which can't tell a cap from a screen with nothing new to draw. That test found the cap failing on a 90 Hz screen (60 drew 90), now fixed in `src/render/loop.js`.
   - **The dev readout** names the quality.
 
+- [ ] **M63 Saves and safety.** Item 10 of the second Phase 8 brainstorm, next in my order, on Evan's "Merge when ready then continue to the next item".
+
+  Measured first (main after M62):
+  - **One campaign:** the whole save is one localStorage key (`src/platform/storage.js`), about 4 KB as JSON in act 3 (the test player's campaign seed 4, with the settings and the sandbox's ships). Chrome gives an origin about 5 MB, so room is no limit.
+  - **Nothing is kept when a campaign is replaced:** New game (after its second tap) and an import in Settings write over the campaign, and nothing keeps the old one. Only a save that fails to load is kept (`backupBrokenSave`).
+  - **Export and import** are in Settings, as a save code to copy. Nothing ever asks the player to make one, and a TWA's storage is gone with the app's data.
+
+  Done when (my recommendations, taken on Evan's word):
+  - **Three campaign slots:** a Campaigns button on the title opens a screen listing the three, each with where its campaign is (Continue's words) or Empty. Tapping a slot makes it the one in play, and back on the title Continue and New game act on it. Today's save becomes slot 1, as it is. The settings and the sandbox's ships are shared by every slot; each slot has its own campaign and RNG.
+  - **Backups kept by themselves**, one of each kind for each slot, the latest:
+    - **before act 2 and before act 3:** the save as it stood just before the lift-off and the settling;
+    - **replaced:** the campaign a New game, an import or a restore wrote over.
+  - **Restore** each backup from the Campaigns screen, behind a second tap (or a hold, with that setting). A restored campaign is itself kept as replaced, so a restore can be undone.
+  - **A reminder to export:** on the title, when the campaign in play has reached an act with no save code made since, one line saying so, with Settings (which makes the code) and Later (quiet until the next act).
+  - **No change to the save's schema:** slots, backups and the reminder's marks are their own storage keys, and each slot and backup is a whole save as today. SAVE_VERSION stays 52, and a backup from an older game is migrated like any save.
+  - **Tests:** the rules in a pure module (`src/core/slots.js`: the keys, which backup a write calls for, what a slot's line says, when the reminder shows) against a fake storage under Node.
+  - **A browser check:**
+    - two campaigns in two slots, switched, and after a reload each is where it was;
+    - a lift-off keeps a backup, and restoring it brings act 1 back;
+    - the reminder shows, and goes after a save code is made;
+    - checked at the three sizes and offline.
+  - **Every earlier milestone's check passes.**
+  - **Not in this milestone** (to §9): saving a backup to a file, naming slots, more than three.
+
 **The second Phase 8 brainstorm** (Evan's call, 2026-10-26: "Add everything to the queue. Then start 1"). Areas 1 to 3 are his, 4 to 10 mine. Each becomes a milestone as it starts, with its Done when settled then; my recommended order after 1 is 4, 6, 2, 3, 5, 7, 9, 10, 8.
 1. **Improving combat:** the orders nobody gives (Suppress and Weld add nothing measured), weapon roles (the shotgun best everywhere), enemy behaviour types (flankers, shield-bearers, medics, leaders), interactive ship tiles (venting a room, exploding consoles, lights out), morale and retreat (which also ends fights stuck behind a fallen body), a boss for each pursuer.
 2. **Character and ship customization:** editing any crew member's look, callsigns, scars and implants earned in play, suits in the ship's colours, a choice of perk at each rank; paint patterns, engine glow, an emblem editor, more hull styles, a second livery.
