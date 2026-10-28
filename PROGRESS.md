@@ -35,7 +35,12 @@ Newest entry first.
 
 **Browser checks:**
 - **M63's own:** `m63/verify.mjs` passes 26 of 26 at each of the three sizes.
-CHAINS
+- **Every earlier milestone's check,** in the three chains (`m63/regress-a.sh`, `regress-b1.sh`, `regress-b2.sh`), M62's added to chain A. No copy needed adapting for the save, which is unchanged.
+  - **Adapted for M63:** 38 older check scripts put a save in place with `writeSave` (or read one with `readSave`) imported from `src/platform/storage.js`, which M63 replaced with the slots. They now write and read the same key (`wt:save`) through localStorage directly, which is what those functions always did. M23b's check, the one in the chains that met it, then passed 8 of 8 at the three sizes.
+  - **Run again alone, and passed:** with the three chains sharing the machine, M60's long-task limits (cover, tab), M59 (open), M34 (tab), M29 (tab), M25 (open), M23f (open), M23c (tab), M21 (tab) and M17 (open) timed out or found their port taken. Each passed alone: M60 11 of 11, M59 2 of 2, M34 39, M29 38 of 38, M25 21 of 21, M23f 28 of 28, M23c 25 of 25, M21 32 of 32, M17 37 of 37.
+  - **M8's fight** failed at the cover size in the chain. Alone it passed 1 run of 3; its failing run is the same seed, number for number, as in M61 and M62 (§9); the third ended without a verdict.
+  - **M32b's first copy** still looks for Suppress · 2 and Sedate · 2; the fix's copy passes 27 of 27 at the three sizes.
+  - **The rest pass at the three sizes:** 129 runs in chain A, 43 in B1, 34 in B2.
 
 **Known issues:**
 - **Every slot and backup lives in this browser's storage.** Clearing Chrome's data, or uninstalling the TWA, loses them all; a save code is the only copy off the phone, which is why the reminder exists.
