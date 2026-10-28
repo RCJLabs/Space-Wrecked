@@ -47,7 +47,12 @@ Golden files are unchanged.
 
 **Browser checks:**
 - **M61's own:** `m61/verify.mjs` passes 21 of 21 at each of the three sizes: the tremor open, Next day held, a choice in two taps, the result and Carry on; Varga's beat the day after, its step done and her place listed; every button 48 px or more; no console errors.
-- **Every earlier milestone's check,** in the three chains (`m61/regress-a.sh`, `regress-b1.sh`, `regress-b2.sh`), M60's added to chain A. Copies pinned to save v50 have v51 ones (`m61/adapt.sh`, 23 of them). CHAINS
+- **Every earlier milestone's check,** in the three chains (`m61/regress-a.sh`, `regress-b1.sh`, `regress-b2.sh`), M60's added to chain A. Copies pinned to save v50 have v51 ones (`m61/adapt.sh`, 23 of them).
+  - **Adapted for colony events:** the 8 older checks that tap Next day (M26 to M29, M33b, M38e, M38f, M43's walk) predate colony events. A day could now open one and hold the next, as M29's did on day 2. Their copies set `colonyEventChance` to 0 by wrapping the page's `fetch`; a route on the network can't, since the service worker serves `balance.json` from its cache.
+  - **Adapted for the beat:** M33c's and M34's copies hear Teo's beat before they look for his place, with its card put away, and expect "Step 1 of 2".
+  - **M32b's first copy** fails its 2 checks, as on main.
+  - **Run again alone, and passed:** with the three chains and the test suite sharing the machine, M60's long-task limits failed at the three sizes, and M58 (cover), M56 (open), M25 (open), M22 (tab) and M8's fight (tab) timed out or found their port taken. Each passed alone: M60 11 of 11 at each size, M58 26 of 26, M56 18 of 18, M25 21 of 21, M22 35 of 35, M8's fight to its end.
+  - **The rest pass at the three sizes:** 126 runs in chain A, 42 in B1, 27 in B2.
 
 **Known issues:**
 - **Nobody has read the events.** Wording and balance are mine. The colony's are small (±2 to 8 food or materials, wounds of 2 to 4).
