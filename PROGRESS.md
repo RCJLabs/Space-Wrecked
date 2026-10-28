@@ -37,7 +37,7 @@ Newest entry first.
 - **The dev readout:** `m62/verify.mjs` reads "@1x low quality".
 - **Every earlier check; three sizes:** below.
 
-**Tests:** `node --test`: TESTS. Updated on purpose: the save-version pins (51 → 52), the default settings (with `quality: 'high'`), and the v38 migration's place from the end. Golden files are unchanged.
+**Tests:** `node --test`: 1315 pass (1308 on main: 4 added in `tests/quality.test.js`, 3 in `tests/loop.test.js`). Updated on purpose: the save-version pins (51 → 52), the default settings (with `quality: 'high'`), and the v38 migration's place from the end. Golden files are unchanged.
 
 **Browser checks:**
 - **M62's own:** `m62/verify.mjs` passes 10 of 10 at each of the three sizes.
