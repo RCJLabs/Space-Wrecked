@@ -2,6 +2,55 @@
 
 Newest entry first.
 
+## M63 Saves and safety (2026-10-28)
+
+**Status:** done; the ROADMAP.md box is ticked. No save change: SAVE_VERSION stays 52.
+
+**How it was picked:** item 10 of the second Phase 8 brainstorm, next in my order, on Evan's "Merge when ready then continue to the next item".
+
+**What the measuring found** (main after M62):
+- **One campaign,** in one localStorage key, rewritten on every change: about 4 KB as JSON in act 3, so room is no limit.
+- **Nothing kept the campaign a New game or an import wrote over.** Only a save that failed to load was kept aside.
+- **Nothing asked the player to export,** and a TWA's storage goes with the app's data.
+
+**What shipped:**
+- **Three campaign slots** (`src/core/slots.js`, the rules; `src/core/slotStore.js`, the slots in any key-value store; `src/platform/saves.js`, in localStorage). The title's new Campaigns button names the slot in play and opens a screen of the three (`src/ui/campaigns.js`), each with where its campaign is. A tap puts a slot in play; Continue and New game act on it. Today's save is slot 1, under the key it always had. The settings and the sandbox's ships are the game's, shared by every slot.
+- **Backups kept as the game saves,** the latest of each kind for each slot:
+  - before act 2 and before act 3: the save just before the lift-off and the settling;
+  - the one replaced: what a New game, an import or a restore wrote over.
+- **Restore** on the Campaigns screen, behind a second tap (or a hold). The campaign it replaces becomes the one replaced, so a restore can be undone.
+- **The reminder:** on the title, when the campaign in play has reached an act with no save code made since: "Act 2: back this campaign up with a save code, kept somewhere safe.", with Back up (Settings, where Export makes the code) and Later (quiet until the next act). Making a code answers it. The mark is the campaign's seed and act, so a new campaign starts unmarked.
+- **New game and Import say so:** each now says the campaign under way is kept as a backup, under Campaigns.
+
+**Done when** (ROADMAP.md, M63), and how each is met:
+- **Three slots, settings and ships shared, each its own campaign and RNG:** `tests/slots.test.js` (opening a slot keeps the game's settings and keeps no backup; a slot that can't be read isn't opened). `m63/verify.mjs`: slot 2 put in play is empty; a campaign in it; after a reload each slot is where it was.
+- **Backups before act 2 and act 3, and the one replaced:** `tests/slots.test.js` plays act 1 to act 3 and a New game through a store and reads each backup back. `m63/verify.mjs`: a lift-off by touch keeps the act 1 save as Before act 2.
+- **Restore, undoable:** `tests/slots.test.js` restores and undoes. `m63/verify.mjs`: one tap arms Restore, the second brings act 1 back, the act 2 campaign is listed as the one replaced, and Continue says act 1.
+- **The reminder:** `tests/slots.test.js` (due at each new act and for a new campaign, until marked). `m63/verify.mjs`: shown for act 1, Later quiets it through a reload, back for act 2, gone after Export.
+- **No schema change:** a save from before slots is slot 1 as it was, written back the same (`tests/slots.test.js`); SAVE_VERSION is 52.
+- **Three sizes and offline:** `m63/verify.mjs` passes 26 of 26 at each of 905 × 370, 821 × 283 and 960 × 825, the last steps with the network off (the title and the slots open from the cache). Every button on the title, the reminder and the Campaigns screen is 48 px or more and on screen; the slot list scrolls at the tab size.
+- **Every earlier check:** below.
+
+**Tests:** TESTS
+
+**Browser checks:**
+- **M63's own:** `m63/verify.mjs` passes 26 of 26 at each of the three sizes.
+CHAINS
+
+**Known issues:**
+- **Every slot and backup lives in this browser's storage.** Clearing Chrome's data, or uninstalling the TWA, loses them all; a save code is the only copy off the phone, which is why the reminder exists.
+- **The reminder comes at once for a new campaign:** act 1 counts as an act reached. Later quiets it until act 2.
+- **One backup of each kind:** lifting off a second time (after restoring the act 2 backup) keeps the newer save before act 2, not both.
+- **Restoring or opening a slot keeps today's settings,** not the ones the backup or slot was saved with (a difficulty is the campaign's, so it comes with it).
+
+**What Evan should test on the phone:**
+- On the title, Campaigns should say Slot 1, with your campaign in it as it was.
+- Put slot 2 in play, start a short new game there, then go back to slot 1: Continue should be your campaign. Close the app and reopen it: the same slot is still in play.
+- After a lift-off, Campaigns → Backups of slot 1 should list Before act 2. Restore it (two taps), then restore The one replaced to get back to act 2.
+- The reminder line on the title: tap Back up, make the code in Settings, and come back: it should be gone.
+
+**Next milestone's first task:** item 8 of the brainstorm, replay: what a second run could carry from the first (unlocks across runs), run modifiers, and a weekly seed made offline from the date.
+
 ## M62 Performance on a low-end phone (2026-10-28)
 
 **Status:** done; the ROADMAP.md box is ticked. Save v52, with a migration.

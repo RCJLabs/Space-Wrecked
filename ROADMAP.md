@@ -2771,7 +2771,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **The 30 fps mode** is checked by `tests/loop.test.js`, not the browser, which can't tell a cap from a screen with nothing new to draw. That test found the cap failing on a 90 Hz screen (60 drew 90), now fixed in `src/render/loop.js`.
   - **The dev readout** names the quality.
 
-- [ ] **M63 Saves and safety.** Item 10 of the second Phase 8 brainstorm, next in my order, on Evan's "Merge when ready then continue to the next item".
+- [x] **M63 Saves and safety.** Item 10 of the second Phase 8 brainstorm, next in my order, on Evan's "Merge when ready then continue to the next item".
 
   Measured first (main after M62):
   - **One campaign:** the whole save is one localStorage key (`src/platform/storage.js`), about 4 KB as JSON in act 3 (the test player's campaign seed 4, with the settings and the sandbox's ships). Chrome gives an origin about 5 MB, so room is no limit.
@@ -2794,6 +2794,13 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
     - checked at the three sizes and offline.
   - **Every earlier milestone's check passes.**
   - **Not in this milestone** (to §9): saving a backup to a file, naming slots, more than three.
+
+  **As built:**
+  - **The slots** (`src/core/slots.js` the rules, `src/core/slotStore.js` the store, `src/platform/saves.js` localStorage): slot 1 is the key the game always used (`wt:save`), slots 2 and 3 `wt:save:2` and `wt:save:3`, the slot in play `wt:slot`. Each slot opens with its own campaign and RNG and the game's settings and ships.
+  - **The backups** are `wt:save:<slot>:act2`, `act3` and `replaced`. A write keeps one when the campaign moves an act on (that act's), comes back an act, or is gone or another (the one replaced); a restore and an import keep the replaced one first, whatever they bring.
+  - **The Campaigns screen** (`src/ui/campaigns.js`) is the settings screen's frame: the slots, then the backups of the slot in play with Restore.
+  - **The reminder's mark** is `wt:exported:<slot>`, the campaign's seed and act; Export in Settings and Later set it.
+  - **Tests:** `tests/slots.test.js`, 9.
 
 **The second Phase 8 brainstorm** (Evan's call, 2026-10-26: "Add everything to the queue. Then start 1"). Areas 1 to 3 are his, 4 to 10 mine. Each becomes a milestone as it starts, with its Done when settled then; my recommended order after 1 is 4, 6, 2, 3, 5, 7, 9, 10, 8.
 1. **Improving combat:** the orders nobody gives (Suppress and Weld add nothing measured), weapon roles (the shotgun best everywhere), enemy behaviour types (flankers, shield-bearers, medics, leaders), interactive ship tiles (venting a room, exploding consoles, lights out), morale and retreat (which also ends fights stuck behind a fallen body), a boss for each pursuer.
@@ -2980,5 +2987,7 @@ These ideas wait until v0.4 or later:
 - quality that switches by itself when frames drop (raised in M62)
 - a Low quality that also leaves out the glows, room lights and the fire's spill (raised in M62)
 - M8's whole-fight browser check taps a wrong tile on one fight seed at the tab size; give it a fixed seed (raised in M62)
+- saving a backup to a file (a download the player keeps), naming slots, more than three slots (raised in M63)
+- more than one backup of each kind for a slot, or one before each colony founded (raised in M63)
 
 Ideas that come up during a session go here, not into code.
