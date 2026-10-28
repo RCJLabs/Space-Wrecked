@@ -54,7 +54,12 @@ Newest entry first.
 
 **Browser checks:**
 - **M64's own:** `m64/verify.mjs` passes 13 of 13 at each of the three sizes.
-CHAINS
+- **Every earlier milestone's check,** in the three chains (`m64/regress-a.sh`, `regress-b1.sh`, `regress-b2.sh`), M63's added to chain A. Copies pinned to save v52 have v53 ones (`m64/adapt.sh`).
+  - **Adapted for M64:** 22 older check scripts build a save by hand, without the record, which v53's save check now asks for. They add an empty record when the build has `src/sim/record.js`. M23b's check, which failed on this in chain B1, then passed 8 of 8 at the three sizes.
+  - **Run again alone, and passed:** with the three chains sharing the machine, M60's long-task limits (tab, open), M39 (cover, tab), M33b (cover), M28 (cover), M25 (tab, open) and M18 (tab) timed out or found their port taken. Each passed alone: M60 11 of 11, M39 43 of 43, M33b 43, M28 32 of 32, M25 21 of 21, M18 43 of 43.
+  - **M8's fight** failed at the open size in the chain, on the same seed's fork as before (§9). Run alone, it played to its end, with no console errors.
+  - **M32b's first copy** still looks for Suppress · 2 and Sedate · 2, as on main; the fix's copy passes at the three sizes.
+  - **The rest pass at the three sizes:** 124 runs in chain A, 36 in B1, 31 in B2.
 
 **Known issues:**
 - **Skeleton crew is far harder than the other burdens:** with two crew, the test player does 28% of its jobs (80% with none) and takes over twice as many tries, though 25 of 30 still launch.
