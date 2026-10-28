@@ -31,7 +31,7 @@ Newest entry first.
 - **Three sizes and offline:** `m63/verify.mjs` passes 26 of 26 at each of 905 × 370, 821 × 283 and 960 × 825, the last steps with the network off (the title and the slots open from the cache). Every button on the title, the reminder and the Campaigns screen is 48 px or more and on screen; the slot list scrolls at the tab size.
 - **Every earlier check:** below.
 
-**Tests:** TESTS
+**Tests:** `node --test`: 1324 pass (1315 on main: 9 added in `tests/slots.test.js`). Golden files are unchanged.
 
 **Browser checks:**
 - **M63's own:** `m63/verify.mjs` passes 26 of 26 at each of the three sizes.
