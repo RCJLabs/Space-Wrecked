@@ -680,7 +680,8 @@ export const MIGRATIONS = [
       // A save too broken to have a campaign at all is left for validate.
       if (!isObject(data) || !('campaign' in data)) return data;
       const campaign = isObject(data.campaign) ? { ...data.campaign, modifiers: data.campaign.modifiers ?? [], week: data.campaign.week ?? null } : data.campaign;
-      const runs = isObject(campaign)
+      const whole = isObject(campaign) && Number.isInteger(campaign.seed) && typeof campaign.background === 'string' && Number.isInteger(campaign.act);
+      const runs = whole
         ? [
             {
               seed: campaign.seed,

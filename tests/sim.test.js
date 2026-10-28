@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { emptyProfile } from '../src/sim/record.js';
 import { initialState, reduce, saveData } from '../src/sim/root.js';
 
 function deepFreeze(value) {
@@ -12,7 +13,7 @@ function deepFreeze(value) {
 
 test('initial state starts on the title with default settings and the given seed', () => {
   const settings = { fpsCap: 60, forgiving: false, motion: 'auto', tips: true, tipsSeen: [], sound: true, volume: 70, music: 30, colors: 'standard', textSize: 100, fog: false, hand: 'right', speed: 100, confirm: 'taps', vibration: true, captions: false, reading: 'standard', quality: 'high' };
-  assert.deepEqual(initialState(42), { screen: 'title', settings, rng: 42, builds: { active: 0, slots: [] }, campaign: null });
+  assert.deepEqual(initialState(42), { screen: 'title', settings, rng: 42, builds: { active: 0, slots: [] }, campaign: null, profile: emptyProfile() });
   assert.equal(initialState(-1).rng, 0xffffffff);
 });
 
@@ -29,7 +30,7 @@ test('restoring a save replaces settings, RNG state, saved ships and the campaig
   const builds = { active: 0, slots: [{ name: 'Ship 1', ship: { frame: 'starter', modules: [], nextUid: 1 }, log: [] }] };
   const data = { settings: { fpsCap: 30 }, rng: 999, builds, campaign: null };
   const restored = reduce(state, { type: 'save/restore', data });
-  assert.deepEqual(restored, { screen: 'sandbox', settings: { fpsCap: 30 }, rng: 999, builds, campaign: null });
+  assert.deepEqual(restored, { screen: 'sandbox', settings: { fpsCap: 30 }, rng: 999, builds, campaign: null, profile: emptyProfile() }, 'a save without a record starts an empty one');
   assert.notEqual(restored.settings, data.settings);
   // On a campaign's screen, a restored save goes back to the title: that
   // screen was showing the campaign before.
@@ -54,5 +55,5 @@ test('unknown actions return the same state object', () => {
 
 test('saveData holds what a save needs and nothing else', () => {
   const state = initialState(5);
-  assert.deepEqual(saveData(state), { settings: state.settings, rng: 5, builds: { active: 0, slots: [] }, campaign: null });
+  assert.deepEqual(saveData(state), { settings: state.settings, rng: 5, builds: { active: 0, slots: [] }, campaign: null, profile: emptyProfile() });
 });

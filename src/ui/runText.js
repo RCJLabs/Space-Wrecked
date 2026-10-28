@@ -34,8 +34,8 @@ export function modifiersLine(rules, picked, reached, week) {
   const ids = week ? weeklyRun(rules, week).modifiers : picked;
   const said = ids.map((id) => `${rules.modifiers.get(id).name}: ${rules.modifiers.get(id).text}`);
   const locked = [...rules.modifiers.values()].filter((def) => !unlocked(def, reached)).map((def) => `${def.name}: ${unlockText(def).toLowerCase()} to open it.`);
-  const head = week ? `This week's run gives these. ` : ids.length ? '' : "None picked: the background's own start. ";
-  return [head + said.join(' '), ...locked].filter((line) => line.trim()).join(' ');
+  const head = week ? "This week's run gives these." : ids.length ? '' : "None picked: the background's own start.";
+  return [head, ...said, ...locked].filter(Boolean).join(' ');
 }
 
 // The week row's line.

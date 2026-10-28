@@ -50,10 +50,13 @@
 //   node tools/run.js --permadeath on   death permanent (M41)
 //   node tools/run.js --background deserter   from another background's
 //                                    start (M30; data/backgrounds.json)
+//   node tools/run.js --modifiers wanted,skeleton   with run modifiers
+//                                    (M64; data/modifiers.json)
 import { pathToFileURL } from 'node:url';
 import { fitPart } from '../src/sim/fit.js';
 import { aiAction } from '../src/sim/ai.js';
 import { firstBackground, gameOver, newCampaign, partsNeeded, refitShip, shipChecklist } from '../src/sim/campaign.js';
+import { withModifiers } from '../src/sim/modifiers.js';
 import { canLaunch } from '../src/sim/constraints.js';
 import { endJob, takeJob, takeQuestJob, withBoard } from '../src/sim/contracts.js';
 import { indexDefs } from '../src/sim/defs.js';
@@ -183,12 +186,13 @@ export function helps(campaign, defs, type, needed = partsNeeded(campaign, defs)
 // [quick, slow], tally, lines, campaign }. tally counts what the run did;
 // lines say it step by step; campaign is where it ended, ready to launch
 // if it got there; over is true once no one is left (M41: the game is
-// over).
-export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal', permadeath = false, background = firstBackground(defs) } = {}) {
+// over). modifiers (M64) start the run with those run modifiers.
+export function runToLaunch(defs, seed, { heat = 'hunters', difficulty = 'normal', permadeath = false, background = firstBackground(defs), modifiers = [] } = {}) {
   if (!HEAT_POLICIES.includes(heat)) throw new Error(`--heat is one of ${HEAT_POLICIES.join(', ')}`);
   if (!DIFFICULTIES.includes(difficulty)) throw new Error(`--difficulty is one of ${DIFFICULTIES.join(', ')}`);
   if (!defs.backgrounds.has(background)) throw new Error(`--background is one of ${[...defs.backgrounds.keys()].join(', ')}`);
-  let campaign = withBoard(newCampaign(defs, seed, { background, difficulty, permadeath }), defs);
+  for (const id of modifiers) if (!defs.modifiers.has(id)) throw new Error(`--modifiers takes ids from data/modifiers.json: ${[...defs.modifiers.keys()].join(', ')}`);
+  let campaign = withBoard(withModifiers(newCampaign(defs, seed, { background, difficulty, permadeath }), defs, modifiers), defs);
   const lines = [`Campaign seed ${seed}, ${defs.backgrounds.get(background).name.toLowerCase()}, paying heat down ${{ raids: 'before a raid', hunters: 'before the hunters', never: 'never' }[heat]}:`];
   const say = (text) => lines.push(text);
   const name = (type) => defs.modules.get(type)?.name ?? type;
@@ -424,7 +428,7 @@ export function manyRuns(defs, runs, options = {}) {
     return sorted.length ? `${sorted[Math.floor((sorted.length - 1) / 2)]} (${sorted[0]} to ${sorted.at(-1)})` : '-';
   };
   const lines = [
-    `${runs} runs, seeds 1 to ${runs}${options.background ? `, the ${defs.backgrounds.get(options.background)?.name.toLowerCase()}` : ''}: ${launched.length} ready to launch.`,
+    `${runs} runs, seeds 1 to ${runs}${options.background ? `, the ${defs.backgrounds.get(options.background)?.name.toLowerCase()}` : ''}${options.modifiers?.length ? `, with ${options.modifiers.join(', ')}` : ''}: ${launched.length} ready to launch.`,
     `Jobs: ${spread(launched.map((r) => r.jobs))}. Raids: ${spread(launched.map((r) => r.raids))}. Jobs done: ${Math.round((100 * sum(results, 'done')) / Math.max(1, sum(results, 'jobs')))}% of ${sum(results, 'jobs')}.`,
     `Minutes, quick: ${spread(launched.map((r) => r.minutes[0]))}; slow: ${spread(launched.map((r) => r.minutes[1]))}. The median, then the least and most.`,
     `The thread's job (M33b): done in ${launched.filter((r) => r.threadDone).length} of ${launched.length} launched, at job ${spread(launched.filter((r) => r.tally.questAt).map((r) => r.tally.questAt))}, in ${spread(launched.map((r) => r.tally.questJobs))} tries; taken before launching in ${launched.filter((r) => r.lines.some((line) => / before launching\)/.test(line))).length}.`,
@@ -442,7 +446,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     return i >= 0 ? args[i + 1] : fallback;
   };
   const defs = indexDefs(readData());
-  const options = { heat: value('--heat', 'hunters'), difficulty: value('--difficulty', 'normal'), permadeath: value('--permadeath', 'off') === 'on', background: value('--background', undefined) };
+  const options = { heat: value('--heat', 'hunters'), difficulty: value('--difficulty', 'normal'), permadeath: value('--permadeath', 'off') === 'on', background: value('--background', undefined), modifiers: value('--modifiers', '').split(',').filter(Boolean) };
   const runs = Number(value('--runs', 0));
   console.log((runs ? manyRuns(defs, runs, options) : runToLaunch(defs, Number(value('--seed', 1)), options)).lines.join('\n'));
 }

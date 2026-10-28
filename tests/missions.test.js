@@ -3,6 +3,7 @@
 // out, on the crew's side with no gun, who doesn't count as crew.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { emptyProfile } from '../src/sim/record.js';
 import { migrate, SAVE_VERSION } from '../src/core/save.js';
 import { aiAction } from '../src/sim/ai.js';
 import { act, createBattle, objectiveDone, targetsFor } from '../src/sim/battle.js';
@@ -359,6 +360,7 @@ test('SAVE_VERSION 34: a save from before reads unchanged', () => {
   assert.equal(migrated.version, 53);
   // Unchanged but for M38e's other colonies, none (v37), and M41's game:
   // Normal, death not permanent, no one fallen, and no settings to move;
-  // and M52's ship with no name yet; M56's reckoning and ending, none.
-  assert.deepEqual(migrated.data, { ...data, campaign: { ...data.campaign, colonies: [], difficulty: 'normal', permadeath: false, fallen: [], identity: null, reckoning: null, ending: null } });
+  // and M52's ship with no name yet; M56's reckoning and ending, none;
+  // M64's modifiers and week, none, and a record with no run in it.
+  assert.deepEqual(migrated.data, { ...data, campaign: { ...data.campaign, colonies: [], difficulty: 'normal', permadeath: false, fallen: [], identity: null, reckoning: null, ending: null, modifiers: [], week: null }, profile: emptyProfile() });
 });

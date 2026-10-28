@@ -3,6 +3,7 @@
 // the raiders (battle.setup, save v45); the colony's powered guns fight.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { emptyProfile } from '../src/sim/record.js';
 import { migrate, SAVE_VERSION } from '../src/core/save.js';
 import { act, createBattle } from '../src/sim/battle.js';
 import { clearFirst, deploy } from '../src/sim/deploy.js';
@@ -120,5 +121,5 @@ test('save v45: a fight from before has no setup and carries on as it was', () =
   const data = { settings: null, campaign: { fight: { battle: { side: 'crew' } } } };
   const moved = migrate({ version: 44, data });
   assert.equal(moved.version, 53);
-  assert.deepEqual(moved.data, { ...data, campaign: { ...data.campaign, identity: null, reckoning: null, ending: null } }, 'and M52: no name yet; M56: no reckoning set, no ending');
+  assert.deepEqual(moved.data, { ...data, campaign: { ...data.campaign, identity: null, reckoning: null, ending: null, modifiers: [], week: null }, profile: emptyProfile() }, 'and M52: no name yet; M56: no reckoning set, no ending; M64: no modifiers, no week, an empty record');
 });

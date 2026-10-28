@@ -106,7 +106,7 @@ test('save v39: a save from before takes its settings\' difficulty as its campai
   const moved = migrate({ version: 38, data: old });
   assert.equal(moved.version, 53);
   assert.deepEqual(moved.data.settings, defaultSettings(), 'the settings keep none');
-  assert.deepEqual(moved.data.campaign, { ...campaign, difficulty: 'hard', permadeath: false, fallen: [], identity: null, reckoning: null, ending: null });
+  assert.deepEqual(moved.data.campaign, { ...campaign, difficulty: 'hard', permadeath: false, fallen: [], identity: null, reckoning: null, ending: null, modifiers: [], week: null });
   const none = migrate({ version: 38, data: { settings: { ...defaultSettings(), difficulty: 'odd' }, campaign: null } });
   assert.equal(none.data.campaign, null);
   assert.equal(migrate({ version: 38, data: { settings: { ...defaultSettings(), difficulty: 'odd' }, campaign } }).data.campaign.difficulty, 'normal');
