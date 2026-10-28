@@ -2,14 +2,17 @@
 // with where its campaign is, and the backups of the slot in play. Tapping a
 // slot puts it in play (back on the title, Continue and New game act on
 // it); a backup comes back behind a second tap, and the campaign it
-// replaces is kept as the slot's replaced backup. The rules are
+// replaces is kept as the slot's replaced backup. Under the backups, the
+// record across runs (M64, record.js). The rules are
 // src/core/slots.js; the storage, src/platform/saves.js.
 import { seedFrom } from '../core/rng.js';
 import { loadContent } from '../platform/content.js';
 import { saves } from '../platform/saves.js';
 import { drawStars, makeStarfield, paintBackdrop } from '../render/starfield.js';
+import { emptyProfile } from '../sim/record.js';
 import { saveData } from '../sim/root.js';
 import { backupText, NO_BACKUPS, slotLine } from './campaignsText.js';
+import { recordText } from './runText.js';
 import { confirms } from './confirm.js';
 import { node, setText, toolButton } from './fight/panels.js';
 import { onTap } from './gestures.js';
@@ -25,8 +28,12 @@ export const campaignsScreen = {
     head.append(node('h1', null, 'Campaigns'));
     const slotBox = node('section', 'set-rows cmp-slots');
     const backupBox = node('section', 'set-save cmp-backups');
+    // The record across runs (M64): the furthest any run went, the latest.
+    const recordBox = node('section', 'set-save cmp-record');
+    const side = node('div', 'cmp-side');
+    side.append(backupBox, recordBox);
     const body = node('div', 'set-body');
-    body.append(slotBox, backupBox);
+    body.append(slotBox, side);
     const foot = node('footer', 'set-foot');
     const backButton = toolButton('set-back', icons.leave, 'Title');
     foot.append(backButton);
@@ -64,7 +71,7 @@ export const campaignsScreen = {
         rows.push({ cleanup: onTap(button, () => open(slot)) });
         slotBox.append(button);
       }
-      slotBox.append(node('p', 'set-line', 'Each slot keeps its own campaign. The settings and the sandbox ships are shared.'));
+      slotBox.append(node('p', 'set-line', 'Each slot keeps its own campaign. The settings, the sandbox ships and the record are shared.'));
 
       const { backups } = list.find((s) => s.slot === inPlay);
       backupBox.replaceChildren(node('h2', null, `Backups of slot ${inPlay}`));
@@ -85,6 +92,11 @@ export const campaignsScreen = {
       setText(said, note.text);
       said.dataset.tone = note.tone;
       backupBox.append(said);
+
+      const record = recordText(game.getState().profile ?? emptyProfile(), rules);
+      const runs = node('ul', 'cmp-runs');
+      runs.append(...record.runs.map((line) => node('li', null, line)));
+      recordBox.replaceChildren(node('h2', null, 'Record'), node('p', 'set-line', record.furthest), runs);
     }
 
     // Puts a slot in play: its own campaign, with the game's settings.

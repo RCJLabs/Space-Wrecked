@@ -31,6 +31,8 @@ import { buyFromRack } from './racks.js';
 import { buyFrame, buyFromYard, sellToYard } from './yards.js';
 import { dismissCrew, hireRecruit } from './recruits.js';
 import { regroup } from './regroup.js';
+import { emptyProfile, noteRun } from './record.js';
+import { modifiersProblem, isWeek, weeklyRun, withModifiers } from './modifiers.js';
 import { repairShip } from './repair.js';
 import { defaultSettings, fightSettings, reduceSettings } from './settings.js';
 import { settle } from './settle.js';
@@ -78,6 +80,9 @@ export function initialState(seed) {
     // The campaign (campaign.js), or null before one starts. Saved after
     // every change, a fight's every order included.
     campaign: null,
+    // The record across runs (M64, record.js): the game's, like the
+    // settings.
+    profile: emptyProfile(),
   };
 }
 
@@ -233,7 +238,16 @@ export function initialState(seed) {
 //                                  (M29)
 //   dev/cheat { cheat, rules }     a cheat from the ?dev=1 menu (dev.js),
 //                                  where the campaign is; the screen stays
+// Each action, then the record noted from the campaign it leaves (M64,
+// record.js), the same profile when nothing it keeps has changed.
 export function reduce(state, action) {
+  const next = step(state, action);
+  if (next.campaign === state.campaign) return next;
+  const profile = noteRun(next.profile ?? emptyProfile(), next.campaign);
+  return profile === next.profile ? next : { ...next, profile };
+}
+
+function step(state, action) {
   switch (action.type) {
     case 'save/restore':
       return {
@@ -242,6 +256,7 @@ export function reduce(state, action) {
         rng: action.data.rng,
         builds: action.data.builds ?? emptyBuilds(),
         campaign: action.data.campaign ?? null,
+        profile: action.data.profile ?? emptyProfile(),
         // A campaign screen can't stay open on a campaign that changed
         // under it.
         screen: CAMPAIGN_SCREENS.includes(state.screen) ? 'title' : state.screen,
@@ -258,8 +273,17 @@ export function reduce(state, action) {
       if (shipName !== null && nameProblem(shipName)) return state;
       if (captain && captainProblem(captain, action.rules, background)) return state;
       if (!DIFFICULTIES.includes(difficulty) || typeof permadeath !== 'boolean') return state;
-      const { value: seed, state: rng } = int(state.rng, 0, 0xffffffff);
-      return { ...state, rng, campaign: withBoard(newCampaign(action.rules, seed, { background, captain, difficulty, permadeath, shipName }), action.rules), screen: PLACE_SCREENS.hub };
+      // The week's run (M64): its seed and modifiers the week's; else a seed
+      // from the game's RNG, and the modifiers the record has opened.
+      const week = action.week ?? null;
+      if (week !== null && !isWeek(week)) return state;
+      const weekly = week === null ? null : weeklyRun(action.rules, week);
+      const modifiers = weekly ? weekly.modifiers : action.modifiers ?? [];
+      if (!weekly && modifiersProblem(action.rules, modifiers, (state.profile ?? emptyProfile()).reached)) return state;
+      const { value: rolled, state: rng } = int(state.rng, 0, 0xffffffff);
+      const seed = weekly ? weekly.seed : rolled;
+      const campaign = { ...withModifiers(newCampaign(action.rules, seed, { background, captain, difficulty, permadeath, shipName }), action.rules, modifiers), week };
+      return { ...state, rng, campaign: withBoard(campaign, action.rules), screen: PLACE_SCREENS.hub };
     }
     case 'campaign/continue':
       return state.campaign ? { ...state, screen: campaignScreen(state.campaign) } : state;
@@ -454,7 +478,7 @@ export function reduce(state, action) {
 // The part of the state that goes into a save. The screen is not saved: a
 // game reopens at the title, and Continue goes back to the campaign.
 export function saveData(state) {
-  return { settings: state.settings, rng: state.rng, builds: state.builds, campaign: state.campaign };
+  return { settings: state.settings, rng: state.rng, builds: state.builds, campaign: state.campaign, profile: state.profile };
 }
 
 function withCampaign(state, campaign) {

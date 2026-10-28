@@ -30,6 +30,7 @@ import { checkCampaignFiles, checkStartShips } from './validate-campaign.js';
 import { checkFactions } from './validate-factions.js';
 import { checkCompanions } from './validate-companions.js';
 import { checkQuests } from './validate-quests.js';
+import { checkModifiers } from './validate-modifiers.js';
 import { checkMusic } from './validate-music.js';
 import { checkSoundOf, checkSounds } from './validate-sounds.js';
 
@@ -407,6 +408,8 @@ export function validateData(data) {
   const soundIds = checkSounds(data.sounds, fail);
   // The music (M60).
   checkMusic(data.music, fail);
+  // The run modifiers (M64).
+  checkModifiers(data.modifiers, fail);
 
   const weapons = listOf(weaponFile, 'weapons', 'weapons.json', fail);
   uniqueIds(weapons, 'weapons.json', fail);
@@ -1106,6 +1109,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       `${count(data.encounters.encounters.length, 'encounter')}, ${count(data.ships.ships.length, 'ship preset')}, ` +
       `${count(data.campaign.acts.length, 'act')}, ${count(data.backgrounds.backgrounds.length, 'background')}, ` +
       `${count(data.districts.districts.length, 'district')}, ${count(data.sites.maps.length, 'site map')}, ` +
-      `${count(data.contracts.jobs.length, 'job template')}, ${count(data.sectors.nodes.length, 'kind')} of sector node, ${count(data.worlds.kinds.length, 'kind')} of world, ${count(data.colony.buildings.length, 'colony building')}, ${count(data.colony.builds.length, 'colony build')}, ${count(data.expeditions.kinds.length, 'kind')} of place, ${count(data.events.events.length, 'event')}, ${count(data.factions.sides.length, 'side')}, ${count(data.quests.quests.length, 'quest')}, ${count(data.companions.companions.length, 'companion')}, ${count(data.sounds.sounds.length, 'sound')}, ${count(data.music.beds.length, 'music bed')})`,
+      `${count(data.contracts.jobs.length, 'job template')}, ${count(data.sectors.nodes.length, 'kind')} of sector node, ${count(data.worlds.kinds.length, 'kind')} of world, ${count(data.colony.buildings.length, 'colony building')}, ${count(data.colony.builds.length, 'colony build')}, ${count(data.expeditions.kinds.length, 'kind')} of place, ${count(data.events.events.length, 'event')}, ${count(data.factions.sides.length, 'side')}, ${count(data.quests.quests.length, 'quest')}, ${count(data.companions.companions.length, 'companion')}, ${count(data.sounds.sounds.length, 'sound')}, ${count(data.music.beds.length, 'music bed')}, ${count(data.modifiers.modifiers.length, 'run modifier')})`,
   );
 }

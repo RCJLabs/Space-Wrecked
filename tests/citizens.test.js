@@ -341,9 +341,9 @@ test("a raid the player fights: the citizens stand beside the crew as colonists,
 });
 
 test('saves at v38: a colony from before has no citizens, nothing toward the next and no news, every colony; as saved they reload; unreadable ones are caught', () => {
-  assert.equal(SAVE_VERSION, 52);
+  assert.equal(SAVE_VERSION, 53);
   const step = MIGRATIONS.find((m) => m.from === 37);
-  assert.equal(step, MIGRATIONS.at(-15), 'the last but M41\'s, M42\'s, M45\'s, M46\'s, M47\'s, M49\'s, M50\'s, M52\'s, M53\'s, M56\'s, M58\'s, M60\'s, M61\'s and M62\'s');
+  assert.equal(step, MIGRATIONS.at(-16), 'the last but M41\'s, M42\'s, M45\'s, M46\'s, M47\'s, M49\'s, M50\'s, M52\'s, M53\'s, M56\'s, M58\'s, M60\'s, M61\'s, M62\'s and M64\'s');
   const grown = roomy(2);
   const now = { ...grown, colony: { ...grown.colony, growth: 3, news: [{ day: 1, kind: 'grew', citizens: 2 }] } };
   const strip = ({ citizens, growth, news, ...colony }) => colony;

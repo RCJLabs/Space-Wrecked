@@ -41,6 +41,8 @@
 //            difficulty.js), picked at New game and changed in Settings
 //   permadeath  true where death is permanent (M41): someone who bleeds
 //            out in a fight dies. Picked at New game and kept for the game.
+//   modifiers  the run modifiers it began with (M64, modifiers.js): ids
+//   week     the ISO week of a week's run ("2026-W44"), or null
 //   fallen   [{ id, name, job, act, look }]: those who died in a fight, the
 //            oldest first (M41). With no one left aboard, the game is over
 //            (gameOver).
@@ -106,6 +108,7 @@ import { handedIn, weaponOf, withArms } from './loadout.js';
 import { talentOrder, TALENT_RANK } from './talents.js';
 import { traitBonus } from './traits.js';
 import { isIdentity, nameProblem, rollIdentity, tidyName } from './identity.js';
+import { isWeek, MAX_MODIFIERS } from './modifiers.js';
 
 export { actOf } from './acts.js';
 
@@ -202,6 +205,10 @@ export function newCampaign(rules, seed, { background = firstBackground(rules), 
     captain: crew[at].id,
     difficulty,
     permadeath,
+    // The run's modifiers and its week (M64, modifiers.js): ids from
+    // data/modifiers.json, and the ISO week of a week's run, or null.
+    modifiers: [],
+    week: null,
     fallen: [],
     heat: 0,
     standing: startStanding(rules, background),
@@ -589,6 +596,8 @@ export function campaignProblems(value) {
   if (!isState(value.seed) || !isState(value.rng)) wrong('seed or RNG state is invalid');
   if (!isId(value.background)) wrong('background is invalid');
   if (!isInt(value.act, 1, ACTS)) wrong('act is invalid');
+  if (!Array.isArray(value.modifiers) || value.modifiers.length > MAX_MODIFIERS || !value.modifiers.every((id) => typeof id === 'string' && ID.test(id)) || new Set(value.modifiers).size !== value.modifiers.length) wrong('modifiers are invalid');
+  if (value.week !== null && !isWeek(value.week)) wrong('week is invalid');
   if (!PLACES.includes(value.place)) wrong('place is invalid');
   if (!isInt(value.credits, 0, Number.MAX_SAFE_INTEGER)) wrong('credits are invalid');
   if (!isRecord(value.parts) || !Object.entries(value.parts).every(([type, count]) => ID.test(type) && isInt(count, 1, Number.MAX_SAFE_INTEGER))) {

@@ -9,6 +9,7 @@ import { baseOf, countOfAny } from '../../sim/makers.js';
 import { beginRaid } from '../../sim/raid.js';
 import { coldAt } from '../../sim/quests.js';
 import { recruitOffer } from '../../sim/recruits.js';
+import { runLine } from '../runText.js';
 import { gearLine } from './armsText.js';
 import { shownRank } from './crewJobText.js';
 import { coldWarning, questsText } from './questText.js';
@@ -71,7 +72,8 @@ export function hangarText(campaign, rules) {
   const buy = shop && (campaign.shop ?? []).find((item) => (needs[baseOf(rules.modules.get(item.part) ?? { id: item.part })] ?? 0) > onHand(item.part) && item.price <= campaign.credits);
   return {
     act: actTitle(campaign.act, rules),
-    home: act?.home ?? '',
+    // The run's modifiers and week (M64), after the act's home.
+    home: [act?.home ?? '', runLine(campaign, rules)].filter(Boolean).join(' · '),
     ship: shipLine(campaign, rules),
     goal: { ready, lines },
     crew,

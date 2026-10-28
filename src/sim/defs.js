@@ -4,10 +4,10 @@
 // empty tables.
 
 // The content files, by name: data/<name>.json.
-export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'hulls', 'styling', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'docks', 'sites', 'contracts', 'sectors', 'worlds', 'colony', 'expeditions', 'events', 'recruits', 'tips', 'factions', 'quests', 'companions', 'sounds', 'music'];
+export const CONTENT_FILES = ['modules', 'frames', 'manufacturers', 'hulls', 'styling', 'balance', 'weapons', 'jobs', 'traits', 'enemies', 'tiles', 'encounters', 'ships', 'campaign', 'backgrounds', 'districts', 'docks', 'sites', 'contracts', 'sectors', 'worlds', 'colony', 'expeditions', 'events', 'recruits', 'tips', 'factions', 'quests', 'companions', 'sounds', 'music', 'modifiers'];
 
 export function indexDefs(files) {
-  const { modules, frames, manufacturers, hulls, styling, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, docks, sites, contracts, sectors, worlds, colony, expeditions, events, recruits, tips, factions, quests, companions, sounds, music } = files;
+  const { modules, frames, manufacturers, hulls, styling, balance, weapons, jobs, traits, enemies, tiles, encounters, ships, campaign, backgrounds, districts, docks, sites, contracts, sectors, worlds, colony, expeditions, events, recruits, tips, factions, quests, companions, sounds, music, modifiers } = files;
   return {
     balance,
     tilesPerCell: modules.tilesPerCell,
@@ -149,6 +149,9 @@ export function indexDefs(files) {
     // The music (M60, src/core/music.js): each bed by id, its parts and the
     // screens it plays under. The rules never read it either.
     music: byId(music?.beds),
+    // Run modifiers (M64, src/sim/modifiers.js): each by id, in data order,
+    // changing a new campaign's start.
+    modifiers: byId(modifiers?.modifiers),
   };
 }
 

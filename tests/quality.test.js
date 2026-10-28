@@ -38,9 +38,9 @@ test('the settings screen offers it with what it does', () => {
 });
 
 test('save v52: a save from before draws on High', () => {
-  assert.equal(SAVE_VERSION, 52);
+  assert.equal(SAVE_VERSION, 53);
   const step = MIGRATIONS.find((m) => m.from === 51);
-  assert.equal(step, MIGRATIONS.at(-1));
+  assert.equal(step, MIGRATIONS.at(-2));
   const { quality, ...before } = defaultSettings();
   assert.equal(step.up({ settings: before }).settings.quality, 'high');
   assert.equal(step.up({ settings: { ...before, quality: 'low' } }).settings.quality, 'low', 'a quality already there stays');

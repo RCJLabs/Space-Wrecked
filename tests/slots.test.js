@@ -52,11 +52,11 @@ test("the backup a write calls for: an act on, an act back, or another campaign;
   assert.equal(backupFor(null, game(act1)), null);
 });
 
-test("a slot opens with its own campaign and RNG, and the game's settings and ships", () => {
+test("a slot opens with its own campaign and RNG, and the game's settings, ships and record", () => {
   const mine = { ...game(act1), settings: { ...game(act1).settings, music: 0 }, builds: { active: 0, slots: [] } };
   const theirs = { ...game(act2), rng: 77 };
-  assert.deepEqual(openedData(theirs, mine, 5), { settings: mine.settings, builds: mine.builds, rng: 77, campaign: act2 });
-  assert.deepEqual(openedData(null, mine, 5), { settings: mine.settings, builds: mine.builds, rng: 5, campaign: null });
+  assert.deepEqual(openedData(theirs, mine, 5), { settings: mine.settings, builds: mine.builds, profile: mine.profile, rng: 77, campaign: act2 });
+  assert.deepEqual(openedData(null, mine, 5), { settings: mine.settings, builds: mine.builds, profile: mine.profile, rng: 5, campaign: null });
 });
 
 test('what a slot holds, read from its text', () => {
