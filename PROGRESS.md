@@ -2,6 +2,76 @@
 
 Newest entry first.
 
+## M64 Replay (2026-10-28)
+
+**Status:** done; the ROADMAP.md box is ticked. Save v53, with a migration.
+
+**How it was picked:** item 8 of the second Phase 8 brainstorm, the last in my order, on Evan's "Merge when ready then continue to the next item". The six modifiers are my design, not yet played by Evan.
+
+**What the measuring found** (main after M63):
+- **Nothing carried from one run to the next:** a New game rolled a fresh seed, and a finished run left nothing once it was replaced.
+- **Every start was fixed by its background:** credits (0, 0 or 75), its parts, a crew of three, heat 0, its standing.
+- **Act 1 by the test player** (`tools/run.js --runs 30`): 30 of 30 ready to launch, 6 jobs, no raids.
+
+**What shipped:**
+- **A record across runs** (`src/sim/record.js`, `profile` in the save, the game's like the settings and shared by every slot):
+  - the latest 20 runs, each with its background, difficulty, death setting, modifiers, week, furthest act, and whether it was won or ended in a game over;
+  - the furthest any run has gone (act, and the reckoning won), which never goes back.
+  - It is kept as play goes: the root reducer notes every campaign it moves to, and hands back the same record when nothing changed.
+- **Six run modifiers** (`data/modifiers.json`, `src/sim/modifiers.js`, validated by `tools/validate-modifiers.js`), each changing the start only:
+  - **burdens, open from the first game:** Wanted (30 heat), Skeleton crew (one fewer crew member, never the captain), Bad blood (−3 standing everywhere);
+  - **boons, opened by the record:** Nest egg (+150 credits) by reaching act 2, Spare crates (one more of each starting part) by reaching act 3, Old friends (+3 standing everywhere) by winning the reckoning.
+- **The week's run:** the ISO week, worked out from the phone's date in day counts with no clock, gives a seed and two modifiers (a burden, then one of any kind). It is the same for everyone who starts it that week with that background.
+- **On screen:**
+  - New game's last screen has a Run row (Your own, or This week's) and a Modifiers panel. A locked boon reads "(locked)", and the line under the panel says what opens it.
+  - The hub's home line names the run's modifiers and week.
+  - The Campaigns screen shows the record: the furthest run and the latest five.
+- **`tools/run.js --modifiers`** plays act 1 with them.
+- **Save v53:** an older save's record starts from its campaign as it stands (its act, and the reckoning if won). Its campaign gets no modifiers and no week.
+
+**Done when** (ROADMAP.md, M64), and how each is met:
+- **The record, kept as play goes, save v53:** `tests/runs.test.js` keeps it through a new run, a lift-off, the settling, a win and a game over; it holds 20 runs and never loses the furthest. It also checks the migration and the record's refusals. `m64/verify.mjs`: the Campaigns screen lists the run, with "Furthest: act 1".
+- **The modifiers, their unlocks and their starts:** `tests/runs.test.js` checks each start for every background, the unlock rules, and that New game refuses a locked boon. `m64/verify.mjs`: six buttons, 48 px or more, with the burdens open and the boons locked and saying what opens them. Wanted picked starts at heat 30 and the hub names it. With the record at act 2, Nest egg opens and Spare crates stays locked.
+- **The week's run:** `tests/runs.test.js` covers the key (W53 years, and the turns of the year) and the run made from it: the same all week, a burden first, varying across the year. Started twice from the title it gives the same crew and ship whatever the game's RNG. `m64/verify.mjs` starts it twice by touch: the same crew and ship name, its two modifiers pressed and none to change.
+- **Measured** (`tools/run.js --runs 30 --modifiers …`, act 1):
+
+  | Modifiers | Ready to launch | Jobs | Jobs done | Raids |
+  |---|---|---|---|---|
+  | none | 30 | 6 | 80% | 0 |
+  | Wanted | 30 | 7 | 81% | 0 (0 to 1) |
+  | Skeleton crew | 25 | 15 | 28% | 0 (0 to 3) |
+  | Bad blood | 30 | 6 | 79% | 0 |
+  | Nest egg | 30 | 5 | 79% | 0 |
+  | Spare crates | 30 | 5 | 79% | 0 |
+  | Old friends | 30 | 6 | 80% | 0 |
+  | Wanted and Skeleton crew | 25 | 21 | 26% | 1 (0 to 5) |
+
+  No burden leaves fewer than 20 of 30 ready to launch, so none was softened.
+- **Three sizes:** `m64/verify.mjs` passes 13 of 13 at each of 905 × 370, 821 × 283 and 960 × 825.
+- **Every earlier check:** below.
+
+**Tests:** `node --test`: 1332 pass (1324 on main: 8 added in `tests/runs.test.js`). Updated on purpose: the save-version pins (52 → 53, and the migrations counted from the end), and the expectations that list what a new campaign, the root state, a save and each older migration hold (now with the modifiers, the week and the record). Golden files are unchanged.
+
+**Browser checks:**
+- **M64's own:** `m64/verify.mjs` passes 13 of 13 at each of the three sizes.
+CHAINS
+
+**Known issues:**
+- **Skeleton crew is far harder than the other burdens:** with two crew, the test player does 28% of its jobs (80% with none) and takes over twice as many tries, though 25 of 30 still launch.
+- **Wanted, Bad blood and Old friends barely touch act 1:** standing and heat weigh more from act 2 on, which this measure doesn't reach. The voyage with modifiers isn't measured.
+- **Modifiers change the start only;** none changes a rule as the run goes on (§9).
+- **The week's run is the same week for everyone only by the phone's own date:** a phone with its date set wrong gets another week.
+- **Continue on the title doesn't name the modifiers:** its button has no room at the cover size. The hub's home line does.
+- **The record is the game's, kept in each slot's save** and passed on as slots open. An import brings its own record with it.
+
+**What Evan should test on the phone:**
+- New game through to its last screen: the Run row and the six modifiers, three of them locked, saying what opens each.
+- Pick Wanted and start: the hub's line under the act should name it, and the heat meter start at 30.
+- Campaigns: the Record panel should list the run.
+- Start This week's run twice (from New game, the second time over the first): the same crew names and ship name.
+
+**Next milestone's first task:** the second Phase 8 brainstorm's queue is done. Gate 8 is Evan's call: whether the game plays on the phone as he wants it at launch. Next, he decides that, or picks what comes next.
+
 ## M63 Saves and safety (2026-10-28)
 
 **Status:** done; the ROADMAP.md box is ticked. No save change: SAVE_VERSION stays 52.

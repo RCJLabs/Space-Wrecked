@@ -2802,7 +2802,7 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
   - **The reminder's mark** is `wt:exported:<slot>`, the campaign's seed and act; Export in Settings and Later set it.
   - **Tests:** `tests/slots.test.js`, 9.
 
-- [ ] **M64 Replay.** Item 8 of the second Phase 8 brainstorm, the last in my order, on Evan's "Merge when ready then continue to the next item".
+- [x] **M64 Replay.** Item 8 of the second Phase 8 brainstorm, the last in my order, on Evan's "Merge when ready then continue to the next item".
 
   Measured first (main after M63):
   - **Nothing carries from one run to the next.** A New game rolls a fresh seed from the game's RNG, and the choices are the background (3), the captain, the difficulty, permanent death and the ship's name. A run that ends (the reckoning won, or a game over with death permanent) leaves nothing behind once it is replaced.
@@ -2827,6 +2827,14 @@ Each milestone is added as Evan picks it, with its Done when settled as it start
     - checked at the three sizes.
   - **Every earlier milestone's check passes.**
   - **Not in this milestone** (to §9): modifiers that change rules beyond the start (heat gained, prices, pay); unlocks beyond modifiers (backgrounds, parts, captains' traits); a shared leaderboard (no network, by design).
+
+  **As built:**
+  - **The record** (`src/sim/record.js`): `profile` in the save, `{ reached: { act, won }, runs }`, the latest 20 runs newest first. The root reducer notes each campaign it moves to (`noteRun`). Opening a campaign slot keeps the game's record (`openedData`).
+  - **The modifiers** (`data/modifiers.json`, `src/sim/modifiers.js`, `tools/validate-modifiers.js`): starts of credits, heat, standing, crew and parts, applied in data order (`withModifiers`). New game refuses one the record hasn't opened (`modifiersProblem`). The campaign keeps `modifiers` and `week`.
+  - **The week** (`weekKey`, `weeklyRun`): the ISO week in day counts, its seed and modifiers from `seedFrom` of the week.
+  - **On screen:** the start screen's Run row and Modifiers panel (`src/ui/runText.js`), the hub's home line, and the Campaigns screen's Record panel.
+    - **One change from the Done when:** Continue doesn't name the modifiers, since the title's button has no room at the cover size.
+  - **Measured:** every burden leaves 25 or more of 30 ready to launch (PROGRESS.md).
 
 **The second Phase 8 brainstorm** (Evan's call, 2026-10-26: "Add everything to the queue. Then start 1"). Areas 1 to 3 are his, 4 to 10 mine. Each becomes a milestone as it starts, with its Done when settled then; my recommended order after 1 is 4, 6, 2, 3, 5, 7, 9, 10, 8.
 1. **Improving combat:** the orders nobody gives (Suppress and Weld add nothing measured), weapon roles (the shotgun best everywhere), enemy behaviour types (flankers, shield-bearers, medics, leaders), interactive ship tiles (venting a room, exploding consoles, lights out), morale and retreat (which also ends fights stuck behind a fallen body), a boss for each pursuer.
@@ -3015,5 +3023,8 @@ These ideas wait until v0.4 or later:
 - M8's whole-fight browser check taps a wrong tile on one fight seed at the tab size; give it a fixed seed (raised in M62)
 - saving a backup to a file (a download the player keeps), naming slots, more than three slots (raised in M63)
 - more than one backup of each kind for a slot, or one before each colony founded (raised in M63)
+- run modifiers that change rules as the run goes (heat gained, prices, pay), and unlocks beyond them (backgrounds, parts, captains' traits) (raised in M64)
+- Skeleton crew softened, or a crew member hired cheaper with it, if Evan finds it too hard (raised in M64)
+- the voyage measured with each modifier (raised in M64)
 
 Ideas that come up during a session go here, not into code.
