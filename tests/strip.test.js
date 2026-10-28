@@ -94,12 +94,12 @@ test('a won boarding strips what the player picked, through the reducer; her scr
 });
 
 test('save v42: a boarding fight saved before offers the parts it rolled, and takes them', () => {
-  assert.equal(SAVE_VERSION, 50);
+  assert.equal(SAVE_VERSION, 51);
   const aboard = boardedCutter();
   const { pool, ...rolled } = aboard.fight.boarding.salvage;
   const before = { ...aboard, fight: { ...aboard.fight, boarding: { ...aboard.fight.boarding, salvage: rolled } } };
   const moved = migrate({ version: 41, data: { settings: null, campaign: before } });
-  assert.equal(moved.version, 50);
+  assert.equal(moved.version, 51);
   assert.deepEqual(moved.data.campaign.fight.boarding.salvage, { ...rolled, pool: rolled.parts });
   assert.deepEqual(campaignProblems(moved.data.campaign), []);
   // With no fight on, nothing changes.

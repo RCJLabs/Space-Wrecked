@@ -685,7 +685,8 @@ function fightProblem(fight, crew) {
 // system's other worlds, and the voyage under way, or null (M38d,
 // voyage.js; checked apart); its number, where it lies along the line of
 // systems and its own heat (M38e, colonies.js); its citizens, the days
-// toward the next and its news (M38f).
+// toward the next and its news (M38f); its event open and the last one's
+// result (M61).
 function isColony(colony) {
   const world = colony?.world;
   if (!isRecord(colony) || !isWorld(world) || typeof world.name !== 'string' || world.name.trim() === '' || world.name.length > MAX_NAME || typeof world.surveyed !== 'boolean') return false;
@@ -702,6 +703,9 @@ function isColony(colony) {
   if (!Array.isArray(colony.news) || colony.news.length > MAX_NEWS || !colony.news.every(isNews)) return false;
   // Lying low and a side's trader there (M53).
   if (typeof colony.lowProfile !== 'boolean' || (colony.trader !== null && !isTrader(colony.trader))) return false;
+  // The event open and the last one's result (M61, colonyEvents.js).
+  if (colony.event !== null && !(isRecord(colony.event) && isName(colony.event.id) && (colony.event.quest === null || isName(colony.event.quest)))) return false;
+  if (colony.eventResult !== null && !(isRecord(colony.eventResult) && isName(colony.eventResult.event))) return false;
   return Array.isArray(colony.buildings) && colony.buildings.length <= MAX_BUILDINGS && isShipData({ frame: 'colony', modules: colony.buildings, nextUid: colony.nextUid });
 }
 

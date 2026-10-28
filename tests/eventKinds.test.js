@@ -247,14 +247,16 @@ test('the validator: who a choice needs, a background, traps, wrecks and repairs
   for (const [wrong, why] of bad) assert.ok(problems(wrong).some((problem) => why.test(problem)), `${JSON.stringify(wrong.choices[0])}: ${problems(wrong).join(' | ')}`);
 });
 
-test("the content: 100 events, the run's and the places' kinds as the Done when counts them, every job and 8 traits needed, the traps, wrecks and repairs", () => {
+test("the content: 100 events, the run's and the places' kinds as the Done when counts them, every job and 8 traits needed, the traps, wrecks and repairs; from M61 128, with the colony's own", () => {
   const all = [...content.events.values()];
-  assert.equal(all.length, 100);
+  assert.equal(all.length, 128);
   const general = (kind) => all.filter((event) => event.kind === kind && !event.quest && !event.background).length;
   assert.deepEqual(['derelict', 'distress', 'trader', 'hazard'].map(general), [12, 12, 10, 11]);
-  for (const background of content.backgrounds.keys()) assert.equal(all.filter((event) => event.background === background).length, 4, background);
-  assert.deepEqual(['hulk', 'wreckage', 'rock', 'planet'].map(general), [9, 9, 9, 9]);
-  assert.equal(all.filter((event) => event.quest).length, 7);
+  // Each background's 4 on the run, and from M61 2 at the colony; 2 more
+  // for each kind of place, the colony's 10 and the companions' 4 beats.
+  for (const background of content.backgrounds.keys()) assert.equal(all.filter((event) => event.background === background && event.kind !== 'colony').length, 4, background);
+  assert.deepEqual(['hulk', 'wreckage', 'rock', 'planet'].map(general), [11, 11, 11, 11]);
+  assert.equal(all.filter((event) => event.quest).length, 11);
   const choices = all.flatMap((event) => event.choices.map((one) => ({ event, choice: one })));
   const needed = (key) => new Set(choices.map(({ choice: one }) => one.needs?.[key]).filter(Boolean));
   assert.deepEqual([...needed('job')].sort(), [...content.jobs.keys()].sort(), 'every job');

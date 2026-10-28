@@ -16,7 +16,7 @@ import { jobAtRank } from '../src/sim/ranks.js';
 import { dismissCrew } from '../src/sim/recruits.js';
 import { TALENT_RANK, talentOrder } from '../src/sim/talents.js';
 import { openMap, rules } from './battleKit.js';
-import { settled } from './colonyKit.js';
+import { heard, settled } from './colonyKit.js';
 import { atEvent, atStep, CHAINS, moveTo, onRun, winner } from './companionKit.js';
 
 test("each side's chain starts at its event, and its step is an event of its own in the next sector", () => {
@@ -78,7 +78,10 @@ test('with no berth free the companion can\'t sign on; the step can still be don
 });
 
 test('loyalty: their place is within reach of the colony, held by someone from their past; won, they are loyal', () => {
-  const home = joinCompanion(settled(), rules, 'osei').campaign;
+  // Their beat at the colony first (M61): only then the place.
+  const joined = joinCompanion(settled(), rules, 'osei').campaign;
+  assert.equal(withPlaces(joined, rules).colony.places.find((p) => p.quest === 'osei-loyal'), undefined);
+  const home = heard(joined);
   const listed = withPlaces(home, rules);
   const place = listed.colony.places.find((p) => p.quest === 'osei-loyal');
   assert.deepEqual([place.name, place.held, place.days], ["Survey chief's tug", true, 2]);
@@ -91,11 +94,11 @@ test('loyalty: their place is within reach of the colony, held by someone from t
   assert.equal(begun.campaign.fight.encounter, 'guards');
   // Lost: not loyal yet, and the place is still there.
   const lost = endPlaceFight(winner(begun.campaign, 'enemy'), rules);
-  assert.deepEqual(lost.quests['osei-loyal'], { step: 0, state: 'open' });
+  assert.deepEqual(lost.quests['osei-loyal'], { step: 1, state: 'open' });
   assert.equal(aboard(lost, 'osei').loyal, undefined);
   // Won: loyal, and the fight's result says the quest is finished.
   const won = endPlaceFight(winner(begun.campaign, 'crew'), rules);
-  assert.deepEqual(won.quests['osei-loyal'], { step: 0, state: 'done' });
+  assert.deepEqual(won.quests['osei-loyal'], { step: 1, state: 'done' });
   assert.equal(aboard(won, 'osei').loyal, true);
   assert.equal(won.colony.trip.result.quest.did, 'finished');
   assert.deepEqual(campaignProblems(won), []);
@@ -142,7 +145,7 @@ test('a companion let go ends their loyalty quest, and the chain they came throu
 });
 
 test('saves: v29 for companions; a v28 save reads as it is; companions, loyalty and talents are checked', () => {
-  assert.equal(SAVE_VERSION, 50);
+  assert.equal(SAVE_VERSION, 51);
   const step = MIGRATIONS.find((m) => m.from === 28);
   const v28 = { settings: {}, rng: 1, builds: null, campaign: settled() };
   assert.equal(step.up(v28), v28);

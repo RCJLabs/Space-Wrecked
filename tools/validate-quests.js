@@ -25,7 +25,7 @@ const START_KEYS = ['event', 'choice'];
 const STEP_KEYS = {
   1: ['act', 'job', 'next', 'said', 'effects'],
   2: ['act', 'event', 'done', 'cold', 'next'],
-  3: ['act', 'place', 'next'],
+  3: ['act', 'place', 'event', 'next'],
 };
 const PLACE_KEYS = ['kind', 'name', 'days', 'ship', 'party', 'salvage', 'materials', 'text'];
 const PAYOFF_KEYS = ['heat', 'standing', 'eased', 'said'];
@@ -125,7 +125,11 @@ export function checkQuests(data, { sides, presets, encounters }, fail) {
       if (!isText(step.next) || step.next.length > MAX_NEXT) fail(here, `next must be a non-empty string of up to ${MAX_NEXT} letters`);
       if (step.act === 1) checkJobStep(step, here, { quest, background, districts, jobs, sides }, fail);
       if (step.act === 2) checkEventStep(step, here, { quest, events, holding }, fail);
-      if (step.act === 3) checkPlaceStep(step.place, `${here} place`, { placeKinds, presets, encounters }, fail);
+      // At the colony, a place held, or (M61) a colony event: the next day's
+      // there, any choice doing the step.
+      if (step.act === 3 && step.event !== undefined) checkColonyStep(step, here, { quest, events }, fail);
+      else if (step.act === 3) checkPlaceStep(step.place, `${here} place`, { placeKinds, presets, encounters }, fail);
+      if (step.act === 3 && typeof step.event === 'string') named.events.set(step.event, quest.id);
       if (step.act === 1 && typeof step.job === 'string') named.jobs.set(step.job, quest.id);
       if (step.act === 2 && typeof step.event === 'string') named.events.set(step.event, quest.id);
     });
@@ -175,6 +179,19 @@ function checkJobStep(step, at, { quest, background, districts, jobs, sides }, f
       }
     }
   }
+}
+
+// The colony (M61): an event of the quest's own, of the colony's kind; any
+// choice does the step, and it has no place.
+function checkColonyStep(step, at, { quest, events }, fail) {
+  if (step.place !== undefined) fail(at, 'a colony step is a place or an event, not both');
+  const event = events.get(step.event);
+  if (!event) {
+    fail(at, `event: unknown event "${step.event}" (events.json)`);
+    return;
+  }
+  if (event.quest !== quest.id) fail(at, `event "${event.id}" must be marked quest: "${quest.id}"`);
+  if (event.kind !== 'colony') fail(at, `event "${event.id}" must be of kind colony`);
 }
 
 // The run: an event of the quest's own, of a kind the sectors' nodes hold,

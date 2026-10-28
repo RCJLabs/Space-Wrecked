@@ -90,9 +90,8 @@ test('the Music setting takes its levels only; save v50 gives a save from before
   assert.equal(reduceSettings(settings, { type: 'settings/music', value: 0 }).music, 0);
   assert.equal(reduceSettings(settings, { type: 'settings/music', value: 45 }), settings);
   assert.deepEqual(settingsProblems({ ...settings, music: 45 }), ['The music setting is invalid.']);
-  assert.equal(SAVE_VERSION, 50);
-  const step = MIGRATIONS.at(-1);
-  assert.equal(step.from, 49);
+  assert.equal(SAVE_VERSION, 51);
+  const step = MIGRATIONS.find((m) => m.from === 49);
   const { music, ...before } = settings;
   assert.equal(step.up({ settings: before }).settings.music, 30);
   assert.equal(step.up({ settings: { ...before, music: 10 } }).settings.music, 10, 'a level already there stays');

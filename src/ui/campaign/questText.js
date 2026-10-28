@@ -150,7 +150,7 @@ export function questNodeText(node, rules) {
 // quest's name), line (the place's words) }, or null for any other place.
 export function questPlaceText(place, rules) {
   const quest = place?.quest ? questOf(rules, place.quest) : null;
-  const step = quest?.steps.find((entry) => entry.act === 3);
+  const step = quest?.steps.find((entry) => entry.act === 3 && entry.place);
   if (!step?.place) return null;
   return { tag: quest.name, line: step.place.text };
 }

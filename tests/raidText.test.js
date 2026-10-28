@@ -16,7 +16,7 @@ import { heatText } from '../src/ui/campaign/hubText.js';
 import { colonyRaidObjective, colonyRaidOutcome, defendText, defenseRow, landingNotice, landingReport, raidHint, raidStatus, takenText } from '../src/ui/campaign/raidText.js';
 import { awayText, legReport } from '../src/ui/campaign/tripText.js';
 import { rules } from './battleKit.js';
-import { settled } from './colonyKit.js';
+import { calm, settled } from './colonyKit.js';
 
 const pursuer = rules.backgrounds.get('miner').pursuer;
 const words = pursuer.colony;
@@ -94,6 +94,7 @@ test("heat at the colony: the run's levels with the pursuer's words for the colo
 });
 
 test("the day: Next day's first tap gives the odds of the colony being found tonight, and the report says when it was, with the roll", () => {
+  const rules = calm; // no colony events rolled (M61)
   const base = at(settled(), { heat: 50, lanes: 2 });
   const ask = dayText(dayPlan(base, rules)).text;
   assert.match(ask, / 6% the colony is found tonight\. Tap again for day 2\.$/);

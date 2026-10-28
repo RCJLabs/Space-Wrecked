@@ -15,7 +15,10 @@
 //     and any other leaves it for the next sector (atEvent);
 //   the colony, a place: the quest's own, within reach beside the others
 //     until the step is done (questPlaces), her ship held by a party: a
-//     fight aboard her, as at a derelict the scavengers hold (heldBy).
+//     fight aboard her, as at a derelict the scavengers hold (heldBy). From
+//     M61 a colony step can be an event instead: a companion's past
+//     catching up, the next day's at the colony (colonyEvents.js); any
+//     choice does it.
 // A step not done in its act ends its quest (goCold): act 1's at the launch,
 // the run's as the ship leaves the last sector. A step done has its effects
 // (a job's step: heat, credits, standing); the last done, the quest is done
@@ -205,7 +208,8 @@ export function atEvent(campaign, rules, node, eventId, choice) {
 // null, held: true, seed, quest }], her ship's seed from the campaign's and
 // the quest's, the same until the step is done.
 export function questPlaces(campaign, rules) {
-  return openSteps(campaign, rules, 3).map(({ quest, step }) => {
+  // A colony step that is an event (M61, colonyEvents.js) has no place.
+  return openSteps(campaign, rules, 3).filter(({ step }) => step.place).map(({ quest, step }) => {
     const { kind, name, days } = step.place;
     return { kind, name, days, event: null, held: true, seed: int(seedFrom(`${campaign.seed}:${quest.id}:place`), 0, MAX_SEED).value, quest: quest.id };
   });
@@ -225,7 +229,7 @@ export function withQuestPlaces(campaign, rules) {
 // Who holds a quest's place: { ship, party, salvage, materials }, its
 // colony step's; null for any other place.
 export function heldBy(place, rules) {
-  const step = place?.quest ? questOf(rules, place.quest)?.steps.find((entry) => entry.act === 3) : null;
+  const step = place?.quest ? questOf(rules, place.quest)?.steps.find((entry) => entry.act === 3 && entry.place) : null;
   if (!step?.place) return null;
   const { ship, party, salvage, materials } = step.place;
   return { ship, party, salvage, materials };

@@ -170,6 +170,7 @@ import { actOf } from '../src/sim/acts.js';
 import { canRefit, maxHp, refitShip, shipChecklist } from '../src/sim/campaign.js';
 import { buildingOf, colonyStats, givesOf, shipParts, storesOf, yieldOf } from '../src/sim/colony.js';
 import { build, buildPlan, takeDown } from '../src/sim/colonyBuild.js';
+import { chooseAtColony, colonyEventHere } from '../src/sim/colonyEvents.js';
 import { crewRoom } from '../src/sim/crew.js';
 import { shipEdge, STATION_EFFECTS } from '../src/sim/edges.js';
 import { sellPriceOf, weaponPrice } from '../src/sim/economy.js';
@@ -470,6 +471,18 @@ function dearest(campaign, rules, count) {
   return prices.sort((a, b) => b - a).slice(0, count).reduce((sum, price) => sum + price, 0);
 }
 
+// The colony's open event decided (M61), as at any other, the choice worth
+// most: the campaign after it, or as it was with none open. A day passes
+// only once it is.
+export function decideAtColony(campaign, rules, heat = 'manage') {
+  const here = colonyEventHere(campaign, rules);
+  if (!here) return campaign;
+  const pick = bestChoice(campaign, rules, here.event, heat);
+  const made = chooseAtColony(campaign, rules, pick.choice.id);
+  if (!made.ok) throw new Error(made.error);
+  return made.campaign;
+}
+
 // The choice the player makes at an event: { choice, worth }, the one worth
 // most of those it can make, with what it does to a quest (questWorth) at
 // `pull` of its worth: all of it at the event, questPull's on the way. From
@@ -517,7 +530,8 @@ function questWorth(campaign, rules, event, choice) {
   if (open?.step.event === event.id) {
     // A companion signing on (M33c) is part of what the step is worth.
     const joins = choice.outcomes.find((outcome) => outcome.effects.joins)?.effects.joins;
-    if (open.step.done.includes(choice.id)) return WORTH.quest + (joins && feeds(campaign, rules, joins) ? WORTH.companion : 0);
+    // A colony's step (M61) is done by any choice.
+    if (open.step.done?.includes(choice.id) ?? true) return WORTH.quest + (joins && feeds(campaign, rules, joins) ? WORTH.companion : 0);
     return (open.step.cold ?? []).includes(choice.id) ? -WORTH.quest : 0;
   }
   const starts = [...(rules.quests?.values() ?? [])].find((quest) => quest.start?.event === event.id && quest.start.choice === choice.id && !campaign.quests?.[quest.id]);

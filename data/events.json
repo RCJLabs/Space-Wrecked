@@ -2283,6 +2283,632 @@
         },
         { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "Dez watches you go from her viewport.", "effects": {} }] }
       ]
+    },
+    {
+      "id": "dust-front",
+      "kind": "colony",
+      "title": "Dust front",
+      "text": "A wall of dust on the horizon, moving fast. The farms are open to the sky.",
+      "choices": [
+        {
+          "id": "tarp",
+          "label": "Tarp the fields",
+          "outcomes": [{ "chance": 100, "text": "Plating over the rows, weighted with rock. The dust goes by and the crops come through.", "effects": { "materials": -4 } }]
+        },
+        {
+          "id": "ride",
+          "label": "Ride it out",
+          "outcomes": [
+            { "chance": 60, "text": "The dust buries the solar arrays and a shed with them. A week digging out, and what's bent stays bent.", "effects": { "materials": -6 } },
+            { "chance": 40, "text": "It veers north at the last. Not a leaf touched.", "effects": {} }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fever-wing",
+      "kind": "colony",
+      "title": "Fever",
+      "text": "Someone wakes burning up, and by noon a second has it. Nobody knows what it is yet.",
+      "choices": [
+        {
+          "id": "isolate",
+          "label": "Isolate them",
+          "needs": { "job": "medic" },
+          "outcomes": [{ "chance": 100, "text": "The medic walls off a corner and keeps it there. Three days of soup and it passes.", "effects": {} }]
+        },
+        {
+          "id": "boil",
+          "label": "Boil everything",
+          "needs": { "supplies": 4 },
+          "outcomes": [{ "chance": 100, "text": "Water boiled, bedding scalded, rations opened only in the clean room. Slow and wasteful, and nobody else gets it.", "effects": { "supplies": -4 } }]
+        },
+        {
+          "id": "work",
+          "label": "Work through it",
+          "outcomes": [
+            { "chance": 50, "text": "It goes through everyone. A bad week, and nobody dies.", "effects": { "wound": { "hp": 2, "all": true } } },
+            { "chance": 50, "text": "It burns out in the two it took. Lucky.", "effects": {} }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ice-strike",
+      "kind": "colony",
+      "title": "Ice strike",
+      "text": "The mine's drill comes up wet. A pocket of old ice under the dig, clean enough to drink.",
+      "choices": [
+        {
+          "id": "melt",
+          "label": "Melt it down",
+          "outcomes": [
+            { "chance": 75, "text": "Tanks full of water and a crop of greens from it within the week.", "effects": { "supplies": 8 } },
+            { "chance": 25, "text": "The heater lines burst on the second day. Water, and a scalded arm.", "effects": { "supplies": 4, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "ore",
+          "label": "Mine around it",
+          "outcomes": [{ "chance": 100, "text": "The ice can wait. The ore next to it can't.", "effects": { "materials": 4 } }]
+        }
+      ]
+    },
+    {
+      "id": "survey-cache",
+      "kind": "colony",
+      "title": "Survey cache",
+      "text": "An old survey team's marker, half buried, with a cache under it. The seal says forty years.",
+      "choices": [
+        {
+          "id": "dig",
+          "label": "Dig it up",
+          "outcomes": [
+            { "chance": 60, "text": "Spares, wrapped in oilcloth and still good.", "effects": { "drop": "colony" } },
+            { "chance": 40, "text": "The pit caves in on whoever's at the bottom. The cache comes up anyway.", "effects": { "drop": "colony", "wound": { "hp": 4 } } }
+          ]
+        },
+        {
+          "id": "scout",
+          "label": "Read the marker first",
+          "needs": { "job": "scout" },
+          "outcomes": [{ "chance": 100, "text": "The marker says where they dug. The scout digs where they didn't.", "effects": { "drop": "colony" } }]
+        },
+        {
+          "id": "mark",
+          "label": "Mark it for later",
+          "outcomes": [{ "chance": 100, "text": "A flag on the map, and on the list of things to get to.", "effects": {} }]
+        }
+      ]
+    },
+    {
+      "id": "orbit-scrap",
+      "kind": "colony",
+      "title": "Falling scrap",
+      "text": "Something burns up overhead and scatters across the plain. Some of it is still glowing when it lands.",
+      "choices": [
+        {
+          "id": "haul",
+          "label": "Haul it in",
+          "outcomes": [
+            { "chance": 70, "text": "Plating and wire, still warm, stacked behind the storehouse.", "effects": { "materials": 8 } },
+            { "chance": 30, "text": "Plating and wire, and a burn from a piece that was hotter than it looked.", "effects": { "materials": 8, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "wait",
+          "label": "Let it cool",
+          "outcomes": [{ "chance": 100, "text": "By the time it's cool, the wind has scattered most of it. Some is left.", "effects": { "materials": 3 } }]
+        }
+      ]
+    },
+    {
+      "id": "grain-borers",
+      "kind": "colony",
+      "title": "Grain borers",
+      "text": "Something small is eating through the stores. The sacks are full of holes and the holes are full of grubs.",
+      "choices": [
+        {
+          "id": "burn",
+          "label": "Burn the bad sacks",
+          "needs": { "supplies": 6 },
+          "outcomes": [{ "chance": 100, "text": "It costs a week's food, and the borers go with it.", "effects": { "supplies": -6 } }]
+        },
+        {
+          "id": "study",
+          "label": "Look at them closely",
+          "needs": { "job": "xenobiologist" },
+          "outcomes": [{ "chance": 100, "text": "The xenobiologist turns one over and laughs: they're edible, and better roasted than the rations.", "effects": { "supplies": 4 } }]
+        },
+        {
+          "id": "leave",
+          "label": "Sort them by hand",
+          "outcomes": [
+            { "chance": 60, "text": "Hours of picking. The store is saved, grub by grub.", "effects": {} },
+            { "chance": 40, "text": "Hours of picking, and the grubs bite. The bites swell for days.", "effects": { "wound": { "hp": 2, "all": true } } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "prowler",
+      "kind": "colony",
+      "title": "Prowler",
+      "text": "Tracks around the perimeter at dawn, and the fence wire cut in one place. Whatever it was, it walked on two legs.",
+      "choices": [
+        {
+          "id": "track",
+          "label": "Follow the tracks",
+          "outcomes": [
+            { "chance": 50, "text": "A camp in the rocks, empty, and a sidearm left behind in a hurry.", "effects": { "arms": "pistol" } },
+            { "chance": 50, "text": "Whoever it was is waiting in the rocks. A shot, a scramble, and they're gone.", "effects": { "wound": { "hp": 4 } } }
+          ]
+        },
+        {
+          "id": "watch",
+          "label": "Sit up with a rifle",
+          "needs": { "trait": "light-sleeper" },
+          "outcomes": [{ "chance": 100, "text": "Nobody comes back. In the morning there's a crate of scrap by the cut wire, left as an apology.", "effects": { "materials": 4 } }]
+        },
+        {
+          "id": "bar",
+          "label": "Bar the doors",
+          "outcomes": [{ "chance": 100, "text": "Locks and a lamp on the fence. The tracks don't come back.", "effects": {} }]
+        }
+      ]
+    },
+    {
+      "id": "tremor",
+      "kind": "colony",
+      "title": "Tremor",
+      "text": "The ground rolls under the colony for a long ten seconds. The walls are standing. For now.",
+      "choices": [
+        {
+          "id": "shore",
+          "label": "Shore up the walls",
+          "outcomes": [{ "chance": 100, "text": "Braces on every wall that creaked. Expensive, and nothing falls.", "effects": { "materials": -5 } }]
+        },
+        {
+          "id": "engineer",
+          "label": "Have it looked over",
+          "needs": { "job": "engineer" },
+          "outcomes": [{ "chance": 100, "text": "The engineer finds the two walls that matter and braces only those.", "effects": { "materials": -2 } }]
+        },
+        {
+          "id": "later",
+          "label": "Look later",
+          "outcomes": [
+            { "chance": 50, "text": "A storehouse wall comes down in the night. The materials behind it go with it.", "effects": { "materials": -8 } },
+            { "chance": 50, "text": "Nothing comes down. Nothing creaked as much as it sounded.", "effects": {} }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lost-drone",
+      "kind": "colony",
+      "title": "Lost drone",
+      "text": "A survey drone pings the colony's band, low on charge and circling. Nobody here owns it.",
+      "choices": [
+        {
+          "id": "strip",
+          "label": "Strip it for parts",
+          "outcomes": [{ "chance": 100, "text": "Wire, cells and a good motor, sorted into the stores.", "effects": { "materials": 5 } }]
+        },
+        {
+          "id": "fly",
+          "label": "Fly it home",
+          "needs": { "job": "pilot" },
+          "outcomes": [
+            { "chance": 80, "text": "The pilot talks it down on the last of its charge, whole. Its cargo bay was full.", "effects": { "drop": "colony" } },
+            { "chance": 20, "text": "It comes down hard on the pad. What's left goes in the scrap.", "effects": { "materials": 2 } }
+          ]
+        },
+        { "id": "let", "label": "Let it go", "outcomes": [{ "chance": 100, "text": "It circles twice more and drifts off east.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "prospector",
+      "kind": "colony",
+      "title": "Prospector",
+      "text": "A prospector's crawler grinds in from the hills, one old woman aboard, wanting food and a trade.",
+      "choices": [
+        {
+          "id": "trade",
+          "label": "Trade her rations",
+          "needs": { "supplies": 6 },
+          "outcomes": [{ "chance": 100, "text": "She takes the rations and leaves a crate of spares she won't need.", "effects": { "supplies": -6, "drop": "colony" } }]
+        },
+        {
+          "id": "tales",
+          "label": "Swap stories",
+          "needs": { "trait": "old-hand" },
+          "outcomes": [{ "chance": 100, "text": "An old hand knows the stories she wants. She leaves the ore she was carrying.", "effects": { "materials": 4 } }]
+        },
+        { "id": "send", "label": "Send her on", "outcomes": [{ "chance": 100, "text": "She grumbles and grinds on west.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "claim-beacon",
+      "kind": "colony",
+      "background": "miner",
+      "title": "Claim beacon",
+      "text": "A Con-Reg beacon drops from orbit and starts broadcasting: this ore is the Company's, and so are you.",
+      "choices": [
+        {
+          "id": "melt",
+          "label": "Melt it down",
+          "outcomes": [
+            { "chance": 70, "text": "It makes good wire, the Company's beacon.", "effects": { "materials": 3 } },
+            { "chance": 30, "text": "It was rigged to burn if opened. It burns.", "effects": { "materials": 3, "wound": { "hp": 2 } } }
+          ]
+        },
+        {
+          "id": "pay",
+          "label": "Pay its claim in ore",
+          "outcomes": [{ "chance": 100, "text": "A tithe goes up on the beacon's lift. The broadcast stops, for now.", "effects": { "materials": -6 } }]
+        }
+      ]
+    },
+    {
+      "id": "shift-call",
+      "kind": "colony",
+      "background": "miner",
+      "title": "The old shift",
+      "text": "A message on the long band from the crew you used to haul with. They heard you got out. They want to know how.",
+      "choices": [
+        {
+          "id": "help",
+          "label": "Ask for their help",
+          "outcomes": [
+            { "chance": 50, "text": "They pool what they can spare and send it out on a supply run.", "effects": { "supplies": 5 } },
+            { "chance": 50, "text": "They wish you well. That's all they can spare.", "effects": {} }
+          ]
+        },
+        {
+          "id": "ore",
+          "label": "Send them ore",
+          "outcomes": [{ "chance": 100, "text": "A load of ore for their quota. They won't forget it, and you're short of it.", "effects": { "materials": -5 } }]
+        }
+      ]
+    },
+    {
+      "id": "wanted-flyer",
+      "kind": "colony",
+      "background": "deserter",
+      "title": "Wanted flyer",
+      "text": "A Provost courier drone drops a flyer on the pad: your face, your name, and the Resolute's crate number.",
+      "choices": [
+        {
+          "id": "strip",
+          "label": "Strip the drone",
+          "outcomes": [
+            { "chance": 70, "text": "A courier drone is good wire and better cells.", "effects": { "materials": 4 } },
+            { "chance": 30, "text": "It was rigged to burn on opening, Provost-style.", "effects": { "materials": 4, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "leave",
+          "label": "Leave it on the pad",
+          "outcomes": [{ "chance": 100, "text": "It sits there for a week, blinking, and then its battery dies.", "effects": {} }]
+        }
+      ]
+    },
+    {
+      "id": "resolute-crate",
+      "kind": "colony",
+      "background": "deserter",
+      "title": "Resolute's crate",
+      "text": "A drop canister lands near the farms, Fleet issue, stencilled RESOLUTE. Someone aboard her still remembers you.",
+      "choices": [
+        {
+          "id": "open",
+          "label": "Open it",
+          "outcomes": [
+            { "chance": 60, "text": "A rifle and a note: 'You left this.' No name.", "effects": { "arms": "rifle" } },
+            { "chance": 40, "text": "Fleet canisters seal hard. It opens on someone's hand.", "effects": { "wound": { "hp": 2 } } }
+          ]
+        },
+        { "id": "keep", "label": "Keep it sealed", "outcomes": [{ "chance": 100, "text": "It goes in the store, sealed, in case.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "family-parcel",
+      "kind": "colony",
+      "background": "smuggler",
+      "title": "Family parcel",
+      "text": "A parcel on the supply drop, wrapped in Halloran green, with a card: 'Thinking of you.'",
+      "choices": [
+        {
+          "id": "open",
+          "label": "Open it",
+          "outcomes": [
+            { "chance": 50, "text": "Good spares, and the family's compliments.", "effects": { "drop": "colony" } },
+            { "chance": 50, "text": "It goes off in the hands that opened it. A warning, not a killing.", "effects": { "wound": { "hp": 4 } } }
+          ]
+        },
+        {
+          "id": "burn",
+          "label": "Burn it unopened",
+          "outcomes": [{ "chance": 100, "text": "It burns with a bang at the back of the pit. The family will hear you got it.", "effects": {} }]
+        }
+      ]
+    },
+    {
+      "id": "old-contact",
+      "kind": "colony",
+      "background": "smuggler",
+      "title": "Old contact",
+      "text": "A voice on the band you haven't heard since the run that burned you: they're passing, and they have goods.",
+      "choices": [
+        {
+          "id": "buy",
+          "label": "Buy what they have",
+          "needs": { "supplies": 4 },
+          "outcomes": [{ "chance": 100, "text": "Rations for a machine pistol, no questions on either side.", "effects": { "supplies": -4, "arms": "machinepistol" } }]
+        },
+        { "id": "no", "label": "Not today", "outcomes": [{ "chance": 100, "text": "'Suit yourself,' and the band goes quiet.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "tender-count",
+      "kind": "colony",
+      "quest": "varga-loyal",
+      "title": "Varga's count",
+      "text": "Varga hasn't slept. She has the tender's ration count written on the galley wall, every crate, and who had them last.",
+      "choices": [
+        {
+          "id": "hear",
+          "label": "Hear her out",
+          "outcomes": [{ "chance": 100, "text": "An hour of numbers. At the end of it she knows where the pirates went, and so do you.", "effects": {} }]
+        },
+        {
+          "id": "watch",
+          "label": "Sit the scanners",
+          "outcomes": [{ "chance": 100, "text": "A night on the long scanners with her. By morning she has their burn marks on the screen.", "effects": {} }]
+        }
+      ]
+    },
+    {
+      "id": "pier-list",
+      "kind": "colony",
+      "quest": "brandt-loyal",
+      "title": "Teo's list",
+      "text": "Teo reads names off a folded paper at supper, slowly, every one. The men who broke Pier Nine.",
+      "choices": [
+        {
+          "id": "hear",
+          "label": "Hear the names",
+          "outcomes": [{ "chance": 100, "text": "He folds the list back up. 'They hire out to the claims now,' he says. 'One of them's close.'", "effects": {} }]
+        },
+        {
+          "id": "ask",
+          "label": "Ask what he wants",
+          "outcomes": [{ "chance": 100, "text": "'A word with them,' he says. 'Just a word.' He doesn't eat the rest of his supper.", "effects": {} }]
+        }
+      ]
+    },
+    {
+      "id": "survey-stakes",
+      "kind": "colony",
+      "quest": "osei-loyal",
+      "title": "Survey stakes",
+      "text": "Ama comes back from a walk with a Company survey stake in her hand. There's a line of them up the ridge. She knows whose.",
+      "choices": [
+        {
+          "id": "pull",
+          "label": "Pull the stakes",
+          "outcomes": [{ "chance": 100, "text": "A day of pulling stakes. The wire is good, and the ridge is the colony's again.", "effects": { "materials": 2 } }]
+        },
+        {
+          "id": "leave",
+          "label": "Leave them for now",
+          "outcomes": [{ "chance": 100, "text": "'Harl,' she says. 'He signed my papers.' She leaves them standing, and goes to look for his tug.", "effects": {} }]
+        }
+      ]
+    },
+    {
+      "id": "birthday-card",
+      "kind": "colony",
+      "quest": "halloran-loyal",
+      "title": "Birthday card",
+      "text": "A card for Dez on the supply drop: Old Halloran's birthday, the family all invited, collectors to see Dez home.",
+      "choices": [
+        {
+          "id": "write",
+          "label": "Write back",
+          "outcomes": [{ "chance": 100, "text": "Dez writes 'No' and signs it. You both know the collectors are coming anyway.", "effects": {} }]
+        },
+        {
+          "id": "tear",
+          "label": "Tear it up",
+          "outcomes": [{ "chance": 100, "text": "Dez tears it slowly. 'They'll come,' Dez says. 'Better we know where they'll be.'", "effects": {} }]
+        }
+      ]
+    },
+    {
+      "id": "cold-sleepers",
+      "kind": "hulk",
+      "title": "Cold sleepers",
+      "text": "A hulk with her cryo bay still powered: twelve pods, eleven dark, one with a pulse.",
+      "choices": [
+        {
+          "id": "stores",
+          "label": "Take the bay's stores",
+          "outcomes": [
+            { "chance": 60, "text": "Sleepers' rations, sealed for a long trip. They won't need them.", "effects": { "supplies": 6 } },
+            { "chance": 40, "text": "The bay's guns wake before the sleeper does.", "effects": { "supplies": 6, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "logs",
+          "label": "Read the logs",
+          "needs": { "trait": "careful" },
+          "outcomes": [{ "chance": 100, "text": "Careful reading: the manifest says where the spares were stowed.", "effects": { "drop": "colony" } }]
+        },
+        {
+          "id": "leave",
+          "label": "Leave them sleeping",
+          "outcomes": [{ "chance": 100, "text": "The squad closes the bay door softly on the way out.", "effects": {} }]
+        }
+      ]
+    },
+    {
+      "id": "listing-tanker",
+      "kind": "hulk",
+      "title": "Listing tanker",
+      "text": "A tanker on her side, tanks half full, venting slowly from a crack in her hull.",
+      "choices": [
+        {
+          "id": "siphon",
+          "label": "Siphon her fuel",
+          "outcomes": [
+            { "chance": 75, "text": "Fuel's as good as ore at the colony: it runs the forge.", "effects": { "materials": 6 } },
+            { "chance": 25, "text": "The crack lets go while the squad's under it. A flash, a burn, and half the haul.", "effects": { "materials": 3, "wound": { "hp": 4 } } }
+          ]
+        },
+        {
+          "id": "hatches",
+          "label": "Take her hatches",
+          "outcomes": [{ "chance": 100, "text": "Good heavy hatches, unbolted and stacked in the hold.", "effects": { "materials": 3 } }]
+        },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "She can vent the rest on her own.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "engine-block",
+      "kind": "wreckage",
+      "title": "Engine block",
+      "text": "An engine torn loose from some ship, lying in the field like a fallen bell.",
+      "choices": [
+        {
+          "id": "cut",
+          "label": "Cut it free",
+          "outcomes": [
+            { "chance": 70, "text": "A morning with the torch and a hold full of good metal.", "effects": { "materials": 8 } },
+            { "chance": 30, "text": "It rolls when the last cut goes through. Someone was on the wrong side.", "effects": { "materials": 4, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "injectors",
+          "label": "Pull the injectors",
+          "needs": { "job": "engineer" },
+          "outcomes": [{ "chance": 100, "text": "The engineer knows where the good parts sit and gets them out whole.", "effects": { "drop": "colony" } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "It's lain there this long.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "black-box",
+      "kind": "wreckage",
+      "title": "Black box",
+      "text": "In the wreckage, a black box still ticking, and a frame worth hauling.",
+      "choices": [
+        {
+          "id": "read",
+          "label": "Read the box",
+          "needs": { "job": "pilot" },
+          "outcomes": [{ "chance": 100, "text": "The pilot plays the last log: a ration drop she never reached, two kilometres north.", "effects": { "supplies": 5 } }]
+        },
+        {
+          "id": "haul",
+          "label": "Haul the frame",
+          "outcomes": [
+            { "chance": 80, "text": "The frame comes away in three pieces and fits in the hold.", "effects": { "materials": 5 } },
+            { "chance": 20, "text": "The frame comes away in three pieces. One of them on a foot.", "effects": { "materials": 5, "wound": { "hp": 2 } } }
+          ]
+        },
+        { "id": "leave", "label": "Leave it ticking", "outcomes": [{ "chance": 100, "text": "It ticks on behind you as the ship lifts.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "ice-pocket",
+      "kind": "rock",
+      "title": "Ice pocket",
+      "text": "A pocket of old ice under a ledge, clear as glass.",
+      "choices": [
+        {
+          "id": "melt",
+          "label": "Melt it",
+          "outcomes": [
+            { "chance": 70, "text": "Water enough for the colony's greens for a week.", "effects": { "supplies": 6 } },
+            { "chance": 30, "text": "The ledge comes down while the squad is under it.", "effects": { "supplies": 3, "wound": { "hp": 2 } } }
+          ]
+        },
+        {
+          "id": "blocks",
+          "label": "Cut it in blocks",
+          "outcomes": [{ "chance": 100, "text": "Blocks for the coolers, stacked in the hold.", "effects": { "materials": 4 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Too far from anything to bother with.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "claim-marker",
+      "kind": "rock",
+      "title": "Claim marker",
+      "text": "An old claim marker on the rock, its beacon dead, pointing at a seam nobody worked.",
+      "choices": [
+        {
+          "id": "dig",
+          "label": "Dig where it points",
+          "outcomes": [
+            { "chance": 50, "text": "Whoever set the marker knew rock. The seam is real, and somebody stashed spares by it.", "effects": { "drop": "colony" } },
+            { "chance": 50, "text": "The shaft they started was never shored. It isn't now.", "effects": { "wound": { "hp": 4 } } }
+          ]
+        },
+        {
+          "id": "pull",
+          "label": "Pull up the marker",
+          "outcomes": [{ "chance": 100, "text": "A good post and a better battery.", "effects": { "materials": 3 } }]
+        },
+        { "id": "leave", "label": "Leave it", "outcomes": [{ "chance": 100, "text": "Someone's claim. Let them keep it.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "grazers",
+      "kind": "planet",
+      "title": "Grazers",
+      "text": "A herd of something on the plain, slow and wide and grazing, paying the squad no mind.",
+      "choices": [
+        {
+          "id": "hunt",
+          "label": "Hunt one",
+          "outcomes": [
+            { "chance": 70, "text": "Meat for the colony, the first fresh in months.", "effects": { "supplies": 8 } },
+            { "chance": 30, "text": "It minds, after all. Someone gets trampled before it goes down.", "effects": { "supplies": 8, "wound": { "hp": 4 } } }
+          ]
+        },
+        {
+          "id": "study",
+          "label": "Watch what they eat",
+          "needs": { "job": "xenobiologist" },
+          "outcomes": [{ "chance": 100, "text": "The xenobiologist follows them all afternoon: what they graze on, the colony can grow.", "effects": { "supplies": 4 } }]
+        },
+        { "id": "leave", "label": "Leave them be", "outcomes": [{ "chance": 100, "text": "They watch the ship lift without much interest.", "effects": {} }] }
+      ]
+    },
+    {
+      "id": "crashed-lander",
+      "kind": "planet",
+      "title": "Crashed lander",
+      "text": "A lander nose-down in the dirt, her crew long gone, her bay doors open to the weather.",
+      "choices": [
+        {
+          "id": "strip",
+          "label": "Strip the lander",
+          "outcomes": [
+            { "chance": 60, "text": "Her bay had spares no weather got to.", "effects": { "drop": "colony" } },
+            { "chance": 40, "text": "Her frame shifts while the squad's inside. Plating, and a bruised crew.", "effects": { "materials": 4, "wound": { "hp": 3 } } }
+          ]
+        },
+        {
+          "id": "plating",
+          "label": "Take the plating",
+          "outcomes": [{ "chance": 100, "text": "Good plating, cut from the high side.", "effects": { "materials": 5 } }]
+        },
+        { "id": "leave", "label": "Leave her", "outcomes": [{ "chance": 100, "text": "Someone may come back for her. Nobody has yet.", "effects": {} }] }
+      ]
     }
   ]
 }

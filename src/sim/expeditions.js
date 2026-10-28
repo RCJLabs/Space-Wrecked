@@ -146,9 +146,9 @@ export function withPlaces(campaign, rules) {
 }
 
 // How many places the quests' open steps hold on the list (M33b): a rolled
-// list leaves room for them.
+// list leaves room for them (not a colony event's step, M61).
 function questRoom(campaign, rules) {
-  return [...(rules.quests?.values() ?? [])].filter((quest) => campaign.quests?.[quest.id]?.state === 'open' && quest.steps[campaign.quests[quest.id].step]?.act === 3).length;
+  return [...(rules.quests?.values() ?? [])].filter((quest) => campaign.quests?.[quest.id]?.state === 'open' && quest.steps[campaign.quests[quest.id].step]?.place).length;
 }
 
 // What a trip to the place listed at index would come to with squad (crew

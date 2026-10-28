@@ -72,6 +72,7 @@
   "swapRise": 20,
   "surveyHeat": 2,
   "colonyHeatFall": 1,
+  "colonyEventChance": 20,
   "tripHeat": 4,
   "lanesNear": 150,
   "lanesFar": 50,
